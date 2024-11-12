@@ -1,0 +1,18 @@
+{
+  "name": "homeserver",
+  "module": "index.ts",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "dependencies": {
+    "node-jsonwebtoken": "^0.0.1"
+  }
+}
