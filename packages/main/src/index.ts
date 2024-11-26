@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { logger } from "@bogeychan/elysia-logger";
+import swagger from "@elysiajs/swagger";
 
 import {
   EndpointsByMethod,
@@ -34,6 +35,7 @@ const app = new Elysia();
 
 console.log(config);
 app
+  .use(swagger())
   .use(
     logger({
       level: "debug",
