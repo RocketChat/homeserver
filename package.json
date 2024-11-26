@@ -13,6 +13,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@bogeychan/elysia-logger": "^0.1.4",
     "node-jsonwebtoken": "^0.0.1"
   }
 }
