@@ -1,0 +1,7 @@
+{
+  "name": "matrix.gazzo.xyz",
+  "port": 8080,
+  "key": {
+    "key_refresh_interval": 60
+  }
+}
