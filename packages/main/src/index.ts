@@ -107,6 +107,25 @@ app
       }
     )
   )
+  .group('_matrix/federation/v1', (matrixFederationV1) =>
+    matrixFederationV1.get('/version', () => {
+      return {
+        server: {
+          name: config.name,
+          version: config.version,
+        }
+      }
+    }, {
+      response: {
+        200: t.Object({
+          server: t.Object({
+            name: t.String(),
+            version: t.String(),
+          }),
+        }),
+      },
+    })
+  )
 
   .listen(config.port);
 

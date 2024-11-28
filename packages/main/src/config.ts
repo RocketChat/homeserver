@@ -13,6 +13,7 @@ export interface Config {
     sign(data: string): Promise<string>;
   }[];
   name: string;
+  version: string;
 }
 
 const { CONFIG_FOLDER = "." } = process.env;
