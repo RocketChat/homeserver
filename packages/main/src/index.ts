@@ -148,9 +148,9 @@ app
             }),
           },
         })
-      .get('/query/profile', () => ({
+      .get('/query/profile', ({ query }) => ({
         "avatar_url": "mxc://matrix.org/MyC00lAvatar",
-        "displayname": "John Doe"
+        "displayname": String(query.user_id).toUpperCase()
       }))
       .post('/user/keys/query', ({ body }) => {
         const keys = Object.keys(body.device_keys).reduce((v, cur) => {
