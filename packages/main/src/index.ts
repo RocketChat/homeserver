@@ -130,6 +130,24 @@ app
         "avatar_url": "mxc://matrix.org/MyC00lAvatar",
         "displayname": "John Doe"
       }))
+      .post('/user/keys/query', ({ body }) => {
+        const keys = Object.keys(body.device_keys).reduce((v, cur) => {
+          v[cur] = 'unknown_key';
+
+          return v;
+        }, {} as any);
+
+        return {
+          "device_keys": keys
+        };
+      }, {
+        body: t.Object({
+          device_keys: t.Any(),
+        }),
+        response: t.Object({
+          device_keys: t.Any(),
+        })
+      })
   )
   .onError(async ({ error, request }) => {
     if (!request.body) {
