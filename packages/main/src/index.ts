@@ -114,7 +114,7 @@ app
         setTimeout(async () => {
           const { event } = body as any;
 
-          const response = await fetch(`https://${event.origin}/_matrix/federation/v2/make_join/${params.roomId}/${event.sender}`, {
+          const response = await fetch(`https://${event.origin}/_matrix/federation/v1/make_join/${params.roomId}/${event.sender}`, {
             method: "GET",
           });
 
