@@ -109,10 +109,25 @@ app
   )
   .group('_matrix/federation/v2', (matrixFederationV2) =>
     matrixFederationV2
-      .put('/invite/:roomId/:eventId', ({ body }) => config.signingKey.reduce(
-        (json: any, signingKey) => signJson(json, signingKey, config.name),
-        body
-      ))
+      .put('/invite/:roomId/:eventId', ({ params, body }) => {
+
+        setTimeout(async () => {
+          const { event } = body as any;
+
+          const response = await fetch(`https://${event.origin}/_matrix/federation/v2/make_join/${params.roomId}/${event.sender}`, {
+            method: "GET",
+          });
+
+          const responseBody = await response.json();
+
+          console.log('make_join ->', responseBody);
+        }, 10000);
+
+        return config.signingKey.reduce(
+          (json: any, signingKey) => signJson(json, signingKey, config.name),
+          body
+        );
+      })
   )
   .group('_matrix/federation/v1', (matrixFederationV1) =>
     matrixFederationV1
