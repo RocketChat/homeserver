@@ -107,6 +107,13 @@ app
       }
     )
   )
+  .group('_matrix/federation/v2', (matrixFederationV2) =>
+    matrixFederationV2
+      .put('/invite/:roomId/:eventId', ({ body }) => config.signingKey.reduce(
+        (json: any, signingKey) => signJson(json, signingKey, config.name),
+        body
+      ))
+  )
   .group('_matrix/federation/v1', (matrixFederationV1) =>
     matrixFederationV1
       .get('/version', () => {
