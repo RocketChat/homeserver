@@ -131,6 +131,18 @@ app
         "displayname": "John Doe"
       }))
   )
+  .onError(async ({ error, request }) => {
+    if (!request.body) {
+      return;
+    }
+
+    const body = await new Response(request.body).text();
+
+    console.log('url ->', request.url);
+    console.log('body ->', body);
+
+    return error;
+  })
 
   .listen(config.port);
 
