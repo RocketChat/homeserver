@@ -12,10 +12,9 @@ import {
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { config } from "./config";
-import { authorizationHeaders } from "./authentication";
-import { keyV2Endpoints } from "./routes/keys/v2/server";
-import { v2Endpoints } from "./routes/federation/v2";
-import { v1Endpoints } from "./routes/federation/v1";
+import { keyV2Endpoints } from "./federation/keys/v2/server";
+import { v2Endpoints } from "./federation/v2";
+import { v1Endpoints } from "./federation/v1";
 
 type Routing<TMethod extends Method> = {
   [TPath in EndpointsByMethod[TMethod]]: HandlerResponse<TMethod, TPath>;
