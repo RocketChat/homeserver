@@ -22,7 +22,7 @@ export async function signJson<
   const { signatures = {}, unsigned, ...rest } = jsonObject;
 
   const signed = await signingKey.sign(encodeCanonicalJson(rest));
-  const signatureBase64 = encodeBase64(signed);
+  // const signatureBase64 = encodeBase64(signed);
 
   const signature = signatures[signingName] || {};
 
@@ -32,7 +32,7 @@ export async function signJson<
       ...signatures,
       [signingName]: {
         ...signature,
-        [keyId]: signatureBase64,
+        [keyId]: signed,
       },
     },
     ...(unsigned && { unsigned }),

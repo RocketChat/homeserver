@@ -1,5 +1,4 @@
 import nacl from "tweetnacl";
-import { Config } from "./config";
 
 // TODO: make it compatible with synapse
 
@@ -82,7 +81,7 @@ export const getKeyPair = async (config: {
 > => {
   const { signingKeyPath } = config;
   if (!(await Bun.file(signingKeyPath).exists())) {
-    const seed = new Uint8Array(32);
+    const seed = nacl.randomBytes(32);
     await storeKeyPairs(
       [
         {
