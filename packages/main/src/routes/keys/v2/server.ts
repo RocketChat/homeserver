@@ -6,8 +6,6 @@ import { cache } from "../../../cache";
 import { config } from "../../../config";
 import { signJson } from "../../../signJson";
 
-const decoder = new TextDecoder("utf8");
-
 export const keyV2Endpoints = new Elysia().group(
   "/_matrix/key/v2",
   (matrixKeyV2) =>

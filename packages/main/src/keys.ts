@@ -35,7 +35,7 @@ async function storeKeyPairs(
       path,
       `${keyPair.algorithm} ${keyPair.version} ${Buffer.from(
         keyPair.seed
-      ).toString("utf8")}`
+      ).toString("base64")}`
     );
   }
 }
@@ -66,7 +66,11 @@ async function getRestoreKeys(config: { signingKeyPath: string }) {
   // Convert Base64 string to an ArrayBuffer
 
   // Import the private key from PKCS8 format
-  return generateKeyPairs(new TextEncoder().encode(seed), algorithm, version);
+  return generateKeyPairs(
+    Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
+    algorithm,
+    version
+  );
 }
 
 export const getKeyPair = async (config: {
