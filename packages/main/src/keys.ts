@@ -1,4 +1,5 @@
 import nacl from "tweetnacl";
+import { unpaddedBase64 } from "./unpaddedBase64";
 
 export async function generateKeyPairs(
   seed: Uint8Array,
@@ -31,9 +32,7 @@ async function storeKeyPairs(
   for await (const keyPair of seeds) {
     await Bun.write(
       path,
-      `${keyPair.algorithm} ${keyPair.version} ${Buffer.from(keyPair.seed)
-        .toString("base64")
-        .replace(/=+$/, "")}`
+      `${keyPair.algorithm} ${keyPair.version} ${unpaddedBase64(keyPair.seed)}`
     );
   }
 }

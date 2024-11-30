@@ -158,5 +158,5 @@ test("computeHash", async () => {
     "signatures":{},
   });
 
-  expect(result.hashes.sha256).toBe("nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4=");
+  expect(result.hashes.sha256).toBe("nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4");
 });

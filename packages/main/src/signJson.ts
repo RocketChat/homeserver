@@ -1,4 +1,5 @@
 import nacl from "tweetnacl";
+import { unpaddedBase64 } from "./unpaddedBase64";
 
 export async function signJson<
   T extends Object & {
@@ -32,7 +33,7 @@ export async function signJson<
   Object.assign(signatures, {
     [signingName]: {
       ...signature,
-      [keyId]: Buffer.from(signed).toString("base64").replace(/=+$/, ""),
+      [keyId]: unpaddedBase64(signed),
     },
   });
 

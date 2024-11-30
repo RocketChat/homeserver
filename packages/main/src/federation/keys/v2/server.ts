@@ -5,6 +5,7 @@ import "@hs/endpoints/src/server";
 import { cache } from "../../../cache";
 import { config } from "../../../config";
 import { signJson } from "../../../signJson";
+import { unpaddedBase64 } from "../../../unpaddedBase64";
 
 export const keyV2Endpoints = new Elysia().group(
   "/_matrix/key/v2",
@@ -16,7 +17,7 @@ export const keyV2Endpoints = new Elysia().group(
           config.signingKey.map(({ algorithm, version, publicKey }) => [
             `${algorithm}:${version}`,
             {
-              key: Buffer.from(publicKey).toString("base64").replace(/=+$/, ""),
+              key: unpaddedBase64(publicKey),
             },
           ])
         );

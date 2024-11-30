@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 
 import { signJson } from "./signJson";
+import { unpaddedBase64 } from './unpaddedBase64';
 
 export async function authorizationHeaders<T extends Object>(
   origin: string,
@@ -72,7 +73,7 @@ export function computeHash<T extends Object>(content: T): T & { hashes: { sha25
   return {
     ...content,
     hashes: {
-      sha256: crypto.createHash("sha256").update(JSON.stringify(toHash)).digest("base64"),
+      sha256: unpaddedBase64(crypto.createHash("sha256").update(JSON.stringify(toHash)).digest("base64")),
     }
   }
 }
