@@ -23,7 +23,7 @@ export async function signJson<
 
   const data = encodeCanonicalJson(rest);
 
-  console.log('data ->', data);
+  console.log("data ->", data);
 
   const signed = await signingKey.sign(new TextEncoder().encode(data));
 
@@ -33,8 +33,10 @@ export async function signJson<
     [signingName]: {
       ...signature,
       [keyId]: Buffer.from(signed).toString("base64").replace(/=+$/, ""),
-    }
+    },
   });
+
+  Object.assign(jsonObject, { signatures });
 
   return jsonObject as T & {
     signatures: Record<string, Record<string, string>>;
