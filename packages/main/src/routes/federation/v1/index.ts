@@ -7,6 +7,8 @@ import { usersEndpoints } from "./users";
 import { profileEndpoints } from "./profile";
 
 export const v1Endpoints = new Elysia()
-    .use(versionEndpoints)
-    .use(usersEndpoints)
-    .use(profileEndpoints)
+    .group('_matrix/federation/v1', (matrixFederationV1) =>
+        matrixFederationV1.use(versionEndpoints)
+            .use(usersEndpoints)
+            .use(profileEndpoints)
+    )
