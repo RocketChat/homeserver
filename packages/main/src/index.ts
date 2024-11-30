@@ -14,6 +14,7 @@ import "@hs/endpoints/src/server";
 import { signJson } from "./signJson";
 import { config } from "./config";
 import { cache } from "./cache";
+import { authorizationHeaders } from "./authentication";
 
 type Routing<TMethod extends Method> = {
   [TPath in EndpointsByMethod[TMethod]]: HandlerResponse<TMethod, TPath>;
@@ -202,7 +203,4 @@ app
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 );
-function authorizationHeaders(name: string, base64PublicKey: string, origin: any, arg3: string, arg4: string): string | PromiseLike<string> {
-  throw new Error("Function not implemented.");
-}
 
