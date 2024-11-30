@@ -1,65 +1,44 @@
+import nacl from "tweetnacl";
 import { Config } from "./config";
 
 // TODO: make it compatible with synapse
 
-async function generateKeyPairs(algorithm = "Ed25519", version = "0") {
+async function generateKeyPairs(
+  seed: Uint8Array,
+  algorithm = "ed25519",
+  version = "0"
+) {
   // Generate an Ed25519 key pair
-  const keyPair = await crypto.subtle.generateKey(
-    "Ed25519",
-    true, // Extractable
-    ["sign", "verify"]
-  );
+  const keyPair = await nacl.sign.keyPair.fromSeed(seed);
 
   // Encode the private key to Base64
 
   return [
     {
       version,
-      privateKey: keyPair.privateKey,
+      privateKey: keyPair.secretKey,
       publicKey: keyPair.publicKey,
-      base64PublicKey: encodePublicKeyToBase64(keyPair.publicKey),
-      base64PrivateKey: encodePrivateKeyToBase64(keyPair.privateKey),
       algorithm,
     },
   ];
 }
 
 async function storeKeyPairs(
-  keyPairs: {
+  seeds: {
     algorithm: string;
     version: string;
-    publicKey: CryptoKey;
-    privateKey: CryptoKey;
+    seed: Uint8Array;
   }[],
   path: string
 ) {
-  for await (const keyPair of keyPairs) {
+  for await (const keyPair of seeds) {
     await Bun.write(
       path,
-      `${keyPair.algorithm} ${keyPair.version} ${await encodePrivateKeyToBase64(
-        keyPair.privateKey
-      )} ${await encodePublicKeyToBase64(keyPair.publicKey)}`
+      `${keyPair.algorithm} ${keyPair.version} ${Buffer.from(
+        keyPair.seed
+      ).toString("utf8")}`
     );
   }
-}
-
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64); // Decode Base64 to binary string
-  const byteArray = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    byteArray[i] = binary.charCodeAt(i);
-  }
-  return byteArray.buffer;
-}
-
-async function encodePrivateKeyToBase64(
-  privateKey: CryptoKey
-): Promise<string> {
-  // Export the private key in PKCS8 format
-  const exportedKey = await crypto.subtle.exportKey("pkcs8", privateKey);
-
-  // Convert the ArrayBuffer to a Base64 string
-  return arrayBufferToBase64(exportedKey);
 }
 
 async function encodePublicKeyToBase64(cryptoKey: CryptoKey): Promise<string> {
@@ -81,38 +60,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 async function getRestoreKeys(config: { signingKeyPath: string }) {
-  const [algorithm, version, base64PrivateKey, base64PublicKey] = (
+  const [algorithm, version, seed] = (
     await Bun.file(config.signingKeyPath).text()
   ).split(" ");
 
   // Convert Base64 string to an ArrayBuffer
 
   // Import the private key from PKCS8 format
-  return [
-    {
-      algorithm,
-      version,
-      privateKey: await crypto.subtle.importKey(
-        "pkcs8", // Format of the key
-        await base64ToArrayBuffer(base64PrivateKey),
-        {
-          name: "Ed25519", // Algorithm name
-        },
-        true, // Extractable (true/false)
-        ["sign"] // Key usages
-      ),
-      publicKey: await crypto.subtle.importKey(
-        "spki", // Format of the key
-        await base64ToArrayBuffer(base64PublicKey),
-        {
-          name: "Ed25519", // Algorithm name
-        },
-        true, // Extractable (true/false)
-        ["verify"] // Key usages
-      ),
-      base64PublicKey,
-    },
-  ];
+  return generateKeyPairs(new TextEncoder().encode(seed), algorithm, version);
 }
 
 export const getKeyPair = async (config: {
@@ -121,14 +76,24 @@ export const getKeyPair = async (config: {
   {
     algorithm: string;
     version: string;
-    publicKey: CryptoKey;
-    privateKey: CryptoKey;
+    publicKey: Uint8Array;
+    privateKey: Uint8Array;
   }[]
 > => {
   const { signingKeyPath } = config;
   if (!(await Bun.file(signingKeyPath).exists())) {
-    const result = await generateKeyPairs();
-    await storeKeyPairs(result, signingKeyPath);
+    const seed = new Uint8Array(32);
+    await storeKeyPairs(
+      [
+        {
+          algorithm: "ed25519",
+          version: "0",
+          seed,
+        },
+      ],
+      signingKeyPath
+    );
+    const result = await generateKeyPairs(seed);
     return result;
   }
 

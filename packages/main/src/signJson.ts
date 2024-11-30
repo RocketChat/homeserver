@@ -1,3 +1,5 @@
+import nacl from "tweetnacl";
+
 export async function signJson<
   T extends {
     signatures?: Record<string, Record<string, string>>;
@@ -47,12 +49,6 @@ export function encodeBase64(buffer: Uint8Array | string): string {
   return Buffer.from(bufferToEncode).toString("base64");
 }
 
-export async function signText(data: string, signingKey: CryptoKey) {
-  const sign = await crypto.subtle.sign(
-    "Ed25519",
-    signingKey,
-    new TextEncoder().encode(data)
-  );
-
-  return sign.toString();
+export async function signText(data: string, signingKey: Uint8Array) {
+  return nacl.sign(new TextEncoder().encode(data), signingKey);
 }

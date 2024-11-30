@@ -9,7 +9,7 @@ export interface Config {
   signingKey: {
     algorithm: string;
     version: string;
-    base64PublicKey: string;
+    publicKey: Uint8Array;
     sign(data: string): Promise<string>;
   }[];
   name: string;
