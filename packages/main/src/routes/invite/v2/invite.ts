@@ -7,22 +7,9 @@ import { signJson } from "../../../signJson";
 import { authorizationHeaders } from "../../../authentication";
 
 const makeRequest = async ({ method, domain, uri, options = {} }: { method: string; domain: string; uri: string; options?: Record<string, any>; }) => {
-  // const signedJson = await signJson(
-  //   {
-  //     method,
-  //     uri,
-  //     origin,
-  //     destination: origin,
-  //     ...(options.body && { content: options.body }),
-  //     signatures: {},
-  //   },
-  //   config.signingKey[0],
-  //   origin
-  // );
-
   const signingKey = config.signingKey[0];
 
-  const signatures = await authorizationHeaders(
+  const auth = await authorizationHeaders(
     config.name,
     signingKey,
     domain,
@@ -31,23 +18,10 @@ const makeRequest = async ({ method, domain, uri, options = {} }: { method: stri
     options.body,
   );
 
-  // console.log('origin ->', origin);
-  console.log('signatures ->', signatures);
-
-  const key = `${signingKey.algorithm}:${signingKey.version}`;
-  const signed = signatures[config.name][key];
-
-  const auth = `X-Matrix origin="${config.name}",destination="${domain}",key="${key}",sig="${signed}"`;
-
-  console.log("auth ->", auth);
+  console.log('auth ->', auth);
 
   const body = (options.body && {
-    body: JSON.stringify(
-      {
-        ...options.body,
-        signatures,
-      }
-    ),
+    body: JSON.stringify(await signJson({ ...options.body, signatures: {} }, config.signingKey[0], config.name)),
   });
 
   console.log('body ->', body);
@@ -80,7 +54,7 @@ export const inviteEndpoint = new Elysia().put(
       const joinBody = {
         type: 'm.room.member',
         origin: config.name,
-        origin_server_ts: Date.now(),
+        origin_server_ts: Date.now() / 1000,
         state_key: responseMake.event.state_key,
         sender: responseMake.event.sender,
         content: {
