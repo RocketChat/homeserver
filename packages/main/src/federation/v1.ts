@@ -11,4 +11,12 @@ export const v1Endpoints = new Elysia()
         matrixFederationV1.use(versionEndpoints)
             .use(usersEndpoints)
             .use(profileEndpoints)
+            .put('/send/:txnId', ({ params, body }) => {
+                console.log('receive send ->', params);
+                console.log('body ->', body);
+
+                return {
+                    [params.txnId]: {},
+                };
+            })
     )
