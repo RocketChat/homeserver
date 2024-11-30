@@ -56,6 +56,7 @@ export const inviteEndpoint = new Elysia().put(
         room_id: responseMake.event.room_id,
         state_key: responseMake.event.state_key,
         sender: responseMake.event.sender,
+        depth: responseMake.event.depth + 1,
         content: {
           membership: 'join'
         }
