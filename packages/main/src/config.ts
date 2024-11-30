@@ -10,7 +10,7 @@ export interface Config {
     algorithm: string;
     version: string;
     publicKey: Uint8Array;
-    sign(data: string): Promise<string>;
+    sign(data: Uint8Array): Promise<Uint8Array>;
   }[];
   name: string;
   version: string;
@@ -51,7 +51,7 @@ const getConfig = async (): Promise<Config> => {
     signingKey: result.map((result) => ({
       ...result,
 
-      sign(data: string) {
+      sign(data: Uint8Array) {
         return signText(data, result.privateKey);
       },
     })),

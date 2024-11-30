@@ -5,7 +5,7 @@ export async function authorizationHeaders<T extends Object>(
   signingKey: {
     algorithm: string;
     version: string;
-    sign(data: string): Promise<string>;
+    sign(data: Uint8Array): Promise<Uint8Array>;
   },
   destinationName: string,
   requestMethod: string,
@@ -20,11 +20,14 @@ export async function authorizationHeaders<T extends Object>(
     ...(content && { content }),
   };
 
-
-  const signedJson = await signJson({
-    ...requestJson,
-    signatures: {},
-  }, signingKey, originName);
+  const signedJson = await signJson(
+    {
+      ...requestJson,
+      signatures: {},
+    },
+    signingKey,
+    originName
+  );
 
   const key = `${signingKey.algorithm}:${signingKey.version}`;
   const signed = signedJson.signatures[originName][key];

@@ -10,7 +10,7 @@ export async function signJson<
   signingKey: {
     algorithm: string;
     version: string;
-    sign(data: string): Promise<string>;
+    sign(data: Uint8Array): Promise<Uint8Array>;
   },
   signingName: string
 ): Promise<
@@ -20,9 +20,8 @@ export async function signJson<
 > {
   const keyId = `${signingKey.algorithm}:${signingKey.version}`;
   const { signatures = {}, unsigned, ...rest } = jsonObject;
-
-  const signed = await signingKey.sign(encodeCanonicalJson(rest));
-  // const signatureBase64 = encodeBase64(signed);
+  const data = encodeCanonicalJson(rest);
+  const signed = await signingKey.sign(new TextEncoder().encode(data));
 
   const signature = signatures[signingName] || {};
 
@@ -32,7 +31,7 @@ export async function signJson<
       ...signatures,
       [signingName]: {
         ...signature,
-        [keyId]: signed,
+        [keyId]: Buffer.from(signed).toString("base64"),
       },
     },
     ...(unsigned && { unsigned }),
@@ -49,6 +48,12 @@ export function encodeBase64(buffer: Uint8Array | string): string {
   return Buffer.from(bufferToEncode).toString("base64");
 }
 
-export async function signText(data: string, signingKey: Uint8Array) {
-  return nacl.sign(new TextEncoder().encode(data), signingKey);
+export async function signText(
+  data: string | Uint8Array,
+  signingKey: Uint8Array
+) {
+  if (typeof data === "string") {
+    data = new TextEncoder().encode(data);
+  }
+  return nacl.sign.detached(data, signingKey);
 }
