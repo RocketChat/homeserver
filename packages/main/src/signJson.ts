@@ -23,6 +23,8 @@ export async function signJson<
 
   const data = encodeCanonicalJson(rest);
 
+  console.log('data ->', data);
+
   const signed = await signingKey.sign(new TextEncoder().encode(data));
 
   const signature = signatures[signingName] || {};
