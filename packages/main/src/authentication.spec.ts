@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+
+import { signRequest } from "./authentication";
 import { signJson, signText } from "./signJson";
 import { generateKeyPairs } from "./keys";
 
@@ -46,7 +48,7 @@ import { generateKeyPairs } from "./keys";
 //     "uri": "/_matrix/federation/v2/send_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%24UOFwq4Soj_komm7BQx5zhf-AmXiPw1nkTycvdlFT5tk?omit_members=true"
 // }
 
-test("signJson send_join", async () => {
+test("signRequest", async () => {
   const [signature] = await generateKeyPairs(
     Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
       c.charCodeAt(0)
@@ -102,39 +104,13 @@ test("signJson send_join", async () => {
   expect(signed.signatures["synapse2"]["ed25519:a_yNbw"]).toBe(
     "NKSz4x8fKwoNOOY/rcVVkVrzzt/TyFaL+8IJX9raSZNrMZFH5J3s2l+Z85q8McAUPp/pKKctI4Okk0Q7Q8OOBA"
   );
-});
 
-// {
-//     "destination": "synapse1",
-//     "method": "GET",
-//     "origin": "synapse2",
-//     "signatures": {
-//         "synapse2": {
-//             "ed25519:a_yNbw": "YmiPpEE6QAeZzd8qw/FUXw2kiu0FJsApxnDfnbZmcEY5gFP97srHRqRzLjBn8Rh38nV2ZFTPXOV2Req+7JR1Bw"
-//         }
-//     },
-//     "uri": "/_matrix/federation/v1/make_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%40rodrigo2%3Asynapse2?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11"
-// }
-
-test("signJson make_join", async () => {
-  const [signature] = await generateKeyPairs(
-    Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
-      c.charCodeAt(0)
-    )
-  );
-  const signed = await signJson(
-    {
-      destination: "synapse1",
-      method: "GET",
-      origin: "synapse2",
-      signatures: {
-        synapse2: {
-          "ed25519:a_yNbw":
-            "YmiPpEE6QAeZzd8qw/FUXw2kiu0FJsApxnDfnbZmcEY5gFP97srHRqRzLjBn8Rh38nV2ZFTPXOV2Req+7JR1Bw",
-        },
-      },
-      uri: "/_matrix/federation/v1/make_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%40rodrigo2%3Asynapse2?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11",
-    },
+  Object.assign(signed.content, {
+    avatar_url: null,
+    displayname: "rodrigo2",
+  });
+  const signedRequest = await signRequest(
+    "synapse2",
     {
       algorithm: "ed25519",
       version: "a_yNbw",
@@ -142,17 +118,21 @@ test("signJson make_join", async () => {
         return signText(data, signature.privateKey);
       },
     },
-    "synapse2"
+    "synapse1",
+    "PUT",
+    "/_matrix/federation/v2/send_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%24UOFwq4Soj_komm7BQx5zhf-AmXiPw1nkTycvdlFT5tk?omit_members=true",
+    signed
   );
 
-  expect(signed).toHaveProperty("signatures");
-  expect(signed.signatures).toBeObject();
-  expect(signed.signatures).toHaveProperty("synapse2");
-  expect(signed.signatures["synapse2"]).toBeObject();
-  expect(signed.signatures["synapse2"]).toHaveProperty("ed25519:a_yNbw");
-  expect(signed.signatures["synapse2"]["ed25519:a_yNbw"]).toBeString();
+  expect(signedRequest).toBeObject();
+  expect(signedRequest).toHaveProperty("signatures");
+  expect(signedRequest.signatures).toBeObject();
+  expect(signedRequest.signatures).toHaveProperty("synapse2");
+  expect(signedRequest.signatures["synapse2"]).toBeObject();
+  expect(signedRequest.signatures["synapse2"]).toHaveProperty("ed25519:a_yNbw");
+  expect(signedRequest.signatures["synapse2"]["ed25519:a_yNbw"]).toBeString();
 
-  expect(signed.signatures["synapse2"]["ed25519:a_yNbw"]).toBe(
-    "YmiPpEE6QAeZzd8qw/FUXw2kiu0FJsApxnDfnbZmcEY5gFP97srHRqRzLjBn8Rh38nV2ZFTPXOV2Req+7JR1Bw"
+  expect(signedRequest.signatures["synapse2"]["ed25519:a_yNbw"]).toBe(
+    "lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ"
   );
 });
