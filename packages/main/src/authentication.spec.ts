@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { signRequest } from "./authentication";
+import { computeHash, signRequest } from "./authentication";
 import { signJson, signText } from "./signJson";
 import { generateKeyPairs } from "./keys";
 
@@ -135,4 +135,26 @@ test("signRequest", async () => {
   expect(signedRequest.signatures["synapse2"]["ed25519:a_yNbw"]).toBe(
     "lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ"
   );
+});
+
+test("computeHash", async () => {
+  const result = await computeHash({
+    "auth_events": [
+      "$e0YmwnKseuHqsuF50ekjta7z5UpO-bDoq7y4R1NKMpI",
+      "$6_VX-xW821oaBwOuaaV_xoC6fD2iMg2QPWD4J7Bh3o4",
+      "$9m9s2DShzjg5WBpAsj2lfOSFVCHBJ1DIpayouOij5Nk",
+      "$fmahdKvkzQlGFCj9WM_eDtbI3IG08J6DNyqEFpgAT7Q"
+    ],
+    "content":{"membership":"join"},
+    "depth":9,
+    "origin":"synapse1",
+    "origin_server_ts":1733002629635,
+    "prev_events":["$lD8jXrQmHr7KhxekqNPHFC-gzjYq3Gf_Oyr896K69JY"],
+    "room_id":"!bhjQdfkUhiyKSsJbFt:synapse1",
+    "sender":"@asd11:homeserver",
+    "state_key":"@asd11:homeserver",
+    "type":"m.room.member",
+  });
+
+  expect(result.hashes.sha256).toBe("nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4=");
 });

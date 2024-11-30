@@ -4,13 +4,13 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { config } from "../../../config";
 import { signJson } from "../../../signJson";
-import { authorizationHeaders } from "../../../authentication";
+import { authorizationHeaders, computeHash } from "../../../authentication";
 
 const makeRequest = async ({ method, domain, uri, options = {} }: { method: string; domain: string; uri: string; options?: Record<string, any>; }) => {
   const signingKey = config.signingKey[0];
 
   const body = (options.body && {
-    body: JSON.stringify(await signJson({ ...options.body, signatures: {} }, config.signingKey[0], config.name)),
+    body: JSON.stringify(await signJson(computeHash({ ...options.body, signatures: {} }), config.signingKey[0], config.name)),
   });
 
   console.log('body ->', body);
