@@ -77,12 +77,25 @@ export const inviteEndpoint = new Elysia().put(
       const responseMake = await response.json();
       console.log("make_join ->", responseMake);
 
+      const joinBody = {
+        type: 'm.room.member',
+        origin: config.name,
+        origin_server_ts: Date.now(),
+        state_key: responseMake.event.state_key,
+        sender: responseMake.event.sender,
+        content: {
+          membership: 'join'
+        }
+      };
+
+      console.log("joinBody ->", joinBody);
+
       const responseSend = await makeRequest({
           method: 'PUT',
           domain: event.origin,
           uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
           options: {
-            body: responseMake.event,
+            body: joinBody,
           }
         });
 
