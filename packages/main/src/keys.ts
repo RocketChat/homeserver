@@ -1,8 +1,6 @@
 import nacl from "tweetnacl";
 
-// TODO: make it compatible with synapse
-
-async function generateKeyPairs(
+export async function generateKeyPairs(
   seed: Uint8Array,
   algorithm = "ed25519",
   version = "0"
@@ -33,44 +31,11 @@ async function storeKeyPairs(
   for await (const keyPair of seeds) {
     await Bun.write(
       path,
-      `${keyPair.algorithm} ${keyPair.version} ${Buffer.from(
-        keyPair.seed
-      ).toString("base64").replace(/=+$/, "")}`
+      `${keyPair.algorithm} ${keyPair.version} ${Buffer.from(keyPair.seed)
+        .toString("base64")
+        .replace(/=+$/, "")}`
     );
   }
-}
-
-async function encodePublicKeyToBase64(cryptoKey: CryptoKey): Promise<string> {
-  // Export the public key to raw format (ArrayBuffer)
-  const exportedKey = await crypto.subtle.exportKey("spki", cryptoKey);
-
-  // Convert the Uint8Array to a Base64 string
-  return arrayBufferToBase64(exportedKey);
-}
-
-// Utility function to convert ArrayBuffer to Base64
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const byteArray = new Uint8Array(buffer);
-  let binary = "";
-  byteArray.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary); // Encode the binary string to Base64
-}
-
-async function getRestoreKeys(config: { signingKeyPath: string }) {
-  const [algorithm, version, seed] = (
-    await Bun.file(config.signingKeyPath).text()
-  ).trim().split(" ");
-
-  // Convert Base64 string to an ArrayBuffer
-
-  // Import the private key from PKCS8 format
-  return generateKeyPairs(
-    Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
-    algorithm,
-    version
-  );
 }
 
 export const getKeyPair = async (config: {
@@ -84,21 +49,37 @@ export const getKeyPair = async (config: {
   }[]
 > => {
   const { signingKeyPath } = config;
-  if (!(await Bun.file(signingKeyPath).exists())) {
-    const seed = nacl.randomBytes(32);
-    await storeKeyPairs(
-      [
-        {
-          algorithm: "ed25519",
-          version: "0",
-          seed,
-        },
-      ],
-      signingKeyPath
-    );
-    const result = await generateKeyPairs(seed);
-    return result;
+
+  const hasStoredKeys = await Bun.file(signingKeyPath).exists();
+
+  const seeds = [];
+
+  if (!hasStoredKeys) {
+    seeds.push({
+      algorithm: "ed25519",
+      version: "0",
+      seed: nacl.randomBytes(32),
+    });
+
+    await storeKeyPairs(seeds, signingKeyPath);
   }
 
-  return getRestoreKeys(config);
+  if (hasStoredKeys) {
+    const [algorithm, version, seed] = (
+      await Bun.file(config.signingKeyPath).text()
+    )
+      .trim()
+      .split(" ");
+    seeds.push({
+      algorithm,
+      version,
+      seed: Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
+    });
+  }
+
+  return await generateKeyPairs(
+    seeds[0].seed,
+    seeds[0].algorithm,
+    seeds[0].version
+  );
 };
