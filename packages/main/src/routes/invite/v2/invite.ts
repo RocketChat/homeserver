@@ -6,21 +6,55 @@ import { config } from "../../../config";
 import { signJson } from "../../../signJson";
 import { authorizationHeaders } from "../../../authentication";
 
-const makeRequest = async ({ method, origin, uri, options = {} }: { method: string; origin: string; uri: string; options?: Record<string, any>; }) => {
-  const auth = await authorizationHeaders(
+const makeRequest = async ({ method, domain, uri, options = {} }: { method: string; domain: string; uri: string; options?: Record<string, any>; }) => {
+  // const signedJson = await signJson(
+  //   {
+  //     method,
+  //     uri,
+  //     origin,
+  //     destination: origin,
+  //     ...(options.body && { content: options.body }),
+  //     signatures: {},
+  //   },
+  //   config.signingKey[0],
+  //   origin
+  // );
+
+  const signingKey = config.signingKey[0];
+
+  const signatures = await authorizationHeaders(
     config.name,
-    config.signingKey[0],
-    origin,
+    signingKey,
+    domain,
     method,
     uri,
     options.body,
   );
 
+  // console.log('origin ->', origin);
+  console.log('signatures ->', signatures);
+
+  const key = `${signingKey.algorithm}:${signingKey.version}`;
+  const signed = signatures[config.name][key];
+
+  const auth = `X-Matrix origin="${config.name}",destination="${domain}",key="${key}",sig="${signed}"`;
+
   console.log("auth ->", auth);
 
-  return fetch(`https://${origin}${uri}`, {
+  const body = (options.body && {
+    body: JSON.stringify(
+      {
+        ...options.body,
+        signatures,
+      }
+    ),
+  });
+
+  console.log('body ->', body);
+
+  return fetch(`https://${domain}${uri}`, {
     ...options,
-    ...(options.body && { body: JSON.stringify(options.body) }),
+    ...body,
     method,
     headers: {
       Authorization: auth,
@@ -36,7 +70,7 @@ export const inviteEndpoint = new Elysia().put(
 
       const response = await makeRequest({
         method: 'GET',
-        origin: event.origin,
+        domain: event.origin,
         uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}?ver=10`
       });
 
@@ -45,7 +79,7 @@ export const inviteEndpoint = new Elysia().put(
 
       const responseSend = await makeRequest({
           method: 'PUT',
-          origin: event.origin,
+          domain: event.origin,
           uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
           options: {
             body: responseMake.event,
