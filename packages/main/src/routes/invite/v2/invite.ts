@@ -9,9 +9,7 @@ import { authorizationHeaders, computeHash } from "../../../authentication";
 const makeRequest = async ({ method, domain, uri, options = {} }: { method: string; domain: string; uri: string; options?: Record<string, any>; }) => {
   const signingKey = config.signingKey[0];
 
-  const body = (options.body && {
-    body: JSON.stringify(await signJson(computeHash({ ...options.body, signatures: {} }), config.signingKey[0], config.name)),
-  });
+  const body = await signJson(computeHash({ ...options.body, signatures: {} }), config.signingKey[0], config.name);
 
   console.log('body ->', body);
 
@@ -21,14 +19,14 @@ const makeRequest = async ({ method, domain, uri, options = {} }: { method: stri
     domain,
     method,
     uri,
-    body?.body,
+    body,
   );
 
   console.log('auth ->', auth);
 
   return fetch(`https://${domain}${uri}`, {
     ...options,
-    ...body,
+    ...(body && { body: JSON.stringify(body) }),
     method,
     headers: {
       Authorization: auth,
