@@ -1,36 +1,31 @@
 import { signJson } from "./signJson";
 
 export async function authorizationHeaders<T extends Object>(
-  originName: string,
+  origin: string,
   signingKey: {
     algorithm: string;
     version: string;
     sign(data: Uint8Array): Promise<Uint8Array>;
   },
   destinationName: string,
-  requestMethod: string,
-  requestTarget: string,
+  method: string,
+  uri: string,
   content?: T
 ): Promise<string> {
-  const requestJson = {
-    method: requestMethod,
-    uri: requestTarget,
-    origin: originName,
-    destination: destinationName,
-    ...(content && { content }),
-  };
-
   const signedJson = await signJson(
     {
-      ...requestJson,
-      signatures: {},
+      method,
+      uri,
+      origin,
+      destination: destinationName,
+      ...(content && { content }),
     },
     signingKey,
-    originName
+    origin
   );
 
   const key = `${signingKey.algorithm}:${signingKey.version}`;
-  const signed = signedJson.signatures[originName][key];
+  const signed = signedJson.signatures[origin][key];
 
-  return `X-Matrix origin="${originName}",destination="${destinationName}",key="${key}",sig="${signed}"`;
+  return `X-Matrix origin="${origin}",destination="${destinationName}",key="${key}",sig="${signed}"`;
 }

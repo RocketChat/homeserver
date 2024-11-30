@@ -1,7 +1,7 @@
 import nacl from "tweetnacl";
 
 export async function signJson<
-  T extends {
+  T extends Object & {
     signatures?: Record<string, Record<string, string>>;
     unsigned?: any;
   }
