@@ -12,7 +12,7 @@ export const inviteEndpoint = new Elysia().put(
     setTimeout(async () => {
       const { event } = body as any;
 
-      const uri = `/_matrix/federation/v1/make_join/${params.roomId}/${event.sender}?ver=10`;
+      const uri = `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}?ver=10`;
 
       const auth = await authorizationHeaders(
         config.name,
