@@ -117,7 +117,7 @@ app
 
           const auth = await authorizationHeaders(
             config.name,
-            config.signingKey[0].base64PublicKey,
+            config.signingKey[0],
             event.origin,
             "GET",
             `/_matrix/federation/v1/make_join/${params.roomId}/${event.sender}`

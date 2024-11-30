@@ -1,28 +1,33 @@
-import { JWT } from "node-jsonwebtoken";
+import { signJson } from "./signJson";
 
-export async function authorizationHeaders(
+export async function authorizationHeaders<T extends Object>(
   originName: string,
-  originSigningKey: string,
+  signingKey: {
+    algorithm: string;
+    version: string;
+    sign(data: string): Promise<string>;
+  },
   destinationName: string,
   requestMethod: string,
   requestTarget: string,
-  content?: any
+  content?: T
 ): Promise<string> {
   const requestJson = {
     method: requestMethod,
     uri: requestTarget,
     origin: originName,
     destination: destinationName,
-    ...(content && { content: content }),
+    ...(content && { content }),
   };
 
-  const jwt = new JWT(originSigningKey);
 
-  const algorithm = "ed25519";
-  const algorithmVersion = "0";
-  const key = `${algorithm}:${algorithmVersion}`;
+  const signedJson = await signJson({
+    ...requestJson,
+    signatures: {},
+  }, signingKey, originName);
 
-  const signedJson = await jwt.sign(requestJson, { algorithm });
+  const key = `${signingKey.algorithm}:${signingKey.version}`;
+  const signed = signedJson.signatures[originName][key];
 
-  return `X-Matrix origin="${originName}",destination="${destinationName}",key="${key}",sig="${signedJson}"`;
+  return `X-Matrix origin="${originName}",destination="${destinationName}",key="${key}",sig="${signed}"`;
 }
