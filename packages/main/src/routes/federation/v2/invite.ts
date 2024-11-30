@@ -6,19 +6,21 @@ import { config } from "../../../config";
 import { signJson } from "../../../signJson";
 import { authorizationHeaders } from "../../../authentication";
 
-const makeRequest = async ({ method, origin, uri, options = {} }: { method: string; origin: string; uri: string; options?: {}; }) => {
+const makeRequest = async ({ method, origin, uri, options = {} }: { method: string; origin: string; uri: string; options?: Record<string, any>; }) => {
   const auth = await authorizationHeaders(
     config.name,
     config.signingKey[0],
     origin,
     method,
-    uri
+    uri,
+    ...(options.body && { content: options.body }),
   );
 
   console.log("auth ->", auth);
 
   return fetch(`https://${origin}${uri}`, {
     ...options,
+    ...(options.body && { body: JSON.stringify(options.body) }),
     method,
     headers: {
       Authorization: auth,
@@ -39,7 +41,7 @@ export const inviteEndpoint = new Elysia().put(
 
       const responseSend = await makeRequest({
           method: 'PUT', origin: event.origin, uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?ver=10`, options: {
-            body: JSON.stringify(responseMake.event),
+            body: responseMake.event,
           }
         });
 
