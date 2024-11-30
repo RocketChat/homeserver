@@ -9,22 +9,22 @@ import { authorizationHeaders } from "../../../authentication";
 const makeRequest = async ({ method, domain, uri, options = {} }: { method: string; domain: string; uri: string; options?: Record<string, any>; }) => {
   const signingKey = config.signingKey[0];
 
+  const body = (options.body && {
+    body: JSON.stringify(await signJson({ ...options.body, signatures: {} }, config.signingKey[0], config.name)),
+  });
+
+  console.log('body ->', body);
+
   const auth = await authorizationHeaders(
     config.name,
     signingKey,
     domain,
     method,
     uri,
-    options.body,
+    body?.body,
   );
 
   console.log('auth ->', auth);
-
-  const body = (options.body && {
-    body: JSON.stringify(await signJson({ ...options.body, signatures: {} }, config.signingKey[0], config.name)),
-  });
-
-  console.log('body ->', body);
 
   return fetch(`https://${domain}${uri}`, {
     ...options,
