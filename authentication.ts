@@ -7,7 +7,7 @@ export async function authorizationHeaders(
   requestMethod: string,
   requestTarget: string,
   content?: any
-): Promise<[string, Uint8Array]> {
+): Promise<string> {
   const requestJson = {
     method: requestMethod,
     uri: requestTarget,
@@ -24,10 +24,5 @@ export async function authorizationHeaders(
 
   const signedJson = await jwt.sign(requestJson, { algorithm });
 
-  return [
-    "Authorization",
-    new TextEncoder().encode(
-      `X-Matrix origin="${originName}",destination="${destinationName}",key="${key}",sig="${signedJson}"`
-    ),
-  ];
+  return `X-Matrix origin="${originName}",destination="${destinationName}",key="${key}",sig="${signedJson}"`;
 }

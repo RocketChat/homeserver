@@ -114,8 +114,21 @@ app
         setTimeout(async () => {
           const { event } = body as any;
 
+          const auth = await authorizationHeaders(
+            config.name,
+            config.signingKey[0].base64PublicKey,
+            event.origin,
+            "GET",
+            `/_matrix/federation/v1/make_join/${params.roomId}/${event.sender}`
+          );
+
+          console.log('auth ->', auth);
+
           const response = await fetch(`https://${event.origin}/_matrix/federation/v1/make_join/${params.roomId}/${event.sender}`, {
             method: "GET",
+            headers: {
+              "Authorization": auth
+            }
           });
 
           const responseBody = await response.json();
@@ -189,3 +202,7 @@ app
 console.log(
   `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
 );
+function authorizationHeaders(name: string, base64PublicKey: string, origin: any, arg3: string, arg4: string): string | PromiseLike<string> {
+  throw new Error("Function not implemented.");
+}
+
