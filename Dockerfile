@@ -15,7 +15,7 @@ RUN bun build /temp/dev/index.ts --compile --outfile /temp/dev/bin/app
 # copy production dependencies and source code into final image
 FROM base AS release
 
-EXPOSE 3000/tcp
+EXPOSE 8080/tcp
 
 # run the app
 USER bun
