@@ -38,8 +38,24 @@ export async function signJson<
   };
 }
 
-export function encodeCanonicalJson(jsonObject: any): string {
-  return JSON.stringify(jsonObject);
+export function encodeCanonicalJson(value: any): string {
+  if (value === null || typeof value !== "object") {
+    // Handle primitive types and null
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    // Handle arrays recursively
+    const serializedArray = value.map(encodeCanonicalJson);
+    return `[${serializedArray.join(",")}]`;
+  }
+
+  // Handle objects: sort keys lexicographically
+  const sortedKeys = Object.keys(value).sort();
+  const serializedEntries = sortedKeys.map(
+    (key) => `"${key}":${encodeCanonicalJson(value[key])}`
+  );
+  return `{${serializedEntries.join(",")}}`;
 }
 
 export function encodeBase64(buffer: Uint8Array | string): string {
