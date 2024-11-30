@@ -154,6 +154,8 @@ test("computeHash", async () => {
     "sender":"@asd11:homeserver",
     "state_key":"@asd11:homeserver",
     "type":"m.room.member",
+    "unsigned":{"age":2},
+    "signatures":{},
   });
 
   expect(result.hashes.sha256).toBe("nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4=");
