@@ -35,7 +35,7 @@ async function storeKeyPairs(
       path,
       `${keyPair.algorithm} ${keyPair.version} ${Buffer.from(
         keyPair.seed
-      ).toString("base64")}`
+      ).toString("base64").replace(/=+$/, "")}`
     );
   }
 }
@@ -61,7 +61,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 async function getRestoreKeys(config: { signingKeyPath: string }) {
   const [algorithm, version, seed] = (
     await Bun.file(config.signingKeyPath).text()
-  ).split(" ");
+  ).trim().split(" ");
 
   // Convert Base64 string to an ArrayBuffer
 

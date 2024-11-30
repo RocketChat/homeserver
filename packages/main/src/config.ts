@@ -1,6 +1,5 @@
-import { t } from "elysia";
 import { getKeyPair } from "./keys";
-import { encodeBase64, signText } from "./signJson";
+import { signText } from "./signJson";
 
 export interface Config {
   path: string;

@@ -16,7 +16,7 @@ export const keyV2Endpoints = new Elysia().group(
           config.signingKey.map(({ algorithm, version, publicKey }) => [
             `${algorithm}:${version}`,
             {
-              key: Buffer.from(publicKey).toString("base64"),
+              key: Buffer.from(publicKey).toString("base64").replace(/=+$/, ""),
             },
           ])
         );
@@ -25,12 +25,12 @@ export const keyV2Endpoints = new Elysia().group(
           async (json, signingKey) =>
             signJson(await json, signingKey, config.name),
           Promise.resolve({
+            old_verify_keys: {},
             server_name: config.name,
             // 1 day
-            valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000,
-            old_verify_keys: {},
-            verify_keys: keys,
             signatures: {},
+            valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000,
+            verify_keys: keys,
           })
         );
       }, 1000 * 60 * 60),

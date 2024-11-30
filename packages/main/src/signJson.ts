@@ -20,21 +20,22 @@ export async function signJson<
 > {
   const keyId = `${signingKey.algorithm}:${signingKey.version}`;
   const { signatures = {}, unsigned, ...rest } = jsonObject;
+
   const data = encodeCanonicalJson(rest);
+
   const signed = await signingKey.sign(new TextEncoder().encode(data));
 
   const signature = signatures[signingName] || {};
 
-  return {
-    ...rest,
-    signatures: {
-      ...signatures,
-      [signingName]: {
-        ...signature,
-        [keyId]: Buffer.from(signed).toString("base64"),
-      },
-    },
-    ...(unsigned && { unsigned }),
+  Object.assign(signatures, {
+    [signingName]: {
+      ...signature,
+      [keyId]: Buffer.from(signed).toString("base64").replace(/=+$/, ""),
+    }
+  });
+
+  return jsonObject as T & {
+    signatures: Record<string, Record<string, string>>;
   };
 }
 
@@ -56,12 +57,6 @@ export function encodeCanonicalJson(value: any): string {
     (key) => `"${key}":${encodeCanonicalJson(value[key])}`
   );
   return `{${serializedEntries.join(",")}}`;
-}
-
-export function encodeBase64(buffer: Uint8Array | string): string {
-  const bufferToEncode =
-    typeof buffer === "string" ? new TextEncoder().encode(buffer) : buffer;
-  return Buffer.from(bufferToEncode).toString("base64");
 }
 
 export async function signText(
