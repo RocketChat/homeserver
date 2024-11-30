@@ -13,7 +13,7 @@ const makeRequest = async ({ method, origin, uri, options = {} }: { method: stri
     origin,
     method,
     uri,
-    ...(options.body && { content: options.body }),
+    options.body,
   );
 
   console.log("auth ->", auth);
