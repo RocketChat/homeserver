@@ -51,16 +51,10 @@ export const inviteEndpoint = new Elysia().put(
       const responseMake = await response.json();
       console.log("make_join ->", responseMake);
 
-      const joinBody = {
-        type: 'm.room.member',
-        origin: config.name,
-        origin_server_ts: Date.now() / 1000,
-        state_key: responseMake.event.state_key,
-        sender: responseMake.event.sender,
-        content: {
-          membership: 'join'
-        }
-      };
+      const joinBody = responseMake.event;
+
+      joinBody.origin = config.name;
+      joinBody.origin_server_ts = Date.now();
 
       console.log("joinBody ->", joinBody);
 
