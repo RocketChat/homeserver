@@ -7,7 +7,7 @@ describe("TestInboundFederationProfile", () => {
 
     const resp = await app.handle(
       new Request(
-        `http://${app.config.name}` +
+        `http://localhost` +
           "/_matrix/federation/v1/query/profile" +
           `?user_id=${invalidUserID}` +
           "&field=displayname",
@@ -27,7 +27,7 @@ describe("TestInboundFederationProfile", () => {
 
     const resp = await app.handle(
       new Request(
-        `http://${app.config.name}` +
+        `http://localhost` +
           "/_matrix/federation/v1/query/profile" +
           `?user_id=${alice.userID}` +
           "&field=displayname"

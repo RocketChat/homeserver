@@ -5,7 +5,7 @@ import { fromBinaryData, toBinaryData } from "../../../binaryData";
 
 it("TestInboundFederationKeys", async () => {
   const resp = await app.handle(
-    new Request(`http://${app.config.name}/_matrix/key/v2/server`)
+    new Request(`http://localhost/_matrix/key/v2/server`)
   );
 
   expect(resp.status).toBe(200);
