@@ -6,8 +6,8 @@
 		"dev": "bun run --watch src/index.ts"
 	},
 	"dependencies": {
-		"elysia": "latest",
-		"@hs/endpoints": "workspace:*"
+		"@hs/endpoints": "workspace:*",
+		"elysia": "latest"
 	},
 	"devDependencies": {
 		"bun-types": "latest"

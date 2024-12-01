@@ -1,9 +1,10 @@
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 
 import { toUnpaddedBase64 } from "../../binaryData";
 import { cache } from "../../cache";
 import { config } from "../../config";
 import { signJson } from "../../signJson";
+import { KeysDTO } from "../../dto";
 
 export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
 	"/server",
@@ -34,35 +35,11 @@ export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
 		1000 * 60 * 60,
 	),
 	{
-		response: t.Object({
-			server_name: t.String(),
-			valid_until_ts: t.Number(),
-			old_verify_keys: t.Record(
-				t.String(),
-				t.Object({
-					expired_ts: t.Number(),
-					key: t.String(),
-				}),
-			),
-			verify_keys: t.Record(
-				t.String(),
-				t.Object({
-					key: t.String(),
-				}),
-			),
-			signatures: t.Record(
-				t.String(),
-				t.Record(
-					t.String(),
-					t.String({
-						description: "A signature of the server's public key by the key id",
-					}),
-				),
-				{
-					description:
-						"Digital signatures for this object signed using the verify_keys. The signature is calculated using the process described at Signing JSON",
-				},
-			),
-		}),
+		response: KeysDTO,
+		detail: {
+			description:
+				"Gets the homeserver's published signing keys.\nThe homeserver may have any number of active keys and may have a\nnumber of old keys.\n\nIntermediate notary servers should cache a response for half of its\nlifetime to avoid serving a stale response. Originating servers should\navoid returning responses that expire in less than an hour to avoid\nrepeated requests for a certificate that is about to expire. Requesting\nservers should limit how frequently they query for certificates to\navoid flooding a server with requests.\n\nIf the server fails to respond to this request, intermediate notary\nservers should continue to return the last response they received\nfrom the server so that the signatures of old events can still be\nchecked.",
+			operationId: "getServerKey",
+		},
 	},
 );

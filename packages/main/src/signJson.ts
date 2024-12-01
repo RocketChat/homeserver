@@ -8,7 +8,7 @@ export enum EncryptionValidAlgorithm {
 type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
 export async function signJson<
-	T extends object & {
+	T extends {
 		signatures?: Record<string, Record<string, string>>;
 		unsigned?: unknown;
 	},

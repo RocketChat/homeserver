@@ -207,8 +207,21 @@ export class UnsupportedRoomVersionError extends MatrixError<"M_UNSUPPORTED_ROOM
  * Inspect the room_version property of the error response for the room’s version.
  */
 export class IncompatibleRoomVersionError extends MatrixError<"M_INCOMPATIBLE_ROOM_VERSION"> {
-	public constructor(message: string) {
+	public roomVersion: string;
+
+	public constructor(
+		message: string,
+		{ roomVersion }: { roomVersion: string },
+	) {
 		super("M_INCOMPATIBLE_ROOM_VERSION", message);
+		this.roomVersion = roomVersion;
+	}
+
+	public toJSON() {
+		return {
+			...super.toJSON(),
+			room_version: this.roomVersion,
+		};
 	}
 }
 

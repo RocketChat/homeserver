@@ -10,11 +10,21 @@ export const versionEndpoints = new Elysia().get(
 		},
 	}),
 	{
-		response: t.Object({
-			server: t.Object({
-				name: t.String(),
-				version: t.String(),
-			}),
-		}),
+		response: t.Object(
+			{
+				server: t.Object({
+					name: t.String({ examples: ["My_Homeserver_Implementation"] }),
+					version: t.String({ examples: ["ArbitraryVersionNumber", "axp"] }),
+				}),
+			},
+			{
+				description: "The implementation name and version of this homeserver.",
+			},
+		),
+		detail: {
+			description:
+				"Get the implementation name and version of this homeserver.",
+			operationId: "getVersion",
+		},
 	},
 );
