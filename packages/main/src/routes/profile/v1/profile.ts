@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { UserIDDTO } from "../../../dto";
 
 export const profileEndpoints = new Elysia().get(
 	"/query/profile",
@@ -8,13 +9,24 @@ export const profileEndpoints = new Elysia().get(
 	}),
 	{
 		query: t.Object({
-			/**
-			 * The field to query. If specified, the server will only return the given field in the response. If not
-			 * specified, the server will return the full profile for the user.
-			 */
-			field: t.Optional(t.UnionEnum(["displayname", "avatar_url"])),
-			/** The user ID to query. Must be a user local to the receiving homeserver. */
-			user_id: t.String(),
+			field: t.Optional(
+				t.UnionEnum(["displayname", "avatar_url"], {
+					description: "The field to query.",
+				}),
+			),
+			user_id: UserIDDTO,
+		}),
+		response: t.Object({
+			avatar_url: t.Optional(
+				t.String({
+					description: "The avatar URL for the user’s avatar.",
+				}),
+			),
+			displayname: t.Optional(
+				t.String({
+					description: "The display name of the user.",
+				}),
+			),
 		}),
 	},
 );

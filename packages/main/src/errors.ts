@@ -1,158 +1,276 @@
-interface ErrorResponse<TCode extends string> {
-  errcode: TCode;
-  error: string;
-}
+export class MatrixError<TCode extends string> extends Error {
+	public readonly status: number = 400;
 
-function createError<const TCode extends string>(
-  code: TCode,
-  message: string
-): ErrorResponse<TCode>;
-function createError<const TCode extends string, TExtra extends object>(
-  code: TCode,
-  message: string,
-  extra: TExtra
-): ErrorResponse<TCode> & TExtra;
-function createError(code: string, message: string, extra?: object) {
-  return {
-    errcode: code,
-    error: message,
-    ...extra,
-  };
+	public constructor(
+		public readonly code: TCode,
+		message: string,
+	) {
+		super(message);
+	}
+
+	public toJSON() {
+		return {
+			errcode: this.code,
+			error: this.message,
+		};
+	}
 }
 
 // Common errors
 
 /** Forbidden access, e.g. joining a room without permission, failed login. */
-export const forbidden = (error: string) => createError("M_FORBIDDEN", error);
+export class ForbiddenError extends MatrixError<"M_FORBIDDEN"> {
+	public readonly status = 403;
+
+	public constructor(message: string) {
+		super("M_FORBIDDEN", message);
+	}
+}
+
 /** The access or refresh token specified was not recognised. */
-export const unknownToken = (
-  error: string,
-  { softLogout }: { softLogout?: boolean } = {}
-) =>
-  createError("M_UNKNOWN_TOKEN", error, {
-    ...(softLogout !== undefined && { soft_logout: softLogout }),
-  });
+export class UnknownTokenError extends MatrixError<"M_UNKNOWN_TOKEN"> {
+	public softLogout?: boolean;
+
+	public constructor(
+		message: string,
+		{ softLogout }: { softLogout?: boolean } = {},
+	) {
+		super("M_UNKNOWN_TOKEN", message);
+		this.softLogout = softLogout;
+	}
+
+	public toJSON() {
+		return {
+			...super.toJSON(),
+			...(this.softLogout !== undefined && { soft_logout: this.softLogout }),
+		};
+	}
+}
+
 /** No access token was specified for the request. */
-export const missingToken = (error: string) =>
-  createError("M_MISSING_TOKEN", error);
+export class MissingTokenError extends MatrixError<"M_MISSING_TOKEN"> {
+	public constructor(message: string) {
+		super("M_MISSING_TOKEN", message);
+	}
+}
+
 /** The account has been locked and cannot be used at this time. */
-export const userLocked = (error: string) =>
-  createError("M_USER_LOCKED", error);
+export class UserLockedError extends MatrixError<"M_USER_LOCKED"> {
+	public constructor(message: string) {
+		super("M_USER_LOCKED", message);
+	}
+}
+
 /** Request contained valid JSON, but it was malformed in some way, e.g. missing required keys, invalid values for keys. */
-export const badJSON = (error: string) => createError("M_BAD_JSON", error);
+export class BadJSONError extends MatrixError<"M_BAD_JSON"> {
+	public constructor(message: string) {
+		super("M_BAD_JSON", message);
+	}
+}
+
 /** Request did not contain valid JSON. */
-export const notJSON = (error: string) => createError("M_NOT_JSON", error);
+export class NotJSONError extends MatrixError<"M_NOT_JSON"> {
+	public constructor(message: string) {
+		super("M_NOT_JSON", message);
+	}
+}
+
 /** No resource was found for this request. */
-export const notFound = (error: string) => createError("M_NOT_FOUND", error);
+export class NotFoundError extends MatrixError<"M_NOT_FOUND"> {
+	public constructor(message: string) {
+		super("M_NOT_FOUND", message);
+	}
+}
+
 /** Too many requests have been sent in a short period of time. Wait a while then try again. */
-export const limitExceeded = (error: string) =>
-  createError("M_LIMIT_EXCEEDED", error);
+export class LimitExceededError extends MatrixError<"M_LIMIT_EXCEEDED"> {
+	public constructor(message: string) {
+		super("M_LIMIT_EXCEEDED", message);
+	}
+}
+
 /**
  * The server did not understand the request.
  *
  * This is expected to be returned with a 404 HTTP status code if the endpoint is not implemented or a 405 HTTP status code if the endpoint is implemented, but the incorrect HTTP method is used.
  */
-export const unrecognized = (error: string) =>
-  createError("M_UNRECOGNIZED", error);
+export class UnrecognizedError extends MatrixError<"M_UNRECOGNIZED"> {
+	public constructor(message: string) {
+		super("M_UNRECOGNIZED", message);
+	}
+}
+
 /** An unknown error has occurred. */
-export const unknown = (error: string) => createError("M_UNKNOWN", error);
+export class UnknownError extends MatrixError<"M_UNKNOWN"> {
+	public constructor(message: string) {
+		super("M_UNKNOWN", message);
+	}
+}
 
 // Other errors
 
 /** The request was not correctly authorized. Usually due to login failures. */
-export const unauthorized = (error: string) =>
-  createError("M_UNAUTHORIZED", error);
+export class UnauthorizedError extends MatrixError<"M_UNAUTHORIZED"> {
+	public constructor(message: string) {
+		super("M_UNAUTHORIZED", message);
+	}
+}
 
 /**
  * The user ID associated with the request has been deactivated.
  *
  * Typically for endpoints that prove authentication, such as /login.
  */
-export const userDeactivated = (error: string) =>
-  createError("M_USER_DEACTIVATED", error);
+export class UserDeactivatedError extends MatrixError<"M_USER_DEACTIVATED"> {
+	public constructor(message: string) {
+		super("M_USER_DEACTIVATED", message);
+	}
+}
 
 /** Encountered when trying to register a user ID which has been taken. */
-export const userInUse = (error: string) => createError("M_USER_IN_USE", error);
+export class UserInUseError extends MatrixError<"M_USER_IN_USE"> {
+	public constructor(message: string) {
+		super("M_USER_IN_USE", message);
+	}
+}
 
 /** Encountered when trying to register a user ID which is not valid. */
-export const invalidUsername = (error: string) =>
-  createError("M_INVALID_USERNAME", error);
+export class InvalidUsernameError extends MatrixError<"M_INVALID_USERNAME"> {
+	public constructor(message: string) {
+		super("M_INVALID_USERNAME", message);
+	}
+}
 
 /** Sent when the room alias given to the createRoom API is already in use. */
-export const roomInUse = (error: string) => createError("M_ROOM_IN_USE", error);
+export class RoomInUseError extends MatrixError<"M_ROOM_IN_USE"> {
+	public constructor(message: string) {
+		super("M_ROOM_IN_USE", message);
+	}
+}
 
 /** Sent when the initial state given to the createRoom API is invalid. */
-export const invalidRoomState = (error: string) =>
-  createError("M_INVALID_ROOM_STATE", error);
+export class InvalidRoomStateError extends MatrixError<"M_INVALID_ROOM_STATE"> {
+	public constructor(message: string) {
+		super("M_INVALID_ROOM_STATE", message);
+	}
+}
 
 /** Sent when a threepid given to an API cannot be used because the same threepid is already in use. */
-export const threepidInUse = (error: string) =>
-  createError("M_THREEPID_IN_USE", error);
+export class ThreePidInUseError extends MatrixError<"M_THREEPID_IN_USE"> {
+	public constructor(message: string) {
+		super("M_THREEPID_IN_USE", message);
+	}
+}
 
 /** Sent when a threepid given to an API cannot be used because no record matching the threepid was found. */
-export const threepidNotFound = (error: string) =>
-  createError("M_THREEPID_NOT_FOUND", error);
+export class ThreePidNotFoundError extends MatrixError<"M_THREEPID_NOT_FOUND"> {
+	public constructor(message: string) {
+		super("M_THREEPID_NOT_FOUND", message);
+	}
+}
 
 /** Authentication could not be performed on the third-party identifier. */
-export const threePidAuthFailed = (error: string) =>
-  createError("M_THREEPID_AUTH_FAILED", error);
+export class ThreePidAuthFailedError extends MatrixError<"M_THREEPID_AUTH_FAILED"> {
+	public constructor(message: string) {
+		super("M_THREEPID_AUTH_FAILED", message);
+	}
+}
 
 /**
  * The server does not permit this third-party identifier.
  *
  * This may happen if the server only permits, for example, email addresses from a particular domain.
  */
-export const threePidDenied = (error: string) =>
-  createError("M_THREEPID_DENIED", error);
+export class ThreePidDeniedError extends MatrixError<"M_THREEPID_DENIED"> {
+	public constructor(message: string) {
+		super("M_THREEPID_DENIED", message);
+	}
+}
 
 /** The client’s request used a third-party server, e.g. identity server, that this server does not trust. */
-export const serverNotTrusted = (error: string) =>
-  createError("M_SERVER_NOT_TRUSTED", error);
+export class ServerNotTrustedError extends MatrixError<"M_SERVER_NOT_TRUSTED"> {
+	public constructor(message: string) {
+		super("M_SERVER_NOT_TRUSTED", message);
+	}
+}
 
 /** The client’s request to create a room used a room version that the server does not support. */
-export const unsupportedRoomVersion = (error: string) =>
-  createError("M_UNSUPPORTED_ROOM_VERSION", error);
+export class UnsupportedRoomVersionError extends MatrixError<"M_UNSUPPORTED_ROOM_VERSION"> {
+	public constructor(message: string) {
+		super("M_UNSUPPORTED_ROOM_VERSION", message);
+	}
+}
 
 /**
  * The client attempted to join a room that has a version the server does not support.
  *
  * Inspect the room_version property of the error response for the room’s version.
  */
-export const incompatibleRoomVersion = (error: string) =>
-  createError("M_INCOMPATIBLE_ROOM_VERSION", error);
+export class IncompatibleRoomVersionError extends MatrixError<"M_INCOMPATIBLE_ROOM_VERSION"> {
+	public constructor(message: string) {
+		super("M_INCOMPATIBLE_ROOM_VERSION", message);
+	}
+}
 
 /** The state change requested cannot be performed, such as attempting to unban a user who is not banned. */
-export const badState = (error: string) => createError("M_BAD_STATE", error);
+export class BadStateError extends MatrixError<"M_BAD_STATE"> {
+	public constructor(message: string) {
+		super("M_BAD_STATE", message);
+	}
+}
 
 /** The room or resource does not permit guests to access it. */
-export const guestAccessForbidden = (error: string) =>
-  createError("M_GUEST_ACCESS_FORBIDDEN", error);
+export class GuestAccessForbiddenError extends MatrixError<"M_GUEST_ACCESS_FORBIDDEN"> {
+	public constructor(message: string) {
+		super("M_GUEST_ACCESS_FORBIDDEN", message);
+	}
+}
 
 /** A Captcha is required to complete the request. */
-export const captchaNeeded = (error: string) =>
-  createError("M_CAPTCHA_NEEDED", error);
+export class CaptchaNeededError extends MatrixError<"M_CAPTCHA_NEEDED"> {
+	public constructor(message: string) {
+		super("M_CAPTCHA_NEEDED", message);
+	}
+}
 
 /** The Captcha provided did not match what was expected. */
-export const captchaInvalid = (error: string) =>
-  createError("M_CAPTCHA_INVALID", error);
+export class CaptchaInvalidError extends MatrixError<"M_CAPTCHA_INVALID"> {
+	public constructor(message: string) {
+		super("M_CAPTCHA_INVALID", message);
+	}
+}
 
 /** A required parameter was missing from the request. */
-export const missingParam = (error: string) =>
-  createError("M_MISSING_PARAM", error);
+export class MissingParamError extends MatrixError<"M_MISSING_PARAM"> {
+	public constructor(message: string) {
+		super("M_MISSING_PARAM", message);
+	}
+}
 
 /**
  * A parameter that was specified has the wrong value.
  *
  * For example, the server expected an integer and instead received a string.
  */
-export const invalidParam = (error: string) =>
-  createError("M_INVALID_PARAM", error);
+export class InvalidParamError extends MatrixError<"M_INVALID_PARAM"> {
+	public constructor(message: string) {
+		super("M_INVALID_PARAM", message);
+	}
+}
 
 /** The request or entity was too large. */
-export const tooLarge = (error: string) => createError("M_TOO_LARGE", error);
+export class TooLargeError extends MatrixError<"M_TOO_LARGE"> {
+	public constructor(message: string) {
+		super("M_TOO_LARGE", message);
+	}
+}
 
 /** The resource being requested is reserved by an application service, or the application service making the request has not created the resource. */
-export const exclusive = (error: string) => createError("M_EXCLUSIVE", error);
+export class ExclusiveError extends MatrixError<"M_EXCLUSIVE"> {
+	public constructor(message: string) {
+		super("M_EXCLUSIVE", message);
+	}
+}
 
 /**
  * The request cannot be completed because the homeserver has reached a resource limit imposed on it.
@@ -163,14 +281,25 @@ export const exclusive = (error: string) => createError("M_EXCLUSIVE", error);
  *
  * Typically, this error will appear on routes which attempt to modify state (e.g.: sending messages, account data, etc) and not routes which only read state (e.g.: /sync, get account data, etc).
  */
-export const resourceLimitExceeded = (
-  error: string,
-  { adminContact }: { adminContact: string }
-) =>
-  createError("M_RESOURCE_LIMIT_EXCEEDED", error, {
-    admin_contact: adminContact,
-  });
+export class ResourceLimitExceededError extends MatrixError<"M_RESOURCE_LIMIT_EXCEEDED"> {
+	public constructor(
+		message: string,
+		public readonly adminContact: string,
+	) {
+		super("M_RESOURCE_LIMIT_EXCEEDED", message);
+	}
+
+	public toJSON() {
+		return {
+			...super.toJSON(),
+			admin_contact: this.adminContact,
+		};
+	}
+}
 
 /** The user is unable to reject an invite to join the server notices room. */
-export const cannotLeaveServerNoticeRoom = (error: string) =>
-  createError("M_CANNOT_LEAVE_SERVER_NOTICE_ROOM", error);
+export class CannotRejectServerNoticeRoomError extends MatrixError<"M_CANNOT_REJECT_SERVER_NOTICE_ROOM"> {
+	public constructor(message: string) {
+		super("M_CANNOT_REJECT_SERVER_NOTICE_ROOM", message);
+	}
+}
