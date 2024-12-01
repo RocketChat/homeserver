@@ -1,4 +1,3 @@
-import { logger } from "@bogeychan/elysia-logger";
 import swagger from "@elysiajs/swagger";
 
 import "@hs/endpoints/src/query";
@@ -10,11 +9,6 @@ console.log(config);
 
 app
 	.use(swagger())
-	.use(
-		logger({
-			level: "debug",
-		}),
-	)
 	.get("/", () => "")
 	.onError(async ({ error, request }) => {
 		if (!request.body) {
