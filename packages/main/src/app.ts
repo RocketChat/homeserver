@@ -6,7 +6,12 @@ import { keyV2Endpoints } from "./federation/keys/v2/server";
 import { v1Endpoints } from "./federation/v1";
 import { v2Endpoints } from "./federation/v2";
 
-export const app = new Elysia(config)
+export const app = new Elysia({
+	name: config.name,
+	handler: {
+		standardHostname: false,
+	},
+})
 	.use(
 		logger({
 			level: "debug",
