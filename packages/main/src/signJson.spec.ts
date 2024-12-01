@@ -1,6 +1,44 @@
 import { expect, test } from "bun:test";
 import { generateKeyPairs } from "./keys";
-import { signJson, signText } from "./signJson";
+import { EncryptionValidAlgorithm, signJson, signText, verifySignaturesFromRemote } from "./signJson";
+
+
+test("verifySignaturesFromRemote", async () => {
+
+	const serverName = "synapse";
+	const [signature] = await generateKeyPairs(
+		Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+			c.charCodeAt(0),
+		),
+	);
+
+	const signed = await signJson(
+		{
+		},
+		{
+			algorithm: EncryptionValidAlgorithm.ed25519,
+			version: "a_yNbw",
+			sign(data: Uint8Array) {
+				return signText(data, signature.privateKey);
+			},
+		},
+		serverName,
+	);
+
+	await verifySignaturesFromRemote(signed, serverName, async () => 
+		signature.publicKey
+	)
+
+	expect(async () => await verifySignaturesFromRemote(signed, serverName, async () => 
+		signature.publicKey
+	)).not.toThrow();
+
+	expect(async () => await verifySignaturesFromRemote(signed, serverName, async () => 
+		Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+			c.charCodeAt(0),
+		)
+	)).toThrow();
+});
 
 // {
 //     "content": {
@@ -83,7 +121,7 @@ test("signJson send_join", async () => {
 			},
 		},
 		{
-			algorithm: "ed25519",
+			algorithm: EncryptionValidAlgorithm.ed25519,
 			version: "a_yNbw",
 			sign(data: Uint8Array) {
 				return signText(data, signature.privateKey);
@@ -98,6 +136,8 @@ test("signJson send_join", async () => {
 	expect(signed.signatures.synapse2).toBeObject();
 	expect(signed.signatures.synapse2).toHaveProperty("ed25519:a_yNbw");
 	expect(signed.signatures.synapse2["ed25519:a_yNbw"]).toBeString();
+
+
 
 	expect(signed.signatures.synapse2["ed25519:a_yNbw"]).toBe(
 		"NKSz4x8fKwoNOOY/rcVVkVrzzt/TyFaL+8IJX9raSZNrMZFH5J3s2l+Z85q8McAUPp/pKKctI4Okk0Q7Q8OOBA",
@@ -136,7 +176,7 @@ test("signJson make_join", async () => {
 			uri: "/_matrix/federation/v1/make_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%40rodrigo2%3Asynapse2?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11",
 		},
 		{
-			algorithm: "ed25519",
+			algorithm: EncryptionValidAlgorithm.ed25519,
 			version: "a_yNbw",
 			sign(data: Uint8Array) {
 				return signText(data, signature.privateKey);

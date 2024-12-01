@@ -1,12 +1,12 @@
 import { getKeyPair } from "./keys";
-import { signText } from "./signJson";
+import { EncryptionValidAlgorithm, signText } from "./signJson";
 
 export interface Config {
 	path: string;
 	signingKeyPath: string;
 	port: number;
 	signingKey: {
-		algorithm: string;
+		algorithm: EncryptionValidAlgorithm;
 		version: string;
 		publicKey: Uint8Array;
 		sign(data: Uint8Array): Promise<Uint8Array>;
