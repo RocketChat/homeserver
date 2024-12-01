@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { encodeCanonicalJson, signJson } from "./signJson";
 import { toUnpaddedBase64 } from './binaryData';
 
-export async function authorizationHeaders<T extends Object>(
+export async function authorizationHeaders<T extends object>(
   origin: string,
   signingKey: {
     algorithm: string;
@@ -30,7 +30,7 @@ export async function authorizationHeaders<T extends Object>(
   return `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`;
 }
 
-export async function signRequest<T extends Object>(
+export async function signRequest<T extends object>(
   origin: string,
   signingKey: {
     algorithm: string;
@@ -58,7 +58,7 @@ export async function signRequest<T extends Object>(
   return signedJson;
 }
 
-export function computeHash<T extends Object>(content: T): T & { hashes: { sha256: string } } {
+export function computeHash<T extends object>(content: T): T & { hashes: { sha256: string } } {
   // remove the fields that are not part of the hash
   const {
     age_ts,

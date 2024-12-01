@@ -2,7 +2,7 @@ import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 
 export async function signJson<
-  T extends Object & {
+  T extends {
     signatures?: Record<string, Record<string, string>>;
     unsigned?: any;
   }
