@@ -6,27 +6,20 @@ import { config } from "../../config";
 import { signJson } from "../../signJson";
 import { authorizationHeaders, computeHash } from "../../authentication";
 import { makeUnsignedRequest } from "../../makeRequest";
+import { pruneEventDict } from "../../pruneEventDict";
 
-export const fakeEndpoints = new Elysia({ prefix: "/fake" })
-	.post("/sendMessage", async ({ body }) => {
-		const {
-			depth = 11,
-			sender,
-			roomId,
-			msg,
-			target,
-		} = body as any;
+export const fakeEndpoints = new Elysia({ prefix: "/fake" }).post(
+	"/sendMessage",
+	async ({ body }) => {
+		const { depth = 13, sender, roomId, msg, target } = body as any;
 
 		const event = {
 			auth_events: [
-				"$MzSHSOBqyi_-xMtw6D3rSmnw8dkoXjBTxL6n_yqoRZk", // create
-				"$qn8E_3ObThb9DPzFzVvOBDqN-6lv9khD-crEb4gl9Jc", // invite
-				"$aRNnIRDdukq3Z5KjUCSusr16QvALrzGvUgDbWYQ5NPk", // join
-				"$_Aznw7egnflk5VP7-POwehWhPLpjjMj6DBaLGnG86oM" // power
+				"$2gJHmpNm-I1k4ZBjgWRMssnquEsxqbuvTjdrIG6kMQM", // create
+				"$RTPGcee2yI2NPRxt4RxA_4lWJ2wpbddkRw5ujkA5S3A", // power_levels
+				"$jmfyOatzZynPKLl6e8ekkkXZq7IM8_zACjOfBcdDNXM", // member
 			],
-			prev_events: [
-				"$wXyhtSgwd0e5r3VYViz_Lz4KWQNUVLes4LA7lHlTJhY"
-			],
+			prev_events: ["$v9LrPeYOP3T1NKtk0PO-9lYypnFrxK-wlvJSuOs5pfE"],
 			type: "m.room.message",
 			depth,
 			content: {
@@ -42,10 +35,17 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			origin: config.name,
 			origin_server_ts: Date.now(),
 			pdus: [
-				await signJson(computeHash(event), config.signingKey[0], config.name)
+				{
+					...(await signJson(
+						pruneEventDict(computeHash(event)),
+						config.signingKey[0],
+						config.name,
+					)),
+					...event,
+				},
 			],
 		};
-		console.log('payload ->', payload);
+		console.log("payload ->", payload);
 
 		const response = await makeUnsignedRequest({
 			method: "PUT",
@@ -58,5 +58,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 
 		const responseMake = await response.json();
 		console.log("response ->", responseMake);
+
+		return responseMake;
 	},
 );

@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 
 import { toUnpaddedBase64 } from "./binaryData";
-import { encodeCanonicalJson, EncryptionValidAlgorithm, signJson } from "./signJson";
+import {
+	encodeCanonicalJson,
+	type EncryptionValidAlgorithm,
+	signJson,
+} from "./signJson";
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,
@@ -24,7 +28,7 @@ export async function authorizationHeaders<T extends object>(
 		content,
 	);
 
-  const key = `${signingKey.algorithm}:${signingKey.version}` as const;
+	const key = `${signingKey.algorithm}:${signingKey.version}` as const;
 	const signed = signedJson.signatures[origin][key];
 
 	return `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`;
@@ -33,7 +37,7 @@ export async function authorizationHeaders<T extends object>(
 export async function signRequest<T extends object>(
 	origin: string,
 	signingKey: {
-    algorithm: EncryptionValidAlgorithm;
+		algorithm: EncryptionValidAlgorithm;
 		version: string;
 		sign(data: Uint8Array): Promise<Uint8Array>;
 	},

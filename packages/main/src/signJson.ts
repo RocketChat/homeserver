@@ -1,8 +1,8 @@
 import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 
-export enum EncryptionValidAlgorithm { 
-  ed25519 = "ed25519"
+export enum EncryptionValidAlgorithm {
+	ed25519 = "ed25519",
 }
 
 type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
@@ -47,10 +47,11 @@ export async function signJson<
 	};
 }
 
-
-const isValidAlgorithm = (algorithm: string): algorithm is EncryptionValidAlgorithm => {
-  return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
-}
+const isValidAlgorithm = (
+	algorithm: string,
+): algorithm is EncryptionValidAlgorithm => {
+	return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
+};
 
 // Checking for a Signature
 // To check if an entity has signed a JSON object an implementation does the following:
@@ -63,54 +64,78 @@ const isValidAlgorithm = (algorithm: string): algorithm is EncryptionValidAlgori
 // Encodes the remainder of the JSON object using the Canonical JSON encoding.
 // Checks the signature bytes against the encoded object using the verification key. If this fails then the check fails. Otherwise the check succeeds.
 
-export async function getSignaturesFromRemote<T extends object & { signatures?: Record<string, Record<ProtocolVersionKey, string>>; unsigned?: unknown; }>(
-	jsonObject: T,
-	signingName: string,
-) {
+export async function getSignaturesFromRemote<
+	T extends object & {
+		signatures?: Record<string, Record<ProtocolVersionKey, string>>;
+		unsigned?: unknown;
+	},
+>(jsonObject: T, signingName: string) {
+	const { signatures, unsigned: _unsigned, ...__rest } = jsonObject;
 
-  const { signatures, unsigned: _unsigned, ...__rest } = jsonObject;
+	const remoteSignatures =
+		signatures?.[signingName] &&
+		Object.entries(signatures[signingName])
+			.map(([keyId, signature]) => {
+				const [algorithm, version] = keyId.split(":");
+				if (!isValidAlgorithm(algorithm)) {
+					throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
+				}
 
-  const remoteSignatures = signatures?.[signingName] && Object.entries(signatures[signingName]).map(([keyId, signature]) => {
-    const [algorithm, version] = keyId.split(":");
-    if(!isValidAlgorithm(algorithm)) {
-      throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
+				return {
+					algorithm,
+					version,
+					signature: new Uint8Array(Buffer.from(signature, "base64")),
+				};
+			})
+			.filter(({ algorithm }) =>
+				Object.values(EncryptionValidAlgorithm).includes(algorithm as any),
+			);
+
+	if (!remoteSignatures?.length) {
+		throw new Error(`Signatures not found for ${signingName}`);
 	}
 
-    return { algorithm, version, signature: new Uint8Array(Buffer.from(signature, "base64")) }; 
-  }).filter(({ algorithm }) => Object.values(EncryptionValidAlgorithm).includes(algorithm as any));
-  
-  if(!remoteSignatures?.length) {
-    throw new Error(`Signatures not found for ${signingName}`);
-  }
-
-  return remoteSignatures;
+	return remoteSignatures;
 }
 
-export async function verifySignaturesFromRemote<T extends object & { signatures?: Record<string, Record<ProtocolVersionKey, string>>; unsigned?: unknown; }>(
+export async function verifySignaturesFromRemote<
+	T extends object & {
+		signatures?: Record<string, Record<ProtocolVersionKey, string>>;
+		unsigned?: unknown;
+	},
+>(
 	jsonObject: T,
 	signingName: string,
-	getPublicKey: (algorithm: EncryptionValidAlgorithm, version: string) => Promise<Uint8Array>,
+	getPublicKey: (
+		algorithm: EncryptionValidAlgorithm,
+		version: string,
+	) => Promise<Uint8Array>,
 ) {
+	const { signatures: _, unsigned: _unsigned, ...__rest } = jsonObject;
 
-  const { signatures: _, unsigned: _unsigned, ...__rest } = jsonObject;
+	const canonicalJson = encodeCanonicalJson(__rest);
 
-  const canonicalJson = encodeCanonicalJson(__rest);
+	const signatures = await getSignaturesFromRemote(jsonObject, signingName);
 
+	for await (const { algorithm, version, signature } of signatures) {
+		const publicKey = await getPublicKey(
+			algorithm as EncryptionValidAlgorithm,
+			version,
+		);
 
-  const signatures = await getSignaturesFromRemote(jsonObject, signingName);
+		if (
+			!nacl.sign.detached.verify(
+				new TextEncoder().encode(canonicalJson),
+				signature,
+				publicKey,
+			)
+		) {
+			throw new Error(`Invalid signature for ${signingName}`);
+		}
+	}
 
-  for await (const { algorithm, version, signature } of signatures) {
-	  const publicKey = await getPublicKey(algorithm as EncryptionValidAlgorithm, version);
-
-    if (!nacl.sign.detached.verify(new TextEncoder().encode(canonicalJson), signature, publicKey)) {
-      throw new Error(`Invalid signature for ${signingName}`);
-    }
-  }
-
-  return true;
+	return true;
 }
-
-
 
 export function encodeCanonicalJson(value: unknown): string {
 	if (value === null || typeof value !== "object") {
