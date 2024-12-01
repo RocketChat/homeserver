@@ -1,6 +1,7 @@
 import { describe, expect, it, test } from "bun:test";
 import { generateKeyPairs } from "./keys";
 import { EncryptionValidAlgorithm, signJson, signText, verifySignaturesFromRemote } from "./signJson";
+import { pruneEventDict } from "./pruneEventDict";
 
 
 
@@ -97,7 +98,7 @@ describe("verifySignaturesFromRemote", async () => {
 			)
 		)).toThrow(`Signatures not found for ${serverName}`);
 	});
-		
+
 });
 
 // {
@@ -151,7 +152,7 @@ test("signJson send_join", async () => {
 		),
 	);
 
-	const signed = await signJson(
+	const signed = await signJson(pruneEventDict(
 		{
 			auth_events: [
 				"$aokhD3KlL_EHZ67626nn_aHMPW9K3T7rvT7IkrZaMbI",
@@ -167,6 +168,8 @@ test("signJson send_join", async () => {
 
 			content: {
 				membership: "join",
+				avatar_url: null,
+				displayname: "rodrigo2",
 			},
 
 			hashes: {
@@ -179,7 +182,7 @@ test("signJson send_join", async () => {
 			unsigned: {
 				age: 2,
 			},
-		},
+		}),
 		{
 			algorithm: EncryptionValidAlgorithm.ed25519,
 			version: "a_yNbw",
