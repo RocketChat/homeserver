@@ -26,6 +26,6 @@ export function fromBinaryData(
 	return new TextDecoder().decode(value);
 }
 
-export function toUnpaddedBase64(value: Uint8Array): string {
+export function toUnpaddedBase64(value: Uint8Array | Buffer): string {
 	return btoa(String.fromCharCode(...value)).replace(/=+$/, "");
 }
