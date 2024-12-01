@@ -4,7 +4,7 @@ export const profileEndpoints = new Elysia().get(
 	"/query/profile",
 	({ query }) => ({
 		avatar_url: "mxc://matrix.org/MyC00lAvatar",
-		displayname: `I'm the guy with the ${query.user_id} id`,
+		displayname: query.user_id,
 	}),
 	{
 		query: t.Object({
