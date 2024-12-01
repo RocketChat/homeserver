@@ -1,43 +1,103 @@
-import { expect, test } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { generateKeyPairs } from "./keys";
 import { EncryptionValidAlgorithm, signJson, signText, verifySignaturesFromRemote } from "./signJson";
 
 
-test("verifySignaturesFromRemote", async () => {
 
-	const serverName = "synapse";
-	const [signature] = await generateKeyPairs(
-		Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
-			c.charCodeAt(0),
-		),
-	);
+describe("verifySignaturesFromRemote", async () => {
+	test("it should verify a valid signature", async () => {
 
-	const signed = await signJson(
-		{
-		},
-		{
-			algorithm: EncryptionValidAlgorithm.ed25519,
-			version: "a_yNbw",
-			sign(data: Uint8Array) {
-				return signText(data, signature.privateKey);
+		const serverName = "synapse";
+		const [signature] = await generateKeyPairs(
+			Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+				c.charCodeAt(0),
+			),
+		);
+
+		const signed = await signJson(
+			{
 			},
-		},
-		serverName,
-	);
+			{
+				algorithm: EncryptionValidAlgorithm.ed25519,
+				version: "a_yNbw",
+				sign(data: Uint8Array) {
+					return signText(data, signature.privateKey);
+				},
+			},
+			serverName,
+		);
 
-	await verifySignaturesFromRemote(signed, serverName, async () => 
-		signature.publicKey
-	)
-
-	expect(async () => await verifySignaturesFromRemote(signed, serverName, async () => 
-		signature.publicKey
-	)).not.toThrow();
-
-	expect(async () => await verifySignaturesFromRemote(signed, serverName, async () => 
-		Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
-			c.charCodeAt(0),
+		await verifySignaturesFromRemote(signed, serverName, async () =>
+			signature.publicKey
 		)
-	)).toThrow();
+
+		expect(async () => await verifySignaturesFromRemote(signed, serverName, async () =>
+			signature.publicKey
+		)).not.toThrow();
+	});
+
+	test("it should throw an error if the signature is invalid", async () => {
+		const serverName = "synapse";
+		const [signature] = await generateKeyPairs(
+			Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+				c.charCodeAt(0),
+			),
+		);
+
+		const signed = await signJson(
+			{
+			},
+			{
+				algorithm: EncryptionValidAlgorithm.ed25519,
+				version: "a_yNbw",
+				sign(data: Uint8Array) {
+					return signText(data, signature.privateKey);
+				},
+			},
+			serverName,
+		);
+
+		expect(async () => await verifySignaturesFromRemote(signed, serverName, async () =>
+			Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+				c.charCodeAt(0),
+			)
+		)).toThrow();
+	});
+
+	test("it should throw an error if there is no valid protocol version", async () => {
+		const serverName = "synapse";
+
+		expect(async () => await verifySignaturesFromRemote({
+			signatures: {
+				[serverName]: {
+					[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: "invalid",
+				},
+			}
+
+		}, serverName, async () =>
+			Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+				c.charCodeAt(0),
+			)
+		)).toThrow(`Invalid algorithm ${EncryptionValidAlgorithm.ed25519}1 for ${serverName}`);
+	});
+
+	it("it should throw an error if the signature is invalid for the serverName", async () => {
+		const serverName = "synapse";
+
+		expect(async () => await verifySignaturesFromRemote({
+			signatures: {
+				['differentServer']: {
+					[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: "invalid",
+				},
+			}
+
+		}, serverName, async () =>
+			Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
+				c.charCodeAt(0),
+			)
+		)).toThrow(`Signatures not found for ${serverName}`);
+	});
+		
 });
 
 // {
@@ -157,6 +217,7 @@ test("signJson send_join", async () => {
 // }
 
 test("signJson make_join", async () => {
+
 	const [signature] = await generateKeyPairs(
 		Uint8Array.from(atob("tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8"), (c) =>
 			c.charCodeAt(0),
