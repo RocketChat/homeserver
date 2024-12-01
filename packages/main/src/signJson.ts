@@ -1,5 +1,5 @@
 import nacl from "tweetnacl";
-import { unpaddedBase64 } from "./unpaddedBase64";
+import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 
 export async function signJson<
   T extends Object & {
@@ -26,14 +26,14 @@ export async function signJson<
 
   console.log("encodeCanonicalJson ->", data);
 
-  const signed = await signingKey.sign(new TextEncoder().encode(data));
+  const signed = await signingKey.sign(toBinaryData(data));
 
   const signature = signatures[signingName] || {};
 
   Object.assign(signatures, {
     [signingName]: {
       ...signature,
-      [keyId]: unpaddedBase64(signed),
+      [keyId]: toUnpaddedBase64(signed),
     },
   });
 
@@ -69,7 +69,7 @@ export async function signText(
   signingKey: Uint8Array
 ) {
   if (typeof data === "string") {
-    data = new TextEncoder().encode(data);
+    data = toBinaryData(data);
   }
   return nacl.sign.detached(data, signingKey);
 }

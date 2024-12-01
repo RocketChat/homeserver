@@ -1,6 +1,7 @@
 import { expect, it } from "bun:test";
 import nacl from "tweetnacl";
 import { app } from "../../../app";
+import { fromBinaryData, toBinaryData } from "../../../binaryData";
 
 it("TestInboundFederationKeys", async () => {
   const resp = await app.handle(
@@ -11,7 +12,7 @@ it("TestInboundFederationKeys", async () => {
 
   const body = await resp.arrayBuffer();
 
-  const jsonObj = JSON.parse(new TextDecoder().decode(body));
+  const jsonObj = JSON.parse(fromBinaryData(body));
   expect(jsonObj).toHaveProperty("valid_until_ts");
   expect(jsonObj.valid_until_ts).toBeNumber();
   expect(jsonObj).toHaveProperty("server_name", app.config.name);
@@ -120,7 +121,7 @@ async function checkKeysAndSignatures(
 
   const bodyWithoutSig = (() => {
     const { signatures, ...rest } = jsonObj;
-    return new TextEncoder().encode(JSON.stringify(rest));
+    return toBinaryData(JSON.stringify(rest));
   })();
 
 	for (const val of signatures.values()) {

@@ -5,7 +5,7 @@ import "@hs/endpoints/src/server";
 import { cache } from "../../../cache";
 import { config } from "../../../config";
 import { signJson } from "../../../signJson";
-import { unpaddedBase64 } from "../../../unpaddedBase64";
+import { toUnpaddedBase64 } from "../../../binaryData";
 
 export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
   "/server",
@@ -14,7 +14,7 @@ export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
       config.signingKey.map(({ algorithm, version, publicKey }) => [
         `${algorithm}:${version}`,
         {
-          key: unpaddedBase64(publicKey),
+          key: toUnpaddedBase64(publicKey),
         },
       ])
     );
