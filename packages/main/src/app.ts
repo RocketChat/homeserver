@@ -19,4 +19,12 @@ export const app = new Elysia({
 	)
 	.use(keyV2Endpoints)
 	.use(v2Endpoints)
-	.use(v1Endpoints);
+	.use(v1Endpoints)
+	.onError(async ({ code }) => {
+		if (code === "NOT_FOUND") {
+			return {
+				errcode: "M_UNRECOGNIZED",
+				error: "Unrecognized request",
+			};
+		}
+	});
