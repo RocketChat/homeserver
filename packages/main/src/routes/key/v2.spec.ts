@@ -1,7 +1,7 @@
 import { expect, it } from "bun:test";
 import nacl from "tweetnacl";
-import { app } from "../../../app";
-import { fromBinaryData, toBinaryData } from "../../../binaryData";
+import { app } from "../../app";
+import { fromBinaryData, toBinaryData } from "../../binaryData";
 
 it("TestInboundFederationKeys", async () => {
 	const resp = await app.handle(

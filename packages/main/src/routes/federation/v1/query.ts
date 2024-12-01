@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { UserIDDTO } from "../../../dto";
 
-export const profileEndpoints = new Elysia().get(
+export const queryEndpoints = new Elysia().get(
 	"/query/profile",
 	({ query }) => ({
 		avatar_url: "mxc://matrix.org/MyC00lAvatar",
