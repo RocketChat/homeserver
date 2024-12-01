@@ -1,15 +1,16 @@
-export function cache<T>(
-  fn: () => Promise<T>,
+export function cache<TFunction extends (...args: any[]) => Promise<any>>(
+  fn: TFunction,
   timeout: number
-): () => Promise<T> {
-  let cached: T | undefined;
-  let timeoutId = Date.now();
+): TFunction {
+  let cached: Awaited<ReturnType<TFunction>> | undefined;
+  let timestamp = Date.now();
 
-  return async () => {
-    if (Date.now() - timeoutId > timeout) {
-      timeoutId = Date.now();
+  return (async (...args) => {
+    if (Date.now() - timestamp > timeout) {
+      timestamp = Date.now();
       cached = undefined;
     }
-    return cached || ((cached = await fn()), cached);
-  };
+
+    return cached ?? (cached = await fn(...args));
+  }) as TFunction;
 }
