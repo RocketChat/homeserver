@@ -3,5 +3,6 @@
 	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
 		"quickfix.biome": "explicit"
-	}
+	},
+	"cSpell.words": ["Unpadded"]
 }
