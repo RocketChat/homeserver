@@ -26,6 +26,15 @@ export function fromBinaryData(
 	return new TextDecoder().decode(value);
 }
 
-export function toUnpaddedBase64(value: Uint8Array | Buffer): string {
-	return btoa(String.fromCharCode(...value)).replace(/=+$/, "");
+export function toUnpaddedBase64(
+	value: Uint8Array | Buffer,
+	options: {
+		urlSafe?: boolean;
+	} = { urlSafe: false },
+): string {
+	const hash = btoa(String.fromCharCode(...value)).replace(/=+$/, "");
+
+	if (!options.urlSafe) return hash;
+
+	return hash.replace(/\+/, "-").replace(/\//, "_");
 }

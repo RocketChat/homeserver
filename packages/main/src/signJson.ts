@@ -37,10 +37,9 @@ export async function signJson<
 		},
 	});
 
-	Object.assign(jsonObject, { signatures });
-
-	return jsonObject as T & {
-		signatures: Record<string, Record<string, string>>;
+	return {
+		...jsonObject,
+		signatures,
 	};
 }
 
