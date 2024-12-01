@@ -1,21 +1,20 @@
 {
-  "name": "homeserver",
-  "module": "index.ts",
-  "private": true,
-  "type": "module",
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "workspaces": [
-    "packages/*"
-  ],
-  "dependencies": {
-    "@bogeychan/elysia-logger": "^0.1.4",
-    "@elysiajs/swagger": "^1.1.6",
-    "node-jsonwebtoken": "^0.0.1",
-    "tweetnacl": "^1.0.3"
-  }
+	"name": "homeserver",
+	"module": "index.ts",
+	"private": true,
+	"type": "module",
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"workspaces": ["packages/*"],
+	"dependencies": {
+		"@bogeychan/elysia-logger": "^0.1.4",
+		"@elysiajs/swagger": "^1.1.6",
+		"node-jsonwebtoken": "^0.0.1",
+		"tweetnacl": "^1.0.3"
+	}
 }

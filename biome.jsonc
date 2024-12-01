@@ -1,0 +1,14 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"linter": {
+		"rules": {
+			"suspicious": {
+				"noExplicitAny": "warn",
+				"noEmptyInterface": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "warn"
+			}
+		}
+	}
+}

@@ -1,8 +1,8 @@
 {
-  "name": "rc1",
-  "version": "1.0",
-  "port": 8080,
-  "key": {
-    "key_refresh_interval": 60
-  }
+	"name": "rc1",
+	"version": "1.0",
+	"port": 8080,
+	"key": {
+		"key_refresh_interval": 60
+	}
 }

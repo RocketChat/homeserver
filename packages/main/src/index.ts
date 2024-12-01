@@ -3,33 +3,33 @@ import swagger from "@elysiajs/swagger";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { config } from "./config";
 import { app } from "./app";
+import { config } from "./config";
 
 console.log(config);
 
 app
-  .use(swagger())
-  .use(
-    logger({
-      level: "debug",
-    })
-  )
-  .get("/", () => "")
-  .onError(async ({ error, request }) => {
-    if (!request.body) {
-      return;
-    }
+	.use(swagger())
+	.use(
+		logger({
+			level: "debug",
+		}),
+	)
+	.get("/", () => "")
+	.onError(async ({ error, request }) => {
+		if (!request.body) {
+			return;
+		}
 
-    const body = await new Response(request.body).text();
+		const body = await new Response(request.body).text();
 
-    console.log("url ->", request.url);
-    console.log("body ->", body);
+		console.log("url ->", request.url);
+		console.log("body ->", body);
 
-    return error;
-  })
-  .listen(config.port, () => {
-    console.log(
-      `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-    );
-  });
+		return error;
+	})
+	.listen(config.port, () => {
+		console.log(
+			`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`,
+		);
+	});
