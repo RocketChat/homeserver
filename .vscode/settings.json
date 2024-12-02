@@ -4,5 +4,5 @@
 	"editor.codeActionsOnSave": {
 		"quickfix.biome": "explicit"
 	},
-	"cSpell.words": ["Unpadded"]
+	"cSpell.words": ["displayname", "Unpadded"]
 }

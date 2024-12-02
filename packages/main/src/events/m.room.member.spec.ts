@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { roomCreateEvent } from "./m.room.create";
-import { generateKeyPairs } from "../keys";
+import { generateKeyPairsFromString } from "../keys";
 import { generateId } from "../authentication";
 import { signEvent } from "../signEvent";
 import { roomMemberEvent } from "./m.room.member";
@@ -29,17 +29,16 @@ const finalEvent = {
 };
 
 test("roomMemberEvent", async () => {
-	const [signature] = await generateKeyPairs(
-		Uint8Array.from(atob("WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw"), (c) =>
-			c.charCodeAt(0),
-		),
+	const signature = await generateKeyPairsFromString(
+		"ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
 	);
+
 	const createEvent = roomCreateEvent({
 		roomId: "!uTqsSSWabZzthsSCNf:hs1",
 		sender: "@admin:hs1",
 		ts: 1733107418648,
 	});
-	const signedCreateEvent = await signEvent(createEvent, signature, "a_HDhg");
+	const signedCreateEvent = await signEvent(createEvent, signature);
 
 	const createEventId = generateId(signedCreateEvent);
 	const memberEvent = roomMemberEvent({
@@ -50,7 +49,7 @@ test("roomMemberEvent", async () => {
 		auth_events: [createEventId],
 		prev_events: [createEventId],
 	});
-	const signed = await signEvent(memberEvent, signature, "a_HDhg");
+	const signed = await signEvent(memberEvent, signature);
 
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
@@ -64,14 +63,14 @@ test("roomMemberEvent", async () => {
 });
 
 test("roomMemberEvent - should throw an error when displayname is invalid", async () => {
-
-	expect(() => roomMemberEvent({
-		roomId: "!uTqsSSWabZzthsSCNf:hs1",
-		sender: "",
-		ts: 1733107418672,
-		depth: 2,
-		auth_events: [],
-		prev_events: [],
-	})).toThrowError("Invalid sender");
-	
+	expect(() =>
+		roomMemberEvent({
+			roomId: "!uTqsSSWabZzthsSCNf:hs1",
+			sender: "",
+			ts: 1733107418672,
+			depth: 2,
+			auth_events: [],
+			prev_events: [],
+		}),
+	).toThrowError("Invalid sender");
 });

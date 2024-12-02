@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { computeHash, generateId, signRequest } from "./authentication";
-import { generateKeyPairs } from "./keys";
+import { generateKeyPairsFromString } from "./keys";
 import { signJson, signText } from "./signJson";
 
 // {
@@ -49,10 +49,8 @@ import { signJson, signText } from "./signJson";
 // }
 
 test("signRequest", async () => {
-	const [signature] = await generateKeyPairs(
-		Uint8Array.from(atob("YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U"), (c) =>
-			c.charCodeAt(0),
-		),
+	const signature = await generateKeyPairsFromString(
+		"ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U",
 	);
 
 	const event = Object.freeze({
@@ -92,17 +90,7 @@ test("signRequest", async () => {
 		},
 	});
 
-	const signed = await signJson(
-		event,
-		{
-			algorithm: "ed25519",
-			version: "a_XRhW",
-			sign(data: Uint8Array) {
-				return signText(data, signature.privateKey);
-			},
-		},
-		"hs2",
-	);
+	const signed = await signJson(event, signature, "hs2");
 
 	expect(signed).toHaveProperty("signatures");
 	expect(signed.signatures).toBeObject();
@@ -117,13 +105,7 @@ test("signRequest", async () => {
 
 	const signedRequest = await signRequest(
 		"hs2",
-		{
-			algorithm: "ed25519",
-			version: "a_XRhW",
-			sign(data: Uint8Array) {
-				return signText(data, signature.privateKey);
-			},
-		},
+		signature,
 		"hs1",
 		"PUT",
 		"/_matrix/federation/v2/send_join/%21EAuqyrnzwQoPNHvvmX%3Ahs1/%24P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY?omit_members=true",

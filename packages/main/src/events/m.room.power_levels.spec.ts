@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { generateKeyPairs } from "../keys";
+import { generateKeyPairsFromString } from "../keys";
 import { generateId } from "../authentication";
 import { signEvent } from "../signEvent";
 import { roomPowerLevelsEvent } from "./m.room.power_levels";
@@ -51,10 +51,8 @@ const finalEvent = {
 };
 
 test("roomPowerLevelsEvent", async () => {
-	const [signature] = await generateKeyPairs(
-		Uint8Array.from(atob("WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw"), (c) =>
-			c.charCodeAt(0),
-		),
+	const signature = await generateKeyPairsFromString(
+		"ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
 	);
 
 	const event = roomPowerLevelsEvent({
@@ -70,7 +68,7 @@ test("roomPowerLevelsEvent", async () => {
 		ts: 1733107418713,
 	});
 
-	const signed = await signEvent(event, signature, "a_HDhg");
+	const signed = await signEvent(event, signature);
 
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(

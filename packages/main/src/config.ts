@@ -1,5 +1,5 @@
 import { getKeyPair } from "./keys";
-import { EncryptionValidAlgorithm, signText } from "./signJson";
+import { type EncryptionValidAlgorithm, signText } from "./signJson";
 
 export interface Config {
 	path: string;
@@ -47,13 +47,7 @@ const getConfig = async (): Promise<Config> => {
 
 	return {
 		...content,
-		signingKey: result.map((result) => ({
-			...result,
-
-			sign(data: Uint8Array) {
-				return signText(data, result.privateKey);
-			},
-		})),
+		signingKey: result,
 		name: content.name,
 		path: CONFIG_FOLDER,
 		signingKeyPath,

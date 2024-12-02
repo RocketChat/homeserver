@@ -1,9 +1,10 @@
 import nacl from "tweetnacl";
 import { toUnpaddedBase64 } from "./binaryData";
+import { EncryptionValidAlgorithm, signText } from "./signJson";
 
 export async function generateKeyPairs(
 	seed: Uint8Array,
-	algorithm = "ed25519",
+	algorithm = EncryptionValidAlgorithm.ed25519,
 	version = "0",
 ) {
 	// Generate an Ed25519 key pair
@@ -11,14 +12,25 @@ export async function generateKeyPairs(
 
 	// Encode the private key to Base64
 
-	return [
-		{
-			version,
-			privateKey: keyPair.secretKey,
-			publicKey: keyPair.publicKey,
-			algorithm,
+	return {
+		version,
+		privateKey: keyPair.secretKey,
+		publicKey: keyPair.publicKey,
+		algorithm,
+		sign(data: Uint8Array) {
+			return signText(data, keyPair.secretKey);
 		},
-	];
+	};
+}
+
+export async function generateKeyPairsFromString(content: string) {
+	const [algorithm, version, seed] = content.trim().split(" ");
+
+	return await generateKeyPairs(
+		Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
+		algorithm as EncryptionValidAlgorithm,
+		version,
+	);
 }
 
 async function storeKeyPairs(
@@ -55,7 +67,7 @@ export const getKeyPair = async (config: {
 
 	if (!hasStoredKeys) {
 		seeds.push({
-			algorithm: "ed25519",
+			algorithm: "ed25519" as EncryptionValidAlgorithm,
 			version: "0",
 			seed: nacl.randomBytes(32),
 		});
@@ -70,15 +82,16 @@ export const getKeyPair = async (config: {
 			.trim()
 			.split(" ");
 		seeds.push({
-			algorithm,
+			algorithm: algorithm as EncryptionValidAlgorithm,
 			version,
 			seed: Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
 		});
 	}
 
-	return await generateKeyPairs(
-		seeds[0].seed,
-		seeds[0].algorithm,
-		seeds[0].version,
+	return Promise.all(
+		seeds.map(
+			async (seed) =>
+				await generateKeyPairs(seed.seed, seed.algorithm, seed.version),
+		),
 	);
 };
