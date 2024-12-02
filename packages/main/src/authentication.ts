@@ -7,14 +7,11 @@ import {
 	signJson,
 } from "./signJson";
 import { pruneEventDict } from "./pruneEventDict";
+import type { SigningKey } from "./keys";
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,
-	signingKey: {
-		algorithm: EncryptionValidAlgorithm;
-		version: string;
-		sign(data: Uint8Array): Promise<Uint8Array>;
-	},
+	signingKey: SigningKey,
 	destination: string,
 	method: string,
 	uri: string,
@@ -37,11 +34,7 @@ export async function authorizationHeaders<T extends object>(
 
 export async function signRequest<T extends object>(
 	origin: string,
-	signingKey: {
-		algorithm: EncryptionValidAlgorithm;
-		version: string;
-		sign(data: Uint8Array): Promise<Uint8Array>;
-	},
+	signingKey: SigningKey,
 	destination: string,
 	method: string,
 	uri: string,

@@ -1,5 +1,6 @@
 import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
+import type { SigningKey } from "./keys";
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = "ed25519",
@@ -14,11 +15,7 @@ export async function signJson<
 	},
 >(
 	jsonObject: T,
-	signingKey: {
-		algorithm: EncryptionValidAlgorithm;
-		version: string;
-		sign(data: Uint8Array): Promise<Uint8Array>;
-	},
+	signingKey: SigningKey,
 	signingName: string,
 ): Promise<
 	T & {
