@@ -390,3 +390,215 @@ export const InviteEventDTO = t.Composite(
 			"An invite event. Note that events have a different format depending on the\nroom version - check the room version specification for precise event formats.",
 	},
 );
+
+const EventDTO = t.Object(
+	{
+		content: t.Object(
+			{},
+			{
+				description:
+					"The fields in this object will vary depending on the type of event. When interacting with the REST API, this is the HTTP body.",
+			},
+		),
+		type: t.String({
+			description:
+				"The type of event. This SHOULD be namespaced similar to Java package naming conventions e.g. 'com.example.subdomain.event.type'",
+		}),
+	},
+	{
+		title: "Event",
+		description: "The basic set of fields all events must have.",
+	},
+);
+
+const UnsignedDataDTO = t.Object(
+	{
+		age: t.Integer({
+			description:
+				"The time in milliseconds that has elapsed since the event was sent.",
+		}),
+	},
+	{
+		title: "UnsignedData",
+		description: "Contains optional extra information about the event.",
+	},
+);
+
+const SyncRoomEventDTO = t.Composite(
+	[
+		EventDTO,
+		t.Object({
+			event_id: t.String({
+				description: "The globally unique event identifier.",
+			}),
+			sender: t.String({
+				description:
+					"Contains the fully-qualified ID of the user who sent this event.",
+			}),
+			origin_server_ts: t.Integer({
+				description:
+					"Timestamp in milliseconds on originating homeserver when this event was sent.",
+				format: "int64",
+			}),
+			unsigned: t.Optional(UnsignedDataDTO),
+		}),
+	],
+	{
+		title: "SyncRoomEvent",
+		description:
+			"In addition to the Event fields, Room Events have the following additional fields.",
+	},
+);
+
+const RoomEventDTO = t.Composite(
+	[
+		SyncRoomEventDTO,
+		t.Object({
+			room_id: t.String({
+				description:
+					"The ID of the room associated with this event. Will not be present on events\nthat arrive through `/sync`, despite being required everywhere else.",
+			}),
+		}),
+	],
+	{
+		title: "RoomEvent",
+		description: "Room Events have the following fields.",
+	},
+);
+
+const SyncStateEventDTO = t.Composite(
+	[
+		SyncRoomEventDTO,
+		t.Object({
+			state_key: t.String({
+				description:
+					"A unique key which defines the overwriting semantics for this piece of room state. This value is often a zero-length string. The presence of this key makes this event a State Event.\nState keys starting with an `@` are reserved for referencing user IDs, such as room members. With the exception of a few events, state events set with a given user's ID as the state key MUST only be set by that user.",
+			}),
+		}),
+	],
+	{
+		title: "SyncStateEvent",
+		description:
+			"In addition to the Room Event fields, State Events have the following additional fields.",
+	},
+);
+
+const StateEventDTO = t.Composite([RoomEventDTO, SyncStateEventDTO], {
+	title: "StateEvent",
+	description: "State Events have the following fields.",
+});
+
+const MRoomMemberDTO = t.Composite(
+	[
+		StateEventDTO,
+		t.Object({
+			content: t.Object(
+				{
+					avatar_url: t.Optional(
+						t.String({
+							description: "The avatar URL for this user, if any.",
+							format: "uri",
+						}),
+					),
+					displayname: t.Optional(
+						t.Nullable(
+							t.String({
+								description: "The display name for this user, if any.",
+							}),
+						),
+					),
+					membership: t.UnionEnum(["invite", "join", "knock", "leave", "ban"], {
+						description: "The membership state of the user.",
+					}),
+					is_direct: t.Optional(
+						t.Boolean({
+							description:
+								"Flag indicating if the room containing this event was created with the intention of being a direct chat. See [Direct Messaging](/client-server-api/#direct-messaging).",
+						}),
+					),
+					join_authorised_via_users_server: t.Optional(
+						t.String({
+							description:
+								"Usually found on `join` events, this field is used to denote which homeserver (through representation of a user with sufficient power level)\nauthorised the user's join. More information about this field can be found in the [Restricted Rooms Specification](/client-server-api/#restricted-rooms).\n\nClient and server implementations should be aware of the [signing implications](/rooms/v8/#authorization-rules) of including this\nfield in further events: in particular, the event must be signed by the server which\nowns the user ID in the field. When copying the membership event's `content`\n(for profile updates and similar) it is therefore encouraged to exclude this\nfield in the copy, as otherwise the event might fail event authorization.",
+						}),
+					),
+					reason: t.Optional(
+						t.String({
+							description:
+								"Optional user-supplied text for why their membership has changed. For kicks and bans, this is typically the reason for the kick or ban.\nFor other membership changes, this is a way for the user to communicate their intent without having to send a message to the room, such\nas in a case where Bob rejects an invite from Alice about an upcoming concert, but can't make it that day.\n\nClients are not recommended to show this reason to users when receiving an invite due to the potential for spam and abuse. Hiding the\nreason behind a button or other component is recommended.",
+						}),
+					),
+					third_party_invite: t.Optional(
+						t.Object(
+							{
+								display_name: t.String({
+									description:
+										"A name which can be displayed to represent the user instead of their third-party identifier",
+								}),
+								signed: t.Object(
+									{
+										mxid: t.String({
+											description:
+												"The invited matrix user ID. Must be equal to the user_id property of the event.",
+										}),
+										signatures: t.Record(
+											t.String(),
+											t.Record(t.String(), t.String()),
+											{
+												title: "Signatures",
+												description:
+													"A single signature from the verifying server, in the format specified by the Signing Events section of the server-server API.",
+											},
+										),
+										token: t.String({
+											description:
+												"The token property of the containing third_party_invite object.",
+										}),
+									},
+									{
+										title: "signed",
+										description:
+											"A block of content which has been signed, which servers can use to verify the event. Clients should ignore this.",
+									},
+								),
+							},
+							{
+								title: "Invite",
+							},
+						),
+					),
+				},
+				{
+					title: "EventContent",
+				},
+			),
+			state_key: t.String({
+				description:
+					"The `user_id` this membership event relates to. In all cases except for when `membership` is\n`join`, the user ID sending the event does not need to match the user ID in the `state_key`,\nunlike other events. Regular authorisation rules still apply.",
+			}),
+			type: t.Literal("m.room.member"),
+			unsigned: t.Composite([
+				UnsignedDataDTO,
+				t.Object({
+					invite_room_state: t.Optional(
+						t.Array(StrippedStateDTO, {
+							description:
+								"A subset of the state of the room at the time of the invite, if `membership` is `invite`.\nNote that this state is informational, and SHOULD NOT be trusted; once the client has\njoined the room, it SHOULD fetch the live state from the server and discard the\ninvite_room_state. Also, clients must not rely on any particular state being present here;\nthey SHOULD behave properly (with possibly a degraded but not a broken experience) in\nthe absence of any particular events here. If they are set on the room, at least the\nstate for `m.room.avatar`, `m.room.canonical_alias`, `m.room.join_rules`, and `m.room.name`\nSHOULD be included.",
+						}),
+					),
+					knock_room_state: t.Optional(
+						t.Array(StrippedStateDTO, {
+							description:
+								"A subset of the state of the room at the time of the knock, if `membership` is `knock`.\nThis has the same restrictions as `invite_room_state`. If they are set on the room, at least\nthe state for `m.room.avatar`, `m.room.canonical_alias`, `m.room.join_rules`, `m.room.name`,\nand `m.room.encryption` SHOULD be included.",
+						}),
+					),
+				}),
+			]),
+		}),
+	],
+	{
+		title: "The current membership state of a user in the room.",
+		description:
+			"Adjusts the membership state for a user in a room. It is preferable to use the membership APIs (`/rooms/<room id>/invite` etc) when performing membership actions rather than adjusting the state directly as there are a restricted set of valid transformations. For example, user A cannot force user B to join a room, and trying to force this state change directly will fail.\n\nThe following membership states are specified:\n\n- `invite` - The user has been invited to join a room, but has not yet joined it. They may not participate in the room until they join.\n- `join` - The user has joined the room (possibly after accepting an invite), and may participate in it.\n- `leave` - The user was once joined to the room, but has since left (possibly by choice, or possibly by being kicked).\n- `ban` - The user has been banned from the room, and is no longer allowed to join it until they are un-banned from the room (by having their membership state set to a value other than `ban`).\n- `knock` - The user has knocked on the room, requesting permission to participate. They may not participate in the room until they join.\n\nThe `third_party_invite` property will be set if this invite is an `invite` event and is the successor of an `m.room.third_party_invite` event, and absent otherwise.\n\nThis event may also include an `invite_room_state` key inside the event's `unsigned` data.\nIf present, this contains an array of [stripped state events](/client-server-api/#stripped-state)\nto assist the receiver in identifying the room.\n\nThe user for which a membership applies is represented by the `state_key`. Under some conditions,\nthe `sender` and `state_key` may not match - this may be interpreted as the `sender` affecting\nthe membership state of the `state_key` user.\n\nThe `membership` for a given user can change over time. The table below represents the various changes\nover time and how clients and servers must interpret those changes. Previous membership can be retrieved\nfrom the `prev_content` object on an event. If not present, the user's previous membership must be assumed\nas `leave`.\n\n|                   | to `invite`          | to `join`                              | to `leave`                                                                                                                              | to `ban`                    | to `knock`           |\n|-------------------|----------------------|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|----------------------|\n| **from `invite`** | No change.           | User joined the room.                  | If the `state_key` is the same as the `sender`, the user rejected the invite. Otherwise, the `state_key` user had their invite revoked. | User was banned.            | User is re-knocking. |\n| **from `join`**   | Must never happen.   | `displayname` or `avatar_url` changed. | If the `state_key` is the same as the `sender`, the user left. Otherwise, the `state_key` user was kicked.                              | User was kicked and banned. | Must never happen.   |\n| **from `leave`**  | New invitation sent. | User joined.                           | No change.                                                                                                                              | User was banned.            | User is knocking.    |\n| **from `ban`**    | Must never happen.   | Must never happen.                     | User was unbanned.                                                                                                                      | No change.                  | Must never happen.   |\n| **from `knock`**  | Knock accepted.      | Must never happen.                     | If the `state_key` is the same as the `sender`, the user retracted the knock. Otherwise, the `state_key` user had their knock denied.   | User was banned.            | No change.           |",
+	},
+);
