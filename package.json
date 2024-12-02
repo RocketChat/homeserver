@@ -14,6 +14,7 @@
 	"dependencies": {
 		"@bogeychan/elysia-logger": "^0.1.4",
 		"@elysiajs/swagger": "^1.1.6",
+		"mongodb": "^6.11.0",
 		"node-jsonwebtoken": "^0.0.1",
 		"tweetnacl": "^1.0.3"
 	}
