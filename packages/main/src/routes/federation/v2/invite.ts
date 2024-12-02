@@ -10,7 +10,6 @@ import { StrippedStateDTO } from "../../../dto";
 import { ErrorDTO } from "../../../dto";
 //import { events } from "../../../mongodb";
 
-
 export const inviteEndpoint = new Elysia().put(
 	"/invite/:roomId/:eventId",
 	async ({ params, body }) => {
@@ -111,12 +110,11 @@ export const inviteEndpoint = new Elysia().put(
 				invite_room_state: t.Optional(
 					t.Array(StrippedStateDTO, {
 						description:
-							"An optional list of [stripped state events](https://spec.matrix.org/latest/client-server-api/#stripped-state)\nto help the receiver of the invite identify the room.",
+							"An optional list of stripped state events\nto help the receiver of the invite identify the room.",
 					}),
 				),
 			},
 			{
-				additionalProperties: true,
 				examples: [
 					{
 						room_version: "2",
@@ -146,9 +144,8 @@ export const inviteEndpoint = new Elysia().put(
 					event: InviteEventDTO,
 				},
 				{
-					additionalProperties: true,
 					description:
-						'**Note:**\nThis API is nearly identical to the v1 API with the exception of the request\nbody being different, and the response format fixed.\n\nInvites a remote user to a room. Once the event has been  signed by both the inviting\nhomeserver and the invited homeserver, it can be sent to all of the servers in the\nroom by the inviting homeserver.\n\nThis endpoint is preferred over the v1 API as it is more useful for servers. Senders\nwhich receive a 400 or 404 response to this endpoint should retry using the v1\nAPI as the server may be older, if the room version is "1" or "2".\n\nNote that events have a different format depending on the room version - check the\n[room version specification](https://spec.matrix.org/latest/rooms) for precise event formats. **The request and response\nbodies here describe the common event fields in more detail and may be missing other\nrequired fields for a PDU.**',
+						'**Note:**\nThis API is nearly identical to the v1 API with the exception of the request\nbody being different, and the response format fixed.\n\nInvites a remote user to a room. Once the event has been  signed by both the inviting\nhomeserver and the invited homeserver, it can be sent to all of the servers in the\nroom by the inviting homeserver.\n\nThis endpoint is preferred over the v1 API as it is more useful for servers. Senders\nwhich receive a 400 or 404 response to this endpoint should retry using the v1\nAPI as the server may be older, if the room version is "1" or "2".\n\nNote that events have a different format depending on the room version - check the\nroom version specification for precise event formats. **The request and response\nbodies here describe the common event fields in more detail and may be missing other\nrequired fields for a PDU.**',
 					examples: [
 						{
 							event: {
@@ -232,7 +229,7 @@ export const inviteEndpoint = new Elysia().put(
 		},
 		detail: {
 			description:
-				'**Note:**\nThis API is nearly identical to the v1 API with the exception of the request\nbody being different, and the response format fixed.\n\nInvites a remote user to a room. Once the event has been  signed by both the inviting\nhomeserver and the invited homeserver, it can be sent to all of the servers in the\nroom by the inviting homeserver.\n\nThis endpoint is preferred over the v1 API as it is more useful for servers. Senders\nwhich receive a 400 or 404 response to this endpoint should retry using the v1\nAPI as the server may be older, if the room version is "1" or "2".\n\nNote that events have a different format depending on the room version - check the\n[room version specification](/rooms) for precise event formats. **The request and response\nbodies here describe the common event fields in more detail and may be missing other\nrequired fields for a PDU.**',
+				'**Note:**\nThis API is nearly identical to the v1 API with the exception of the request\nbody being different, and the response format fixed.\n\nInvites a remote user to a room. Once the event has been  signed by both the inviting\nhomeserver and the invited homeserver, it can be sent to all of the servers in the\nroom by the inviting homeserver.\n\nThis endpoint is preferred over the v1 API as it is more useful for servers. Senders\nwhich receive a 400 or 404 response to this endpoint should retry using the v1\nAPI as the server may be older, if the room version is "1" or "2".\n\nNote that events have a different format depending on the room version - check the\nroom version specification for precise event formats. **The request and response\nbodies here describe the common event fields in more detail and may be missing other\nrequired fields for a PDU.**',
 			operationId: "sendInviteV2",
 		},
 	},
