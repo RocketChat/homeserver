@@ -11,7 +11,9 @@
 	"peerDependencies": {
 		"typescript": "^5.0.0"
 	},
-	"workspaces": ["packages/*"],
+	"workspaces": [
+		"packages/*"
+	],
 	"dependencies": {
 		"@bogeychan/elysia-logger": "^0.1.4",
 		"@elysiajs/swagger": "^1.1.6",
@@ -21,7 +23,10 @@
 	},
 	"husky": {
 		"hooks": {
-		"pre-commit": "bun test"
+			"pre-commit": "bun test"
+		}
+	},
+	"scripts": {
+		"prepare": "husky"
 	}
-  }
 }
