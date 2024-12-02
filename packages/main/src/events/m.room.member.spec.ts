@@ -49,21 +49,16 @@ test("roomMemberEvent", async () => {
 		depth: 2,
 		auth_events: [createEventId],
 		prev_events: [createEventId],
-	})
-	const signedMemberEvent = await signEvent(memberEvent, signature, "a_HDhg");
+	});
+	const signed = await signEvent(memberEvent, signature, "a_HDhg");
 
-	expect(signedMemberEvent).toStrictEqual(finalEvent);
-	expect(signedMemberEvent).toHaveProperty("signatures");
-	expect(signedMemberEvent.signatures).toBeObject();
-	expect(signedMemberEvent.signatures).toHaveProperty("hs1");
-	expect(signedMemberEvent.signatures.hs1).toBeObject();
-	expect(signedMemberEvent.signatures.hs1).toHaveProperty("ed25519:a_HDhg");
-	expect(signedMemberEvent.signatures.hs1["ed25519:a_HDhg"]).toBeString();
-	expect(signedMemberEvent.signatures.hs1["ed25519:a_HDhg"]).toBe(
+	expect(signed).toStrictEqual(finalEvent);
+	expect(signed).toHaveProperty(
+		"signatures.hs1.ed25519:a_HDhg",
 		"y/qV5T9PeXvqgwRafZDSygtk4XRMstdt04qusZWJSu77Juxzzz4Ijyk+JsJ5NNV0/WWYMT9IhmVb7/EEBH4vDQ",
 	);
 
-	const memberEventId = generateId(signedMemberEvent);
+	const memberEventId = generateId(signed);
 
 	expect(memberEventId).toBe(finalEventId);
 });

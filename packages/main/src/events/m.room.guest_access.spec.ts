@@ -37,22 +37,22 @@ test.todo("roomGuestAccessEvent", async () => {
 	// 		c.charCodeAt(0),
 	// 	),
 	// );
+	//
 	// const event = roomCreateEvent({
 	// 	roomId: "!uTqsSSWabZzthsSCNf:hs1",
 	// 	sender: "@admin:hs1",
 	// 	ts: 1733107418648,
 	// });
+	//
 	// const signed = await signEvent(event, signature, "a_HDhg");
+	//
 	// expect(signed).toStrictEqual(finalEvent);
-	// expect(signed).toHaveProperty("signatures");
-	// expect(signed.signatures).toBeObject();
-	// expect(signed.signatures).toHaveProperty("hs1");
-	// expect(signed.signatures.hs1).toBeObject();
-	// expect(signed.signatures.hs1).toHaveProperty("ed25519:a_HDhg");
-	// expect(signed.signatures.hs1["ed25519:a_HDhg"]).toBeString();
-	// expect(signed.signatures.hs1["ed25519:a_HDhg"]).toBe(
+	// expect(signed).toHaveProperty(
+	// 	"signatures.hs1.ed25519:a_HDhg",
 	// 	"rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg",
 	// );
+	//
 	// const eventId = generateId(signed);
+	//
 	// expect(eventId).toBe(finalEventId);
 });
