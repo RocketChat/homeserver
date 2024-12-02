@@ -8,9 +8,8 @@ import { computeHash, generateId } from "../../authentication";
 import { makeUnsignedRequest } from "../../makeRequest";
 import { pruneEventDict } from "../../pruneEventDict";
 
-export const fakeEndpoints = new Elysia({ prefix: "/fake" }).post(
-	"/sendMessage",
-	async ({ body, error }) => {
+export const fakeEndpoints = new Elysia({ prefix: "/fake" })
+	.post("/sendMessage", async ({ body, error }) => {
 		const { depth = 13, sender, roomId, msg, target } = body as any;
 
 		const { events } = await import("../../mongodb");
@@ -96,5 +95,50 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" }).post(
 		console.log("response ->", responseMake);
 
 		return responseMake;
-	},
-);
+	})
+	.post("/createRoom", async ({ body, error }) => {
+		const { username, sender } = body as any;
+
+		const event = {
+			auth_events: [],
+			prev_events: [],
+			type: "m.room.create",
+			depth: 1,
+			content: {},
+			origin: config.name,
+			origin_server_ts: Date.now(),
+			// room_id: roomId,
+			sender,
+		};
+
+		const payload = {
+			origin: config.name,
+			origin_server_ts: Date.now(),
+			pdus: [
+				{
+					...(await signJson(
+						pruneEventDict(computeHash(event)),
+						config.signingKey[0],
+						config.name,
+					)),
+					...event,
+				},
+			],
+		};
+		console.log("payload ->", payload);
+
+		const response = await makeUnsignedRequest({
+			method: "PUT",
+			domain: username.split(":").pop(),
+			uri: `/_matrix/federation/v1/send/${Date.now()}`,
+			options: {
+				body: payload,
+			},
+		});
+
+		console.log(response.status);
+		const responseMake = await response.json();
+		console.log("response ->", responseMake);
+
+		return responseMake;
+	});
