@@ -11,15 +11,11 @@ import { pruneEventDict } from "../../pruneEventDict";
 export const fakeEndpoints = new Elysia({ prefix: "/fake" }).post(
 	"/sendMessage",
 	async ({ body }) => {
-		const { depth = 13, sender, roomId, msg, target } = body as any;
+		const { auth_events, prev_events, depth = 13, sender, roomId, msg, target } = body as any;
 
 		const event = {
-			auth_events: [
-				"$2gJHmpNm-I1k4ZBjgWRMssnquEsxqbuvTjdrIG6kMQM", // create
-				"$RTPGcee2yI2NPRxt4RxA_4lWJ2wpbddkRw5ujkA5S3A", // power_levels
-				"$jmfyOatzZynPKLl6e8ekkkXZq7IM8_zACjOfBcdDNXM", // member
-			],
-			prev_events: ["$v9LrPeYOP3T1NKtk0PO-9lYypnFrxK-wlvJSuOs5pfE"],
+			auth_events,
+			prev_events,
 			type: "m.room.message",
 			depth,
 			content: {
