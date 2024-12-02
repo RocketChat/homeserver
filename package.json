@@ -5,7 +5,8 @@
 	"type": "module",
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"husky": "^9.1.7"
 	},
 	"peerDependencies": {
 		"typescript": "^5.0.0"
@@ -17,5 +18,10 @@
 		"mongodb": "^6.11.0",
 		"node-jsonwebtoken": "^0.0.1",
 		"tweetnacl": "^1.0.3"
+	},
+	"husky": {
+		"hooks": {
+		"pre-commit": "bun test"
 	}
+  }
 }
