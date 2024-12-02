@@ -64,7 +64,16 @@ export const inviteEndpoint = new Elysia().put(
 
 			const responseBody = await responseSend.json();
 
-			console.log("send_join ->", responseBody);
+			if (responseBody[0] === 200 && responseBody[1]) {
+				if (responseBody[1].event) {
+					await events.insertOne(responseBody[1].event);
+				}
+				if (responseBody[1].state?.length) {
+					await events.insertMany(responseBody[1].state);
+				}
+			}
+
+			console.log("send_join ->", { responseBody });
 		}, 1000);
 
 		return { event: body.event };

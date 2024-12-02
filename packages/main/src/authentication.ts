@@ -6,6 +6,7 @@ import {
 	type EncryptionValidAlgorithm,
 	signJson,
 } from "./signJson";
+import { pruneEventDict } from "./pruneEventDict";
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,
@@ -91,7 +92,9 @@ export function computeHash<T extends object>(
 
 export function generateId<T extends object>(content: T): string {
 	// remove the fields that are not part of the hash
-	const { age_ts, unsigned, signatures, ...toHash } = content as any;
+	const { age_ts, unsigned, signatures, ...toHash } = pruneEventDict(
+		content as any,
+	);
 
 	return `\$${toUnpaddedBase64(
 		crypto.createHash("sha256").update(encodeCanonicalJson(toHash)).digest(),

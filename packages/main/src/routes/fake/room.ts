@@ -4,18 +4,57 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { config } from "../../config";
 import { signJson } from "../../signJson";
-import { authorizationHeaders, computeHash } from "../../authentication";
+import { computeHash, generateId } from "../../authentication";
 import { makeUnsignedRequest } from "../../makeRequest";
 import { pruneEventDict } from "../../pruneEventDict";
+import { events } from "../../mongodb";
 
 export const fakeEndpoints = new Elysia({ prefix: "/fake" }).post(
 	"/sendMessage",
-	async ({ body }) => {
-		const { auth_events, prev_events, depth = 13, sender, roomId, msg, target } = body as any;
+	async ({ body, error }) => {
+		const { depth = 13, sender, roomId, msg, target } = body as any;
+
+		const create = await events.findOne({
+			room_id: roomId,
+			type: "m.room.create",
+		});
+
+		// const powerLevels = await events.findOne({
+		// 	room_id: roomId,
+		// 	type: "m.room.power_levels",
+		// });
+
+		const member = await events.findOne({
+			room_id: roomId,
+			type: "m.room.member",
+			"content.membership": "join",
+		});
+
+		const [last] = await events
+			.find(
+				{
+					room_id: roomId,
+				},
+				{ sort: { origin_server_ts: -1 }, limit: 1 },
+			)
+			.toArray();
+
+		if (!create || !member || !last) {
+			return error(400, "Invalid room_id");
+		}
+
+		create.event_id = generateId(create);
+		member.event_id = generateId(member);
+		last.event_id = generateId(last);
+		// powerLevels.event_id = generateId(powerLevels);
 
 		const event = {
-			auth_events,
-			prev_events,
+			auth_events: [
+				create.event_id,
+				// powerLevels.event_id,
+				member.event_id,
+			],
+			prev_events: [last.event_id],
 			type: "m.room.message",
 			depth,
 			content: {

@@ -1,6 +1,6 @@
-import { authorizationHeaders, computeHash } from './authentication';
-import { config } from './config';
-import { signJson } from './signJson';
+import { authorizationHeaders, computeHash } from "./authentication";
+import { config } from "./config";
+import { signJson } from "./signJson";
 
 export const makeRequest = async ({
 	method,

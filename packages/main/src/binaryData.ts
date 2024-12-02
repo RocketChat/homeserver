@@ -36,5 +36,5 @@ export function toUnpaddedBase64(
 
 	if (!options.urlSafe) return hash;
 
-	return hash.replace(/\+/, "-").replace(/\//, "_");
+	return hash.replace(/\+/g, "-").replace(/\//g, "_");
 }
