@@ -4,6 +4,7 @@ import { roomCreateEvent } from "./m.room.create";
 import { generateKeyPairs } from "../keys";
 import { generateId } from "../authentication";
 import { signEvent } from "../signEvent";
+import { roomMemberEvent } from "./m.room.member";
 
 const finalEventId = "$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8";
 const finalEvent = {
@@ -27,28 +28,42 @@ const finalEvent = {
 	unsigned: { age_ts: 1733107418672 },
 };
 
-test.todo("roomMemberEvent", async () => {
-	// const [signature] = await generateKeyPairs(
-	// 	Uint8Array.from(atob("WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw"), (c) =>
-	// 		c.charCodeAt(0),
-	// 	),
-	// );
-	// const event = roomCreateEvent({
-	// 	roomId: "!uTqsSSWabZzthsSCNf:hs1",
-	// 	sender: "@admin:hs1",
-	// 	ts: 1733107418648,
-	// });
-	// const signed = await signEvent(event, signature, "a_HDhg");
-	// expect(signed).toStrictEqual(finalEvent);
-	// expect(signed).toHaveProperty("signatures");
-	// expect(signed.signatures).toBeObject();
-	// expect(signed.signatures).toHaveProperty("hs1");
-	// expect(signed.signatures.hs1).toBeObject();
-	// expect(signed.signatures.hs1).toHaveProperty("ed25519:a_HDhg");
-	// expect(signed.signatures.hs1["ed25519:a_HDhg"]).toBeString();
-	// expect(signed.signatures.hs1["ed25519:a_HDhg"]).toBe(
-	// 	"rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg",
-	// );
-	// const eventId = generateId(signed);
-	// expect(eventId).toBe(finalEventId);
+test("roomMemberEvent", async () => {
+	const [signature] = await generateKeyPairs(
+		Uint8Array.from(atob("WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw"), (c) =>
+			c.charCodeAt(0),
+		),
+	);
+	const createEvent = roomCreateEvent({
+		roomId: "!uTqsSSWabZzthsSCNf:hs1",
+		sender: "@admin:hs1",
+		ts: 1733107418648,
+	});
+	const signedCreateEvent = await signEvent(createEvent, signature, "a_HDhg");
+
+	const createEventId = generateId(signedCreateEvent);
+	const memberEvent = roomMemberEvent({
+		roomId: "!uTqsSSWabZzthsSCNf:hs1",
+		sender: "@admin:hs1",
+		ts: 1733107418672,
+		depth: 2,
+		auth_events: [createEventId],
+		prev_events: [createEventId],
+	})
+	const signedMemberEvent = await signEvent(memberEvent, signature, "a_HDhg");
+
+	expect(signedMemberEvent).toStrictEqual(finalEvent);
+	expect(signedMemberEvent).toHaveProperty("signatures");
+	expect(signedMemberEvent.signatures).toBeObject();
+	expect(signedMemberEvent.signatures).toHaveProperty("hs1");
+	expect(signedMemberEvent.signatures.hs1).toBeObject();
+	expect(signedMemberEvent.signatures.hs1).toHaveProperty("ed25519:a_HDhg");
+	expect(signedMemberEvent.signatures.hs1["ed25519:a_HDhg"]).toBeString();
+	expect(signedMemberEvent.signatures.hs1["ed25519:a_HDhg"]).toBe(
+		"y/qV5T9PeXvqgwRafZDSygtk4XRMstdt04qusZWJSu77Juxzzz4Ijyk+JsJ5NNV0/WWYMT9IhmVb7/EEBH4vDQ",
+	);
+
+	const memberEventId = generateId(signedMemberEvent);
+
+	expect(memberEventId).toBe(finalEventId);
 });
