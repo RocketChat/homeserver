@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 
-import { roomCreateEvent } from "./m.room.create";
 import { generateKeyPairs } from "../keys";
 import { generateId } from "../authentication";
 import { signEvent } from "../signEvent";
+import { roomHistoryVisibilityEvent } from "./m.room.history_visibility";
 
 const finalEventId = "$a4hYydlvVc738DgFJA4hDHaIl_umBkHSV_efweAO5PE";
 const finalEvent = {
@@ -31,28 +31,35 @@ const finalEvent = {
 	unsigned: { age_ts: 1733107418720 },
 };
 
-test.todo("roomHistoryVisibilityEvent", async () => {
-	// const [signature] = await generateKeyPairs(
-	// 	Uint8Array.from(atob("WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw"), (c) =>
-	// 		c.charCodeAt(0),
-	// 	),
-	// );
-	//
-	// const event = roomCreateEvent({
-	// 	roomId: "!uTqsSSWabZzthsSCNf:hs1",
-	// 	sender: "@admin:hs1",
-	// 	ts: 1733107418648,
-	// });
-	//
-	// const signed = await signEvent(event, signature, "a_HDhg");
-	//
-	// expect(signed).toStrictEqual(finalEvent);
-	// expect(signed).toHaveProperty(
-	// 	"signatures.hs1.ed25519:a_HDhg",
-	// 	"rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg",
-	// );
-	//
-	// const eventId = generateId(signed);
-	//
-	// expect(eventId).toBe(finalEventId);
+test("roomHistoryVisibilityEvent", async () => {
+	const [signature] = await generateKeyPairs(
+		Uint8Array.from(atob("WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw"), (c) =>
+			c.charCodeAt(0),
+		),
+	);
+
+	const event = roomHistoryVisibilityEvent({
+		roomId: "!uTqsSSWabZzthsSCNf:hs1",
+		auth_events: [
+			"$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE",
+			"$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4",
+			"$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8",
+		],
+		prev_events: ["$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4"],
+		depth: 5,
+		sender: "@admin:hs1",
+		ts: 1733107418720,
+	});
+
+	const signed = await signEvent(event, signature, "a_HDhg");
+
+	expect(signed).toStrictEqual(finalEvent);
+	expect(signed).toHaveProperty(
+		"signatures.hs1.ed25519:a_HDhg",
+		"ZHzOfPU2BYDilKSrt5zqMBC9ohZtHph4uLldOIzBY/oTO1pZCp3D9CRr04h5eJ7zkkuzkNv4y8+N0TDPNMHFBg",
+	);
+
+	const eventId = generateId(signed);
+
+	expect(eventId).toBe(finalEventId);
 });
