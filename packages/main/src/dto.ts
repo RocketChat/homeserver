@@ -27,8 +27,6 @@ export const UserIDDTO = t.String({
 	format: "user_id",
 	maxLength: MAX_USER_ID_LENGTH,
 	error: "Invalid user ID format. Must be in the format '@localpart:domain'",
-	description:
-		"The user ID to query. Must be a user local to the receiving homeserver.",
 });
 
 export const KeysDTO = t.Object(
