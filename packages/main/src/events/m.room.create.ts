@@ -1,3 +1,5 @@
+import { createEventBase } from "./eventBase";
+
 export const roomCreateEvent = ({
 	roomId,
 	sender,
@@ -8,19 +10,20 @@ export const roomCreateEvent = ({
 	ts?: number;
 }) => {
 	return {
-		auth_events: [],
-		prev_events: [],
-		type: "m.room.create",
-		room_id: roomId,
-		sender: sender,
-		content: {
-			room_version: "10",
-			creator: sender,
-		},
-		depth: 1,
-		state_key: "",
-		origin: sender.split(":").pop(),
-		origin_server_ts: ts,
-		unsigned: { age_ts: ts },
+		...createEventBase<{ room_version: string; creator: string; }, {}>({
+			roomId,
+			sender,
+			auth_events: [],
+			prev_events: [],
+			depth: 1,
+			type: "m.room.create",
+			content: {
+				room_version: "10",
+				creator: sender,
+			},
+			state_key: "",
+			origin_server_ts: ts,
+			unsigned: { age_ts: ts },
+		}),
 	};
 };

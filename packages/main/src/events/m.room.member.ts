@@ -1,3 +1,5 @@
+import { createEventBase } from "./eventBase";
+
 export const roomMemberEvent = ({
     roomId,
     sender,
@@ -13,20 +15,26 @@ export const roomMemberEvent = ({
     depth: number;
     ts?: number;
 }) => {
+    const displayname = sender.split(":").shift()?.replaceAll('@', '');
+    if (!displayname) {
+        throw new Error("Invalid sender");
+    }
+
     return {
-        auth_events,
-        prev_events,
-        type: "m.room.member",
-        room_id: roomId,
-        sender,
-        content: {
-            displayname: sender.split(":").shift()?.replaceAll('@', ''),
-            membership: "join",
-        },
-        depth,
-        state_key: sender,
-        origin: sender.split(":").pop(),
-        origin_server_ts: ts,
-        unsigned: { age_ts: ts },
+        ...createEventBase<{ displayname: string; membership: string; }, {}>({
+            roomId,
+            sender,
+            auth_events,
+            prev_events,
+            depth,
+            type: "m.room.member",
+            content: {
+                displayname,
+                membership: "join",
+            },
+            state_key: sender,
+            origin_server_ts: ts,
+            unsigned: { age_ts: ts },
+        }),
     };
 };

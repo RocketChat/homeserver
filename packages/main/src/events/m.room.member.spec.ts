@@ -62,3 +62,16 @@ test("roomMemberEvent", async () => {
 
 	expect(memberEventId).toBe(finalEventId);
 });
+
+test("roomMemberEvent - should throw an error when displayname is invalid", async () => {
+
+	expect(() => roomMemberEvent({
+		roomId: "!uTqsSSWabZzthsSCNf:hs1",
+		sender: "",
+		ts: 1733107418672,
+		depth: 2,
+		auth_events: [],
+		prev_events: [],
+	})).toThrowError("Invalid sender");
+	
+});
