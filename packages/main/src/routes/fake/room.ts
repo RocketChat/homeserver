@@ -7,12 +7,13 @@ import { signJson } from "../../signJson";
 import { computeHash, generateId } from "../../authentication";
 import { makeUnsignedRequest } from "../../makeRequest";
 import { pruneEventDict } from "../../pruneEventDict";
-import { events } from "../../mongodb";
 
 export const fakeEndpoints = new Elysia({ prefix: "/fake" }).post(
 	"/sendMessage",
 	async ({ body, error }) => {
 		const { depth = 13, sender, roomId, msg, target } = body as any;
+
+		const { events } = await import("../../mongodb");
 
 		const create = await events.findOne({
 			room_id: roomId,

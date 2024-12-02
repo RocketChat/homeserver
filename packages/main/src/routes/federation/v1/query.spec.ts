@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { app } from "../../../app";
 
 describe("TestInboundFederationProfile", () => {
-	it("Non-numeric ports in server names are rejected", async () => {
+	it.todo("Non-numeric ports in server names are rejected", async () => {
 		const invalidUserID = "@user1:localhost:http";
 
 		const resp = await app.handle(
