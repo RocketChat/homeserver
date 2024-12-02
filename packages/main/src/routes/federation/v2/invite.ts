@@ -8,7 +8,7 @@ import { signJson } from "../../../signJson";
 import { InviteEventDTO } from "../../../dto";
 import { StrippedStateDTO } from "../../../dto";
 import { ErrorDTO } from "../../../dto";
-// import { events } from "../../../mongodb";
+import { events } from "../../../mongodb";
 
 export const inviteEndpoint = new Elysia().put(
 	"/invite/:roomId/:eventId",
