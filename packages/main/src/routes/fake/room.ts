@@ -2,19 +2,19 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { config } from "../../config";
-import { signJson } from "../../signJson";
+import Crypto from "node:crypto";
 import { computeHash, generateId } from "../../authentication";
-import { makeUnsignedRequest } from "../../makeRequest";
-import { pruneEventDict } from "../../pruneEventDict";
+import { config } from "../../config";
 import { roomCreateEvent } from "../../events/m.room.create";
-import { signEvent } from "../../signEvent";
+import { roomGuestAccessEvent } from "../../events/m.room.guest_access";
+import { roomHistoryVisibilityEvent } from "../../events/m.room.history_visibility";
+import { roomJoinRulesEvent } from "../../events/m.room.join_rules";
 import { roomMemberEvent } from "../../events/m.room.member";
 import { roomPowerLevelsEvent } from "../../events/m.room.power_levels";
-import { roomJoinRulesEvent } from "../../events/m.room.join_rules";
-import { roomHistoryVisibilityEvent } from "../../events/m.room.history_visibility";
-import { roomGuestAccessEvent } from "../../events/m.room.guest_access";
-import Crypto from "node:crypto";
+import { makeUnsignedRequest } from "../../makeRequest";
+import { pruneEventDict } from "../../pruneEventDict";
+import { signEvent } from "../../signEvent";
+import { signJson } from "../../signJson";
 
 // TODO: Move this to an appropriate file
 function createMediaId(length: number) {

@@ -3,8 +3,8 @@ import { Elysia } from "elysia";
 import { toUnpaddedBase64 } from "../../binaryData";
 import { cache } from "../../cache";
 import { config } from "../../config";
-import { signJson } from "../../signJson";
 import { KeysDTO } from "../../dto";
+import { signJson } from "../../signJson";
 
 export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
 	"/server",

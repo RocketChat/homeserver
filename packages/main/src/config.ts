@@ -1,4 +1,4 @@
-import { getKeyPair, type SigningKey } from "./keys";
+import { type SigningKey, getKeyPair } from "./keys";
 import { type EncryptionValidAlgorithm, signText } from "./signJson";
 
 export interface Config {

@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 
 import { toUnpaddedBase64 } from "./binaryData";
+import type { SigningKey } from "./keys";
+import { pruneEventDict } from "./pruneEventDict";
 import {
-	encodeCanonicalJson,
 	type EncryptionValidAlgorithm,
+	encodeCanonicalJson,
 	signJson,
 } from "./signJson";
-import { pruneEventDict } from "./pruneEventDict";
-import type { SigningKey } from "./keys";
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,

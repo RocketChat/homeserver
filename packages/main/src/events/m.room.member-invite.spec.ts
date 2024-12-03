@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
 
-import { roomCreateEvent } from "./m.room.create";
-import { generateKeyPairs } from "../keys";
 import { generateId } from "../authentication";
+import { generateKeyPairs } from "../keys";
 import { signEvent } from "../signEvent";
+import { roomCreateEvent } from "./m.room.create";
 
 const finalEventId = "$GAcbc4lUMhfCAWFZxoVZ6Pmzhcea1zKoY92ji4LjMqk";
 const finalEvent = {

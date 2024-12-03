@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
-import { generateKeyPairsFromString } from "../keys";
 import { generateId } from "../authentication";
+import { generateKeyPairsFromString } from "../keys";
 import { signEvent } from "../signEvent";
 import { roomPowerLevelsEvent } from "./m.room.power_levels";
 
