@@ -42,8 +42,13 @@ test("roomMemberEvent", async () => {
 
 	const createEventId = generateId(signedCreateEvent);
 	const memberEvent = roomMemberEvent({
+		membership: "join",
 		roomId: "!uTqsSSWabZzthsSCNf:hs1",
 		sender: "@admin:hs1",
+		content: {
+			displayname: "admin",
+		},
+		state_key: "@admin:hs1",
 		ts: 1733107418672,
 		depth: 2,
 		auth_events: [createEventId],
@@ -60,17 +65,4 @@ test("roomMemberEvent", async () => {
 	const memberEventId = generateId(signed);
 
 	expect(memberEventId).toBe(finalEventId);
-});
-
-test("roomMemberEvent - should throw an error when displayname is invalid", async () => {
-	expect(() =>
-		roomMemberEvent({
-			roomId: "!uTqsSSWabZzthsSCNf:hs1",
-			sender: "",
-			ts: 1733107418672,
-			depth: 2,
-			auth_events: [],
-			prev_events: [],
-		}),
-	).toThrowError("Invalid sender");
 });

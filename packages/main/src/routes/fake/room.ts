@@ -59,6 +59,11 @@ const createRoom = async (sender: string, username: string) => {
 			roomId,
 			sender,
 			depth: 2,
+			membership: "join",
+			content: {
+				displayname: sender.split(":")[0].replace("@", ""),
+			},
+			state_key: sender,
 			auth_events: [createEventId],
 			prev_events: [createEventId],
 		}),
@@ -350,23 +355,40 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			const lastEvent = events[events.length - 1].event as any; //TODO: fix typing
 
 			const inviteEvent = await signEvent(
-				{
+				roomMemberEvent({
 					auth_events: lastEvent.auth_events,
-					type: "m.room.member",
-					content: {
-						membership: "invite",
-					},
+					membership: "invite",
 					depth: lastEvent.depth + 1,
-					origin: lastEvent.origin,
-					origin_server_ts: Date.now(),
+					// origin: lastEvent.origin,
+					roomId,
+					ts: Date.now(),
 					prev_events: [lastEventId],
-					room_id: roomId,
 					sender: events[0].event.sender,
 					state_key: username,
 					unsigned: {
 						age: 4, // TODO: Check what this is
+						invite_room_state: [
+							{
+								content: {},
+								sender: events[0].event.sender,
+								state_key: "",
+								type: "m.room.join_rules",
+							},
+							{
+								content: {},
+								sender: events[0].event.sender,
+								state_key: "",
+								type: "m.room.create",
+							},
+							{
+								content: {},
+								sender: events[0].event.sender,
+								state_key: events[0].event.sender,
+								type: "m.room.member",
+							},
+						],
 					},
-				},
+				}),
 				config.signingKey[0],
 			);
 
@@ -380,26 +402,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 
 			const payload = {
 				event: inviteEvent,
-				invite_room_state: [
-					{
-						content: {},
-						sender: events[0].event.sender,
-						state_key: "",
-						type: "m.room.join_rules",
-					},
-					{
-						content: {},
-						sender: events[0].event.sender,
-						state_key: "",
-						type: "m.room.create",
-					},
-					{
-						content: {},
-						sender: events[0].event.sender,
-						state_key: events[0].event.sender,
-						type: "m.room.member",
-					},
-				],
+				invite_room_state: inviteEvent.unsigned.invite_room_state,
 				room_version: "10",
 			};
 
@@ -409,7 +412,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 
 			const response = await makeUnsignedRequest({
 				method: "PUT",
-				domain: username.split(":").pop(),
+				domain: username.split(":").pop() as string,
 				uri: `/_matrix/federation/v2/invite/${roomId}/${inviteEventId}`,
 				options: {
 					body: payload,

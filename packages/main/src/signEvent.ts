@@ -15,5 +15,6 @@ export const signEvent = async (
 			signingName,
 		)),
 		content: event.content,
+		unsigned: event.unsigned,
 	};
 };
