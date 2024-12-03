@@ -15,6 +15,8 @@ export const inviteEndpoint = new Elysia().put(
 	async ({ params, body }) => {
 		const { events } = await import("../../mongodb");
 
+		console.log("invite ->", { params, body });
+
 		await events.insertOne(body.event);
 
 		setTimeout(async () => {

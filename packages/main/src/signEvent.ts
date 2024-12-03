@@ -5,7 +5,7 @@ import { EncryptionValidAlgorithm, signJson, signText } from "./signJson";
 
 export const signEvent = async (event, signature: SigningKey) => {
 	return {
-		...(await signJson(pruneEventDict(computeHash(event)), signature, "hs1")),
+		...(await signJson(pruneEventDict(computeHash(event)), signature)),
 		content: event.content,
 	};
 };

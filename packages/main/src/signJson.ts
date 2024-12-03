@@ -1,6 +1,7 @@
 import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 import type { SigningKey } from "./keys";
+import { config } from "./config";
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = "ed25519",
@@ -16,7 +17,7 @@ export async function signJson<
 >(
 	jsonObject: T,
 	signingKey: SigningKey,
-	signingName: string,
+	signingName?: string,
 ): Promise<
 	T & {
 		signatures: Record<string, Record<ProtocolVersionKey, string>>;
@@ -29,10 +30,12 @@ export async function signJson<
 
 	const signed = await signingKey.sign(toBinaryData(data));
 
-	const signature = signatures[signingName] || {};
+	const name = signingName || config.name;
+
+	const signature = signatures[name] || {};
 
 	Object.assign(signatures, {
-		[signingName]: {
+		[name]: {
 			...signature,
 			[keyId]: toUnpaddedBase64(signed),
 		},
