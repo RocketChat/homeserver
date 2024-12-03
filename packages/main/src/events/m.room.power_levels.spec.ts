@@ -68,7 +68,7 @@ test("roomPowerLevelsEvent", async () => {
 		ts: 1733107418713,
 	});
 
-	const signed = await signEvent(event, signature);
+	const signed = await signEvent(event, signature, "hs1");
 
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(

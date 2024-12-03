@@ -49,7 +49,7 @@ test("roomMemberEvent", async () => {
 		auth_events: [createEventId],
 		prev_events: [createEventId],
 	});
-	const signed = await signEvent(memberEvent, signature);
+	const signed = await signEvent(memberEvent, signature, "hs1");
 
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
