@@ -85,7 +85,7 @@ describe("verifySignaturesFromRemote", async () => {
 				await verifySignaturesFromRemote(
 					{
 						signatures: {
-							["differentServer"]: {
+							differentServer: {
 								[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: "invalid",
 							},
 						},

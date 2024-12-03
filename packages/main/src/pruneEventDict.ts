@@ -40,7 +40,7 @@ export function pruneEventDict(
 	 * @returns A copy of the pruned event dictionary.
 	 */
 
-	const eventType = eventDict["type"];
+	const eventType = eventDict.type;
 
 	const allowedKeys = [
 		"event_id",
@@ -64,7 +64,7 @@ export function pruneEventDict(
 	const content: JsonDict = {};
 
 	if (roomVersion.msc3389_relation_redactions) {
-		const relatesTo = eventDict["content"]?.["m.relates_to"];
+		const relatesTo = eventDict.content?.["m.relates_to"];
 		if (relatesTo && typeof relatesTo === "object") {
 			const newRelatesTo: JsonDict = {};
 			for (const field of ["rel_type", "event_id"]) {
@@ -83,20 +83,20 @@ export function pruneEventDict(
 	);
 
 	const unsigned: JsonDict = {};
-	allowedFields["unsigned"] = unsigned;
+	allowedFields.unsigned = unsigned;
 
-	const eventUnsigned = eventDict["unsigned"] || {};
+	const eventUnsigned = eventDict.unsigned || {};
 	if ("age_ts" in eventUnsigned) {
-		unsigned["age_ts"] = eventUnsigned["age_ts"];
+		unsigned.age_ts = eventUnsigned.age_ts;
 	}
 	if ("replaces_state" in eventUnsigned) {
-		unsigned["replaces_state"] = eventUnsigned["replaces_state"];
+		unsigned.replaces_state = eventUnsigned.replaces_state;
 	}
 
 	function addFields(...fields: string[]): void {
 		for (const field of fields) {
-			if (field in eventDict["content"]) {
-				content[field] = eventDict["content"][field];
+			if (field in eventDict.content) {
+				content[field] = eventDict.content[field];
 			}
 		}
 	}
@@ -112,11 +112,11 @@ export function pruneEventDict(
 		addFields(...contentKeys);
 
 		if (roomVersion.updated_redaction_rules) {
-			const thirdPartyInvite = eventDict["content"]?.["third_party_invite"];
+			const thirdPartyInvite = eventDict.content?.third_party_invite;
 			if (thirdPartyInvite && typeof thirdPartyInvite === "object") {
-				content["third_party_invite"] = {};
+				content.third_party_invite = {};
 				if ("signed" in thirdPartyInvite) {
-					content["third_party_invite"]["signed"] = thirdPartyInvite["signed"];
+					content.third_party_invite.signed = thirdPartyInvite.signed;
 				}
 			}
 		}
@@ -126,7 +126,7 @@ export function pruneEventDict(
 		if (roomVersion.updated_redaction_rules) {
 			return {
 				...allowedFields,
-				content: eventDict["content"],
+				content: eventDict.content,
 			};
 		}
 		if (!roomVersion.implicit_room_creator) {
