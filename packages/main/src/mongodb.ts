@@ -10,4 +10,4 @@ const client: MongoClient = await MongoClient.connect(MONGODB_URI);
 
 const db = client.db(MONGODB_URI.split("/").pop());
 
-export const events = db.collection("events");
+export const eventsCollection = db.collection("events");

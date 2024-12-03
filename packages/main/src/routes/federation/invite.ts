@@ -13,11 +13,11 @@ import { ErrorDTO } from "../../dto";
 export const inviteEndpoint = new Elysia().put(
 	"/invite/:roomId/:eventId",
 	async ({ params, body }) => {
-		const { events } = await import("../../mongodb");
+		const { eventsCollection } = await import("../../mongodb");
 
 		console.log("invite ->", { params, body });
 
-		await events.insertOne(body.event);
+		await eventsCollection.insertOne(body.event);
 
 		setTimeout(async () => {
 			const { event } = body;
@@ -70,10 +70,10 @@ export const inviteEndpoint = new Elysia().put(
 
 			if (responseBody[0] === 200 && responseBody[1]) {
 				if (responseBody[1].event) {
-					await events.insertOne(responseBody[1].event);
+					await eventsCollection.insertOne(responseBody[1].event);
 				}
 				if (responseBody[1].state?.length) {
-					await events.insertMany(responseBody[1].state);
+					await eventsCollection.insertMany(responseBody[1].state);
 				}
 			}
 
