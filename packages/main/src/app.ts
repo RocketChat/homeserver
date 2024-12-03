@@ -2,11 +2,10 @@ import { Elysia } from "elysia";
 import { logger } from "@bogeychan/elysia-logger";
 import { config } from "./config";
 
-import { keyV2Endpoints } from "./routes/key/v2";
-import { federationV1Endpoints } from "./routes/federation/v1";
-import { federationV2Endpoints } from "./routes/federation/v2";
+import { keyV2Endpoints } from "./routes/key/server";
 import { fakeEndpoints } from "./routes/fake/room";
 import { BadJSONError, MatrixError } from "./errors";
+import { federationV1Endpoints, federationV2Endpoints } from "./routes/federation";
 
 export const app = new Elysia({
 	name: config.name,

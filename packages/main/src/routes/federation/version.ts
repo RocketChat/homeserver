@@ -1,5 +1,5 @@
 import Elysia, { t } from "elysia";
-import { config } from "../../../config";
+import { config } from "../../config";
 
 export const versionEndpoints = new Elysia().get(
 	"/version",

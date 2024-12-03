@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { UserIDDTO } from "../../../dto";
+import { UserIDDTO } from "../../dto";
 
 export const queryEndpoints = new Elysia().get(
 	"/query/profile",

@@ -2,18 +2,18 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { makeRequest } from "../../../makeRequest";
-import { config } from "../../../config";
-import { signJson } from "../../../signJson";
-import { InviteEventDTO } from "../../../dto";
-import { StrippedStateDTO } from "../../../dto";
-import { ErrorDTO } from "../../../dto";
+import { makeRequest } from "../../makeRequest";
+import { config } from "../../config";
+import { signJson } from "../../signJson";
+import { InviteEventDTO } from "../../dto";
+import { StrippedStateDTO } from "../../dto";
+import { ErrorDTO } from "../../dto";
 //import { events } from "../../../mongodb";
 
 export const inviteEndpoint = new Elysia().put(
 	"/invite/:roomId/:eventId",
 	async ({ params, body }) => {
-		const { events } = await import("../../../mongodb");
+		const { events } = await import("../../mongodb");
 
 		await events.insertOne(body.event);
 

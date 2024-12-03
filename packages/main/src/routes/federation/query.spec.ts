@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { app } from "../../../app";
+import { app } from "../../app";
 
 describe("TestInboundFederationProfile", () => {
 	it.todo("Non-numeric ports in server names are rejected", async () => {
