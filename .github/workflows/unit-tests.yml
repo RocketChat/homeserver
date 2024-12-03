@@ -24,4 +24,5 @@ jobs:
 
       # run any `bun` or `bunx` command
       - run: bun install
+      - run: bun lint
       - run: bun test
