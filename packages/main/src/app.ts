@@ -5,7 +5,7 @@ import { config } from "./config";
 import { keyV2Endpoints } from "./routes/key/server";
 import { fakeEndpoints } from "./routes/fake/room";
 import { BadJSONError, MatrixError } from "./errors";
-import { federationV1Endpoints, federationV2Endpoints } from "./routes/federation";
+import federationEndpoints from "./routes/federation";
 
 export const app = new Elysia({
 	name: config.name,
@@ -32,8 +32,7 @@ export const app = new Elysia({
 		}),
 	)
 	.use(keyV2Endpoints)
-	.use(federationV2Endpoints)
-	.use(federationV1Endpoints)
+	.use(federationEndpoints)
 	.use(fakeEndpoints)
 	.onError(async ({ code }) => {
 		if (code === "NOT_FOUND") {

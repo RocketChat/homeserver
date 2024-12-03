@@ -3,8 +3,9 @@ import { Elysia } from "elysia";
 import { queryEndpoints } from "./query";
 import { usersEndpoints } from "./users";
 import { versionEndpoints } from "./version";
+import { inviteEndpoint } from "./invite";
 
-export const federationV1Endpoints = new Elysia({
+const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
 })
 	.use(versionEndpoints)
@@ -20,9 +21,9 @@ export const federationV1Endpoints = new Elysia({
 	});
 
 
-
-import { inviteEndpoint } from "./invite";
-
-export const federationV2Endpoints = new Elysia({
+const federationV2Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v2",
 }).use(inviteEndpoint);
+
+
+export default new Elysia().use(federationV1Endpoints).use(federationV2Endpoints);
