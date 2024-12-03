@@ -25,6 +25,9 @@
 		}
 	},
 	"scripts": {
-		"prepare": "husky"
+		"prepare": "husky",
+		"start": "bun run index.ts",
+		"test": "bun test",
+		"lint": "bunx @biomejs/biome lint"
 	}
 }
