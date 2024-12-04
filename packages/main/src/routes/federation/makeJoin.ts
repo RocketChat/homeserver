@@ -78,7 +78,7 @@ export const makeJoinEndpoint = new Elysia().get(
 		// TODO: how to prevent duplicates?
 		await eventsCollection.insertOne({
 			_id: eventId,
-			event,
+			event: signedEvent,
 		});
 
 		return {

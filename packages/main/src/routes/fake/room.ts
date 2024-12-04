@@ -126,7 +126,7 @@ const createRoom = async (sender: string, username: string) => {
 				createEventId,
 				memberEventId,
 				powerLevelsEventId,
-				joinRulesEventId,
+				// joinRulesEventId,
 			],
 			prev_events: [joinRulesEventId],
 			depth: 5,
@@ -150,8 +150,8 @@ const createRoom = async (sender: string, username: string) => {
 				createEventId,
 				memberEventId,
 				powerLevelsEventId,
-				joinRulesEventId,
-				historyVisibilityEventId,
+				// joinRulesEventId,
+				// historyVisibilityEventId,
 			],
 			prev_events: [historyVisibilityEventId],
 			depth: 6,
@@ -209,9 +209,6 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				return error(400, "Invalid room_id");
 			}
 
-			create._id = generateId(create);
-			member._id = generateId(member);
-			last._id = generateId(last);
 			// powerLevels.event_id = generateId(powerLevels);
 
 			const event: EventBase = {
@@ -234,19 +231,18 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				sender,
 			};
 
+			const signedEvent = await signEvent(event, config.signingKey[0]);
+			const eventId = generateId(signedEvent);
+
+			await eventsCollection.insertOne({
+				_id: eventId,
+				event: signedEvent,
+			});
+
 			const payload = {
 				origin: config.name,
 				origin_server_ts: Date.now(),
-				pdus: [
-					{
-						...(await signJson(
-							pruneEventDict(computeHash(event)),
-							config.signingKey[0],
-							config.name,
-						)),
-						...event,
-					},
-				],
+				pdus: [signedEvent],
 			};
 			console.log("payload ->", payload);
 

@@ -18,17 +18,18 @@ export const sendJoinEndpoint = new Elysia().put(
 
 		const { eventsCollection } = await import("../../mongodb");
 
-		// if (!(await eventsCollection.findOne({ _id: stateKey }))) {
-		// 	await eventsCollection.insertOne({
-		// 		_id: stateKey,
-		// 		event,
-		// 	});
-		// }
-
-		const events = await eventsCollection
+		const records = await eventsCollection
 			.find({ "event.room_id": roomId }, { sort: { "event.depth": 1 } })
-			.toArray()
-			.then((events) => events.map((event) => event.event));
+			.toArray();
+
+		const events = records.map((event) => event.event);
+
+		const lastInviteEvent = records.find(
+			(record) =>
+				record.event.type === "m.room.member" &&
+				record.event.content.membership === "invite",
+			// event.state_key === stateKey,
+		);
 
 		// console.log("lastEvent ->", lastEvent);
 
@@ -36,17 +37,11 @@ export const sendJoinEndpoint = new Elysia().put(
 		const result = {
 			event: {
 				...event,
-				// TODO: Add the missing fields
-				// unsigned: {
-				// 	replaces_state: "$TuyDZggdD4aXn2dKI7_EuQwn92eZu13QoPtLlGO-0p8",
-				// 	prev_content: {
-				// 		is_direct: true,
-				// 		displayname: "@a3:rc1",
-				// 		avatar_url: "mxc://matrix.org/MyC00lAvatar",
-				// 		membership: "invite",
-				// 	},
-				// 	prev_sender: "@admin:hs1",
-				// },
+				unsigned: lastInviteEvent && {
+					replaces_state: lastInviteEvent._id,
+					prev_content: lastInviteEvent.event.content,
+					prev_sender: lastInviteEvent.event.sender,
+				},
 			},
 			state: events,
 			auth_chain: events.filter((event) => event.depth <= 4),
@@ -56,6 +51,13 @@ export const sendJoinEndpoint = new Elysia().put(
 		};
 
 		console.log("sendJoin result ->", result);
+
+		if (!(await eventsCollection.findOne({ _id: stateKey }))) {
+			await eventsCollection.insertOne({
+				_id: stateKey,
+				event,
+			});
+		}
 
 		return result;
 	},
