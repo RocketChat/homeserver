@@ -362,6 +362,9 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 					membership: "invite",
 					depth: lastEvent.depth + 1,
 					// origin: lastEvent.origin,
+					content: {
+						is_direct: true,
+					},
 					roomId,
 					ts: Date.now(),
 					prev_events: [lastEventId],
