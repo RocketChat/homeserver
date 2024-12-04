@@ -1,19 +1,33 @@
 import { computeHash } from "./authentication";
+import type { EventBase } from "./events/eventBase";
 import type { SigningKey } from "./keys";
 import { pruneEventDict } from "./pruneEventDict";
-import { EncryptionValidAlgorithm, signJson, signText } from "./signJson";
+import { signJson } from "./signJson";
 
-export const signEvent = async (
-	event,
+export type SignedEvent<T extends EventBase> = T & {
+	hashes: {
+		sha256: string;
+	};
+	signatures: {
+		[key: string]: {
+			[key: string]: string;
+		};
+	};
+};
+
+export const signEvent = async <T extends EventBase>(
+	event: T,
 	signature: SigningKey,
 	signingName?: string,
-) => {
+): Promise<SignedEvent<T>> => {
+	const s = await signJson(
+		pruneEventDict(computeHash(event)),
+		signature,
+		signingName,
+	);
+
 	return {
-		...(await signJson(
-			pruneEventDict(computeHash(event)),
-			signature,
-			signingName,
-		)),
+		...s,
 		content: event.content,
 		unsigned: event.unsigned,
 	};

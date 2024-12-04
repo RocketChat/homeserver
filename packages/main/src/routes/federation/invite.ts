@@ -7,17 +7,19 @@ import { InviteEventDTO } from "../../dto";
 import { StrippedStateDTO } from "../../dto";
 import { ErrorDTO } from "../../dto";
 import { makeRequest } from "../../makeRequest";
-import { signJson } from "../../signJson";
-//import { events } from "../../../mongodb";
+import { generateId } from "../../authentication";
 
 export const inviteEndpoint = new Elysia().put(
 	"/invite/:roomId/:eventId",
 	async ({ params, body }) => {
 		const { eventsCollection } = await import("../../mongodb");
 
-		console.log("invite ->", { params, body });
+		console.log("invite received ->", { params, body });
 
-		await eventsCollection.insertOne(body.event);
+		await eventsCollection.insertOne({
+			_id: generateId(body.event),
+			event: body.event,
+		});
 
 		setTimeout(async () => {
 			const { event } = body;
@@ -29,7 +31,7 @@ export const inviteEndpoint = new Elysia().put(
 			});
 
 			const responseMake = await response.json();
-			console.log("make_join ->", responseMake);
+			console.log("make_join response ->", responseMake);
 
 			if (responseMake.errcode) {
 				return;
@@ -55,29 +57,34 @@ export const inviteEndpoint = new Elysia().put(
 				depth: responseMake.event.depth + 1,
 			};
 
-			console.log("joinBody ->", joinBody);
+			console.log("send_join payload ->", joinBody);
 
 			const responseSend = await makeRequest({
 				method: "PUT",
 				domain: event.origin,
-				uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
+				uri: `/_matrix/federation/v2/send_join/${params.roomId}/${event.state_key}?omit_members=false`,
 				options: {
 					body: joinBody,
 				},
 			});
 
 			const responseBody = await responseSend.json();
+			console.log("send_join response ->", { responseBody });
 
-			if (responseBody[0] === 200 && responseBody[1]) {
-				if (responseBody[1].event) {
-					await eventsCollection.insertOne(responseBody[1].event);
-				}
-				if (responseBody[1].state?.length) {
-					await eventsCollection.insertMany(responseBody[1].state);
-				}
+			if (responseBody.event) {
+				await eventsCollection.insertOne({
+					_id: generateId(responseBody.event),
+					event: responseBody.event,
+				});
 			}
-
-			console.log("send_join ->", { responseBody });
+			if (responseBody.state?.length) {
+				await eventsCollection.insertMany(
+					responseBody.state.map((event) => ({
+						_id: generateId(event),
+						event,
+					})),
+				);
+			}
 		}, 1000);
 
 		return { event: body.event };

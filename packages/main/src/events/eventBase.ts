@@ -1,6 +1,31 @@
+export type EventBase<
+	C extends Record<string, unknown> = Record<string, unknown>,
+	U extends Record<string, unknown> = Record<string, unknown>,
+> = {
+	auth_events: string[];
+	prev_events: string[];
+	type:
+		| "m.room.member"
+		| "m.room.create"
+		| "m.room.join_rules"
+		| "m.room.power_levels"
+		| "m.room.aliases"
+		| "m.room.history_visibility"
+		| "m.room.redaction"
+		| string;
+	room_id: string;
+	sender: string;
+	content: C;
+	depth: number;
+	state_key: string;
+	origin: string;
+	origin_server_ts: number;
+	unsigned: U;
+};
+
 export const createEventBase = <
-	TContent extends Record<string, any> = Record<string, any>,
-	TUnsigned extends Record<string, any> = Record<string, any>,
+	TContent extends EventBase["content"],
+	TUnsigned extends EventBase["unsigned"],
 >({
 	roomId,
 	sender,
@@ -12,6 +37,7 @@ export const createEventBase = <
 	state_key = "",
 	origin_server_ts,
 	unsigned,
+	origin,
 	ts = Date.now(),
 }: {
 	roomId: string;
@@ -24,8 +50,9 @@ export const createEventBase = <
 	state_key?: string;
 	origin_server_ts: number;
 	unsigned?: TUnsigned;
+	origin?: string;
 	ts?: number;
-}) => {
+}): EventBase => {
 	if (!sender.includes(":") || !sender.includes("@")) {
 		throw new Error("Invalid sender");
 	}
@@ -43,7 +70,7 @@ export const createEventBase = <
 		},
 		depth,
 		state_key,
-		origin: sender.split(":").pop(),
+		origin: origin || (sender.split(":").pop() as string),
 		origin_server_ts,
 		unsigned: { age_ts: ts, ...unsigned },
 	};

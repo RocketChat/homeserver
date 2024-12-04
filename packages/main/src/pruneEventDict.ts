@@ -1,3 +1,5 @@
+import type { EventBase } from "./events/eventBase";
+
 interface RoomVersion {
 	updated_redaction_rules: boolean;
 	restricted_join_rule_fix: boolean;
@@ -11,19 +13,8 @@ interface JsonDict {
 	[key: string]: any;
 }
 
-export function pruneEventDict(
-	eventDict: {
-		type:
-			| "m.room.member"
-			| "m.room.create"
-			| "m.room.join_rules"
-			| "m.room.power_levels"
-			| "m.room.aliases"
-			| "m.room.history_visibility"
-			| "m.room.redaction"
-			| string;
-		[key: string]: any;
-	},
+export function pruneEventDict<T extends EventBase>(
+	eventDict: T,
 	roomVersion: RoomVersion = {
 		updated_redaction_rules: false,
 		restricted_join_rule_fix: false,
@@ -32,7 +23,7 @@ export function pruneEventDict(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): JsonDict {
+): T {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it
 	 * operates on objects rather than event instances.

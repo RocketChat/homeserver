@@ -2,6 +2,7 @@ import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 import { config } from "./config";
 import type { SigningKey } from "./keys";
+import type { EventBase } from "./events/eventBase";
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = "ed25519",
@@ -9,20 +10,19 @@ export enum EncryptionValidAlgorithm {
 
 type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
-export async function signJson<
-	T extends {
-		signatures?: Record<string, Record<string, string>>;
-		unsigned?: unknown;
-	},
->(
+export type SignedEvent<T extends EventBase> = T & {
+	signatures: {
+		[key: string]: {
+			[key: string]: string;
+		};
+	};
+};
+
+export async function signJson<T extends EventBase>(
 	jsonObject: T,
 	signingKey: SigningKey,
 	signingName?: string,
-): Promise<
-	T & {
-		signatures: Record<string, Record<ProtocolVersionKey, string>>;
-	}
-> {
+): Promise<SignedEvent<T>> {
 	const keyId: ProtocolVersionKey = `${signingKey.algorithm}:${signingKey.version}`;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
 

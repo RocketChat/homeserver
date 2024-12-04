@@ -23,7 +23,7 @@ export const makeRequest = async ({
 			config.name,
 		));
 
-	console.log("body ->", body);
+	console.log("body ->", method, domain, uri, body);
 
 	const auth = await authorizationHeaders(
 		config.name,
@@ -34,7 +34,7 @@ export const makeRequest = async ({
 		body,
 	);
 
-	console.log("auth ->", auth);
+	console.log("auth ->", method, domain, uri, auth);
 
 	return fetch(`https://${domain}${uri}`, {
 		...options,

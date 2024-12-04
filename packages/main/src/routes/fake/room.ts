@@ -15,6 +15,7 @@ import { makeUnsignedRequest } from "../../makeRequest";
 import { pruneEventDict } from "../../pruneEventDict";
 import { signEvent } from "../../signEvent";
 import { signJson } from "../../signJson";
+import type { EventBase } from "../../events/eventBase";
 
 // TODO: Move this to an appropriate file
 function createMediaId(length: number) {
@@ -49,7 +50,7 @@ const createRoom = async (sender: string, username: string) => {
 	const createEventId = generateId(createEvent);
 
 	events.push({
-		eventId: createEventId,
+		_id: createEventId,
 		event: createEvent,
 	});
 
@@ -73,7 +74,7 @@ const createRoom = async (sender: string, username: string) => {
 	const memberEventId = generateId(memberEvent);
 
 	events.push({
-		eventId: memberEventId,
+		_id: memberEventId,
 		event: memberEvent,
 	});
 
@@ -93,7 +94,7 @@ const createRoom = async (sender: string, username: string) => {
 	const powerLevelsEventId = generateId(powerLevelsEvent);
 
 	events.push({
-		eventId: powerLevelsEventId,
+		_id: powerLevelsEventId,
 		event: powerLevelsEvent,
 	});
 
@@ -112,7 +113,7 @@ const createRoom = async (sender: string, username: string) => {
 	const joinRulesEventId = generateId(joinRulesEvent);
 
 	events.push({
-		eventId: joinRulesEventId,
+		_id: joinRulesEventId,
 		event: joinRulesEvent,
 	});
 
@@ -136,7 +137,7 @@ const createRoom = async (sender: string, username: string) => {
 	const historyVisibilityEventId = generateId(historyVisibilityEvent);
 
 	events.push({
-		eventId: historyVisibilityEventId,
+		_id: historyVisibilityEventId,
 		event: historyVisibilityEvent,
 	});
 
@@ -161,8 +162,7 @@ const createRoom = async (sender: string, username: string) => {
 	const guestAccessEventId = generateId(guestAccessEvent);
 
 	events.push({
-		eventId: guestAccessEventId,
-		roomId,
+		_id: guestAccessEventId,
 		event: guestAccessEvent,
 	});
 
@@ -181,8 +181,8 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			const { eventsCollection } = await import("../../mongodb");
 
 			const create = await eventsCollection.findOne({
-				room_id: roomId,
-				type: "m.room.create",
+				"event.room_id": roomId,
+				"event.type": "m.room.create",
 			});
 
 			// const powerLevels = await eventsCollection.findOne({
@@ -191,17 +191,17 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			// });
 
 			const member = await eventsCollection.findOne({
-				room_id: roomId,
-				type: "m.room.member",
-				"content.membership": "join",
+				"event.room_id": roomId,
+				"event.type": "m.room.member",
+				"event.content.membership": "join",
 			});
 
 			const [last] = await eventsCollection
 				.find(
 					{
-						room_id: roomId,
+						"event.room_id": roomId,
 					},
-					{ sort: { origin_server_ts: -1 }, limit: 1 },
+					{ sort: { "event.origin_server_ts": -1 }, limit: 1 },
 				)
 				.toArray();
 
@@ -209,26 +209,28 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				return error(400, "Invalid room_id");
 			}
 
-			create.event_id = generateId(create);
-			member.event_id = generateId(member);
-			last.event_id = generateId(last);
+			create._id = generateId(create);
+			member._id = generateId(member);
+			last._id = generateId(last);
 			// powerLevels.event_id = generateId(powerLevels);
 
-			const event = {
+			const event: EventBase = {
 				auth_events: [
-					create.event_id,
-					// powerLevels.event_id,
-					member.event_id,
+					create._id,
+					// powerLevels._id,
+					member._id,
 				],
-				prev_events: [last.event_id],
+				prev_events: [last._id],
 				type: "m.room.message",
-				depth: last.depth + 1,
+				depth: last.event.depth + 1,
 				content: {
 					body: msg,
 				},
 				origin: config.name,
 				origin_server_ts: Date.now(),
 				room_id: roomId,
+				state_key: "",
+				unsigned: {},
 				sender,
 			};
 
@@ -344,14 +346,14 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			const { eventsCollection } = await import("../../mongodb");
 
 			const events = await eventsCollection
-				.find({ roomId: roomId }, { sort: { "event.depth": 1 } })
+				.find({ "event.room_id": roomId }, { sort: { "event.depth": 1 } })
 				.toArray();
 
 			if (events.length === 0) {
 				return error(400, "Invalid room_id");
 			}
 
-			const lastEventId = events[events.length - 1].eventId;
+			const lastEventId = events[events.length - 1]._id;
 			const lastEvent = events[events.length - 1].event as any; //TODO: fix typing
 
 			const inviteEvent = await signEvent(
@@ -395,8 +397,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			const inviteEventId = generateId(inviteEvent);
 
 			await eventsCollection.insertOne({
-				eventId: inviteEventId,
-				roomId,
+				_id: inviteEventId,
 				event: inviteEvent,
 			});
 

@@ -9,7 +9,10 @@ export const roomCreateEvent = ({
 	sender: string;
 	ts?: number;
 }) => {
-	return createEventBase<{ room_version: string; creator: string }>({
+	return createEventBase<
+		{ room_version: string; creator: string },
+		{ age_ts: number }
+	>({
 		roomId,
 		sender,
 		depth: 1,

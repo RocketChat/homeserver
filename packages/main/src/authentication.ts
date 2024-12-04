@@ -8,6 +8,7 @@ import {
 	encodeCanonicalJson,
 	signJson,
 } from "./signJson";
+import type { EventBase } from "./events/eventBase";
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,
@@ -56,9 +57,13 @@ export async function signRequest<T extends object>(
 	return signedJson;
 }
 
-export function computeHash<T extends object>(
-	content: T,
-): T & { hashes: { sha256: string } } {
+export type HashedEvent<T extends EventBase> = T & {
+	hashes: {
+		sha256: string;
+	};
+};
+
+export function computeHash<T extends EventBase>(content: T): HashedEvent<T> {
 	// remove the fields that are not part of the hash
 	const {
 		age_ts,

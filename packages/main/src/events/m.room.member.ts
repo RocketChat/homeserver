@@ -12,6 +12,7 @@ export const roomMemberEvent = ({
 	depth,
 	unsigned,
 	content,
+	origin,
 	ts = Date.now(),
 }: {
 	membership: Membership;
@@ -23,9 +24,10 @@ export const roomMemberEvent = ({
 	depth: number;
 	unsigned?: Record<string, any>;
 	content?: Record<string, any>;
+	origin?: string;
 	ts?: number;
 }) => {
-	return createEventBase<{ membership: string }>({
+	return createEventBase<{ membership: string }, Record<string, unknown>>({
 		roomId,
 		sender,
 		auth_events,
@@ -39,6 +41,7 @@ export const roomMemberEvent = ({
 		state_key,
 		origin_server_ts: ts,
 		ts,
+		origin,
 		unsigned: {
 			...unsigned,
 		},
