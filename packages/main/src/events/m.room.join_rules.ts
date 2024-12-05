@@ -23,7 +23,7 @@ export const roomJoinRulesEvent = ({
 		depth,
 		type: "m.room.join_rules",
 		content: { join_rule: "invite" },
-		// state_key: sender,
+		state_key: "",
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});

@@ -23,7 +23,7 @@ export const roomGuestAccessEvent = ({
 		depth,
 		type: "m.room.guest_access",
 		content: { guest_access: "can_join" },
-		// state_key: sender,
+		state_key: "",
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});

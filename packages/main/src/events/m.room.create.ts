@@ -21,6 +21,7 @@ export const roomCreateEvent = ({
 			room_version: "10",
 			creator: sender,
 		},
+		state_key: "",
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});

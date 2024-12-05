@@ -16,7 +16,7 @@ export const makeJoinEndpoint = new Elysia().get(
 		const roomId = decodeURIComponent(params.roomId);
 		const userId = decodeURIComponent(params.userId);
 
-		console.log("makeJoin ->", { roomId, userId });
+		console.log("make_join params received ->", { roomId, userId });
 
 		const { eventsCollection } = await import("../../mongodb");
 		const [lastEvent] = await eventsCollection
@@ -73,18 +73,22 @@ export const makeJoinEndpoint = new Elysia().get(
 
 		const eventId = await generateId(signedEvent);
 
-		console.log("event ->", eventId, event);
+		console.log("eventId ->", eventId);
 
-		// TODO: how to prevent duplicates?
-		await eventsCollection.insertOne({
-			_id: eventId,
-			event: signedEvent,
-		});
-
-		return {
-			event,
+		const result = {
+			event: event,
 			room_version: "10",
 		};
+
+		console.log("make_join result ->", result);
+
+		// // TODO: how to prevent duplicates?
+		// await eventsCollection.insertOne({
+		// 	_id: eventId,
+		// 	event: signedEvent,
+		// });
+
+		return result;
 	},
 	{
 		params: t.Object(

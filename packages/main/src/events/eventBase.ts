@@ -17,7 +17,7 @@ export type EventBase<
 	sender: string;
 	content: C;
 	depth: number;
-	state_key: string;
+	state_key?: string;
 	origin: string;
 	origin_server_ts: number;
 	unsigned: U;
@@ -34,7 +34,7 @@ export const createEventBase = <
 	depth,
 	type,
 	content,
-	state_key = "",
+	state_key,
 	origin_server_ts,
 	unsigned,
 	origin,

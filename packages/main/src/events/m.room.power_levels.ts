@@ -45,7 +45,7 @@ export const roomPowerLevelsEvent = ({
 			invite: 0,
 			historical: 100,
 		},
-		// state_key: sender,
+		state_key: "",
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});

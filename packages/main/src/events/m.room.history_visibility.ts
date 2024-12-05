@@ -23,7 +23,7 @@ export const roomHistoryVisibilityEvent = ({
 		depth,
 		type: "m.room.history_visibility",
 		content: { history_visibility: "shared" },
-		// state_key: sender,
+		state_key: "",
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});

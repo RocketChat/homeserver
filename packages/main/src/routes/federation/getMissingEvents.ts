@@ -2,11 +2,8 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { config } from "../../config";
 
 //POST http://rc1:443/_matrix/federation/v1/get_missing_events/%21EiexWZWYPDXWLzPRCq%3Arc1
-
-// http://rc1:443/_matrix/federation/v1/state_ids/%21uJgOMzgTXLrqkZOQrD%3Arc1?event_id=%24_brNQtJWoLwu9dnQQq5FAKhOQFPb0LksBpodXd2hgXE
 
 export const getMissingEvents = new Elysia().post(
 	"/get_missing_events/:roomId",
@@ -52,7 +49,7 @@ export const getMissingEvents = new Elysia().post(
 			.find(
 				{
 					"event.room_id": roomId,
-					"event.depth": { $gte: minDepth, $lt: maxDepth },
+					"event.depth": { $gte: minDepth, $lte: maxDepth },
 				},
 				{ limit: body.limit, sort: { "event.depth": 1 } },
 			)
