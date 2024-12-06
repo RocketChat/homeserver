@@ -1,4 +1,5 @@
 import { createEventBase, type EventBase } from "./eventBase";
+import { createEventWithId } from "./utils/createSignedEvent";
 
 declare module "./eventBase" {
 	interface Events {
@@ -41,3 +42,6 @@ export const roomGuestAccessEvent = ({
 		unsigned: { age_ts: ts },
 	});
 };
+
+export const createRoomGuestAccessEvent =
+	createEventWithId(roomGuestAccessEvent);

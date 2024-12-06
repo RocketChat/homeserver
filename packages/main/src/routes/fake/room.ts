@@ -3,25 +3,15 @@ import { Elysia, t } from "elysia";
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import Crypto from "node:crypto";
-import { computeHash, generateId } from "../../authentication";
+import { generateId } from "../../authentication";
 import { config } from "../../config";
-import { roomCreateEvent } from "../../events/m.room.create";
-import { roomGuestAccessEvent } from "../../events/m.room.guest_access";
-import { roomHistoryVisibilityEvent } from "../../events/m.room.history_visibility";
-import { roomJoinRulesEvent } from "../../events/m.room.join_rules";
 import { roomMemberEvent } from "../../events/m.room.member";
-import { roomPowerLevelsEvent } from "../../events/m.room.power_levels";
 import { makeUnsignedRequest } from "../../makeRequest";
-import { pruneEventDict } from "../../pruneEventDict";
 import { signEvent } from "../../signEvent";
-import { signJson } from "../../signJson";
 import type { EventBase } from "../../events/eventBase";
-import {
-	createEventWithId,
-	createSignedEvent,
-} from "../../events/utils/createSignedEvent";
+import { createSignedEvent } from "../../events/utils/createSignedEvent";
+import { createRoom } from "../../procedures/createRoom";
 
-// TODO: Move this to an appropriate file
 function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	let result = "";
@@ -31,124 +21,6 @@ function createMediaId(length: number) {
 	}
 	return result;
 }
-
-// TODO: Move this to an appropriate file
-const createRoom = async (
-	sender: string,
-	username: string,
-	makeSignedEvent: ReturnType<typeof createSignedEvent>,
-): Promise<{
-	roomId: string;
-	events: {
-		event: EventBase;
-		_id: string;
-	}[];
-}> => {
-	const roomId = `!${createMediaId(18)}:${config.name}`;
-	// Create
-
-	const createRoomSigned = createEventWithId(roomCreateEvent)(makeSignedEvent);
-
-	const createMemberRoomSigned =
-		createEventWithId(roomMemberEvent)(makeSignedEvent);
-
-	const createPowerLevelsRoomSigned =
-		createEventWithId(roomPowerLevelsEvent)(makeSignedEvent);
-
-	const createJoinRulesRoomSigned =
-		createEventWithId(roomJoinRulesEvent)(makeSignedEvent);
-	const createHistoryVisibilityRoomSigned = createEventWithId(
-		roomHistoryVisibilityEvent,
-	)(makeSignedEvent);
-
-	const createGuestAccessRoomSigned =
-		createEventWithId(roomGuestAccessEvent)(makeSignedEvent);
-
-	const createEvent = await createRoomSigned({
-		roomId,
-		sender,
-	});
-
-	// Member
-
-	const memberEvent = await createMemberRoomSigned({
-		roomId,
-		sender,
-		depth: 2,
-		membership: "join",
-		content: {
-			displayname: sender,
-		},
-		state_key: sender,
-		auth_events: [createEvent._id],
-		prev_events: [createEvent._id],
-	});
-
-	// PowerLevels
-
-	const powerLevelsEvent = await createPowerLevelsRoomSigned({
-		roomId,
-		sender,
-		member: username,
-		auth_events: [createEvent._id, memberEvent._id],
-		prev_events: [memberEvent._id],
-		depth: 3,
-	});
-
-	// Join Rules
-
-	const joinRulesEvent = await createJoinRulesRoomSigned({
-		roomId,
-		sender,
-		auth_events: [createEvent._id, memberEvent._id, powerLevelsEvent._id],
-		prev_events: [powerLevelsEvent._id],
-		depth: 4,
-	});
-
-	// History Visibility
-
-	const historyVisibilityEvent = await createHistoryVisibilityRoomSigned({
-		roomId,
-		sender,
-		auth_events: [
-			createEvent._id,
-			memberEvent._id,
-			powerLevelsEvent._id,
-			// joinRulesEvent._id,
-		],
-		prev_events: [joinRulesEvent._id],
-		depth: 5,
-	});
-
-	// Guest Access
-	const guestAccessEvent = await createGuestAccessRoomSigned({
-		roomId,
-		sender,
-		auth_events: [
-			createEvent._id,
-			memberEvent._id,
-			powerLevelsEvent._id,
-			// joinRulesEvent._id,
-			// historyVisibilityEvent._id,
-		],
-		prev_events: [historyVisibilityEvent._id],
-		depth: 6,
-	});
-
-	const events = [
-		createEvent,
-		memberEvent,
-		powerLevelsEvent,
-		joinRulesEvent,
-		historyVisibilityEvent,
-		guestAccessEvent,
-	];
-
-	return {
-		roomId,
-		events,
-	};
-};
 
 export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 	.post(
@@ -164,6 +36,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				sender,
 				username,
 				createSignedEvent(config.signingKey[0]),
+				`!${createMediaId(18)}:${config.name}`,
 			);
 
 			if (events.length === 0) {
@@ -222,6 +95,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 					sender,
 					username,
 					createSignedEvent(config.signingKey[0]),
+					`!${createMediaId(18)}:${config.name}`,
 				);
 				roomId = newRoomId;
 

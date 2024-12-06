@@ -1,4 +1,5 @@
 import { createEventBase, type EventBase } from "./eventBase";
+import { createEventWithId } from "./utils/createSignedEvent";
 
 type Membership = "join" | "invite";
 
@@ -86,3 +87,5 @@ export const roomMemberEvent = ({
 		unsigned: { age_ts: ts, ...unsigned },
 	});
 };
+
+export const createRoomMemberEvent = createEventWithId(roomMemberEvent);
