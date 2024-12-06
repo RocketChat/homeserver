@@ -18,11 +18,24 @@ export type SignedEvent<T extends EventBase> = T & {
 	};
 };
 
-export async function signJson<T extends EventBase>(
+type SignedJson<T extends object> = T & {
+	signatures: {
+		[key: string]: {
+			[key: string]: string;
+		};
+	};
+};
+
+export async function signJson<
+	T extends object & {
+		signatures?: Record<string, Record<string, string>>;
+		unsigned?: Record<string, any>;
+	},
+>(
 	jsonObject: T,
 	signingKey: SigningKey,
 	signingName?: string,
-): Promise<SignedEvent<T>> {
+): Promise<SignedJson<T>> {
 	const keyId: ProtocolVersionKey = `${signingKey.algorithm}:${signingKey.version}`;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
 
