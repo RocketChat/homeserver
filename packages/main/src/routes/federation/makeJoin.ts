@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { config } from "../../config";
+import { isConfigContext } from "../../plugins/config";
 import { roomMemberEvent } from "../../events/m.room.member";
 import { signEvent } from "../../signEvent";
 import { generateId } from "../../authentication";
@@ -12,7 +12,13 @@ import { generateId } from "../../authentication";
 
 export const makeJoinEndpoint = new Elysia().get(
 	"/make_join/:roomId/:userId",
-	async ({ params }) => {
+	async ({ params, query, ...context }) => {
+		if (!isConfigContext(context)) {
+			throw new Error("No config context");
+		}
+		const {
+			config,
+		} = context;
 		const roomId = decodeURIComponent(params.roomId);
 		const userId = decodeURIComponent(params.userId);
 
