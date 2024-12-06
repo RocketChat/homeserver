@@ -1,4 +1,17 @@
-import { createEventBase } from "./eventBase";
+import { createEventBase, type EventBase } from "./eventBase";
+
+declare module "./eventBase" {
+	interface Events {
+		"m.room.guest_access": RoomGuestAccessEvent;
+	}
+}
+
+interface RoomGuestAccessEvent extends EventBase {
+	content: {
+		guest_access: "can_join" | "forbidden";
+	};
+	unsigned?: object;
+}
 
 export const roomGuestAccessEvent = ({
 	roomId,
@@ -15,16 +28,16 @@ export const roomGuestAccessEvent = ({
 	depth: number;
 	ts?: number;
 }) => {
-	return createEventBase({
+	return createEventBase("m.room.guest_access", {
 		roomId,
 		sender,
 		auth_events,
 		prev_events,
 		depth,
-		type: "m.room.guest_access",
 		content: { guest_access: "can_join" },
 		state_key: "",
 		origin_server_ts: ts,
+		ts,
 		unsigned: { age_ts: ts },
 	});
 };

@@ -50,7 +50,9 @@ test("roomHistoryVisibilityEvent", async () => {
 	});
 
 	const signed = await signEvent(event, signature, "hs1");
-
+	event.content.history_visibility;
+	signed.content.history_visibility;
+	// @ts-ignore
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
 		"signatures.hs1.ed25519:a_HDhg",

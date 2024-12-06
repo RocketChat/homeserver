@@ -50,7 +50,7 @@ test("roomJoinRulesEvent", async () => {
 	});
 
 	const signed = await signEvent(event, signature, "hs1");
-
+	// @ts-ignore
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
 		"signatures.hs1.ed25519:a_HDhg",

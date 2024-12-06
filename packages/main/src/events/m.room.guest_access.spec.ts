@@ -29,7 +29,7 @@ const finalEvent = {
 		},
 	},
 	unsigned: { age_ts: 1733107418721 },
-};
+} as const;
 
 test("roomGuestAccessEvent", async () => {
 	const signature = await generateKeyPairsFromString(
@@ -50,7 +50,7 @@ test("roomGuestAccessEvent", async () => {
 	});
 
 	const signed = await signEvent(event, signature, "hs1");
-
+	// @ts-ignore
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
 		"signatures.hs1.ed25519:a_HDhg",

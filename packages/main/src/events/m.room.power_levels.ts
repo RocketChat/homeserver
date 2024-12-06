@@ -1,4 +1,32 @@
-import { createEventBase } from "./eventBase";
+import { createEventBase, type EventBase } from "./eventBase";
+
+declare module "./eventBase" {
+	interface Events {
+		"m.room.power_levels": RoomPowerLevelsEvent;
+	}
+}
+
+interface RoomPowerLevelsEvent extends EventBase {
+	content: {
+		users: {
+			[key: string]: number;
+		};
+		users_default: number;
+		events: {
+			[key: string]: number;
+		};
+		events_default: number;
+		state_default: number;
+		ban: number;
+		kick: number;
+		redact: number;
+		invite: number;
+		historical: number;
+	};
+	unsigned?: {
+		age_ts: number;
+	};
+}
 
 export const roomPowerLevelsEvent = ({
 	roomId,
@@ -17,13 +45,13 @@ export const roomPowerLevelsEvent = ({
 	depth: number;
 	ts?: number;
 }) => {
-	return createEventBase({
+	return createEventBase("m.room.power_levels", {
 		roomId,
 		sender,
 		auth_events,
 		prev_events,
 		depth,
-		type: "m.room.power_levels",
+		ts,
 		content: {
 			users: { [sender]: 100, [member]: 100 },
 			users_default: 0,

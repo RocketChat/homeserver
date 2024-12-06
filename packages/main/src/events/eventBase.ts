@@ -1,7 +1,4 @@
-export type EventBase<
-	C extends Record<string, unknown> = Record<string, unknown>,
-	U extends Record<string, unknown> = Record<string, unknown>,
-> = {
+export type EventBase = {
 	auth_events: string[];
 	prev_events: string[];
 	type:
@@ -15,15 +12,47 @@ export type EventBase<
 		| string;
 	room_id: string;
 	sender: string;
-	content: C;
 	depth: number;
 	state_key?: string;
 	origin: string;
 	origin_server_ts: number;
-	unsigned: U;
+
+	content?: object;
+	unsigned?: Record<string, any> | undefined;
 };
 
-export const createEventBase = <
+export interface Events {}
+
+type KeyEvent = keyof Events;
+
+export const createEventBase = <T extends KeyEvent>(
+	type: T,
+	props: {
+		roomId: string;
+		sender: string;
+		auth_events?: string[];
+		prev_events?: string[];
+		depth: number;
+		content: Events[T]["content"];
+		state_key?: string;
+		origin_server_ts: number;
+		unsigned?: Events[T]["unsigned"];
+		origin?: string;
+		ts?: number;
+	},
+): Events[T] extends EventBase ? Events[T] : never => {
+	return _createEventBase<
+		Events[T] extends EventBase ? Events[T] : never,
+		Events[T]["content"],
+		Events[T]["unsigned"]
+	>({
+		type,
+		...props,
+	});
+};
+
+const _createEventBase = <
+	E extends EventBase,
 	TContent extends EventBase["content"],
 	TUnsigned extends EventBase["unsigned"],
 >({
@@ -52,26 +81,31 @@ export const createEventBase = <
 	unsigned?: TUnsigned;
 	origin?: string;
 	ts?: number;
-}): EventBase => {
+}): E & {
+	unsigned: E["unsigned"] extends void
+		? { age_ts: number }
+		: E["unsigned"] & { age_ts: number };
+} => {
 	if (!sender.includes(":") || !sender.includes("@")) {
 		throw new Error("Invalid sender");
 	}
 	if (!roomId.includes(":") || !roomId.includes("!")) {
 		throw new Error("Invalid room Id");
 	}
+
+	const { age_ts = ts, ..._unsigned } = unsigned || {};
 	return {
 		auth_events,
 		prev_events,
 		type,
 		room_id: roomId,
 		sender,
-		content: {
-			...content,
-		},
 		depth,
 		state_key,
 		origin: origin || (sender.split(":").pop() as string),
 		origin_server_ts,
-		unsigned: { age_ts: ts, ...unsigned },
-	};
+
+		...(content && { content }),
+		unsigned: { age_ts: ts, ..._unsigned },
+	} as any;
 };

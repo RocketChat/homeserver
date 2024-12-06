@@ -1,9 +1,22 @@
-import { generateId } from "../authentication";
-import type { SigningKey } from "../keys";
-import { signEvent } from "../signEvent";
 import { createEventBase, type EventBase } from "./eventBase";
 
-type RoomCreateEvent = {
+interface RoomCreateEvent extends EventBase {
+	content: {
+		room_version: string;
+		creator: string;
+	};
+	unsigned: {
+		age_ts: number;
+	};
+}
+
+declare module "./eventBase" {
+	interface Events {
+		"m.room.create": RoomCreateEvent;
+	}
+}
+
+type RoomCreateEventProps = {
 	roomId: string;
 	sender: string;
 	ts?: number;
@@ -13,15 +26,12 @@ export const roomCreateEvent = ({
 	roomId,
 	sender,
 	ts = Date.now(),
-}: RoomCreateEvent) => {
-	return createEventBase<
-		{ room_version: string; creator: string },
-		{ age_ts: number }
-	>({
+}: RoomCreateEventProps): RoomCreateEvent =>
+	createEventBase("m.room.create", {
 		roomId,
 		sender,
 		depth: 1,
-		type: "m.room.create",
+		ts,
 		content: {
 			room_version: "10",
 			creator: sender,
@@ -30,4 +40,3 @@ export const roomCreateEvent = ({
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});
-};
