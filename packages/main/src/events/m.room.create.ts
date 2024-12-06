@@ -1,14 +1,19 @@
-import { createEventBase } from "./eventBase";
+import { generateId } from "../authentication";
+import type { SigningKey } from "../keys";
+import { signEvent } from "../signEvent";
+import { createEventBase, type EventBase } from "./eventBase";
+
+type RoomCreateEvent = {
+	roomId: string;
+	sender: string;
+	ts?: number;
+};
 
 export const roomCreateEvent = ({
 	roomId,
 	sender,
 	ts = Date.now(),
-}: {
-	roomId: string;
-	sender: string;
-	ts?: number;
-}) => {
+}: RoomCreateEvent) => {
 	return createEventBase<
 		{ room_version: string; creator: string },
 		{ age_ts: number }

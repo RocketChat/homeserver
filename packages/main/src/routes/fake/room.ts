@@ -16,6 +16,10 @@ import { pruneEventDict } from "../../pruneEventDict";
 import { signEvent } from "../../signEvent";
 import { signJson } from "../../signJson";
 import type { EventBase } from "../../events/eventBase";
+import {
+	createEventWithId,
+	createSignedEvent,
+} from "../../events/utils/createSignedEvent";
 
 // TODO: Move this to an appropriate file
 function createMediaId(length: number) {
@@ -29,142 +33,116 @@ function createMediaId(length: number) {
 }
 
 // TODO: Move this to an appropriate file
-const createRoom = async (sender: string, username: string) => {
-	// const roomId = `!${generateId({
-	// 	ts: Date.now(), // TEMP
-	// })}:${config.name}`;
-
+const createRoom = async (
+	sender: string,
+	username: string,
+	makeSignedEvent: ReturnType<typeof createSignedEvent>,
+): Promise<{
+	roomId: string;
+	events: {
+		event: EventBase;
+		_id: string;
+	}[];
+}> => {
 	const roomId = `!${createMediaId(18)}:${config.name}`;
-
-	const events = [];
-
 	// Create
-	const createEvent = await signEvent(
-		roomCreateEvent({
-			roomId,
-			sender,
-		}),
-		config.signingKey[0],
-	);
 
-	const createEventId = generateId(createEvent);
+	const createRoomSigned = createEventWithId(roomCreateEvent)(makeSignedEvent);
 
-	events.push({
-		_id: createEventId,
-		event: createEvent,
+	const createMemberRoomSigned =
+		createEventWithId(roomMemberEvent)(makeSignedEvent);
+
+	const createPowerLevelsRoomSigned =
+		createEventWithId(roomPowerLevelsEvent)(makeSignedEvent);
+
+	const createJoinRulesRoomSigned =
+		createEventWithId(roomJoinRulesEvent)(makeSignedEvent);
+	const createHistoryVisibilityRoomSigned = createEventWithId(
+		roomHistoryVisibilityEvent,
+	)(makeSignedEvent);
+
+	const createGuestAccessRoomSigned =
+		createEventWithId(roomGuestAccessEvent)(makeSignedEvent);
+
+	const createEvent = await createRoomSigned({
+		roomId,
+		sender,
 	});
 
 	// Member
-	const memberEvent = await signEvent(
-		roomMemberEvent({
-			roomId,
-			sender,
-			depth: 2,
-			membership: "join",
-			content: {
-				displayname: sender,
-			},
-			state_key: sender,
-			auth_events: [createEventId],
-			prev_events: [createEventId],
-		}),
-		config.signingKey[0],
-	);
 
-	const memberEventId = generateId(memberEvent);
-
-	events.push({
-		_id: memberEventId,
-		event: memberEvent,
+	const memberEvent = await createMemberRoomSigned({
+		roomId,
+		sender,
+		depth: 2,
+		membership: "join",
+		content: {
+			displayname: sender,
+		},
+		state_key: sender,
+		auth_events: [createEvent._id],
+		prev_events: [createEvent._id],
 	});
 
 	// PowerLevels
-	const powerLevelsEvent = await signEvent(
-		roomPowerLevelsEvent({
-			roomId,
-			sender,
-			member: username,
-			auth_events: [createEventId, memberEventId],
-			prev_events: [memberEventId],
-			depth: 3,
-		}),
-		config.signingKey[0],
-	);
 
-	const powerLevelsEventId = generateId(powerLevelsEvent);
-
-	events.push({
-		_id: powerLevelsEventId,
-		event: powerLevelsEvent,
+	const powerLevelsEvent = await createPowerLevelsRoomSigned({
+		roomId,
+		sender,
+		member: username,
+		auth_events: [createEvent._id, memberEvent._id],
+		prev_events: [memberEvent._id],
+		depth: 3,
 	});
 
 	// Join Rules
-	const joinRulesEvent = await signEvent(
-		roomJoinRulesEvent({
-			roomId,
-			sender,
-			auth_events: [createEventId, memberEventId, powerLevelsEventId],
-			prev_events: [powerLevelsEventId],
-			depth: 4,
-		}),
-		config.signingKey[0],
-	);
 
-	const joinRulesEventId = generateId(joinRulesEvent);
-
-	events.push({
-		_id: joinRulesEventId,
-		event: joinRulesEvent,
+	const joinRulesEvent = await createJoinRulesRoomSigned({
+		roomId,
+		sender,
+		auth_events: [createEvent._id, memberEvent._id, powerLevelsEvent._id],
+		prev_events: [powerLevelsEvent._id],
+		depth: 4,
 	});
 
 	// History Visibility
-	const historyVisibilityEvent = await signEvent(
-		roomHistoryVisibilityEvent({
-			roomId,
-			sender,
-			auth_events: [
-				createEventId,
-				memberEventId,
-				powerLevelsEventId,
-				// joinRulesEventId,
-			],
-			prev_events: [joinRulesEventId],
-			depth: 5,
-		}),
-		config.signingKey[0],
-	);
 
-	const historyVisibilityEventId = generateId(historyVisibilityEvent);
-
-	events.push({
-		_id: historyVisibilityEventId,
-		event: historyVisibilityEvent,
+	const historyVisibilityEvent = await createHistoryVisibilityRoomSigned({
+		roomId,
+		sender,
+		auth_events: [
+			createEvent._id,
+			memberEvent._id,
+			powerLevelsEvent._id,
+			// joinRulesEvent._id,
+		],
+		prev_events: [joinRulesEvent._id],
+		depth: 5,
 	});
 
 	// Guest Access
-	const guestAccessEvent = await signEvent(
-		roomGuestAccessEvent({
-			roomId,
-			sender,
-			auth_events: [
-				createEventId,
-				memberEventId,
-				powerLevelsEventId,
-				// joinRulesEventId,
-				// historyVisibilityEventId,
-			],
-			prev_events: [historyVisibilityEventId],
-			depth: 6,
-		}),
-		config.signingKey[0],
-	);
-
-	const guestAccessEventId = generateId(guestAccessEvent);
-
-	events.push({
-		_id: guestAccessEventId,
-		event: guestAccessEvent,
+	const guestAccessEvent = await createGuestAccessRoomSigned({
+		roomId,
+		sender,
+		auth_events: [
+			createEvent._id,
+			memberEvent._id,
+			powerLevelsEvent._id,
+			// joinRulesEvent._id,
+			// historyVisibilityEvent._id,
+		],
+		prev_events: [historyVisibilityEvent._id],
+		depth: 6,
 	});
+
+	const events = [
+		createEvent,
+		memberEvent,
+		powerLevelsEvent,
+		joinRulesEvent,
+		historyVisibilityEvent,
+		guestAccessEvent,
+	];
 
 	return {
 		roomId,
@@ -182,7 +160,11 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				return error(400, "Invalid sender");
 			}
 
-			const { roomId, events } = await createRoom(sender, username);
+			const { roomId, events } = await createRoom(
+				sender,
+				username,
+				createSignedEvent(config.signingKey[0]),
+			);
 
 			if (events.length === 0) {
 				return error(500, "Error creating room");
@@ -239,6 +221,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				const { roomId: newRoomId, events } = await createRoom(
 					sender,
 					username,
+					createSignedEvent(config.signingKey[0]),
 				);
 				roomId = newRoomId;
 
