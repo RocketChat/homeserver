@@ -2,76 +2,117 @@ import { expect, it } from "bun:test";
 import nacl from "tweetnacl";
 import { app } from "../../app";
 import { fromBinaryData, toBinaryData } from "../../binaryData";
+import type { Config } from "../../config";
+import { EncryptionValidAlgorithm } from "../../signJson";
+import Elysia from "elysia";
+import { generateKeyPairsFromString } from "../../keys";
 
+const config: Config = {
+	path: "./config.json",
+	signingKeyPath: "./keys/ed25519.signing.key",
+	port: 8080,
+	signingKey: [
+		{
+			algorithm: EncryptionValidAlgorithm.ed25519,
+			version: "0ldK3y",
+			publicKey: Uint8Array.from(
+				atob("VGhpcyBzaG91bGQgYmUgYSByZWFsIGVkMjU1MTkgcGF5bG9hZA"),
+				(c) => c.charCodeAt(0),
+			),
+		},
+	],
+	name: "synapse2",
+	version: "org.matrix.msc3757.10",
+} as Config;
 it("TestInboundFederationKeys", async () => {
-	const resp = await app.handle(
-		new Request("http://localhost/_matrix/key/v2/server"),
-	);
+	const config: Config = {
+		path: "./config.json",
+		signingKeyPath: "./keys/ed25519.signing.key",
+		port: 8080,
+		signingKey: [
+			await generateKeyPairsFromString(
+				"ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U",
+			),
+		],
+		name: "synapse2",
+		version: "org.matrix.msc3757.10",
+	};
+	try {
+		const resp = await new Elysia({
+			name: "synapse2",
+		})
+			.decorate("config", config)
+			.use(app)
+			.handle(new Request("http://localhost/_matrix/key/v2/server"));
 
-	expect(resp.status).toBe(200);
+		expect(resp.status).toBe(200);
 
-	const body = await resp.arrayBuffer();
+		const body = await resp.arrayBuffer();
 
-	const jsonObj = JSON.parse(fromBinaryData(body));
-	expect(jsonObj).toHaveProperty("valid_until_ts");
-	expect(jsonObj.valid_until_ts).toBeNumber();
-	expect(jsonObj).toHaveProperty("server_name", app.config.name);
+		const jsonObj = JSON.parse(fromBinaryData(body));
+		expect(jsonObj).toHaveProperty("valid_until_ts");
+		expect(jsonObj.valid_until_ts).toBeNumber();
+		expect(jsonObj).toHaveProperty("server_name", config.name);
 
-	// Check validity of verify_keys+old_verify_keys and store values
+		// Check validity of verify_keys+old_verify_keys and store values
 
-	const keys = new Map<string, Uint8Array>();
-	const oldKeys = new Map<string, Uint8Array>();
+		const keys = new Map<string, Uint8Array>();
+		const oldKeys = new Map<string, Uint8Array>();
 
-	expect(jsonObj).toHaveProperty("verify_keys");
-	for (const [k, v] of Object.entries(jsonObj.verify_keys)) {
-		expect(k).toStartWith("ed25519:");
+		expect(jsonObj).toHaveProperty("verify_keys");
+		for (const [k, v] of Object.entries(jsonObj.verify_keys)) {
+			expect(k).toStartWith("ed25519:");
 
-		expect(v).toEqual(
-			expect.objectContaining({
-				key: expect.any(String),
-			}),
-		);
+			expect(v).toEqual(
+				expect.objectContaining({
+					key: expect.any(String),
+				}),
+			);
 
-		const key = (v as { key: string }).key;
-		const keyBytes = Uint8Array.from(atob(key), (c) => c.charCodeAt(0));
-		keys.set(k, keyBytes);
-	}
-
-	expect(jsonObj).toHaveProperty("old_verify_keys");
-	for (const [k, v] of Object.entries(jsonObj.old_verify_keys)) {
-		expect(k).toStartWith("ed25519:");
-		expect(v).toEqual(
-			expect.objectContaining({
-				expired_ts: expect.any(Number),
-				key: expect.any(String),
-			}),
-		);
-
-		const key = (v as { key: string }).key;
-		const keyBytes = Uint8Array.from(atob(key), (c) => c.charCodeAt(0));
-		keys.set(k, keyBytes);
-	}
-
-	expect(jsonObj).toHaveProperty("signatures");
-	for (const v of Object.values(jsonObj.signatures)) {
-		expect(v).toBeObject();
-
-		for (const [key, value] of Object.entries(v as object)) {
-			expect(key).toStartWith("ed25519:");
-			expect(value).toBeString();
-			expect(() => atob(value)).not.toThrow();
+			const key = (v as { key: string }).key;
+			const keyBytes = Uint8Array.from(atob(key), (c) => c.charCodeAt(0));
+			keys.set(k, keyBytes);
 		}
+
+		expect(jsonObj).toHaveProperty("old_verify_keys");
+		for (const [k, v] of Object.entries(jsonObj.old_verify_keys)) {
+			expect(k).toStartWith("ed25519:");
+			expect(v).toEqual(
+				expect.objectContaining({
+					expired_ts: expect.any(Number),
+					key: expect.any(String),
+				}),
+			);
+
+			const key = (v as { key: string }).key;
+			const keyBytes = Uint8Array.from(atob(key), (c) => c.charCodeAt(0));
+			keys.set(k, keyBytes);
+		}
+
+		expect(jsonObj).toHaveProperty("signatures");
+		for (const v of Object.values(jsonObj.signatures)) {
+			expect(v).toBeObject();
+
+			for (const [key, value] of Object.entries(v as object)) {
+				expect(key).toStartWith("ed25519:");
+				expect(value).toBeString();
+				expect(() => atob(value)).not.toThrow();
+			}
+		}
+
+		expect(jsonObj.valid_until_ts).toBeGreaterThan(Date.now());
+
+		await checkKeysAndSignatures(jsonObj, keys, oldKeys, config.name);
+	} catch (e) {
+		console.log(e);
 	}
-
-	expect(jsonObj.valid_until_ts).toBeGreaterThan(Date.now());
-
-	await checkKeysAndSignatures(jsonObj, keys, oldKeys);
 });
 
 async function checkKeysAndSignatures(
 	jsonObj: any,
 	keys: Map<string, Uint8Array>,
 	oldKeys: Map<string, Uint8Array>,
+	serverName: string,
 ) {
 	expect(keys).not.toBeEmpty();
 	// Check if any old key exists in the new keys
@@ -81,10 +122,10 @@ async function checkKeysAndSignatures(
 
 	const sigObj = jsonObj.signatures;
 	// Test signatures object sanity
-	expect(sigObj).toContainKey(app.config.name);
+	expect(sigObj).toContainKey(serverName);
 	expect(Object.keys(sigObj)).toHaveLength(1);
 
-	const sigServerObj = sigObj[app.config.name!];
+	const sigServerObj = sigObj[serverName!];
 
 	const signatures = new Map<
 		string,

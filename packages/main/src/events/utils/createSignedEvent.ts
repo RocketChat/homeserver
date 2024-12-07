@@ -2,10 +2,15 @@ import { generateId } from "../../authentication";
 import type { SigningKey } from "../../keys";
 import { signEvent } from "../../signEvent";
 
-export const createSignedEvent = (signature: SigningKey) => {
+export const createSignedEvent = (
+	signature: SigningKey,
+	signingName: string,
+) => {
 	return <F extends (...args: any) => any>(fn: F) => {
 		return async (...args: Parameters<F>): Promise<ReturnType<F>> => {
-			return signEvent(await fn(...args), signature) as Promise<ReturnType<F>>;
+			return signEvent(await fn(...args), signature, signingName) as Promise<
+				ReturnType<F>
+			>;
 		};
 	};
 };

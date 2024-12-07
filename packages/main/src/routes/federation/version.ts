@@ -1,14 +1,21 @@
 import Elysia, { t } from "elysia";
-import { config } from "../../config";
+import { isConfigContext } from "../../plugins/isConfigContext";
 
 export const versionEndpoints = new Elysia().get(
 	"/version",
-	() => ({
-		server: {
-			name: config.name,
-			version: config.version,
-		},
-	}),
+	(context) => {
+		if (!isConfigContext(context)) {
+			throw new Error("No config context");
+		}
+		const { config } = context;
+
+		return {
+			server: {
+				name: config.name,
+				version: config.version,
+			},
+		};
+	},
 	{
 		response: t.Object(
 			{

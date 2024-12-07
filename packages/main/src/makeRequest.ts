@@ -1,5 +1,5 @@
 import { authorizationHeaders, computeHash } from "./authentication";
-import { config } from "./config";
+import type { Config } from "./config";
 import { signJson } from "./signJson";
 
 export const makeRequest = async ({
@@ -7,11 +7,13 @@ export const makeRequest = async ({
 	domain,
 	uri,
 	options = {},
+	config,
 }: {
 	method: string;
 	domain: string;
 	uri: string;
 	options?: Record<string, any>;
+	config: Config;
 }) => {
 	const signingKey = config.signingKey[0];
 
@@ -51,11 +53,13 @@ export const makeUnsignedRequest = async ({
 	domain,
 	uri,
 	options = {},
+	config,
 }: {
 	method: string;
 	domain: string;
 	uri: string;
 	options?: Record<string, any>;
+	config: Config;
 }) => {
 	const signingKey = config.signingKey[0];
 

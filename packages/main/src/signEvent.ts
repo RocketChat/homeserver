@@ -18,7 +18,7 @@ export type SignedEvent<T extends EventBase> = T & {
 export const signEvent = async <T extends EventBase>(
 	event: T,
 	signature: SigningKey,
-	signingName?: string,
+	signingName: string,
 ): Promise<SignedEvent<T>> => {
 	const s = await signJson(
 		pruneEventDict(computeHash(event)),

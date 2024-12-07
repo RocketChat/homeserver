@@ -1,6 +1,5 @@
 import { logger } from "@bogeychan/elysia-logger";
 import { Elysia } from "elysia";
-import { config } from "./config";
 
 import { BadJSONError, MatrixError } from "./errors";
 import { fakeEndpoints } from "./routes/fake/room";
@@ -8,7 +7,6 @@ import federationEndpoints from "./routes/federation";
 import { keyV2Endpoints } from "./routes/key/server";
 
 export const app = new Elysia({
-	name: config.name,
 	handler: {
 		standardHostname: false,
 	},

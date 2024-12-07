@@ -2,21 +2,31 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { config } from "../../config";
+import { isConfigContext } from "../../plugins/isConfigContext";
+import { isMongodbContext } from "../../plugins/isMongodbContext";
 
 // PUT uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
 
 export const sendJoinEndpoint = new Elysia().put(
 	"/send_join/:roomId/:stateKey",
-	async ({ params, body }) => {
+	async ({ params, body, ...context }) => {
+		if (!isConfigContext(context)) {
+			throw new Error("No config context");
+		}
+		if (!isMongodbContext(context)) {
+			throw new Error("No mongodb context");
+		}
+		const {
+			config,
+			mongo: { eventsCollection },
+		} = context;
+
 		const roomId = decodeURIComponent(params.roomId);
 		const stateKey = decodeURIComponent(params.stateKey);
 		const event = body as any;
 
 		console.log("sendJoin ->", { roomId, stateKey });
 		console.log("sendJoin ->", { body });
-
-		const { eventsCollection } = await import("../../mongodb");
 
 		const records = await eventsCollection
 			.find({ "event.room_id": roomId }, { sort: { "event.depth": 1 } })

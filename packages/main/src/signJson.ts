@@ -1,6 +1,5 @@
 import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
-import { config } from "./config";
 import type { SigningKey } from "./keys";
 import type { EventBase } from "./events/eventBase";
 
@@ -34,7 +33,7 @@ export async function signJson<
 >(
 	jsonObject: T,
 	signingKey: SigningKey,
-	signingName?: string,
+	signingName: string,
 ): Promise<SignedJson<T>> {
 	const keyId: ProtocolVersionKey = `${signingKey.algorithm}:${signingKey.version}`;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
@@ -43,7 +42,7 @@ export async function signJson<
 
 	const signed = await signingKey.sign(toBinaryData(data));
 
-	const name = signingName || config.name;
+	const name = signingName;
 
 	const signature = signatures[name] || {};
 

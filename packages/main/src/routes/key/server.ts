@@ -1,39 +1,40 @@
 import { Elysia } from "elysia";
 
 import { toUnpaddedBase64 } from "../../binaryData";
-import { cache } from "../../cache";
-import { config } from "../../config";
+
 import { KeysDTO } from "../../dto";
 import { signJson } from "../../signJson";
+import { isConfigContext } from "../../plugins/isConfigContext";
 
 export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
 	"/server",
-	cache(
-		async () => {
-			const keys = Object.fromEntries(
-				config.signingKey.map(({ algorithm, version, publicKey }) => [
-					`${algorithm}:${version}`,
-					{
-						key: toUnpaddedBase64(publicKey),
-					},
-				]),
-			);
 
-			return config.signingKey.reduce(
-				async (json, signingKey) =>
-					signJson(await json, signingKey, config.name),
-				Promise.resolve({
-					old_verify_keys: {},
-					server_name: config.name,
-					// 1 day
-					signatures: {},
-					valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000,
-					verify_keys: keys,
-				}),
-			);
-		},
-		1000 * 60 * 60,
-	),
+	async (context) => {
+		if (!isConfigContext(context)) {
+			throw new Error("No config context");
+		}
+		const { config } = context;
+		const keys = Object.fromEntries(
+			config.signingKey.map(({ algorithm, version, publicKey }) => [
+				`${algorithm}:${version}`,
+				{
+					key: toUnpaddedBase64(publicKey),
+				},
+			]),
+		);
+
+		return config.signingKey.reduce(
+			async (json, signingKey) => signJson(await json, signingKey, config.name),
+			Promise.resolve({
+				old_verify_keys: {},
+				server_name: config.name,
+				// 1 day
+				signatures: {},
+				valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000,
+				verify_keys: keys,
+			}),
+		);
+	},
 	{
 		response: KeysDTO,
 		detail: {

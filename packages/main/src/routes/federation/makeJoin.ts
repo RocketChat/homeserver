@@ -2,7 +2,8 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { isConfigContext } from "../../plugins/config";
+import { isMongodbContext } from "../../plugins/isMongodbContext";
+import { isConfigContext } from "../../plugins/isConfigContext";
 import { roomMemberEvent } from "../../events/m.room.member";
 import { signEvent } from "../../signEvent";
 import { generateId } from "../../authentication";
@@ -13,18 +14,27 @@ import { generateId } from "../../authentication";
 export const makeJoinEndpoint = new Elysia().get(
 	"/make_join/:roomId/:userId",
 	async ({ params, query, ...context }) => {
+		if (!isMongodbContext(context)) {
+			throw new Error("No mongodb context");
+		}
 		if (!isConfigContext(context)) {
 			throw new Error("No config context");
 		}
 		const {
 			config,
+			mongo: { eventsCollection },
 		} = context;
+
 		const roomId = decodeURIComponent(params.roomId);
 		const userId = decodeURIComponent(params.userId);
 
-		console.log("make_join params received ->", { roomId, userId });
+		if (!userId.includes(":") || !userId.includes("@")) {
+			throw new Error("Invalid sender");
+		}
+		if (!roomId.includes(":") || !roomId.includes("!")) {
+			throw new Error("Invalid room Id");
+		}
 
-		const { eventsCollection } = await import("../../mongodb");
 		const [lastEvent] = await eventsCollection
 			.find(
 				{ "event.room_id": roomId },
@@ -97,6 +107,18 @@ export const makeJoinEndpoint = new Elysia().get(
 		return result;
 	},
 	{
+		response: {
+			200: t.Object({}),
+			400: t.Object({}),
+			403: t.Object({}),
+			404: t.Object({}),
+		},
+		query: t.Object({
+			ver: t.String({
+				description:
+					"The version of the room where the user is being invited to.",
+			}),
+		}),
 		params: t.Object(
 			{
 				roomId: t.String({
