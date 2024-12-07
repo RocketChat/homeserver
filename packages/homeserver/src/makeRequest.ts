@@ -1,5 +1,6 @@
 import { authorizationHeaders, computeHash } from "./authentication";
-import type { Config } from "./config";
+import type { SigningKey } from "./keys";
+
 import { signJson } from "./signJson";
 
 export const makeRequest = async ({
@@ -7,28 +8,28 @@ export const makeRequest = async ({
 	domain,
 	uri,
 	options = {},
-	config,
+	signingKey,
+	signingName,
 }: {
 	method: string;
 	domain: string;
 	uri: string;
 	options?: Record<string, any>;
-	config: Config;
+	signingKey: SigningKey;
+	signingName: string;
 }) => {
-	const signingKey = config.signingKey[0];
-
 	const body =
 		options.body &&
 		(await signJson(
 			computeHash({ ...options.body, signatures: {} }),
-			config.signingKey[0],
-			config.name,
+			signingKey,
+			signingName,
 		));
 
 	console.log("body ->", method, domain, uri, body);
 
 	const auth = await authorizationHeaders(
-		config.name,
+		signingName,
 		signingKey,
 		domain,
 		method,
@@ -53,18 +54,18 @@ export const makeUnsignedRequest = async ({
 	domain,
 	uri,
 	options = {},
-	config,
+	signingKey,
+	signingName,
 }: {
 	method: string;
 	domain: string;
 	uri: string;
 	options?: Record<string, any>;
-	config: Config;
+	signingKey: SigningKey;
+	signingName: string;
 }) => {
-	const signingKey = config.signingKey[0];
-
 	const auth = await authorizationHeaders(
-		config.name,
+		signingName,
 		signingKey,
 		domain,
 		method,

@@ -38,7 +38,8 @@ export const inviteEndpoint = new Elysia().put(
 				method: "GET",
 				domain: event.origin,
 				uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}?ver=10`,
-				config,
+				signingKey: config.signingKey[0],
+				signingName: config.name,
 			});
 
 			const responseMake = await response.json();
@@ -77,7 +78,8 @@ export const inviteEndpoint = new Elysia().put(
 				options: {
 					body: joinBody,
 				},
-				config,
+				signingKey: config.signingKey[0],
+				signingName: config.name,
 			});
 
 			const responseBody = await responseSend.json();

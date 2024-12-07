@@ -2,7 +2,6 @@ import { logger } from "@bogeychan/elysia-logger";
 import { Elysia } from "elysia";
 
 import { BadJSONError, MatrixError } from "./errors";
-import { fakeEndpoints } from "./routes/fake/room";
 import federationEndpoints from "./routes/federation";
 import { keyV2Endpoints } from "./routes/key/server";
 
@@ -31,7 +30,6 @@ export const app = new Elysia({
 	)
 	.use(keyV2Endpoints)
 	.use(federationEndpoints)
-	.use(fakeEndpoints)
 	.onError(async ({ code }) => {
 		if (code === "NOT_FOUND") {
 			return {
