@@ -2,18 +2,23 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
+import { isMongodbContext } from "../../plugins/isMongodbContext";
 
 //POST http://rc1:443/_matrix/federation/v1/get_missing_events/%21EiexWZWYPDXWLzPRCq%3Arc1
 
 export const getMissingEvents = new Elysia().post(
 	"/get_missing_events/:roomId",
-	async ({ params, body }) => {
+	async ({ params, body, ...context }) => {
+		if (!isMongodbContext(context)) {
+			throw new Error("No mongodb context");
+		}
+		const {
+			mongo: { eventsCollection },
+		} = context;
 		const roomId = decodeURIComponent(params.roomId);
 
 		console.log("get_missing_events ->", { roomId });
 		console.log("get_missing_events ->", { body });
-
-		const { eventsCollection } = await import("../../mongodb");
 
 		console.log({
 			_id: { $in: [...body.earliest_events, ...body.latest_events] },
