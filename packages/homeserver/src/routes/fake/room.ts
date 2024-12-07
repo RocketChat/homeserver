@@ -333,6 +333,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				options: {
 					body: payload,
 				},
+				config,
 			});
 
 			const responseMake = await response.json();

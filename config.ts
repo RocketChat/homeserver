@@ -1,15 +1,5 @@
-import { type SigningKey, getKeyPair } from "./keys";
-import { type EncryptionValidAlgorithm, signText } from "./signJson";
-
-export interface Config {
-	path: string;
-	signingKeyPath: string;
-	port: number;
-	signingKey: SigningKey[];
-	name: string;
-	version: string;
-}
-
+import { getKeyPair } from "homeserver";
+import type { Config } from "homeserver/src/plugins/config";
 const { CONFIG_FOLDER = "." } = process.env;
 
 const getConfig = async (): Promise<Config> => {

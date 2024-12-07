@@ -34,4 +34,19 @@
 // // /v1/openid/userinfo
 // // /v1/hierarchy/{roomID}
 
-import "myapp";
+import Elysia from "elysia";
+import { app } from "homeserver";
+import { routerWithMongodb } from "homeserver/src/plugins/mongodb";
+
+import { config } from "./config";
+import { db } from "./mongo";
+
+new Elysia()
+	.decorate("config", config)
+	.use(routerWithMongodb(db))
+	.use(app)
+	.listen(config.port, (context) => {
+		console.log(
+			`🦊 Elysia is running at http://${context.hostname}:${context.port}`,
+		);
+	});
