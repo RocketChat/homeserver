@@ -3,11 +3,7 @@ import crypto from "node:crypto";
 import { toUnpaddedBase64 } from "./binaryData";
 import type { SigningKey } from "./keys";
 import { pruneEventDict } from "./pruneEventDict";
-import {
-	type EncryptionValidAlgorithm,
-	encodeCanonicalJson,
-	signJson,
-} from "./signJson";
+import { encodeCanonicalJson, signJson } from "./signJson";
 import type { EventBase } from "./events/eventBase";
 
 export async function authorizationHeaders<T extends object>(

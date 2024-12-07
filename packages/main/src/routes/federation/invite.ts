@@ -2,17 +2,27 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { config } from "../../config";
 import { InviteEventDTO } from "../../dto";
 import { StrippedStateDTO } from "../../dto";
 import { ErrorDTO } from "../../dto";
 import { makeRequest } from "../../makeRequest";
 import { generateId } from "../../authentication";
+import { isMongodbContext } from "../../plugins/isMongodbContext";
+import { isConfigContext } from "../../plugins/isConfigContext";
 
 export const inviteEndpoint = new Elysia().put(
 	"/invite/:roomId/:eventId",
-	async ({ params, body }) => {
-		const { eventsCollection } = await import("../../mongodb");
+	async ({ params, body, ...context }) => {
+		if (!isMongodbContext(context)) {
+			throw new Error("No mongodb context");
+		}
+		if (!isConfigContext(context)) {
+			throw new Error("No config context");
+		}
+		const {
+			config,
+			mongo: { eventsCollection },
+		} = context;
 
 		console.log("invite received ->", { params, body });
 
@@ -28,6 +38,7 @@ export const inviteEndpoint = new Elysia().put(
 				method: "GET",
 				domain: event.origin,
 				uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}?ver=10`,
+				config,
 			});
 
 			const responseMake = await response.json();
@@ -66,6 +77,7 @@ export const inviteEndpoint = new Elysia().put(
 				options: {
 					body: joinBody,
 				},
+				config,
 			});
 
 			const responseBody = await responseSend.json();

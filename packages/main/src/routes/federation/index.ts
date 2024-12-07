@@ -34,3 +34,5 @@ const federationV2Endpoints = new Elysia({
 export default new Elysia()
 	.use(federationV1Endpoints)
 	.use(federationV2Endpoints);
+
+// export default new Elysia();

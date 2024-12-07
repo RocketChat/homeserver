@@ -3,14 +3,16 @@ import { Elysia, t } from "elysia";
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import Crypto from "node:crypto";
+
 import { generateId } from "../../authentication";
-import { config } from "../../config";
 import { roomMemberEvent } from "../../events/m.room.member";
 import { makeUnsignedRequest } from "../../makeRequest";
 import { signEvent } from "../../signEvent";
 import type { EventBase } from "../../events/eventBase";
 import { createSignedEvent } from "../../events/utils/createSignedEvent";
 import { createRoom } from "../../procedures/createRoom";
+import { isConfigContext } from "../../plugins/isConfigContext";
+import { isMongodbContext } from "../../plugins/isMongodbContext";
 
 function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -25,7 +27,18 @@ function createMediaId(length: number) {
 export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 	.post(
 		"/createRoom",
-		async ({ body, error }) => {
+		async ({ body, error, ...context }) => {
+			if (!isConfigContext(context)) {
+				throw new Error("No config context");
+			}
+			if (!isMongodbContext(context)) {
+				throw new Error("No mongodb context");
+			}
+			const {
+				config,
+				mongo: { eventsCollection },
+			} = context;
+
 			const { username, sender } = body;
 
 			if (sender.split(":").pop() !== config.name) {
@@ -35,15 +48,13 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			const { roomId, events } = await createRoom(
 				sender,
 				username,
-				createSignedEvent(config.signingKey[0]),
+				createSignedEvent(config.signingKey[0], config.name),
 				`!${createMediaId(18)}:${config.name}`,
 			);
 
 			if (events.length === 0) {
 				return error(500, "Error creating room");
 			}
-
-			const { eventsCollection } = await import("../../mongodb");
 
 			await eventsCollection.insertMany(events);
 
@@ -75,15 +86,24 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 	)
 	.post(
 		"/inviteUserToRoom",
-		async ({ body, error }) => {
+		async ({ body, error, ...context }) => {
+			if (!isConfigContext(context)) {
+				throw new Error("No config context");
+			}
+			if (!isMongodbContext(context)) {
+				throw new Error("No mongodb context");
+			}
+			const {
+				config,
+				mongo: { eventsCollection },
+			} = context;
+
 			const { username, sender } = body;
 			let { roomId } = body;
 
 			if (!username.includes(":") || !username.includes("@")) {
 				return error(400, "Invalid username");
 			}
-
-			const { eventsCollection } = await import("../../mongodb");
 
 			// Create room if no roomId to facilitate tests
 			if (sender && !roomId) {
@@ -94,7 +114,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				const { roomId: newRoomId, events } = await createRoom(
 					sender,
 					username,
-					createSignedEvent(config.signingKey[0]),
+					createSignedEvent(config.signingKey[0], config.name),
 					`!${createMediaId(18)}:${config.name}`,
 				);
 				roomId = newRoomId;
@@ -186,6 +206,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				options: {
 					body: payload,
 				},
+				config,
 			});
 
 			console.log(response.status);
@@ -212,7 +233,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 					examples: [
 						{
 							username: "@admin:hs1",
-							roomId: `!uTqsSSWabZzthsSCNf:${config.name}`,
+							roomId: "!uTqsSSWabZzthsSCNf:homeserver",
 						},
 					],
 				},
@@ -225,7 +246,12 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 	)
 	.post(
 		"/sendMessage",
-		async ({ body, error }) => {
+		async ({ body, error, ...context }) => {
+			if (!isConfigContext(context)) {
+				throw new Error("No config context");
+			}
+			const { config } = context;
+
 			const { sender, roomId, msg, target } = body;
 
 			const { eventsCollection } = await import("../../mongodb");

@@ -8,7 +8,7 @@ test("createRoom", async () => {
 		"ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U",
 	);
 
-	const makeSignedEvent = createSignedEvent(signature);
+	const makeSignedEvent = createSignedEvent(signature, "hs1");
 
 	const { roomId, events } = await createRoom(
 		"@sender:hs1",

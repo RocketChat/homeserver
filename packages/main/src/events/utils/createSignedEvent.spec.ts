@@ -16,10 +16,10 @@ describe("makeSignedEvent", () => {
 			sender: "@admin:hs1",
 			ts: 1733069433734,
 		});
-		const signed = await signEvent(event, signature);
+		const signed = await signEvent(event, signature, "hs1");
 		const id = generateId(signed);
 
-		const makeSignedEvent = createSignedEvent(signature);
+		const makeSignedEvent = createSignedEvent(signature, "hs1");
 		const result = await createRoomCreateEvent(makeSignedEvent)({
 			roomId: "!uTqsSSWabZzthsSCNf:hs1",
 			sender: "@admin:hs1",

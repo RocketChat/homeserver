@@ -4,11 +4,15 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { app } from "./app";
 import { config } from "./config";
+import { routerWithConfig } from "./plugins/config";
+import { routerWithMongodb } from "./plugins/mongodb";
 
 console.log(config);
 
 app
 	.use(swagger())
+	.use(routerWithMongodb)
+	.use(routerWithConfig)
 	.get("/", () => "")
 	.onError(async ({ error, request }) => {
 		if (!request.body) {
