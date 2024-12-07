@@ -16,7 +16,7 @@ declare module "./eventBase" {
 	}
 }
 
-interface RoomMemberEvent extends EventBase {
+export interface RoomMemberEvent extends EventBase {
 	content: {
 		membership: Membership;
 	};
