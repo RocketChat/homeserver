@@ -36,6 +36,7 @@
 
 import Elysia from "elysia";
 import { app } from "homeserver";
+import { fakeEndpoints } from "fake";
 import { routerWithMongodb } from "homeserver/src/plugins/mongodb";
 
 import { config } from "./config";
@@ -45,6 +46,7 @@ new Elysia()
 	.decorate("config", config)
 	.use(routerWithMongodb(db))
 	.use(app)
+	.use(fakeEndpoints)
 	.listen(config.port, (context) => {
 		console.log(
 			`🦊 Elysia is running at http://${context.hostname}:${context.port}`,

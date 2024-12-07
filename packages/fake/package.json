@@ -1,5 +1,5 @@
 {
-	"name": "@hs/homeserver",
+	"name": "@hs/fake",
 	"version": "1.0.50",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
@@ -7,6 +7,7 @@
 	},
 	"dependencies": {
 		"@hs/endpoints": "workspace:*",
+		"@hs/homeserver": "workspace:*",
 		"elysia": "latest"
 	},
 	"devDependencies": {

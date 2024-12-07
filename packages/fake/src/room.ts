@@ -4,15 +4,15 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import Crypto from "node:crypto";
 
-import { generateId } from "../../authentication";
-import { roomMemberEvent } from "../../events/m.room.member";
-import { makeUnsignedRequest } from "../../makeRequest";
-import { signEvent } from "../../signEvent";
-import type { EventBase } from "../../events/eventBase";
-import { createSignedEvent } from "../../events/utils/createSignedEvent";
-import { createRoom } from "../../procedures/createRoom";
-import { isConfigContext } from "../../plugins/isConfigContext";
-import { isMongodbContext } from "../../plugins/isMongodbContext";
+import { generateId } from "@hs/homeserver/src/authentication";
+import { isConfigContext } from "@hs/homeserver/src/plugins/isConfigContext";
+import { isMongodbContext } from "@hs/homeserver/src/plugins/isMongodbContext";
+import { createRoom } from "@hs/homeserver/src/procedures/createRoom";
+import { createSignedEvent } from "@hs/homeserver/src/events/utils/createSignedEvent";
+import { signEvent } from "@hs/homeserver/src/signEvent";
+import { roomMemberEvent } from "@hs/homeserver/src/events/m.room.member";
+import { makeUnsignedRequest } from "@hs/homeserver/src/makeRequest";
+import type { EventBase } from "@hs/homeserver/src/events/eventBase";
 
 function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -159,18 +159,21 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 						age: 4, // TODO: Check what this is
 						invite_room_state: [
 							{
+								// @ts-ignore
 								content: {},
 								sender: events[0].event.sender,
 								state_key: "",
 								type: "m.room.join_rules",
 							},
 							{
+								// @ts-ignore
 								content: {},
 								sender: events[0].event.sender,
 								state_key: "",
 								type: "m.room.create",
 							},
 							{
+								// @ts-ignore
 								content: {},
 								sender: events[0].event.sender,
 								state_key: events[0].event.sender,
@@ -180,6 +183,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 					},
 				}),
 				config.signingKey[0],
+				config.name,
 			);
 
 			const inviteEventId = generateId(inviteEvent);
@@ -206,7 +210,8 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				options: {
 					body: payload,
 				},
-				config,
+				signingKey: config.signingKey[0],
+				signingName: config.name,
 			});
 
 			console.log(response.status);
@@ -250,11 +255,15 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			if (!isConfigContext(context)) {
 				throw new Error("No config context");
 			}
-			const { config } = context;
+			if (!isMongodbContext(context)) {
+				throw new Error("No mongodb context");
+			}
+			const {
+				config,
+				mongo: { eventsCollection },
+			} = context;
 
 			const { sender, roomId, msg, target } = body;
-
-			const { eventsCollection } = await import("../../mongodb");
 
 			const create = await eventsCollection.findOne({
 				"event.room_id": roomId,
@@ -311,7 +320,11 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				sender,
 			};
 
-			const signedEvent = await signEvent(event, config.signingKey[0]);
+			const signedEvent = await signEvent(
+				event,
+				config.signingKey[0],
+				config.name,
+			);
 			const eventId = generateId(signedEvent);
 
 			await eventsCollection.insertOne({
@@ -333,7 +346,8 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				options: {
 					body: payload,
 				},
-				config,
+				signingKey: config.signingKey[0],
+				signingName: config.name,
 			});
 
 			const responseMake = await response.json();
