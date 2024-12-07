@@ -4,9 +4,7 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { isConfigContext } from "../../plugins/isConfigContext";
-import { roomMemberEvent } from "../../events/m.room.member";
-import { signEvent } from "../../signEvent";
-import { generateId } from "../../authentication";
+import { makeJoinEventBuilder } from "../../procedures/makeJoin";
 
 // "method":"GET",
 // "url":"http://rc1:443/_matrix/federation/v1/make_join/%21kwkcWPpOXEJvlcollu%3Arc1/%40admin%3Ahs1?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11",
@@ -22,7 +20,7 @@ export const makeJoinEndpoint = new Elysia().get(
 		}
 		const {
 			config,
-			mongo: { eventsCollection },
+			mongo: { getAuthEvents, getLastEvent },
 		} = context;
 
 		const roomId = decodeURIComponent(params.roomId);
@@ -35,76 +33,8 @@ export const makeJoinEndpoint = new Elysia().get(
 			throw new Error("Invalid room Id");
 		}
 
-		const [lastEvent] = await eventsCollection
-			.find(
-				{ "event.room_id": roomId },
-				{ sort: { "event.depth": -1 }, limit: 1 },
-			)
-			.toArray();
-
-		const authEvents = await eventsCollection
-			.find(
-				{
-					"event.room_id": roomId,
-					$or: [
-						{
-							"event.type": {
-								$in: [
-									"m.room.create",
-									"m.room.power_levels",
-									"m.room.join_rules",
-								],
-							},
-						},
-						{
-							// Lots of room members, when including the join ones it fails the auth check
-							"event.type": "m.room.member",
-							"event.content.membership": "invite",
-						},
-					],
-				},
-				{
-					projection: {
-						_id: 1,
-					},
-				},
-			)
-			.toArray();
-
-		console.log("lastEvent ->", lastEvent);
-
-		const event = roomMemberEvent({
-			membership: "join",
-			roomId,
-			sender: userId,
-			state_key: userId,
-			auth_events: [...authEvents].map((event) => event._id),
-			prev_events: [lastEvent._id],
-			depth: lastEvent.event.depth + 1,
-			origin: config.name,
-			ts: Date.now(),
-		});
-
-		const signedEvent = await signEvent(event, config.signingKey[0]);
-
-		const eventId = await generateId(signedEvent);
-
-		console.log("eventId ->", eventId);
-
-		const result = {
-			event: event,
-			room_version: "10",
-		};
-
-		console.log("make_join result ->", result);
-
-		// // TODO: how to prevent duplicates?
-		// await eventsCollection.insertOne({
-		// 	_id: eventId,
-		// 	event: signedEvent,
-		// });
-
-		return result;
+		const makeJoinEvent = makeJoinEventBuilder(getLastEvent, getAuthEvents);
+		return await makeJoinEvent(roomId, userId, query.ver, config.name);
 	},
 	{
 		response: {
