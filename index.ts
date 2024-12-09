@@ -35,9 +35,9 @@
 // // /v1/hierarchy/{roomID}
 
 import Elysia from "elysia";
-import { app } from "homeserver";
-import { fakeEndpoints } from "fake";
-import { routerWithMongodb } from "homeserver/src/plugins/mongodb";
+import { app } from "@hs/homeserver";
+import { fakeEndpoints } from "@hs/fake";
+import { routerWithMongodb } from "@hs/homeserver/src/plugins/mongodb";
 
 import { config } from "./config";
 import { db } from "./mongo";

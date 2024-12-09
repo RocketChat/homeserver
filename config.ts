@@ -1,5 +1,5 @@
-import { getKeyPair } from "homeserver";
-import type { Config } from "homeserver/src/plugins/config";
+import { getKeyPair } from "@hs/homeserver";
+import type { Config } from "@hs/homeserver/src/plugins/config";
 const { CONFIG_FOLDER = "." } = process.env;
 
 const getConfig = async (): Promise<Config> => {
