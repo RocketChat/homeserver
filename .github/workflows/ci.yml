@@ -15,7 +15,7 @@ on:
 name: my-workflow
 jobs:
   unit-tests:
-    name: Unit Tests
+    name: Code Quality Checks(lint, test, tsc)
     runs-on: ubuntu-latest
     steps:
       # ...
@@ -25,4 +25,5 @@ jobs:
       # run any `bun` or `bunx` command
       - run: bun install
       - run: bun lint
+      - run: bunx tsc
       - run: bun test
