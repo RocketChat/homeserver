@@ -34,20 +34,15 @@ export const inviteEndpoint = new Elysia().put(
 		setTimeout(async () => {
 			const { event } = body;
 
-			const response = await makeRequest({
+			const responseMake = await makeRequest({
 				method: "GET",
 				domain: event.origin,
-				uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}?ver=10`,
+				uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}`,
 				signingKey: config.signingKey[0],
 				signingName: config.name,
 			});
 
-			const responseMake = await response.json();
 			console.log("make_join response ->", responseMake);
-
-			if (responseMake.errcode) {
-				return;
-			}
 
 			// const joinBody = {
 			//   type: 'm.room.member',
@@ -71,18 +66,18 @@ export const inviteEndpoint = new Elysia().put(
 
 			console.log("send_join payload ->", joinBody);
 
-			const responseSend = await makeRequest({
+			const responseBody = await makeRequest({
 				method: "PUT",
 				domain: event.origin,
-				uri: `/_matrix/federation/v2/send_join/${params.roomId}/${event.state_key}?omit_members=false`,
+				uri: `/_matrix/federation/v2/send_join/${params.roomId}/${event.state_key}`,
 				options: {
 					body: joinBody,
 				},
 				signingKey: config.signingKey[0],
 				signingName: config.name,
+				queryString: "omit_members=false",
 			});
 
-			const responseBody = await responseSend.json();
 			console.log("send_join response ->", { responseBody });
 
 			if (responseBody.event) {

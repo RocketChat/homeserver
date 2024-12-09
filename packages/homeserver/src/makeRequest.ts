@@ -1,23 +1,45 @@
+import type { HomeServerRoutes } from "./app";
 import { authorizationHeaders, computeHash } from "./authentication";
 import type { SigningKey } from "./keys";
 
 import { signJson } from "./signJson";
 
-export const makeRequest = async ({
+type getAllResponsesByMethod<
+	T extends HomeServerRoutes,
+	M extends HomeServerRoutes["method"],
+> = T extends { method: M } ? T : never;
+
+type getAllResponsesByPath<
+	T extends HomeServerRoutes,
+	M extends HomeServerRoutes["method"],
+	P extends HomeServerRoutes["path"],
+> = T extends { method: M; path: P } ? T : never;
+
+export const makeRequest = async <
+	M extends HomeServerRoutes["method"],
+	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
+	R extends getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200],
+>({
 	method,
 	domain,
 	uri,
 	options = {},
 	signingKey,
 	signingName,
+	queryString,
 }: {
-	method: string;
+	method: M;
 	domain: string;
-	uri: string;
+	uri: U;
 	options?: Record<string, any>;
 	signingKey: SigningKey;
 	signingName: string;
+	queryString?: string;
 }) => {
+	const url = new URL(`https://${domain}${uri}`);
+	if (queryString) {
+		url.search = queryString;
+	}
 	const body =
 		options.body &&
 		(await signJson(
@@ -26,7 +48,7 @@ export const makeRequest = async ({
 			signingName,
 		));
 
-	console.log("body ->", method, domain, uri, body);
+	console.log("body ->", method, domain, url.toString(), body);
 
 	const auth = await authorizationHeaders(
 		signingName,
@@ -39,30 +61,39 @@ export const makeRequest = async ({
 
 	console.log("auth ->", method, domain, uri, auth);
 
-	return fetch(`https://${domain}${uri}`, {
+	const response = await fetch(url.toString(), {
 		...options,
 		...(body && { body: JSON.stringify(body) }),
 		method,
+		...(queryString && { search: queryString }),
 		headers: {
 			Authorization: auth,
 		},
 	});
+
+	return response.json() as Promise<R>;
 };
 
-export const makeUnsignedRequest = async ({
+export const makeUnsignedRequest = async <
+	M extends HomeServerRoutes["method"],
+	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
+	R extends getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200],
+>({
 	method,
 	domain,
 	uri,
 	options = {},
 	signingKey,
 	signingName,
+	queryString,
 }: {
-	method: string;
+	method: M;
 	domain: string;
-	uri: string;
+	uri: U;
 	options?: Record<string, any>;
 	signingKey: SigningKey;
 	signingName: string;
+	queryString?: string;
 }) => {
 	const auth = await authorizationHeaders(
 		signingName,
@@ -73,9 +104,11 @@ export const makeUnsignedRequest = async ({
 		options.body,
 	);
 
-	console.log("auth ->", auth);
-
-	return fetch(`https://${domain}${uri}`, {
+	const url = new URL(`https://${domain}${uri}`);
+	if (queryString) {
+		url.search = queryString;
+	}
+	const response = await fetch(url.toString(), {
 		...options,
 		...(options.body && { body: JSON.stringify(options.body) }),
 		method,
@@ -83,4 +116,6 @@ export const makeUnsignedRequest = async ({
 			Authorization: auth,
 		},
 	});
+
+	return response.json() as Promise<R>;
 };

@@ -203,7 +203,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			console.log("invite roomId ->", roomId);
 			console.log("invite eventId ->", inviteEventId);
 
-			const response = await makeUnsignedRequest({
+			const responseMake = await makeUnsignedRequest({
 				method: "PUT",
 				domain: username.split(":").pop() as string,
 				uri: `/_matrix/federation/v2/invite/${roomId}/${inviteEventId}`,
@@ -214,8 +214,6 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				signingName: config.name,
 			});
 
-			console.log(response.status);
-			const responseMake = await response.json();
 			const responseEventId = generateId(responseMake.event);
 			console.log("invite response responseEventId ->", responseEventId);
 			console.log("invite response ->", responseMake);
@@ -339,7 +337,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			};
 			console.log("payload ->", payload);
 
-			const response = await makeUnsignedRequest({
+			const responseMake = await makeUnsignedRequest({
 				method: "PUT",
 				domain: target,
 				uri: `/_matrix/federation/v1/send/${Date.now()}`,
@@ -350,7 +348,6 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				signingName: config.name,
 			});
 
-			const responseMake = await response.json();
 			console.log("response ->", responseMake);
 
 			return responseMake;
