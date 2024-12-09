@@ -7,7 +7,7 @@ FROM oven/bun:1-debian as base
 FROM base AS install
 RUN mkdir -p /temp/dev
 COPY . /temp/dev/
-RUN cd /temp/dev && bun install --frozen-lockfile
+RUN cd /temp/dev && HUSKY=0 bun install --frozen-lockfile
 
 # install with --production (exclude devDependencies)
 RUN bun build /temp/dev/index.ts --compile --outfile /temp/dev/bin/app
