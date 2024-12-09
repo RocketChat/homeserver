@@ -4,7 +4,6 @@ import { toUnpaddedBase64 } from "./binaryData";
 import type { SigningKey } from "./keys";
 import { pruneEventDict } from "./pruneEventDict";
 import { encodeCanonicalJson, signJson } from "./signJson";
-import type { EventBase } from "./events/eventBase";
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,

@@ -1,6 +1,6 @@
-import { generateId } from "../../authentication";
-import type { SigningKey } from "../../keys";
-import { signEvent } from "../../signEvent";
+import { generateId } from "../../../../homeserver/src/authentication";
+import type { SigningKey } from "../../../../homeserver/src/keys";
+import { signEvent } from "../../../../homeserver/src/signEvent";
 
 export const createSignedEvent = (
 	signature: SigningKey,

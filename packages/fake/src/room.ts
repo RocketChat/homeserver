@@ -8,11 +8,11 @@ import { generateId } from "@hs/homeserver/src/authentication";
 import { isConfigContext } from "@hs/homeserver/src/plugins/isConfigContext";
 import { isMongodbContext } from "@hs/homeserver/src/plugins/isMongodbContext";
 import { createRoom } from "@hs/homeserver/src/procedures/createRoom";
-import { createSignedEvent } from "@hs/homeserver/src/events/utils/createSignedEvent";
+import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import { signEvent } from "@hs/homeserver/src/signEvent";
-import { roomMemberEvent } from "@hs/homeserver/src/events/m.room.member";
+import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { makeUnsignedRequest } from "@hs/homeserver/src/makeRequest";
-import type { EventBase } from "@hs/homeserver/src/events/eventBase";
+import type { EventBase } from "@hs/core/src/events/eventBase";
 
 function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

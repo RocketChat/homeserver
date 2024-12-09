@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 
-import { generateId } from "../authentication";
-import { generateKeyPairsFromString } from "../keys";
-import { signEvent } from "../signEvent";
+import { generateId } from "../../../homeserver/src/authentication";
+import { generateKeyPairsFromString } from "../../../homeserver/src/keys";
+import { signEvent } from "../../../homeserver/src/signEvent";
 import { roomGuestAccessEvent } from "./m.room.guest_access";
 
 const finalEventId = "$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas";

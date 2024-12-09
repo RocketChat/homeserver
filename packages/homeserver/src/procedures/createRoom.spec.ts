@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createRoom } from "./createRoom";
-import { createSignedEvent } from "../events/utils/createSignedEvent";
+import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import { generateKeyPairsFromString } from "../keys";
 
 test("createRoom", async () => {

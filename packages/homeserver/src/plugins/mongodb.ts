@@ -3,7 +3,7 @@ import type { InferContext } from "elysia";
 import { type Db, MongoClient } from "mongodb";
 
 import { NotFoundError } from "elysia";
-import type { EventBase } from "../events/eventBase";
+import type { EventBase } from "@hs/core/src/events/eventBase";
 
 export const routerWithMongodb = (db: Db) =>
 	new Elysia().decorate(

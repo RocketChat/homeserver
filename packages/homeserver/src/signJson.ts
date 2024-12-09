@@ -1,7 +1,7 @@
 import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 import type { SigningKey } from "./keys";
-import type { EventBase } from "./events/eventBase";
+import type { EventBase } from "@hs/core/src/events/eventBase";
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = "ed25519",

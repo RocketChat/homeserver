@@ -4,7 +4,7 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
-import { isRoomMemberEvent } from "../../events/m.room.member";
+import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
 
 // PUT uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
 

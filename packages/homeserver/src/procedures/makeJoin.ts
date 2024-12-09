@@ -3,7 +3,7 @@ import { Elysia, t } from "elysia";
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
-import { roomMemberEvent } from "../events/m.room.member";
+import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
 import type { EventStore } from "../plugins/mongodb";
 
 // "method":"GET",

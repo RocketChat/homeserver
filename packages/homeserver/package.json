@@ -7,6 +7,7 @@
 	},
 	"dependencies": {
 		"@hs/endpoints": "workspace:*",
+		"@hs/core": "workspace:*",
 		"elysia": "latest"
 	},
 	"devDependencies": {

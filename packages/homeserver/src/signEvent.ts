@@ -1,5 +1,5 @@
 import { computeHash } from "./authentication";
-import type { EventBase } from "./events/eventBase";
+import type { EventBase } from "@hs/core/src/events/eventBase";
 import type { SigningKey } from "./keys";
 import { pruneEventDict } from "./pruneEventDict";
 import { signJson } from "./signJson";
