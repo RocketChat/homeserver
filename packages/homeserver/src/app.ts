@@ -4,10 +4,7 @@ import { Elysia } from "elysia";
 import { BadJSONError, MatrixError } from "./errors";
 import federationEndpoints from "./routes/federation";
 import { keyV2Endpoints } from "./routes/key/server";
-import type {
-	ElysiaRoutes,
-	ElysiaRoutesResponsesByEndpoint,
-} from "./extractRouteTypings";
+import type { ElysiaRoutes } from "./extractRouteTypings";
 
 export const app = new Elysia({
 	handler: {

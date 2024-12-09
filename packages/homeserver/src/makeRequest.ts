@@ -18,16 +18,17 @@ type getAllResponsesByPath<
 export const makeRequest = async <
 	M extends HomeServerRoutes["method"],
 	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	R extends getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200],
+	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
 >({
 	method,
 	domain,
 	uri,
+	body,
 	options = {},
 	signingKey,
 	signingName,
 	queryString,
-}: {
+}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
 	method: M;
 	domain: string;
 	uri: U;
@@ -40,15 +41,10 @@ export const makeRequest = async <
 	if (queryString) {
 		url.search = queryString;
 	}
-	const body =
-		options.body &&
-		(await signJson(
-			computeHash({ ...options.body, signatures: {} }),
-			signingKey,
-			signingName,
-		));
+	const signedBody =
+		body && (await signJson(computeHash(body), signingKey, signingName));
 
-	console.log("body ->", method, domain, url.toString(), body);
+	console.log("body ->", method, domain, url.toString(), signedBody);
 
 	const auth = await authorizationHeaders(
 		signingName,
@@ -56,7 +52,7 @@ export const makeRequest = async <
 		domain,
 		method,
 		uri,
-		body,
+		signedBody,
 	);
 
 	console.log("auth ->", method, domain, uri, auth);
@@ -71,13 +67,16 @@ export const makeRequest = async <
 		},
 	});
 
-	return response.json() as Promise<R>;
+	return response.json() as Promise<
+		getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200]
+	>;
 };
 
 export const makeUnsignedRequest = async <
 	M extends HomeServerRoutes["method"],
 	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
 	R extends getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200],
+	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
 >({
 	method,
 	domain,
@@ -90,6 +89,7 @@ export const makeUnsignedRequest = async <
 	method: M;
 	domain: string;
 	uri: U;
+	body: B;
 	options?: Record<string, any>;
 	signingKey: SigningKey;
 	signingName: string;

@@ -53,13 +53,15 @@ export async function signRequest<T extends object>(
 	return signedJson;
 }
 
-export type HashedEvent<T extends EventBase> = T & {
+export type HashedEvent<T extends Record<string, unknown>> = T & {
 	hashes: {
 		sha256: string;
 	};
 };
 
-export function computeHash<T extends EventBase>(content: T): HashedEvent<T> {
+export function computeHash<T extends Record<string, unknown>>(
+	content: T,
+): HashedEvent<T> {
 	// remove the fields that are not part of the hash
 	const {
 		age_ts,

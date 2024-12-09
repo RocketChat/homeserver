@@ -22,10 +22,14 @@ export const isRoomMemberEvent = (
 	return event.type === "m.room.member";
 };
 export interface RoomMemberEvent extends EventBase {
+	type: "m.room.member";
 	content: {
 		membership: Membership;
 	};
+	state_key: string;
 	unsigned: {
+		// TODO: Check what this is
+		age: number;
 		age_ts: number;
 		invite_room_state: (
 			| {

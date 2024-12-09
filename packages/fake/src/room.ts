@@ -207,9 +207,8 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				method: "PUT",
 				domain: username.split(":").pop() as string,
 				uri: `/_matrix/federation/v2/invite/${roomId}/${inviteEventId}`,
-				options: {
-					body: payload,
-				},
+				body: payload,
+				options: {},
 				signingKey: config.signingKey[0],
 				signingName: config.name,
 			});
@@ -341,12 +340,10 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				method: "PUT",
 				domain: target,
 				uri: `/_matrix/federation/v1/send/${Date.now()}`,
-				options: {
-					body: payload,
-				},
+				body: payload,
 				signingKey: config.signingKey[0],
 				signingName: config.name,
-			});
+			} as any);
 
 			console.log("response ->", responseMake);
 

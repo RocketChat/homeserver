@@ -9,8 +9,8 @@ type ConcatRoutes<
 	P extends string = "",
 	K extends keyof R = keyof R,
 > = K extends string
-	? R[K] extends { response: infer G }
-		? { method: Uppercase<K>; path: `${P}`; response: G }
+	? R[K] extends { response: infer G; body: infer B }
+		? { method: Uppercase<K>; path: `${P}`; response: G; body: B }
 		: K extends `:${string}`
 			? ConcatRoutes<R[K], `${P}/${string}`, keyof R[K]>
 			: ConcatRoutes<R[K], `${P}/${K}`, keyof R[K]>
@@ -18,15 +18,3 @@ type ConcatRoutes<
 
 export type ElysiaRoutes<T extends Elysia<any, any, any, any, any, any>> =
 	ConcatRoutes<ExtractElysiaRoutes<T>>;
-
-// organize by method
-export type ElysiaRoutesResponsesByEndpoint<T extends ElysiaRoutes<any>> =
-	T extends {
-		response: infer R;
-		method: infer M;
-		path: infer P;
-	}
-		? {
-				[K in T["method"]]: T["response"];
-			}
-		: never;

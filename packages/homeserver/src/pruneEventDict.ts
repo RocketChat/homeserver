@@ -1,4 +1,5 @@
 import type { EventBase } from "./events/eventBase";
+import { isRoomMemberEvent } from "./events/m.room.member";
 
 interface RoomVersion {
 	updated_redaction_rules: boolean;
@@ -95,23 +96,23 @@ export function pruneEventDict<T extends EventBase>(
 
 		for (const field of fields) {
 			if (field in eventDict.content) {
+				// @ts-ignore
 				content[field] = eventDict.content[field];
 			}
 		}
 	}
 
-	if (eventType === "m.room.member") {
+	if (isRoomMemberEvent(eventDict)) {
 		const contentKeys = [
-			...(eventType === "m.room.member" ? ["membership"] : []),
-			...(eventType === "m.room.member" && roomVersion.restricted_join_rule_fix
-				? ["authorising_user"]
-				: []),
+			"membership",
+			...(roomVersion.restricted_join_rule_fix ? ["authorising_user"] : []),
 		];
 
 		addFields(...contentKeys);
 
 		if (roomVersion.updated_redaction_rules) {
-			const thirdPartyInvite = eventDict.content?.third_party_invite;
+			// @ts-ignore
+			const thirdPartyInvite = eventDict.content.third_party_invite;
 			if (thirdPartyInvite && typeof thirdPartyInvite === "object") {
 				content.third_party_invite = {};
 				if ("signed" in thirdPartyInvite) {

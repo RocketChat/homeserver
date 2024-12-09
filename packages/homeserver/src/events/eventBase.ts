@@ -17,7 +17,7 @@ export type EventBase = {
 	origin: string;
 	origin_server_ts: number;
 
-	content?: Record<string, unknown>;
+	content?: object;
 	unsigned?: Record<string, any> | undefined;
 };
 

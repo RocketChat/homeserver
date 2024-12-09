@@ -57,21 +57,15 @@ export const inviteEndpoint = new Elysia().put(
 			//   }
 			// };
 
-			const joinBody = {
-				...responseMake.event,
-				origin: config.name,
-				origin_server_ts: Date.now(),
-				depth: responseMake.event.depth + 1,
-			};
-
-			console.log("send_join payload ->", joinBody);
-
 			const responseBody = await makeRequest({
 				method: "PUT",
 				domain: event.origin,
 				uri: `/_matrix/federation/v2/send_join/${params.roomId}/${event.state_key}`,
-				options: {
-					body: joinBody,
+				body: {
+					...responseMake.event,
+					origin: config.name,
+					origin_server_ts: Date.now(),
+					depth: responseMake.event.depth + 1,
 				},
 				signingKey: config.signingKey[0],
 				signingName: config.name,

@@ -35,6 +35,7 @@ const finalEvent = {
 		},
 	},
 	unsigned: {
+		age: 4,
 		age_ts: 1733107418773,
 		invite_room_state: [
 			{
@@ -85,6 +86,8 @@ test("roomMemberInviteEvent", async () => {
 			membership: "invite",
 		},
 		unsigned: {
+			// TODO: Check what this is
+			age: 4,
 			age_ts: 1733107418773,
 			invite_room_state: [
 				{
