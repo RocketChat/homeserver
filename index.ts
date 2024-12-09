@@ -42,13 +42,17 @@ import { routerWithMongodb } from "@hs/homeserver/src/plugins/mongodb";
 import { config } from "./config";
 import { db } from "./mongo";
 
-new Elysia()
+new Elysia({
+	handler: {
+		standardHostname: false,
+	},
+})
 	.decorate("config", config)
 	.use(routerWithMongodb(db))
 	.use(app)
 	.use(fakeEndpoints)
 	.listen(config.port, (context) => {
 		console.log(
-			`🦊 Elysia is running at http://${context.hostname}:${context.port}`,
+			`🦊 Homeserver is running at http://${context.hostname}:${context.port}`,
 		);
 	});
