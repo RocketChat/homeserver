@@ -2,16 +2,16 @@ import { Elysia, t } from "elysia";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import type { EventStore } from "../mongodb";
-import { IncompatibleRoomVersionError } from "../errors";
+import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
 import { roomMemberEvent } from "../events/m.room.member";
+import type { EventStore } from "../plugins/mongodb";
 
 // "method":"GET",
 // "url":"http://rc1:443/_matrix/federation/v1/make_join/%21kwkcWPpOXEJvlcollu%3Arc1/%40admin%3Ahs1?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11",
 
 export const makeJoinEventBuilder =
 	(
-		getLastEvent: (roomId: string) => Promise<EventStore>,
+		getLastEvent: (roomId: string) => Promise<EventStore | null>,
 		getAuthEvents: (roomId: string) => Promise<EventStore[]>,
 	) =>
 	async (
@@ -27,6 +27,11 @@ export const makeJoinEventBuilder =
 			);
 		}
 		const lastEvent = await getLastEvent(roomId);
+
+		if (!lastEvent) {
+			throw new NotFoundError(`No events found for room ${roomId}`);
+		}
+
 		const authEvents = await getAuthEvents(roomId);
 		const event = roomMemberEvent({
 			membership: "join",

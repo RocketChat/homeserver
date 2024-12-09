@@ -23,7 +23,7 @@ export function pruneEventDict<T extends EventBase>(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): T {
+): Partial<T> {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it
 	 * operates on objects rather than event instances.
@@ -55,7 +55,11 @@ export function pruneEventDict<T extends EventBase>(
 	const content: JsonDict = {};
 
 	if (roomVersion.msc3389_relation_redactions) {
-		const relatesTo = eventDict.content?.["m.relates_to"];
+		const relatesTo =
+			eventDict.content &&
+			"m.relates_to" in eventDict.content &&
+			(eventDict.content["m.relates_to"] as Record<string, unknown>);
+
 		if (relatesTo && typeof relatesTo === "object") {
 			const newRelatesTo: JsonDict = {};
 			for (const field of ["rel_type", "event_id"]) {
@@ -85,6 +89,10 @@ export function pruneEventDict<T extends EventBase>(
 	}
 
 	function addFields(...fields: string[]): void {
+		if (!eventDict.content) {
+			return;
+		}
+
 		for (const field of fields) {
 			if (field in eventDict.content) {
 				content[field] = eventDict.content[field];
@@ -118,7 +126,7 @@ export function pruneEventDict<T extends EventBase>(
 			return {
 				...allowedFields,
 				content: eventDict.content,
-			};
+			} as T;
 		}
 		if (!roomVersion.implicit_room_creator) {
 			addFields("creator");
@@ -157,8 +165,9 @@ export function pruneEventDict<T extends EventBase>(
 	if (eventType === "m.room.redaction" && roomVersion.updated_redaction_rules) {
 		addFields("redacts");
 	}
+
 	return {
 		...allowedFields,
 		content,
-	};
+	} as Partial<T>;
 }

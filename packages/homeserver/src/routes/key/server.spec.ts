@@ -2,10 +2,11 @@ import { expect, it } from "bun:test";
 import nacl from "tweetnacl";
 import { app } from "../../app";
 import { fromBinaryData, toBinaryData } from "../../binaryData";
-import type { Config } from "../../../../../config";
+
 import { EncryptionValidAlgorithm } from "../../signJson";
 import Elysia from "elysia";
 import { generateKeyPairsFromString } from "../../keys";
+import type { Config } from "../../plugins/config";
 
 const config: Config = {
 	path: "./config.json",

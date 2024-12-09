@@ -30,5 +30,5 @@ export const signEvent = async <T extends EventBase>(
 		...s,
 		content: event.content,
 		unsigned: event.unsigned,
-	};
+	} as SignedEvent<T>;
 };

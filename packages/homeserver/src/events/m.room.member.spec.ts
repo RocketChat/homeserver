@@ -38,7 +38,7 @@ test("roomMemberEvent", async () => {
 		sender: "@admin:hs1",
 		ts: 1733107418648,
 	});
-	const signedCreateEvent = await signEvent(createEvent, signature);
+	const signedCreateEvent = await signEvent(createEvent, signature, "hs1");
 
 	const createEventId = generateId(signedCreateEvent);
 	const memberEvent = roomMemberEvent({

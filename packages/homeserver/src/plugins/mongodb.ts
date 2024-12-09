@@ -12,15 +12,10 @@ export const routerWithMongodb = (db: Db) =>
 			const eventsCollection = db.collection<EventStore>("events");
 
 			const getLastEvent = async (roomId: string) => {
-				const events = await eventsCollection
-					.find({ "event.room_id": roomId }, { sort: { "event.depth": -1 } })
-					.toArray();
-
-				if (events.length === 0) {
-					throw new NotFoundError(`No events found for room ${roomId}`);
-				}
-
-				return events[0];
+				return eventsCollection.findOne(
+					{ "event.room_id": roomId },
+					{ sort: { "event.depth": -1 } },
+				);
 			};
 
 			const getAuthEvents = async (roomId: string) => {

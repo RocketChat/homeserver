@@ -17,7 +17,7 @@ export function toBinaryData(
 }
 
 export function fromBinaryData(
-	value: string | Uint8Array | ArrayBuffer | ArrayBufferView,
+	value: string | Uint8Array | ArrayBuffer,
 ): string {
 	if (typeof value === "string") {
 		return value;

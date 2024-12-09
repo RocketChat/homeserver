@@ -35,6 +35,7 @@ const event = {
 		},
 		state_key: "@rodrigo2:synapse2",
 		type: "m.room.member",
+		// @ts-ignore
 		unsigned: { age: 1 },
 	},
 	origin: "synapse2",
@@ -51,6 +52,7 @@ describe("pruneEventDict", () => {
 				"$brN97rWTFjQbIQHy2FNwg4BHc5HbhruxQHdCdk__Lb0",
 				"$7tKDuHnd8QKPx_T_9-2WGAgJLqjfOndQgzWM1afTQLQ",
 			],
+			// @ts-ignore
 			content: {
 				// avatar_url: null, --> it should be removed
 				// displayname: "rodrigo2", --> it should be removed
@@ -71,6 +73,7 @@ describe("pruneEventDict", () => {
 			},
 			state_key: "@rodrigo2:synapse2",
 			type: "m.room.member",
+			// @ts-ignore
 			unsigned: {
 				// age: 1 --> it should be removed
 			},

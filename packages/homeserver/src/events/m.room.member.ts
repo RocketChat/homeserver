@@ -16,6 +16,11 @@ declare module "./eventBase" {
 	}
 }
 
+export const isRoomMemberEvent = (
+	event: EventBase,
+): event is RoomMemberEvent => {
+	return event.type === "m.room.member";
+};
 export interface RoomMemberEvent extends EventBase {
 	content: {
 		membership: Membership;
