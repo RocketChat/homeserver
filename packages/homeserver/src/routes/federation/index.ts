@@ -6,7 +6,7 @@ import { usersEndpoints } from "./users";
 import { versionEndpoints } from "./version";
 import { makeJoinEndpoint } from "./makeJoin";
 import { sendJoinEndpoint } from "./sendJoin";
-import { getMissingEvents } from "./getMissingEvents";
+import { getMissingEventsRoute } from "./getMissingEvents";
 
 const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
@@ -15,7 +15,7 @@ const federationV1Endpoints = new Elysia({
 	.use(usersEndpoints)
 	.use(queryEndpoints)
 	.use(makeJoinEndpoint)
-	.use(getMissingEvents)
+	.use(getMissingEventsRoute)
 	.put("/send/:txnId", ({ params, body }) => {
 		console.log("receive send ->", params);
 		console.log("body ->", body);

@@ -3,71 +3,37 @@ import { Elysia, t } from "elysia";
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
+import { makeGetMissingEventsProcedure } from "../../procedures/getMissingEvents";
 
 //POST http://rc1:443/_matrix/federation/v1/get_missing_events/%21EiexWZWYPDXWLzPRCq%3Arc1
 
-export const getMissingEvents = new Elysia().post(
+export const getMissingEventsRoute = new Elysia().post(
 	"/get_missing_events/:roomId",
 	async ({ params, body, ...context }) => {
 		if (!isMongodbContext(context)) {
 			throw new Error("No mongodb context");
 		}
-		const {
-			mongo: { eventsCollection },
-		} = context;
 		const roomId = decodeURIComponent(params.roomId);
 
-		console.log("get_missing_events ->", { roomId });
-		console.log("get_missing_events ->", { body });
+		const {
+			mongo: { getDeepEarliestAndLatestEvents, getMissingEventsByDeep },
+		} = context;
 
-		console.log({
-			_id: { $in: [...body.earliest_events, ...body.latest_events] },
-			"event.room_id": roomId,
-		});
+		const getMissingEvents = makeGetMissingEventsProcedure(
+			getDeepEarliestAndLatestEvents,
+			getMissingEventsByDeep,
+		);
 
-		const depths = await eventsCollection
-			.find(
-				{
-					_id: { $in: [...body.earliest_events, ...body.latest_events] },
-					"event.room_id": roomId,
-				},
-				{ projection: { "event.depth": 1 } },
-			)
-			.toArray()
-			.then((events) => events.map((event) => event.event.depth));
+		const events = await getMissingEvents(
+			roomId,
+			body.earliest_events,
+			body.latest_events,
+			body.limit,
+		);
 
-		if (depths.length === 0) {
-			console.log("get_missing_events depths -> No events found");
-			return {
-				events: [],
-			};
-		}
-
-		console.log("get_missing_events depths ->", depths);
-
-		const minDepth = Math.min(...depths);
-		const maxDepth = Math.max(...depths);
-
-		console.log("get_missing_events depths ->", { minDepth, maxDepth });
-
-		const events = await eventsCollection
-			.find(
-				{
-					"event.room_id": roomId,
-					"event.depth": { $gte: minDepth, $lte: maxDepth },
-				},
-				{ limit: body.limit, sort: { "event.depth": 1 } },
-			)
-			.toArray()
-			.then((events) => events.map((event) => event.event));
-
-		const result = {
+		return {
 			events,
 		};
-
-		console.log("get_missing_events result ->", result);
-
-		return result;
 	},
 	{
 		params: t.Object(
