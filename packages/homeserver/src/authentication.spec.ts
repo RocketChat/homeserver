@@ -1,6 +1,11 @@
-import { expect, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 
-import { computeHash, generateId, signRequest } from "./authentication";
+import {
+	computeHash,
+	extractSignaturesFromHeader,
+	generateId,
+	signRequest,
+} from "./authentication";
 import { generateKeyPairsFromString } from "./keys";
 import { signJson, signText } from "./signJson";
 
@@ -160,4 +165,28 @@ test("computeHash", async () => {
 	expect(result.hashes.sha256).toBe(
 		"nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4",
 	);
+});
+
+describe("extractSignaturesFromHeaders", async () => {
+	test("it should extract the origin, destination, key, and signature from the authorization header", async () => {
+		expect(
+			extractSignaturesFromHeader(
+				'X-Matrix origin="synapse1",destination="synapse2",key="ed25519:a_yNbw",sig="lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ"',
+			),
+		).toStrictEqual({
+			destination: "synapse2",
+			key: "ed25519:a_yNbw",
+			origin: "synapse1",
+			signature:
+				"lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ",
+		});
+	});
+
+	test("it should throw an error if the authorization header is invalid", async () => {
+		expect(() =>
+			extractSignaturesFromHeader(
+				'X-Matrix origin="synapse1",destination="synapse2",key="ed25519:a_yNbw",sig="lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ',
+			),
+		).toThrow("Invalid authorization header");
+	});
 });

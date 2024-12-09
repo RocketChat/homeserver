@@ -96,3 +96,43 @@ export function generateId<T extends object>(content: T): string {
 		{ urlSafe: true },
 	)}`;
 }
+
+/**
+ * Extracts the origin, destination, key, and signature from the authorization header.
+ *
+ * @param authorizationHeader The authorization header.
+ * @returns An object containing the origin, destination, key, and signature.
+ */
+
+export const extractSignaturesFromHeader = (authorizationHeader: string) => {
+	// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
+
+	const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
+	const {
+		origin,
+		destination,
+		key,
+		sig: signature,
+		...rest
+	} = Object.fromEntries(
+		[...authorizationHeader.matchAll(regex)].map(
+			([, key, value]) => [key, value] as const,
+		),
+	);
+
+	if (Object.keys(rest).length) {
+		// it should never happen since the regex should match all the parameters
+		throw new Error("Invalid authorization header, unexpected parameters");
+	}
+
+	if ([origin, destination, key, signature].some((value) => !value)) {
+		throw new Error("Invalid authorization header");
+	}
+
+	return {
+		origin,
+		destination,
+		key,
+		signature,
+	};
+};
