@@ -3,7 +3,48 @@ import crypto from "node:crypto";
 import { toUnpaddedBase64 } from "./binaryData";
 import type { SigningKey } from "./keys";
 import { pruneEventDict } from "./pruneEventDict";
-import { encodeCanonicalJson, signJson } from "./signJson";
+import { encodeCanonicalJson, isValidAlgorithm, signJson } from "./signJson";
+import nacl from "tweetnacl";
+
+/**
+ * Extracts the origin, destination, key, and signature from the authorization header.
+ *
+ * @param authorizationHeader The authorization header.
+ * @returns An object containing the origin, destination, key, and signature.
+ */
+
+export const extractSignaturesFromHeader = (authorizationHeader: string) => {
+	// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
+
+	const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
+	const {
+		origin,
+		destination,
+		key,
+		sig: signature,
+		...rest
+	} = Object.fromEntries(
+		[...authorizationHeader.matchAll(regex)].map(
+			([, key, value]) => [key, value] as const,
+		),
+	);
+
+	if (Object.keys(rest).length) {
+		// it should never happen since the regex should match all the parameters
+		throw new Error("Invalid authorization header, unexpected parameters");
+	}
+
+	if ([origin, destination, key, signature].some((value) => !value)) {
+		throw new Error("Invalid authorization header");
+	}
+
+	return {
+		origin,
+		destination,
+		key,
+		signature,
+	};
+};
 
 export async function authorizationHeaders<T extends object>(
 	origin: string,
@@ -27,6 +68,39 @@ export async function authorizationHeaders<T extends object>(
 
 	return `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`;
 }
+
+export const validateAuthorizationHeader = async <T extends object>(
+	origin: string,
+	signingKey: string,
+	destination: string,
+	method: string,
+	uri: string,
+	hash: string,
+	content?: T,
+) => {
+	const canonicalJson = encodeCanonicalJson({
+		method,
+		uri,
+		origin,
+		destination,
+		...(content && { content }),
+	});
+	const signature = Uint8Array.from(atob(hash as string), (c) =>
+		c.charCodeAt(0),
+	);
+
+	if (
+		!nacl.sign.detached.verify(
+			new TextEncoder().encode(canonicalJson),
+			signature,
+			Uint8Array.from(atob(signingKey as string), (c) => c.charCodeAt(0)),
+		)
+	) {
+		throw new Error(`Invalid signature for ${destination}`);
+	}
+
+	return true;
+};
 
 export async function signRequest<T extends object>(
 	origin: string,
@@ -96,43 +170,3 @@ export function generateId<T extends object>(content: T): string {
 		{ urlSafe: true },
 	)}`;
 }
-
-/**
- * Extracts the origin, destination, key, and signature from the authorization header.
- *
- * @param authorizationHeader The authorization header.
- * @returns An object containing the origin, destination, key, and signature.
- */
-
-export const extractSignaturesFromHeader = (authorizationHeader: string) => {
-	// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
-
-	const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
-	const {
-		origin,
-		destination,
-		key,
-		sig: signature,
-		...rest
-	} = Object.fromEntries(
-		[...authorizationHeader.matchAll(regex)].map(
-			([, key, value]) => [key, value] as const,
-		),
-	);
-
-	if (Object.keys(rest).length) {
-		// it should never happen since the regex should match all the parameters
-		throw new Error("Invalid authorization header, unexpected parameters");
-	}
-
-	if ([origin, destination, key, signature].some((value) => !value)) {
-		throw new Error("Invalid authorization header");
-	}
-
-	return {
-		origin,
-		destination,
-		key,
-		signature,
-	};
-};

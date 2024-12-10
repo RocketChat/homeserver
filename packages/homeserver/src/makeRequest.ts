@@ -15,7 +15,7 @@ type getAllResponsesByPath<
 	P extends HomeServerRoutes["path"],
 > = T extends { method: M; path: P } ? T : never;
 
-export const makeRequest = async <
+export const makeSignedRequest = async <
 	M extends HomeServerRoutes["method"],
 	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
 	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
@@ -65,6 +65,41 @@ export const makeRequest = async <
 		headers: {
 			Authorization: auth,
 		},
+	});
+
+	return response.json() as Promise<
+		getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200]
+	>;
+};
+
+export const makeRequest = async <
+	M extends HomeServerRoutes["method"],
+	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
+	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
+>({
+	method,
+	domain,
+	uri,
+	body,
+	options = {},
+	queryString,
+}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
+	method: M;
+	domain: string;
+	uri: U;
+	options?: Record<string, any>;
+	queryString?: string;
+}) => {
+	const url = new URL(`https://${domain}${uri}`);
+	if (queryString) {
+		url.search = queryString;
+	}
+
+	const response = await fetch(url.toString(), {
+		...options,
+		...(body && { body: JSON.stringify(body) }),
+		method,
+		...(queryString && { search: queryString }),
 	});
 
 	return response.json() as Promise<

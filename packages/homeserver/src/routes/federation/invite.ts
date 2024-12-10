@@ -5,7 +5,7 @@ import "@hs/endpoints/src/server";
 import { InviteEventDTO } from "../../dto";
 import { StrippedStateDTO } from "../../dto";
 import { ErrorDTO } from "../../dto";
-import { makeRequest } from "../../makeRequest";
+import { makeSignedRequest } from "../../makeRequest";
 import { generateId } from "../../authentication";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { isConfigContext } from "../../plugins/isConfigContext";
@@ -34,7 +34,7 @@ export const inviteEndpoint = new Elysia().put(
 		setTimeout(async () => {
 			const { event } = body;
 
-			const responseMake = await makeRequest({
+			const responseMake = await makeSignedRequest({
 				method: "GET",
 				domain: event.origin,
 				uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}`,
@@ -57,7 +57,7 @@ export const inviteEndpoint = new Elysia().put(
 			//   }
 			// };
 
-			const responseBody = await makeRequest({
+			const responseBody = await makeSignedRequest({
 				method: "PUT",
 				domain: event.origin,
 				uri: `/_matrix/federation/v2/send_join/${params.roomId}/${event.state_key}`,

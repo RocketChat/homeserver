@@ -2,14 +2,29 @@ import Elysia from "elysia";
 import type { InferContext } from "elysia";
 import { type Db, MongoClient } from "mongodb";
 
-import { NotFoundError } from "elysia";
 import type { EventBase } from "@hs/core/src/events/eventBase";
+
+export interface Server {
+	_id: string;
+	name: string;
+	url: string;
+	keys: {
+		[key: `${string}:${string}`]: string;
+	};
+
+	// signatures: {
+	// 	from: string;
+	// 	signature: string;
+	// 	key: string;
+	// }[];
+}
 
 export const routerWithMongodb = (db: Db) =>
 	new Elysia().decorate(
 		"mongo",
 		(() => {
 			const eventsCollection = db.collection<EventStore>("events");
+			const serversCollection = db.collection<Server>("servers");
 
 			const getLastEvent = async (roomId: string) => {
 				return eventsCollection.findOne(
@@ -95,7 +110,47 @@ export const routerWithMongodb = (db: Db) =>
 					.toArray();
 			};
 
+			const getPublicKeyFromLocal = async (
+				origin: string,
+				key: string,
+			): Promise<string | undefined> => {
+				const server = await serversCollection.findOne({
+					name: origin,
+				});
+
+				if (!server) {
+					return;
+				}
+				const [, publicKey] =
+					Object.entries(server.keys).find(
+						([protocolAndVersion]) => protocolAndVersion === key,
+					) ?? [];
+				return publicKey;
+			};
+
+			const storePublicKey = async (
+				origin: string,
+				key: string,
+				value: string,
+			) => {
+				await serversCollection.findOneAndUpdate(
+					{ name: origin },
+					{
+						keys: {
+							$set: {
+								[key]: value,
+							},
+						},
+					},
+					{ upsert: true },
+				);
+			};
+
 			return {
+				serversCollection,
+				getPublicKeyFromLocal,
+				storePublicKey,
+
 				eventsCollection,
 				getDeepEarliestAndLatestEvents,
 				getMissingEventsByDeep,

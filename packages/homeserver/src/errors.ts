@@ -29,6 +29,8 @@ export class ForbiddenError extends MatrixError<"M_FORBIDDEN"> {
 
 /** The access or refresh token specified was not recognised. */
 export class UnknownTokenError extends MatrixError<"M_UNKNOWN_TOKEN"> {
+	public readonly status = 401;
+
 	public softLogout?: boolean;
 
 	public constructor(

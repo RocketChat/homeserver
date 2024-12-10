@@ -59,7 +59,7 @@ export async function signJson<
 	};
 }
 
-const isValidAlgorithm = (
+export const isValidAlgorithm = (
 	algorithm: string,
 ): algorithm is EncryptionValidAlgorithm => {
 	return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
@@ -109,6 +109,48 @@ export async function getSignaturesFromRemote<
 
 	return remoteSignatures;
 }
+
+export const verifySignature = (
+	content: string,
+	signingName: string,
+	signature: Uint8Array,
+	publicKey: Uint8Array,
+	algorithm: EncryptionValidAlgorithm,
+	version: string,
+) => {
+	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
+		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
+	}
+	if (
+		!nacl.sign.detached.verify(
+			new TextEncoder().encode(content),
+			signature,
+			publicKey,
+		)
+	) {
+		throw new Error(`Invalid signature for ${signingName}`);
+	}
+	return true;
+};
+
+export const verifyJsonSignature = <T extends object>(
+	content: T,
+	signingName: string,
+	signature: Uint8Array,
+	publicKey: Uint8Array,
+	algorithm: EncryptionValidAlgorithm,
+	version: string,
+) => {
+	const canonicalJson = encodeCanonicalJson(content);
+	return verifySignature(
+		canonicalJson,
+		signingName,
+		signature,
+		publicKey,
+		algorithm,
+		version,
+	);
+};
 
 export async function verifySignaturesFromRemote<
 	T extends object & {
