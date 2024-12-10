@@ -66,7 +66,7 @@ export const validateHeaderSignature = async ({
 			throw new Error("Invalid destination");
 		}
 
-		const getPublicKeyForServer = makeGetPublicKeyFromServerProcedure(
+		const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
 			context.mongo.getValidPublicKeyFromLocal,
 			async () => {
 				const result = await makeRequest({
@@ -123,7 +123,7 @@ export const validateHeaderSignature = async ({
 			context.mongo.storePublicKey,
 		);
 
-		const publickey = await getPublicKeyForServer(origin.origin, origin.key);
+		const publickey = await getPublicKeyFromServer(origin.origin, origin.key);
 		const url = new URL(request.url);
 		if (
 			!(await validateAuthorizationHeader(
