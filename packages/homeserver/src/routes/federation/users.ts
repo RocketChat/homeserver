@@ -21,6 +21,11 @@ export const usersEndpoints = new Elysia()
 			response: t.Object({
 				device_keys: t.Any(),
 			}),
+			detail: {
+				security: [{
+					'matrixAuth': []
+				}],
+			}
 		},
 	)
 	// not tested
@@ -30,4 +35,12 @@ export const usersEndpoints = new Elysia()
 			stream_id: 1,
 			devices: [],
 		};
-	});
+	},
+		{
+			detail: {
+				security: [{
+					'matrixAuth': []
+				}],
+			}
+		}
+	);

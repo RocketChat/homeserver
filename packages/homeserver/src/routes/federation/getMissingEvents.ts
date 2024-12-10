@@ -68,5 +68,10 @@ export const getMissingEventsRoute = new Elysia().post(
 				],
 			},
 		),
+		detail: {
+			security: [{
+				'matrixAuth': []
+			}],
+		}
 	},
 );

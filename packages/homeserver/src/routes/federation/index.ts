@@ -7,11 +7,13 @@ import { versionEndpoints } from "./version";
 import { makeJoinEndpoint } from "./makeJoin";
 import { sendJoinEndpoint } from "./sendJoin";
 import { getMissingEventsRoute } from "./getMissingEvents";
+import validateHeaderSignature from "../../plugins/validateHeaderSignature";
 
 const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
 })
 	.use(versionEndpoints)
+	.onBeforeHandle(validateHeaderSignature)
 	.use(usersEndpoints)
 	.use(queryEndpoints)
 	.use(makeJoinEndpoint)

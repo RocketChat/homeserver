@@ -11,7 +11,19 @@ const app = new Elysia({
 		standardHostname: false,
 	},
 })
-	.use(swagger())
+	.use(swagger({
+		documentation: {
+			components: {
+				securitySchemes: {
+					matrixAuth: {
+						type: 'apiKey',
+						name: 'Authorization',
+						in: 'header'
+					}
+				}
+			}
+		}
+	}))
 	.get("/", () => "")
 	.onError(async ({ error, request }) => {
 		if (!request.body) {

@@ -121,5 +121,10 @@ export const sendJoinEndpoint = new Elysia().put(
 				],
 			},
 		),
+		detail: {
+			security: [{
+				'matrixAuth': []
+			}],
+		}
 	},
 );
