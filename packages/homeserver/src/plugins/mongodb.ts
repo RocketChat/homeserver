@@ -117,7 +117,6 @@ export const routerWithMongodb = (db: Db) =>
 				const server = await serversCollection.findOne({
 					name: origin,
 				});
-
 				if (!server) {
 					return;
 				}
@@ -136,11 +135,11 @@ export const routerWithMongodb = (db: Db) =>
 				await serversCollection.findOneAndUpdate(
 					{ name: origin },
 					{
-						keys: {
-							$set: {
+						$set: {
+							keys: {
 								[key]: value,
-							},
-						},
+							}
+						}
 					},
 					{ upsert: true },
 				);
