@@ -60,7 +60,6 @@ export const validateHeaderSignature = async ({
 
 	try {
 		const origin = extractSignaturesFromHeader(authorization);
-
 		// TODO: not sure if we should throw an error if the origin is not the same as the config.name
 		// or if we should just act as a proxy
 		if (origin.destination !== context.config.name) {
@@ -68,13 +67,16 @@ export const validateHeaderSignature = async ({
 		}
 
 		const getPublicKeyForServer = makeGetPublicKeyFromServerProcedure(
-			context.mongo.getPublicKeyFromLocal,
+			context.mongo.getValidPublicKeyFromLocal,
 			async () => {
 				const result = await makeRequest({
 					method: "GET",
 					domain: origin.origin,
 					uri: "/_matrix/key/v2/server",
 				});
+				if (result.valid_until_ts < Date.now()) {
+					throw new Error("Expired remote public key");
+				}
 
 				const [signature] = await getSignaturesFromRemote(
 					result,
@@ -113,7 +115,10 @@ export const validateHeaderSignature = async ({
 					throw new Error("Invalid algorithm");
 				}
 
-				return publickey.key;
+				return {
+					key: publickey.key,
+					validUntil: result.valid_until_ts,
+				};
 			},
 			context.mongo.storePublicKey,
 		);

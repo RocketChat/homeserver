@@ -9,7 +9,10 @@ export interface Server {
 	name: string;
 	url: string;
 	keys: {
-		[key: `${string}:${string}`]: string;
+		[key: `${string}:${string}`]: {
+			key: string;
+			validUntil: number;
+		};
 	};
 
 	// signatures: {
@@ -110,7 +113,7 @@ export const routerWithMongodb = (db: Db) =>
 					.toArray();
 			};
 
-			const getPublicKeyFromLocal = async (
+			const getValidPublicKeyFromLocal = async (
 				origin: string,
 				key: string,
 			): Promise<string | undefined> => {
@@ -122,22 +125,26 @@ export const routerWithMongodb = (db: Db) =>
 				}
 				const [, publicKey] =
 					Object.entries(server.keys).find(
-						([protocolAndVersion]) => protocolAndVersion === key,
+						([protocolAndVersion, value]) => protocolAndVersion === key && value.validUntil > Date.now(),
 					) ?? [];
-				return publicKey;
+				return publicKey?.key;
 			};
 
 			const storePublicKey = async (
 				origin: string,
 				key: string,
 				value: string,
+				validUntil: number,
 			) => {
 				await serversCollection.findOneAndUpdate(
 					{ name: origin },
 					{
 						$set: {
 							keys: {
-								[key]: value,
+								[key]: {
+									key: value,
+									validUntil,
+								},
 							}
 						}
 					},
@@ -147,7 +154,7 @@ export const routerWithMongodb = (db: Db) =>
 
 			return {
 				serversCollection,
-				getPublicKeyFromLocal,
+				getValidPublicKeyFromLocal,
 				storePublicKey,
 
 				eventsCollection,

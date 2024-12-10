@@ -1,17 +1,18 @@
 export const makeGetPublicKeyFromServerProcedure = (
 	getFromLocal: (origin: string, key: string) => Promise<string | undefined>,
-	getFromOrigin: (origin: string) => Promise<string>,
-	store: (origin: string, key: string, value: string) => Promise<void>,
+	getFromOrigin: (origin: string) => Promise<{ key: string; validUntil: number }>,
+	store: (origin: string, key: string, value: string, validUntil: number) => Promise<void>,
 ) => {
 	return async (origin: string, key: string) => {
 		const localPublicKey = await getFromLocal(origin, key);
+		console.log({ localPublicKey })
 		if (localPublicKey) {
 			return localPublicKey;
 		}
 
-		const remotePublicKey = await getFromOrigin(origin);
+		const { key: remotePublicKey, validUntil } = await getFromOrigin(origin);
 		if (remotePublicKey) {
-			await store(origin, key, remotePublicKey);
+			await store(origin, key, remotePublicKey, validUntil);
 			return remotePublicKey;
 		}
 

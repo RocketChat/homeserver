@@ -31,7 +31,7 @@ describe("validateHeaderSignature getting public key from local", () => {
 				version: "org.matrix.msc3757.10",
 			})
 			.decorate("mongo", {
-				getPublicKeyFromLocal: async () => {
+				getValidPublicKeyFromLocal: async () => {
 					return toUnpaddedBase64(signature.publicKey);
 				},
 				storePublicKey: async () => {
@@ -183,7 +183,7 @@ describe("validateHeaderSignature getting public key from remote", () => {
 				version: "org.matrix.msc3757.10",
 			})
 			.decorate("mongo", {
-				getPublicKeyFromLocal: async () => {
+				getValidPublicKeyFromLocal: async () => {
 					return;
 				},
 				storePublicKey: async () => {
@@ -245,5 +245,42 @@ describe("validateHeaderSignature getting public key from remote", () => {
 		);
 
 		expect(resp.status).toBe(200);
+	});
+
+	it("Should reject if authorization header is expired requesting from synapse1 (synapse2 delivered an already expired key)", async () => {
+		const result = await signJson(
+			{
+				old_verify_keys: {},
+				server_name: "synapse1",
+				valid_until_ts: new Date().getTime() - 1000,
+				verify_keys: {
+					"ed25519:a_yNbw": {
+						key: toUnpaddedBase64(signature.publicKey),
+					},
+				},
+			},
+			signature,
+			"synapse1",
+		);
+
+		mock("https://synapse1/_matrix/key/v2/server", { data: result });
+
+		const authorizationHeader = await authorizationHeaders(
+			"synapse1",
+			signature,
+			"synapse2",
+			"GET",
+			"/",
+		);
+
+		const resp = await app.handle(
+			new Request("http://localhost/", {
+				headers: {
+					authorization: authorizationHeader,
+				},
+			}),
+		);
+
+		expect(resp.status).toBe(401);
 	});
 });
