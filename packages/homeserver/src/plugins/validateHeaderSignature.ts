@@ -3,7 +3,11 @@ import {
 	extractSignaturesFromHeader,
 	validateAuthorizationHeader,
 } from "../authentication";
-import { isValidAlgorithm, verifyJsonSignature } from "../signJson";
+import {
+	getSignaturesFromRemote,
+	isValidAlgorithm,
+	verifyJsonSignature,
+} from "../signJson";
 import { isConfigContext } from "./isConfigContext";
 import { isMongodbContext } from "./isMongodbContext";
 import { makeGetPublicKeyFromServerProcedure } from "../procedures/getPublicKeyFromServer";
@@ -76,6 +80,11 @@ export const validateHeaderSignature = () =>
 							uri: "/_matrix/key/v2/server",
 						});
 
+						const [signature] = await getSignaturesFromRemote(
+							result,
+							origin.origin,
+						);
+
 						const [, publickey] =
 							Object.entries(result.verify_keys).find(
 								([key]) => key === origin.key,
@@ -85,23 +94,33 @@ export const validateHeaderSignature = () =>
 							throw new Error("Public key not found");
 						}
 
-						const [algorithm, version] = origin.key.split(":");
-
-						if (!isValidAlgorithm(algorithm)) {
-							throw new Error("Invalid algorithm");
+						if (!signature) {
+							throw new Error(`Signatures not found for ${origin.origin}`);
 						}
 
 						if (
 							!(await verifyJsonSignature(
 								result,
 								origin.origin,
-								new TextEncoder().encode(origin.signature),
-								new TextEncoder().encode(publickey.key),
-								algorithm,
-								version,
+								Uint8Array.from(atob(signature.signature), (c) =>
+									c.charCodeAt(0),
+								),
+								Uint8Array.from(atob(publickey.key), (c) => c.charCodeAt(0)),
+								signature.algorithm,
+								signature.version,
 							))
 						) {
 							throw new Error("Invalid signature");
+						}
+
+						if (!publickey) {
+							throw new Error("Public key not found");
+						}
+
+						const [algorithm, version] = origin.key.split(":");
+
+						if (!isValidAlgorithm(algorithm)) {
+							throw new Error("Invalid algorithm");
 						}
 
 						return publickey.key;

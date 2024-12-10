@@ -1,12 +1,14 @@
-import { beforeAll, describe, expect, it } from "bun:test";
+import { afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { mock, clearMocks } from "bun-bagel";
 
 import { validateHeaderSignature } from "./validateHeaderSignature";
 import Elysia from "elysia";
 import { type SigningKey, generateKeyPairsFromString } from "../keys";
 import { authorizationHeaders } from "../authentication";
 import { toUnpaddedBase64 } from "../binaryData";
+import { encodeCanonicalJson, signJson } from "../signJson";
 
-describe("validateHeaderSignature", () => {
+describe("validateHeaderSignature getting public key from local", () => {
 	let app: Elysia<any, any, any, any, any, any>;
 	let signature: SigningKey;
 
@@ -123,7 +125,6 @@ describe("validateHeaderSignature", () => {
 				method: "POST",
 			}),
 		);
-		// console.log("resp ->", await resp.json());
 		expect(resp.status).toBe(200);
 	});
 
@@ -152,5 +153,96 @@ describe("validateHeaderSignature", () => {
 			}),
 		);
 		expect(resp.status).toBe(401);
+	});
+});
+
+describe("validateHeaderSignature getting public key from remote", () => {
+	let app: Elysia<any, any, any, any, any, any>;
+	let signature: SigningKey;
+	afterEach(() => {
+		clearMocks();
+	});
+
+	beforeAll(async () => {
+		signature = await generateKeyPairsFromString(
+			"ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8",
+		);
+
+		app = new Elysia()
+			.decorate("config", {
+				path: "./config.json",
+				signingKeyPath: "./keys/ed25519.signing.key",
+				port: 8080,
+				signingKey: [
+					await generateKeyPairsFromString(
+						"ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U",
+					),
+				],
+				name: "synapse2",
+				version: "org.matrix.msc3757.10",
+			})
+			.decorate("mongo", {
+				getPublicKeyFromLocal: async () => {
+					return;
+				},
+				storePublicKey: async () => {
+					return;
+				},
+				eventsCollection: {
+					findOne: async () => {
+						return;
+					},
+					findOneAndUpdate: async () => {
+						return;
+					},
+				},
+				serversCollection: {
+					findOne: async () => {
+						return {
+							name: "synapse1",
+						};
+					},
+				} as any,
+			})
+			.use(validateHeaderSignature())
+			.get("/", () => "")
+			.post("/", () => "");
+	});
+
+	it("Should pass if authorization header is valid with no body synapse2 requesting from synapse1", async () => {
+		const result = await signJson(
+			{
+				old_verify_keys: {},
+				server_name: "synapse1",
+				valid_until_ts: new Date().getTime() + 1000,
+				verify_keys: {
+					"ed25519:a_yNbw": {
+						key: toUnpaddedBase64(signature.publicKey),
+					},
+				},
+			},
+			signature,
+			"synapse1",
+		);
+
+		mock("https://synapse1/_matrix/key/v2/server", { data: result });
+
+		const authorizationHeader = await authorizationHeaders(
+			"synapse1",
+			signature,
+			"synapse2",
+			"GET",
+			"/",
+		);
+
+		const resp = await app.handle(
+			new Request("http://localhost/", {
+				headers: {
+					authorization: authorizationHeader,
+				},
+			}),
+		);
+
+		expect(resp.status).toBe(200);
 	});
 });

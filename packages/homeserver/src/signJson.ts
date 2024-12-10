@@ -96,7 +96,7 @@ export async function getSignaturesFromRemote<
 				return {
 					algorithm,
 					version,
-					signature: new Uint8Array(Buffer.from(signature, "base64")),
+					signature,
 				};
 			})
 			.filter(({ algorithm }) =>
@@ -121,6 +121,7 @@ export const verifySignature = (
 	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
 		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
 	}
+
 	if (
 		!nacl.sign.detached.verify(
 			new TextEncoder().encode(content),
@@ -141,7 +142,9 @@ export const verifyJsonSignature = <T extends object>(
 	algorithm: EncryptionValidAlgorithm,
 	version: string,
 ) => {
-	const canonicalJson = encodeCanonicalJson(content);
+	const { signatures: _, unsigned: _unsigned, ...__rest } = content as any;
+	const canonicalJson = encodeCanonicalJson(__rest);
+
 	return verifySignature(
 		canonicalJson,
 		signingName,
@@ -180,7 +183,7 @@ export async function verifySignaturesFromRemote<
 		if (
 			!nacl.sign.detached.verify(
 				new TextEncoder().encode(canonicalJson),
-				signature,
+				new Uint8Array(Buffer.from(signature, "base64")),
 				publicKey,
 			)
 		) {
