@@ -51,7 +51,7 @@ describe("validateHeaderSignature getting public key from local", () => {
 					},
 				} as any,
 			})
-			.use(validateHeaderSignature())
+			.onBeforeHandle(validateHeaderSignature)
 			.get("/", () => "")
 			.post("/", () => "");
 	});
@@ -125,6 +125,7 @@ describe("validateHeaderSignature getting public key from local", () => {
 				method: "POST",
 			}),
 		);
+		console.log("RESP->", await resp.text());
 		expect(resp.status).toBe(200);
 	});
 
@@ -204,7 +205,7 @@ describe("validateHeaderSignature getting public key from remote", () => {
 					},
 				} as any,
 			})
-			.use(validateHeaderSignature())
+			.onBeforeHandle(validateHeaderSignature)
 			.get("/", () => "")
 			.post("/", () => "");
 	});

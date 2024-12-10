@@ -2,11 +2,15 @@ import swagger from "@elysiajs/swagger";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
-import { app } from "./app";
-import { routerWithMongodb } from "./plugins/mongodb";
+import { app as r } from "./app";
 import { getKeyPair } from "./keys";
+import Elysia from "elysia";
 
-app
+const app = new Elysia({
+	handler: {
+		standardHostname: false,
+	},
+})
 	.use(swagger())
 	.get("/", () => "")
 	.onError(async ({ error, request }) => {
@@ -20,6 +24,7 @@ app
 		console.log("body ->", body);
 
 		return error;
-	});
+	})
+	.use(r);
 
 export { app, getKeyPair };
