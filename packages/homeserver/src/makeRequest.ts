@@ -1,5 +1,6 @@
 import type { HomeServerRoutes } from "./app";
 import { authorizationHeaders, computeHash } from "./authentication";
+import { extractURIfromURL } from "./helpers/url";
 import type { SigningKey } from "./keys";
 
 import { signJson } from "./signJson";
@@ -51,7 +52,7 @@ export const makeSignedRequest = async <
 		signingKey,
 		domain,
 		method,
-		`${url.pathname}${url.search}`,
+		extractURIfromURL(url),
 		signedBody,
 	);
 
