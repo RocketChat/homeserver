@@ -107,10 +107,6 @@ export const validateHeaderSignature = async ({
 					throw new Error("Invalid signature");
 				}
 
-				if (!publickey) {
-					throw new Error("Public key not found");
-				}
-
 				const [algorithm, version] = origin.key.split(":");
 
 				if (!isValidAlgorithm(algorithm)) {
