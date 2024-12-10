@@ -13,6 +13,7 @@ import { isMongodbContext } from "./isMongodbContext";
 import { makeGetPublicKeyFromServerProcedure } from "../procedures/getPublicKeyFromServer";
 import { makeRequest } from "../makeRequest";
 import { ForbiddenError, UnknownTokenError } from "../errors";
+import { extractURIfromURL } from "../helpers/url";
 
 export interface OriginOptions {
 	/**
@@ -122,14 +123,14 @@ export const validateHeaderSignature = async ({
 		);
 
 		const publickey = await getPublicKeyForServer(origin.origin, origin.key);
-
+		const url = new URL(request.url);
 		if (
 			!(await validateAuthorizationHeader(
 				origin.origin,
 				publickey,
 				origin.destination,
 				request.method,
-				"/",
+				extractURIfromURL(url),
 				origin.signature,
 				body as any,
 			))
