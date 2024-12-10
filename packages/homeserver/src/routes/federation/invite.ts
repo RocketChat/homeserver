@@ -40,6 +40,7 @@ export const inviteEndpoint = new Elysia().put(
 				uri: `/_matrix/federation/v1/make_join/${params.roomId}/${event.state_key}`,
 				signingKey: config.signingKey[0],
 				signingName: config.name,
+				queryString: "ver=10",
 			});
 
 			console.log("make_join response ->", responseMake);

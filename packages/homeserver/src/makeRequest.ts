@@ -42,7 +42,7 @@ export const makeSignedRequest = async <
 		url.search = queryString;
 	}
 	const signedBody =
-		body && (await signJson(computeHash(body), signingKey, signingName));
+		body && (await signJson(computeHash({ ...body, signatures: {} }), signingKey, signingName));
 
 	console.log("body ->", method, domain, url.toString(), signedBody);
 
@@ -51,7 +51,7 @@ export const makeSignedRequest = async <
 		signingKey,
 		domain,
 		method,
-		uri,
+		`${url.pathname}${url.search}`,
 		signedBody,
 	);
 
@@ -59,7 +59,7 @@ export const makeSignedRequest = async <
 
 	const response = await fetch(url.toString(), {
 		...options,
-		...(body && { body: JSON.stringify(body) }),
+		...(body && { body: JSON.stringify(signedBody) }),
 		method,
 		...(queryString && { search: queryString }),
 		headers: {
