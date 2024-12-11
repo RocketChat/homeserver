@@ -8,6 +8,8 @@ import { makeJoinEndpoint } from "./makeJoin";
 import { sendJoinEndpoint } from "./sendJoin";
 import { getMissingEventsRoute } from "./getMissingEvents";
 import validateHeaderSignature from "../../plugins/validateHeaderSignature";
+import { isMongodbContext } from "../../plugins/isMongodbContext";
+import { generateId } from "../../authentication";
 
 const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
@@ -18,9 +20,28 @@ const federationV1Endpoints = new Elysia({
 	.use(queryEndpoints)
 	.use(makeJoinEndpoint)
 	.use(getMissingEventsRoute)
-	.put("/send/:txnId", ({ params, body }) => {
+	.put("/send/:txnId", async ({ params, body, ...context }) => {
 		console.log("receive send ->", params);
 		console.log("body ->", body);
+
+		if (!isMongodbContext(context)) {
+			throw new Error("No mongodb context");
+		}
+
+		const {
+			mongo: { eventsCollection },
+		} = context;
+
+		const { pdus } = body as any;
+
+		if (pdus) {
+			await eventsCollection.insertMany(
+				pdus.map((event: any) => ({
+					_id: generateId(event),
+					event,
+				}))
+			);
+		}
 
 		return {
 			[params.txnId]: {},
