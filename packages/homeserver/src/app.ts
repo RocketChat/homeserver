@@ -5,6 +5,7 @@ import { BadJSONError, MatrixError } from "./errors";
 import federationEndpoints from "./routes/federation";
 import { keyV2Endpoints } from "./routes/key/server";
 import type { ElysiaRoutes } from "./extractRouteTypings";
+import { wellKnownEndpoint } from "./routes/well-known";
 
 export const app = new Elysia({
 	handler: {
@@ -31,6 +32,7 @@ export const app = new Elysia({
 	)
 	.use(keyV2Endpoints)
 	.use(federationEndpoints)
+	.use(wellKnownEndpoint)
 	.onError(async ({ code }) => {
 		if (code === "NOT_FOUND") {
 			return {

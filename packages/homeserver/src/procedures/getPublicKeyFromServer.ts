@@ -5,7 +5,6 @@ export const makeGetPublicKeyFromServerProcedure = (
 ) => {
 	return async (origin: string, key: string) => {
 		const localPublicKey = await getFromLocal(origin, key);
-		console.log({ localPublicKey })
 		if (localPublicKey) {
 			return localPublicKey;
 		}

@@ -13,6 +13,7 @@
 	},
 	"workspaces": ["packages/*"],
 	"dependencies": {
+		"@bogeychan/elysia-etag": "^0.0.6",
 		"@bogeychan/elysia-logger": "^0.1.4",
 		"@elysiajs/swagger": "^1.1.6",
 		"@hs/fake": "workspace:*",
