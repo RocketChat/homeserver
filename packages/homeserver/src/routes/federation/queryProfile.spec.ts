@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { app } from "../../app";
 
-describe("TestInboundFederationProfile", () => {
+describe("queryProfile", () => {
 	it.todo("Non-numeric ports in server names are rejected", async () => {
 		const invalidUserID = "@user1:localhost:http";
 

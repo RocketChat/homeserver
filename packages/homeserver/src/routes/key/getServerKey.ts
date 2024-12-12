@@ -1,12 +1,10 @@
 import { Elysia } from "elysia";
-
 import { toUnpaddedBase64 } from "../../binaryData";
-
 import { KeysDTO } from "../../dto";
 import { signJson } from "../../signJson";
 import { isConfigContext } from "../../plugins/isConfigContext";
 
-export const keyV2Endpoints = new Elysia({ prefix: "/_matrix/key/v2" }).get(
+export const getServerKeyRoute = new Elysia().get(
 	"/server",
 
 	async (context) => {

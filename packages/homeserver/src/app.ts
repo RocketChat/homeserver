@@ -3,7 +3,7 @@ import { Elysia } from "elysia";
 
 import { BadJSONError, MatrixError, UnrecognizedError } from "./errors";
 import federationEndpoints from "./routes/federation";
-import { keyV2Endpoints } from "./routes/key/server";
+import { keyV2Endpoints } from "./routes/key";
 import type { ElysiaRoutes } from "./extractRouteTypings";
 import { wellKnownEndpoint } from "./routes/well-known";
 

@@ -1,7 +1,5 @@
 import { Elysia, t } from "elysia";
 
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
 import { InviteEventDTO } from "../../dto";
 import { StrippedStateDTO } from "../../dto";
 import { ErrorDTO } from "../../dto";
@@ -10,7 +8,7 @@ import { generateId } from "../../authentication";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { isConfigContext } from "../../plugins/isConfigContext";
 
-export const inviteEndpoint = new Elysia().put(
+export const sendInviteV2Route = new Elysia().put(
 	"/invite/:roomId/:eventId",
 	async ({ params, body, ...context }) => {
 		if (!isMongodbContext(context)) {
@@ -244,9 +242,11 @@ export const inviteEndpoint = new Elysia().put(
 			description:
 				'**Note:**\nThis API is nearly identical to the v1 API with the exception of the request\nbody being different, and the response format fixed.\n\nInvites a remote user to a room. Once the event has been  signed by both the inviting\nhomeserver and the invited homeserver, it can be sent to all of the servers in the\nroom by the inviting homeserver.\n\nThis endpoint is preferred over the v1 API as it is more useful for servers. Senders\nwhich receive a 400 or 404 response to this endpoint should retry using the v1\nAPI as the server may be older, if the room version is "1" or "2".\n\nNote that events have a different format depending on the room version - check the\nroom version specification for precise event formats. **The request and response\nbodies here describe the common event fields in more detail and may be missing other\nrequired fields for a PDU.**',
 			operationId: "sendInviteV2",
-			security: [{
-				'matrixAuth': []
-			}],
+			security: [
+				{
+					matrixAuth: [],
+				},
+			],
 		},
 	},
 );

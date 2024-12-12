@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { UserIDDTO } from "../../dto";
 
-export const queryEndpoints = new Elysia().get(
+export const queryProfileRoute = new Elysia().get(
 	"/query/profile",
 	({ query }) => ({
 		avatar_url: "mxc://matrix.org/MyC00lAvatar",
@@ -53,9 +53,11 @@ export const queryEndpoints = new Elysia().get(
 			description:
 				"Performs a query to get profile information, such as a display name or avatar,\nfor a given user. Homeservers should only query profiles for users that belong\nto the target server (identified by the server name\nin the user ID).\n\nServers may wish to cache the response to this query to avoid requesting the\ninformation too often.\n\nServers MAY deny profile look-up over federation by responding with 403 and an\nerror code of `M_FORBIDDEN`.",
 			operationId: "queryProfile",
-			security: [{
-				'matrixAuth': []
-			}],
+			security: [
+				{
+					matrixAuth: [],
+				},
+			],
 		},
 	},
 );

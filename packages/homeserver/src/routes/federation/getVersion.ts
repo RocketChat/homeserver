@@ -1,7 +1,7 @@
 import Elysia, { t } from "elysia";
 import { isConfigContext } from "../../plugins/isConfigContext";
 
-export const versionEndpoints = new Elysia().get(
+export const getVersionRoute = new Elysia().get(
 	"/version",
 	(context) => {
 		if (!isConfigContext(context)) {

@@ -25,7 +25,8 @@ const config: Config = {
 	name: "synapse2",
 	version: "org.matrix.msc3757.10",
 } as Config;
-it("TestInboundFederationKeys", async () => {
+
+it("getServerKey", async () => {
 	const config: Config = {
 		path: "./config.json",
 		signingKeyPath: "./keys/ed25519.signing.key",

@@ -1,58 +1,33 @@
 import { Elysia } from "elysia";
 
-import { inviteEndpoint } from "./invite";
-import { queryEndpoints } from "./query";
-import { usersEndpoints } from "./users";
-import { versionEndpoints } from "./version";
-import { makeJoinEndpoint } from "./makeJoin";
-import { sendJoinEndpoint } from "./sendJoin";
+import { sendInviteV2Route } from "./sendInviteV2";
+import { queryProfileRoute } from "./queryProfile";
+import { getUserDevicesRoute } from "./getUserDevices";
+import { queryUserEncryptionKeysRoute } from "./queryUserEncryptionKeys";
+import { getVersionRoute } from "./getVersion";
+import { makeJoinRoute } from "./makeJoin";
+import { sendJoinV2Route } from "./sendJoinV2";
 import { getMissingEventsRoute } from "./getMissingEvents";
 import validateHeaderSignature from "../../plugins/validateHeaderSignature";
-import { isMongodbContext } from "../../plugins/isMongodbContext";
-import { generateId } from "../../authentication";
+import { sendTransactionRoute } from "./sendTransaction";
 
 const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
 })
-	.use(versionEndpoints)
+	.use(getVersionRoute)
 	.onBeforeHandle(validateHeaderSignature)
-	.use(usersEndpoints)
-	.use(queryEndpoints)
-	.use(makeJoinEndpoint)
+	.use(queryUserEncryptionKeysRoute)
+	.use(getUserDevicesRoute)
+	.use(queryProfileRoute)
+	.use(makeJoinRoute)
 	.use(getMissingEventsRoute)
-	.put("/send/:txnId", async ({ params, body, ...context }) => {
-		console.log("receive send ->", params);
-		console.log("body ->", body);
-
-		if (!isMongodbContext(context)) {
-			throw new Error("No mongodb context");
-		}
-
-		const {
-			mongo: { eventsCollection },
-		} = context;
-
-		const { pdus } = body as any;
-
-		if (pdus) {
-			await eventsCollection.insertMany(
-				pdus.map((event: any) => ({
-					_id: generateId(event),
-					event,
-				}))
-			);
-		}
-
-		return {
-			[params.txnId]: {},
-		};
-	});
+	.use(sendTransactionRoute);
 
 const federationV2Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v2",
 })
-	.use(inviteEndpoint)
-	.use(sendJoinEndpoint);
+	.use(sendInviteV2Route)
+	.use(sendJoinV2Route);
 
 export default new Elysia()
 	.use(federationV1Endpoints)

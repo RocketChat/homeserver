@@ -1,14 +1,12 @@
 import { Elysia, t } from "elysia";
 
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
 
 // PUT uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
 
-export const sendJoinEndpoint = new Elysia().put(
+export const sendJoinV2Route = new Elysia().put(
 	"/send_join/:roomId/:stateKey",
 	async ({ params, body, ...context }) => {
 		if (!isConfigContext(context)) {
@@ -122,9 +120,11 @@ export const sendJoinEndpoint = new Elysia().put(
 			},
 		),
 		detail: {
-			security: [{
-				'matrixAuth': []
-			}],
-		}
+			security: [
+				{
+					matrixAuth: [],
+				},
+			],
+		},
 	},
 );
