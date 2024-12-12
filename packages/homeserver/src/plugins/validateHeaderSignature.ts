@@ -73,6 +73,7 @@ export const validateHeaderSignature = async ({
 					method: "GET",
 					domain: origin.origin,
 					uri: "/_matrix/key/v2/server",
+					signingName: context.config.name,
 				});
 				if (result.valid_until_ts < Date.now()) {
 					throw new Error("Expired remote public key");

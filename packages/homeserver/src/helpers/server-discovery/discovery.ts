@@ -170,23 +170,34 @@ const getAddressFromWellKnownData = async (serverName: string): Promise<string> 
     return address;
 }
 
-export const resolveHostAddressByServerName = async (serverName: string): Promise<string> => {
+const defaultOwnServerAddress = (ownServerName: string): string => {
+    return `${ownServerName}:443`;
+}
+
+export const resolveHostAddressByServerName = async (serverName: string, ownServerName: string): Promise<{ address: string; headers: { Host: string } }> => {
     try {
         if (isIpLiteral(serverName)) {
-            return await resolveWhenServerNameIsIpAddress(serverName);
+            const address = await resolveWhenServerNameIsIpAddress(serverName);
+            return { address, headers: { Host: defaultOwnServerAddress(ownServerName) } };
         }
 
         if (addressHasExplicitPort(serverName)) {
-            return await resolveWhenServerNameIsAddressWithPort(serverName);
+            const address = await resolveWhenServerNameIsAddressWithPort(serverName);
+            return { address, headers: { Host: defaultOwnServerAddress(ownServerName) } };
         }
 
-        const address = await getAddressFromWellKnownData(serverName);
+        const rawAddress = await getAddressFromWellKnownData(serverName);
+        const address = await resolveFollowingWellKnownRules(rawAddress);
 
-        return await resolveFollowingWellKnownRules(address);
+        return { address, headers: { Host: rawAddress } };
     } catch (error) {
         if (error instanceof Error && error.message === 'No address found') {
-            return resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName).catch(() => addressWithDefaultPort(serverName));
+            const address = await resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName).catch(() => addressWithDefaultPort(serverName));
+
+            return { address, headers: { Host: serverName } };
         }
-        return addressWithDefaultPort(serverName);
+        const address = await addressWithDefaultPort(serverName);
+
+        return { address, headers: { Host: address } };
     }
 }

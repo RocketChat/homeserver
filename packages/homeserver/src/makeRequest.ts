@@ -1,6 +1,5 @@
 import type { HomeServerRoutes } from "./app";
 import { authorizationHeaders, computeHash } from "./authentication";
-import { cache } from "./cache";
 import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
 import { extractURIfromURL } from "./helpers/url";
 import type { SigningKey } from "./keys";
@@ -40,7 +39,8 @@ export const makeSignedRequest = async <
 	signingName: string;
 	queryString?: string;
 }) => {
-	const url = new URL(`https://${await resolveHostAddressByServerName(domain)}${uri}`);
+	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
+	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -67,6 +67,7 @@ export const makeSignedRequest = async <
 		...(queryString && { search: queryString }),
 		headers: {
 			Authorization: auth,
+			...headers,
 		},
 	});
 
@@ -84,16 +85,19 @@ export const makeRequest = async <
 	domain,
 	uri,
 	body,
+	signingName,
 	options = {},
 	queryString,
 }: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
 	method: M;
 	domain: string;
 	uri: U;
+	signingName: string;
 	options?: Record<string, any>;
 	queryString?: string;
 }) => {
-	const url = new URL(`https://${await resolveHostAddressByServerName(domain)}${uri}`);
+	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
+	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -103,6 +107,7 @@ export const makeRequest = async <
 		...(body && { body: JSON.stringify(body) }),
 		method,
 		...(queryString && { search: queryString }),
+		headers,
 	});
 
 	return response.json() as Promise<
@@ -142,7 +147,8 @@ export const makeUnsignedRequest = async <
 		options.body,
 	);
 
-	const url = new URL(`https://${await resolveHostAddressByServerName(domain)}${uri}`);
+	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
+	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -152,6 +158,7 @@ export const makeUnsignedRequest = async <
 		method,
 		headers: {
 			Authorization: auth,
+			...headers,
 		},
 	});
 
