@@ -1,5 +1,7 @@
 import type { HomeServerRoutes } from "./app";
 import { authorizationHeaders, computeHash } from "./authentication";
+import { cache } from "./cache";
+import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
 import { extractURIfromURL } from "./helpers/url";
 import type { SigningKey } from "./keys";
 
@@ -38,7 +40,7 @@ export const makeSignedRequest = async <
 	signingName: string;
 	queryString?: string;
 }) => {
-	const url = new URL(`https://${domain}${uri}`);
+	const url = new URL(`https://${await resolveHostAddressByServerName(domain)}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -91,7 +93,7 @@ export const makeRequest = async <
 	options?: Record<string, any>;
 	queryString?: string;
 }) => {
-	const url = new URL(`https://${domain}${uri}`);
+	const url = new URL(`https://${await resolveHostAddressByServerName(domain)}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -140,7 +142,7 @@ export const makeUnsignedRequest = async <
 		options.body,
 	);
 
-	const url = new URL(`https://${domain}${uri}`);
+	const url = new URL(`https://${await resolveHostAddressByServerName(domain)}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}

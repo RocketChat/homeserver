@@ -263,7 +263,7 @@ describe("validateHeaderSignature getting public key from remote", () => {
 			"synapse1",
 		);
 
-		mock("https://synapse1/_matrix/key/v2/server", { data: result });
+		mock("https://synapse1:8448/_matrix/key/v2/server", { data: result });
 
 		const authorizationHeader = await authorizationHeaders(
 			"synapse1",
