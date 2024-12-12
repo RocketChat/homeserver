@@ -97,8 +97,19 @@ export class LimitExceededError extends MatrixError<"M_LIMIT_EXCEEDED"> {
  * This is expected to be returned with a 404 HTTP status code if the endpoint is not implemented or a 405 HTTP status code if the endpoint is implemented, but the incorrect HTTP method is used.
  */
 export class UnrecognizedError extends MatrixError<"M_UNRECOGNIZED"> {
-	public constructor(message: string) {
+	private constructor(
+		message: string,
+		public readonly status: number,
+	) {
 		super("M_UNRECOGNIZED", message);
+	}
+
+	public static notImplemented(message: string) {
+		return new UnrecognizedError(message, 404);
+	}
+
+	public static methodNotAllowed(message: string) {
+		return new UnrecognizedError(message, 405);
 	}
 }
 

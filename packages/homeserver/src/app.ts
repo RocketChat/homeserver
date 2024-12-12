@@ -1,7 +1,7 @@
 import { logger } from "@bogeychan/elysia-logger";
 import { Elysia } from "elysia";
 
-import { BadJSONError, MatrixError } from "./errors";
+import { BadJSONError, MatrixError, UnrecognizedError } from "./errors";
 import federationEndpoints from "./routes/federation";
 import { keyV2Endpoints } from "./routes/key/server";
 import type { ElysiaRoutes } from "./extractRouteTypings";
@@ -24,6 +24,12 @@ export const app = new Elysia({
 			set.status = newError.status;
 			return newError.toJSON();
 		}
+
+		if (code === "NOT_FOUND") {
+			const newError = UnrecognizedError.notImplemented("Unrecognized request");
+			set.status = newError.status;
+			return newError.toJSON();
+		}
 	})
 	.use(
 		logger({
@@ -32,14 +38,6 @@ export const app = new Elysia({
 	)
 	.use(keyV2Endpoints)
 	.use(federationEndpoints)
-	.use(wellKnownEndpoint)
-	.onError(async ({ code }) => {
-		if (code === "NOT_FOUND") {
-			return {
-				errcode: "M_UNRECOGNIZED",
-				error: "Unrecognized request",
-			};
-		}
-	});
+	.use(wellKnownEndpoint);
 
 export type HomeServerRoutes = ElysiaRoutes<typeof app>;
