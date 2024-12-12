@@ -1,19 +1,18 @@
 import { makeUnsignedRequest } from "@hs/homeserver/src/makeRequest";
 import { isConfigContext } from "@hs/homeserver/src/plugins/isConfigContext";
-import { type Elysia, t } from "elysia";
+import { Elysia, t } from "elysia";
 
-import { createTypingEvent } from '@hs/core/src/events/edu/m.typing';
+import { createTypingEvent } from "@hs/core/src/events/edu/m.typing";
 
-export const typingEndpoint = async (app: Elysia) =>
-	app.post('/typing', async ({ body, error, ...context }) => {
+export const typingEndpoint = new Elysia().post(
+	"/typing",
+	async ({ body, error, ...context }) => {
 		if (!isConfigContext(context)) {
 			throw new Error("No config context");
 		}
-		const {
-			config,
-		} = context;
+		const { config } = context;
 
-		console.log('body.typing ->', body.typing);
+		console.log("body.typing ->", body.typing);
 
 		const payload = {
 			origin: config.name,
@@ -29,14 +28,18 @@ export const typingEndpoint = async (app: Elysia) =>
 		};
 		console.log("payload ->", payload);
 
-		const responses = await Promise.all(body.targets.map((target) => makeUnsignedRequest({
-				method: "PUT",
-				domain: target,
-				uri: `/_matrix/federation/v1/send/${Date.now()}`,
-				options: { body: payload },
-				signingKey: config.signingKey[0],
-				signingName: config.name,
-			} as any)));
+		const responses = await Promise.all(
+			body.targets.map((target) =>
+				makeUnsignedRequest({
+					method: "PUT",
+					domain: target,
+					uri: `/_matrix/federation/v1/send/${Date.now()}`,
+					options: { body: payload },
+					signingKey: config.signingKey[0],
+					signingName: config.name,
+				} as any),
+			),
+		);
 
 		// const responseMake = await makeUnsignedRequest({
 		// 	method: "PUT",
@@ -50,7 +53,8 @@ export const typingEndpoint = async (app: Elysia) =>
 		console.log("responses ->", responses);
 
 		return { responses };
-	}, {
+	},
+	{
 		body: t.Object(
 			{
 				sender: t.String(),
@@ -63,7 +67,7 @@ export const typingEndpoint = async (app: Elysia) =>
 					{
 						sender: "@a1:rc1",
 						roomId: "!uTqsSSWabZzthsSCNf:hs1",
-						targets: ["hs1", 'hs2'],
+						targets: ["hs1", "hs2"],
 					},
 				],
 			},
@@ -72,4 +76,5 @@ export const typingEndpoint = async (app: Elysia) =>
 			description:
 				"Send a message to a room. The sender must be the user ID. The target must be the server name.",
 		},
-	});
+	},
+);
