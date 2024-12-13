@@ -10,10 +10,11 @@ import {
 } from "../signJson";
 import { isConfigContext } from "./isConfigContext";
 import { isMongodbContext } from "./isMongodbContext";
-import { makeGetPublicKeyFromServerProcedure } from "../procedures/getPublicKeyFromServer";
+import { makeGetServerKeysFromServerProcedure } from "../procedures/getServerKeysFromRemote";
 import { makeRequest } from "../makeRequest";
 import { ForbiddenError, UnknownTokenError } from "../errors";
 import { extractURIfromURL } from "../helpers/url";
+import type { Server } from "./mongodb";
 
 export interface OriginOptions {
 	/**
@@ -42,6 +43,19 @@ export interface OriginOptions {
 	};
 }
 
+const extractKeyFromServerKeys = (verifyKeys: Server['verify_keys'], key: string) => {
+	const [, publickey] =
+	Object.entries(verifyKeys).find(
+		([keyFromServer]) => keyFromServer === key,
+	) ?? [];
+
+	if (!publickey) {
+		throw new Error("Public key not found");
+	}
+
+	return publickey;
+}
+
 export const validateHeaderSignature = async ({
 	headers: { authorization },
 	request,
@@ -66,8 +80,8 @@ export const validateHeaderSignature = async ({
 			throw new Error("Invalid destination");
 		}
 
-		const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-			context.mongo.getValidPublicKeyFromLocal,
+		const getPublicKeyFromServer = makeGetServerKeysFromServerProcedure(
+			context.mongo.getValidServerKeysFromLocal,
 			async () => {
 				const result = await makeRequest({
 					method: "GET",
@@ -84,10 +98,7 @@ export const validateHeaderSignature = async ({
 					origin.origin,
 				);
 
-				const [, publickey] =
-					Object.entries(result.verify_keys).find(
-						([key]) => key === origin.key,
-					) ?? [];
+				const publickey = extractKeyFromServerKeys(result.verify_keys, origin.key);
 
 				if (!publickey) {
 					throw new Error("Public key not found");
@@ -116,20 +127,21 @@ export const validateHeaderSignature = async ({
 					throw new Error("Invalid algorithm");
 				}
 
-				return {
-					key: publickey.key,
-					validUntil: result.valid_until_ts,
-				};
+				return result;
 			},
-			context.mongo.storePublicKey,
+			context.mongo.storeServerKeys,
 		);
 
-		const publickey = await getPublicKeyFromServer(origin.origin, origin.key);
+		const serverKeys = await getPublicKeyFromServer(origin.origin);
+		if (!serverKeys) {
+			throw new Error('Could not retrieve the server keys to verify');
+		}
+		const publickey = extractKeyFromServerKeys(serverKeys.verify_keys, origin.key);
 		const url = new URL(request.url);
 		if (
 			!(await validateAuthorizationHeader(
 				origin.origin,
-				publickey,
+				publickey.key,
 				origin.destination,
 				request.method,
 				extractURIfromURL(url),
