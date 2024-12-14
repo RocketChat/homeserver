@@ -2,7 +2,7 @@ export class MatrixError<TCode extends string> extends Error {
 	public readonly status: number = 400;
 
 	public constructor(
-		public readonly code: TCode,
+		public readonly errcode: TCode,
 		message: string,
 	) {
 		super(message);
@@ -10,7 +10,7 @@ export class MatrixError<TCode extends string> extends Error {
 
 	public toJSON() {
 		return {
-			errcode: this.code,
+			errcode: this.errcode,
 			error: this.message,
 		};
 	}
