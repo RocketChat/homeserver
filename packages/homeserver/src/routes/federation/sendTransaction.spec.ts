@@ -48,6 +48,9 @@ describe("/send/:txnId", () => {
 							return;
 						},
 					},
+					createStagingEvent: async () => {
+						return;
+					},
 					serversCollection: {
 						findOne: async () => {
 							return;
@@ -83,6 +86,7 @@ describe("/send/:txnId", () => {
 				}),
 			);
 
+			const data = await resp.json();
 			expect(resp.status).toBe(400);
 		});
 
@@ -180,9 +184,12 @@ describe("/send/:txnId", () => {
 			);
 
 			const data = await resp.json();
+			const id = generateId(signedPdu);
 			expect(resp.status).toBe(200);
 			expect(data).toHaveProperty("pdus");
-			expect(data.pdus).toBeEmptyObject();
+			expect(data.pdus).toStrictEqual({
+				[id]: {},
+			});
 		});
 	});
 });
@@ -227,6 +234,9 @@ describe("/send/:txnId using real case", () => {
 						insertMany: async () => {
 							return;
 						},
+					},
+					createStagingEvent: async () => {
+						return;
 					},
 					serversCollection: {
 						findOne: async () => {

@@ -3,6 +3,7 @@ import type { InferContext } from "elysia";
 import { type Db, MongoClient } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
+import { generateId } from "../authentication";
 
 export interface Server {
 	_id: string;
@@ -153,6 +154,17 @@ export const routerWithMongodb = (db: Db) =>
 				);
 			};
 
+			const createStagingEvent = async (event: EventBase) => {
+				const id = generateId(event);
+				await eventsCollection.insertOne({
+					_id: id,
+					event,
+					staged: true,
+				});
+
+				return id;
+			};
+
 			return {
 				serversCollection,
 				getValidPublicKeyFromLocal,
@@ -163,6 +175,7 @@ export const routerWithMongodb = (db: Db) =>
 				getMissingEventsByDeep,
 				getLastEvent,
 				getAuthEvents,
+				createStagingEvent,
 			};
 		})(),
 	);

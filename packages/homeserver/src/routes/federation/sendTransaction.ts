@@ -30,7 +30,7 @@ export const sendTransactionRoute = new Elysia().put(
 
 		const {
 			config,
-			mongo: { eventsCollection },
+			mongo: { eventsCollection, createStagingEvent },
 		} = context;
 
 		const { pdus, edus = [] } = body as any;
@@ -167,27 +167,16 @@ export const sendTransactionRoute = new Elysia().put(
 			for (const [roomId, pdus] of pdusByRoomId) {
 				// const roomVersion = getRoomVersion
 				for (const pdu of pdus) {
-					if (
-						!(await validatePdu(pdu).catch((e) => {
-							console.error("error validating pdu", e);
-							return true;
-						}))
-					) {
+					try {
+						await validatePdu(pdu);
 						resultPDUs[`${generateId(pdu)}`] = {};
+						void createStagingEvent(pdu);
+					} catch (e) {
+						console.error("error validating pdu", e);
+						resultPDUs[`${generateId(pdu)}`] = e as any;
 					}
 				}
 			}
-
-			await eventsCollection
-				.insertMany(
-					pdus.map((event) => ({
-						_id: generateId(event),
-						event,
-					})),
-				)
-				.catch((e) => {
-					console.error("error saving event", e);
-				});
 
 			return {
 				pdus: resultPDUs,
