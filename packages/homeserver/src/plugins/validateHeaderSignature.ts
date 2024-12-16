@@ -10,7 +10,10 @@ import {
 } from "../signJson";
 import { isConfigContext } from "./isConfigContext";
 import { isMongodbContext } from "./isMongodbContext";
-import { makeGetPublicKeyFromServerProcedure } from "../procedures/getPublicKeyFromServer";
+import {
+	getPublicKeyFromRemoteServer,
+	makeGetPublicKeyFromServerProcedure,
+} from "../procedures/getPublicKeyFromServer";
 import { makeRequest } from "../makeRequest";
 import { ForbiddenError, UnknownTokenError } from "../errors";
 import { extractURIfromURL } from "../helpers/url";
@@ -68,59 +71,13 @@ export const validateHeaderSignature = async ({
 
 		const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
 			context.mongo.getValidPublicKeyFromLocal,
-			async () => {
-				const result = await makeRequest({
-					method: "GET",
-					domain: origin.origin,
-					uri: "/_matrix/key/v2/server",
-					signingName: context.config.name,
-				});
-				if (result.valid_until_ts < Date.now()) {
-					throw new Error("Expired remote public key");
-				}
-
-				const [signature] = await getSignaturesFromRemote(
-					result,
+			() =>
+				getPublicKeyFromRemoteServer(
 					origin.origin,
-				);
+					origin.destination,
+					origin.key,
+				),
 
-				const [, publickey] =
-					Object.entries(result.verify_keys).find(
-						([key]) => key === origin.key,
-					) ?? [];
-
-				if (!publickey) {
-					throw new Error("Public key not found");
-				}
-
-				if (!signature) {
-					throw new Error(`Signatures not found for ${origin.origin}`);
-				}
-
-				if (
-					!(await verifyJsonSignature(
-						result,
-						origin.origin,
-						Uint8Array.from(atob(signature.signature), (c) => c.charCodeAt(0)),
-						Uint8Array.from(atob(publickey.key), (c) => c.charCodeAt(0)),
-						signature.algorithm,
-						signature.version,
-					))
-				) {
-					throw new Error("Invalid signature");
-				}
-
-				const [algorithm, version] = origin.key.split(":");
-
-				if (!isValidAlgorithm(algorithm)) {
-					throw new Error("Invalid algorithm");
-				}
-
-				return {
-					key: publickey.key,
-					validUntil: result.valid_until_ts,
-				};
-			},
 			context.mongo.storePublicKey,
 		);
 
