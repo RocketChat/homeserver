@@ -7,13 +7,22 @@ import type { EventBase } from "@hs/core/src/events/eventBase";
 export interface Server {
 	_id: string;
 	name: string;
-	url: string;
-	keys: {
-		[key: `${string}:${string}`]: {
+	old_verify_keys: Record<
+		string,
+		{
+			expired_ts: number;
 			key: string;
-			validUntil: number;
-		};
-	};
+		}
+	>;
+	server_name: string;
+	signatures: Record<string, Record<string, string>>;
+	valid_until_ts: number;
+	verify_keys: Record<
+		string,
+		{
+			key: string;
+		}
+	>;
 
 	// signatures: {
 	// 	from: string;
@@ -113,40 +122,23 @@ export const routerWithMongodb = (db: Db) =>
 					.toArray();
 			};
 
-			const getValidPublicKeyFromLocal = async (
+			const getValidServerKeysFromLocal = async (
 				origin: string,
-				key: string,
-			): Promise<string | undefined> => {
-				const server = await serversCollection.findOne({
+			) => {
+				return serversCollection.findOne({
 					name: origin,
+					valid_until_ts: { $gte: Date.now() },
 				});
-				if (!server) {
-					return;
-				}
-				const [, publicKey] =
-					Object.entries(server.keys).find(
-						([protocolAndVersion, value]) => protocolAndVersion === key && value.validUntil > Date.now(),
-					) ?? [];
-				return publicKey?.key;
 			};
 
-			const storePublicKey = async (
+			const storeServerKeys = async (
 				origin: string,
-				key: string,
-				value: string,
-				validUntil: number,
+				serverKeys: Omit<Server, '_id' | 'name'>,
 			) => {
 				await serversCollection.findOneAndUpdate(
-					{ name: origin },
+					{ name: origin, valid_until_ts: { $gte: Date.now() }, },
 					{
-						$set: {
-							keys: {
-								[key]: {
-									key: value,
-									validUntil,
-								},
-							}
-						}
+						$set: serverKeys,
 					},
 					{ upsert: true },
 				);
@@ -154,8 +146,8 @@ export const routerWithMongodb = (db: Db) =>
 
 			return {
 				serversCollection,
-				getValidPublicKeyFromLocal,
-				storePublicKey,
+				getValidServerKeysFromLocal,
+				storeServerKeys,
 
 				eventsCollection,
 				getDeepEarliestAndLatestEvents,
