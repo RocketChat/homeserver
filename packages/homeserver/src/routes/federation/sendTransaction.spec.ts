@@ -136,7 +136,7 @@ describe("/send/:txnId", () => {
 			expect(resp.status).toBe(200);
 			expect(data).toHaveProperty("pdus");
 			expect(data.pdus).toStrictEqual({
-				[`$${id}:synapse2`]: {},
+				[id]: {},
 			});
 		});
 
@@ -297,7 +297,7 @@ describe("/send/:txnId using real case", () => {
 			expect(resp.status).toBe(200);
 			expect(data).toHaveProperty("pdus");
 			expect(data.pdus).toStrictEqual({
-				[`$${id}:${request.pdus[0].origin}`]: {},
+				[`${id}`]: {},
 			});
 		});
 	});

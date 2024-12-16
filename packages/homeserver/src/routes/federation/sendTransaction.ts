@@ -151,7 +151,7 @@ export const sendTransactionRoute = new Elysia().put(
 							return true;
 						}))
 					) {
-						resultPDUs[`$${generateId(pdu)}:${pdu.origin}`] = {};
+						resultPDUs[`${generateId(pdu)}`] = {};
 					}
 				}
 			}
