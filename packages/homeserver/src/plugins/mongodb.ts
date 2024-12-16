@@ -125,7 +125,8 @@ export const routerWithMongodb = (db: Db) =>
 				}
 				const [, publicKey] =
 					Object.entries(server.keys).find(
-						([protocolAndVersion, value]) => protocolAndVersion === key && value.validUntil > Date.now(),
+						([protocolAndVersion, value]) =>
+							protocolAndVersion === key && value.validUntil > Date.now(),
 					) ?? [];
 				return publicKey?.key;
 			};
@@ -145,8 +146,8 @@ export const routerWithMongodb = (db: Db) =>
 									key: value,
 									validUntil,
 								},
-							}
-						}
+							},
+						},
 					},
 					{ upsert: true },
 				);
@@ -171,4 +172,5 @@ export type Context = InferContext<ReturnType<typeof routerWithMongodb>>;
 export type EventStore = {
 	_id: string;
 	event: EventBase;
+	staged?: true;
 };

@@ -10,6 +10,7 @@ declare module "./eventBase" {
 				age_ts: number;
 			};
 			content: {
+				join_authorised_via_users_server?: string;
 				membership: Membership;
 			};
 		};
@@ -25,6 +26,7 @@ export interface RoomMemberEvent extends EventBase {
 	type: "m.room.member";
 	content: {
 		membership: Membership;
+		join_authorised_via_users_server?: string;
 	};
 	state_key: string;
 	unsigned: {

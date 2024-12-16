@@ -16,6 +16,7 @@ import {
 } from "../../procedures/getPublicKeyFromServer";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { MatrixError } from "../../errors";
+import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
 
 export const sendTransactionRoute = new Elysia().put(
 	"/send/:txnId",
@@ -99,42 +100,63 @@ export const sendTransactionRoute = new Elysia().put(
 			}
 
 			const validatePdu = async (pdu: SignedJson<HashedEvent<EventBase>>) => {
-				const origin = pdu.sender.split(":").pop() as string;
+				const extractOrigin = (sender: string) =>
+					sender.split(":").pop() as string;
 
-				if (!origin) {
-					throw new MatrixError("400", "Invalid origin");
+				const isInviteVia3pid = (event: EventBase) =>
+					isRoomMemberEvent(event) &&
+					event.content.membership === "invite" &&
+					"third_party_invite" in event.content;
+
+				const origins = [
+					!isInviteVia3pid(pdu) && extractOrigin(pdu.sender),
+					// extractOrigin(pdu.sender) !== extractOrigin(pdu.event_id) &&
+					// 	extractOrigin(pdu.event_id),
+					isRoomMemberEvent(pdu) &&
+						pdu.content.join_authorised_via_users_server &&
+						extractOrigin(pdu.content.join_authorised_via_users_server),
+				].filter(Boolean) as string[];
+
+				if (!origins.length) {
+					throw new MatrixError("400", "Invalid Signature");
 				}
-				const [signature] = await getSignaturesFromRemote(pdu, origin);
-				const { signatures, unsigned, ...rest } = pdu;
 
-				const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-					context.mongo.getValidPublicKeyFromLocal,
-					() =>
-						getPublicKeyFromRemoteServer(
-							origin,
-							config.name,
-							`${signature.algorithm}:${signature.version}`,
-						),
+				for await (const origin of origins) {
+					const { signatures, unsigned, ...rest } = pdu;
 
-					context.mongo.storePublicKey,
-				);
+					const [signature] = await getSignaturesFromRemote(pdu, origin);
 
-				const publicKey = await getPublicKeyFromServer(
-					origin,
-					`${signature.algorithm}:${signature.version}`,
-				);
+					const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
+						context.mongo.getValidPublicKeyFromLocal,
+						() =>
+							getPublicKeyFromRemoteServer(
+								origin,
+								config.name,
+								`${signature.algorithm}:${signature.version}`,
+							),
 
-				if (
-					!verifyJsonSignature(
-						pruneEventDict(rest),
+						context.mongo.storePublicKey,
+					);
+
+					const publicKey = await getPublicKeyFromServer(
 						origin,
-						Uint8Array.from(atob(signature.signature), (c) => c.charCodeAt(0)),
-						Uint8Array.from(atob(publicKey), (c) => c.charCodeAt(0)),
-						signature.algorithm,
-						signature.version,
-					)
-				) {
-					throw new MatrixError("400", "Invalid signature");
+						`${signature.algorithm}:${signature.version}`,
+					);
+
+					if (
+						!verifyJsonSignature(
+							pruneEventDict(rest),
+							origin,
+							Uint8Array.from(atob(signature.signature), (c) =>
+								c.charCodeAt(0),
+							),
+							Uint8Array.from(atob(publicKey), (c) => c.charCodeAt(0)),
+							signature.algorithm,
+							signature.version,
+						)
+					) {
+						throw new MatrixError("400", "Invalid signature");
+					}
 				}
 			};
 
