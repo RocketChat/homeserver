@@ -14,6 +14,8 @@ import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { makeUnsignedRequest } from "@hs/homeserver/src/makeRequest";
 import type { EventBase } from "@hs/core/src/events/eventBase";
 
+import { typingEndpoint } from "./room/typing";
+
 function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	let result = "";
@@ -25,6 +27,7 @@ function createMediaId(length: number) {
 }
 
 export const fakeEndpoints = new Elysia({ prefix: "/fake" })
+	.use(typingEndpoint)
 	.post(
 		"/createRoom",
 		async ({ body, error, ...context }) => {
