@@ -17,7 +17,7 @@ export type SignedEvent<T extends EventBase> = T & {
 	};
 };
 
-type SignedJson<T extends object> = T & {
+export type SignedJson<T extends object> = T & {
 	signatures: {
 		[key: string]: {
 			[key: string]: string;

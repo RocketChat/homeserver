@@ -79,14 +79,21 @@ export const sendInviteV2Route = new Elysia().put(
 					event: responseBody.event,
 				});
 			}
-			if (responseBody.state?.length) {
-				await eventsCollection.insertMany(
-					responseBody.state.map((event) => ({
-						_id: generateId(event),
-						event,
-					})),
-				);
-			}
+			await Promise.all(
+				responseBody.state?.map((event) => {
+					const promise = eventsCollection
+						.insertOne({
+							_id: generateId(event),
+							event,
+						})
+						.catch((e) => {
+							// TODO events failing because of duplicate key
+							// the reason is that we are saving the event on invite event
+							console.error("error saving event", e, event);
+						});
+					return promise;
+				}) ?? [],
+			);
 		}, 1000);
 
 		return { event: body.event };
