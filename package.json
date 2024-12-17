@@ -33,6 +33,7 @@
 		"prepare": "husky",
 		"start": "bun run index.ts",
 		"test": "bun test",
+		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint",
 		"tsc": "bunx tsc"
 	}
