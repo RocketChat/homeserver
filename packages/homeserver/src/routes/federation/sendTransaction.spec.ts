@@ -51,6 +51,15 @@ describe("/send/:txnId", () => {
 					createStagingEvent: async () => {
 						return;
 					},
+					getEventsByIds: async () => {
+						return [];
+					},
+					createEvent: async () => {
+						return;
+					},
+					getOldestStagedEvent: async () => {
+						return;
+					},
 					serversCollection: {
 						findOne: async () => {
 							return;
@@ -140,7 +149,9 @@ describe("/send/:txnId", () => {
 			expect(resp.status).toBe(200);
 			expect(data).toHaveProperty("pdus");
 			expect(data.pdus).toStrictEqual({
-				[id]: {},
+				pdus: {
+					[id]: {},
+				},
 			});
 		});
 
@@ -188,7 +199,11 @@ describe("/send/:txnId", () => {
 			expect(resp.status).toBe(200);
 			expect(data).toHaveProperty("pdus");
 			expect(data.pdus).toStrictEqual({
-				[id]: {},
+				pdus: {
+					[id]: {
+						error: {},
+					},
+				},
 			});
 		});
 	});
@@ -236,6 +251,15 @@ describe("/send/:txnId using real case", () => {
 						},
 					},
 					createStagingEvent: async () => {
+						return;
+					},
+					getEventsByIds: async () => {
+						return [];
+					},
+					createEvent: async () => {
+						return;
+					},
+					getOldestStagedEvent: async () => {
 						return;
 					},
 					serversCollection: {
@@ -307,7 +331,9 @@ describe("/send/:txnId using real case", () => {
 			expect(resp.status).toBe(200);
 			expect(data).toHaveProperty("pdus");
 			expect(data.pdus).toStrictEqual({
-				[`${id}`]: {},
+				pdus: {
+					[`${id}`]: {},
+				},
 			});
 		});
 	});

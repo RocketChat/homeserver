@@ -37,6 +37,11 @@ export const routerWithMongodb = (db: Db) =>
 				);
 			};
 
+			const getEventsByIds = async (roomId: string, eventIds: string[]) => {
+				return eventsCollection
+					.find({ "event.room_id": roomId, "event._id": { $in: eventIds } })
+					.toArray();
+			};
 			const getDeepEarliestAndLatestEvents = async (
 				roomId: string,
 				earliest_events: string[],
@@ -165,6 +170,30 @@ export const routerWithMongodb = (db: Db) =>
 				return id;
 			};
 
+			const createEvent = async (event: EventBase) => {
+				const id = generateId(event);
+				await eventsCollection.insertOne({
+					_id: id,
+					event,
+				});
+
+				return id;
+			};
+
+			const removeEventFromStaged = async (roomId: string, id: string) => {
+				await eventsCollection.updateOne(
+					{ _id: id, "event.room_id": roomId },
+					{ $unset: { staged: 1 } },
+				);
+			};
+
+			const getOldestStagedEvent = async (roomId: string) => {
+				return eventsCollection.findOne(
+					{ staged: true, "event.room_id": roomId },
+					{ sort: { "event.origin_server_ts": 1 } },
+				);
+			};
+
 			return {
 				serversCollection,
 				getValidPublicKeyFromLocal,
@@ -175,7 +204,12 @@ export const routerWithMongodb = (db: Db) =>
 				getMissingEventsByDeep,
 				getLastEvent,
 				getAuthEvents,
+
+				removeEventFromStaged,
+				getEventsByIds,
+				getOldestStagedEvent,
 				createStagingEvent,
+				createEvent,
 			};
 		})(),
 	);
