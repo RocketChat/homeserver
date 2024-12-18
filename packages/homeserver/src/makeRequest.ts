@@ -6,12 +6,12 @@ import type { SigningKey } from "./keys";
 
 import { signJson } from "./signJson";
 
-type getAllResponsesByMethod<
+export type getAllResponsesByMethod<
 	T extends HomeServerRoutes,
 	M extends HomeServerRoutes["method"],
 > = T extends { method: M } ? T : never;
 
-type getAllResponsesByPath<
+export type getAllResponsesByPath<
 	T extends HomeServerRoutes,
 	M extends HomeServerRoutes["method"],
 	P extends HomeServerRoutes["path"],
