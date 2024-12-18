@@ -17,20 +17,32 @@ import {
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { MatrixError } from "../../errors";
 import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
+import { makeRequest } from "../../makeRequest";
+import { isMutexContext, routerWithMutex } from "../../plugins/mutex";
+import { processPDUsByRoomId } from "../../procedures/processPDU";
 
-export const sendTransactionRoute = new Elysia().put(
-	"/send/:txnId",
-	async ({ params, body, ...context }) => {
+export const sendTransactionRoute = new Elysia()
+	.use(routerWithMutex)
+	.put("/send/:txnId", async ({ params, body, ...context }) => {
 		if (!isConfigContext(context)) {
 			throw new Error("No config context");
 		}
 		if (!isMongodbContext(context)) {
 			throw new Error("No mongodb context");
 		}
+		if (!isMutexContext(context)) {
+			throw new Error("No mutex context");
+		}
 
 		const {
 			config,
-			mongo: { eventsCollection, createStagingEvent },
+			mongo: {
+				getEventsByIds,
+				createStagingEvent,
+				createEvent,
+				removeEventFromStaged,
+				getOldestStagedEvent,
+			},
 		} = context;
 
 		const { pdus, edus = [] } = body as any;
@@ -39,7 +51,6 @@ export const sendTransactionRoute = new Elysia().put(
 			throw new MatrixError("400", "Too many edus");
 		}
 
-		console.log("1");
 		const isValidPDU = (
 			pdu: any,
 		): pdu is SignedJson<HashedEvent<EventBase>> => {
@@ -160,27 +171,81 @@ export const sendTransactionRoute = new Elysia().put(
 				}
 			};
 
-			const resultPDUs = {} as {
-				[key: string]: Record<string, unknown>;
+			/**
+			 * Based on the fetched events from the remote server, we check if there are any new events (that haven't been stored yet)
+			 * @param fetchedEvents
+			 * @returns
+			 */
+
+			const getNewEvents = async (
+				roomId: string,
+				fetchedEvents: EventBase[],
+			) => {
+				const fetchedEventsIds = fetchedEvents.map(generateId);
+				const storedEvents = await getEventsByIds(roomId, fetchedEventsIds);
+				return fetchedEvents
+					.filter(
+						(event) => !storedEvents.find((e) => e._id === generateId(event)),
+					)
+					.sort((a, b) => a.depth - b.depth);
 			};
 
-			for (const [roomId, pdus] of pdusByRoomId) {
-				// const roomVersion = getRoomVersion
-				for (const pdu of pdus) {
-					try {
-						await validatePdu(pdu);
-						resultPDUs[`${generateId(pdu)}`] = {};
-						void createStagingEvent(pdu);
-					} catch (e) {
-						console.error("error validating pdu", e);
-						resultPDUs[`${generateId(pdu)}`] = e as any;
-					}
+			const processMissingEvents = async (roomId: string) => {
+				const lock = await context.mutex.request(roomId);
+				if (!lock) {
+					return false;
 				}
-			}
+				const event = await getOldestStagedEvent(roomId);
 
-			return {
-				pdus: resultPDUs,
+				if (!event) {
+					return false;
+				}
+
+				const { _id: pid, event: pdu } = event;
+
+				const fetchedEvents = await makeRequest({
+					method: "POST",
+					domain: pdu.origin,
+					uri: `/_matrix/federation/v1/get_missing_events/${pdu.room_id}`,
+					body: {
+						earliest_events: pdu.prev_events,
+						latest_events: [pid],
+						limit: 10,
+						min_depth: 10,
+					},
+					signingName: config.name,
+				});
+
+				const newEvents = await getNewEvents(roomId, fetchedEvents.events);
+				// in theory, we have all the new events
+				await removeEventFromStaged(roomId, pid);
+
+				for await (const event of newEvents) {
+					await createStagingEvent(event);
+				}
+
+				await lock.release();
+
+				return true;
 			};
+			const result = {
+				pdus: {},
+			};
+			for await (const [roomId, pdus] of pdusByRoomId) {
+				Object.assign(
+					result.pdus,
+					await processPDUsByRoomId(
+						roomId,
+						pdus,
+						validatePdu,
+						getEventsByIds,
+						createStagingEvent,
+						createEvent,
+						processMissingEvents,
+						generateId,
+					),
+				);
+			}
+			return result;
 		}
-	},
-);
+	});
