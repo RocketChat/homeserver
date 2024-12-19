@@ -4,9 +4,18 @@ import { InviteEventDTO } from "../../dto";
 import { StrippedStateDTO } from "../../dto";
 import { ErrorDTO } from "../../dto";
 import { makeSignedRequest } from "../../makeRequest";
-import { generateId } from "../../authentication";
+import { type HashedEvent, generateId } from "../../authentication";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { isConfigContext } from "../../plugins/isConfigContext";
+import { MatrixError } from "../../errors";
+
+import type { SignedJson } from "../../signJson";
+import type { EventBase } from "@hs/core/src/events/eventBase";
+import {
+	getPublicKeyFromRemoteServer,
+	makeGetPublicKeyFromServerProcedure,
+} from "../../procedures/getPublicKeyFromServer";
+import { checkSignAndHashes } from "./checkSignAndHashes";
 
 export const sendInviteV2Route = new Elysia().put(
 	"/invite/:roomId/:eventId",
@@ -19,7 +28,7 @@ export const sendInviteV2Route = new Elysia().put(
 		}
 		const {
 			config,
-			mongo: { eventsCollection },
+			mongo: { eventsCollection, upsertRoom },
 		} = context;
 
 		console.log("invite received ->", { params, body });
@@ -73,17 +82,91 @@ export const sendInviteV2Route = new Elysia().put(
 
 			console.log("send_join response ->", { responseBody });
 
-			if (responseBody.event) {
+			const { event: pdu, origin } = responseBody;
+
+			const createEvent = responseBody.state.find(
+				(event) => event.type === "m.room.create",
+			);
+
+			if (!createEvent) {
+				throw new MatrixError("400", "Invalid response");
+			}
+
+			if (pdu) {
 				await eventsCollection.insertOne({
 					_id: generateId(responseBody.event),
 					event: responseBody.event,
 				});
 			}
+
+			const auth_chain = new Map(
+				responseBody.auth_chain.map((event) => [generateId(event), event]),
+			);
+
+			const state = new Map(
+				responseBody.state.map((event) => [generateId(event), event]),
+			);
+
+			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
+				context.mongo.getValidPublicKeyFromLocal,
+				(origin, key) => getPublicKeyFromRemoteServer(origin, config.name, key),
+
+				context.mongo.storePublicKey,
+			);
+
+			const validPDUs = new Map<string, EventBase>();
+
+			for await (const [eventId, event] of [
+				...auth_chain.entries(),
+				...state.entries(),
+			]) {
+				// check sign and hash of event
+				if (
+					await checkSignAndHashes(
+						event as SignedJson<HashedEvent<EventBase>>,
+						event.origin,
+						getPublicKeyFromServer,
+					).catch((e) => {
+						console.log("Error checking signature", e);
+						return false;
+					})
+				) {
+					validPDUs.set(eventId, event);
+				} else {
+					console.log("Invalid event", event);
+				}
+			}
+
+			const signedAuthChain = [...auth_chain.entries()].filter(([eventId]) =>
+				validPDUs.has(eventId),
+			);
+
+			const signedState = [...state.entries()].filter(([eventId]) =>
+				validPDUs.has(eventId),
+			);
+
+			const signedCreateEvent = signedAuthChain.find(
+				([, event]) => event.type === "m.room.create",
+			);
+
+			if (!signedCreateEvent) {
+				console.log("Invalid create event", validPDUs);
+				throw new MatrixError(
+					"400",
+					"Unexpected create event(s) in auth chain",
+				);
+			}
+
+			await upsertRoom(
+				signedCreateEvent[1].room_id,
+				signedState.map(([, event]) => event),
+			);
+
 			await Promise.all(
-				responseBody.state?.map((event) => {
+				signedState.map(([eventId, event]) => {
 					const promise = eventsCollection
 						.insertOne({
-							_id: generateId(event),
+							_id: eventId,
 							event,
 						})
 						.catch((e) => {
