@@ -9,6 +9,7 @@ export const makeGetPublicKeyFromServerProcedure = (
 	getFromLocal: (origin: string, key: string) => Promise<string | undefined>,
 	getFromOrigin: (
 		origin: string,
+		key: string,
 	) => Promise<{ key: string; validUntil: number }>,
 	store: (
 		origin: string,
@@ -23,7 +24,10 @@ export const makeGetPublicKeyFromServerProcedure = (
 			return localPublicKey;
 		}
 
-		const { key: remotePublicKey, validUntil } = await getFromOrigin(origin);
+		const { key: remotePublicKey, validUntil } = await getFromOrigin(
+			origin,
+			key,
+		);
 		if (remotePublicKey) {
 			await store(origin, key, remotePublicKey, validUntil);
 			return remotePublicKey;
@@ -35,14 +39,14 @@ export const makeGetPublicKeyFromServerProcedure = (
 
 export const getPublicKeyFromRemoteServer = async (
 	domain: string,
-	signingName: string,
+	origin: string,
 	algorithmAndVersion: string,
 ) => {
 	const result = await makeRequest({
 		method: "GET",
 		domain,
 		uri: "/_matrix/key/v2/server",
-		signingName,
+		signingName: origin,
 	});
 	if (result.valid_until_ts < Date.now()) {
 		throw new Error("Expired remote public key");
