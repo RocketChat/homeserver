@@ -3,6 +3,9 @@ import { Elysia, t } from "elysia";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
+import type { SignedEvent } from "../../signJson";
+import type { EventBase } from "@hs/core/src/events/eventBase";
+import type { HashedEvent } from "../../authentication";
 
 // PUT uri: `/_matrix/federation/v1/send_join/${params.roomId}/${event.state_key}?omit_members=true`,
 
@@ -22,7 +25,7 @@ export const sendJoinV2Route = new Elysia().put(
 
 		const roomId = decodeURIComponent(params.roomId);
 		const stateKey = decodeURIComponent(params.stateKey);
-		const event = body as any;
+		const event = body as SignedEvent<HashedEvent<EventBase>>;
 
 		console.log("sendJoin ->", { roomId, stateKey });
 		console.log("sendJoin ->", { body });
@@ -51,13 +54,13 @@ export const sendJoinV2Route = new Elysia().put(
 					prev_content: lastInviteEvent.event.content,
 					prev_sender: lastInviteEvent.event.sender,
 				},
-			},
+			} as SignedEvent<HashedEvent<EventBase>>,
 			state: events,
 			auth_chain: events.filter((event) => event.depth <= 4),
 			// auth_chain: [],
 			members_omitted: false,
 			origin: config.name,
-		};
+		} as const;
 
 		console.log("sendJoin result ->", result);
 
