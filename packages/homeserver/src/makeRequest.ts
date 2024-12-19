@@ -1,5 +1,5 @@
 import type { HomeServerRoutes } from "./app";
-import { authorizationHeaders, computeHash } from "./authentication";
+import { authorizationHeaders, computeAndMergeHash } from "./authentication";
 import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
 import { extractURIfromURL } from "./helpers/url";
 import type { SigningKey } from "./keys";
@@ -50,7 +50,7 @@ export const makeSignedRequest = async <
 	const signedBody =
 		body &&
 		(await signJson(
-			computeHash({ ...body, signatures: {} }),
+			computeAndMergeHash({ ...body, signatures: {} }),
 			signingKey,
 			signingName,
 		));
