@@ -23,17 +23,36 @@ export interface Server {
 	// }[];
 }
 
+interface Room {
+	_id: string;
+	state: EventBase[];
+}
+
 export const routerWithMongodb = (db: Db) =>
 	new Elysia().decorate(
 		"mongo",
 		(() => {
 			const eventsCollection = db.collection<EventStore>("events");
 			const serversCollection = db.collection<Server>("servers");
+			const roomsCollection = db.collection<Room>("rooms");
 
 			const getLastEvent = async (roomId: string) => {
 				return eventsCollection.findOne(
 					{ "event.room_id": roomId },
 					{ sort: { "event.depth": -1 } },
+				);
+			};
+
+			const upsertRoom = async (roomId: string, state: EventBase[]) => {
+				await roomsCollection.findOneAndUpdate(
+					{ _id: roomId },
+					{
+						$set: {
+							_id: roomId,
+							state,
+						},
+					},
+					{ upsert: true },
 				);
 			};
 
@@ -210,6 +229,7 @@ export const routerWithMongodb = (db: Db) =>
 				getOldestStagedEvent,
 				createStagingEvent,
 				createEvent,
+				upsertRoom,
 			};
 		})(),
 	);
