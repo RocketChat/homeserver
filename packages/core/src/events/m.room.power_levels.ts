@@ -31,21 +31,20 @@ interface RoomPowerLevelsEvent extends EventBase {
 
 export const roomPowerLevelsEvent = ({
 	roomId,
-	sender,
-	member,
+	members: usernames,
 	auth_events,
 	prev_events,
 	depth,
 	ts = Date.now(),
 }: {
 	roomId: string;
-	sender: string;
-	member: string;
+	members: [sender: string, ...member: string[]];
 	auth_events: string[];
 	prev_events: string[];
 	depth: number;
 	ts?: number;
 }) => {
+	const [sender, ...members] = usernames;
 	return createEventBase("m.room.power_levels", {
 		roomId,
 		sender,
@@ -54,7 +53,10 @@ export const roomPowerLevelsEvent = ({
 		depth,
 		ts,
 		content: {
-			users: { [sender]: 100, [member]: 100 },
+			users: {
+				[sender]: 100,
+				...Object.fromEntries(usernames.map((member) => [member, 100])),
+			},
 			users_default: 0,
 			events: {
 				"m.room.name": 50,

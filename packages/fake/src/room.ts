@@ -46,8 +46,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			}
 
 			const { roomId, events } = await createRoom(
-				sender,
-				username,
+				[sender, username],
 				createSignedEvent(config.signingKey[0], config.name),
 				`!${createMediaId(18)}:${config.name}`,
 			);
@@ -112,8 +111,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 				}
 
 				const { roomId: newRoomId, events } = await createRoom(
-					sender,
-					username,
+					[sender, username],
 					createSignedEvent(config.signingKey[0], config.name),
 					`!${createMediaId(18)}:${config.name}`,
 				);

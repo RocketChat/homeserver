@@ -10,8 +10,7 @@ import { createRoomHistoryVisibilityEvent } from "@hs/core/src/events/m.room.his
 import { createRoomGuestAccessEvent } from "@hs/core/src/events/m.room.guest_access";
 
 export const createRoom = async (
-	sender: string,
-	username: string,
+	users: [sender: string, ...username: string[]],
 	makeSignedEvent: ReturnType<typeof createSignedEvent>,
 	roomId: string,
 ): Promise<{
@@ -22,6 +21,8 @@ export const createRoom = async (
 	}[];
 }> => {
 	// Create
+
+	const [sender, ...members] = users;
 
 	const createRoomSigned = createRoomCreateEvent(makeSignedEvent);
 
@@ -62,8 +63,7 @@ export const createRoom = async (
 
 	const powerLevelsEvent = await createPowerLevelsRoomSigned({
 		roomId,
-		sender,
-		member: username,
+		members: [sender, ...members],
 		auth_events: [createEvent._id, memberEvent._id],
 		prev_events: [memberEvent._id],
 		depth: 3,
