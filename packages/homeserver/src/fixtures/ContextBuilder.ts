@@ -1,4 +1,6 @@
 import Elysia from "elysia";
+import Crypto from "node:crypto";
+
 import { type SigningKey, generateKeyPairsFromString } from "../keys";
 import { toUnpaddedBase64 } from "../binaryData";
 import type {
@@ -9,6 +11,8 @@ import { authorizationHeaders, generateId } from "../authentication";
 import type { HomeServerRoutes } from "../app";
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import type { EventStore } from "../plugins/mongodb";
+import { createRoom } from "../procedures/createRoom";
+import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 
 type MockedFakeRequest = <
 	M extends HomeServerRoutes["method"],
@@ -18,6 +22,28 @@ type MockedFakeRequest = <
 	uri: U,
 	body: getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
 ) => Promise<Request>;
+
+export function createMediaId(length: number) {
+	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+	let result = "";
+	for (let i = 0; i < length; i++) {
+		const randomIndex = Crypto.randomInt(0, characters.length);
+		result += characters[randomIndex];
+	}
+	return result;
+}
+
+class MockedRoom {
+	private events: EventStore[] = [];
+	constructor(
+		private roomId: string,
+		events: EventStore[],
+	) {
+		for (const event of events) {
+			this.events.push(event);
+		}
+	}
+}
 
 export class ContextBuilder {
 	private config: any;
@@ -86,6 +112,7 @@ export class ContextBuilder {
 		app: Elysia<any, any, any, any, any, any>;
 		instance: ContextBuilder;
 		makeRequest: MockedFakeRequest;
+		createRoom: (sender: string, ...members: string[]) => Promise<MockedRoom>;
 	}> {
 		const signature = await generateKeyPairsFromString(this.signingSeed);
 
@@ -155,12 +182,25 @@ export class ContextBuilder {
 				body: body && JSON.stringify(body),
 			});
 		};
+
 		return {
 			signature,
 			name: this.name,
 			app,
 			instance: this,
 			makeRequest,
+			createRoom: async (sender: string, ...members: string[]) => {
+				const { roomId, events } = await createRoom(
+					[sender, ...members],
+					createSignedEvent(config.signingKey[0], config.name),
+					`!${createMediaId(18)}:${config.name}`,
+				);
+
+				for (const { event } of events) {
+					this.withEvent(roomId, event);
+				}
+				return new MockedRoom(roomId, events);
+			},
 		};
 	}
 }
