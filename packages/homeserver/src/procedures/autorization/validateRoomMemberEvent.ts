@@ -1,10 +1,4 @@
 import type { EventBase } from "@hs/core/src/events/eventBase";
-import { generateId } from "../authentication";
-import type { EventStore } from "../plugins/mongodb";
-import {
-	type RoomCreateEvent,
-	isRoomCreateEvent,
-} from "@hs/core/src/events/m.room.create";
 import {
 	type RoomMemberEvent,
 	isRoomMemberEvent,
@@ -15,121 +9,16 @@ import {
 	type JoinRule,
 } from "@hs/core/src/events/m.room.join_rules";
 import {
-	type PowerLevelNames,
-	isRoomPowerLevelsEvent,
-} from "@hs/core/src/events/m.room.power_levels";
-import {
 	type RoomThirdPartyInviteEvent,
 	isRoomThirdPartyInviteEvent,
 } from "@hs/core/src/events/m.room.third_party_invite";
-import { verifyJsonSignature, verifySignaturesFromRemote } from "../signJson";
-import { t } from "elysia";
+import { verifySignaturesFromRemote } from "../../signJson";
+import {
+	getUserPowerLevel,
+	getNamedPowerLevel,
+} from "./ensureAuthorizationRules";
 
-const difference = (a: string[], b: string[]) =>
-	a.filter((x) => !b.includes(x));
-const getMissingEvents = (a: string[]) => [];
-
-export const validateEventChain = async (
-	events: EventBase[],
-	roomId: string,
-) => {
-	const eventMap = new Map(events.map((event) => [generateId(event), event]));
-	// const eventKeys = Array.from(eventMap.keys());
-
-	const seenRemoteEvents = new Set<EventStore>(); // get from database
-
-	for (const seen of seenRemoteEvents) {
-		eventMap.delete(seen._id);
-	}
-
-	const authGraph = Object.fromEntries(
-		[...eventMap.entries()].map(([id, event]) => {
-			return [id, event.auth_events.map((eventId) => eventMap.get(eventId))];
-		}),
-	);
-
-	const sortedAuthEvents = [...eventMap.values()];
-
-	const authEventIds = sortedAuthEvents
-		.flatMap((event) => event.auth_events.map((eventId) => eventId))
-		.filter(Boolean);
-
-	const authMap = new Map(
-		sortedAuthEvents
-			.filter((event) => authEventIds.includes(generateId(event)))
-			.map((event) => [generateId(event), event]),
-	);
-
-	const missingEventsId = difference(authEventIds, [...authMap.keys()]);
-
-	if (!missingEventsId.length) {
-		const missingEvents = getMissingEvents(missingEventsId);
-		for (const event of missingEvents) {
-			eventMap.set(generateId(event), event);
-		}
-	}
-
-	for await (const event of sortedAuthEvents) {
-		console.log("event ->", event);
-		console.log("event.auth_events ->", event.auth_events);
-		console.log("authMap ->", authMap);
-	}
-};
-
-async function prep(event: EventBase, authMap: Map<string, EventBase>) {
-	const auth: EventBase[] = [];
-	for (const authEventId of event.auth_events) {
-		const ae = authMap.get(authEventId);
-		if (!ae) {
-			// The fact we can't find the auth event doesn't mean it doesn't
-			// exist, which means it is premature to reject `event`. Instead, we
-			// just ignore it for now.
-			console.log(
-				`Dropping event ${generateId(event)}, which relies on auth_event ${authEventId}, which could not be found`,
-			);
-			return;
-		}
-		auth.push(ae);
-	}
-	// We're not bothering about room state, so flag the event as an outlier.
-	// event.internalMetadata.outlier = true;
-	// const context = EventContext.forOutlier(this._storageControllers);
-
-	// validateEventForRoomVersion(event);
-	switch (true) {
-		case isRoomCreateEvent(event): {
-			await validateRoomCreateEvent(event, authMap);
-			break;
-		}
-		case isRoomMemberEvent(event): {
-			await validateRoomMemberEvent(event, authMap);
-			break;
-		}
-	}
-	// } catch (error) {}
-	// 	if (error instanceof AuthError) {
-	// 		logger.warning(
-	// 			`Rejecting ${JSON.stringify(event)} because ${error.message}`,
-	// 		);
-	// 		context.rejected = RejectedReason.AUTH_ERROR;
-	// 	} else if (error instanceof EventSizeError) {
-	// 		if (error.unpersistable) {
-	// 			// This event is completely unpersistable.
-	// 			throw error;
-	// 		}
-	// 		// Otherwise, we are somewhat lenient and just persist the event
-	// 		// as rejected, for moderate compatibility with older versions.
-	// 		logger.warning(
-	// 			`While validating received event ${event.event_id}: ${error.message}`,
-	// 		);
-	// 		context.rejected = RejectedReason.OVERSIZED_EVENT;
-	// 	} else {
-	// 		throw error; // Re-throw unexpected errors
-	// 	}
-	// eventsAndContextsToPersist.push([event, context]);
-}
-
-async function validateRoomMemberEvent(
+export async function validateRoomMemberEvent(
 	event: RoomMemberEvent,
 	authMap: Map<string, EventBase>,
 ) {
@@ -212,7 +101,6 @@ async function validateRoomMemberEvent(
 		//   4.3.5 If the join_rule is restricted:
 		if (joinRule === "restricted" || joinRule === "knock_restricted") {
 			//   4.3.5.1 If membership state is join or invite, allow.
-
 			if (callerInRoom || callerInvited) {
 				return;
 			}
@@ -239,9 +127,9 @@ async function validateRoomMemberEvent(
 				authMap,
 			);
 
-			const joinLevel = getNamedPowerLevel("invite", authMap) ?? 0;
+			const inviteLevel = getNamedPowerLevel("invite", authMap) ?? 0;
 
-			if (authorisingUserLevel < joinLevel) {
+			if (authorisingUserLevel < inviteLevel) {
 				throw new Error("Insufficient permission");
 			}
 
@@ -280,7 +168,6 @@ async function validateRoomMemberEvent(
 				throw new Error("Missing mxid, token, or signatures");
 			}
 			// 4.4.1.4 If mxid does not match state_key, reject.
-
 			const { mxid } = thirdPartyInvite.signed;
 			if (event.state_key !== mxid) {
 				throw new Error("Invalid mxid");
@@ -302,14 +189,12 @@ async function validateRoomMemberEvent(
 			}
 
 			// TODO: 4.4.1.6 If sender does not match sender of the m.room.third_party_invite, reject.
-
 			if (event.sender !== inviteEvent.sender) {
 				throw new Error("Invalid sender");
 			}
 			// 4.4.1.7 If any signature in signed matches any public key in the m.room.third_party_invite event, allow. The public keys are in content of m.room.third_party_invite as:
 			// 4.4.1.7.1 A single public key in the public_key field.
 			// 4.4.1.7.2 A list of public keys in the public_keys field.
-
 			const getPublicKeys = (inviteEvent: RoomThirdPartyInviteEvent) => {
 				if ("public_key" in inviteEvent.content) {
 					const publicKey = {
@@ -358,7 +243,6 @@ async function validateRoomMemberEvent(
 			throw new Error("Invalid sender");
 		}
 		// 4.5.3 If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
-
 		if (isTargetBanned && callerPowerLevel < targetPowerLevel) {
 			throw new Error("Invalid sender");
 		}
@@ -415,123 +299,4 @@ async function validateRoomMemberEvent(
 	}
 
 	throw new Error("Invalid membership");
-}
-async function validateRoomCreateEvent(
-	event: RoomCreateEvent,
-	authMap: Map<string, EventBase>,
-) {
-	// 1.1 If it has any previous events, reject.
-	if (event.prev_events.length > 0) {
-		throw new Error("Previous events are not allowed on m.room.create events");
-	}
-	// 1.2 If the domain of the room_id does not match the domain of the sender, reject.
-	if (event.room_id.split(":")[1] !== event.sender.split(":")[1]) {
-		throw new Error(
-			"The domain of the room_id does not match the domain of the sender",
-		);
-	}
-	// 1.3 If content.room_version is present and is not a recognised version, reject.
-	if (event.content.room_version && event.content.room_version !== "10") {
-		throw new Error("The room version is not recognized");
-	}
-	// 1.4 If content has no creator field, reject.
-	if (!event.content.creator) {
-		throw new Error("The content has no creator field");
-	}
-	// Otherwise, allow.
-
-	const roomId = event.room_id;
-
-	const authDict = new Map<string, EventBase>();
-
-	const expected_auth_types = [
-		"m.room.create",
-		"m.room.member",
-		"m.room.power_levels",
-		"m.room.join_rules",
-		"m.room.history_visibility",
-		"m.room.guest_access",
-	];
-
-	for await (const eventId of event.auth_events) {
-		const event = authMap.get(eventId);
-		if (!event) {
-			throw new Error("Auth event not found");
-		}
-		if (event.room_id !== roomId) {
-			throw new Error("Auth event does not belong to the room");
-		}
-
-		// 2.1 have duplicate entries for a given type and state_key pair
-		if (authDict.has(eventId)) {
-			throw new Error("Duplicate auth event");
-		}
-
-		// 2.2 have entries whose type and state_key don’t match those specified by the auth events selection algorithm described in the server specification.
-		if (!expected_auth_types.includes(event.type)) {
-			throw new Error("Invalid auth event type");
-		}
-
-		// Something to reject reason
-		authDict.set(eventId, event);
-	}
-
-	if ([...authDict.values()].some((event) => event.type === "m.room.create")) {
-		throw new Error("m.room.create event is not allowed");
-	}
-}
-
-const getNamedPowerLevel = (
-	name: PowerLevelNames,
-	authEvents: Map<string, EventBase>,
-) => {
-	const powerLevelEvent = getEventPowerLevel(authEvents);
-	if (!powerLevelEvent) {
-		return;
-	}
-	return powerLevelEvent.content[name];
-};
-
-const getEventPowerLevel = (authEvents: Map<string, EventBase>) =>
-	[...authEvents.values()].find(isRoomPowerLevelsEvent);
-
-function getUserPowerLevel(
-	userId: string,
-	authEvents: Map<string, EventBase>,
-): number {
-	/**
-	 * Get a user's power level.
-	 *
-	 * @param userId - User's ID to look up in power levels.
-	 * @param authEvents - State in force at this point in the room (or rather, a subset
-	 *                     of it including at least the create event and power levels event).
-	 * @returns The user's power level in this room.
-	 */
-
-	const powerLevelEvent = getEventPowerLevel(authEvents);
-
-	if (powerLevelEvent) {
-		const powerLevelDefault = powerLevelEvent.content?.users_default ?? 0;
-
-		return Number(
-			powerLevelEvent.content?.users?.[userId] ?? powerLevelDefault,
-		);
-	}
-	// If there is no power levels event, the creator gets 100 and everyone else gets 0.
-
-	// Some things which call this don't pass the create event: hack around that.
-
-	const createEvent = [...authEvents.values()].find(isRoomCreateEvent);
-
-	if (createEvent) {
-		// TODO: const creator = createEvent.roomVersion?.implicitRoomCreator
-		// 	? createEvent.sender
-		// 	: createEvent.content?.[EventContentFields.ROOM_CREATOR];
-
-		if (createEvent.sender === userId) {
-			return 100;
-		}
-	}
-
-	return 0;
 }

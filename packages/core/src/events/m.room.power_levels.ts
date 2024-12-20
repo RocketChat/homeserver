@@ -32,6 +32,10 @@ export interface RoomPowerLevelsEvent extends EventBase {
 		redact: number;
 		invite: number;
 		historical: number;
+
+		notifications?: {
+			[key: string]: number;
+		};
 	};
 	unsigned?: {
 		age_ts: number;
