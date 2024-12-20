@@ -7,9 +7,16 @@ declare module "./eventBase" {
 	}
 }
 
-interface RoomJoinRulesEvent extends EventBase {
+export type JoinRule =
+	| "invite"
+	| "knock"
+	| "public"
+	| "restricted"
+	| "knock_restricted";
+
+export interface RoomJoinRulesEvent extends EventBase {
 	content: {
-		join_rule: "invite" | "knock" | "public";
+		join_rule: JoinRule;
 	};
 	unsigned?: {
 		age_ts: number;
@@ -46,3 +53,9 @@ export const roomJoinRulesEvent = ({
 };
 
 export const createRoomJoinRulesEvent = createEventWithId(roomJoinRulesEvent);
+
+export const isRoomJoinRulesEvent = (
+	event: EventBase,
+): event is RoomJoinRulesEvent => {
+	return event.type === "m.room.join_rules";
+};
