@@ -1,7 +1,8 @@
 import { createEventBase, type EventBase } from "./eventBase";
+import type { JoinRule } from "./m.room.join_rules";
 import { createEventWithId } from "./utils/createSignedEvent";
 
-type Membership = "join" | "invite";
+type Membership = "join" | "invite" | "leave" | "knock" | "ban";
 
 declare module "./eventBase" {
 	interface Events {
@@ -26,7 +27,19 @@ export interface RoomMemberEvent extends EventBase {
 	type: "m.room.member";
 	content: {
 		membership: Membership;
+		join_rule: JoinRule;
 		join_authorised_via_users_server?: string;
+		third_party_invite?: {
+			signed: {
+				mxid: string;
+				token: string;
+				signatures: {
+					[servername: string]: {
+						[protocol: string]: string;
+					};
+				};
+			};
+		};
 	};
 	state_key: string;
 	unsigned: {
