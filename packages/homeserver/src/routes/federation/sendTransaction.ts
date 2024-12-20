@@ -4,12 +4,9 @@ import { type HashedEvent, generateId } from "../../authentication";
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import {
 	encodeCanonicalJson,
-	getSignaturesFromRemote,
-	verifyJsonSignature,
 	verifySignature,
 	type SignedJson,
 } from "../../signJson";
-import { pruneEventDict } from "../../pruneEventDict";
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
@@ -20,6 +17,15 @@ import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { makeRequest } from "../../makeRequest";
 import { isMutexContext, routerWithMutex } from "../../plugins/mutex";
 import { processPDUsByRoomId } from "../../procedures/processPDU";
+import type { Config } from "../../plugins/config";
+import { checkSignAndHashes } from "./checkSignAndHashes";
+
+const extractOrigin = (sender: string) => sender.split(":").pop() as string;
+
+const isInviteVia3pid = (event: EventBase) =>
+	isRoomMemberEvent(event) &&
+	event.content.membership === "invite" &&
+	"third_party_invite" in event.content;
 
 export const sendTransactionRoute = new Elysia()
 	.use(routerWithMutex)
@@ -111,14 +117,6 @@ export const sendTransactionRoute = new Elysia()
 			}
 
 			const validatePdu = async (pdu: SignedJson<HashedEvent<EventBase>>) => {
-				const extractOrigin = (sender: string) =>
-					sender.split(":").pop() as string;
-
-				const isInviteVia3pid = (event: EventBase) =>
-					isRoomMemberEvent(event) &&
-					event.content.membership === "invite" &&
-					"third_party_invite" in event.content;
-
 				const origins = [
 					!isInviteVia3pid(pdu) && extractOrigin(pdu.sender),
 					// extractOrigin(pdu.sender) !== extractOrigin(pdu.event_id) &&
@@ -133,41 +131,14 @@ export const sendTransactionRoute = new Elysia()
 				}
 
 				for await (const origin of origins) {
-					const { signatures, unsigned, ...rest } = pdu;
-
-					const [signature] = await getSignaturesFromRemote(pdu, origin);
-
 					const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
 						context.mongo.getValidPublicKeyFromLocal,
-						() =>
-							getPublicKeyFromRemoteServer(
-								origin,
-								config.name,
-								`${signature.algorithm}:${signature.version}`,
-							),
+						(origin, key) =>
+							getPublicKeyFromRemoteServer(origin, config.name, key),
 
 						context.mongo.storePublicKey,
 					);
-
-					const publicKey = await getPublicKeyFromServer(
-						origin,
-						`${signature.algorithm}:${signature.version}`,
-					);
-
-					if (
-						!verifyJsonSignature(
-							pruneEventDict(rest),
-							origin,
-							Uint8Array.from(atob(signature.signature), (c) =>
-								c.charCodeAt(0),
-							),
-							Uint8Array.from(atob(publicKey), (c) => c.charCodeAt(0)),
-							signature.algorithm,
-							signature.version,
-						)
-					) {
-						throw new MatrixError("400", "Invalid signature");
-					}
+					await checkSignAndHashes(pdu, origin, getPublicKeyFromServer);
 				}
 			};
 
@@ -191,10 +162,7 @@ export const sendTransactionRoute = new Elysia()
 			};
 
 			const processMissingEvents = async (roomId: string) => {
-				const lock = await context.mutex.request(roomId);
-				if (!lock) {
-					return false;
-				}
+				using lock = await context.mutex.request(roomId, true);
 				const event = await getOldestStagedEvent(roomId);
 
 				if (!event) {
@@ -202,7 +170,6 @@ export const sendTransactionRoute = new Elysia()
 				}
 
 				const { _id: pid, event: pdu } = event;
-
 				const fetchedEvents = await makeRequest({
 					method: "POST",
 					domain: pdu.origin,
@@ -223,8 +190,6 @@ export const sendTransactionRoute = new Elysia()
 				for await (const event of newEvents) {
 					await createStagingEvent(event);
 				}
-
-				await lock.release();
 
 				return true;
 			};
