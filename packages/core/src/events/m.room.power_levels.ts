@@ -7,7 +7,16 @@ declare module "./eventBase" {
 	}
 }
 
-interface RoomPowerLevelsEvent extends EventBase {
+export type PowerLevelNames =
+	| "events_default"
+	| "state_default"
+	| "ban"
+	| "kick"
+	| "redact"
+	| "invite"
+	| "historical";
+
+export interface RoomPowerLevelsEvent extends EventBase {
 	content: {
 		users: {
 			[key: string]: number;
@@ -84,3 +93,9 @@ export const roomPowerLevelsEvent = ({
 
 export const createRoomPowerLevelsEvent =
 	createEventWithId(roomPowerLevelsEvent);
+
+export const isRoomPowerLevelsEvent = (
+	event: EventBase,
+): event is RoomPowerLevelsEvent => {
+	return event.type === "m.room.power_levels";
+};
