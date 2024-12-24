@@ -72,12 +72,12 @@ test("roomMemberInviteEvent", async () => {
 		state_key: "@asd6:rc1",
 		ts: 1733107418773,
 		depth: 7,
-		auth_events: [
-			"$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4",
-			"$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE",
-			"$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4",
-			"$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8",
-		],
+		auth_events: {
+			create: "$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4",
+			power_levels: "$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE",
+			join_rules: "$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4",
+			history_visibility: "$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8",
+		},
 		prev_events: ["$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas"],
 		content: {
 			is_direct: true,

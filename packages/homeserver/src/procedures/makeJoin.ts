@@ -31,12 +31,21 @@ export const makeJoinEventBuilder =
 		}
 
 		const authEvents = await getAuthEvents(roomId);
+
+		const authEventsMap = new Map(
+			authEvents.map((event) => [event.event.type, event]),
+		);
+
 		const event = roomMemberEvent({
 			membership: "join",
 			roomId,
 			sender: userId,
 			state_key: userId,
-			auth_events: authEvents.map((event) => event._id),
+			auth_events: {
+				create: authEventsMap.get("m.room.create")!._id,
+				power_levels: authEventsMap.get("m.room.power_levels")!._id,
+				join_rules: authEventsMap.get("m.room.join_rules")!._id,
+			},
 			prev_events: [lastEvent._id],
 			depth: lastEvent.event.depth + 1,
 			origin,

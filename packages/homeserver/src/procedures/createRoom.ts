@@ -55,7 +55,9 @@ export const createRoom = async (
 			displayname: sender,
 		},
 		state_key: sender,
-		auth_events: [createEvent._id],
+		auth_events: {
+			create: createEvent._id,
+		},
 		prev_events: [createEvent._id],
 	});
 

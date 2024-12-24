@@ -86,7 +86,12 @@ export const roomMemberEvent = ({
 	roomId: string;
 	sender: string;
 	state_key: string;
-	auth_events: string[];
+	auth_events: {
+		create: string;
+		power_levels?: string;
+		join_rules?: string;
+		history_visibility?: string;
+	};
 	prev_events: string[];
 	depth: number;
 	unsigned?: RoomMemberEvent["unsigned"];
@@ -97,7 +102,12 @@ export const roomMemberEvent = ({
 	return createEventBase("m.room.member", {
 		roomId,
 		sender,
-		auth_events,
+		auth_events: [
+			auth_events.create,
+			auth_events.power_levels,
+			auth_events.join_rules,
+			auth_events.history_visibility,
+		].filter(Boolean) as string[],
 		prev_events,
 		depth,
 		content: {

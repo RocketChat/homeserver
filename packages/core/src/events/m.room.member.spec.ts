@@ -51,7 +51,9 @@ test("roomMemberEvent", async () => {
 		state_key: "@admin:hs1",
 		ts: 1733107418672,
 		depth: 2,
-		auth_events: [createEventId],
+		auth_events: {
+			create: createEventId,
+		},
 		prev_events: [createEventId],
 	});
 	const signed = await signEvent(memberEvent, signature, "hs1");
