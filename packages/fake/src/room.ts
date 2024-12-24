@@ -141,7 +141,13 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 
 			const inviteEvent = await signEvent(
 				roomMemberEvent({
-					auth_events: lastEvent.auth_events,
+					auth_events: {
+						// that's not true but it's a fake operation
+						create: lastEvent.auth_events[0],
+						power_levels: lastEvent.auth_events[1],
+						join_rules: lastEvent.auth_events[2],
+						history_visibility: lastEvent.auth_events[3],
+					},
 					membership: "invite",
 					depth: lastEvent.depth + 1,
 					// origin: lastEvent.origin,
