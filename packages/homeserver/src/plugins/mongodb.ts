@@ -240,4 +240,5 @@ export type EventStore = {
 	_id: string;
 	event: EventBase;
 	staged?: true;
+	outlier?: true;
 };
