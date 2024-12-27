@@ -15,7 +15,7 @@ import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
 } from "../../procedures/getPublicKeyFromServer";
-import { checkSignAndHashes } from "./checkSignAndHashes";
+import { processSendJoinResponse } from "../../procedures/processSendJoinResponse";
 
 export const sendInviteV2Route = new Elysia().put(
 	"/invite/:roomId/:eventId",
@@ -31,13 +31,6 @@ export const sendInviteV2Route = new Elysia().put(
 			mongo: { eventsCollection, upsertRoom },
 		} = context;
 
-		console.log("invite received ->", { params, body });
-
-		await eventsCollection.insertOne({
-			_id: generateId(body.event),
-			event: body.event,
-		});
-
 		setTimeout(async () => {
 			const { event } = body;
 
@@ -51,19 +44,6 @@ export const sendInviteV2Route = new Elysia().put(
 			});
 
 			console.log("make_join response ->", responseMake);
-
-			// const joinBody = {
-			//   type: 'm.room.member',
-			//   origin: config.name,
-			//   origin_server_ts: Date.now(),
-			//   room_id: responseMake.event.room_id,
-			//   state_key: responseMake.event.state_key,
-			//   sender: responseMake.event.sender,
-			//   depth: responseMake.event.depth + 1,
-			//   content: {
-			//     membership: 'join'
-			//   }
-			// };
 
 			const responseBody = await makeSignedRequest({
 				method: "PUT",
@@ -80,33 +60,6 @@ export const sendInviteV2Route = new Elysia().put(
 				queryString: "omit_members=false",
 			});
 
-			console.log("send_join response ->", { responseBody });
-
-			const { event: pdu, origin } = responseBody;
-
-			const createEvent = responseBody.state.find(
-				(event) => event.type === "m.room.create",
-			);
-
-			if (!createEvent) {
-				throw new MatrixError("400", "Invalid response");
-			}
-
-			if (pdu) {
-				await eventsCollection.insertOne({
-					_id: generateId(responseBody.event),
-					event: responseBody.event,
-				});
-			}
-
-			const auth_chain = new Map(
-				responseBody.auth_chain.map((event) => [generateId(event), event]),
-			);
-
-			const state = new Map(
-				responseBody.state.map((event) => [generateId(event), event]),
-			);
-
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
 				context.mongo.getValidPublicKeyFromLocal,
 				(origin, key) => getPublicKeyFromRemoteServer(origin, config.name, key),
@@ -114,68 +67,25 @@ export const sendInviteV2Route = new Elysia().put(
 				context.mongo.storePublicKey,
 			);
 
-			const validPDUs = new Map<string, EventBase>();
-
-			for await (const [eventId, event] of [
-				...auth_chain.entries(),
-				...state.entries(),
-			]) {
-				// check sign and hash of event
-				if (
-					await checkSignAndHashes(
-						event as SignedJson<HashedEvent<EventBase>>,
-						event.origin,
-						getPublicKeyFromServer,
-					).catch((e) => {
-						console.log("Error checking signature", e);
-						return false;
-					})
-				) {
-					validPDUs.set(eventId, event);
-				} else {
-					console.log("Invalid event", event);
-				}
-			}
-
-			const signedAuthChain = [...auth_chain.entries()].filter(([eventId]) =>
-				validPDUs.has(eventId),
-			);
-
-			const signedState = [...state.entries()].filter(([eventId]) =>
-				validPDUs.has(eventId),
-			);
-
-			const signedCreateEvent = signedAuthChain.find(
-				([, event]) => event.type === "m.room.create",
-			);
-
-			if (!signedCreateEvent) {
-				console.log("Invalid create event", validPDUs);
-				throw new MatrixError(
-					"400",
-					"Unexpected create event(s) in auth chain",
-				);
-			}
-
-			await upsertRoom(
-				signedCreateEvent[1].room_id,
-				signedState.map(([, event]) => event),
-			);
-
-			await Promise.all(
-				signedState.map(([eventId, event]) => {
-					const promise = eventsCollection
-						.insertOne({
-							_id: eventId,
-							event,
-						})
-						.catch((e) => {
-							// TODO events failing because of duplicate key
-							// the reason is that we are saving the event on invite event
-							console.error("error saving event", e, event);
-						});
-					return promise;
-				}) ?? [],
+			return processSendJoinResponse(
+				{
+					getPublicKeyFromServer,
+				},
+				{
+					insertMany: async (...args) => {
+						await eventsCollection.insertMany(...args);
+					},
+					insertOne: async (...args) => {
+						await eventsCollection.insertOne(...args);
+					},
+					upsertRoom,
+					getByIds: async (...args) => {
+						throw new Error("Method not implemented.");
+					},
+				},
+				responseBody.event,
+				responseBody.state,
+				responseBody.auth_chain,
 			);
 		}, 1000);
 
