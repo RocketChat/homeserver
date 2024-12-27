@@ -34,9 +34,9 @@ export function createMediaId(length: number) {
 }
 
 class MockedRoom {
-	private events: EventStore[] = [];
+	public events: EventStore[] = [];
 	constructor(
-		private roomId: string,
+		public roomId: string,
 		events: EventStore[],
 	) {
 		for (const event of events) {
@@ -191,7 +191,10 @@ export class ContextBuilder {
 			makeRequest,
 			createRoom: async (sender: string, ...members: string[]) => {
 				const { roomId, events } = await createRoom(
-					[sender, ...members],
+					[
+						`@${sender}:${config.name}`,
+						...members.map((member) => `@${member}:${config.name}`),
+					],
 					createSignedEvent(config.signingKey[0], config.name),
 					`!${createMediaId(18)}:${config.name}`,
 				);
