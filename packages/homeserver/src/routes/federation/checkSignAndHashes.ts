@@ -8,12 +8,12 @@ import {
 import { pruneEventDict } from "../../pruneEventDict";
 import { MatrixError } from "../../errors";
 
-export async function checkSignAndHashes(
-	pdu: SignedJson<HashedEvent<EventBase>>,
+export async function checkSignAndHashes<T extends EventBase>(
+	pdu: T,
 	origin: string,
 	getPublicKeyFromServer: (origin: string, key: string) => Promise<string>,
-) {
-	const { hashes, ...rest } = pdu;
+): Promise<SignedJson<HashedEvent<T>>> {
+	const { hashes, ...rest } = pdu as SignedJson<HashedEvent<T>>;
 
 	const [signature] = await getSignaturesFromRemote(pdu, origin);
 
@@ -37,11 +37,10 @@ export async function checkSignAndHashes(
 
 	const [algorithm, hash] = computeHash(pdu);
 
-	const expectedHash = pdu.hashes[algorithm];
+	const expectedHash = (pdu as SignedJson<HashedEvent<T>>).hashes[algorithm];
 
 	if (hash !== expectedHash) {
 		throw new MatrixError("400", "Invalid hash");
 	}
-
-	return true;
+	return pdu as SignedJson<HashedEvent<T>>;
 }
