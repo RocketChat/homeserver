@@ -31,6 +31,29 @@ export const ensureAuthorizationRulesBatch = function* (
 	}
 };
 
+export const ensureAuthorizationRulesAndStoreBatch = async (
+	events: {
+		insertMany: (events: EventStore[]) => Promise<void>;
+	},
+	authChain: EventBase[],
+	roomId: string,
+	size = 100,
+) => {
+	for await (const eventsToBeStored of ensureAuthorizationRulesBatch(
+		authChain,
+		roomId,
+		size,
+	)) {
+		await events.insertMany(
+			[...eventsToBeStored.entries()].map(([key, event]) => ({
+				_id: key,
+				event,
+				outlier: true,
+			})),
+		);
+	}
+};
+
 export const ensureAuthorizationRules = async (
 	events: EventBase[],
 	roomId: string,
@@ -71,11 +94,11 @@ export const ensureAuthorizationRules = async (
 		}
 	}
 
-	const eventsToBeStored = new Set<string>();
+	const eventsToBeStored = new Map<string, EventBase>();
 	for await (const event of sortedAuthEvents) {
 		try {
-			if (await prep(event, authMap)) {
-				eventsToBeStored.add(generateId(event));
+			if (await checkEventAuthorization(event, authMap)) {
+				eventsToBeStored.set(generateId(event), event);
 			}
 		} catch (e) {
 			console.log("error", e);
@@ -85,7 +108,10 @@ export const ensureAuthorizationRules = async (
 	return eventsToBeStored;
 };
 
-async function prep(event: EventBase, authMap: Map<string, EventBase>) {
+export async function checkEventAuthorization(
+	event: EventBase,
+	authMap: Map<string, EventBase>,
+) {
 	const authEvents = new Map<string, EventBase>();
 	for (const authEventId of event.auth_events) {
 		const ae = authMap.get(authEventId);
