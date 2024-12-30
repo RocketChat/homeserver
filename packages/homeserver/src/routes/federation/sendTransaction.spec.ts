@@ -57,7 +57,7 @@ describe("/send/:txnId", () => {
 			expect(resp.status).toBe(400);
 		});
 
-		it.only("Should pass if there a proper pdu is provided", async () => {
+		it("Should pass if there a proper pdu is provided", async () => {
 			rc1Content = await rc1.build();
 			app = rc1Content.app.group("/_matrix/federation/v1", (app) =>
 				app.use(sendTransactionRoute),
