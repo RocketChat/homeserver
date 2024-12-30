@@ -6,11 +6,12 @@ import Elysia from "elysia";
 import { type SigningKey, generateKeyPairsFromString } from "../keys";
 import { authorizationHeaders } from "../authentication";
 import { toUnpaddedBase64 } from "../binaryData";
-import { encodeCanonicalJson, signJson } from "../signJson";
+import { signJson } from "../signJson";
 
 describe("validateHeaderSignature getting public key from local", () => {
 	let app: Elysia<any, any, any, any, any, any>;
 	let signature: SigningKey;
+	const key = 'ed25519:a_yNbw';
 
 	beforeAll(async () => {
 		signature = await generateKeyPairsFromString(
@@ -31,10 +32,10 @@ describe("validateHeaderSignature getting public key from local", () => {
 				version: "org.matrix.msc3757.10",
 			})
 			.decorate("mongo", {
-				getValidPublicKeyFromLocal: async () => {
-					return toUnpaddedBase64(signature.publicKey);
+				getValidServerKeysFromLocal: async () => {
+					return { verify_keys: { [key]: { key: toUnpaddedBase64(signature.publicKey) } } };
 				},
-				storePublicKey: async () => {
+				storeServerKeys: async () => {
 					return;
 				},
 				eventsCollection: {
@@ -90,7 +91,6 @@ describe("validateHeaderSignature getting public key from local", () => {
 			"GET",
 			"/",
 		);
-
 		const resp = await app.handle(
 			new Request("http://localhost/", {
 				headers: {
@@ -183,10 +183,10 @@ describe("validateHeaderSignature getting public key from remote", () => {
 				version: "org.matrix.msc3757.10",
 			})
 			.decorate("mongo", {
-				getValidPublicKeyFromLocal: async () => {
+				getValidServerKeysFromLocal: async () => {
 					return;
 				},
-				storePublicKey: async () => {
+				storeServerKeys: async () => {
 					return;
 				},
 				eventsCollection: {
@@ -226,7 +226,7 @@ describe("validateHeaderSignature getting public key from remote", () => {
 			"synapse1",
 		);
 
-		mock("https://synapse1/_matrix/key/v2/server", { data: result });
+		mock("https://synapse1:8448/_matrix/key/v2/server", { data: result });
 
 		const authorizationHeader = await authorizationHeaders(
 			"synapse1",
@@ -272,6 +272,28 @@ describe("validateHeaderSignature getting public key from remote", () => {
 			"GET",
 			"/",
 		);
+
+		const resp = await app.handle(
+			new Request("http://localhost/", {
+				headers: {
+					authorization: authorizationHeader,
+				},
+			}),
+		);
+
+		expect(resp.status).toBe(401);
+	});
+
+	it("Should reject if there are no keys in the cache and the target server is unreachable", async () => {
+		const authorizationHeader = await authorizationHeaders(
+			"synapse1",
+			signature,
+			"synapse2",
+			"GET",
+			"/",
+		);
+
+		mock("https://synapse1:8448/_matrix/key/v2/server", { throw: new Error("Not found") });
 
 		const resp = await app.handle(
 			new Request("http://localhost/", {

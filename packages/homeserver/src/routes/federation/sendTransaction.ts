@@ -2,15 +2,7 @@ import { Elysia } from "elysia";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
 import { type HashedEvent, generateId } from "../../authentication";
 import type { EventBase } from "@hs/core/src/events/eventBase";
-import {
-	encodeCanonicalJson,
-	verifySignature,
-	type SignedJson,
-} from "../../signJson";
-import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
-} from "../../procedures/getPublicKeyFromServer";
+import type { SignedJson } from "../../signJson";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { MatrixError } from "../../errors";
 import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
@@ -19,6 +11,7 @@ import { isMutexContext, routerWithMutex } from "../../plugins/mutex";
 import { processPDUsByRoomId } from "../../procedures/processPDU";
 import type { Config } from "../../plugins/config";
 import { checkSignAndHashes } from "./checkSignAndHashes";
+import { getPublicKeyFromRemoteServer, makeGetServerKeysFromServerProcedure } from "../../procedures/getServerKeysFromRemote";
 
 const extractOrigin = (sender: string) => sender.split(":").pop() as string;
 
@@ -122,8 +115,8 @@ export const sendTransactionRoute = new Elysia()
 					// extractOrigin(pdu.sender) !== extractOrigin(pdu.event_id) &&
 					// 	extractOrigin(pdu.event_id),
 					isRoomMemberEvent(pdu) &&
-						pdu.content.join_authorised_via_users_server &&
-						extractOrigin(pdu.content.join_authorised_via_users_server),
+					pdu.content.join_authorised_via_users_server &&
+					extractOrigin(pdu.content.join_authorised_via_users_server),
 				].filter(Boolean) as string[];
 
 				if (!origins.length) {
@@ -131,12 +124,12 @@ export const sendTransactionRoute = new Elysia()
 				}
 
 				for await (const origin of origins) {
-					const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-						context.mongo.getValidPublicKeyFromLocal,
+					const getPublicKeyFromServer = makeGetServerKeysFromServerProcedure(
+						context.mongo.getValidServerKeysFromLocal,
 						(origin, key) =>
 							getPublicKeyFromRemoteServer(origin, config.name, key),
 
-						context.mongo.storePublicKey,
+						context.mongo.storeServerKeys,
 					);
 					await checkSignAndHashes(pdu, origin, getPublicKeyFromServer);
 				}

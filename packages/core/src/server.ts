@@ -2,7 +2,7 @@ import typia, { tags } from "typia";
 
 // // https://spec.matrix.org/v1.9/server-server-api/#get_matrixkeyv2server
 
-interface Response {
+export interface Response {
 	old_verify_keys: Record<
 		string,
 		{
