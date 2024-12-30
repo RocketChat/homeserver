@@ -10,6 +10,7 @@ import { sendJoinV2Route } from "./sendJoinV2";
 import { getMissingEventsRoute } from "./getMissingEvents";
 import validateHeaderSignature from "../../plugins/validateHeaderSignature";
 import { sendTransactionRoute } from "./sendTransaction";
+import { eventAuth } from "./eventAuth";
 
 const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
@@ -21,7 +22,8 @@ const federationV1Endpoints = new Elysia({
 	.use(queryProfileRoute)
 	.use(makeJoinRoute)
 	.use(getMissingEventsRoute)
-	.use(sendTransactionRoute);
+	.use(sendTransactionRoute)
+	.use(eventAuth);
 
 const federationV2Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v2",

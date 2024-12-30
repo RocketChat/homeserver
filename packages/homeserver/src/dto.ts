@@ -186,6 +186,36 @@ export const ErrorDTO = t.Object({
 	}),
 });
 
+export const EventBaseDTO = t.Object({
+	auth_events: t.Array(t.String()),
+	prev_events: t.Array(t.String()),
+	type: t.String(),
+	room_id: t.String(),
+	sender: t.String(),
+	content: t.Object({}),
+	depth: t.Number(),
+	state_key: t.String(),
+	origin: t.String(),
+	origin_server_ts: t.Number(),
+	hashes: t.Object({
+		sha256: t.String(),
+	}),
+	signatures: t.Record(
+		t.String(),
+		t.Record(t.String(), t.String(), {
+			title: "Server Signatures",
+		}),
+	),
+	unsigned: t.Optional(
+		t.Object({
+			age: t.Integer({
+				description:
+					"The time in milliseconds that has elapsed since the event was sent.",
+			}),
+		}),
+	),
+});
+
 export const EventHashDTO = t.Object(
 	{
 		sha256: t.String({

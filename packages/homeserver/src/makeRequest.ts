@@ -1,17 +1,17 @@
 import type { HomeServerRoutes } from "./app";
-import { authorizationHeaders, computeHash } from "./authentication";
+import { authorizationHeaders, computeAndMergeHash } from "./authentication";
 import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
 import { extractURIfromURL } from "./helpers/url";
 import type { SigningKey } from "./keys";
 
 import { signJson } from "./signJson";
 
-type getAllResponsesByMethod<
+export type getAllResponsesByMethod<
 	T extends HomeServerRoutes,
 	M extends HomeServerRoutes["method"],
 > = T extends { method: M } ? T : never;
 
-type getAllResponsesByPath<
+export type getAllResponsesByPath<
 	T extends HomeServerRoutes,
 	M extends HomeServerRoutes["method"],
 	P extends HomeServerRoutes["path"],
@@ -39,13 +39,21 @@ export const makeSignedRequest = async <
 	signingName: string;
 	queryString?: string;
 }) => {
-	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
+	const { address, headers } = await resolveHostAddressByServerName(
+		domain,
+		signingName,
+	);
 	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
 	const signedBody =
-		body && (await signJson(computeHash({ ...body, signatures: {} }), signingKey, signingName));
+		body &&
+		(await signJson(
+			computeAndMergeHash({ ...body, signatures: {} }),
+			signingKey,
+			signingName,
+		));
 
 	console.log("body ->", method, domain, url.toString(), signedBody);
 
@@ -96,7 +104,10 @@ export const makeRequest = async <
 	options?: Record<string, any>;
 	queryString?: string;
 }) => {
-	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
+	const { address, headers } = await resolveHostAddressByServerName(
+		domain,
+		signingName,
+	);
 	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
@@ -124,11 +135,12 @@ export const makeUnsignedRequest = async <
 	method,
 	domain,
 	uri,
+	body,
 	options = {},
 	signingKey,
 	signingName,
 	queryString,
-}: {
+}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
 	method: M;
 	domain: string;
 	uri: U;
@@ -144,17 +156,20 @@ export const makeUnsignedRequest = async <
 		domain,
 		method,
 		uri,
-		options.body,
+		body,
 	);
 
-	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
+	const { address, headers } = await resolveHostAddressByServerName(
+		domain,
+		signingName,
+	);
 	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
 	const response = await fetch(url.toString(), {
 		...options,
-		...(options.body && { body: JSON.stringify(options.body) }),
+		...(body && { body: JSON.stringify(body) }),
 		method,
 		headers: {
 			Authorization: auth,

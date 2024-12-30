@@ -31,9 +31,7 @@ export const getMissingEventsRoute = new Elysia().post(
 			body.limit,
 		);
 
-		return {
-			events,
-		};
+		return events;
 	},
 	{
 		params: t.Object(
@@ -69,9 +67,11 @@ export const getMissingEventsRoute = new Elysia().post(
 			},
 		),
 		detail: {
-			security: [{
-				'matrixAuth': []
-			}],
-		}
+			security: [
+				{
+					matrixAuth: [],
+				},
+			],
+		},
 	},
 );

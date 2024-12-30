@@ -63,8 +63,7 @@ test("roomPowerLevelsEvent", async () => {
 		],
 		depth: 3,
 		prev_events: ["$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8"],
-		sender: "@admin:hs1",
-		member: "@asd6:rc1",
+		members: ["@admin:hs1", "@asd6:rc1"],
 		ts: 1733107418713,
 	});
 

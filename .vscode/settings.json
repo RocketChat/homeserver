@@ -4,6 +4,6 @@
 	"editor.codeActionsOnSave": {
 		"quickfix.biome": "explicit"
 	},
-	"cSpell.words": ["displayname", "Elysia", "Unpadded"],
+	"cSpell.words": ["displayname", "Elysia", "homeserver", "Unpadded"],
 	"typescript.tsdk": "node_modules/typescript/lib"
 }

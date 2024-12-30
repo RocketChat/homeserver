@@ -92,7 +92,7 @@ export const notaryServerRoutes = new Elysia()
                 mongo.storeServerKeys,
             );
 
-            const serverKeys = await getPublicKeyFromServer(params.serverName);
+            const serverKeys = await getPublicKeyFromServer(params.serverName, '');
             if (!serverKeys) {
                 return { server_keys: [] };
             }
@@ -149,7 +149,7 @@ export const notaryServerRoutes = new Elysia()
             await Promise.all(
                 servers
                     .map(async (serverName) => {
-                        const serverKeys = await getPublicKeyFromServer(serverName);
+                        const serverKeys = await getPublicKeyFromServer(serverName, '');
                         if (serverKeys) {
                             return parseNotaryResult(serverKeys, config);
                         }

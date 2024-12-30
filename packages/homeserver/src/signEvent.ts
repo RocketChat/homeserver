@@ -1,4 +1,4 @@
-import { computeHash } from "./authentication";
+import { computeAndMergeHash } from "./authentication";
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import type { SigningKey } from "./keys";
 import { pruneEventDict } from "./pruneEventDict";
@@ -21,7 +21,7 @@ export const signEvent = async <T extends EventBase>(
 	signingName: string,
 ): Promise<SignedEvent<T>> => {
 	const s = await signJson(
-		pruneEventDict(computeHash(event)),
+		pruneEventDict(computeAndMergeHash(event)),
 		signature,
 		signingName,
 	);

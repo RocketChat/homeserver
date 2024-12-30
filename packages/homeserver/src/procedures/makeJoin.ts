@@ -1,5 +1,3 @@
-import { Elysia, t } from "elysia";
-
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
@@ -17,10 +15,10 @@ export const makeJoinEventBuilder =
 	async (
 		roomId: string,
 		userId: string,
-		roomVersion: string,
+		roomVersions: string[],
 		origin: string,
 	) => {
-		if (roomVersion !== "10") {
+		if (!roomVersions.includes("10")) {
 			throw new IncompatibleRoomVersionError(
 				"Your homeserver does not support the features required to join this room",
 				{ roomVersion: "10" },
@@ -33,12 +31,21 @@ export const makeJoinEventBuilder =
 		}
 
 		const authEvents = await getAuthEvents(roomId);
+
+		const authEventsMap = new Map(
+			authEvents.map((event) => [event.event.type, event]),
+		);
+
 		const event = roomMemberEvent({
 			membership: "join",
 			roomId,
 			sender: userId,
 			state_key: userId,
-			auth_events: authEvents.map((event) => event._id),
+			auth_events: {
+				create: authEventsMap.get("m.room.create")!._id,
+				power_levels: authEventsMap.get("m.room.power_levels")!._id,
+				join_rules: authEventsMap.get("m.room.join_rules")!._id,
+			},
 			prev_events: [lastEvent._id],
 			depth: lastEvent.event.depth + 1,
 			origin,

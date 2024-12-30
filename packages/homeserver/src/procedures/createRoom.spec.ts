@@ -11,8 +11,7 @@ test("createRoom", async () => {
 	const makeSignedEvent = createSignedEvent(signature, "hs1");
 
 	const { roomId, events } = await createRoom(
-		"@sender:hs1",
-		"username",
+		["@sender:hs1", "@username:hs1"],
 		makeSignedEvent,
 		"!roomId:hs1",
 	);

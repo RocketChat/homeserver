@@ -3,6 +3,7 @@ import type { InferContext } from "elysia";
 import { type Db, MongoClient } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
+import { generateId } from "../authentication";
 
 export interface Server {
 	_id: string;
@@ -31,12 +32,18 @@ export interface Server {
 	// }[];
 }
 
+interface Room {
+	_id: string;
+	state: EventBase[];
+}
+
 export const routerWithMongodb = (db: Db) =>
 	new Elysia().decorate(
 		"mongo",
 		(() => {
 			const eventsCollection = db.collection<EventStore>("events");
 			const serversCollection = db.collection<Server>("servers");
+			const roomsCollection = db.collection<Room>("rooms");
 
 			const getLastEvent = async (roomId: string) => {
 				return eventsCollection.findOne(
@@ -45,6 +52,24 @@ export const routerWithMongodb = (db: Db) =>
 				);
 			};
 
+			const upsertRoom = async (roomId: string, state: EventBase[]) => {
+				await roomsCollection.findOneAndUpdate(
+					{ _id: roomId },
+					{
+						$set: {
+							_id: roomId,
+							state,
+						},
+					},
+					{ upsert: true },
+				);
+			};
+
+			const getEventsByIds = async (roomId: string, eventIds: string[]) => {
+				return eventsCollection
+					.find({ "event.room_id": roomId, "event._id": { $in: eventIds } })
+					.toArray();
+			};
 			const getDeepEarliestAndLatestEvents = async (
 				roomId: string,
 				earliest_events: string[],
@@ -144,6 +169,41 @@ export const routerWithMongodb = (db: Db) =>
 				);
 			};
 
+			const createStagingEvent = async (event: EventBase) => {
+				const id = generateId(event);
+				await eventsCollection.insertOne({
+					_id: id,
+					event,
+					staged: true,
+				});
+
+				return id;
+			};
+
+			const createEvent = async (event: EventBase) => {
+				const id = generateId(event);
+				await eventsCollection.insertOne({
+					_id: id,
+					event,
+				});
+
+				return id;
+			};
+
+			const removeEventFromStaged = async (roomId: string, id: string) => {
+				await eventsCollection.updateOne(
+					{ _id: id, "event.room_id": roomId },
+					{ $unset: { staged: 1 } },
+				);
+			};
+
+			const getOldestStagedEvent = async (roomId: string) => {
+				return eventsCollection.findOne(
+					{ staged: true, "event.room_id": roomId },
+					{ sort: { "event.origin_server_ts": 1 } },
+				);
+			};
+
 			return {
 				serversCollection,
 				getValidServerKeysFromLocal,
@@ -154,6 +214,13 @@ export const routerWithMongodb = (db: Db) =>
 				getMissingEventsByDeep,
 				getLastEvent,
 				getAuthEvents,
+
+				removeEventFromStaged,
+				getEventsByIds,
+				getOldestStagedEvent,
+				createStagingEvent,
+				createEvent,
+				upsertRoom,
 			};
 		})(),
 	);
@@ -163,4 +230,6 @@ export type Context = InferContext<ReturnType<typeof routerWithMongodb>>;
 export type EventStore = {
 	_id: string;
 	event: EventBase;
+	staged?: true;
+	outlier?: true;
 };

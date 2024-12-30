@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-	computeHash,
+	computeAndMergeHash,
 	extractSignaturesFromHeader,
 	generateId,
 	signRequest,
@@ -142,7 +142,7 @@ test("signRequest", async () => {
 });
 
 test("computeHash", async () => {
-	const result = computeHash({
+	const result = computeAndMergeHash({
 		auth_events: [
 			"$e0YmwnKseuHqsuF50ekjta7z5UpO-bDoq7y4R1NKMpI",
 			"$6_VX-xW821oaBwOuaaV_xoC6fD2iMg2QPWD4J7Bh3o4",

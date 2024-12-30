@@ -3,18 +3,11 @@ import {
 	extractSignaturesFromHeader,
 	validateAuthorizationHeader,
 } from "../authentication";
-import {
-	getSignaturesFromRemote,
-	isValidAlgorithm,
-	verifyJsonSignature,
-} from "../signJson";
 import { isConfigContext } from "./isConfigContext";
 import { isMongodbContext } from "./isMongodbContext";
-import { makeGetServerKeysFromServerProcedure } from "../procedures/getServerKeysFromRemote";
-import { makeRequest } from "../makeRequest";
+import { makeGetServerKeysFromServerProcedure, getPublicKeyFromRemoteServer, extractKeyFromServerKeys } from "../procedures/getServerKeysFromRemote";
 import { ForbiddenError, UnknownTokenError } from "../errors";
 import { extractURIfromURL } from "../helpers/url";
-import type { Server } from "./mongodb";
 
 export interface OriginOptions {
 	/**
@@ -43,19 +36,6 @@ export interface OriginOptions {
 	};
 }
 
-const extractKeyFromServerKeys = (verifyKeys: Server['verify_keys'], key: string) => {
-	const [, publickey] =
-	Object.entries(verifyKeys).find(
-		([keyFromServer]) => keyFromServer === key,
-	) ?? [];
-
-	if (!publickey) {
-		throw new Error("Public key not found");
-	}
-
-	return publickey;
-}
-
 export const validateHeaderSignature = async ({
 	headers: { authorization },
 	request,
@@ -82,57 +62,16 @@ export const validateHeaderSignature = async ({
 
 		const getPublicKeyFromServer = makeGetServerKeysFromServerProcedure(
 			context.mongo.getValidServerKeysFromLocal,
-			async () => {
-				const result = await makeRequest({
-					method: "GET",
-					domain: origin.origin,
-					uri: "/_matrix/key/v2/server",
-					signingName: context.config.name,
-				});
-				if (result.valid_until_ts < Date.now()) {
-					throw new Error("Expired remote public key");
-				}
-
-				const [signature] = await getSignaturesFromRemote(
-					result,
+			() =>
+				getPublicKeyFromRemoteServer(
 					origin.origin,
-				);
-
-				const publickey = extractKeyFromServerKeys(result.verify_keys, origin.key);
-
-				if (!publickey) {
-					throw new Error("Public key not found");
-				}
-
-				if (!signature) {
-					throw new Error(`Signatures not found for ${origin.origin}`);
-				}
-
-				if (
-					!(await verifyJsonSignature(
-						result,
-						origin.origin,
-						Uint8Array.from(atob(signature.signature), (c) => c.charCodeAt(0)),
-						Uint8Array.from(atob(publickey.key), (c) => c.charCodeAt(0)),
-						signature.algorithm,
-						signature.version,
-					))
-				) {
-					throw new Error("Invalid signature");
-				}
-
-				const [algorithm, version] = origin.key.split(":");
-
-				if (!isValidAlgorithm(algorithm)) {
-					throw new Error("Invalid algorithm");
-				}
-
-				return result;
-			},
+					origin.destination,
+					origin.key,
+				),
 			context.mongo.storeServerKeys,
 		);
 
-		const serverKeys = await getPublicKeyFromServer(origin.origin);
+		const serverKeys = await getPublicKeyFromServer(origin.origin, origin.key);
 		if (!serverKeys) {
 			throw new Error('Could not retrieve the server keys to verify');
 		}

@@ -132,7 +132,7 @@ export type HashedEvent<T extends Record<string, unknown>> = T & {
 	};
 };
 
-export function computeHash<T extends Record<string, unknown>>(
+export function computeAndMergeHash<T extends Record<string, unknown>>(
 	content: T,
 ): HashedEvent<T> {
 	// remove the fields that are not part of the hash
@@ -146,17 +146,37 @@ export function computeHash<T extends Record<string, unknown>>(
 		...toHash
 	} = content as any;
 
+	const [algorithm, hash] = computeHash(toHash);
+
 	return {
 		...content,
 		hashes: {
-			sha256: toUnpaddedBase64(
-				crypto
-					.createHash("sha256")
-					.update(encodeCanonicalJson(toHash))
-					.digest(),
-			),
+			[algorithm]: hash,
 		},
 	};
+}
+
+export function computeHash<T extends Record<string, unknown>>(
+	content: T,
+	algorithm: "sha256" = "sha256",
+): ["sha256", string] {
+	// remove the fields that are not part of the hash
+	const {
+		age_ts,
+		unsigned,
+		signatures,
+		hashes,
+		outlier,
+		destinations,
+		...toHash
+	} = content as any;
+
+	return [
+		algorithm,
+		toUnpaddedBase64(
+			crypto.createHash(algorithm).update(encodeCanonicalJson(toHash)).digest(),
+		),
+	];
 }
 
 export function generateId<T extends object>(content: T): string {

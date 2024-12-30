@@ -42,17 +42,19 @@ export const makeJoinRoute = new Elysia().get(
 				description: "The authorization header",
 			}),
 		}),
-		response: {
-			200: t.Object({}),
-			400: t.Object({}),
-			403: t.Object({}),
-			404: t.Object({}),
-		},
+		// response: {
+		// 	200: t.Object({}),
+		// 	400: t.Object({}),
+		// 	403: t.Object({}),
+		// 	404: t.Object({}),
+		// },
 		query: t.Object({
-			ver: t.String({
-				description:
-					"The version of the room where the user is being invited to.",
-			}),
+			ver: t.Array(
+				t.String({
+					description:
+						"The version of the room where the user is being invited to.",
+				}),
+			),
 		}),
 		params: t.Object(
 			{
