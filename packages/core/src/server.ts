@@ -2,7 +2,7 @@ import typia, { tags } from "typia";
 
 // // https://spec.matrix.org/v1.9/server-server-api/#get_matrixkeyv2server
 
-export interface Response {
+export interface ServerKey {
 	old_verify_keys: Record<
 		string,
 		{
@@ -31,7 +31,7 @@ declare module "./endpoints" {
 				auth: false;
 				rateLimit: false;
 				query: Query;
-				response: Response;
+				response: ServerKey;
 			};
 		};
 		"/v2/server/": {
@@ -40,7 +40,7 @@ declare module "./endpoints" {
 				auth: false;
 				rateLimit: false;
 				query: Query;
-				response: Response;
+				response: ServerKey;
 			};
 		};
 		"/v2/server/{keyID}": {
@@ -49,7 +49,7 @@ declare module "./endpoints" {
 				auth: false;
 				rateLimit: false;
 				query: Query;
-				response: Response;
+				response: ServerKey;
 			};
 		};
 	}

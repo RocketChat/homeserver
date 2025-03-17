@@ -6,7 +6,7 @@ import { makeRequest } from "../../makeRequest";
 import type { Config } from "../../plugins/config";
 import { makeGetServerKeysFromServerProcedure } from "../../procedures/getServerKeysFromRemote";
 import { isMongodbContext } from "../../plugins/isMongodbContext";
-import type { Response as ServerKeysResponse } from "@hs/core/src/server";
+import type { ServerKey as ServerKeysResponse } from "@hs/core/src/server";
 import { isTruthy } from "../../helpers/array";
 
 const parseNotaryResult = async (serverKeys: ServerKeysResponse, config: Config): Promise<ServerKeysResponse> => {

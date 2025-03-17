@@ -1,36 +1,12 @@
 import Elysia from "elysia";
 import type { InferContext } from "elysia";
-import { type Db, MongoClient } from "mongodb";
+import { type Db, MongoClient, WithId } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import { generateId } from "../authentication";
+import { type ServerKey } from "@hs/core/src/server";
 
-export interface Server {
-	_id: string;
-	name: string;
-	old_verify_keys: Record<
-		string,
-		{
-			expired_ts: number;
-			key: string;
-		}
-	>;
-	server_name: string;
-	signatures: Record<string, Record<string, string>>;
-	valid_until_ts: number;
-	verify_keys: Record<
-		string,
-		{
-			key: string;
-		}
-	>;
-
-	// signatures: {
-	// 	from: string;
-	// 	signature: string;
-	// 	key: string;
-	// }[];
-}
+export type Key = WithId<ServerKey>;
 
 interface Room {
 	_id: string;
@@ -42,7 +18,7 @@ export const routerWithMongodb = (db: Db) =>
 		"mongo",
 		(() => {
 			const eventsCollection = db.collection<EventStore>("events");
-			const serversCollection = db.collection<Server>("servers");
+			const keysCollection = db.collection<Key>("keys");
 			const roomsCollection = db.collection<Room>("rooms");
 
 			const getLastEvent = async (roomId: string) => {
@@ -147,10 +123,8 @@ export const routerWithMongodb = (db: Db) =>
 					.toArray();
 			};
 
-			const getValidServerKeysFromLocal = async (
-				origin: string,
-			) => {
-				return serversCollection.findOne({
+			const getValidServerKeysFromLocal = async (origin: string) => {
+				return keysCollection.findOne({
 					name: origin,
 					valid_until_ts: { $gte: Date.now() },
 				});
@@ -158,10 +132,10 @@ export const routerWithMongodb = (db: Db) =>
 
 			const storeServerKeys = async (
 				origin: string,
-				serverKeys: Omit<Server, '_id' | 'name'>,
+				serverKeys: Omit<Key, "_id" | "name">,
 			) => {
-				await serversCollection.findOneAndUpdate(
-					{ name: origin, valid_until_ts: { $gte: Date.now() }, },
+				await keysCollection.findOneAndUpdate(
+					{ name: origin, valid_until_ts: { $gte: Date.now() } },
 					{
 						$set: serverKeys,
 					},
@@ -205,7 +179,7 @@ export const routerWithMongodb = (db: Db) =>
 			};
 
 			return {
-				serversCollection,
+				serversCollection: keysCollection,
 				getValidServerKeysFromLocal,
 				storeServerKeys,
 

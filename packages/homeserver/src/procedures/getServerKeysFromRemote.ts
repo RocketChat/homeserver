@@ -1,5 +1,5 @@
-import type { Response as ServerKeysResponse } from '@hs/core/src/server';
-import type { Server } from "../plugins/mongodb";
+import type { ServerKey as ServerKeysResponse } from '@hs/core/src/server';
+import type { Key } from "../plugins/mongodb";
 import type { WithId } from 'mongodb';
 import { makeRequest } from "../makeRequest";
 import {
@@ -9,9 +9,9 @@ import {
 } from "../signJson";
 
 export const makeGetServerKeysFromServerProcedure = (
-	getFromLocal: (origin: string, key: string) => Promise<WithId<Server> | null>,
+	getFromLocal: (origin: string, key: string) => Promise<WithId<Key> | null>,
 	getFromOrigin: (origin: string, key: string) => Promise<ServerKeysResponse>,
-	store: (origin: string, serverKeys: Omit<Server, '_id' | 'name'>) => Promise<void>,
+	store: (origin: string, serverKeys: Omit<Key, '_id' | 'name'>) => Promise<void>,
 ) => {
 	return async (origin: string, key: string) => {
 		try {
@@ -36,7 +36,7 @@ export const makeGetServerKeysFromServerProcedure = (
 	};
 };
 
-export const extractKeyFromServerKeys = (verifyKeys: Server['verify_keys'], key: string) => {
+export const extractKeyFromServerKeys = (verifyKeys: Key['verify_keys'], key: string) => {
 	const [, publickey] =
 		Object.entries(verifyKeys).find(
 			([keyFromServer]) => keyFromServer === key,
