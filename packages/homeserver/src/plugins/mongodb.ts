@@ -1,27 +1,12 @@
 import Elysia from "elysia";
 import type { InferContext } from "elysia";
-import { type Db, MongoClient } from "mongodb";
+import { type Db, MongoClient, WithId } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import { generateId } from "../authentication";
+import { type ServerKey } from "@hs/core/src/server";
 
-export interface Server {
-	_id: string;
-	name: string;
-	url: string;
-	keys: {
-		[key: `${string}:${string}`]: {
-			key: string;
-			validUntil: number;
-		};
-	};
-
-	// signatures: {
-	// 	from: string;
-	// 	signature: string;
-	// 	key: string;
-	// }[];
-}
+export type Key = WithId<ServerKey>;
 
 interface Room {
 	_id: string;
@@ -33,7 +18,7 @@ export const routerWithMongodb = (db: Db) =>
 		"mongo",
 		(() => {
 			const eventsCollection = db.collection<EventStore>("events");
-			const serversCollection = db.collection<Server>("servers");
+			const keysCollection = db.collection<Key>("keys");
 			const roomsCollection = db.collection<Room>("rooms");
 
 			const getLastEvent = async (roomId: string) => {
@@ -138,41 +123,21 @@ export const routerWithMongodb = (db: Db) =>
 					.toArray();
 			};
 
-			const getValidPublicKeyFromLocal = async (
-				origin: string,
-				key: string,
-			): Promise<string | undefined> => {
-				const server = await serversCollection.findOne({
+			const getValidServerKeysFromLocal = async (origin: string) => {
+				return keysCollection.findOne({
 					name: origin,
+					valid_until_ts: { $gte: Date.now() },
 				});
-				if (!server) {
-					return;
-				}
-				const [, publicKey] =
-					Object.entries(server.keys).find(
-						([protocolAndVersion, value]) =>
-							protocolAndVersion === key && value.validUntil > Date.now(),
-					) ?? [];
-				return publicKey?.key;
 			};
 
-			const storePublicKey = async (
+			const storeServerKeys = async (
 				origin: string,
-				key: string,
-				value: string,
-				validUntil: number,
+				serverKeys: Omit<Key, "_id" | "name">,
 			) => {
-				await serversCollection.findOneAndUpdate(
-					{ name: origin },
+				await keysCollection.findOneAndUpdate(
+					{ name: origin, valid_until_ts: { $gte: Date.now() } },
 					{
-						$set: {
-							keys: {
-								[key]: {
-									key: value,
-									validUntil,
-								},
-							},
-						},
+						$set: serverKeys,
 					},
 					{ upsert: true },
 				);
@@ -214,9 +179,9 @@ export const routerWithMongodb = (db: Db) =>
 			};
 
 			return {
-				serversCollection,
-				getValidPublicKeyFromLocal,
-				storePublicKey,
+				serversCollection: keysCollection,
+				getValidServerKeysFromLocal,
+				storeServerKeys,
 
 				eventsCollection,
 				getDeepEarliestAndLatestEvents,

@@ -146,6 +146,12 @@ export const KeysDTO = t.Object(
 	},
 );
 
+export const NotaryServerKeysDTO = t.Object(
+	{
+		server_keys: t.Array(KeysDTO),
+	},
+);
+
 export const StrippedStateDTO = t.Object(
 	{
 		content: t.Object(

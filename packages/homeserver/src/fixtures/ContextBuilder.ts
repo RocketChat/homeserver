@@ -56,7 +56,7 @@ export class ContextBuilder {
 	private localRemoteSigningKeys: Map<string, SigningKey> = new Map();
 	private remoteRemoteSigningKeys: Map<string, SigningKey> = new Map();
 
-	constructor(private name: string) {}
+	constructor(private name: string) { }
 	static create(name: string) {
 		return new ContextBuilder(name);
 	}
@@ -126,12 +126,12 @@ export class ContextBuilder {
 		};
 		const app = new Elysia()
 			.decorate("mongo", {
-				getValidPublicKeyFromLocal: async (origin: string, key: string) => {
+				getValidServerKeysFromLocal: async (origin: string, key: string) => {
 					const signingKey = this.localRemoteSigningKeys.get(origin);
 					if (!signingKey) {
 						return;
 					}
-					return toUnpaddedBase64(signingKey.publicKey);
+					return { verify_keys: { [`${signingKey.algorithm}:${signingKey.version}`]: { key: toUnpaddedBase64(signingKey.publicKey) } } };
 				},
 				getOldestStagedEvent: async (roomId: string) => {
 					return this.events.get(roomId)?.[0];

@@ -30,6 +30,15 @@ const getConfig = async (): Promise<Config> => {
 		signingKeyPath,
 	});
 
+	Object.keys(process.env)
+		.filter((key) => key.startsWith("HOMESERVER_CONFIG_"))
+		.forEach((variable) => {
+			const key = variable.replace("HOMESERVER_CONFIG_", "");
+			if (key in content) {
+				content[key] = process.env[variable];
+			}
+		});
+
 	return {
 		...content,
 		signingKey: result,

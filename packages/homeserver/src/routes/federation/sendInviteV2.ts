@@ -11,11 +11,8 @@ import { MatrixError } from "../../errors";
 
 import type { SignedJson } from "../../signJson";
 import type { EventBase } from "@hs/core/src/events/eventBase";
-import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
-} from "../../procedures/getPublicKeyFromServer";
 import { checkSignAndHashes } from "./checkSignAndHashes";
+import { getPublicKeyFromRemoteServer, makeGetServerKeysFromServerProcedure } from "../../procedures/getServerKeysFromRemote";
 
 export const sendInviteV2Route = new Elysia().put(
 	"/invite/:roomId/:eventId",
@@ -107,11 +104,10 @@ export const sendInviteV2Route = new Elysia().put(
 				responseBody.state.map((event) => [generateId(event), event]),
 			);
 
-			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-				context.mongo.getValidPublicKeyFromLocal,
+			const getPublicKeyFromServer = makeGetServerKeysFromServerProcedure(
+				context.mongo.getValidServerKeysFromLocal,
 				(origin, key) => getPublicKeyFromRemoteServer(origin, config.name, key),
-
-				context.mongo.storePublicKey,
+				context.mongo.storeServerKeys,
 			);
 
 			const validPDUs = new Map<string, EventBase>();

@@ -3,18 +3,9 @@ import {
 	extractSignaturesFromHeader,
 	validateAuthorizationHeader,
 } from "../authentication";
-import {
-	getSignaturesFromRemote,
-	isValidAlgorithm,
-	verifyJsonSignature,
-} from "../signJson";
 import { isConfigContext } from "./isConfigContext";
 import { isMongodbContext } from "./isMongodbContext";
-import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
-} from "../procedures/getPublicKeyFromServer";
-import { makeRequest } from "../makeRequest";
+import { makeGetServerKeysFromServerProcedure, getPublicKeyFromRemoteServer, extractKeyFromServerKeys } from "../procedures/getServerKeysFromRemote";
 import { ForbiddenError, UnknownTokenError } from "../errors";
 import { extractURIfromURL } from "../helpers/url";
 
@@ -69,24 +60,27 @@ export const validateHeaderSignature = async ({
 			throw new Error("Invalid destination");
 		}
 
-		const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-			context.mongo.getValidPublicKeyFromLocal,
+		const getPublicKeyFromServer = makeGetServerKeysFromServerProcedure(
+			context.mongo.getValidServerKeysFromLocal,
 			() =>
 				getPublicKeyFromRemoteServer(
 					origin.origin,
 					origin.destination,
 					origin.key,
 				),
-
-			context.mongo.storePublicKey,
+			context.mongo.storeServerKeys,
 		);
 
-		const publickey = await getPublicKeyFromServer(origin.origin, origin.key);
+		const serverKeys = await getPublicKeyFromServer(origin.origin, origin.key);
+		if (!serverKeys) {
+			throw new Error('Could not retrieve the server keys to verify');
+		}
+		const publickey = extractKeyFromServerKeys(serverKeys.verify_keys, origin.key);
 		const url = new URL(request.url);
 		if (
 			!(await validateAuthorizationHeader(
 				origin.origin,
-				publickey,
+				publickey.key,
 				origin.destination,
 				request.method,
 				extractURIfromURL(url),
