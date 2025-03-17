@@ -2,16 +2,19 @@ import typia, { tags } from "typia";
 
 // https://spec.matrix.org/v1.10/server-server-api/#post_matrixkeyv2query
 
-interface Body {
-	server_keys: Record<
-		string,
-		{
-			minimum_valid_until_ts: number;
-		}
-	>;
+export type KeyID = string;
+
+export type ServerName = string;
+
+export type V2KeyQueryCriteria = {
+	minimum_valid_until_ts: number;
+};
+
+export interface V2KeyQueryBody {
+	server_keys: Record<ServerName, Record<KeyID, V2KeyQueryCriteria>>;
 }
 
-interface Response {
+interface V2KeyQueryResponse {
 	server_keys: {
 		old_verify_keys: Record<
 			string,
@@ -38,8 +41,8 @@ declare module "./endpoints" {
 				description: "Query for keys from multiple servers in a batch format. The receiving (notary) server must sign the keys returned by the queried servers.";
 				auth: false;
 				rateLimit: false;
-				body: Body;
-				response: Response;
+				body: V2KeyQueryBody;
+				response: V2KeyQueryResponse;
 			};
 		};
 		"/v2/query/:serverName": {
@@ -47,10 +50,8 @@ declare module "./endpoints" {
 				description: "Query for keys from a single server. The receiving (notary) server must sign the keys returned by the queried server.";
 				auth: false;
 				rateLimit: false;
-				query: {
-					minimum_valid_until_ts: number;
-				};
-				response: Response;
+				query: V2KeyQueryCriteria;
+				response: V2KeyQueryResponse;
 			};
 		};
 	}

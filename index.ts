@@ -41,6 +41,7 @@ import { routerWithMongodb } from "@hs/homeserver/src/plugins/mongodb";
 
 import { config } from "./config";
 import { db } from "./mongo";
+import { routerWithKeyManager } from "@hs/homeserver/src/plugins/keys";
 
 new Elysia({
 	handler: {
@@ -49,6 +50,7 @@ new Elysia({
 })
 	.decorate("config", config)
 	.use(routerWithMongodb(db))
+	.use(routerWithKeyManager(db))
 	.use(app)
 	.use(fakeEndpoints)
 	.listen(config.port, (context) => {
