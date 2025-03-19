@@ -1,80 +1,142 @@
 import Elysia from "elysia";
-import { Collection, WithId, type Db } from "mongodb";
+import { Collection, FindOptions, WithId, WithoutId, type Db } from "mongodb";
 
 import { type Key } from "./mongodb";
 import { makeRequest } from "../makeRequest";
 import { InferContext } from "@bogeychan/elysia-logger";
 
 import { type V2KeyQueryBody } from "@hs/core/src/query";
-import { getPublicKeyFromRemoteServer } from "../procedures/getPublicKeyFromServer";
 import { Config } from "./config";
+import { getSignaturesFromRemote, signJson } from "../signJson";
+
+type OnlyKey = Omit<WithoutId<Key>, "_createdAt">;
 
 class KeysManager {
 	private readonly keysCollection!: Collection<Key>;
 
-	private config: Config | undefined;
+	private config!: Config;
 
-	private constructor(db: Db) {
+	private constructor(db: Db, config: Config) {
 		this.keysCollection = db.collection<Key>("keys");
+		this.config = config;
 	}
 
-	static createPlugin(db: Db) {
-		const _manager = new KeysManager(db);
+	static createPlugin(db: Db, config: Config) {
+		const _manager = new KeysManager(db, config);
 
 		return {
 			query: _manager.query.bind(_manager),
 		};
 	}
 
+	storeKeys(key: Key) {
+		return this.keysCollection.insertOne({ ...key, _createdAt: new Date() });
+	}
+
 	getLocalKeysForServer(
 		serverName: string,
 		keyId?: string,
 		validUntil?: number,
+		opts?: FindOptions<Key>,
 	) {
-		return this.keysCollection.find({
-			server_name: serverName,
-			...(keyId && { [`verify_keys.${keyId}`]: { $exists: true } }),
-			...(validUntil && { valid_until_ts: { $lt: validUntil } }),
-		});
+		return this.keysCollection.find(
+			{
+				server_name: serverName,
+				...(keyId && { [`verify_keys.${keyId}`]: { $exists: true } }),
+				...(validUntil && { valid_until_ts: { $lt: validUntil } }),
+			},
+			opts,
+		);
 	}
 
 	getLocalKeysForServerList(
 		serverName: string,
 		keyId?: string,
 		validUntil?: number,
+		opts?: FindOptions<Key>,
 	) {
-		return this.getLocalKeysForServer(serverName, keyId, validUntil).toArray();
+		return this.getLocalKeysForServer(
+			serverName,
+			keyId,
+			validUntil,
+			opts,
+		).toArray();
 	}
 
-	shouldRefetchKeys(keys: WithId<Key>[], validUntil: number) {
+	shouldRefetchKeys(
+		keys: (Omit<OnlyKey, "_createdAt"> & { _createdAt?: Date })[],
+		validUntil: number,
+	) {
 		return (
 			keys.length === 0 ||
 			keys.every(
-				(key) => key._createdAt.getTime() + key.valid_until_ts / 2 < validUntil,
+				(key) =>
+					((key._createdAt || new Date()).getTime() + key.valid_until_ts) / 2 <
+					validUntil,
 			)
 		);
 	}
 
-	async getRemoteKeysForServer(serverName: string): Promise<Key> {
-		return {} as unknown as Key;
+	async getRemoteKeysForServer(serverName: string): Promise<OnlyKey> {
+		const response = await makeRequest({
+			signingName: this.config.name,
+			method: "GET",
+			domain: serverName,
+			uri: "/_matrix/key/v2/server",
+		});
+
+		// TODO(deb): check what this does;
+		const [signature] = await getSignaturesFromRemote(response, serverName);
+
+		if (!signature) {
+			throw new Error("no signature found");
+		}
+
+		return response;
 	}
 
 	async fetchAllkeysForServerName(
 		serverName: string,
 		keyId?: string,
 		validUntil: number = Date.now(),
-	): Promise<Key[]> {
+	): Promise<OnlyKey[]> {
 		const keys = await this.getLocalKeysForServerList(serverName, keyId);
 
+		console.log({ msg: "cached keys", serverName, value: keys });
+
 		if (!this.shouldRefetchKeys(keys, validUntil)) {
+			console.log({ msg: "cache validated", serverName, value: keys });
 			return keys;
 		}
 
-		const remoteKey = await this.getRemoteKeysForServer(serverName);
+		console.log({ msg: "cache invalidated", serverName });
 
-		if (!this.shouldRefetchKeys([remoteKey], validUntil)) {
-			return []; // expired even from remote server? likely for a custom minimum_valid_until_ts criteria. ok to return nothing.
+		console.time(JSON.stringify({ serverName, uri: "/_matrix/key/v2/server" }));
+		const remoteKey = await (async () => {
+			try {
+				const remoteKey = await this.getRemoteKeysForServer(serverName);
+				return remoteKey;
+			} catch (err) {
+				console.log({
+					msg: "failed to fetch remote keys",
+					serverName,
+					value: err,
+				});
+			}
+		})();
+		console.timeEnd(JSON.stringify({ serverName, uri: "/_matrix/key/v2/server" }));
+
+		if (remoteKey) {
+			console.log({ msg: "remote key", serverName, value: remoteKey });
+
+			void this.storeKeys(remoteKey as Key);
+		} else {
+			return keys;
 		}
+
+		// if (!this.shouldRefetchKeys([remoteKey], validUntil)) {
+		// 	return []; // expired even from remote server? likely for a custom minimum_valid_until_ts criteria. ok to return nothing.
+		// }
 
 		if (keyId) {
 			let found = false;
@@ -93,6 +155,12 @@ class KeysManager {
 
 			remoteKey.verify_keys = keys;
 
+			console.log({
+				msg: "after filter remote key",
+				serverName,
+				value: remoteKey,
+			});
+
 			if (!found) {
 				return [];
 			}
@@ -101,10 +169,28 @@ class KeysManager {
 		return [remoteKey];
 	}
 
+	async signNotaryResponseKey(keys: OnlyKey) {
+		const { signatures, ...all } = keys;
+
+		const signed = await signJson(
+			all,
+			this.config.signingKey[0],
+			this.config.name,
+		);
+
+		return {
+			...signed,
+			signatures: {
+				...signed.signatures,
+				...signatures,
+			},
+		};
+	}
+
 	async query(request: V2KeyQueryBody) {
 		const servers = Object.entries(request.server_keys);
 
-		const response: { server_keys: Key[] } = { server_keys: [] };
+		const response: { server_keys: OnlyKey[] } = { server_keys: [] };
 
 		if (servers.length === 0) {
 			return response;
@@ -123,16 +209,24 @@ class KeysManager {
 				keyId,
 				{ minimum_valid_until_ts: minimumValidUntilTs },
 			] of keys) {
-				const keys = await this.fetchAllkeysForServerName(serverName, keyId, minimumValidUntilTs);
+				const keys = await this.fetchAllkeysForServerName(
+					serverName,
+					keyId,
+					minimumValidUntilTs,
+				);
 				response.server_keys = response.server_keys.concat(keys);
 			}
 		}
 
-		return response;
+		return {
+			server_keys: await Promise.all(
+				response.server_keys.map(this.signNotaryResponseKey.bind(this)),
+			),
+		};
 	}
 }
 
-export const routerWithKeyManager = (db: Db) =>
-	new Elysia().decorate("keys", KeysManager.createPlugin(db));
+export const routerWithKeyManager = (db: Db, config: Config) =>
+	new Elysia().decorate("keys", KeysManager.createPlugin(db, config));
 
 export type Context = InferContext<ReturnType<typeof routerWithKeyManager>>;

@@ -1,6 +1,6 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { toUnpaddedBase64 } from "../../binaryData";
-import { KeysDTO } from "../../dto";
+import { KeysDTO, ServerKeysDTO } from "../../dto";
 import { signJson } from "../../signJson";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { isKeysContext } from "../../plugins/isKeysContext";
@@ -45,10 +45,49 @@ export const getServerKeyRoute = new Elysia()
 			},
 		},
 	)
-	.post("/query", async (context) => {
-		if (!isKeysContext(context)) {
-			throw new Error("No keys context");
-		}
+	.post(
+		"/query",
+		async (context) => {
+			if (!isKeysContext(context)) {
+				throw new Error("No keys context");
+			}
 
-		const { keys } = context;
-	});
+			const { keys } = context;
+
+			console.log({
+				msg: "request",
+				endpoint: "/_matrix/key/v2/query",
+				body: context.body,
+				query: context.query,
+			});
+
+			const keysResult = await keys?.query(context.body);
+
+			console.log({
+				msg: "response",
+				endpoint: "/_matrix/key/v2/query",
+				value: keysResult,
+			});
+
+			return keysResult;
+		},
+		{
+			body: t.Object({
+				server_keys: t.Record(
+					t.String(),
+					t.Record(
+						t.String(),
+						t.Object({
+							minimum_valid_until_ts: t.Integer({
+								format: "int64",
+								description:
+									"A millisecond POSIX timestamp in milliseconds indicating when the returned certificates will need to be valid until to be useful to the requesting server.",
+								examples: [1532645052628],
+							}),
+						}),
+					),
+				),
+			}),
+			// response: ServerKeysDTO,
+		},
+	);
