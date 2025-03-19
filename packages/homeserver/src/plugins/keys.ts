@@ -77,13 +77,12 @@ class KeysManager {
 		}
 
 		if (keyId) {
-			let foundOnNewKeys = false,
-				foundOnOldKeys = false;
+			let found = false;
 
 			const keys = Object.keys(remoteKey.verify_keys).reduce(
 				(accum, key) => {
 					if (key === keyId) {
-						foundOnNewKeys = true;
+						found = true;
 						accum[key] = remoteKey.verify_keys[key];
 					}
 
@@ -94,21 +93,7 @@ class KeysManager {
 
 			remoteKey.verify_keys = keys;
 
-			const oldKeys = Object.keys(remoteKey.old_verify_keys).reduce(
-				(accum, key) => {
-					if (key === keyId) {
-						foundOnOldKeys = true;
-						accum[key] = remoteKey.old_verify_keys[key];
-					}
-
-					return accum;
-				},
-				{} as Key["old_verify_keys"],
-			);
-
-			remoteKey.old_verify_keys = oldKeys;
-
-			if (!foundOnNewKeys && !foundOnOldKeys) {
+			if (!found) {
 				return [];
 			}
 		}
