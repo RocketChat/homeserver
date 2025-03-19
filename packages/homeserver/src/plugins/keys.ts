@@ -46,9 +46,6 @@ class KeysManager {
 		return this.getLocalKeysForServer(serverName, keyId, validUntil).toArray();
 	}
 
-	async getRemoteKeysForServer(serverName: string) {
-	}
-
 	shouldRefetchKeys(keys: WithId<Key>[], validUntil: number) {
 		return (
 			keys.length === 0 ||
@@ -58,31 +55,82 @@ class KeysManager {
 		);
 	}
 
+	async getRemoteKeysForServer(serverName: string): Promise<Key> {
+		return {} as unknown as Key;
+	}
+
 	async fetchAllkeysForServerName(
 		serverName: string,
+		keyId?: string,
 		validUntil: number = Date.now(),
-	) {
-		const keys = await this.getLocalKeysForServerList(serverName);
+	): Promise<Key[]> {
+		const keys = await this.getLocalKeysForServerList(serverName, keyId);
 
 		if (!this.shouldRefetchKeys(keys, validUntil)) {
 			return keys;
 		}
 
-		//
+		const remoteKey = await this.getRemoteKeysForServer(serverName);
+
+		if (!this.shouldRefetchKeys([remoteKey], validUntil)) {
+			return []; // expired even from remote server? likely for a custom minimum_valid_until_ts criteria. ok to return nothing.
+		}
+
+		if (keyId) {
+			let foundOnNewKeys = false,
+				foundOnOldKeys = false;
+
+			const keys = Object.keys(remoteKey.verify_keys).reduce(
+				(accum, key) => {
+					if (key === keyId) {
+						foundOnNewKeys = true;
+						accum[key] = remoteKey.verify_keys[key];
+					}
+
+					return accum;
+				},
+				{} as Key["verify_keys"],
+			);
+
+			remoteKey.verify_keys = keys;
+
+			const oldKeys = Object.keys(remoteKey.old_verify_keys).reduce(
+				(accum, key) => {
+					if (key === keyId) {
+						foundOnOldKeys = true;
+						accum[key] = remoteKey.old_verify_keys[key];
+					}
+
+					return accum;
+				},
+				{} as Key["old_verify_keys"],
+			);
+
+			remoteKey.old_verify_keys = oldKeys;
+
+			if (!foundOnNewKeys && !foundOnOldKeys) {
+				return [];
+			}
+		}
+
+		return [remoteKey];
 	}
 
 	async query(request: V2KeyQueryBody) {
 		const servers = Object.entries(request.server_keys);
 
+		const response: { server_keys: Key[] } = { server_keys: [] };
+
 		if (servers.length === 0) {
-			return { server_keys: [] };
+			return response;
 		}
 
 		for (const [serverName, _query] of servers) {
 			const keys = Object.entries(_query);
 			if (keys.length === 0) {
 				// didn't ask for any specific keys
-				this.fetchAllkeysForServerName(serverName);
+				const keys = await this.fetchAllkeysForServerName(serverName);
+				response.server_keys = response.server_keys.concat(keys);
 				continue;
 			}
 
@@ -90,9 +138,12 @@ class KeysManager {
 				keyId,
 				{ minimum_valid_until_ts: minimumValidUntilTs },
 			] of keys) {
-				// fetch specific keys
+				const keys = await this.fetchAllkeysForServerName(serverName, keyId, minimumValidUntilTs);
+				response.server_keys = response.server_keys.concat(keys);
 			}
 		}
+
+		return response;
 	}
 }
 

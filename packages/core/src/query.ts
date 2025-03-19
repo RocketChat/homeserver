@@ -14,7 +14,7 @@ export interface V2KeyQueryBody {
 	server_keys: Record<ServerName, Record<KeyID, V2KeyQueryCriteria>>;
 }
 
-interface V2KeyQueryResponse {
+export interface V2KeyQueryResponse {
 	server_keys: {
 		old_verify_keys: Record<
 			string,
