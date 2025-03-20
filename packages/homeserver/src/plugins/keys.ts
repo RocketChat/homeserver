@@ -65,14 +65,16 @@ class KeysManager {
 
 	shouldRefetchKeys(
 		keys: (Omit<OnlyKey, "_createdAt"> & { _createdAt?: Date })[],
-		validUntil: number,
+		validUntil?: number,
 	) {
 		return (
 			keys.length === 0 ||
-			keys.every(
-				(key) =>
-					((key._createdAt || new Date()).getTime() + key.valid_until_ts) / 2 <
-					validUntil,
+			keys.every((key) =>
+				validUntil
+					? key.valid_until_ts < validUntil
+					: ((key._createdAt?.getTime() || Date.now()) + key.valid_until_ts) /
+					2 <
+					Date.now(),
 			)
 		);
 	}
@@ -111,7 +113,6 @@ class KeysManager {
 
 		console.log({ msg: "cache invalidated", serverName });
 
-		console.time(JSON.stringify({ serverName, uri: "/_matrix/key/v2/server" }));
 		const remoteKey = await (async () => {
 			try {
 				const remoteKey = await this.getRemoteKeysForServer(serverName);
@@ -124,7 +125,6 @@ class KeysManager {
 				});
 			}
 		})();
-		console.timeEnd(JSON.stringify({ serverName, uri: "/_matrix/key/v2/server" }));
 
 		if (remoteKey) {
 			console.log({ msg: "remote key", serverName, value: remoteKey });

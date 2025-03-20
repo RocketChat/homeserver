@@ -52,6 +52,7 @@ export const getServerKeyRoute = new Elysia()
 				throw new Error("No keys context");
 			}
 
+
 			const { keys } = context;
 
 			console.log({
@@ -61,6 +62,7 @@ export const getServerKeyRoute = new Elysia()
 				query: context.query,
 			});
 
+		// return { server_keys: []};
 			const keysResult = await keys?.query(context.body);
 
 			console.log({

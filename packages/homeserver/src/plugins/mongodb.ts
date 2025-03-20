@@ -180,7 +180,6 @@ export const routerWithMongodb = (db: Db) =>
 					_id: id,
 					event,
 				});
-Plugin is a pattern that decouples functionality into smaller parts. Creating reusable components for our web server.
 				return id;
 			};
 

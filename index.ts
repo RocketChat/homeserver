@@ -50,7 +50,7 @@ new Elysia({
 })
 	.decorate("config", config)
 	.use(routerWithMongodb(db))
-	.use(routerWithKeyManager(db))
+	.use(routerWithKeyManager(db, config))
 	.use(app)
 	.use(fakeEndpoints)
 	.listen(config.port, (context) => {
