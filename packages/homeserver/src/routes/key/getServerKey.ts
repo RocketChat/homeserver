@@ -52,7 +52,6 @@ export const getServerKeyRoute = new Elysia()
 				throw new Error("No keys context");
 			}
 
-
 			const { keys } = context;
 
 			console.log({
@@ -62,7 +61,7 @@ export const getServerKeyRoute = new Elysia()
 				query: context.query,
 			});
 
-		// return { server_keys: []};
+			// return { server_keys: []};
 			const keysResult = await keys?.query(context.body);
 
 			console.log({
@@ -91,5 +90,60 @@ export const getServerKeyRoute = new Elysia()
 				),
 			}),
 			// response: ServerKeysDTO,
+		},
+	)
+	.get(
+		"/query/:serverName/:keyId",
+		async (context) => {
+			if (!isKeysContext(context)) {
+				throw new Error("No keys context");
+			}
+
+			const { keys } = context;
+
+			return await keys?.query({
+				server_keys: {
+					[context.params.serverName]: {
+						[context.params.keyId || "undefined"]: {
+							minimum_valid_until_ts: parseInt(
+								context.query.minimum_valid_until_ts || "0",
+							),
+						},
+					},
+				},
+			});
+		},
+		{
+			params: t.Object({
+				serverName: t.String(),
+				keyId: t.String(),
+			}),
+		},
+	)
+	.get(
+		"/query/:serverName",
+		async (context) => {
+			if (!isKeysContext(context)) {
+				throw new Error("No keys context");
+			}
+
+			const { keys } = context;
+
+			return await keys?.query({
+				server_keys: {
+					[context.params.serverName]: {
+						["undefined"]: {
+							minimum_valid_until_ts: parseInt(
+								context.query.minimum_valid_until_ts || "0",
+							),
+						},
+					},
+				},
+			});
+		},
+		{
+			params: t.Object({
+				serverName: t.String(),
+			}),
 		},
 	);

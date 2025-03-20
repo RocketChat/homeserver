@@ -101,7 +101,7 @@ class KeysManager {
 		serverName: string,
 		keyId?: string,
 		validUntil: number = Date.now(),
-	): Promise<OnlyKey[]> {
+	): Promise<Key[]> {
 		const keys = await this.getLocalKeysForServerList(serverName, keyId);
 
 		console.log({ msg: "cached keys", serverName, value: keys });
@@ -115,6 +115,7 @@ class KeysManager {
 
 		const remoteKey = await (async () => {
 			try {
+				console.log({ msg: 'fetching from remote', serverName });
 				const remoteKey = await this.getRemoteKeysForServer(serverName);
 				return remoteKey;
 			} catch (err) {
@@ -166,11 +167,11 @@ class KeysManager {
 			}
 		}
 
-		return [remoteKey];
+		return [remoteKey as Key];
 	}
 
-	async signNotaryResponseKey(keys: OnlyKey) {
-		const { signatures, ...all } = keys;
+	async signNotaryResponseKey(keys: Key) {
+		const { signatures, _id, _createdAt, ...all } = keys;
 
 		const signed = await signJson(
 			all,
@@ -190,7 +191,7 @@ class KeysManager {
 	async query(request: V2KeyQueryBody) {
 		const servers = Object.entries(request.server_keys);
 
-		const response: { server_keys: OnlyKey[] } = { server_keys: [] };
+		const response: { server_keys: Key[] } = { server_keys: [] };
 
 		if (servers.length === 0) {
 			return response;
@@ -211,7 +212,7 @@ class KeysManager {
 			] of keys) {
 				const keys = await this.fetchAllkeysForServerName(
 					serverName,
-					keyId,
+					keyId === 'undefined' ? undefined : keyId,
 					minimumValidUntilTs,
 				);
 				response.server_keys = response.server_keys.concat(keys);
