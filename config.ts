@@ -39,6 +39,18 @@ const getConfig = async (): Promise<Config> => {
 			}
 		});
 
+	if (content.tls) {
+		if (!content.tls.cert) {
+			console.error("Config file is missing the tls.cert property, unsetting tls");
+			content.tls = undefined;
+		}
+
+		if (!content.tls.key) {
+			console.error("Config file is missing the tls.key property, unsetting tls");
+			content.tls = undefined;
+		}
+	}
+
 	return {
 		...content,
 		signingKey: result,

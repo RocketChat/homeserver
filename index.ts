@@ -44,8 +44,17 @@ import { db } from "./mongo";
 import { routerWithKeyManager } from "@hs/homeserver/src/plugins/keys";
 
 new Elysia({
-	handler: {
-		standardHostname: false,
+	// handler: {
+		// standardHostname: false,
+	// },
+	serve: {
+		...(config.tls && {
+			tls: {
+				cert: Bun.file(config.tls.cert),
+				key: Bun.file(config.tls.key),
+		serverName: 'rocket',
+			},
+		}),
 	},
 })
 	.decorate("config", config)
@@ -53,6 +62,7 @@ new Elysia({
 	.use(routerWithKeyManager(db, config))
 	.use(app)
 	.use(fakeEndpoints)
+	.get('/', () => 'Hello world!')
 	.listen(config.port, (context) => {
 		console.log(
 			`🦊 Homeserver is running at http://${context.hostname}:${context.port}`,

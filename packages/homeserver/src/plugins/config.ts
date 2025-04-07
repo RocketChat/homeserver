@@ -9,6 +9,10 @@ export interface Config {
 	signingKey: SigningKey[];
 	name: string;
 	version: string;
+	tls: {
+		cert: string;
+		key: string;
+	}
 }
 
 export const routerWithConfig = new Elysia().decorate("config", {} as Config);
