@@ -1,27 +1,12 @@
 import Elysia from "elysia";
 import type { InferContext } from "elysia";
-import { type Db, MongoClient } from "mongodb";
+import { type Db, type WithId } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
+import type { ServerKey } from "@hs/core/src/server";
 import { generateId } from "../authentication";
 
-export interface Server {
-	_id: string;
-	name: string;
-	url: string;
-	keys: {
-		[key: `${string}:${string}`]: {
-			key: string;
-			validUntil: number;
-		};
-	};
-
-	// signatures: {
-	// 	from: string;
-	// 	signature: string;
-	// 	key: string;
-	// }[];
-}
+export type Key = WithId<ServerKey> & { _createdAt: Date };
 
 interface Room {
 	_id: string;
@@ -33,7 +18,7 @@ export const routerWithMongodb = (db: Db) =>
 		"mongo",
 		(() => {
 			const eventsCollection = db.collection<EventStore>("events");
-			const serversCollection = db.collection<Server>("servers");
+			const keysCollection = db.collection<Key>("keys");
 			const roomsCollection = db.collection<Room>("rooms");
 
 			const getLastEvent = async (roomId: string) => {
@@ -142,7 +127,7 @@ export const routerWithMongodb = (db: Db) =>
 				origin: string,
 				key: string,
 			): Promise<string | undefined> => {
-				const server = await serversCollection.findOne({
+				const server = await keysCollection.findOne({
 					name: origin,
 				});
 				if (!server) {
@@ -162,7 +147,7 @@ export const routerWithMongodb = (db: Db) =>
 				value: string,
 				validUntil: number,
 			) => {
-				await serversCollection.findOneAndUpdate(
+				await keysCollection.findOneAndUpdate(
 					{ name: origin },
 					{
 						$set: {
@@ -195,7 +180,6 @@ export const routerWithMongodb = (db: Db) =>
 					_id: id,
 					event,
 				});
-
 				return id;
 			};
 
@@ -214,7 +198,7 @@ export const routerWithMongodb = (db: Db) =>
 			};
 
 			return {
-				serversCollection,
+				serversCollection: keysCollection,
 				getValidPublicKeyFromLocal,
 				storePublicKey,
 

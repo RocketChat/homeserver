@@ -60,7 +60,7 @@ export const getPublicKeyFromRemoteServer = async (
 		) ?? [];
 
 	if (!publickey) {
-		throw new Error("Public key not found");
+		throw new Error("Public key not found");  
 	}
 
 	if (!signature) {

@@ -146,6 +146,8 @@ export const KeysDTO = t.Object(
 	},
 );
 
+export const ServerKeysDTO = t.Array(KeysDTO);
+
 export const StrippedStateDTO = t.Object(
 	{
 		content: t.Object(
