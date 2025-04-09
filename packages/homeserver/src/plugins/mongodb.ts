@@ -183,6 +183,17 @@ export const routerWithMongodb = (db: Db) =>
 				return id;
 			};
 
+			const upsertEvent = async (event: EventBase) => {
+				const id = generateId(event);
+				await eventsCollection.updateOne(
+					{ _id: id },
+					{ $set: { _id: id, event } },
+					{ upsert: true }
+				);
+				
+				return id;
+			};
+
 			const removeEventFromStaged = async (roomId: string, id: string) => {
 				await eventsCollection.updateOne(
 					{ _id: id, "event.room_id": roomId },
@@ -213,6 +224,7 @@ export const routerWithMongodb = (db: Db) =>
 				getOldestStagedEvent,
 				createStagingEvent,
 				createEvent,
+				upsertEvent,
 				upsertRoom,
 			};
 		})(),
