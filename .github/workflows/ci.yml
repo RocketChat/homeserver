@@ -53,6 +53,7 @@ jobs:
 
       - run: |
           ./install-deps.pl
+        working-directory: sytest
 
       - uses: oven-sh/setup-bun@v2
         with:
