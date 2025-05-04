@@ -35,11 +35,11 @@ jobs:
   sytest:
     name: Run a subset of sytest suite
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        tests:
-          - 50federation/00prepare.pl
-          - 50federation/01keys.pl
+    # strategy:
+    #   matrix:
+    #     tests:
+    #       - 50federation/00prepare.pl
+    #       - 50federation/01keys.pl
     steps:
       - uses: actions/checkout@v4
         with:
