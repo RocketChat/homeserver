@@ -56,7 +56,7 @@ jobs:
           export PERL_MB_OPT=--install_base=$HOME
           export PERL_MM_OPT=INSTALL_BASE=$HOME
           sudo apt install libpq-dev -y
-          ./install-deps.pl
+          ./install-deps.pl || ./install-deps.pl
         working-directory: sytest
 
       - uses: oven-sh/setup-bun@v2
