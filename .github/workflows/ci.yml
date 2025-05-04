@@ -55,6 +55,7 @@ jobs:
           export PERL5LIB=$HOME/lib/perl5
           export PERL_MB_OPT=--install_base=$HOME
           export PERL_MM_OPT=INSTALL_BASE=$HOME
+          sudo apt install libpq-dev -y
           ./install-deps.pl
         working-directory: sytest
 
