@@ -61,7 +61,7 @@ jobs:
         id: cache
         with:
           path: homeserver/node_modules
-          key: ${{ hashFiles('homeserver/bun.lockdb') }}
+          key: ${{ hashFiles('**/bun.lockdb') }}
 
       - name: Install deps
         if: steps.cache.outputs.cache-hit != 'true'
