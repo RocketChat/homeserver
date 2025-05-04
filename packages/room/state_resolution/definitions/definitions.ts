@@ -1,3 +1,4 @@
+import { build } from "bun";
 import {
   PDUType,
   type PDUMembershipEvent,
@@ -76,11 +77,11 @@ export function partitionState(state: State): [State, Map<string, string[]>] {
 
 // Auth chain
 
-interface EventStore {
+export interface EventStore {
   getEvents(eventId: string[]): Promise<V2Pdu[]>;
 }
 
-interface EventStoreRemote {
+export interface EventStoreRemote {
   getEvent(eventId: string): Promise<V2Pdu | null>;
 }
 
@@ -98,6 +99,11 @@ export async function getAuthChain(
   }
 ): Promise<V2Pdu[]> {
   const auths = event.auth_events;
+
+  // event.type === 'm.room.create'
+  if (auths.length === 0) {
+    return [];
+  }
 
   let result = [] as V2Pdu[];
 
@@ -135,9 +141,15 @@ export async function getAuthChain(
     result.push(event);
   }
 
-  return result;
+  return result.reduce(async (accum, curr) => {
+    // recursively get all
+    const results = await getAuthChain(curr, { store, remote });
+    return accum.then((a) => a.concat(results));
+  }, Promise.resolve([] as typeof result));
 }
 
+// Auth difference
+// NOTE: https://github.com/element-hq/synapse/blob/a25a37002c851ef419d12925a11dd8bf2233470e/docs/auth_chain_difference_algorithm.md
 export async function getAuthChainDifference(
   state: State,
   {
@@ -175,7 +187,7 @@ export async function getAuthChainDifference(
 
   const union = authChains.reduce(
     (accum, curr) => accum.union(curr),
-    new Set<V2Pdu>()
+    authChains.pop()!
   );
 
   const intersection = authChains.reduce(
@@ -184,4 +196,71 @@ export async function getAuthChainDifference(
   );
 
   return union.difference(intersection);
+}
+
+const getEvent = async (
+  eventId: string,
+  { store, remote }: { store: EventStore; remote: EventStoreRemote }
+) => {
+  const [event] = await store.getEvents([eventId]);
+  if (event) {
+    return event;
+  }
+
+  return remote.getEvent(eventId);
+};
+
+// Full conflicted set
+export async function getFullConflictedSet(
+  state: State,
+  { store, remote }: { store: EventStore; remote: EventStoreRemote }
+): Promise<Set<V2Pdu>> {
+  // The full conflicted set is the union of the conflicted state set and the auth difference.
+  const [, conflicted] = partitionState(state);
+  const authChainDiff = await getAuthChainDifference(state, { store, remote });
+
+  const conflictedSet = (await Promise.all(
+    conflicted.values().map(async (c) => {
+      const events = await Promise.all(
+        c.map((cc) => getEvent(cc, { store, remote }))
+      );
+      return new Set(events.filter(Boolean));
+    })
+  )) as unknown as Set<V2Pdu>[]; // FIXME
+
+  return conflictedSet.reduce(
+    (accum, curr) => accum.union(curr),
+    authChainDiff
+  );
+}
+
+export async function reverseTopologicalPowerSort(
+  events: Set<V2Pdu>,
+  { store, remote }: { store: EventStore; remote: EventStoreRemote }
+) {
+  const graph: Map<string, Set<string>> = new Map(); // vertex to vertices building the edges
+
+  const buildGraph = async (graph: Map<string, Set<string>>, event: V2Pdu) => {
+    if (!graph.has(event.event_id)) {
+      graph.set(event.event_id, new Set());
+    }
+
+    for (const authEventId of event.auth_events) {
+      const authevent = await getEvent(authEventId, { store, remote });
+      if (!authevent) {
+        // TODO
+        continue;
+      }
+
+      graph.get(event.event_id)!.add(authEventId); // add this as an edge
+
+      buildGraph(graph, authevent);
+    }
+  };
+
+  for (const event of events) {
+    await buildGraph(graph, event);
+  }
+
+  console.log(graph.entries());
 }
