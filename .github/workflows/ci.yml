@@ -35,6 +35,11 @@ jobs:
   sytest:
     name: Run a subset of sytest suite
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        tests:
+          - 50federation/00prepare.pl
+          - 50federation/01keys.pl
     steps:
       - uses: actions/checkout@v4
         with:
@@ -61,7 +66,7 @@ jobs:
         id: cache
         with:
           path: homeserver/node_modules
-          key: ${{ hashFiles('**/bun.lockdb') }}
+          key: node_modules-${{ hashFiles('**/bun.lockdb') }}
 
       - name: Install deps
         if: steps.cache.outputs.cache-hit != 'true'
