@@ -31,4 +31,63 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-      
+
+  sytest:
+    name: Run a subset of sytest suite
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: homeserver
+
+      - uses: actions/checkout@v4
+        with:
+          repository: RocketChat/sytest
+          ref: homeport
+          path: sytest
+
+      # should also cache
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.34' # NOTE(debdutdeb): my local version
+          install-modules-with: cpanm 
+          working-directory: sytest
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.2.0'
+
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: homeserver/node_modules
+          key: ${{ hashFiles('homeserver/bun.lockdb') }}
+
+      - name: Install deps
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: homeserver
+        run: bun install
+
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.12.0
+        with:
+          mongodb-version: '6.0'
+
+      - name: Start homeserver
+        shell: bash
+        working-directory: homeserver
+        env:
+          NODE_TLS_REJECT_UNAUTHORIZED: 0
+          MONGODB_URI: mongodb://localhost:27017/rocket
+          HOMESERVER_CONFIG_name: localhost:8448
+          HOMESERVER_CONFIG_port: 8448
+        run: |
+          bun run index.ts 2>&1 >/tmp/homeserver.log &
+          sleep 10
+          
+      - name: Start test
+        working-directory: sytest
+        shell: bash
+        run: |
+          ./run-tests.pl -I Manual --bind-host 127.0.0.1 tests/50federation/00.prepare.pl tests/50federation/01keys.pl
