@@ -151,7 +151,7 @@ export async function getAuthChainDifference(
   // The auth difference is calculated by first calculating the full auth chain for each state Si,
   //   const authChains = [] as Map<string, V2Pdu>[];
 
-  const authChains = [] as V2Pdu[][];
+  const authChains = [] as Set<V2Pdu>[];
 
   const stateIt = state.entries();
 
@@ -168,13 +168,20 @@ export async function getAuthChainDifference(
     // 	return accum;
     // }, new Map()));
 
-    authChains.push(authChain);
+    authChains.push(new Set(authChain));
   }
 
-  const flatAuthChain = authChains.flat(1);
-  const flatAuthChainSet = new Set(flatAuthChain);
+  //  the auth difference is ∪ C_i − ∩ C_i.
 
-  if (flatAuthChain.length === flatAuthChainSet.size) {
-    // return here
-  }
+  const union = authChains.reduce(
+    (accum, curr) => accum.union(curr),
+    new Set<V2Pdu>()
+  );
+
+  const intersection = authChains.reduce(
+    (accum, curr) => accum.intersection(curr),
+    authChains.pop()!
+  );
+
+  return union.difference(intersection);
 }
