@@ -51,12 +51,8 @@ jobs:
           ref: homeport
           path: sytest
 
-      # should also cache
-      - uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: '5.34' # NOTE(debdutdeb): my local version
-          install-modules-with: cpanm 
-          working-directory: sytest
+      - run: |
+          ./install-deps.pl
 
       - uses: oven-sh/setup-bun@v2
         with:
