@@ -6,6 +6,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@types/bun": "latest",
+		"@types/node": "^22.14.1",
 		"husky": "^9.1.7"
 	},
 	"peerDependencies": {
@@ -15,6 +16,7 @@
 	"dependencies": {
 		"@bogeychan/elysia-etag": "^0.0.6",
 		"@bogeychan/elysia-logger": "^0.1.4",
+		"@datastructures-js/priority-queue": "^6.3.2",
 		"@elysiajs/swagger": "^1.1.6",
 		"@hs/fake": "workspace:*",
 		"@hs/homeserver": "workspace:*",

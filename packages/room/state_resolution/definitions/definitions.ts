@@ -1,3 +1,4 @@
+import { PriorityQueue } from "@datastructures-js/priority-queue";
 import {
   PDUType,
   type PDUMembershipEvent,
@@ -49,7 +50,7 @@ export function partitionState(state: State): [State, Map<string, string[]>] {
   }
 
   unconflicted.set(first[0], first[1]);
-
+  assert;
   for (const [key, value] of stateSet) {
     // If a given key K is present in every Si with the same value V in each state map
     if (unconflicted.has(key)) {
@@ -235,82 +236,79 @@ export async function getFullConflictedSet(
   );
 }
 
+export function _kahnsOrder<T>(
+  edges: T[][],
+  compareFunc: (a: T, b: T) => number
+): T[] {
+  // make adjacency list
+  const graph = new Map<T, Set<T>>();
+
+  for (const [from, to] of edges) {
+    if (!graph.has(from)) {
+      graph.set(from, new Set());
+    }
+
+    graph.get(from)!.add(to);
+  }
+
+  const result = [] as T[];
+
+  const indegree = new Map<T, number>();
+
+  for (const [v, edges] of graph.entries()) {
+    indegree.has(v) || indegree.set(v, 0);
+    for (const edge of edges) {
+      if (indegree.has(edge)) {
+        indegree.set(edge, indegree.get(edge)! + 1);
+      } else {
+        indegree.set(edge, 1);
+      }
+    }
+  }
+
+  const zeroIndegreeQueue = new PriorityQueue(compareFunc);
+  // TODO: optimize
+
+  // get all indegrees
+  // any key in the graph with no edges has zero indegree
+  // biome-ignore lint/complexity/noForEach: <explanation>
+  indegree
+    .keys()
+    .forEach((k) => indegree.get(k) === 0 && zeroIndegreeQueue.enqueue(k));
+
+  // While the queue is not empty:
+  while (!zeroIndegreeQueue.isEmpty()) {
+    const node = zeroIndegreeQueue.pop();
+    assert(
+      node !== null,
+      "undefined element in zeroIndegreeQueue should not happen"
+    );
+
+    result.push(node);
+
+    const neighbours = graph.get(node);
+    if (!neighbours) {
+      continue;
+    }
+
+    for (const neighbour of neighbours) {
+      const degree = indegree.get(neighbour)! - 1;
+      indegree.set(neighbour, degree);
+      if (degree === 0) {
+        zeroIndegreeQueue.push(neighbour);
+      }
+    }
+  }
+
+  return result;
+}
+
 // generic for testing
 // I don't think this is right
 export function lexicographicalTopologicalSort<T>(
   graph: Map<string, Set<string>>,
   compareFunc: (event1: T, event2: T) => boolean
-) {
-  // L ← Empty list that will contain the sorted elements
-  const result = [];
-
-  // S ← Set of all nodes with no incoming edge
-  const zeroIndegree = [];
-
-  const reverseGraph = new Map<string, Set<string>>();
-
-  const set = (it?: any) => new Set(it) as Set<string>;
-
-  for (const [v, edges] of graph.entries()) {
-    // no incoming edge, see comment below
-    if (edges.size === 0) {
-      zeroIndegree.push(v);
-    }
-
-    /*
-     * our graph is in reverse direction.
-     * i.e. in [v_1] => [v_2, v_3], [v_3] => [v_4]
-     * the edges are the predecessor of the vertices.
-     * v_4 -> v_3 -> v_1
-     *        v_2 -> v_1
-     * for kahn's NOTE https://en.wikipedia.org/wiki/Topological_sorting#Kahn
-     * "for each node m with an edge e from n to m do"
-     * we need the reverse of our reverse graph
-     */
-
-    reverseGraph.set(v, set());
-
-    for (const edge of edges) {
-      // edge -> vertex
-      if (reverseGraph.has(edge)) {
-        reverseGraph.get(edge)!.add(v);
-      } else {
-        reverseGraph.set(edge, set(v));
-      }
-    }
-  }
-
-  // while S is not empty do
-  while (zeroIndegree.length) {
-    const node = zeroIndegree.shift();
-
-    assert(node, "undefined element in zeroIndegree should not happen");
-
-    // add n to L
-    result.push(node);
-
-    // for each node m with an edge e from n to m do
-    // n -> m, we get this from our reverseGraph
-
-    const parents = reverseGraph.get(node);
-    assert(
-      parents,
-      "parents should not be undefined and should be a set of strings"
-    );
-
-    for (const parent of parents) {
-      // remove edge e from the graph
-      reverseGraph.delete(parent);
-      if (reverseGraph.get(parent)?.size === 0) {
-        zeroIndegree.push(parent);
-      }
-    }
-
-    assert(reverseGraph.size === 0, "graph should not have any edges left");
-
-    return result;
-  }
-}
+) {}
 
 export async function reverseTopologicalPowerSort(
   events: Set<V2Pdu>,

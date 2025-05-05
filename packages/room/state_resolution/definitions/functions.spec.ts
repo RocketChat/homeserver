@@ -1,6 +1,7 @@
-import { describe, it } from "bun:test";
+import { describe, it, expect } from "bun:test";
 import type { V2Pdu } from "../../events";
 import {
+  _kahnsOrder,
   reverseTopologicalPowerSort,
   type EventStore,
   type EventStoreRemote,
@@ -83,5 +84,31 @@ describe("Definitions", () => {
       store: eventStore,
       remote: eventStoreRemote,
     });
+  });
+  it("should print the right kahns result", () => {
+    const inputs = [
+      [
+        [2, 3],
+        [3, 1],
+        [4, 0],
+        [4, 1],
+        [5, 0],
+        [5, 2],
+      ],
+      [
+        [0, 1],
+        [1, 2],
+        [3, 2],
+        [3, 4],
+      ],
+    ];
+
+    const expected = [
+      [4, 5, 0, 2, 3, 1],
+      [0, 3, 1, 4, 2],
+    ];
+    for (let i = 0; i < inputs.length; i++) {
+      expect(_kahnsOrder(inputs[i], (a, b) => a - b)).toEqual(expected[i]);
+    }
   });
 });
