@@ -1,4 +1,3 @@
-import { build } from "bun";
 import {
   PDUType,
   type PDUMembershipEvent,
@@ -6,6 +5,8 @@ import {
   type StateMapKey,
   type V2Pdu,
 } from "../../events";
+
+import assert from "node:assert";
 
 function getStateMapKey(event: V2Pdu): StateMapKey {
   return `${event.type}:${event.state_key ?? ""}`;
@@ -232,6 +233,83 @@ export async function getFullConflictedSet(
     (accum, curr) => accum.union(curr),
     authChainDiff
   );
+}
+
+// generic for testing
+// I don't think this is right
+export function lexicographicalTopologicalSort<T>(
+  graph: Map<string, Set<string>>,
+  compareFunc: (event1: T, event2: T) => boolean
+) {
+  // L ← Empty list that will contain the sorted elements
+  const result = [];
+
+  // S ← Set of all nodes with no incoming edge
+  const zeroIndegree = [];
+
+  const reverseGraph = new Map<string, Set<string>>();
+
+  const set = (it?: any) => new Set(it) as Set<string>;
+
+  for (const [v, edges] of graph.entries()) {
+    // no incoming edge, see comment below
+    if (edges.size === 0) {
+      zeroIndegree.push(v);
+    }
+
+    /*
+     * our graph is in reverse direction.
+     * i.e. in [v_1] => [v_2, v_3], [v_3] => [v_4]
+     * the edges are the predecessor of the vertices.
+     * v_4 -> v_3 -> v_1
+     *        v_2 -> v_1
+     * for kahn's NOTE https://en.wikipedia.org/wiki/Topological_sorting#Kahn
+     * "for each node m with an edge e from n to m do"
+     * we need the reverse of our reverse graph
+     */
+
+    reverseGraph.set(v, set());
+
+    for (const edge of edges) {
+      // edge -> vertex
+      if (reverseGraph.has(edge)) {
+        reverseGraph.get(edge)!.add(v);
+      } else {
+        reverseGraph.set(edge, set(v));
+      }
+    }
+  }
+
+  // while S is not empty do
+  while (zeroIndegree.length) {
+    const node = zeroIndegree.shift();
+
+    assert(node, "undefined element in zeroIndegree should not happen");
+
+    // add n to L
+    result.push(node);
+
+    // for each node m with an edge e from n to m do
+    // n -> m, we get this from our reverseGraph
+
+    const parents = reverseGraph.get(node);
+    assert(
+      parents,
+      "parents should not be undefined and should be a set of strings"
+    );
+
+    for (const parent of parents) {
+      // remove edge e from the graph
+      reverseGraph.delete(parent);
+      if (reverseGraph.get(parent)?.size === 0) {
+        zeroIndegree.push(parent);
+      }
+    }
+
+    assert(reverseGraph.size === 0, "graph should not have any edges left");
+
+    return result;
+  }
 }
 
 export async function reverseTopologicalPowerSort(
