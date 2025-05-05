@@ -236,20 +236,29 @@ export async function getFullConflictedSet(
   );
 }
 
-export function _kahnsOrder<T>(
-  edges: T[][],
-  compareFunc: (a: T, b: T) => number
+export interface Queue<T> {
+  enqueue(item: T): Queue<T>;
+  push(item: T): Queue<T>;
+  pop(): T | null;
+  isEmpty(): boolean;
+}
+
+export function _kahnsOrder<T, P extends Queue<T>>(
+  //   edges: T[][],
+  graph: Map<T, Set<T>>,
+  compareFunc: (a: T, b: T) => number,
+  queueClass: new (compare: typeof compareFunc) => P
 ): T[] {
   // make adjacency list
-  const graph = new Map<T, Set<T>>();
+  //   const graph = new Map<T, Set<T>>();
 
-  for (const [from, to] of edges) {
-    if (!graph.has(from)) {
-      graph.set(from, new Set());
-    }
+  //   for (const [from, to] of edges) {
+  //     if (!graph.has(from)) {
+  //       graph.set(from, new Set());
+  //     }
 
-    graph.get(from)!.add(to);
-  }
+  //     graph.get(from)!.add(to);
+  //   }
 
   const result = [] as T[];
 
@@ -266,7 +275,7 @@ export function _kahnsOrder<T>(
     }
   }
 
-  const zeroIndegreeQueue = new PriorityQueue(compareFunc);
+  const zeroIndegreeQueue: Queue<T> = new queueClass(compareFunc);
   // TODO: optimize
 
   // get all indegrees
@@ -304,11 +313,45 @@ export function _kahnsOrder<T>(
 }
 
 // generic for testing
-// I don't think this is right
 export function lexicographicalTopologicalSort<T>(
-  graph: Map<string, Set<string>>,
-  compareFunc: (event1: T, event2: T) => boolean
-) {}
+  graph: Map<string, Set<string>>
+) {
+  const getPowerLevel = (sender: string): number => {
+    // TODO: implement
+    return 0;
+  };
+  const compareFunc = (event1: V2Pdu, event2: V2Pdu): number => {
+    // event1 < event2 if
+    // ....
+    // event1’s sender has greater power level than event2’s sender, when looking at their respective auth_events;
+
+    if (getPowerLevel(event1.sender) > getPowerLevel(event2.sender)) {
+      return -1;
+    }
+
+    // the senders have the same power level, but x’s origin_server_ts is less than y’s origin_server_ts
+    if (event1.origin_server_ts < event2.origin_server_ts) {
+      return -1;
+    }
+
+    // the senders have the same power level and the events have the same origin_server_ts, but x’s event_id is less than y’s event_id.
+    if (event1.event_id < event2.event_id) {
+      return -1;
+    }
+
+    return 1;
+  };
+
+  // The reverse topological power ordering can be found by sorting the events using Kahn’s algorithm for topological sorting, and at each step selecting, among all the candidate vertices, the smallest vertex using the above comparison relation.
+
+  const sorted = _kahnsOrder<V2Pdu, PriorityQueue<V2Pdu>>(
+    graph,
+    compareFunc,
+    PriorityQueue
+  );
+
+  return sorted;
+}
 
 export async function reverseTopologicalPowerSort(
   events: Set<V2Pdu>,
@@ -338,5 +381,5 @@ export async function reverseTopologicalPowerSort(
     await buildGraph(graph, event);
   }
 
-  console.log(graph.entries());
+  return lexicographicalTopologicalSort(graph);
 }

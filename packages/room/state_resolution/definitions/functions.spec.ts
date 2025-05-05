@@ -5,7 +5,9 @@ import {
   reverseTopologicalPowerSort,
   type EventStore,
   type EventStoreRemote,
+  type Queue,
 } from "./definitions";
+import { PriorityQueue } from "@datastructures-js/priority-queue";
 
 class MockEventStore implements EventStore {
   public events: Array<V2Pdu> = [];
@@ -22,6 +24,31 @@ class MockEventStoreRemote implements EventStoreRemote {
 
 const eventStore = new MockEventStore();
 const eventStoreRemote = new MockEventStoreRemote();
+
+class MockQueue implements Queue<number> {
+  items: number[] = [];
+
+  constructor(_compare: any) {
+    // noop
+  }
+  enqueue(item: number): Queue<number> {
+    this.items.push(item);
+    return this;
+  }
+  push(item: number): Queue<number> {
+    this.items.push(item);
+    return this;
+  }
+  pop(): number | null {
+    if (this.items.length === 0) {
+      return null;
+    }
+    return this.items.shift()!;
+  }
+  isEmpty(): boolean {
+    return this.items.length === 0;
+  }
+}
 
 describe("Definitions", () => {
   it("should print right graph", async () => {
@@ -108,7 +135,9 @@ describe("Definitions", () => {
       [0, 3, 1, 4, 2],
     ];
     for (let i = 0; i < inputs.length; i++) {
-      expect(_kahnsOrder(inputs[i], (a, b) => a - b)).toEqual(expected[i]);
+      expect(_kahnsOrder(inputs[i], (a, b) => a - b, MockQueue)).toEqual(
+        expected[i]
+      );
     }
   });
 });
