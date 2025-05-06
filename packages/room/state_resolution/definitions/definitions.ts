@@ -1,5 +1,6 @@
 import { PriorityQueue } from "@datastructures-js/priority-queue";
 import {
+  type EventID,
   PDUType,
   type PDUMembershipEvent,
   type State,
@@ -382,4 +383,160 @@ export async function reverseTopologicalPowerSort(
   }
 
   return lexicographicalTopologicalSort(graph);
+}
+
+// https://spec.matrix.org/v1.12/rooms/v2/#algorithm
+export async function resolveStateV2Plus(
+  state: State,
+  { store, remote }: { store: EventStore; remote: EventStoreRemote }
+) {
+  // Select the set X of all power events that appear in the full conflicted set. For each such power event P, enlarge X by adding the events in the auth chain of P which also belong to the full conflicted set. Sort X into a list using the reverse topological power ordering.
+
+  const fullConflictedSet = await getFullConflictedSet(state, {
+    store,
+    remote,
+  });
+
+  const powerEvents = [] as V2Pdu[];
+
+  for (const event of fullConflictedSet) {
+    if (isPowerEvent(event)) {
+      powerEvents.push(event);
+    }
+  }
+
+  // enlarge X by adding the events in the auth chain of P which also belong to the full conflicted set
+  for (const event of powerEvents) {
+    const authChain = await getAuthChain(event, { store, remote });
+    for (const authEvent of authChain) {
+      if (fullConflictedSet.has(authEvent)) {
+        powerEvents.push(authEvent);
+      }
+    }
+  }
+
+  // Sort X into a list using the reverse topological power ordering.
+  const sortedPowerEvents = await reverseTopologicalPowerSort(
+    new Set(powerEvents),
+    { store, remote }
+  );
+
+  // Apply the iterative auth checks algorithm, starting from the unconflicted state map, to the list of events from the previous step to get a partially resolved state.
+  const [unconflicted] = await partitionState(state);
+
+  // TODO: implement iterative auth checks algorithm
+}
+
+export async function mainlineOrdering(
+  events: V2Pdu[], // TODO: or take event ids
+  // Let P = P0 be an m.room.power_levels event
+  powerLevelEvent: V2Pdu, // of which we will calculate the mainline
+  {
+    store,
+    remote,
+  }: {
+    store: EventStore;
+    remote: EventStoreRemote;
+  }
+): Promise<V2Pdu[]> {
+  const getMainline = async (event: V2Pdu) => {
+    const mainline = [] as V2Pdu[];
+
+    const fn = async (event: V2Pdu) => {
+      const authIds = event.auth_events;
+
+      // Starting with i = 0, repeatedly fetch Pi+1, the m.room.power_levels event in the auth_events of Pi.
+      for (const autheventid of authIds) {
+        const event = await getEvent(autheventid, { store, remote });
+        if (event?.type === PDUType.PowerLevels) {
+          mainline.push(event);
+          return fn(event);
+        }
+        // Increment i and repeat until Pi has no m.room.power_levels in its auth_events.
+        // exit loop and return the mainline
+      }
+
+      return mainline;
+    };
+
+    return fn(event);
+  };
+
+  // this is how we get the mainline of an event
+  const mainline = await getMainline(powerLevelEvent);
+
+  assert(mainline && mainline.length > 0, "mainline should not be empty");
+
+  const mainlinePositions = new Map<EventID, number>(); // NOTE: see comment in the loop
+
+  const mainlineMap = new Map<EventID, number>();
+
+  for (let i = mainline.length - 1, j = 0; i >= 0; i--, j++) {
+    mainlineMap.set(
+      mainline[i].event_id /* the last event */,
+      j /* the more we "walk" the grap the older we get to in the room state, so the older the event, the least depth it has */
+    );
+  }
+  
+  const getMainlinePositionOfEvent = async (event: V2Pdu): Promise<number> {
+	  let _event = event;
+	  
+	  while (_event) {
+		  // algorithm follows the same as mainline detection
+		  if (mainlineMap.has(_event.event_id)) {
+			  // if in map then this is already a powerLevel event
+			  return mainlineMap.get(_event.event_id)!;
+		  }
+		  
+		  for (const autheventid of _event.auth_events) {
+			  const authEvent = await getEvent(autheventid, { store, remote });
+			  
+			  assert(authEvent, "auth event should not be null, either in our store or remote");
+			  
+			  // Find the smallest index j ≥ 1 for which e_j belongs to the mainline of P.
+			  if (authEvent.type === PDUType.PowerLevels /* && mainlineMap.has(autheventid) */ /* the check for mainlineMap is already done on the next iteration */) {
+				  // If such a j exists, then e_j = P_i for some unique index i ≥ 0.
+				  // e_j is current event, _event, the one we are traversing
+				  _event = authEvent;
+				  break;
+			  }
+		  }
+		}
+		
+		return 0;
+  }
+
+  // Let e = e0 be another event (possibly another m.room.power_levels event)
+  // iterating over all, could have been better visualized with a for (let i = 0; i < events.length; i++) loop
+  for (const event of events) {
+    // "Now compare these two lists as follows."
+    // since we have to compare it doesn't make sense to fetch mainlines of all events here, too expensive, let's try to calculate on the fly
+    // we just want the mainline position of the event
+
+	mainlinePositions.set(event.event_id, await getMainlinePositionOfEvent(event));
+  }
+
+  // the mainline ordering based on P of a set of events is the ordering
+  // from smallest to largest
+//   using the following comparison relation on events: for events x and y, x < y if
+  const comparisonFn = (e1: V2Pdu, e2: V2Pdu) => {
+    // the mainline position of x is greater than the mainline position of y
+	if (mainlinePositions.get(e1.event_id)! > mainlinePositions.get(e2.event_id)!) {
+	  return -1;
+	}
+
+    // x’s origin_server_ts is less than y’s origin_server_ts
+    if (e1.origin_server_ts < e2.origin_server_ts) {
+      return -1;
+    }
+
+    // x’s event_id is less than y’s event_id.
+    if (e1.event_id < e2.event_id) {
+      return -1;
+    }
+
+    return 1;
+  };
+  
+  return events.sort(comparisonFn);
 }
