@@ -95,6 +95,40 @@ function isRoomAliasAllowed(event: V2Pdu) {
   return true;
 }
 
+export function getPowerLevelForUser(
+  userId: string,
+  authEventMap: Map<StateKey, V2Pdu>
+) {
+  const powerLevelEvent = authEventMap.get(
+    getStateMapKey({ type: PDUType.PowerLevels })
+  ) as PDUPowerLevelsEvent | undefined;
+
+  if (powerLevelEvent) {
+    const userPowerLevel = powerLevelEvent.content.users?.[userId];
+    if (userPowerLevel) {
+      return userPowerLevel;
+    }
+
+    // check for users_default
+    const usersDefault = powerLevelEvent.content.users_default;
+    if (usersDefault) {
+      return usersDefault;
+    }
+  }
+
+  const roomCreateEvent = authEventMap.get(
+    getStateMapKey({ type: PDUType.Create })
+  ) as PDUCreateEvent | undefined;
+
+  // no event so defaults
+  //     // NOTE: When there is no m.room.power_levels event in the room, the room creator has a power level of 100, and all other users have a power level of 0.
+  if (roomCreateEvent?.content.creator === userId) {
+    return 100;
+  }
+
+  return 0;
+}
+
 function isMembershipChangeAllowed(
   event: PDUMembershipEvent,
   authEventMap: Map<StateKey, V2Pdu>
@@ -137,29 +171,6 @@ function isMembershipChangeAllowed(
       getStateMapKey({ type: PDUType.PowerLevels })
     ) as PDUPowerLevelsEvent
   );
-
-  const getPowerLevelForUser = (userId: string) => {
-    if (powerLevelEvent) {
-      const userPowerLevel = powerLevelEvent.content.users?.[userId];
-      if (userPowerLevel) {
-        return userPowerLevel;
-      }
-
-      // check for users_default
-      const usersDefault = powerLevelEvent.content.users_default;
-      if (usersDefault) {
-        return usersDefault;
-      }
-    }
-
-    // no event so defaults
-    //     // NOTE: When there is no m.room.power_levels event in the room, the room creator has a power level of 100, and all other users have a power level of 0.
-    if (roomCreateEvent.content.creator === userId) {
-      return 100;
-    }
-
-    return 0;
-  };
 
   switch (event.content.membership) {
     case "join": {
@@ -239,7 +250,7 @@ function isMembershipChangeAllowed(
       }
 
       // If the sender’s power level is greater than or equal to the invite level, allow.
-      const senderPowerLevel = getPowerLevelForUser(sender);
+      const senderPowerLevel = getPowerLevelForUser(sender, authEventMap);
       //  The level required to invite a user. Defaults to 0 if unspecified.
       const inviteLevel = powerLevelEvent?.content.invite ?? 0;
 
@@ -266,7 +277,7 @@ function isMembershipChangeAllowed(
       }
 
       // If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
-      const senderPowerLevel = getPowerLevelForUser(sender);
+      const senderPowerLevel = getPowerLevelForUser(sender, authEventMap);
       // defaults to 50 if not specified
       const banLevel = powerLevelEvent?.content.ban ?? 50;
       if (
@@ -280,7 +291,7 @@ function isMembershipChangeAllowed(
       const kickRequiredLevel = powerLevelEvent?.content.kick ?? 50;
       if (
         senderPowerLevel >= kickRequiredLevel &&
-        getPowerLevelForUser(invitee) < senderPowerLevel
+        getPowerLevelForUser(invitee, authEventMap) < senderPowerLevel
       ) {
         return true;
       }
@@ -295,12 +306,12 @@ function isMembershipChangeAllowed(
       }
 
       // If the sender’s power level is greater than or equal to the ban level, and the target user’s power level is less than the sender’s power level, allow.
-      const senderPowerLevel = getPowerLevelForUser(sender);
+      const senderPowerLevel = getPowerLevelForUser(sender, authEventMap);
       // defaults to 50 if not specified
       const banLevel = powerLevelEvent?.content.ban ?? 50;
       if (
         senderPowerLevel >= banLevel &&
-        getPowerLevelForUser(invitee) < senderPowerLevel
+        getPowerLevelForUser(invitee, authEventMap) < senderPowerLevel
       ) {
         return true;
       }
