@@ -7,7 +7,6 @@ import {
   type EventStoreRemote,
   type Queue,
 } from "./definitions";
-import { PriorityQueue } from "@datastructures-js/priority-queue";
 
 class MockEventStore implements EventStore {
   public events: Array<V2Pdu> = [];
@@ -20,6 +19,10 @@ class MockEventStoreRemote implements EventStoreRemote {
   async getEvent(eventId: string): Promise<V2Pdu | null> {
     return null;
   }
+}
+
+function createEvent(pdu: Partial<V2Pdu>) {
+  // TODO:
 }
 
 const eventStore = new MockEventStore();

@@ -87,9 +87,117 @@ export type PDUMembershipEvent = V2Pdu & {
     membership: PDUMembershipType;
     reason?: string;
     // TODO
-    //   third_party_invite?: any
+    third_party_invite?: any;
   };
 };
+
+export function isMembershipEvent(event: V2Pdu): event is PDUMembershipEvent {
+  return event.type === PDUType.Member;
+}
+
+export type PDUCreateEvent = V2Pdu & {
+  state_key: "";
+  content: {
+    // only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.
+    creator: string;
+    "m.federate"?: boolean;
+    predecessor?: {
+      event_id: string;
+      room_id: string;
+    };
+    room_version?: string; // defaults to 1
+    type: string;
+  };
+};
+
+export function isCreateEvent(event: V2Pdu): event is PDUCreateEvent {
+  return event.type === PDUType.Create && event.state_key === "";
+}
+
+export type PDUJoinRuleEvent = V2Pdu & {
+  state_key: "";
+  content: {
+    join_rule:
+      | "public"
+      | "invite"
+      | "knock"
+      | "private"
+      | "public"
+      | "restricted"
+      | "knock_restricted";
+    allow: {
+      room_id: string;
+      type: string;
+    };
+  };
+};
+
+export function isJoinRuleEvent(event: V2Pdu): event is PDUJoinRuleEvent {
+  return (
+    event.type === PDUType.JoinRules &&
+    event.state_key === "" &&
+    "join_rule" in event.content
+  );
+}
+
+export type PDUPowerLevelsEvent = V2Pdu & {
+  state_key: "";
+  content: {
+    // The level required to ban a user.
+    ban: number; // defaults to 50 if not specified
+    // The level required to send specific event types. This is a mapping from event type to power level required.
+    events: Record<string, number>;
+    //  The default level required to send message events. Can be overridden by the events key.
+    events_default: number; // defaults to 0
+    //  The level required to invite a user. Defaults to 0 if unspecified.
+    invite: number;
+    //  The level required to kick a user. Defaults to 50 if unspecified.
+    kick: number;
+    //  The power level requirements for specific notification types. This is a mapping from key to power level for that notifications key.
+    notifications: {
+      //  The level required to trigger an @room notification. Defaults to 50 if unspecified.
+      room: number;
+      // others as said in spec
+      [k: string]: number;
+    };
+    //  The level required to redact an event sent by another user. Defaults to 50 if unspecified.
+    redact: number;
+    //  The default level required to send state events. Can be overridden by the events key. Defaults to 50 if unspecified.
+    state_default: number;
+    //  The power levels for specific users. This is a mapping from user_id to power level for that user.
+    users: Record<string, number>;
+    // The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.
+    // NOTE: When there is no m.room.power_levels event in the room, the room creator has a power level of 100, and all other users have a power level of 0.
+    users_default: number;
+  };
+};
+
+export function isPowerEvent(event: V2Pdu): event is PDUPowerLevelsEvent {
+  return event.type === PDUType.PowerLevels && event.state_key === "";
+}
+
+// if unspecified just sets the default number
+export function getPowerLevel(
+  event?: PDUPowerLevelsEvent
+): PDUPowerLevelsEvent | undefined {
+  return (
+    event && {
+      ...event,
+      ...{
+        content: {
+          ...event.content,
+          ban: event.content.ban ?? 50,
+          invite: event.content.invite ?? 0,
+          kick: event.content.kick ?? 50,
+          redact: event.content.redact ?? 50,
+          state_default: event.content.state_default ?? 50,
+          events_default: event.content.events_default ?? 0,
+          users_default: event.content.users_default ?? 0,
+        },
+      },
+    }
+  );
+}
 
 export type EventID = string;
 export type StateKey = string;
