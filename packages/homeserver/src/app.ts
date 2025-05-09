@@ -1,11 +1,11 @@
 import { logger } from "@bogeychan/elysia-logger";
 import { Elysia } from "elysia";
 
+import federationEndpoints from "./controllers/federation";
+import { keyV2Endpoints } from "./controllers/key";
+import { wellKnownEndpoint } from "./controllers/well-known";
 import { BadJSONError, MatrixError, UnrecognizedError } from "./errors";
-import federationEndpoints from "./routes/federation";
-import { keyV2Endpoints } from "./routes/key";
 import type { ElysiaRoutes } from "./extractRouteTypings";
-import { wellKnownEndpoint } from "./routes/well-known";
 
 export const app = new Elysia({
 	handler: {
