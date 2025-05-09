@@ -131,7 +131,7 @@ export function getPowerLevelForUser(
 
 function isMembershipChangeAllowed(
   event: PDUMembershipEvent,
-  authEventMap: Map<StateKey, V2Pdu>
+  authEventStateMap: Map<StateKey, V2Pdu>
 ): boolean {
   // If there is no state_key property, or no membership property in content, reject.
   if (!event.state_key || !event.content.membership) {
@@ -143,44 +143,40 @@ function isMembershipChangeAllowed(
 
   // sender information, like does this user have permission?
   const sender = event.sender;
-  const senderMembership = authEventMap.get(
+  const senderMembership = authEventStateMap.get(
     getStateMapKey({ type: PDUType.Member, state_key: sender })
-  ) as PDUMembershipEvent;
+  ) as PDUMembershipEvent | undefined;
 
   // user to be invited
   const invitee = event.state_key;
-  const inviteeMembership = authEventMap.get(
+  const inviteeMembership = authEventStateMap.get(
     getStateMapKey({ type: PDUType.Member, state_key: invitee })
-  ) as PDUMembershipEvent;
+  ) as PDUMembershipEvent | undefined;
 
   //   const roomEvent = authEventMap.get(getStateMapKey({ type: PDUType.Create })) as PDUCreateEvent;
   //   const room = {
   // 	  join_rules: roomEvent?.content.join_rules,
   //   } as const;
-  const joinRuleEvent = authEventMap.get(
+  const joinRuleEvent = authEventStateMap.get(
     getStateMapKey({ type: PDUType.JoinRules })
   ) as PDUJoinRuleEvent;
   const joinRule = joinRuleEvent?.content.join_rule;
 
-  const roomCreateEvent = authEventMap.get(
-    getStateMapKey({ type: PDUType.Create })
-  ) as PDUCreateEvent;
-
   const powerLevelEvent = getPowerLevel(
-    authEventMap.get(
+    authEventStateMap.get(
       getStateMapKey({ type: PDUType.PowerLevels })
     ) as PDUPowerLevelsEvent
   );
 
   switch (event.content.membership) {
     case "join": {
-      if (senderMembership.content.membership === "join") {
+      if (senderMembership?.content.membership === "join") {
         return true; // ?
       }
 
       // If the only previous event is an m.room.create and the state_key is the creator, allow.
-      if (event.prev_events.length === 1) {
-        const prevEvent = authEventMap.get(event.prev_events[0]);
+      if (event.prev_events?.length === 1) {
+        const prevEvent = authEventStateMap.get(event.prev_events[0]);
 
         return prevEvent
           ? isCreateEvent(prevEvent) && prevEvent.state_key === event.state_key
@@ -193,7 +189,7 @@ function isMembershipChangeAllowed(
       }
 
       // If the sender is banned, reject.
-      if (senderMembership.content.membership === "ban") {
+      if (senderMembership?.content.membership === "ban") {
         return false;
       }
 
@@ -237,20 +233,20 @@ function isMembershipChangeAllowed(
       }
 
       // If the sender’s current membership state is not join, reject.
-      if (senderMembership.content.membership !== "join") {
+      if (senderMembership?.content.membership !== "join") {
         return false;
       }
 
       // If target user’s current membership state is join or ban, reject.
       if (
-        inviteeMembership.content.membership === "join" ||
-        inviteeMembership.content.membership === "ban"
+        inviteeMembership?.content.membership === "join" ||
+        inviteeMembership?.content.membership === "ban"
       ) {
         return false;
       }
 
       // If the sender’s power level is greater than or equal to the invite level, allow.
-      const senderPowerLevel = getPowerLevelForUser(sender, authEventMap);
+      const senderPowerLevel = getPowerLevelForUser(sender, authEventStateMap);
       //  The level required to invite a user. Defaults to 0 if unspecified.
       const inviteLevel = powerLevelEvent?.content.invite ?? 0;
 
@@ -265,23 +261,23 @@ function isMembershipChangeAllowed(
       // If the sender matches state_key, allow if and only if that user’s current membership state is invite or join.
       if (
         sender === invitee &&
-        (inviteeMembership.content.membership === "invite" ||
-          inviteeMembership.content.membership === "join")
+        (inviteeMembership?.content.membership === "invite" ||
+          inviteeMembership?.content.membership === "join")
       ) {
         return true;
       }
 
       // If the sender’s current membership state is not join, reject.
-      if (senderMembership.content.membership !== "join") {
+      if (senderMembership?.content.membership !== "join") {
         return false;
       }
 
       // If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
-      const senderPowerLevel = getPowerLevelForUser(sender, authEventMap);
+      const senderPowerLevel = getPowerLevelForUser(sender, authEventStateMap);
       // defaults to 50 if not specified
       const banLevel = powerLevelEvent?.content.ban ?? 50;
       if (
-        inviteeMembership.content.membership === "ban" &&
+        inviteeMembership?.content.membership === "ban" &&
         senderPowerLevel < banLevel
       ) {
         return false;
@@ -291,7 +287,7 @@ function isMembershipChangeAllowed(
       const kickRequiredLevel = powerLevelEvent?.content.kick ?? 50;
       if (
         senderPowerLevel >= kickRequiredLevel &&
-        getPowerLevelForUser(invitee, authEventMap) < senderPowerLevel
+        getPowerLevelForUser(invitee, authEventStateMap) < senderPowerLevel
       ) {
         return true;
       }
@@ -301,17 +297,17 @@ function isMembershipChangeAllowed(
 
     case "ban": {
       // If the sender’s current membership state is not join, reject.
-      if (senderMembership.content.membership !== "join") {
+      if (senderMembership?.content.membership !== "join") {
         return false;
       }
 
       // If the sender’s power level is greater than or equal to the ban level, and the target user’s power level is less than the sender’s power level, allow.
-      const senderPowerLevel = getPowerLevelForUser(sender, authEventMap);
+      const senderPowerLevel = getPowerLevelForUser(sender, authEventStateMap);
       // defaults to 50 if not specified
       const banLevel = powerLevelEvent?.content.ban ?? 50;
       if (
         senderPowerLevel >= banLevel &&
-        getPowerLevelForUser(invitee, authEventMap) < senderPowerLevel
+        getPowerLevelForUser(invitee, authEventStateMap) < senderPowerLevel
       ) {
         return true;
       }
@@ -325,8 +321,185 @@ function isMembershipChangeAllowed(
   }
 }
 
-function validatePowerLevelEvent(event: PDUPowerLevelsEvent) {
-  // TODO: not much here
+function validatePowerLevelEvent(
+  event: PDUPowerLevelsEvent,
+  authEventMap: Map<string, V2Pdu>
+) {
+  console.log("validating power level event", event.event_id, event);
+  // If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
+  // If there is no previous m.room.power_levels event in the room, allow.
+  const existingPowerLevel = authEventMap.get(
+    getStateMapKey({ type: PDUType.PowerLevels })
+  ) as PDUPowerLevelsEvent | undefined;
+
+  const newPowerLevel = event;
+
+  console.log("existing power level", existingPowerLevel);
+
+  if (!existingPowerLevel) {
+    return true;
+  }
+
+  const senderPowerLevel = getPowerLevelForUser(event.sender, authEventMap);
+
+  console.log("sender power level", senderPowerLevel);
+
+  // For each found alteration:
+
+  // If the current value is greater than the sender’s current power level, reject.
+  // If the new value is greater than the sender’s current power level, reject.
+
+  if (
+    existingPowerLevel.content.users_default !== event.content.users_default
+  ) {
+    if (event.content.users_default > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.users_default > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  if (
+    existingPowerLevel.content.events_default !== event.content.events_default
+  ) {
+    if (event.content.events_default > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.events_default > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  if (
+    existingPowerLevel.content.state_default !== event.content.state_default
+  ) {
+    if (event.content.state_default > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.state_default > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  // for ban
+  if (existingPowerLevel.content.ban !== event.content.ban) {
+    if (event.content.ban > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.ban > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  // for kick
+  if (existingPowerLevel.content.kick !== event.content.kick) {
+    if (event.content.kick > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.kick > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  // for redact
+  if (existingPowerLevel.content.redact !== event.content.redact) {
+    if (event.content.redact > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.redact > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  // for invite
+  if (existingPowerLevel.content.invite !== event.content.invite) {
+    if (event.content.invite > senderPowerLevel) {
+      return false;
+    }
+
+    if (existingPowerLevel.content.invite > senderPowerLevel) {
+      return false;
+    }
+  }
+
+  // 4. For each entry being changed in, or removed from, the events property:
+  const existingPowerLevelEvents = Object.keys(
+    existingPowerLevel.content.events ?? {}
+  );
+  for (const eventType of existingPowerLevelEvents) {
+    if (
+      !newPowerLevel.content.events?.[eventType] ||
+      newPowerLevel.content.events?.[eventType] !==
+        existingPowerLevel.content.events[eventType]
+    ) {
+      // changed or removed
+      // If the current value is greater than the sender’s current power level, reject.
+      if (existingPowerLevel.content.events?.[eventType] > senderPowerLevel) {
+        return false;
+      }
+    }
+  }
+
+  // 5. For each entry being added to, or changed in, the events property:
+  const newPowerLevelEvents = Object.keys(newPowerLevel.content.events ?? {});
+  for (const eventType of newPowerLevelEvents) {
+    if (
+      !existingPowerLevel.content.events?.[eventType] ||
+      newPowerLevel.content.events?.[eventType] !==
+        existingPowerLevel.content.events[eventType]
+    ) {
+      // changed or added
+      // If the new value is greater than the sender’s current power level, reject.
+      if (newPowerLevel.content.events?.[eventType] > senderPowerLevel) {
+        return false;
+      }
+    }
+  }
+
+  // do same for users
+  // 6. For each entry being changed in, or removed from, the users property, other than the sender’s own entry:
+  const existingPowerLevelUsers = Object.keys(
+    existingPowerLevel.content.users ?? {}
+  );
+  for (const userId of existingPowerLevelUsers) {
+    if (
+      userId !== event.sender &&
+      (!newPowerLevel.content.users?.[userId] ||
+        newPowerLevel.content.users?.[userId] !==
+          existingPowerLevel.content.users[userId])
+    ) {
+      // changed or removed
+      // If the current value is greater than the sender’s current power level, reject.
+      if (existingPowerLevel.content.users?.[userId] > senderPowerLevel) {
+        return false;
+      }
+    }
+  }
+
+  // 7. For each entry being changed in, or removed from, the users property:
+  const newPowerLevelUsers = Object.keys(newPowerLevel.content.users ?? {});
+  for (const userId of newPowerLevelUsers) {
+    if (
+      !existingPowerLevel.content.users?.[userId] ||
+      newPowerLevel.content.users?.[userId] !==
+        existingPowerLevel.content.users[userId]
+    ) {
+      // changed or added
+      // If the new value is greater than the sender’s current power level, reject.
+      if (newPowerLevel.content.users?.[userId] > senderPowerLevel) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 // autheventmap as described here https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
@@ -336,7 +509,8 @@ export function isAllowedEvent(
   authEventMap: Map<StateKey, V2Pdu>
 ): boolean {
   if (isCreateEvent(event)) {
-    return isCreateAllowed(event);
+    return true;
+    // return isCreateAllowed(event);
   }
 
   if (event.type === PDUType.Aliases) {
@@ -350,8 +524,8 @@ export function isAllowedEvent(
   // If the sender’s current membership state is not join, reject.
   const senderMembership = authEventMap.get(
     getStateMapKey({ type: PDUType.Member, state_key: event.sender })
-  ) as PDUMembershipEvent;
-  if (senderMembership.content.membership !== "join") {
+  ) as PDUMembershipEvent | undefined;
+  if (senderMembership && senderMembership.content.membership !== "join") {
     return false;
   }
 
@@ -371,8 +545,7 @@ export function isAllowedEvent(
 
   // If type is m.room.power_levels:
   if (isPowerEvent(event)) {
-    validatePowerLevelEvent(event);
-    return true;
+    return validatePowerLevelEvent(event, authEventMap);
   }
 
   // TODO: redaction

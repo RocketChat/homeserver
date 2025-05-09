@@ -2,6 +2,8 @@ import { describe, it, expect } from "bun:test";
 import { PDUType, type V2Pdu } from "../../events";
 import {
   _kahnsOrder,
+  lexicographicalTopologicalSort,
+  resolveStateV2Plus,
   reverseTopologicalPowerSort,
   type EventStore,
   type EventStoreRemote,
@@ -60,6 +62,7 @@ const INITIAL_EVENTS = [
     type: PDUType.Create,
     state_key: "",
     content: { creator: "ALICE" },
+    origin_server_ts: 0,
   },
   {
     event_id: "IMA",
@@ -71,10 +74,24 @@ const INITIAL_EVENTS = [
       join_authorised_via_users_server: "",
       reason: "",
     },
+    origin_server_ts: 1,
+  },
+  {
+    event_id: "IMB",
+    sender: "ALICE",
+    origin_server_ts: 2,
+    type: PDUType.Member,
+    state_key: "BOB",
+    content: {
+      membership: "join",
+      join_authorised_via_users_server: "",
+      reason: "",
+    },
   },
   {
     event_id: "IPOWER",
     sender: "ALICE",
+    origin_server_ts: 3,
     type: PDUType.PowerLevels,
     state_key: "",
     content: { users: { ALICE: 100 } },
@@ -82,6 +99,7 @@ const INITIAL_EVENTS = [
   {
     event_id: "IJR",
     sender: "ALICE",
+    origin_server_ts: 4,
     type: PDUType.JoinRules,
     state_key: "",
     content: { join_rule: "public" },
@@ -91,6 +109,7 @@ const INITIAL_EVENTS = [
     sender: "BOB",
     type: PDUType.Member,
     state_key: "BOB",
+    origin_server_ts: 5,
     content: {
       membership: "join",
       join_authorised_via_users_server: "",
@@ -102,6 +121,7 @@ const INITIAL_EVENTS = [
     sender: "CHARLIE",
     type: PDUType.Member,
     state_key: "CHARLIE",
+    origin_server_ts: 6,
     content: {
       membership: "join",
       join_authorised_via_users_server: "",
@@ -112,6 +132,7 @@ const INITIAL_EVENTS = [
     event_id: "IMZ",
     sender: "ZARA",
     type: PDUType.Member,
+    origin_server_ts: 7,
     state_key: "ZARA",
     content: {
       membership: "join",
@@ -124,20 +145,28 @@ const INITIAL_EVENTS = [
     sender: "ZARA",
     type: PDUType.Message,
     state_key: null,
+    origin_server_ts: 8,
     content: {},
   },
   {
     event_id: "END",
     sender: "ZARA",
     type: PDUType.Message,
+    origin_server_ts: 9,
     state_key: null,
     content: {},
   },
 ];
 
 const INITIAL_EDGES = [
-  ["START", "IMZ", "IMC", "IMB", "IJR", "IPOWER", "IMA", "CREATE"],
-  ["END", "START"],
+  "START",
+  "IMZ",
+  "IMC",
+  "IMB",
+  "IJR",
+  "IPOWER",
+  "IMA",
+  "CREATE",
 ];
 
 describe("Definitions", () => {
@@ -231,12 +260,13 @@ describe("Definitions", () => {
   //     }
   //   });
 
-  it("mainline sort", () => {
+  it("mainline sort", async () => {
     const events = [
       {
         event_id: "T1",
         sender: "ALICE",
         type: "m.room.topic",
+        origin_server_ts: 10,
         state_key: "",
         content: {},
       },
@@ -244,18 +274,21 @@ describe("Definitions", () => {
         event_id: "PA1",
         sender: "ALICE",
         type: "m.room.power_levels",
+        origin_server_ts: 11,
         state_key: "",
         content: { users: { ALICE: 100, BOB: 50 } },
       },
       {
         event_id: "T2",
         sender: "ALICE",
+        origin_server_ts: 12,
         type: "m.room.topic",
         state_key: "",
         content: {},
       },
       {
         event_id: "PA2",
+        origin_server_ts: 13,
         sender: "ALICE",
         type: "m.room.power_levels",
         state_key: "",
@@ -268,11 +301,13 @@ describe("Definitions", () => {
         event_id: "PB",
         sender: "BOB",
         type: "m.room.power_levels",
+        origin_server_ts: 14,
         state_key: "",
         content: { users: { ALICE: 100, BOB: 50 } },
       },
       {
         event_id: "T3",
+        origin_server_ts: 16,
         sender: "BOB",
         type: "m.room.topic",
         state_key: "",
@@ -281,15 +316,66 @@ describe("Definitions", () => {
       {
         event_id: "T4",
         sender: "ALICE",
+        origin_server_ts: 15,
         type: "m.room.topic",
         state_key: "",
         content: {},
       },
+      //   {
+      //     event_id: "T5",
+      //     sender: "ALICE",
+      //     type: "m.room.member",
+      //     state_key: "BOB",
+      //     content: {
+      //       membership: "ban",
+      //     },
+      //   },
+      //   {
+      //     event_id: "T5",
+      //     sender: "BOB",
+      //     type: "m.room.member",
+      //     state_key: "BOB",
+      //     content: {
+      //       membership: "join",
+      //     },
+      //   },
     ];
 
     const edges = [
       ["END", "T3", "PA2", "T2", "PA1", "T1", "START"],
       ["END", "T4", "PB", "PA1"],
     ];
+
+    const graph = new Map<string, Set<string>>();
+
+    for (const node of INITIAL_EVENTS) {
+      graph.set(node.event_id, new Set());
+    }
+
+    for (const node of events) {
+      graph.set(node.event_id, new Set());
+    }
+
+    for (let i = 0; i < INITIAL_EDGES.length; i += 2) {
+      graph.get(INITIAL_EDGES[i])?.add(INITIAL_EDGES[i + 1]);
+    }
+
+    for (const edge of edges) {
+      for (let i = 0; i < edge.length; i += 2) {
+        graph.get(edge[i])?.add(edge[i + 1]);
+      }
+    }
+
+    console.log("Graph:", graph);
+
+    // @ts-ignore
+    eventStore.events = [...INITIAL_EVENTS, ...events];
+
+    const resolved = await resolveStateV2Plus(eventStore.events, {
+      store: eventStore,
+      remote: eventStoreRemote,
+    });
+
+    console.log("Resolved:", resolved);
   });
 });
