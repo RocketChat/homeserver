@@ -9,14 +9,15 @@ import { makeJoinRoute } from "./makeJoin";
 import { sendJoinV2Route } from "./sendJoinV2";
 import { getMissingEventsRoute } from "./getMissingEvents";
 import validateHeaderSignature from "../../plugins/validateHeaderSignature";
-import { sendTransactionRoute } from "./sendTransaction";
+// import { sendTransactionRoute } from "./sendTransaction";
+import { sendTransactionRoute } from "./sendTransactionV2";
 import { eventAuth } from "./eventAuth";
 
 const federationV1Endpoints = new Elysia({
 	prefix: "/_matrix/federation/v1",
 })
 	.use(getVersionRoute)
-	.onBeforeHandle(validateHeaderSignature)
+	// .onBeforeHandle(validateHeaderSignature)
 	.use(queryUserEncryptionKeysRoute)
 	.use(getUserDevicesRoute)
 	.use(queryProfileRoute)

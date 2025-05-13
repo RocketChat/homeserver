@@ -1,4 +1,3 @@
 bun lint
 bunx tsc
 bun test
-
