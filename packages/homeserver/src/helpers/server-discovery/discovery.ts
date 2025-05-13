@@ -189,7 +189,8 @@ export const resolveHostAddressByServerName = async (serverName: string, ownServ
         const rawAddress = await getAddressFromWellKnownData(serverName);
         const address = await resolveFollowingWellKnownRules(rawAddress);
 
-        return { address, headers: { Host: rawAddress } };
+        // TODO: Check it later... only way I found to make the request work
+        return { address: rawAddress, headers: { Host: rawAddress } };
     } catch (error) {
         if (error instanceof Error && error.message === 'No address found') {
             const address = await resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName).catch(() => addressWithDefaultPort(serverName));

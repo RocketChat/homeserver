@@ -146,6 +146,8 @@ export const KeysDTO = t.Object(
 	},
 );
 
+export const ServerKeysDTO = t.Array(KeysDTO);
+
 export const StrippedStateDTO = t.Object(
 	{
 		content: t.Object(
@@ -513,10 +515,47 @@ const SyncStateEventDTO = t.Composite(
 	},
 );
 
-const StateEventDTO = t.Composite([RoomEventDTO, SyncStateEventDTO], {
-	title: "StateEvent",
-	description: "State Events have the following fields.",
-});
+// Define StateEventDTO without using Composite
+const StateEventDTO = t.Object(
+	{
+		content: t.Object(
+			{},
+			{
+				description:
+					"The fields in this object will vary depending on the type of event. When interacting with the REST API, this is the HTTP body.",
+			},
+		),
+		type: t.String({
+			description:
+				"The type of event. This SHOULD be namespaced similar to Java package naming conventions e.g. 'com.example.subdomain.event.type'",
+		}),
+		event_id: t.String({
+			description: "The globally unique event identifier.",
+		}),
+		sender: t.String({
+			description:
+				"Contains the fully-qualified ID of the user who sent this event.",
+		}),
+		origin_server_ts: t.Integer({
+			description:
+				"Timestamp in milliseconds on originating homeserver when this event was sent.",
+			format: "int64",
+		}),
+		unsigned: t.Optional(UnsignedDataDTO),
+		room_id: t.String({
+			description:
+				"The ID of the room associated with this event. Will not be present on events\nthat arrive through `/sync`, despite being required everywhere else.",
+		}),
+		state_key: t.String({
+			description:
+				"A unique key which defines the overwriting semantics for this piece of room state. This value is often a zero-length string. The presence of this key makes this event a State Event.\nState keys starting with an `@` are reserved for referencing user IDs, such as room members. With the exception of a few events, state events set with a given user's ID as the state key MUST only be set by that user.",
+		}),
+	},
+	{
+		title: "StateEvent",
+		description: "State Events have the following fields.",
+	},
+);
 
 const MRoomMemberDTO = t.Composite(
 	[
@@ -607,9 +646,12 @@ const MRoomMemberDTO = t.Composite(
 					"The `user_id` this membership event relates to. In all cases except for when `membership` is\n`join`, the user ID sending the event does not need to match the user ID in the `state_key`,\nunlike other events. Regular authorisation rules still apply.",
 			}),
 			type: t.Literal("m.room.member"),
-			unsigned: t.Composite([
-				UnsignedDataDTO,
-				t.Object({
+			unsigned: t.Object(
+				{
+					age: t.Optional(t.Integer({
+						description:
+							"The time in milliseconds that has elapsed since the event was sent.",
+					})),
 					invite_room_state: t.Optional(
 						t.Array(StrippedStateDTO, {
 							description:
@@ -622,8 +664,12 @@ const MRoomMemberDTO = t.Composite(
 								"A subset of the state of the room at the time of the knock, if `membership` is `knock`.\nThis has the same restrictions as `invite_room_state`. If they are set on the room, at least\nthe state for `m.room.avatar`, `m.room.canonical_alias`, `m.room.join_rules`, `m.room.name`,\nand `m.room.encryption` SHOULD be included.",
 						}),
 					),
-				}),
-			]),
+				},
+				{
+					title: "UnsignedData",
+					description: "Contains optional extra information about the event.",
+				}
+			),
 		}),
 	],
 	{

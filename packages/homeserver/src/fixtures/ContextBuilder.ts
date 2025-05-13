@@ -1,18 +1,18 @@
 import Elysia from "elysia";
 import Crypto from "node:crypto";
 
-import { type SigningKey, generateKeyPairsFromString } from "../keys";
+import type { EventBase } from "@hs/core/src/events/eventBase";
+import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
+import type { HomeServerRoutes } from "../app";
+import { authorizationHeaders, generateId } from "../authentication";
 import { toUnpaddedBase64 } from "../binaryData";
+import { type SigningKey, generateKeyPairsFromString } from "../keys";
 import type {
 	getAllResponsesByMethod,
 	getAllResponsesByPath,
 } from "../makeRequest";
-import { authorizationHeaders, generateId } from "../authentication";
-import type { HomeServerRoutes } from "../app";
-import type { EventBase } from "@hs/core/src/events/eventBase";
 import type { EventStore } from "../plugins/mongodb";
 import { createRoom } from "../procedures/createRoom";
-import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 
 type MockedFakeRequest = <
 	M extends HomeServerRoutes["method"],
@@ -136,7 +136,7 @@ export class ContextBuilder {
 				getOldestStagedEvent: async (roomId: string) => {
 					return this.events.get(roomId)?.[0];
 				},
-				getEventsByIds: async (roomId: string, eventIds: string[]) => {
+				getEventsByRoomAndEventIds: async (roomId: string, eventIds: string[]) => {
 					return (
 						this.events
 							.get(roomId)

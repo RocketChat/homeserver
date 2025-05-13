@@ -4,5 +4,9 @@
 	"port": 8080,
 	"key": {
 		"key_refresh_interval": 60
+	},
+	"tls": {
+		"cert": "conf/tls.crt",
+		"key": "conf/tls.key"
 	}
 }

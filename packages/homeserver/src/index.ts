@@ -2,9 +2,9 @@ import swagger from "@elysiajs/swagger";
 
 import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
+import Elysia from "elysia";
 import { app as r } from "./app";
 import { getKeyPair } from "./keys";
-import Elysia from "elysia";
 
 const app = new Elysia({
 	handler: {
@@ -38,5 +38,5 @@ const app = new Elysia({
 		return error;
 	})
 	.use(r);
-
+	
 export { app, getKeyPair };
