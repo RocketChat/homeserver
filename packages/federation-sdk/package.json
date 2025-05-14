@@ -1,0 +1,17 @@
+{
+  "name": "@hs/federation-sdk",
+  "version": "0.1.0",
+  "description": "Matrix Federation SDK for server-to-server communication",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+} 

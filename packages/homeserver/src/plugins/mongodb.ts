@@ -1,6 +1,6 @@
-import Elysia from "elysia";
 import type { InferContext } from "elysia";
-import { type Db, type WithId } from "mongodb";
+import Elysia from "elysia";
+import { type Db } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import type { ServerKey } from "@hs/core/src/server";
@@ -41,11 +41,20 @@ export const routerWithMongodb = (db: Db) =>
 				);
 			};
 
-			const getEventsByIds = async (roomId: string, eventIds: string[]) => {
+			const getEventsByRoomAndEventIds = async (roomId: string, eventIds: string[]) => {
 				return eventsCollection
 					.find({ "event.room_id": roomId, "event._id": { $in: eventIds } })
 					.toArray();
 			};
+
+			const getEventById = async (eventId: string) => {
+				return eventsCollection.findOne({ _id: eventId });
+			};
+
+			const getEventsByIds = async (eventIds: string[]) => {
+				return eventsCollection.find({ _id: { $in: eventIds } }).toArray();
+			};
+
 			const getDeepEarliestAndLatestEvents = async (
 				roomId: string,
 				earliest_events: string[],
@@ -123,6 +132,11 @@ export const routerWithMongodb = (db: Db) =>
 					.toArray();
 			};
 
+			const getRoomVersion = async (roomId: string) => {
+				const createRoomEvent = await eventsCollection.findOne({ "event.room_id": roomId, "event.type": "m.room.create" }, { projection: { "event.content.room_version": 1 } });
+				return createRoomEvent?.event.content?.room_version ?? null;
+			};
+
 			const getValidPublicKeyFromLocal = async (
 				origin: string,
 				key: string,
@@ -183,6 +197,17 @@ export const routerWithMongodb = (db: Db) =>
 				return id;
 			};
 
+			const upsertEvent = async (event: EventBase) => {
+				const id = generateId(event);
+				await eventsCollection.updateOne(
+					{ _id: id },
+					{ $set: { _id: id, event } },
+					{ upsert: true }
+				);
+				
+				return id;
+			};
+
 			const removeEventFromStaged = async (roomId: string, id: string) => {
 				await eventsCollection.updateOne(
 					{ _id: id, "event.room_id": roomId },
@@ -207,12 +232,16 @@ export const routerWithMongodb = (db: Db) =>
 				getMissingEventsByDeep,
 				getLastEvent,
 				getAuthEvents,
-
-				removeEventFromStaged,
+				getRoomVersion,
+				getEventById,
 				getEventsByIds,
+				
+				removeEventFromStaged,
+				getEventsByRoomAndEventIds,
 				getOldestStagedEvent,
 				createStagingEvent,
 				createEvent,
+				upsertEvent,
 				upsertRoom,
 			};
 		})(),
