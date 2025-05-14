@@ -1,7 +1,6 @@
 import { Body, Controller, Inject, Injectable, Param, Put } from '@nestjs/common';
 import { InviteService } from '../services/invite.service';
 
-// This controller handles v2 invites
 @Controller('/_matrix/federation/v2')
 @Injectable()
 export class InviteController {
@@ -15,11 +14,10 @@ export class InviteController {
 		@Param('eventId') eventId: string,
 		@Body() body: any,
 	) {
-		return this.inviteService.processInvite(body.event);
+		return this.inviteService.processInvite(body.event, roomId, eventId);
 	}
 }
 
-// Create a separate controller for v1 invites (legacy)
 @Controller('/_matrix/federation/v1')
 @Injectable()
 export class InviteControllerV1 {
@@ -33,6 +31,6 @@ export class InviteControllerV1 {
 		@Param('eventId') eventId: string,
 		@Body() body: any,
 	) {
-		return this.inviteService.processInvite(body.event);
+		return this.inviteService.processInvite(body.event, roomId, eventId);
 	}
 }

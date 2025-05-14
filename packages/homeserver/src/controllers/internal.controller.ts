@@ -77,10 +77,8 @@ export class InternalMessageController {
         throw new Error('Signing key not found or configured');
       }
 
-      this.logger.debug(`Signing event for room ${roomId} with key ${signingKey.algorithm}:${signingKey.version}`);
       const signedEvent = await signEvent(eventForSigning, signingKey, serverName);
-
-      this.logger.debug(`Dispatching event ${signedEvent.event_id} to server ${targetServer} for room ${roomId}`);
+      
       await this.federationService.sendEventToServers(roomId, signedEvent, [targetServer]);
 
       this.logger.debug(`Federation service call initiated for event: ${signedEvent.event_id}`);

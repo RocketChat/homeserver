@@ -27,6 +27,15 @@ type ValidationResult = {
 	};
 };
 
+// Type for staged events that are waiting for dependencies
+interface StagedEvent {
+	_id: string;
+	event: EventBase;
+	origin: string;
+	missing_dependencies: string[];
+	staged_at: number;
+}
+
 @Injectable()
 export class EventService {
 	private readonly logger = new Logger("EventService");
@@ -63,6 +72,147 @@ export class EventService {
 		);
 	}
 
+	/**
+	 * Check if an event exists in the database, including staged events
+	 */
+	async checkIfEventExistsIncludingStaged(eventId: string): Promise<boolean> {
+		// First check regular events
+		const regularEvent = await this.eventRepository.findById(eventId);
+		if (regularEvent) {
+			return true;
+		}
+		
+		// Then check staged events
+		const stagedEvents = await this.eventRepository.find({ 
+			_id: eventId,
+			is_staged: true 
+		}, {});
+		
+		return stagedEvents.length > 0;
+	}
+	
+	/**
+	 * Store an event as staged with its missing dependencies
+	 */
+	async storeEventAsStaged(stagedEvent: StagedEvent): Promise<void> {
+		try {
+			// First check if the event already exists to avoid duplicates
+			const existingEvent = await this.eventRepository.findById(stagedEvent._id);
+			if (existingEvent) {
+				// If it already exists as a regular event (not staged), nothing to do
+				if (!(existingEvent as any).is_staged) {
+					this.logger.debug(`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`);
+					return;
+				}
+				
+				// Update the staged event with potentially new dependencies info
+				await this.eventRepository.upsert(stagedEvent.event);
+				// Make a separate update for metadata since upsert only handles the event data
+				// We do this by using the createStaged method, which should update if exists
+				await this.eventRepository.createStaged(stagedEvent.event);
+				this.logger.debug(`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`);
+			} else {
+				// Create a new staged event
+				await this.eventRepository.createStaged(stagedEvent.event);
+				
+				// Add metadata for tracking dependencies
+				const collection = await (this.eventRepository as any).getCollection();
+				await collection.updateOne(
+					{ _id: stagedEvent._id },
+					{ 
+						$set: { 
+							missing_dependencies: stagedEvent.missing_dependencies,
+							staged_at: stagedEvent.staged_at,
+							is_staged: true
+						} 
+					}
+				);
+				
+				this.logger.debug(`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`);
+			}
+		} catch (error) {
+			this.logger.error(`Error storing staged event ${stagedEvent._id}: ${error}`);
+			throw error;
+		}
+	}
+	
+	/**
+	 * Find all staged events in the database
+	 */
+	async findStagedEvents(): Promise<StagedEvent[]> {
+		// We need to find all events with the staged flag
+		// The explicit is_staged flag might be present, or the traditional staged flag
+		const events = await this.eventRepository.find(
+			{ $or: [{ is_staged: true }, { staged: true }] }, 
+			{}
+		);
+		return events as unknown as StagedEvent[];
+	}
+	
+	/**
+	 * Mark an event as no longer staged
+	 */
+	async markEventAsUnstaged(eventId: string): Promise<void> {
+		try {
+			// Use the existing repository method which is designed for this
+			await this.eventRepository.removeFromStaging("", eventId); // Room ID not needed
+			
+			// Also remove other staging metadata we might have added
+			// We need to do this directly since removeFromStaging only clears the staged flag
+			const collection = await (this.eventRepository as any).getCollection();
+			await collection.updateOne(
+				{ _id: eventId },
+				{ 
+					$unset: { 
+						is_staged: "", 
+						missing_dependencies: "", 
+						staged_at: "" 
+					} 
+				}
+			);
+			
+			this.logger.debug(`Marked event ${eventId} as no longer staged`);
+		} catch (error) {
+			this.logger.error(`Error unmarking staged event ${eventId}: ${error}`);
+			throw error;
+		}
+	}
+	
+	/**
+	 * Remove a dependency from all staged events that reference it
+	 */
+	async removeDependencyFromStagedEvents(dependencyId: string): Promise<number> {
+		try {
+			// We need to do this manually since there's no repository method specifically for this
+			let updatedCount = 0;
+			
+			// Get all staged events that have this dependency
+			const collection = await (this.eventRepository as any).getCollection();
+			const stagedEvents = await collection.find({
+				$or: [{ is_staged: true }, { staged: true }],
+				missing_dependencies: dependencyId
+			}).toArray();
+			
+			// Update each one to remove the dependency
+			for (const event of stagedEvents) {
+				const missingDeps = event.missing_dependencies || [];
+				const updatedDeps = missingDeps.filter((dep: string) => dep !== dependencyId);
+				
+				await collection.updateOne(
+					{ _id: event._id },
+					{ $set: { missing_dependencies: updatedDeps } }
+				);
+				
+				updatedCount++;
+			}
+			
+			return updatedCount;
+		} catch (error) {
+			this.logger.error(`Error removing dependency ${dependencyId} from staged events: ${error}`);
+			throw error;
+		}
+	}
+
 	async processIncomingPDUs(events: roomV10Type[]) {
 		const eventsWithIds = events.map((event) => {
 			const eventId = generateId(event);
@@ -78,10 +228,8 @@ export class EventService {
 		const validatedEvents: ValidationResult[] = [];
 
 		for (const event of eventsWithIds) {
-			// Step 1: Validate event format
 			let result = await this.validateEventFormat(event.eventId, event.event);
 
-			// Step 2: If format is valid, validate event type-specific rules
 			if (result.valid) {
 				result = await this.validateEventTypeSpecific(
 					event.eventId,
@@ -89,7 +237,6 @@ export class EventService {
 				);
 			}
 
-			// Step 3: If event type is valid, validate signatures and hashes
 			if (result.valid) {
 				result = await this.validateSignaturesAndHashes(
 					event.eventId,
@@ -108,15 +255,11 @@ export class EventService {
 				continue;
 			}
 
-			// Add successful events to the staging area for async processing
-			this.logger.debug(
-				`Adding validated event ${event.eventId} to staging area queue`,
-			);
 			this.stagingAreaService.addEventToQueue({
 				eventId: event.eventId,
 				roomId: event.event.room_id,
-				origin: event.event.origin || "",
-				event: event.event,
+				origin: event.event.origin,
+				event: event.event as unknown as EventBase,
 			});
 		}
 	}
@@ -384,8 +527,8 @@ export class EventService {
 		return schema;
 	}
 
-	async insertEvent(event: EventBase) {
-		await this.eventRepository.create(event);
+	async insertEvent(event: EventBase, eventId?: string) {
+		await this.eventRepository.create(event, eventId);
 	}
 
 	async getAuthEventsIdsForRoom(
