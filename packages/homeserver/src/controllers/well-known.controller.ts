@@ -20,8 +20,6 @@ export class WellKnownController {
                 .update(JSON.stringify(responseData))
                 .digest('hex');
 
-            console.log(etag);
-
             response.setHeader('ETag', etag);
             response.setHeader('Content-Type', 'application/json');
             
