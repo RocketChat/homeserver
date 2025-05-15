@@ -4,11 +4,9 @@ import {
   Controller,
   HttpException,
   HttpStatus,
-  Inject,
-  Post,
+  Post
 } from "@nestjs/common";
 import type { SigningKey } from "../keys"; // Ensure SigningKey is imported if not already
-import { RoomRepository } from "../repositories/room.repository";
 import { ConfigService } from "../services/config.service";
 import { EventService } from "../services/event.service";
 import { FederationService } from "../services/federation.service";
@@ -20,10 +18,9 @@ export class InternalMessageController {
 	private readonly logger = new Logger("InternalMessageController");
 
 	constructor(
-    @Inject(FederationService) private readonly federationService: FederationService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(RoomRepository) private readonly roomRepository: RoomRepository,
+    private readonly federationService: FederationService,
+    private readonly eventService: EventService,
+    private readonly configService: ConfigService,
   ) {}
 
 	@Post('send-signed-message')
@@ -34,7 +31,7 @@ export class InternalMessageController {
     this.logger.debug(`Received request to send message to room ${roomId} via ${targetServer} from ${senderUserId}`);
 
     try {
-      const serverName = this.configService.getServerName();
+      const serverName = this.configService.getServerConfig().name;
 
       const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
       const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
@@ -88,10 +85,10 @@ export class InternalMessageController {
         eventId: signedEvent.event_id,
         signedEvent: signedEvent
       };
-    } catch (error) {
-      this.logger.error(`Error in sendSignedMessage for room ${roomId}: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(`Error in sendSignedMessage for room ${roomId}: ${error instanceof Error ? error.message : String(error)}`);
       throw new HttpException(
-        `Failed to send message: ${error.message}`,
+        `Failed to send message: ${error instanceof Error ? error.message : String(error)}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

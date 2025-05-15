@@ -5,11 +5,11 @@ import { Logger } from '../utils/logger';
 
 const logger = new Logger('WellKnownController');
 
-@Controller('/')
+@Controller('/.well-known/matrix/server')
 export class WellKnownController {
 	constructor(private readonly configService: ConfigService) {}
 
-	@Get('/.well-known/matrix/server')
+	@Get()
 	async server(@Res() response: Response) {
         const responseData = {
             'm.server': `${this.configService.getServerConfig().name}:443`,
@@ -19,6 +19,8 @@ export class WellKnownController {
             const etag = new Bun.CryptoHasher('md5')
                 .update(JSON.stringify(responseData))
                 .digest('hex');
+
+            console.log(etag);
 
             response.setHeader('ETag', etag);
             response.setHeader('Content-Type', 'application/json');
