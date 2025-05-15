@@ -27,6 +27,6 @@
 		// For NestJS
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"allowSyntheticDefaultImports": true
+		"allowSyntheticDefaultImports": true,
 	}
 }

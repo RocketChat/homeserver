@@ -38,7 +38,7 @@ export class FederationClient {
     method: HttpMethod,
     targetServer: string,
     uri: string,
-    body?: any
+    body?: unknown
   ): Promise<T> {
     try {
       const { address, headers } = await resolveHostAddressByServerName(
@@ -58,7 +58,7 @@ export class FederationClient {
         throw new Error(`Invalid signing key configuration: Missing 'sign' method. Available properties: ${keyProps}`);
       }
       
-      let signedBody;
+      let signedBody: unknown;
       try {
         signedBody = body ? 
           await signJson(
@@ -66,14 +66,14 @@ export class FederationClient {
             this.signingKey,
             this.serverName
           ) : undefined;
-      } catch (signError: any) {
+      } catch (signError) {
         if (this.debug) {
           console.error(`[FederationClient] Error signing request: ${signError.message}`);
         }
         throw new Error(`Failed to sign request: ${signError.message}`);
       }
       
-      let auth;
+      let auth: string;
       try {
         auth = await authorizationHeaders(
           this.serverName,
@@ -83,7 +83,7 @@ export class FederationClient {
           extractURIfromURL(url),
           signedBody
         );
-      } catch (authError: any) {
+      } catch (authError) {
         if (this.debug) {
           console.error(`[FederationClient] Error generating authorization headers: ${authError.message}`);
         }
@@ -119,7 +119,7 @@ export class FederationClient {
       } catch (parseError) {
         throw new Error(`Invalid JSON response: ${responseText}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       if (this.debug) {
         console.error(`[FederationClient] Request failed: ${error.message}`);
       }
@@ -172,8 +172,8 @@ export class FederationClient {
     );
   }
   
-  async getEvent(targetServer: string, eventId: string): Promise<any> {
-    return this.sendRequest<any>(
+  async getEvent(targetServer: string, eventId: string): Promise<unknown> {
+    return this.sendRequest<unknown>(
       'GET',
       targetServer,
       FederationEndpoints.getEvent(eventId)
@@ -190,7 +190,7 @@ export class FederationClient {
     );
   }
   
-  async sendJoin(targetServer: string, roomId: string, eventId: string, joinEvent: any): Promise<SendJoinResponse> {
+  async sendJoin(targetServer: string, roomId: string, eventId: string, joinEvent: unknown): Promise<SendJoinResponse> {
     return this.sendRequest<SendJoinResponse>(
       'PUT',
       targetServer,
@@ -210,7 +210,7 @@ export class FederationClient {
     );
   }
   
-  async sendEvent(targetServer: string, event: any): Promise<SendTransactionResponse> {
+  async sendEvent(targetServer: string, event: unknown): Promise<SendTransactionResponse> {
     const transaction: Transaction = {
       origin: this.serverName,
       origin_server_ts: Date.now(),
@@ -220,8 +220,8 @@ export class FederationClient {
     return this.sendTransaction(targetServer, transaction);
   }
   
-  async getUserDevices(targetServer: string, userId: string): Promise<any> {
-    return this.sendRequest<any>(
+  async getUserDevices(targetServer: string, userId: string): Promise<unknown> {
+    return this.sendRequest<unknown>(
       'GET',
       targetServer,
       FederationEndpoints.userDevices(userId)

@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { generateKeyPairsFromString } from '../../homeserver/src/keys';
 import { FederationClient } from '../src';
 

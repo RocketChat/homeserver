@@ -1,4 +1,4 @@
-export function cache<TFunction extends (...args: any[]) => Promise<any>>(
+export function cache<TFunction extends (...args: unknown[]) => Promise<unknown>>(
 	fn: TFunction,
 	timeout: number,
 ): TFunction {

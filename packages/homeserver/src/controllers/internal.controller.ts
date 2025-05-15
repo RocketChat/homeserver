@@ -88,7 +88,7 @@ export class InternalMessageController {
         eventId: signedEvent.event_id,
         signedEvent: signedEvent
       };
-    } catch (error: any) {
+    } catch (error) {
       this.logger.error(`Error in sendSignedMessage for room ${roomId}: ${error.message}`);
       throw new HttpException(
         `Failed to send message: ${error.message}`,

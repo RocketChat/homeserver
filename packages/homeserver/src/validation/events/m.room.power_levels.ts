@@ -93,7 +93,7 @@ export async function validatePowerLevels(
       for (const [eventType, powerLevel] of Object.entries(content.events)) {
         if (typeof powerLevel !== 'number' || !Number.isInteger(powerLevel)) {
           logger.error(`Power levels event ${eventId} has invalid power level for ${eventType}: ${powerLevel}`);
-          return failure('M_INVALID_PARAM', `Event power levels must be integers`);
+          return failure('M_INVALID_PARAM', 'Event power levels must be integers');
         }
       }
     }
@@ -103,7 +103,7 @@ export async function validatePowerLevels(
       for (const [userId, powerLevel] of Object.entries(content.users)) {
         if (typeof powerLevel !== 'number' || !Number.isInteger(powerLevel)) {
           logger.error(`Power levels event ${eventId} has invalid power level for ${userId}: ${powerLevel}`);
-          return failure('M_INVALID_PARAM', `User power levels must be integers`);
+          return failure('M_INVALID_PARAM', 'User power levels must be integers');
         }
       }
     }

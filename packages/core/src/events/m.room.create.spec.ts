@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 
 import { generateId } from "../../../homeserver/src/authentication";
 import { generateKeyPairsFromString } from "../../../homeserver/src/keys";
-import { signEvent } from "../../../homeserver/src/signEvent";
-import { roomCreateEvent } from "./m.room.create";
+import { SignedEvent, signEvent } from "../../../homeserver/src/signEvent";
+import { RoomCreateEvent, roomCreateEvent } from "./m.room.create";
 
 const finalEventId = "$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4";
 const finalEvent = {
@@ -45,7 +45,7 @@ test("roomCreateEvent", async () => {
 
 	const signed = await signEvent(event, signature, "hs1");
 
-	expect(signed).toStrictEqual(finalEvent);
+	expect(signed).toStrictEqual(finalEvent as unknown as SignedEvent<RoomCreateEvent>);
 	expect(signed).toHaveProperty(
 		"signatures.hs1.ed25519:a_HDhg",
 		"rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg",

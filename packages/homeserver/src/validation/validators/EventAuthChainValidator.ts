@@ -25,7 +25,7 @@ const requiredAuthEvents: Record<string, { required: string[]; description: stri
 
 function getRequiredAuthEventsForType(eventType: string): string[] {
   return (requiredAuthEvents[eventType as keyof typeof requiredAuthEvents]
-    || requiredAuthEvents['default']).required;
+    || requiredAuthEvents.default).required;
 }
 
 /**
@@ -151,24 +151,23 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
       
       logger.debug(`Auth chain validation succeeded for ${eventId}`);
       return { eventId, event };
-    } else {
-      logger.warn(`Event ${eventId} is missing auth event types: ${missingAuthEventTypes.join(', ')}`);
-      
-      if (missingAuthEventTypes.includes('m.room.create')) {
-        logger.error(`Event ${eventId} is missing critical auth event: m.room.create`);
-        return {
-          eventId,
-          event,
-          error: {
-            errcode: 'M_MISSING_CRITICAL_AUTH',
-            error: 'Missing critical auth event: m.room.create'
-          }
-        };
-      }
-      
-      logger.debug(`Auth chain validation partially succeeded for ${eventId} (with missing auth types)`);
-      return { eventId, event };
     }
+    logger.warn(`Event ${eventId} is missing auth event types: ${missingAuthEventTypes.join(', ')}`);
+    
+    if (missingAuthEventTypes.includes('m.room.create')) {
+      logger.error(`Event ${eventId} is missing critical auth event: m.room.create`);
+      return {
+        eventId,
+        event,
+        error: {
+          errcode: 'M_MISSING_CRITICAL_AUTH',
+          error: 'Missing critical auth event: m.room.create'
+        }
+      };
+    }
+    
+    logger.debug(`Auth chain validation partially succeeded for ${eventId} (with missing auth types)`);
+    return { eventId, event };
   }
   
   private validateAuthEvents(
@@ -232,7 +231,7 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
     event: any,
     powerLevelsEvent: any
   ): number {
-    const isState = event.hasOwnProperty('state_key');
+    const isState = event.hasOwn('state_key');
     const defaultPower = isState ? 
       (powerLevelsEvent?.content?.state_default || 50) : 
       (powerLevelsEvent?.content?.events_default || 0);

@@ -1,18 +1,18 @@
-import { createValidator } from '../../Validator';
-import { success, failure } from '../../ValidationResult';
-import { CanonicalizedEvent, AuthorizedEvent, Event } from '../EventValidators';
+import { Collection, MongoClient } from 'mongodb';
+import { generateId } from '../../../authentication';
+import { makeRequest } from '../../../makeRequest';
 import { Logger } from '../../../routes/federation/logger';
 import { extractOrigin } from '../../../utils/extractOrigin';
-import { MongoClient, Collection } from 'mongodb';
-import { makeRequest } from '../../../makeRequest';
 import { getServerName } from '../../../utils/serverConfig';
-import { generateId } from '../../../authentication';
+import { failure, success } from '../../ValidationResult';
+import { createValidator } from '../../Validator';
+import { AuthorizedEvent, CanonicalizedEvent } from '../EventValidators';
 
 const logger = new Logger("AuthEventsValidator");
 
 interface StoredEvent {
   _id: string;
-  event: any;
+  event: unknown;
 }
 
 let client: MongoClient | null = null;
@@ -147,11 +147,11 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
         }
       });
       
-    } catch (networkError: any) {
+    } catch (networkError) {
       logger.error(`Network error fetching auth events from ${origin}: ${networkError.message || String(networkError)}`);
       return failure('M_FAILED_TO_FETCH_AUTH', `Failed to fetch auth events: ${networkError.message || String(networkError)}`);
     }
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`Failed to fetch auth events for ${eventId}: ${error.message || String(error)}`);
     return failure('M_MISSING_AUTH_EVENTS', `Failed to fetch auth events: ${error.message || String(error)}`);
   }

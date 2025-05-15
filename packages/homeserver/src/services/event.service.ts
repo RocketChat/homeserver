@@ -565,20 +565,20 @@ export class EventService {
 				...essentialEvents.map((event) => event._id),
 				...memberEvents.map((event) => event._id),
 			];
-		} else {
-			// For other event types or when no specific filtering is requested
-			query["event.type"] = {
-				$in: [
-					"m.room.create",
-					"m.room.join_rules",
-					"m.room.power_levels",
-					"m.room.member",
-				],
-			};
-
-			const authEvents = await this.eventRepository.find(query, {});
-			return authEvents.map((event) => event._id);
 		}
+		
+		// For other event types or when no specific filtering is requested
+		query["event.type"] = {
+			$in: [
+				"m.room.create",
+				"m.room.join_rules",
+				"m.room.power_levels",
+				"m.room.member",
+			],
+		};
+
+		const authEvents = await this.eventRepository.find(query, {});
+		return authEvents.map((event) => event._id);
 	}
 
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {

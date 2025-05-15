@@ -82,7 +82,7 @@ export class StagingArea {
     }
 
     logger.debug(`Event ${eventId} has ${missingDeps.length} missing dependencies`);
-    missingDeps.forEach(depId => this.missingEventsQueue.add(depId));
+    missingDeps.map((depId) => this.missingEventsQueue.add(depId));
   }
 
   public async addEvents(events: StagingEvent[], context: any) {

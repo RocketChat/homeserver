@@ -28,9 +28,9 @@ export class RoomState {
   
   private eventDepths: Map<string, number> = new Map();
   private depthToEvents: Map<number, Set<string>> = new Map();
-  private maxDepth: number = 0;
+  private maxDepth = 0;
   
-  private roomVersion: string = "10";
+  private roomVersion = "10";
   private roomCreator: string | null = null; 
   private joinedMembers: Set<string> = new Set();
   private invitedMembers: Set<string> = new Set();
@@ -310,7 +310,7 @@ export class RoomState {
   }
 
   private isStateEvent(event: any): boolean {
-    return event.type && event.hasOwnProperty('state_key');
+    return event.type && event.hasOwn('state_key');
   }
 
   public resolveState(eventIds: string[]): any[] {

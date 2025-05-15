@@ -39,7 +39,7 @@ export async function handleMatrixEvents(events: any[], context: any) {
       failed_count: results.length - successCount,
       results
     };
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`Error handling Matrix events: ${error.message}`);
     return {
       success: false,
@@ -51,7 +51,7 @@ export async function handleMatrixEvents(events: any[], context: any) {
 /**
  * Example of how to use the handleMatrixEvents function
  */
-export async function processMatrixEventsExample(events: any[], serverName: string, context: any) {
+export async function processMatrixEventsExample(events: unknown[], serverName: string, context: unknown) {
   // Set up context with necessary configuration and services
   const processingContext = {
     ...context,

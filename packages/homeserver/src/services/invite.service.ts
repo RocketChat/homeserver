@@ -4,8 +4,8 @@ import { MatrixError } from "../errors";
 import { makeSignedRequest } from "../makeRequest";
 import type { EventBase } from "../models/event.model";
 import {
-  getPublicKeyFromRemoteServer,
-  makeGetPublicKeyFromServerProcedure,
+	getPublicKeyFromRemoteServer,
+	makeGetPublicKeyFromServerProcedure,
 } from "../procedures/getPublicKeyFromServer";
 import { checkSignAndHashes } from "../utils/checkSignAndHashes";
 import { Logger } from "../utils/logger";
@@ -148,7 +148,7 @@ export class InviteService {
 			);
 
 			// Step 5: Setup public key retrieval function
-			logger.info(`Setting up public key retrieval function`);
+			logger.info('Setting up public key retrieval function');
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
 				this.serverService.getValidPublicKeyFromLocal,
 				(origin: string, key: string) =>

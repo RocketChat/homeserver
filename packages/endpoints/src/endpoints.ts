@@ -3,8 +3,8 @@ export interface Endpoints {}
 export interface EndpointDefinition {
 	auth: boolean;
 	rateLimit: boolean;
-	query: any;
-	response: any;
+	query: unknown;
+	response: unknown;
 }
 
 export interface Endpoint {

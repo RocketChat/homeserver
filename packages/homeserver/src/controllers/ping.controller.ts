@@ -1,4 +1,5 @@
 import { Controller, Get } from "@nestjs/common";
+// biome-ignore lint/style/useImportType: Its a true logger and not just a type
 import { LoggerService } from "../services/logger.service";
 
 @Controller("/ping")

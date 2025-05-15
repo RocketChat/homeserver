@@ -1,21 +1,15 @@
-import { Pipeline, ParallelValidation } from './Validator';
-import { 
-  Event, 
-  CanonicalizedEvent,
-  AuthorizedEvent,
-} from './validators/EventValidators';
-import { 
-  canonicalizeEvent, 
-  fetchAuthEvents, 
-  validateEventHash, 
-  validateEventSignature, 
-  validateAuthChain,
-  validateRoomRules 
-} from './validators/event';
 import { ValidationResult } from './ValidationResult';
-import { Logger } from '../routes/federation/logger';
-
-const logger = new Logger("EventValidationPipeline");
+import { ParallelValidation, Pipeline } from './Validator';
+import {
+  AuthorizedEvent,
+  CanonicalizedEvent,
+  Event,
+} from './validators/EventValidators';
+import {
+  canonicalizeEvent,
+  fetchAuthEvents,
+  validateEventHash
+} from './validators/event';
 
 /**
  * Creates a complete validation pipeline for Matrix federation events

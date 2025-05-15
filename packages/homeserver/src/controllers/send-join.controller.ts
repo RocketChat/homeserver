@@ -1,4 +1,4 @@
-import { Controller, Put } from '@nestjs/common';
+import { Body, Controller, Param, Put } from '@nestjs/common';
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
@@ -15,9 +15,7 @@ export class SendJoinController {
     ) {}
 
     @Put("/send_join/:roomId/:stateKey")
-    async sendJoin({ params, body, ...context }: { params: any, body: any, context: any }) {
-        const roomId = decodeURIComponent(params.roomId);
-        const stateKey = decodeURIComponent(params.stateKey);
+    async sendJoin(@Param('roomId') roomId: string, @Param('stateKey') stateKey: string, @Body() body: unknown) {
         const event = body as SignedEvent<HashedEvent<EventBase>>;
 
         const records = await this.eventService.findEvents({ "event.room_id": roomId }, { sort: { "event.depth": 1 } });

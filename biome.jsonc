@@ -7,8 +7,17 @@
 				"noEmptyInterface": "off"
 			},
 			"style": {
-				"noNonNullAssertion": "warn"
+				"noNonNullAssertion": "warn",
+				"useImportType": "off"
+			},
+			"complexity": {
+				"noUselessConstructor": "warn"
 			}
+		}
+	},
+	"javascript": {
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
 		}
 	}
 }

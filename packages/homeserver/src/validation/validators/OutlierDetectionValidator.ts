@@ -1,21 +1,21 @@
 import { Logger } from '../../utils/logger';
 import { Validator } from '../decorators/validator.decorator';
-import { IPipeline, ValidatorResponse } from '../pipelines';
+import type { EventType, EventTypeArray, IPipeline } from '../pipelines';
 
 const logger = new Logger("OutlierDetectionValidator");
 
 @Validator()
-export class OutlierDetectionValidator implements IPipeline {
-  async validate(events: any[], context: any): Promise<ValidatorResponse> {
+export class OutlierDetectionValidator implements IPipeline<EventTypeArray> {
+  async validate(events: (EventType & { type: string, state_key: string, event_id: string })[], context: any): Promise<EventTypeArray> {
     const pdus: Array<Record<string, any>> = [];
     const edus: Array<Record<string, any>> = [];
 
     for (const event of events) {
       try {
-        const eventId = event?.event_id || `${event.type}_${event.room_id}_${Date.now()}`;
+        const eventId = event?.event_id;
         logger.debug(`Checking for outlier status for event ${eventId}`);
         
-        if (event.type === 'm.room.create' && event.state_key === '') {
+        if (event.type === 'm.room.create' && event?.state_key === '') {
           logger.debug(`Event ${eventId} is a create event, not an outlier`);
           pdus.push({ [eventId]: {} });
           continue;
@@ -51,7 +51,7 @@ export class OutlierDetectionValidator implements IPipeline {
       }
     }
 
-    return { pdus, edus };
+    return pdus as unknown as EventTypeArray;
   }
   
   private async isEventReferenced(event: any, context: any): Promise<boolean> {

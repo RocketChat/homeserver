@@ -1,7 +1,7 @@
-import { createValidator } from '../../Validator';
-import { success, failure } from '../../ValidationResult';
-import { AuthorizedEvent } from '../EventValidators';
 import { Logger } from '../../../routes/federation/logger';
+import { failure, success } from '../../ValidationResult';
+import { createValidator } from '../../Validator';
+import { AuthorizedEvent } from '../EventValidators';
 
 const logger = new Logger("AuthChainValidator");
 
@@ -23,7 +23,7 @@ export const validateAuthChain = createValidator<AuthorizedEvent>(async (event, 
     logger.debug(`Auth chain considered valid for event ${eventId} (development mode)`);
     return success(event);
     
-  } catch (error: any) {
+  } catch (error) {
     logger.error(`Error validating auth chain: ${error.message || String(error)}`);
     return failure('M_INVALID_AUTH_CHAIN', `Error validating auth chain: ${error.message || String(error)}`);
   }

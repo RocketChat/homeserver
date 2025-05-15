@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { toUnpaddedBase64 } from '../binaryData';
 import { SigningKey } from '../keys';
+// biome-ignore lint/style/useImportType: Its a true config service and not just a type
 import { ConfigService } from '../services/config.service';
 import { signJson } from '../signJson';
 import { Logger } from '../utils/logger';

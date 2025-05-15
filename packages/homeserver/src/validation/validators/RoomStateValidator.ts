@@ -1,6 +1,6 @@
 import { RoomState } from "../../events/roomState";
 import { Logger } from "../../utils/logger";
-import { EventType, EventTypeArray, IPipeline } from "../pipelines";
+import type { EventType, EventTypeArray, IPipeline } from "../pipelines";
 
 const logger = new Logger("RoomStateValidator");
 

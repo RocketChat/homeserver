@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import * as dotenv from "dotenv";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { getKeyPair } from "../keys";
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || ".";

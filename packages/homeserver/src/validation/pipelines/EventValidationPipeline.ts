@@ -2,9 +2,9 @@ import { StagingEvent } from '../../events/stagingArea';
 import { Logger } from '../../utils/logger';
 import { Pipeline } from '../decorators/pipeline.decorator';
 import {
-    EventAuthChainValidator,
-    EventFormatValidator,
-    EventHashesAndSignaturesValidator
+  EventAuthChainValidator,
+  EventFormatValidator,
+  EventHashesAndSignaturesValidator
 } from '../validators';
 import { SequentialPipeline, type IPipeline } from './index';
 

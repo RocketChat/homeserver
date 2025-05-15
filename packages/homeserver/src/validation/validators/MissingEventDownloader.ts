@@ -59,13 +59,13 @@ export class MissingEventDownloader implements IPipeline<EventTypeArray> {
             if (result.missingEventIds.length > 0) {
                 logger.warn(`Failed to fetch all dependencies for event ${eventId}`);
                 throw new Error(`Failed to fetch all dependencies for event ${eventId}`);
-            } else {
-                logger.debug(`Successfully fetched all dependencies for event ${eventId}`);
+            }
             
-                if (result.events.length > 0) {
-                    if (Array.isArray(downloadedEvents)) {
-                        downloadedEvents.push(...result.events);
-                    }
+            logger.debug(`Successfully fetched all dependencies for event ${eventId}`);
+        
+            if (result.events.length > 0) {
+                if (Array.isArray(downloadedEvents)) {
+                    downloadedEvents.push(...result.events);
                 }
             }
         } catch (error: any) {

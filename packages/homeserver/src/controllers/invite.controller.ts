@@ -6,11 +6,7 @@ export class InviteController {
 	constructor(private readonly inviteService: InviteService) {}
 
 	@Put('/invite/:roomId/:eventId')
-	async receiveInvite(
-		@Param('roomId') roomId: string,
-		@Param('eventId') eventId: string,
-		@Body() body: any,
-	) {
+	async receiveInvite(@Body() body: unknown, @Param('roomId') roomId: string, @Param('eventId') eventId: string) {
 		return this.inviteService.processInvite(body.event, roomId, eventId);
 	}
 }
@@ -25,7 +21,7 @@ export class InviteControllerV1 {
 	async receiveInvite(
 		@Param('roomId') roomId: string,
 		@Param('eventId') eventId: string,
-		@Body() body: any,
+		@Body() body: unknown,
 	) {
 		return this.inviteService.processInvite(body.event, roomId, eventId);
 	}

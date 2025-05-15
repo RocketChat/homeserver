@@ -1,13 +1,13 @@
 import Elysia from "elysia";
-import { Collection, FindOptions, WithId, WithoutId, type Db } from "mongodb";
+import { Collection, FindOptions, WithoutId, type Db } from "mongodb";
 
-import { type Key } from "./mongodb";
-import { makeRequest } from "../makeRequest";
 import { InferContext } from "@bogeychan/elysia-logger";
+import { makeRequest } from "../makeRequest";
+import { type Key } from "./mongodb";
 
 import { type V2KeyQueryBody } from "@hs/core/src/query";
-import { Config } from "./config";
 import { getSignaturesFromRemote, signJson } from "../signJson";
+import { Config } from "./config";
 
 type OnlyKey = Omit<WithoutId<Key>, "_createdAt">;
 

@@ -41,7 +41,7 @@ export class DatabaseConnectionService {
       return;
     }
     
-    this.connectionPromise = new Promise<void>(async (resolve, reject) => {
+    this.connectionPromise = new Promise<void>((resolve, reject) => {
       try {
         const dbConfig = this.configService.getDatabaseConfig();
         
@@ -50,14 +50,10 @@ export class DatabaseConnectionService {
         };
         
         this.client = new MongoClient(dbConfig.uri, options);
-        await this.client.connect();
+        this.client.connect();
         
         this.db = this.client.db(dbConfig.name);
         this.logger.log(`Connected to MongoDB database: ${dbConfig.name}`);
-
-        // test
-        const test = await this.db.collection('test').find({}).toArray();
-        this.logger.log(`Test: ${JSON.stringify(test)}`);
         
         resolve();
       } catch (error: unknown) {

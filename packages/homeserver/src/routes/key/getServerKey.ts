@@ -1,9 +1,9 @@
 import { Elysia, t } from "elysia";
 import { toUnpaddedBase64 } from "../../binaryData";
-import { KeysDTO, ServerKeysDTO } from "../../dto";
-import { signJson } from "../../signJson";
+import { KeysDTO } from "../../dto";
 import { isConfigContext } from "../../plugins/isConfigContext";
 import { isKeysContext } from "../../plugins/isKeysContext";
+import { signJson } from "../../signJson";
 
 export const getServerKeyRoute = new Elysia()
 	.get(
@@ -105,7 +105,7 @@ export const getServerKeyRoute = new Elysia()
 				server_keys: {
 					[context.params.serverName]: {
 						[context.params.keyId || "undefined"]: {
-							minimum_valid_until_ts: parseInt(
+							minimum_valid_until_ts: Number.parseInt(
 								context.query.minimum_valid_until_ts || "0",
 							),
 						},
@@ -132,8 +132,8 @@ export const getServerKeyRoute = new Elysia()
 			return await keys?.query({
 				server_keys: {
 					[context.params.serverName]: {
-						["undefined"]: {
-							minimum_valid_until_ts: parseInt(
+						undefined: {
+							minimum_valid_until_ts: Number.parseInt(
 								context.query.minimum_valid_until_ts || "0",
 							),
 						},
