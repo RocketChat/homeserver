@@ -3,9 +3,7 @@ import * as dotenv from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
 import { getKeyPair } from "../keys";
-import { Logger } from "../utils/logger";
 
-const logger = new Logger("ConfigService");
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || ".";
 
 export interface AppConfig {
@@ -28,16 +26,11 @@ export interface AppConfig {
 		domain: string;
 		keyRefreshInterval: number;
 	};
-
-	signingKey?: any;
-	signingKeyPath?: string;
-	path?: string;
 }
 
 @Injectable()
 export class ConfigService {
 	private config: AppConfig;
-	private fileConfig: Partial<AppConfig> = {};
 
 	constructor() {
 		this.loadEnvFiles();
@@ -65,54 +58,17 @@ export class ConfigService {
 	}
 
 	private loadEnvFiles(): void {
-		const nodeEnv = process.env.NODE_ENV || "development";
+		const env = process.env.NODE_ENV || "development";
 
-		const defaultEnvPath = path.resolve(process.cwd(), ".env");
-		if (fs.existsSync(defaultEnvPath)) {
-			dotenv.config({ path: defaultEnvPath });
-			console.log("Loaded configuration from .env");
+		const envPath = path.resolve(process.cwd(), `.env.${env}`);
+		if (fs.existsSync(envPath)) {
+			dotenv.config({ path: envPath });
 		}
-
-		const envSpecificPath = path.resolve(process.cwd(), `.env.${nodeEnv}`);
-		if (fs.existsSync(envSpecificPath)) {
-			dotenv.config({ path: envSpecificPath });
-			console.log(`Loaded configuration from .env.${nodeEnv}`);
-		}
-
-		const localEnvPath = path.resolve(process.cwd(), ".env.local");
-		if (fs.existsSync(localEnvPath)) {
-			dotenv.config({ path: localEnvPath });
-			console.log("Loaded configuration from .env.local");
-		}
-	}
-
-	private mergeConfigs(
-		baseConfig: AppConfig,
-		newConfig: Partial<AppConfig>,
-	): AppConfig {
-		return {
-			...baseConfig,
-			...newConfig,
-			server: { ...baseConfig.server, ...newConfig.server },
-			database: { ...baseConfig.database, ...newConfig.database },
-			matrix: { ...baseConfig.matrix, ...newConfig.matrix },
-		};
 	}
 
 	async loadSigningKey() {
 		const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
-		logger.info(`Loading signing key from ${signingKeyPath}`);
-
-		try {
-			const keys = await getKeyPair({ signingKeyPath });
-			logger.info(
-				`Successfully loaded signing key for server ${this.config.server.name}`,
-			);
-			return keys;
-		} catch (error: any) {
-			logger.error(`Failed to load signing key: ${error.message}`);
-			throw error;
-		}
+		return getKeyPair({ signingKeyPath });
 	}
 
 	private initializeConfig(): AppConfig {
@@ -120,37 +76,20 @@ export class ConfigService {
 			server: {
 				name: process.env.SERVER_NAME || "rc1",
 				version: process.env.SERVER_VERSION || "1.0",
-				port: this.getNumberFromEnv("SERVER_PORT", 8080),
+				port: Number(process.env.SERVER_PORT) || 8080,
 				baseUrl: process.env.SERVER_BASE_URL || "http://localhost:8080",
 				host: process.env.SERVER_HOST || "0.0.0.0",
 			},
 			database: {
 				uri: process.env.MONGODB_URI || "mongodb://localhost:27017/matrix",
 				name: process.env.DATABASE_NAME || "matrix",
-				poolSize: this.getNumberFromEnv("DATABASE_POOL_SIZE", 10),
+				poolSize: Number(process.env.DATABASE_POOL_SIZE) || 10,
 			},
 			matrix: {
 				serverName: process.env.MATRIX_SERVER_NAME || "localhost",
 				domain: process.env.MATRIX_DOMAIN || "localhost",
-				keyRefreshInterval: this.getNumberFromEnv(
-					"MATRIX_KEY_REFRESH_INTERVAL",
-					60,
-				),
+				keyRefreshInterval: Number(process.env.MATRIX_KEY_REFRESH_INTERVAL) || 60,
 			},
 		};
-	}
-
-	private getNumberFromEnv(key: string, defaultValue: number): number {
-		return process.env[key]
-			? Number.parseInt(process.env[key]!, 10)
-			: defaultValue;
-	}
-
-	getServerName(): string {
-		return this.config.server.name;
-	}
-
-	isDebugEnabled(): boolean {
-		return process.env.DEBUG === "true";
 	}
 }

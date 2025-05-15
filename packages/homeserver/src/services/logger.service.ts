@@ -13,8 +13,8 @@ export class LoggerService {
   private readonly context: string;
   private static logLevel: LogLevel = LogLevel.DEBUG; // Default log level
 
-  constructor(context?: string) {
-    this.context = context || 'Application';
+  constructor() {
+    this.context = 'Application';
   }
 
   static setLogLevel(level: LogLevel): void {

@@ -1,13 +1,14 @@
-import { Inject, Injectable, forwardRef } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
+import { EventBase } from "../models/event.model";
 import {
-  type StagingAreaEventType,
-  StagingAreaQueue,
+	type StagingAreaEventType,
+	StagingAreaQueue,
 } from "../queues/staging-area.queue";
-import { Logger } from "../utils/logger";
 import { EventAuthorizationService } from "./event-authorization.service";
 import { EventStateService } from "./event-state.service";
 import { EventService } from "./event.service";
 import { FederationService } from "./federation.service";
+import { LoggerService } from "./logger.service";
 import { MissingEventService } from "./missing-event.service";
 import { NotificationService } from "./notification.service";
 
@@ -33,18 +34,20 @@ interface ExtendedStagingEvent extends StagingAreaEventType {
 
 @Injectable()
 export class StagingAreaService {
-	private readonly logger = new Logger("StagingAreaService");
+	private readonly logger: LoggerService;
 	private processingEvents = new Map<string, ExtendedStagingEvent>();
 
 	constructor(
-    @Inject(forwardRef(() => EventService)) private readonly eventService: EventService,
-    @Inject(MissingEventService) private readonly missingEventsService: MissingEventService,
-    @Inject(StagingAreaQueue) private readonly stagingAreaQueue: StagingAreaQueue,
-    @Inject(forwardRef(() => EventAuthorizationService)) private readonly eventAuthService: EventAuthorizationService,
-    @Inject(forwardRef(() => EventStateService)) private readonly eventStateService: EventStateService,
-    @Inject(forwardRef(() => FederationService)) private readonly federationService: FederationService,
-    @Inject(forwardRef(() => NotificationService)) private readonly notificationService: NotificationService
+    private readonly eventService: EventService,
+    private readonly missingEventsService: MissingEventService,
+    private readonly stagingAreaQueue: StagingAreaQueue,
+    private readonly eventAuthService: EventAuthorizationService,
+    private readonly eventStateService: EventStateService,
+    private readonly federationService: FederationService,
+    private readonly notificationService: NotificationService,
+    private readonly loggerService: LoggerService
   ) {
+    this.logger = this.loggerService.setContext('StagingAreaService');
     // Start processing the queue when the service initializes
     this.processQueue();
   }
@@ -212,13 +215,13 @@ export class StagingAreaService {
 
 		try {
 			this.logger.debug(`Authorizing event ${eventId}`);
-			const authEvents = await this.eventService.getAuthEventsForRoom(
+			const authEvents = await this.eventService.getAuthEventsIdsForRoom(
 				event.roomId,
 			);
 
 			const isAuthorized = await this.eventAuthService.authorizeEvent(
 				event.event,
-				authEvents,
+				authEvents as unknown as EventBase[],
 			);
 
 			if (isAuthorized) {
@@ -365,10 +368,10 @@ export class StagingAreaService {
 			// await this.notificationService.notifyClientsOfEvent(event.roomId, event.event);
 
 			trackedEvent.state = ProcessingState.COMPLETED;
-		} catch (error) {
+		} catch (error: unknown) {
 			// Error during notification - but we can consider the event processed
 			this.logger.warn(
-				`Notification error for ${event.eventId}: ${error.message || error}`,
+				`Notification error for ${event.eventId}: ${String(error)}`,
 			);
 			trackedEvent.state = ProcessingState.COMPLETED;
 		}

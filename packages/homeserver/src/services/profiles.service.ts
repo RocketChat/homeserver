@@ -1,22 +1,24 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
-import { Logger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
 // Import EventStore from plugins/mongodb for type compatibility with makeJoinEventBuilder
 import type { EventStore as MongoEventStore } from '../plugins/mongodb';
-
-const logger = new Logger('ProfilesService');
+import { LoggerService } from './logger.service';
 
 @Injectable()
 export class ProfilesService {
+  private readonly logger: LoggerService;
   constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(RoomService) private readonly roomService: RoomService,
-  ) {}
+    private readonly configService: ConfigService,
+    private readonly eventService: EventService,
+    private readonly roomService: RoomService,
+    private readonly loggerService: LoggerService
+  ) {
+    this.logger = this.loggerService.setContext('ProfilesService');
+  }
 
   async queryProfile(userId: string): Promise<any> {
     return {
@@ -54,12 +56,12 @@ export class ProfilesService {
 
     // Adapt the EventService calls to match the signature expected by makeJoinEventBuilder
     const getAuthEvents = async (roomId: string): Promise<MongoEventStore[]> => {
-      const authEvents = await this.eventService.getAuthEventsForRoom(roomId);
+      const authEvents = await this.eventService.getAuthEventsIdsForRoom(roomId);
       // Convert to the expected format
-      return authEvents.map(event => ({
-        _id: event.event_id || '',
+      return authEvents.map((event: string) => ({
+        _id: event,
         event: {
-          ...event,
+          event_id: event,
           origin: '', // Add required property
         },
         staged: false,

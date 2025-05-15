@@ -1,25 +1,22 @@
-import { Inject, Injectable, forwardRef } from "@nestjs/common";
-import {
-  type MissingEventType,
-  MissingEventsQueue,
-} from "../queues/missing-event.queue";
-import {
-  EventFetcherService
-} from "../services/event-fetcher.service";
+import { Injectable } from "@nestjs/common";
+import { MissingEventsQueue, MissingEventType } from "../queues/missing-event.queue";
+import { EventFetcherService } from "../services/event-fetcher.service";
 import { EventService } from "../services/event.service";
+import { LoggerService } from "../services/logger.service";
 import { StagingAreaService } from "../services/staging-area.service";
-import { Logger } from "../utils/logger";
 
 @Injectable()
 export class MissingEventListener {
-	private readonly logger = new Logger("MissingEventListener");
-
+  private readonly logger: LoggerService;
+  
 	constructor(
-    @Inject(forwardRef(() => MissingEventsQueue)) private readonly missingEventsQueue: MissingEventsQueue,
-    @Inject(forwardRef(() => StagingAreaService)) private readonly stagingAreaService: StagingAreaService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(EventFetcherService) private readonly eventFetcherService: EventFetcherService
+    private readonly missingEventsQueue: MissingEventsQueue,
+    private readonly stagingAreaService: StagingAreaService,
+    private readonly eventService: EventService,
+    private readonly eventFetcherService: EventFetcherService,
+    private readonly loggerService: LoggerService
   ) {
+    this.logger = this.loggerService.setContext('MissingEventListener');
     this.missingEventsQueue.registerHandler(this.handleQueueItem.bind(this));
     // setInterval(() => this.processStagedEvents(), 30 * 1000);
   }

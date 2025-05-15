@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Injectable } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import { toUnpaddedBase64 } from '../binaryData';
 import { SigningKey } from '../keys';
 import { ConfigService } from '../services/config.service';
@@ -8,9 +8,8 @@ import { Logger } from '../utils/logger';
 const logger = new Logger('ServerController');
 
 @Controller('/_matrix/key/v2')
-@Injectable()
 export class ServerController {
-    constructor(@Inject(ConfigService) private readonly configService: ConfigService) {}
+    constructor(private readonly configService: ConfigService) {}
 
     @Get("/server")
     async server() {

@@ -1,22 +1,18 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { Collection, Filter, FindOptions } from "mongodb";
 import { generateId } from "../authentication";
-import { DatabaseConnection } from "../database/database.connection";
 import type { EventBase, EventStore } from "../models/event.model";
+import { DatabaseConnectionService } from "../services/database-connection.service";
 
 @Injectable()
 export class EventRepository {
 	private collection: Collection<EventStore> | null = null;
 
-	constructor(
-    @Inject(DatabaseConnection) private readonly dbConnection: DatabaseConnection
-  ) {}
+	constructor(private readonly dbConnection: DatabaseConnectionService) {
+		this.getCollection();
+	}
 
 	private async getCollection(): Promise<Collection<EventStore>> {
-		if (!this.collection && !this.dbConnection) {
-			throw new Error("Database connection was not injected properly");
-		}
-
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<EventStore>("events");
 		return this.collection;

@@ -1,22 +1,24 @@
 import type { EventBase as CoreEventBase } from "@hs/core/src/events/eventBase";
-import { Inject, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { FederationClient } from "../../../federation-sdk/src";
 import type { SignedEvent } from "../signEvent";
-import { Logger } from "../utils/logger";
 import { ConfigService } from "./config.service";
+import { LoggerService } from "./logger.service";
 
 @Injectable()
 export class FederationService {
-	private readonly logger = new Logger("FederationService");
+	private readonly logger: LoggerService;
 	private federationClient: FederationClient | null = null;
 
 	constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService
-  ) {
-    this.initFederationClient().catch(err => {
-      this.logger.error(`Failed to initialize federation client: ${err.message}`);
-    });
-  }
+		private readonly configService: ConfigService,
+		private readonly loggerService: LoggerService
+	) {
+		this.logger = this.loggerService.setContext('FederationService');
+		this.initFederationClient().catch(err => {
+			this.logger.error(`Failed to initialize federation client: ${err.message}`);
+		});
+	}
 
 	private async initFederationClient() {
 		if (this.federationClient) return; // Avoid re-initialization
@@ -33,11 +35,10 @@ export class FederationService {
 			}
 
 			this.federationClient = new FederationClient({
-				serverName: this.configService.getServerName(),
-				signingKey: signingKey, // Pass the SigningKey object
-				debug: this.configService.isDebugEnabled(),
+				serverName: this.configService.getServerConfig().name,
+				signingKey: signingKey,
+				debug: true,
 			});
-			this.logger.debug("Federation client initialized.");
 		} catch (error: unknown) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);

@@ -1,15 +1,9 @@
-import { Body, Controller, Get, Inject, Injectable, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ProfilesService } from '../services/profiles.service';
-import { Logger } from "../utils/logger";
-
-const logger = new Logger("ProfilesController");
 
 @Controller('/_matrix/federation/v1')
-@Injectable()
 export class ProfilesController {
-    constructor(
-        @Inject(ProfilesService) private readonly profilesService: ProfilesService
-    ) {}
+    constructor(private readonly profilesService: ProfilesService) {}
 
     @Get("/query/profile")
     async queryProfile(@Query() queryParams: { user_id: string }) {
@@ -52,7 +46,6 @@ export class ProfilesController {
     async eventAuth(
         @Param("roomId") roomId: string,
         @Param("eventId") eventId: string,
-        @Query() query: any
     ) {
         return this.profilesService.eventAuth(roomId, eventId);
     }

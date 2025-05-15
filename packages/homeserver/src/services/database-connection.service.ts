@@ -1,36 +1,46 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Db, MongoClient, MongoClientOptions } from 'mongodb';
-import { ConfigService } from '../services/config.service';
+import { ConfigService } from './config.service';
+import { LoggerService } from './logger.service';
 
 @Injectable()
-export class DatabaseConnection {
+export class DatabaseConnectionService {
   private client: MongoClient | null = null;
   private db: Db | null = null;
   private connectionPromise: Promise<void> | null = null;
+  private readonly logger: LoggerService;
   
-  constructor(@Inject(ConfigService) private readonly configService: ConfigService) {
-    this.connect();
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly loggerService: LoggerService
+  ) {
+    this.logger = this.loggerService.setContext('DatabaseConnection');
+    this.connect().catch(err => 
+      this.logger.error(`Initial database connection failed: ${err.message}`)
+    );
   }
   
   async getDb(): Promise<Db> {
     if (!this.db) {
       await this.connect();
     }
-    return this.db!;
+    
+    if (!this.db) {
+      throw new Error('Database connection not established');
+    }
+    
+    return this.db;
   }
   
   private async connect(): Promise<void> {
-    // Return existing connection promise if one is in progress
     if (this.connectionPromise) {
       return this.connectionPromise;
     }
     
-    // Return if already connected
     if (this.client && this.db) {
       return;
     }
     
-    // Create a new connection promise
     this.connectionPromise = new Promise<void>(async (resolve, reject) => {
       try {
         const dbConfig = this.configService.getDatabaseConfig();
@@ -43,11 +53,16 @@ export class DatabaseConnection {
         await this.client.connect();
         
         this.db = this.client.db(dbConfig.name);
-        console.log(`Connected to MongoDB database: ${dbConfig.name}`);
+        this.logger.log(`Connected to MongoDB database: ${dbConfig.name}`);
+
+        // test
+        const test = await this.db.collection('test').find({}).toArray();
+        this.logger.log(`Test: ${JSON.stringify(test)}`);
         
         resolve();
-      } catch (error) {
-        console.error('Failed to connect to MongoDB:', error);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to connect to MongoDB: ${message}`);
         this.connectionPromise = null;
         reject(new Error('Database connection failed'));
       }
@@ -62,7 +77,7 @@ export class DatabaseConnection {
       this.client = null;
       this.db = null;
       this.connectionPromise = null;
-      console.log('Disconnected from MongoDB');
+      this.logger.log('Disconnected from MongoDB');
     }
   }
 } 

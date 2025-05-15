@@ -1,7 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Collection, ObjectId } from 'mongodb';
-import { DatabaseConnection } from '../database/database.connection';
 import { EventBase } from '../models/event.model';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Room = {
   room_id: string;
@@ -13,21 +13,17 @@ type Room = {
 
 @Injectable()
 export class RoomRepository {
-  private collection: Collection<Room> | null = null;
-  
-  constructor(
-    @Inject(DatabaseConnection) private readonly dbConnection: DatabaseConnection
-  ) {}
-  
-  private async getCollection(): Promise<Collection<Room>> {
-    if (!this.collection && !this.dbConnection) {
-      throw new Error('Database connection was not injected properly');
-    }
-    
-    const db = await this.dbConnection.getDb();
-    this.collection = db.collection<Room>('rooms');
-    return this.collection;
-  }
+	private collection: Collection<Room> | null = null;
+
+	constructor(private readonly dbConnection: DatabaseConnectionService) {
+		this.getCollection();
+	}
+
+	private async getCollection(): Promise<Collection<Room>> {
+		const db = await this.dbConnection.getDb();
+		this.collection = db.collection<Room>("rooms");
+		return this.collection;
+	}
 
   async upsert(roomId: string, state: EventBase[]) {
     const collection = await this.getCollection();

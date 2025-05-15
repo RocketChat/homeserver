@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { FederationClient } from '../../../federation-sdk/src';
 import { generateId } from '../authentication';
 import { EventRepository } from '../repositories/event.repository';
-import { Logger } from '../utils/logger';
 import { ConfigService } from './config.service';
+import { LoggerService } from './logger.service';
 
 export interface FetchedEvents {
   events: any[];
@@ -12,21 +12,20 @@ export interface FetchedEvents {
 
 @Injectable()
 export class EventFetcherService {
-  private readonly logger = new Logger('EventFetcherService');
+  private readonly logger: LoggerService;
   private federationClient: FederationClient | null = null;
   
   constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventRepository) private readonly eventRepository: EventRepository
+    private readonly configService: ConfigService,
+    private readonly eventRepository: EventRepository,
+    private readonly loggerService: LoggerService
   ) {
-    console.log(`\n\n\n\n`);
+    this.logger = this.loggerService.setContext('EventFetcherService');
     
     // Initialize the federation client
     this.initFederationClient().catch(err => {
       this.logger.error(`Failed to initialize federation client: ${err.message}`);
     });
-
-    console.log(`\n\n\n\n`);
   }
   
   private async initFederationClient(): Promise<void> {
@@ -35,9 +34,9 @@ export class EventFetcherService {
       const signingKey = Array.isArray(signingKeys) ? signingKeys[0] : signingKeys;
 
       this.federationClient = new FederationClient({
-        serverName: this.configService.getServerName(),
+        serverName: this.configService.getServerConfig().name,
         signingKey,
-        debug: this.configService.isDebugEnabled()
+        debug: true
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -57,7 +56,6 @@ export class EventFetcherService {
       return { events: [], missingEventIds: [] };
     }
     
-    // Ensure federation client is initialized
     if (!this.federationClient) {
       await this.initFederationClient();
     }
@@ -150,7 +148,7 @@ export class EventFetcherService {
       
       for (const chunk of chunks) {
         if (targetServerName === 'rc1') {
-          this.logger.info('Skipping rc1');
+          this.logger.log('Skipping rc1');
           return [];
         }
 

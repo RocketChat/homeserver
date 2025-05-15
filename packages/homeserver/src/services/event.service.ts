@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { z } from "zod";
 import { generateId } from "../authentication";
 import { MatrixError } from "../errors";
@@ -7,15 +7,15 @@ import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
 } from "../procedures/getPublicKeyFromServer";
+import { StagingAreaQueue } from "../queues/staging-area.queue";
 import { EventRepository } from "../repositories/event.repository";
 import { KeyRepository } from "../repositories/key.repository";
 import { RoomRepository } from "../repositories/room.repository";
 import { checkSignAndHashes } from "../utils/checkSignAndHashes";
-import { Logger } from "../utils/logger";
 import { eventSchemas } from "../validation/schemas/event-schemas";
 import type { roomV10Type } from "../validation/schemas/room-v10.type";
 import { ConfigService } from "./config.service";
-import { StagingAreaService } from "./staging-area.service";
+import { LoggerService } from "./logger.service";
 
 type ValidationResult = {
 	eventId: string;
@@ -37,15 +37,18 @@ interface StagedEvent {
 
 @Injectable()
 export class EventService {
-	private readonly logger = new Logger("EventService");
+	private readonly logger: LoggerService;
 
 	constructor(
-		@Inject(EventRepository) private readonly eventRepository: EventRepository,
-		@Inject(RoomRepository) private readonly roomRepository: RoomRepository,
-		@Inject(KeyRepository) private readonly keyRepository: KeyRepository,
-		@Inject(ConfigService) private readonly configService: ConfigService,
-		@Inject(forwardRef(() => StagingAreaService)) private readonly stagingAreaService: StagingAreaService
-  ) {}
+		private readonly eventRepository: EventRepository,
+		private readonly roomRepository: RoomRepository,
+		private readonly keyRepository: KeyRepository,
+		private readonly configService: ConfigService,
+		private readonly stagingAreaQueue: StagingAreaQueue,
+		private readonly loggerService: LoggerService
+	) {
+		this.logger = this.loggerService.setContext('EventService');
+	}
 
 	async checkIfEventsExists(
 		eventIds: string[],
@@ -247,7 +250,7 @@ export class EventService {
 				continue;
 			}
 
-			this.stagingAreaService.addEventToQueue({
+			this.stagingAreaQueue.enqueue({
 				eventId: event.eventId,
 				roomId: event.event.room_id,
 				origin: event.event.origin,
@@ -358,12 +361,11 @@ export class EventService {
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-				(origin, keyId) =>
-					this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
+				(origin, keyId) => this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
 				(origin, key) =>
 					getPublicKeyFromRemoteServer(
 						origin,
-						this.configService.getServerName(),
+						this.configService.getServerConfig().name,
 						key,
 					),
 				(origin, keyId, publicKey) =>
@@ -404,6 +406,7 @@ export class EventService {
 					`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`,
 				);
 			}
+
 		}
 
 		if (event.auth_events && event.auth_events.length > 0) {

@@ -1,14 +1,13 @@
-import { Controller, Get, Inject, Injectable, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ConfigService } from '../services/config.service';
 import { Logger } from '../utils/logger';
 
 const logger = new Logger('WellKnownController');
 
 @Controller('/')
-@Injectable()
 export class WellKnownController {
-	constructor(@Inject(ConfigService) private readonly configService: ConfigService) {}
+	constructor(private readonly configService: ConfigService) {}
 
 	@Get('/.well-known/matrix/server')
 	async server(@Res() response: Response) {
@@ -24,10 +23,10 @@ export class WellKnownController {
             response.setHeader('ETag', etag);
             response.setHeader('Content-Type', 'application/json');
             
-            response.status(200).json(responseData);
+            return responseData;
         } catch (error) {
             logger.error(error);
-            response.status(500).json({ error: 'Internal server error' });
+            return Promise.reject({ error: 'Internal server error' });
         }
 	}
 }
