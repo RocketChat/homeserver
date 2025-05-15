@@ -1,40 +1,18 @@
-import {
-	Body,
-	Controller,
-	HttpStatus,
-	Inject,
-	Injectable,
-	Param,
-	Put,
-	Res,
-} from "@nestjs/common";
-import type { Response } from "express";
-import { EventService } from "../services/event.service";
-import { Logger } from "../utils/logger";
-
-const logger = new Logger("SendTransactionRoute");
+import { Controller, HttpStatus, Put, Req, Res } from "@nestjs/common";
+import type { EventService } from "../services/event.service";
 
 @Controller("/_matrix/federation/v1")
-@Injectable()
 export class TransactionsController {
-	constructor(@Inject(EventService) private readonly eventService: EventService) {}
+	constructor(private readonly eventService: EventService) {
+		console.log("\n\n\n");
+		console.log(this.eventService);
+		console.log("\n\n\n");
+	}
 
 	@Put("/send/:txnId")
-	async send(
-		@Param('txnId') txnId: string,
-		@Body() body: any,
-		@Res() res: Response,
-	) {
+	async send(@Req() req: Request, @Res() res: Response) {
 		try {
-			logger.info(`Received transaction ${txnId}`);
-
-			const { pdus = [] } = body as { pdus: roomV10Type[] };
-
-			if (!this.eventService) {
-				logger.warn("EventService is null, transaction processing skipped");
-				res.status(HttpStatus.OK).json({ pdus: {}, edus: {} });
-				return;
-			}
+			const { pdus = [] } = req.body;
 
 			const processedPDUs = await this.eventService.processIncomingPDUs(pdus);
 
@@ -43,7 +21,6 @@ export class TransactionsController {
 				edus: {},
 			});
 		} catch (error) {
-			logger.error(`Error processing transaction: ${error}`);
 			res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
 				errcode: "M_UNKNOWN",
 				error: "Failed to process transaction",

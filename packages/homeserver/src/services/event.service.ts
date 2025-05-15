@@ -27,7 +27,6 @@ type ValidationResult = {
 	};
 };
 
-// Type for staged events that are waiting for dependencies
 interface StagedEvent {
 	_id: string;
 	event: EventBase;
@@ -41,11 +40,11 @@ export class EventService {
 	private readonly logger = new Logger("EventService");
 
 	constructor(
-    @Inject(EventRepository) private readonly eventRepository: EventRepository,
-    @Inject(RoomRepository) private readonly roomRepository: RoomRepository,
-    @Inject(KeyRepository) private readonly keyRepository: KeyRepository,
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(forwardRef(() => StagingAreaService)) private readonly stagingAreaService: StagingAreaService
+		@Inject(EventRepository) private readonly eventRepository: EventRepository,
+		@Inject(RoomRepository) private readonly roomRepository: RoomRepository,
+		@Inject(KeyRepository) private readonly keyRepository: KeyRepository,
+		@Inject(ConfigService) private readonly configService: ConfigService,
+		@Inject(forwardRef(() => StagingAreaService)) private readonly stagingAreaService: StagingAreaService
   ) {}
 
 	async checkIfEventsExists(
@@ -214,16 +213,11 @@ export class EventService {
 	}
 
 	async processIncomingPDUs(events: roomV10Type[]) {
-		const eventsWithIds = events.map((event) => {
-			const eventId = generateId(event);
-			return {
-				eventId,
-				event,
-				valid: true,
-			};
-		});
-
-		this.logger.debug(`Processing ${eventsWithIds.length} incoming PDUs`);
+		const eventsWithIds = events.map((event) => ({
+			eventId: generateId(event),
+			event,
+			valid: true,
+		}));
 
 		const validatedEvents: ValidationResult[] = [];
 
@@ -249,9 +243,7 @@ export class EventService {
 
 		for (const event of validatedEvents) {
 			if (!event.valid) {
-				this.logger.warn(
-					`Validation failed for event ${event.eventId}: ${event.error?.errcode} - ${event.error?.error}`,
-				);
+				this.logger.warn(`Validation failed for event ${event.eventId}: ${event.error?.errcode} - ${event.error?.error}`);
 				continue;
 			}
 
@@ -264,10 +256,7 @@ export class EventService {
 		}
 	}
 
-	private async validateEventFormat(
-		eventId: string,
-		event: roomV10Type,
-	): Promise<ValidationResult> {
+	private async validateEventFormat(eventId: string, event: roomV10Type): Promise<ValidationResult> {
 		try {
 			const roomVersion = await this.getRoomVersion(event);
 			if (!roomVersion) {
@@ -287,10 +276,8 @@ export class EventService {
 
 			if (!validationResult.success) {
 				const formattedErrors = JSON.stringify(validationResult.error.format());
-				this.logger.error(
-					`Event ${eventId} failed schema validation: ${formattedErrors}`,
-				);
-
+				this.logger.error(`Event ${eventId} failed schema validation: ${formattedErrors}`);
+				
 				return {
 					eventId,
 					event,
@@ -301,16 +288,10 @@ export class EventService {
 					},
 				};
 			}
-
-			this.logger.debug(
-				`Event ${eventId} passed schema validation for room version ${roomVersion}`,
-			);
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			const errorMessage = error?.message || String(error);
-			this.logger.error(
-				`Error validating format for ${eventId}: ${errorMessage}`,
-			);
+			this.logger.error(`Error validating format for ${eventId}: ${errorMessage}`);
 
 			return {
 				eventId,
@@ -324,18 +305,12 @@ export class EventService {
 		}
 	}
 
-	private async validateEventTypeSpecific(
-		eventId: string,
-		event: roomV10Type,
-	): Promise<ValidationResult> {
+	private async validateEventTypeSpecific(eventId: string, event: roomV10Type): Promise<ValidationResult> {
 		try {
 			if (event.type === "m.room.create") {
 				const errors = this.validateCreateEvent(event);
-
 				if (errors.length > 0) {
-					this.logger.error(
-						`Create event ${eventId} validation failed: ${errors.join(", ")}`,
-					);
+					this.logger.error(`Create event ${eventId} validation failed: ${errors.join(", ")}`);
 					return {
 						eventId,
 						event,
@@ -348,11 +323,8 @@ export class EventService {
 				}
 			} else {
 				const errors = this.validateNonCreateEvent(event);
-
 				if (errors.length > 0) {
-					this.logger.error(
-						`Event ${eventId} validation failed: ${errors.join(", ")}`,
-					);
+					this.logger.error(`Event ${eventId} validation failed: ${errors.join(", ")}`);
 					return {
 						eventId,
 						event,
@@ -365,12 +337,9 @@ export class EventService {
 				}
 			}
 
-			this.logger.debug(`Event ${eventId} passed type-specific validation`);
 			return { eventId, event, valid: true };
 		} catch (error: any) {
-			this.logger.error(
-				`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`,
-			);
+			this.logger.error(`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`);
 			return {
 				eventId,
 				event,

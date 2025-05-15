@@ -1,18 +1,17 @@
-import { Controller, Get, Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from '../services/config.service';
+import { Controller, Get } from "@nestjs/common";
+import { LoggerService } from "../services/logger.service";
 
-@Controller('/ping')
-@Injectable()
+@Controller("/ping")
 export class PingController {
-  constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-  ) {}
+	private readonly logger: LoggerService;
 
-  @Get('/ping')
-  ping() {
-    return {
-      status: 200,
-      body: 'PONG!',
-    };
-  }
+	constructor(loggerService: LoggerService) {
+		this.logger = loggerService.setContext('PingController');
+	}
+
+	@Get()
+	ping() {
+		this.logger.debug("Ping endpoint called");
+		return "PONG!";
+	}
 }

@@ -6,10 +6,13 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/bun": "latest",
-    "husky": "^9.1.7"
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.18",
+    "husky": "^9.1.7",
+    "tsconfig-paths": "^4.2.0"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.8.3"
   },
   "workspaces": ["packages/*"],
   "dependencies": {
@@ -18,14 +21,16 @@
     "@elysiajs/swagger": "^1.1.6",
     "@hs/fake": "workspace:*",
     "@hs/homeserver": "workspace:*",
-    "@nestjs/common": "^11.1.0",
-    "@nestjs/core": "^11.1.0",
+    "@nestjs/common": "^11.1.1",
+    "@nestjs/core": "^11.1.1",
+    "@nestjs/platform-express": "^11.1.1",
     "bun-bagel": "^1.1.0",
     "dotenv": "^16.5.0",
     "elysia": "^1.1.26",
     "mongodb": "^6.11.0",
     "node-jsonwebtoken": "^0.0.1",
     "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "tweetnacl": "^1.0.3",
     "zod": "^3.24.3"
   },
