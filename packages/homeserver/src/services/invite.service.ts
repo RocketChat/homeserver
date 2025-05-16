@@ -21,6 +21,7 @@ export class InviteService {
 
 	async processInvite(event: ProcessInviteEvent, roomId: string, eventId: string): Promise<unknown> {
 		try {
+			// TODO: Validate before inserting
 			await this.eventService.insertEvent(event.event, undefined, {
 				invite_room_state: event.invite_room_state,
 				room_version: event.room_version,

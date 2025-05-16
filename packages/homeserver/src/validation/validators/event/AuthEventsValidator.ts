@@ -1,14 +1,11 @@
 import { Collection, MongoClient } from 'mongodb';
 import { generateId } from '../../../authentication';
 import { makeRequest } from '../../../makeRequest';
-import { Logger } from '../../../routes/federation/logger';
 import { extractOrigin } from '../../../utils/extractOrigin';
 import { getServerName } from '../../../utils/serverConfig';
 import { failure, success } from '../../ValidationResult';
 import { createValidator } from '../../Validator';
 import { AuthorizedEvent, CanonicalizedEvent } from '../EventValidators';
-
-const logger = new Logger("AuthEventsValidator");
 
 interface StoredEvent {
   _id: string;
@@ -43,17 +40,17 @@ async function ensureDbConnection() {
  */
 export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEvent>(async (event, txnId, eventId) => {
   try {
-    logger.debug(`Fetching auth events for event ${eventId}`);
+    console.debug(`Fetching auth events for event ${eventId}`);
     
     const { eventsCollection } = await ensureDbConnection();
     
     const authEventIds = event.event.auth_events || [];
     if (authEventIds.length === 0) {
-      logger.warn(`Event ${eventId} has no auth events`);
+      console.warn(`Event ${eventId} has no auth events`);
       return failure('M_MISSING_AUTH_EVENTS', 'Event has no auth events');
     }
 
-    logger.debug(`Checking for locally available auth events: ${authEventIds.join(', ')}`);
+    console.debug(`Checking for locally available auth events: ${authEventIds.join(', ')}`);
     const existingEvents = await eventsCollection.find({ 
       _id: { $in: authEventIds }
     }).toArray();
@@ -63,7 +60,7 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
     const missingEventIds = authEventIds.filter((id: string) => !existingEventMap.has(id));
     
     if (missingEventIds.length === 0) {
-      logger.debug(`All auth events found locally for ${eventId}`);
+      console.debug(`All auth events found locally for ${eventId}`);
       
       const authEventObjects = existingEvents.map(storedEvent => ({
         event: storedEvent.event
@@ -81,7 +78,7 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
       });
     }
     
-    logger.debug(`Need to fetch ${missingEventIds.length} missing auth events from remote: ${missingEventIds.join(', ')}`);
+    console.debug(`Need to fetch ${missingEventIds.length} missing auth events from remote: ${missingEventIds.join(', ')}`);
     
     const origin = extractOrigin(event.event.sender);
     const localServerName = getServerName();
@@ -102,11 +99,11 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
       });
       
       if (!response.events || !Array.isArray(response.events) || response.events.length === 0) {
-        logger.warn(`No events returned from ${origin} for auth events: ${missingEventIds.join(', ')}`);
+        console.warn(`No events returned from ${origin} for auth events: ${missingEventIds.join(', ')}`);
         return failure('M_MISSING_AUTH_EVENTS', 'Remote server did not return required auth events');
       }
       
-      logger.debug(`Received ${response.events.length} events from remote server ${origin}`);
+      console.debug(`Received ${response.events.length} events from remote server ${origin}`);
       
       // TODO: Validate the events before storing them
       await Promise.all(response.events.map(async (fetchedEvent) => {
@@ -123,7 +120,7 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
       const stillMissingIds = authEventIds.filter((id: string) => !existingEventMap.has(id));
       
       if (stillMissingIds.length > 0) {
-        logger.warn(`Still missing ${stillMissingIds.length} auth events after fetching: ${stillMissingIds.join(', ')}`);
+        console.warn(`Still missing ${stillMissingIds.length} auth events after fetching: ${stillMissingIds.join(', ')}`);
         return failure('M_MISSING_AUTH_EVENTS', `Failed to retrieve all required auth events: ${stillMissingIds.join(', ')}`);
       }
       
@@ -134,7 +131,7 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
         };
       });
       
-      logger.debug(`Successfully fetched all auth events for ${eventId}`);
+      console.debug(`Successfully fetched all auth events for ${eventId}`);
       
       return success({
         event: event.event,
@@ -148,11 +145,11 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
       });
       
     } catch (networkError) {
-      logger.error(`Network error fetching auth events from ${origin}: ${networkError.message || String(networkError)}`);
+      console.error(`Network error fetching auth events from ${origin}: ${networkError.message || String(networkError)}`);
       return failure('M_FAILED_TO_FETCH_AUTH', `Failed to fetch auth events: ${networkError.message || String(networkError)}`);
     }
   } catch (error) {
-    logger.error(`Failed to fetch auth events for ${eventId}: ${error.message || String(error)}`);
+    console.error(`Failed to fetch auth events for ${eventId}: ${error.message || String(error)}`);
     return failure('M_MISSING_AUTH_EVENTS', `Failed to fetch auth events: ${error.message || String(error)}`);
   }
 }); 

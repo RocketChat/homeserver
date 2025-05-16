@@ -24,7 +24,7 @@ export class SequentialPipeline<T> implements IPipeline<T> {
       try {
         result = await validator.validate(result, context);
       } catch (error: unknown) {
-        logger.error(error);
+        console.error(error);
         throw error;
       }
     }

@@ -1,11 +1,8 @@
 import { MatrixError } from '../../errors';
 import { getPublicKeyFromRemoteServer, makeGetPublicKeyFromServerProcedure } from '../../procedures/getPublicKeyFromServer';
 import { checkSignAndHashes } from '../../utils/checkSignAndHashes';
-import { Logger } from '../../utils/logger';
 import { Validator } from '../decorators/validator.decorator';
-import { EventTypeArray, IPipeline } from '../pipelines';
-
-const logger = new Logger('EventHashesAndSignaturesValidator');
+import type { EventTypeArray, IPipeline } from '../pipelines';
 
 @Validator()
 export class EventHashesAndSignaturesValidator implements IPipeline<EventTypeArray> {
@@ -25,7 +22,7 @@ export class EventHashesAndSignaturesValidator implements IPipeline<EventTypeArr
         await checkSignAndHashes(event.event, event.event.origin, getPublicKeyFromServer);
         response.push({ eventId, event: event.event });
       } catch (error: any) {
-        logger.error(error);
+        console.error(error);
         response.push({
           eventId,
           error: {

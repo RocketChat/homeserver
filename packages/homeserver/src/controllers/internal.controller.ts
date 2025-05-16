@@ -74,8 +74,6 @@ export class InternalMessageController {
       
       await this.federationService.sendEventToServers(roomId, signedEvent, [targetServer]);
 
-      
-
       return {
         message: 'Event built, signed, and dispatched to federation service',
         eventId: signedEvent.event_id,

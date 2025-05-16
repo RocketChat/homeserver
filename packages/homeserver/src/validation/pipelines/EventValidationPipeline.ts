@@ -1,5 +1,4 @@
 import { StagingEvent } from '../../events/stagingArea';
-import { Logger } from '../../utils/logger';
 import { Pipeline } from '../decorators/pipeline.decorator';
 import {
   EventAuthChainValidator,
@@ -7,8 +6,6 @@ import {
   EventHashesAndSignaturesValidator
 } from '../validators';
 import { SequentialPipeline, type IPipeline } from './index';
-
-const logger = new Logger("EventValidationPipeline");
 
 @Pipeline()
 export class EventValidationPipeline implements IPipeline<StagingEvent[]> {
@@ -31,7 +28,7 @@ export class EventValidationPipeline implements IPipeline<StagingEvent[]> {
 
   async saveValidatedEvents(events: StagingEvent[], context: any) {
     if (!context.mongo?.createEvent) {
-      logger.warn('No createEvent function provided');
+      console.warn('No createEvent function provided');
       return;
     }
 
@@ -39,7 +36,7 @@ export class EventValidationPipeline implements IPipeline<StagingEvent[]> {
       try {
         await context.mongo.createEvent(event.event);
       } catch (error) {
-        logger.error(`Failed to save validated event: ${error}`);
+        console.error(`Failed to save validated event: ${error}`);
       }
     }
   }
