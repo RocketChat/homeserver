@@ -53,7 +53,7 @@ export class InviteService {
 				origin: event.event.origin,
 			});
 
-			// Waits 5 seconds before accepting invite - just for testing purposes
+			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
 			void new Promise(resolve => setTimeout(resolve, 5000))
 				.then(() => this.acceptInvite(roomId, event.event.state_key));
 			
@@ -85,92 +85,25 @@ export class InviteService {
 
 	private async handleInviteProcessing(event: ProcessInviteEvent): Promise<void> {
 		try {
-			const serverConfig = this.configService.getServerConfig();
-			
-			// Step 1: Make a join request to get the join event template
 			const responseMake = await this.federationService.makeJoin(event.event.origin, event.event.room_id, event.event.state_key, event.room_version);
-			this.logger.debug('responseMake', responseMake);
-			
-			// Step 2: Send the join event
 			const responseBody = await this.federationService.sendJoin(event.event.origin, event.event.room_id, event.event.state_key, responseMake.event, false);
-			this.logger.debug('responseBody', responseBody);
 
-			// // Step 3: Validate the response
-			// const createEvent = responseBody.state.find(e => e.type === "m.room.create");
-			// if (!createEvent) {
-			// 	throw new MatrixError("400", "Invalid response: missing m.room.create event");
-			// }
+			if (!responseBody.state || !responseBody.auth_chain) {
+				this.logger.warn(`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`);
+				return;
+			}
 
-			// if (responseBody.event) {
-			// 	await this.eventService.insertEvent(responseBody.event);
-			// 	this.logger.log(`Stored join event for ${event.event.state_key}`);
-			// }
+			const allEvents = [...responseBody.state, ...responseBody.auth_chain, responseBody.event];
+			
+			// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
+			// await this.eventService.processIncomingPDUs(allEvents);
 
-			// // Step 4: Process auth chain and state
-			// const auth_chain = new Map(
-			// 	responseBody.auth_chain.map((e: any) => [generateId(e), e]),
-			// );
-			// const state = new Map(
-			// 	responseBody.state.map((e: any) => [generateId(e), e]),
-			// );
+			// TODO: Also remove the insertEvent calls :)
+			for (const event of allEvents) {
+				await this.eventService.insertEventIfNotExists(event);
+			}
 
-			// Step 5: Setup public key retrieval function
-			// const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-			// 	this.serverService.getValidPublicKeyFromLocal,
-			// 	(origin: string, key: string) =>
-			// 		getPublicKeyFromRemoteServer(origin, serverConfig.name, key),
-			// 	this.serverService.storePublicKey,
-			// );
-
-			// // Step 6: Validate PDUs
-			// const validPDUs = new Map<string, MatrixEvent>();
-			// let validCount = 0;
-			// let invalidCount = 0;
-
-			// for await (const [eventId, pduEvent] of [
-			// 	...auth_chain.entries(),
-			// 	...state.entries(),
-			// ]) {
-			// 	try {
-			// 		const isValid = await checkSignAndHashes(
-			// 			pduEvent as any,
-			// 			(pduEvent as any).origin,
-			// 			getPublicKeyFromServer,
-			// 		);
-
-			// 		if (isValid) {
-			// 			validPDUs.set(eventId as string, pduEvent as MatrixEvent);
-			// 			validCount++;
-			// 		} else {
-			// 			this.logger.warn(`Invalid event ${eventId} of type ${pduEvent.type}`);
-			// 			invalidCount++;
-			// 		}
-			// 	} catch (e: any) {
-			// 		this.logger.error(`Error checking signature for event ${eventId}: ${e.message}`);
-			// 		console.log(e);
-			// 		invalidCount++;
-			// 	}
-			// }
-
-			// // Step 7: Get the create event
-			// const signedCreateEvent = [...validPDUs.entries()].find(
-			// 	([, eventData]) => eventData.type === "m.room.create",
-			// );
-
-			// if (!signedCreateEvent) {
-			// 	throw new MatrixError("400", "Unexpected create event(s) in auth chain");
-			// }
-
-			// // Step 8: Upsert room and events
-			// await this.roomService.upsertRoom(signedCreateEvent[1].room_id, [
-			// 	...validPDUs.values(),
-			// ]);
-
-			// await Promise.all(
-			// 	[...validPDUs.entries()].map(([_, eventData]) =>
-			// 		this.eventService.insertEvent(eventData),
-			// 	),
-			// );
+			this.logger.debug(`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`);
 		} catch (error: any) {
 			this.logger.error(
 				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${error.message}`,

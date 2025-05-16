@@ -501,6 +501,10 @@ export class EventService {
 		return this.eventRepository.create(event, eventId, args);
 	}
 
+	async insertEventIfNotExists(event: EventBase): Promise<string> {
+		return this.eventRepository.createIfNotExists(event);
+	}
+
 	async getAuthEventsIdsForRoom(
 		roomId: string,
 		eventType?: string,

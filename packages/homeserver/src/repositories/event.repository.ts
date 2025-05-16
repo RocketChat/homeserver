@@ -82,6 +82,21 @@ export class EventRepository {
 		return id;
 	}
 
+	async createIfNotExists(event: EventBase): Promise<string> {
+		const collection = await this.getCollection();
+		const id = event.event_id || generateId(event);
+
+		const existingEvent = await collection.findOne({ _id: id });
+		if (existingEvent) return id;
+
+		await collection.insertOne({
+			_id: id,
+			event,
+		});
+
+		return id;
+	}
+
 	async createStaged(event: EventBase): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
