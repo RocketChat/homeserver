@@ -68,8 +68,8 @@ export const getPublicKeyFromRemoteServer = async (
 	}
 
 	if (
-		!(await verifyJsonSignature(
-			result,
+		!(verifyJsonSignature(
+			result as object,
 			domain,
 			Uint8Array.from(atob(signature.signature), (c) => c.charCodeAt(0)),
 			Uint8Array.from(atob(publickey.key), (c) => c.charCodeAt(0)),

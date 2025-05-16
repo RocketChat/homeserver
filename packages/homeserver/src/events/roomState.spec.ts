@@ -62,8 +62,7 @@ describe('RoomState', () => {
     return plEvent;
   }
 
-  // Test basic event addition
-  test.only('should add a valid event', async () => {
+  test('should add a valid event', async () => {
     const event = createEvent();
     const result = await roomState.addEvent(event);
     expect(result).toBe(true);

@@ -1,190 +1,95 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { generateId } from '../authentication';
-import { MatrixError } from '../errors';
-import { makeSignedRequest } from '../makeRequest';
-import { EventBase } from '../models/event.model';
-import { getPublicKeyFromRemoteServer, makeGetPublicKeyFromServerProcedure } from '../procedures/getPublicKeyFromServer';
-import { checkSignAndHashes } from '../utils/checkSignAndHashes';
-import { Logger } from '../utils/logger';
-import { ConfigService } from './config.service';
-import { EventService } from './event.service';
-import { RoomService } from './room.service';
-import { ServerService } from './server.service';
+import { FederationService } from "@hs/federation-sdk";
+import { Injectable, Logger } from "@nestjs/common";
+import type { EventBase } from "../models/event.model";
+import { EventService } from "./event.service";
 
-const logger = new Logger('InviteService');
-
-interface MatrixEvent extends EventBase {
-  origin: string;
-}
-
-type MakeJoinResponse = {
-  event: any;
-};
-
-type SendJoinResponse = {
-  state: any[];
-  auth_chain: any[];
-  event?: any;
+// TODO: Have better (detailed/specific) event input type
+export type ProcessInviteEvent = {
+	event: EventBase & { origin: string, room_id: string, state_key: string };
+	invite_room_state: unknown;
+	room_version: string;
 };
 
 @Injectable()
 export class InviteService {
-  constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(ServerService) private readonly serverService: ServerService,
-    @Inject(RoomService) private readonly roomService: RoomService,
-  ) {}
+	private readonly logger = new Logger(InviteService.name);
+	
+	constructor(
+		private readonly eventService: EventService,
+		private readonly federationService: FederationService,
+  	) {}
 
-  async processInvite(event: any): Promise<any> {
-    logger.info(`Processing invite for room ${event.room_id} from ${event.sender} to ${event.state_key}`);
-    
-    try {
-      await this.eventService.insertEvent(event);
-      logger.info(`Successfully stored invite event for ${event.state_key}`);
-      
-      // Process the invite asynchronously
-      setTimeout(async () => {
-        try {
-          await this.handleInviteProcessing(event);
-        } catch (error: any) {
-          logger.error(`Error in async invite processing: ${error.message}`);
-        }
-      }, 1000);
+	async processInvite(event: ProcessInviteEvent, roomId: string, eventId: string): Promise<unknown> {
+		try {
+			// TODO: Validate before inserting
+			await this.eventService.insertEvent(event.event, undefined, {
+				invite_room_state: event.invite_room_state,
+				room_version: event.room_version,
+			});
+			
+			this.logger.debug('Received invite event', {
+				room_id: roomId,
+				event_id: eventId,
+				user_id: event.event.state_key,
+				origin: event.event.origin,
+			});
 
-      return { event };
-    } catch (error: any) {
-      logger.error(`Failed to process invite: ${error.message}`);
-      throw error;
-    }
-  }
+			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
+			void new Promise(resolve => setTimeout(resolve, 5000))
+				.then(() => this.acceptInvite(roomId, event.event.state_key));
+			
+			return { event: event.event };
+		} catch (error: any) {
+			this.logger.error(`Failed to process invite: ${error.message}`);
+			throw error;
+		}
+	}
 
-  private async handleInviteProcessing(event: any): Promise<void> {
-    try {
-      logger.info(`Starting invite processing for ${event.state_key} in room ${event.room_id}`);
-      
-      const signingKey = await this.configService.getSigningKey();
-      logger.info(`Loaded signing key for server ${this.configService.getServerConfig().name}`);
-      
-      const serverConfig = this.configService.getServerConfig();
+	async acceptInvite(roomId: string, userId: string): Promise<void> {
+		try {
+			const inviteEvent = await this.eventService.findInviteEvent(roomId, userId);
 
-      // Step 1: Make a join request to get the join event template
-      logger.info(`Making join request to ${event.origin} for room ${event.room_id}`);
-      const responseMake = await makeSignedRequest({
-        method: 'GET',
-        domain: event.origin,
-        uri: `/_matrix/federation/v1/make_join/${event.room_id}/${event.state_key}` as any,
-        signingKey: signingKey[0],
-        signingName: serverConfig.name,
-        queryString: 'ver=10',
-      }) as MakeJoinResponse;
+			if (!inviteEvent) {
+				throw new Error(`No invite found for user ${userId} in room ${roomId}`);
+			}
+			
+			await this.handleInviteProcessing({
+				event: inviteEvent.event as EventBase & { origin: string, room_id: string, state_key: string },
+				invite_room_state: inviteEvent.invite_room_state,
+				room_version: inviteEvent.room_version || "10",
+			});
+		} catch (error: any) {
+			this.logger.error(`Failed to accept invite: ${error.message}`);
+			throw error;
+		}
+	}
 
-      logger.info(`Received make_join response for ${event.state_key}`);
+	private async handleInviteProcessing(event: ProcessInviteEvent): Promise<void> {
+		try {
+			const responseMake = await this.federationService.makeJoin(event.event.origin, event.event.room_id, event.event.state_key, event.room_version);
+			const responseBody = await this.federationService.sendJoin(event.event.origin, event.event.room_id, event.event.state_key, responseMake.event, false);
 
-      // Step 2: Send the join event
-      logger.info(`Sending join event to ${event.origin} for room ${event.room_id}`);
-      const responseBody = await makeSignedRequest({
-        method: 'PUT',
-        domain: event.origin,
-        uri: `/_matrix/federation/v2/send_join/${event.room_id}/${event.state_key}` as any,
-        body: {
-          ...responseMake.event,
-          origin: serverConfig.name,
-          origin_server_ts: Date.now(),
-          depth: responseMake.event.depth + 1,
-        },
-        signingKey: signingKey[0],
-        signingName: serverConfig.name,
-        queryString: 'omit_members=false',
-      }) as SendJoinResponse;
+			if (!responseBody.state || !responseBody.auth_chain) {
+				this.logger.warn(`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`);
+				return;
+			}
 
-      logger.info(`Received send_join response for ${event.state_key}`);
+			const allEvents = [...responseBody.state, ...responseBody.auth_chain, responseBody.event];
+			
+			// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
+			// await this.eventService.processIncomingPDUs(allEvents);
 
-      // Step 3: Validate the response
-      const createEvent = responseBody.state.find((e: any) => e.type === 'm.room.create');
-      if (!createEvent) {
-        throw new MatrixError('400', 'Invalid response: missing m.room.create event');
-      }
+			// TODO: Also remove the insertEvent calls :)
+			for (const event of allEvents) {
+				await this.eventService.insertEventIfNotExists(event);
+			}
 
-      logger.info(`Found create event for room ${event.room_id}`);
-
-      if (responseBody.event) {
-        await this.eventService.insertEvent(responseBody.event);
-        logger.info(`Stored join event for ${event.state_key}`);
-      }
-
-      // Step 4: Process auth chain and state
-      logger.info(`Processing auth chain with ${responseBody.auth_chain.length} events and state with ${responseBody.state.length} events`);
-      
-      const auth_chain = new Map(
-        responseBody.auth_chain.map((e: any) => [generateId(e), e])
-      );
-      const state = new Map(
-        responseBody.state.map((e: any) => [generateId(e), e])
-      );
-
-      // Step 5: Setup public key retrieval function
-      logger.info(`Setting up public key retrieval function`);
-      const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-        this.serverService.getValidPublicKeyFromLocal,
-        (origin: string, key: string) => getPublicKeyFromRemoteServer(origin, serverConfig.name, key),
-        this.serverService.storePublicKey
-      );
-
-      // Step 6: Validate PDUs
-      logger.info(`Validating ${auth_chain.size + state.size} PDUs`);
-      const validPDUs = new Map<string, MatrixEvent>();
-      let validCount = 0;
-      let invalidCount = 0;
-      
-      for await (const [eventId, pduEvent] of [...auth_chain.entries(), ...state.entries()]) {
-        try {
-          const isValid = await checkSignAndHashes(
-            pduEvent as any,
-            (pduEvent as any).origin,
-            getPublicKeyFromServer
-          );
-
-          if (isValid) {
-            validPDUs.set(eventId as string, pduEvent as MatrixEvent);
-            validCount++;
-          } else {
-            logger.warn(`Invalid event ${eventId} of type ${pduEvent.type}`);
-            invalidCount++;
-          }
-        } catch (e: any) {
-          logger.error(`Error checking signature for event ${eventId}: ${e.message}`);
-          invalidCount++;
-        }
-      }
-      
-      logger.info(`Validated PDUs: ${validCount} valid, ${invalidCount} invalid`);
-
-      // Step 7: Get the create event
-      const signedCreateEvent = [...validPDUs.entries()].find(
-        ([, eventData]) => eventData.type === 'm.room.create'
-      );
-
-      if (!signedCreateEvent) {
-        throw new MatrixError('400', 'Unexpected create event(s) in auth chain');
-      }
-
-      logger.info(`Found signed create event: ${signedCreateEvent[0]}`);
-
-      // Step 8: Upsert room and events
-      logger.info(`Upserting room ${signedCreateEvent[1].room_id} with ${validPDUs.size} events`);
-      await this.roomService.upsertRoom(
-        signedCreateEvent[1].room_id,
-        [...validPDUs.values()]
-      );
-
-      logger.info(`Storing ${validPDUs.size} events in the event repository`);
-      await Promise.all([...validPDUs.entries()].map(([_, eventData]) => this.eventService.insertEvent(eventData)));
-      
-      logger.info(`Successfully processed invite for ${event.state_key} in room ${event.room_id}`);
-    } catch (error: any) {
-      logger.error(`Error processing invite for ${event?.state_key} in room ${event?.room_id}: ${error.message}`);
-      throw error;
-    }
-  }
-} 
+			this.logger.debug(`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`);
+		} catch (error: any) {
+			this.logger.error(
+				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${error.message}`,
+			);
+			throw error;
+		}
+	}
+}

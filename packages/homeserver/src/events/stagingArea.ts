@@ -77,17 +77,17 @@ export class StagingArea {
     const missingDeps = await this.checkForMissingDependencies(event);
 
     if (missingDeps.length === 0) {
-      logger.debug(`Event ${eventId} has all dependencies, adding to processing queue`);
+      console.debug(`Event ${eventId} has all dependencies, adding to processing queue`);
       return this.addToProcessingQueue(stagingEvent);
     }
 
-    logger.debug(`Event ${eventId} has ${missingDeps.length} missing dependencies`);
-    missingDeps.forEach(depId => this.missingEventsQueue.add(depId));
+    console.debug(`Event ${eventId} has ${missingDeps.length} missing dependencies`);
+    missingDeps.map((depId) => this.missingEventsQueue.add(depId));
   }
 
   public async addEvents(events: StagingEvent[], context: any) {
     this.context = context;
-    logger.debug(`Adding ${events.length} events to staging area`);
+    console.debug(`Adding ${events.length} events to staging area`);
     for (const event of events) {
       await this.processNewEvent(event);
     }

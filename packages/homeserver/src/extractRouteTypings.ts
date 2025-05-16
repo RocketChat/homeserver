@@ -1,11 +1,11 @@
 import type Elysia from "elysia";
 
-type ExtractElysiaRoutes<T> = T extends Elysia<any, any, any, any, any, infer S>
+type ExtractElysiaRoutes<T> = T extends Elysia<unknown, unknown, unknown, unknown, unknown, infer S>
 	? S
 	: never;
 
 type ConcatRoutes<
-	R extends Record<string, any> = Record<string, any>,
+	R extends Record<string, unknown> = Record<string, unknown>,
 	P extends string = "",
 	K extends keyof R = keyof R,
 > = K extends string
@@ -16,5 +16,5 @@ type ConcatRoutes<
 			: ConcatRoutes<R[K], `${P}/${K}`, keyof R[K]>
 	: K;
 
-export type ElysiaRoutes<T extends Elysia<any, any, any, any, any, any>> =
+export type ElysiaRoutes<T extends Elysia<unknown, unknown, unknown, unknown, unknown, unknown>> =
 	ConcatRoutes<ExtractElysiaRoutes<T>>;

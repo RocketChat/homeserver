@@ -1,9 +1,6 @@
+import { failure, success } from '../../ValidationResult';
 import { createValidator } from '../../Validator';
-import { success, failure } from '../../ValidationResult';
-import { AuthorizedEvent } from '../EventValidators';
-import { Logger } from '../../../routes/federation/logger';
-
-const logger = new Logger("RoomRulesValidator");
+import type { AuthorizedEvent } from '../EventValidators';
 
 /**
  * Validates room auth rules
@@ -13,7 +10,7 @@ const logger = new Logger("RoomRulesValidator");
  */
 export const validateRoomRules = createValidator<AuthorizedEvent>(async (event, txnId, eventId) => {
   try {
-    logger.debug(`Validating room rules for event ${eventId}`);
+    console.debug(`Validating room rules for event ${eventId}`);
     
     // Implementation would apply room auth rules
     // In a real implementation, this would:
@@ -24,14 +21,14 @@ export const validateRoomRules = createValidator<AuthorizedEvent>(async (event, 
     const isValid = true;
     
     if (isValid) {
-      logger.debug(`Room rules validation passed for event ${eventId}`);
+      console.debug(`Room rules validation passed for event ${eventId}`);
       return success(event);
     }
     
-    logger.warn(`Room rules validation failed for event ${eventId}`);
+    console.warn(`Room rules validation failed for event ${eventId}`);
     return failure('M_UNAUTHORIZED', 'Event failed room authorization rules');
   } catch (error: any) {
-    logger.error(`Error validating room rules for ${eventId}: ${error.message || String(error)}`);
+    console.error(`Error validating room rules for ${eventId}: ${error.message || String(error)}`);
     return failure('M_UNAUTHORIZED', `Error validating room rules: ${error.message || String(error)}`);
   }
 }); 

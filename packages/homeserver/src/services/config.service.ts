@@ -1,11 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { getKeyPair } from '../keys';
-import { Logger } from '../utils/logger';
 
-const logger = new Logger('ConfigService');
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
 export interface AppConfig {
@@ -36,6 +34,7 @@ export interface AppConfig {
 
 @Injectable()
 export class ConfigService {
+  private readonly logger = new Logger(ConfigService.name);
   private config: AppConfig;
   private fileConfig: Partial<AppConfig> = {};
   
@@ -70,19 +69,19 @@ export class ConfigService {
     const defaultEnvPath = path.resolve(process.cwd(), '.env');
     if (fs.existsSync(defaultEnvPath)) {
       dotenv.config({ path: defaultEnvPath });
-      console.log('Loaded configuration from .env');
+      this.logger.log('Loaded configuration from .env');
     }
     
     const envSpecificPath = path.resolve(process.cwd(), `.env.${nodeEnv}`);
     if (fs.existsSync(envSpecificPath)) {
       dotenv.config({ path: envSpecificPath });
-      console.log(`Loaded configuration from .env.${nodeEnv}`);
+      this.logger.log(`Loaded configuration from .env.${nodeEnv}`);
     }
     
     const localEnvPath = path.resolve(process.cwd(), '.env.local');
     if (fs.existsSync(localEnvPath)) {
       dotenv.config({ path: localEnvPath });
-      console.log('Loaded configuration from .env.local');
+      this.logger.log('Loaded configuration from .env.local');
     }
   }
   
@@ -98,14 +97,14 @@ export class ConfigService {
 
   async loadSigningKey() {
     const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
-    logger.info(`Loading signing key from ${signingKeyPath}`);
+    this.logger.log(`Loading signing key from ${signingKeyPath}`);
     
     try {
       const keys = await getKeyPair({ signingKeyPath });
-      logger.info(`Successfully loaded signing key for server ${this.config.server.name}`);
+      this.logger.log(`Successfully loaded signing key for server ${this.config.server.name}`);
       return keys;
     } catch (error: any) {
-      logger.error(`Failed to load signing key: ${error.message}`);
+      this.logger.error(`Failed to load signing key: ${error.message}`);
       throw error;
     }
   }
@@ -116,7 +115,7 @@ export class ConfigService {
         name: process.env.SERVER_NAME || 'rc1',
         version: process.env.SERVER_VERSION || '1.0',
         port: this.getNumberFromEnv('SERVER_PORT', 8080),
-        baseUrl: process.env.SERVER_BASE_URL || 'http://localhost:8080',
+        baseUrl: process.env.SERVER_BASE_URL || 'http://rc1:8080',
         host: process.env.SERVER_HOST || '0.0.0.0',
       },
       database: {
@@ -125,15 +124,15 @@ export class ConfigService {
         poolSize: this.getNumberFromEnv('DATABASE_POOL_SIZE', 10),
       },
       matrix: {
-        serverName: process.env.MATRIX_SERVER_NAME || 'localhost',
-        domain: process.env.MATRIX_DOMAIN || 'localhost',
+        serverName: process.env.MATRIX_SERVER_NAME || 'rc1',
+        domain: process.env.MATRIX_DOMAIN || 'rc1',
         keyRefreshInterval: this.getNumberFromEnv('MATRIX_KEY_REFRESH_INTERVAL', 60),
       },
     };
   }
   
   private getNumberFromEnv(key: string, defaultValue: number): number {
-    return process.env[key] ? parseInt(process.env[key]!, 10) : defaultValue;
+    return process.env[key] ? Number.parseInt(process.env[key]!) : defaultValue;
   }
 
   getServerName(): string {

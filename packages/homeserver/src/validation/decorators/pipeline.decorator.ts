@@ -1,14 +1,19 @@
 export function Pipeline() {
-    return function(target: new (...args: any[]) => any): any {
+    return <T extends new (...args: any[]) => any>(target: T): T => {
         let instance: any;
-        return class extends target {
+        
+        const SingletonClass = class extends target {
             constructor(...args: any[]) {
                 if (instance) {
-                    return instance;
+                    super(...args);
+                    Object.assign(this, instance);
+                } else {
+                    super(...args);
+                    instance = this;
                 }
-                super(...args);
-                instance = this;
             }
         };
+        
+        return SingletonClass as T;
     };
 }

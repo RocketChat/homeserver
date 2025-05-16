@@ -144,7 +144,7 @@ export function computeAndMergeHash<T extends Record<string, unknown>>(
 		outlier,
 		destinations,
 		...toHash
-	} = content as any;
+	} = content;
 
 	const [algorithm, hash] = computeHash(toHash);
 
@@ -169,7 +169,7 @@ export function computeHash<T extends Record<string, unknown>>(
 		outlier,
 		destinations,
 		...toHash
-	} = content as any;
+	} = content;
 
 	return [
 		algorithm,
@@ -181,9 +181,7 @@ export function computeHash<T extends Record<string, unknown>>(
 
 export function generateId<T extends object>(content: T): string {
 	// remove the fields that are not part of the hash
-	const { age_ts, unsigned, signatures, ...toHash } = pruneEventDict(
-		content as any,
-	);
+	const { age_ts, unsigned, signatures, ...toHash } = pruneEventDict(content);
 
 	return `\$${toUnpaddedBase64(
 		crypto.createHash("sha256").update(encodeCanonicalJson(toHash)).digest(),

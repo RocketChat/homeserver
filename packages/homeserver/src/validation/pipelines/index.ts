@@ -1,6 +1,3 @@
-import { Logger } from "../../utils/logger";
-const logger = new Logger("ValidationPipeline");
-
 export interface IPipeline<T> {
   validate(events: T, context: any): Promise<T>;
 }
@@ -24,7 +21,7 @@ export class SequentialPipeline<T> implements IPipeline<T> {
       try {
         result = await validator.validate(result, context);
       } catch (error: unknown) {
-        logger.error(error);
+        console.error(error);
         throw error;
       }
     }

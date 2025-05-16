@@ -1,8 +1,5 @@
-import { Logger } from '../../utils/logger';
 import { Validator } from '../decorators/validator.decorator';
-import { EventTypeArray, IPipeline } from '../pipelines';
-
-const logger = new Logger("EventAuthChainValidator");
+import type { EventTypeArray, IPipeline } from '../pipelines';
 
 const requiredAuthEvents: Record<string, { required: string[]; description: string }> = {
   'm.room.create': {
@@ -25,7 +22,7 @@ const requiredAuthEvents: Record<string, { required: string[]; description: stri
 
 function getRequiredAuthEventsForType(eventType: string): string[] {
   return (requiredAuthEvents[eventType as keyof typeof requiredAuthEvents]
-    || requiredAuthEvents['default']).required;
+    || requiredAuthEvents.default).required;
 }
 
 /**
@@ -47,17 +44,17 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
         const eventType = event?.type;
         const authEventIds = event?.auth_events || [];
         
-        logger.debug(`Validating auth chain for event ${eventId} of type ${eventType}`);
+        console.debug(`Validating auth chain for event ${eventId} of type ${eventType}`);
         
         const stateKey = (event as any)?.state_key || '';
         if (eventType === 'm.room.create' && stateKey === '') {
-          logger.debug(`Skipping auth validation for root event ${eventId} of type ${eventType}`);
+          console.debug(`Skipping auth validation for root event ${eventId} of type ${eventType}`);
           validatedEvents.push({ eventId, event });
           continue;
         }
         
         const requiredTypes = getRequiredAuthEventsForType(eventType);
-        logger.debug(`Event ${eventId} requires auth event types: ${requiredTypes.join(', ')}`);
+        console.debug(`Event ${eventId} requires auth event types: ${requiredTypes.join(', ')}`);
 
         const origin = event?.origin || context.config.name;
         
@@ -79,7 +76,7 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
         
         validatedEvents.push(validationResult);
       } catch (error: any) {
-        logger.error(`Error validating auth chain for ${eventId}: ${error.message || String(error)}`);
+        console.error(`Error validating auth chain for ${eventId}: ${error.message || String(error)}`);
         validatedEvents.push({
           eventId,
           event,
@@ -133,12 +130,12 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
     }
     
     if (missingAuthEventTypes.length === 0) {
-      logger.debug(`All required auth events present for ${eventId}`);
+      console.debug(`All required auth events present for ${eventId}`);
       
       const validationErrors = this.validateAuthEvents(authMap, event);
       
       if (validationErrors.length > 0) {
-        logger.error(`Auth validation failed for ${eventId}: ${validationErrors.join(', ')}`);
+        console.error(`Auth validation failed for ${eventId}: ${validationErrors.join(', ')}`);
         return {
           eventId,
           event,
@@ -149,26 +146,25 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
         };
       }
       
-      logger.debug(`Auth chain validation succeeded for ${eventId}`);
-      return { eventId, event };
-    } else {
-      logger.warn(`Event ${eventId} is missing auth event types: ${missingAuthEventTypes.join(', ')}`);
-      
-      if (missingAuthEventTypes.includes('m.room.create')) {
-        logger.error(`Event ${eventId} is missing critical auth event: m.room.create`);
-        return {
-          eventId,
-          event,
-          error: {
-            errcode: 'M_MISSING_CRITICAL_AUTH',
-            error: 'Missing critical auth event: m.room.create'
-          }
-        };
-      }
-      
-      logger.debug(`Auth chain validation partially succeeded for ${eventId} (with missing auth types)`);
+      console.debug(`Auth chain validation succeeded for ${eventId}`);
       return { eventId, event };
     }
+    console.warn(`Event ${eventId} is missing auth event types: ${missingAuthEventTypes.join(', ')}`);
+    
+    if (missingAuthEventTypes.includes('m.room.create')) {
+      console.error(`Event ${eventId} is missing critical auth event: m.room.create`);
+      return {
+        eventId,
+        event,
+        error: {
+          errcode: 'M_MISSING_CRITICAL_AUTH',
+          error: 'Missing critical auth event: m.room.create'
+        }
+      };
+    }
+    
+    console.debug(`Auth chain validation partially succeeded for ${eventId} (with missing auth types)`);
+    return { eventId, event };
   }
   
   private validateAuthEvents(
@@ -232,7 +228,7 @@ export class EventAuthChainValidator implements IPipeline<EventTypeArray> {
     event: any,
     powerLevelsEvent: any
   ): number {
-    const isState = event.hasOwnProperty('state_key');
+    const isState = event.hasOwn('state_key');
     const defaultPower = isState ? 
       (powerLevelsEvent?.content?.state_default || 50) : 
       (powerLevelsEvent?.content?.events_default || 0);

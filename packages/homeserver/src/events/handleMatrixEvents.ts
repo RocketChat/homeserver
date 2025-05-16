@@ -1,3 +1,4 @@
+import { getErrorMessage } from "../utils/get-error-message";
 import { Logger } from "../utils/logger";
 import { stagingArea, StagingEvent } from "./stagingArea";
 
@@ -13,7 +14,7 @@ const logger = new Logger("MatrixEventHandler");
  */
 export async function handleMatrixEvents(events: any[], context: any) {
   try {
-    logger.info(`Processing ${events.length} incoming Matrix events`);
+    console.info(`Processing ${events.length} incoming Matrix events`);
     
     // Convert the raw events to StagingEvents
     const stagingEvents: StagingEvent[] = events.map(event => ({
@@ -29,7 +30,7 @@ export async function handleMatrixEvents(events: any[], context: any) {
     
     // Log the results
     const successCount = results.filter(r => r.success).length;
-    logger.info(`Successfully processed ${successCount} of ${results.length} events`);
+    console.info(`Successfully processed ${successCount} of ${results.length} events`);
     
     // Return the processing results
     return {
@@ -39,11 +40,11 @@ export async function handleMatrixEvents(events: any[], context: any) {
       failed_count: results.length - successCount,
       results
     };
-  } catch (error: any) {
-    logger.error(`Error handling Matrix events: ${error.message}`);
+  } catch (error) {
+    console.error(`Error handling Matrix events: ${getErrorMessage(error)}`);
     return {
       success: false,
-      error: error.message
+      error: getErrorMessage(error)
     };
   }
 }
@@ -51,7 +52,7 @@ export async function handleMatrixEvents(events: any[], context: any) {
 /**
  * Example of how to use the handleMatrixEvents function
  */
-export async function processMatrixEventsExample(events: any[], serverName: string, context: any) {
+export async function processMatrixEventsExample(events: unknown[], serverName: string, context: unknown) {
   // Set up context with necessary configuration and services
   const processingContext = {
     ...context,
@@ -66,14 +67,14 @@ export async function processMatrixEventsExample(events: any[], serverName: stri
   const result = await handleMatrixEvents(events, processingContext);
   
   if (result.success) {
-    logger.info(`Successfully processed ${result.successful_count} events`);
+    console.info(`Successfully processed ${result.successful_count} events`);
     
     // Handle any failed events if needed
     if (result.failed_count && result.failed_count > 0) {
-      logger.warn(`Failed to process ${result.failed_count} events`);
+      console.warn(`Failed to process ${result.failed_count} events`);
     }
   } else {
-    logger.error(`Failed to process events: ${result.error}`);
+    console.error(`Failed to process events: ${result.error}`);
   }
   
   return result;

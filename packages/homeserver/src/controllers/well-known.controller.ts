@@ -1,33 +1,22 @@
-import { Controller, Get, Inject, Injectable, Res } from '@nestjs/common';
-import { Response } from 'express';
-import { ConfigService } from '../services/config.service';
-import { Logger } from '../utils/logger';
+import { Controller, Get, Res } from '@nestjs/common';
+import type { Response } from 'express';
+import { WellKnownService } from '../services/well-known.service';
 
-const logger = new Logger('WellKnownController');
-
-@Controller('/')
-@Injectable()
+@Controller('/.well-known/matrix/server')
 export class WellKnownController {
-	constructor(@Inject(ConfigService) private readonly configService: ConfigService) {}
+	constructor(private readonly wellKnownService: WellKnownService) {}
 
-	@Get('/.well-known/matrix/server')
-	async server(@Res() response: Response) {
-        const responseData = {
-            'm.server': `${this.configService.getServerConfig().name}:443`,
-        };
+	@Get()
+	getWellKnown(@Res({ passthrough: true }) res: Response) {
+                const responseData = this.wellKnownService.getWellKnownHostData();
 
-        try {
-            const etag = new Bun.CryptoHasher('md5')
-                .update(JSON.stringify(responseData))
-                .digest('hex');
+                const etag = new Bun.CryptoHasher('md5')
+                        .update(JSON.stringify(responseData))
+                        .digest('hex');
 
-            response.setHeader('ETag', etag);
-            response.setHeader('Content-Type', 'application/json');
-            
-            response.status(200).json(responseData);
-        } catch (error) {
-            logger.error(error);
-            response.status(500).json({ error: 'Internal server error' });
-        }
+                res.setHeader('ETag', etag);
+                res.setHeader('Content-Type', 'application/json');
+                
+                return responseData;
 	}
 }
