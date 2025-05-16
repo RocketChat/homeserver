@@ -30,6 +30,7 @@ import { ProfilesService } from "./services/profiles.service";
 import { RoomService } from "./services/room.service";
 import { ServerService } from "./services/server.service";
 import { StagingAreaService } from "./services/staging-area.service";
+import { WellKnownService } from "./services/well-known.service";
 
 @Module({
 	imports: [QueueModule],
@@ -42,6 +43,12 @@ import { StagingAreaService } from "./services/staging-area.service";
 		StagingAreaService,
 		MissingEventService,
 
+		// Repositories
+		EventRepository,
+		RoomRepository,
+		KeyRepository,
+		ServerRepository,
+
 		// Event processing services
 		EventAuthorizationService,
 		EventStateService,
@@ -49,19 +56,15 @@ import { StagingAreaService } from "./services/staging-area.service";
 		NotificationService,
 		InviteService,
 		ProfilesService,
-		ServerService,
 		RoomService,
 		EventFetcherService,
-
-		// Repositories
-		EventRepository,
-		RoomRepository,
-		KeyRepository,
-		ServerRepository,
+		WellKnownService,
+		ServerService,
 
 		// Queues
 		MissingEventsQueue,
 		StagingAreaQueue,
+
 
 		// Listeners
 		// MissingEventListener,

@@ -11,12 +11,9 @@ import { ConfigService } from "../services/config.service";
 import { EventService } from "../services/event.service";
 import { FederationService } from "../services/federation.service";
 import { signEvent } from "../signEvent";
-import { Logger } from "../utils/logger";
 
 @Controller("internal")
 export class InternalMessageController {
-	private readonly logger = new Logger("InternalMessageController");
-
 	constructor(
     private readonly federationService: FederationService,
     private readonly eventService: EventService,
@@ -28,8 +25,7 @@ export class InternalMessageController {
     @Body() body: { roomId: string, targetServer: string, message: string, senderUserId: string }
   ): Promise<unknown> {
     const { roomId, targetServer, message, senderUserId } = body;
-    this.logger.debug(`Received request to send message to room ${roomId} via ${targetServer} from ${senderUserId}`);
-
+    
     try {
       const serverName = this.configService.getServerConfig().name;
 
@@ -78,7 +74,7 @@ export class InternalMessageController {
       
       await this.federationService.sendEventToServers(roomId, signedEvent, [targetServer]);
 
-      this.logger.debug(`Federation service call initiated for event: ${signedEvent.event_id}`);
+      
 
       return {
         message: 'Event built, signed, and dispatched to federation service',
@@ -86,7 +82,7 @@ export class InternalMessageController {
         signedEvent: signedEvent
       };
     } catch (error: unknown) {
-      this.logger.error(`Error in sendSignedMessage for room ${roomId}: ${error instanceof Error ? error.message : String(error)}`);
+      
       throw new HttpException(
         `Failed to send message: ${error instanceof Error ? error.message : String(error)}`,
         HttpStatus.INTERNAL_SERVER_ERROR,

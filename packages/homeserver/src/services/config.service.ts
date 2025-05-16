@@ -1,11 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getKeyPair } from '../keys';
-import { Logger } from '../utils/logger';
 
-const logger = new Logger('ConfigService');
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
 export interface AppConfig {
@@ -36,6 +34,7 @@ export interface AppConfig {
 
 @Injectable()
 export class ConfigService {
+  private readonly logger = new Logger(ConfigService.name);
   private config: AppConfig;
   private fileConfig: Partial<AppConfig> = {};
   
@@ -70,19 +69,19 @@ export class ConfigService {
     const defaultEnvPath = path.resolve(process.cwd(), '.env');
     if (fs.existsSync(defaultEnvPath)) {
       dotenv.config({ path: defaultEnvPath });
-      console.log('Loaded configuration from .env');
+      this.logger.log('Loaded configuration from .env');
     }
     
     const envSpecificPath = path.resolve(process.cwd(), `.env.${nodeEnv}`);
     if (fs.existsSync(envSpecificPath)) {
       dotenv.config({ path: envSpecificPath });
-      console.log(`Loaded configuration from .env.${nodeEnv}`);
+      this.logger.log(`Loaded configuration from .env.${nodeEnv}`);
     }
     
     const localEnvPath = path.resolve(process.cwd(), '.env.local');
     if (fs.existsSync(localEnvPath)) {
       dotenv.config({ path: localEnvPath });
-      console.log('Loaded configuration from .env.local');
+      this.logger.log('Loaded configuration from .env.local');
     }
   }
   
@@ -98,14 +97,14 @@ export class ConfigService {
 
   async loadSigningKey() {
     const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
-    logger.info(`Loading signing key from ${signingKeyPath}`);
+    this.logger.log(`Loading signing key from ${signingKeyPath}`);
     
     try {
       const keys = await getKeyPair({ signingKeyPath });
-      logger.info(`Successfully loaded signing key for server ${this.config.server.name}`);
+      this.logger.log(`Successfully loaded signing key for server ${this.config.server.name}`);
       return keys;
     } catch (error: any) {
-      logger.error(`Failed to load signing key: ${error.message}`);
+      this.logger.error(`Failed to load signing key: ${error.message}`);
       throw error;
     }
   }

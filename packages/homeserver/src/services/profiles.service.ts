@@ -20,7 +20,7 @@ export class ProfilesService {
     this.logger = this.loggerService.setContext('ProfilesService');
   }
 
-  async queryProfile(userId: string): Promise<any> {
+  async queryProfile(userId: string): Promise<{ avatar_url: string, displayname: string }> {
     return {
       avatar_url: "mxc://matrix.org/MyC00lAvatar",
       displayname: userId,
