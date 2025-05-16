@@ -6,20 +6,6 @@ import { EventService } from "./event.service";
 import { RoomService } from "./room.service";
 import { ServerService } from "./server.service";
 
-interface MatrixEvent extends EventBase {
-	origin: string;
-}
-
-type MakeJoinResponse = {
-	event: any;
-};
-
-type SendJoinResponse = {
-	state: any[];
-	auth_chain: any[];
-	event?: any;
-};
-
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
 	event: EventBase & { origin: string, room_id: string, state_key: string };
