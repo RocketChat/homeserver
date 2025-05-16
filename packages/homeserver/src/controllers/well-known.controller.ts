@@ -7,7 +7,7 @@ export class WellKnownController {
 	constructor(private readonly wellKnownService: WellKnownService) {}
 
 	@Get()
-	getWellKnown(@Res() res: Response) {
+	getWellKnown(@Res({ passthrough: true }) res: Response) {
                 const responseData = this.wellKnownService.getWellKnownHostData();
 
                 const etag = new Bun.CryptoHasher('md5')
