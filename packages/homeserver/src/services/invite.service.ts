@@ -1,10 +1,7 @@
 import { FederationService } from "@hs/federation-sdk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { EventBase } from "../models/event.model";
-import { ConfigService } from "./config.service";
 import { EventService } from "./event.service";
-import { RoomService } from "./room.service";
-import { ServerService } from "./server.service";
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -18,10 +15,7 @@ export class InviteService {
 	private readonly logger = new Logger(InviteService.name);
 	
 	constructor(
-		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
-		private readonly serverService: ServerService,
-		private readonly roomService: RoomService,
 		private readonly federationService: FederationService,
   	) {}
 
