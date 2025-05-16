@@ -64,22 +64,19 @@ export class EventRepository {
 		);
 	}
 
-	async find(
-		query: Filter<EventStore>,
-		options: FindOptions,
-	): Promise<EventStore[]> {
+	async find(query: Filter<EventStore>, options: FindOptions): Promise<EventStore[]> {
 		const collection = await this.getCollection();
 		return collection.find(query, options).toArray();
 	}
 
-	async create(event: EventBase, eventId?: string, ...args: any[]): Promise<string> {
+	async create(event: EventBase, eventId?: string, args?: object): Promise<string> {
 		const collection = await this.getCollection();
 		const id = eventId || event.event_id || generateId(event);
 
 		await collection.insertOne({
 			_id: id,
 			event,
-			...args,
+			...(args || {}),
 		});
 
 		return id;

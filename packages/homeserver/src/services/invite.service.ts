@@ -21,7 +21,7 @@ type SendJoinResponse = {
 };
 
 // TODO: Have better (detailed/specific) event input type
-type ProcessInviteEvent = {
+export type ProcessInviteEvent = {
 	event: EventBase & { origin: string, room_id: string, state_key: string };
 	invite_room_state: unknown;
 	room_version: string;
@@ -39,16 +39,46 @@ export class InviteService {
 		private readonly federationService: FederationService,
   	) {}
 
-	async processInvite(event: ProcessInviteEvent): Promise<unknown> {
+	async processInvite(event: ProcessInviteEvent, roomId: string, eventId: string): Promise<unknown> {
 		try {
-			// TODO: Check if event is already in the database and also validate if before processing
-			await this.eventService.insertEvent(event.event);
+			await this.eventService.insertEvent(event.event, undefined, {
+				invite_room_state: event.invite_room_state,
+				room_version: event.room_version,
+			});
 			
-			await this.handleInviteProcessing(event);
+			this.logger.debug('Received invite event', {
+				room_id: roomId,
+				event_id: eventId,
+				user_id: event.event.state_key,
+				origin: event.event.origin,
+			});
+
+			// Waits 5 seconds before accepting invite - just for testing purposes
+			void new Promise(resolve => setTimeout(resolve, 5000))
+				.then(() => this.acceptInvite(roomId, event.event.state_key));
 			
-			return { event };
+			return { event: event.event };
 		} catch (error: any) {
 			this.logger.error(`Failed to process invite: ${error.message}`);
+			throw error;
+		}
+	}
+
+	async acceptInvite(roomId: string, userId: string): Promise<void> {
+		try {
+			const inviteEvent = await this.eventService.findInviteEvent(roomId, userId);
+
+			if (!inviteEvent) {
+				throw new Error(`No invite found for user ${userId} in room ${roomId}`);
+			}
+			
+			await this.handleInviteProcessing({
+				event: inviteEvent.event as EventBase & { origin: string, room_id: string, state_key: string },
+				invite_room_state: inviteEvent.invite_room_state,
+				room_version: inviteEvent.room_version || "10",
+			});
+		} catch (error: any) {
+			this.logger.error(`Failed to accept invite: ${error.message}`);
 			throw error;
 		}
 	}
@@ -56,37 +86,14 @@ export class InviteService {
 	private async handleInviteProcessing(event: ProcessInviteEvent): Promise<void> {
 		try {
 			const serverConfig = this.configService.getServerConfig();
-
-			// Step 1: Make a join request to get the join event template
-			// const responseMake = (await makeSignedRequest({
-			// 	method: "GET",
-			// 	domain: event.origin,
-			// 	uri: `/_matrix/federation/v1/make_join/${event.room_id}/${event.state_key}` as any,
-			// 	signingKey: signingKey[0],
-			// 	signingName: serverConfig.name,
-			// 	queryString: "ver=10",
-			// })) as MakeJoinResponse;
-			console.log(event.event.origin, event.event.room_id, event.event.state_key, event.room_version);
-			const responseMake = await this.federationService.makeJoin(event.event.origin, event.event.room_id, event.event.state_key, event.room_version);
-			this.logger.log('responseMake', responseMake);
 			
-			// // Step 2: Send the join event
-			// // const responseBody = (await makeSignedRequest({
-			// // 	method: "PUT",
-			// // 	domain: event.origin,
-			// // 	uri: `/_matrix/federation/v2/send_join/${event.room_id}/${event.state_key}` as any,
-			// // 	body: {
-			// // 		...responseMake.event,
-			// // 		origin: serverConfig.name,
-			// // 		origin_server_ts: Date.now(),
-			// // 		depth: responseMake.event.depth + 1,
-			// // 	},
-			// // 	signingKey: signingKey[0],
-			// // 	signingName: serverConfig.name,
-			// // 	queryString: "omit_members=false",
-			// // })) as SendJoinResponse;
-			// const responseBody = await this.federationService.sendJoin(event.origin, event.room_id, event.state_key, responseMake.event, false);
-			// this.logger.log(responseBody);
+			// Step 1: Make a join request to get the join event template
+			const responseMake = await this.federationService.makeJoin(event.event.origin, event.event.room_id, event.event.state_key, event.room_version);
+			this.logger.debug('responseMake', responseMake);
+			
+			// Step 2: Send the join event
+			const responseBody = await this.federationService.sendJoin(event.event.origin, event.event.room_id, event.event.state_key, responseMake.event, false);
+			this.logger.debug('responseBody', responseBody);
 
 			// // Step 3: Validate the response
 			// const createEvent = responseBody.state.find(e => e.type === "m.room.create");
@@ -96,7 +103,7 @@ export class InviteService {
 
 			// if (responseBody.event) {
 			// 	await this.eventService.insertEvent(responseBody.event);
-			// 	this.logger.log(`Stored join event for ${event.state_key}`);
+			// 	this.logger.log(`Stored join event for ${event.event.state_key}`);
 			// }
 
 			// // Step 4: Process auth chain and state
@@ -107,7 +114,7 @@ export class InviteService {
 			// 	responseBody.state.map((e: any) => [generateId(e), e]),
 			// );
 
-			// // Step 5: Setup public key retrieval function
+			// Step 5: Setup public key retrieval function
 			// const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
 			// 	this.serverService.getValidPublicKeyFromLocal,
 			// 	(origin: string, key: string) =>
@@ -166,7 +173,7 @@ export class InviteService {
 			// );
 		} catch (error: any) {
 			this.logger.error(
-				`Error processing invite for ${event?.state_key} in room ${event?.room_id}: ${error.message}`,
+				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${error.message}`,
 			);
 			throw error;
 		}

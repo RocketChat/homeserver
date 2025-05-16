@@ -31,12 +31,11 @@ export class FederationService {
       if (version) {
         queryParams['ver'] = version;
       } else {
-        // Support all recent room versions if not specified
         for (let ver = 1; ver <= 11; ver++) {
           queryParams[`ver${ver === 1 ? '' : ver}`] = ver.toString();
         }
       }
-      
+
       return await this.requestService.get<MakeJoinResponse>(domain, uri, queryParams);
     } catch (error: any) {
       this.logger.error(`makeJoin failed: ${error.message}`, error.stack);
@@ -55,7 +54,6 @@ export class FederationService {
     omitMembers = false,
   ): Promise<SendJoinResponse> {
     try {
-      // Update join event with origin and timestamp
       const eventWithOrigin = {
         ...joinEvent,
         origin: this.configService.serverName,

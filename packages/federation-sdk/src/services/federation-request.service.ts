@@ -1,7 +1,7 @@
+import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
 import { Injectable, Logger } from '@nestjs/common';
 import * as nacl from 'tweetnacl';
 import { authorizationHeaders, computeAndMergeHash } from '../../../homeserver/src/authentication';
-import { resolveHostAddressByServerName } from '../../../homeserver/src/helpers/server-discovery/discovery';
 import { extractURIfromURL } from '../../../homeserver/src/helpers/url';
 import { signJson } from '../../../homeserver/src/signJson';
 import { FederationConfigService } from './federation-config.service';
@@ -33,8 +33,6 @@ export class FederationRequestService {
       const serverName = this.configService.serverName;
       const signingKeyBase64 = this.configService.signingKey;
       const signingKeyId = this.configService.signingKeyId;
-      
-      // Create signing key object for request signing
       const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
       const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
       
@@ -46,91 +44,55 @@ export class FederationRequestService {
         sign: async (data: Uint8Array) => nacl.sign.detached(data, keyPair.secretKey)
       };
       
-      // Prepare request URL
-      let url: URL;
-      let address: string;
-      let headers: Record<string, string> = {};
+      const { address, headers: discoveryHeaders } = await resolveHostAddressByServerName(
+        domain,
+        serverName,
+      );
       
-      try {
-        const result = await resolveHostAddressByServerName(domain, serverName);
-        address = result.address;
-        headers = result.headers || {};
-      } catch (error) {
-        // Fallback to direct domain if discovery fails
-        this.logger.warn(`Server discovery failed for ${domain}, using direct domain`);
-        address = domain;
+      const url = new URL(`https://${address}${uri}`);
+      if (queryString) {
+        url.search = queryString;
       }
-      
-      const fullUri = uri + (queryString ? `?${queryString}` : '');
-      url = new URL(`https://${address}${fullUri}`);
       
       this.logger.debug(`Making ${method} request to ${url.toString()}`);
 
-      // Sign the body if present
-      let signedBody: any;
-      try {
-        if (body) {
-          signedBody = await signJson(
-            computeAndMergeHash({ ...body, signatures: {} }),
-            signingKey as any,
-            serverName
-          );
-        }
-      } catch (signError: any) {
-        this.logger.error(`Error signing request: ${signError.message}`);
-        throw new Error(`Failed to sign request: ${signError.message}`);
-      }
-      
-      // Create authorization header
-      let auth: string;
-      try {
-        auth = await authorizationHeaders(
-          serverName,
+      let signedBody;
+      if (body) {
+        signedBody = await signJson(
+          computeAndMergeHash({ ...body, signatures: {} }),
           signingKey as any,
-          domain,
-          method,
-          extractURIfromURL(url),
-          signedBody as any
+          serverName
         );
-      } catch (authError: any) {
-        this.logger.error(`Error generating authorization headers: ${authError.message}`);
-        throw new Error(`Failed to generate authorization headers: ${authError.message}`);
       }
       
-      // Send the request
-      const requestHeaders = {
-        'Authorization': auth,
-        'Content-Type': 'application/json',
-        ...headers
-      };
-
-      const requestOptions: RequestInit = {
+      const auth = await authorizationHeaders(
+        serverName,
+        signingKey as any,
+        domain,
         method,
-        headers: requestHeaders,
-        body: signedBody ? JSON.stringify(signedBody) : undefined,
-      };
-
-      const response = await fetch(url.toString(), requestOptions);
+        extractURIfromURL(url),
+        signedBody
+      );
+      
+      const response = await fetch(url.toString(), {
+        method,
+        ...(signedBody && { body: JSON.stringify(signedBody) }),
+        headers: {
+          Authorization: auth,
+          ...discoveryHeaders,
+        },
+      });
       
       if (!response.ok) {
-        let errorText: string;
+        const errorText = await response.text();
+        let errorDetail = errorText;
         try {
-          errorText = await response.text();
-          const errorObj = JSON.parse(errorText);
-          errorText = JSON.stringify(errorObj);
-        } catch (e) {
-          // If parsing fails, use the raw text
-          errorText = await response.text();
-        }
-        throw new Error(`Federation request failed: ${response.status} ${errorText}`);
+          errorDetail = JSON.stringify(JSON.parse(errorText));
+        } catch (e) { /* use raw text if parsing fails */ }
+        throw new Error(`Federation request failed: ${response.status} ${errorDetail}`);
       }
       
-      const responseText = await response.text();
-      try {
-        return JSON.parse(responseText) as T;
-      } catch (parseError) {
-        throw new Error(`Invalid JSON response: ${responseText}`);
-      }
+      return response.json() as Promise<T>;
     } catch (error: any) {
       this.logger.error(`Federation request failed: ${error.message}`, error.stack);
       throw error;

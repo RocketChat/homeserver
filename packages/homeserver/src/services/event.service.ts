@@ -32,6 +32,8 @@ interface StagedEvent {
 	origin: string;
 	missing_dependencies: string[];
 	staged_at: number;
+	room_version?: string;
+	invite_room_state?: Record<string, unknown>;
 }
 
 @Injectable()
@@ -495,8 +497,8 @@ export class EventService {
 		return schema;
 	}
 
-	async insertEvent(event: EventBase, eventId?: string) {
-		await this.eventRepository.create(event, eventId);
+	async insertEvent(event: EventBase, eventId?: string, args?: object): Promise<string> {
+		return this.eventRepository.create(event, eventId, args);
 	}
 
 	async getAuthEventsIdsForRoom(
@@ -651,5 +653,23 @@ export class EventService {
 			{ sort: { "event.depth": 1 } }
 		);
 		return events.map(event => event.event);
+	}
+
+	/**
+	 * Find an invite event for a specific user in a specific room
+	 */
+	async findInviteEvent(roomId: string, userId: string): Promise<StagedEvent> {
+		this.logger.debug(`Finding invite event for user ${userId} in room ${roomId}`);
+		const events = await this.eventRepository.find(
+			{
+				"event.room_id": roomId,
+				"event.type": "m.room.member",
+				"event.state_key": userId,
+				"event.content.membership": "invite"
+			},
+			{ limit: 1, sort: { "event.origin_server_ts": -1 } }
+		) as StagedEvent[];
+
+		return events[0];
 	}
 }

@@ -115,7 +115,7 @@ export class ConfigService {
         name: process.env.SERVER_NAME || 'rc1',
         version: process.env.SERVER_VERSION || '1.0',
         port: this.getNumberFromEnv('SERVER_PORT', 8080),
-        baseUrl: process.env.SERVER_BASE_URL || 'http://localhost:8080',
+        baseUrl: process.env.SERVER_BASE_URL || 'http://rc1:8080',
         host: process.env.SERVER_HOST || '0.0.0.0',
       },
       database: {
@@ -124,8 +124,8 @@ export class ConfigService {
         poolSize: this.getNumberFromEnv('DATABASE_POOL_SIZE', 10),
       },
       matrix: {
-        serverName: process.env.MATRIX_SERVER_NAME || 'localhost',
-        domain: process.env.MATRIX_DOMAIN || 'localhost',
+        serverName: process.env.MATRIX_SERVER_NAME || 'rc1',
+        domain: process.env.MATRIX_DOMAIN || 'rc1',
         keyRefreshInterval: this.getNumberFromEnv('MATRIX_KEY_REFRESH_INTERVAL', 60),
       },
     };
