@@ -1,6 +1,3 @@
-import { Logger } from "../../utils/logger";
-const logger = new Logger("ValidationPipeline");
-
 export interface IPipeline<T> {
   validate(events: T, context: any): Promise<T>;
 }

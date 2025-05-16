@@ -1,14 +1,14 @@
-import { ValidationResult } from './ValidationResult';
+import type { ValidationResult } from './ValidationResult';
 import { ParallelValidation, Pipeline } from './Validator';
-import {
-    AuthorizedEvent,
-    CanonicalizedEvent,
-    Event,
+import type {
+  AuthorizedEvent,
+  CanonicalizedEvent,
+  Event,
 } from './validators/EventValidators';
 import {
-    canonicalizeEvent,
-    fetchAuthEvents,
-    validateEventHash
+  canonicalizeEvent,
+  fetchAuthEvents,
+  validateEventHash
 } from './validators/event';
 
 /**

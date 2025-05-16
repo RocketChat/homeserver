@@ -1,4 +1,5 @@
-import { AuthorizedEvent, ValidationResult, failure, success } from '../validators/index';
+import { failure, success, type ValidationResult } from '../ValidationResult';
+import type { AuthorizedEvent } from '../validators/EventValidators';
 import { registerEventHandler } from './index';
 
 enum Membership {

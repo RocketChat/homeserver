@@ -2,10 +2,11 @@ import { Collection, MongoClient } from 'mongodb';
 import { generateId } from '../../../authentication';
 import { makeRequest } from '../../../makeRequest';
 import { extractOrigin } from '../../../utils/extractOrigin';
+import { getErrorMessage } from '../../../utils/get-error-message';
 import { getServerName } from '../../../utils/serverConfig';
 import { failure, success } from '../../ValidationResult';
 import { createValidator } from '../../Validator';
-import { AuthorizedEvent, CanonicalizedEvent } from '../EventValidators';
+import type { AuthorizedEvent, CanonicalizedEvent } from '../EventValidators';
 
 interface StoredEvent {
   _id: string;
@@ -96,18 +97,16 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
           min_depth: 0
         },
         signingName: localServerName
-      });
+      }) as { events: unknown[] };
       
       if (!response.events || !Array.isArray(response.events) || response.events.length === 0) {
         console.warn(`No events returned from ${origin} for auth events: ${missingEventIds.join(', ')}`);
         return failure('M_MISSING_AUTH_EVENTS', 'Remote server did not return required auth events');
       }
       
-      console.debug(`Received ${response.events.length} events from remote server ${origin}`);
-      
       // TODO: Validate the events before storing them
       await Promise.all(response.events.map(async (fetchedEvent) => {
-        const fetchedEventId = generateId(fetchedEvent);
+        const fetchedEventId = generateId(fetchedEvent as object);
         await eventsCollection.updateOne(
           { _id: fetchedEventId },
           { $set: { event: fetchedEvent } },
@@ -145,11 +144,11 @@ export const fetchAuthEvents = createValidator<CanonicalizedEvent, AuthorizedEve
       });
       
     } catch (networkError) {
-      console.error(`Network error fetching auth events from ${origin}: ${networkError.message || String(networkError)}`);
-      return failure('M_FAILED_TO_FETCH_AUTH', `Failed to fetch auth events: ${networkError.message || String(networkError)}`);
+      console.error(`Network error fetching auth events from ${origin}: ${getErrorMessage(networkError)}`);
+      return failure('M_FAILED_TO_FETCH_AUTH', `Failed to fetch auth events: ${getErrorMessage(networkError)}`);
     }
   } catch (error) {
-    console.error(`Failed to fetch auth events for ${eventId}: ${error.message || String(error)}`);
-    return failure('M_MISSING_AUTH_EVENTS', `Failed to fetch auth events: ${error.message || String(error)}`);
+    console.error(`Failed to fetch auth events for ${eventId}: ${getErrorMessage(error)}`);
+    return failure('M_MISSING_AUTH_EVENTS', `Failed to fetch auth events: ${getErrorMessage(error)}`);
   }
 }); 

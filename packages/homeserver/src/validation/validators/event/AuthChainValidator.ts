@@ -1,6 +1,7 @@
+import { getErrorMessage } from '../../../utils/get-error-message';
 import { failure, success } from '../../ValidationResult';
 import { createValidator } from '../../Validator';
-import { AuthorizedEvent } from '../EventValidators';
+import type { AuthorizedEvent } from '../EventValidators';
 
 /**
  * Validates the auth event chain
@@ -21,7 +22,7 @@ export const validateAuthChain = createValidator<AuthorizedEvent>(async (event, 
     return success(event);
     
   } catch (error) {
-    console.error(`Error validating auth chain: ${error.message || String(error)}`);
-    return failure('M_INVALID_AUTH_CHAIN', `Error validating auth chain: ${error.message || String(error)}`);
+    console.error(`Error validating auth chain: ${getErrorMessage(error)}`);
+    return failure('M_INVALID_AUTH_CHAIN', `Error validating auth chain: ${getErrorMessage(error)}`);
   }
 }); 

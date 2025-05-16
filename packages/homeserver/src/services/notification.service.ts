@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { EventBase } from '../models/event.model';
+import type { EventBase } from '../models/event.model';
 
 @Injectable()
 export class NotificationService {

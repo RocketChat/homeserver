@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MissingEventsQueue, MissingEventType } from '../queues/missing-event.queue';
+import type { MissingEventType } from '../queues/missing-event.queue';
+import { MissingEventsQueue } from '../queues/missing-event.queue';
 
 @Injectable()
 export class MissingEventService {

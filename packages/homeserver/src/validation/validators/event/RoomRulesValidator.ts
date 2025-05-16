@@ -1,6 +1,6 @@
 import { failure, success } from '../../ValidationResult';
 import { createValidator } from '../../Validator';
-import { AuthorizedEvent } from '../EventValidators';
+import type { AuthorizedEvent } from '../EventValidators';
 
 /**
  * Validates room auth rules

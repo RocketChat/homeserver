@@ -1,4 +1,5 @@
 import { computeHash } from '../../../authentication';
+import { getErrorMessage } from '../../../utils/get-error-message';
 import { failure, success } from '../../ValidationResult';
 import { createValidator } from '../../Validator';
 import type { CanonicalizedEvent } from '../EventValidators';
@@ -28,7 +29,7 @@ export const validateEventHash = createValidator<CanonicalizedEvent>(async (even
     
     return success(event);
   } catch (error) {
-    console.error(`Error validating event hash: ${error.message || String(error)}`);
-    return failure('M_INVALID_HASH', `Error validating event hash: ${error.message || String(error)}`);
+    console.error(`Error validating event hash: ${getErrorMessage(error)}`);
+    return failure('M_INVALID_HASH', `Error validating event hash: ${getErrorMessage(error)}`);
   }
 }); 

@@ -1,4 +1,4 @@
-import { Controller, Put, Req, Res } from "@nestjs/common";
+import { Controller, Put, Req } from "@nestjs/common";
 import { EventService } from "../services/event.service";
 
 @Controller("/_matrix/federation/v1")
@@ -6,7 +6,7 @@ export class TransactionsController {
 	constructor(private readonly eventService: EventService) {}
 
 	@Put("/send/:txnId")
-	async send(@Req() req: Request, @Res() res: Response) {
+	async send(@Req() req: Request) {
 		try {
 			const { pdus = [] } = req.body;
 

@@ -1,10 +1,7 @@
 import { Elysia } from "elysia";
-import { generateId } from "../../authentication";
-import { validateMatrixEvent } from "../../validation/EventValidationPipeline";
-import { Event as MatrixEvent } from "../../validation/validators/EventValidators";
-import { Logger } from "./logger";
-
-const logger = new Logger("SendTransactionRoute");
+import { generateId } from "../authentication";
+import { validateMatrixEvent } from "../validation/EventValidationPipeline";
+import type { Event as MatrixEvent } from "../validation/validators/EventValidators";
 
 async function processPDU(pdu: MatrixEvent["event"], pduResults: Record<string, { error?: string }>, txnId: string) {
     const eventId = generateId(pdu);

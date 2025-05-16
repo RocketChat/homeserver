@@ -1,5 +1,5 @@
 import { Validator } from '../decorators/validator.decorator';
-import { EventTypeArray, IPipeline } from '../pipelines';
+import type { EventTypeArray, IPipeline } from '../pipelines';
 
 const requiredAuthEvents: Record<string, { required: string[]; description: string }> = {
   'm.room.create': {

@@ -51,12 +51,12 @@ export class FederationService {
     domain: string,
     roomId: string,
     userId: string,
-    joinEvent: EventBase,
+    joinEvent: unknown,
     omitMembers = false,
   ): Promise<SendJoinResponse> {
     try {
       const eventWithOrigin = {
-        ...joinEvent,
+        ...joinEvent as any,
         origin: this.configService.serverName,
         origin_server_ts: Date.now(),
       };

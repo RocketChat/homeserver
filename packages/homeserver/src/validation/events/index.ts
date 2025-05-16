@@ -1,4 +1,6 @@
-import { AuthorizedEvent, ValidationResult, success } from '../validators/index';
+import type { ValidationResult } from '../ValidationResult';
+import { success } from '../ValidationResult';
+import type { AuthorizedEvent } from '../validators/EventValidators';
 
 const eventValidators: Record<string, (event: AuthorizedEvent, eventId: string) => Promise<ValidationResult>> = {};
 

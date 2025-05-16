@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Config } from '../../plugins/config';
+import type { Config } from '../../plugins/config';
 import { Validator } from '../decorators/validator.decorator';
 import type { EventTypeArray, IPipeline } from '../pipelines';
 import { eventSchemas } from '../schemas/event-schemas';

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Collection, ObjectId } from 'mongodb';
-import { EventBase } from '../models/event.model';
+import type { EventBase } from '../models/event.model';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Room = {
@@ -9,6 +9,7 @@ type Room = {
   alias: string;
   canonical_alias: string;
   join_rules: string;
+  version: string;
 }
 
 @Injectable()

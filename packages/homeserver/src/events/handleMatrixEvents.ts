@@ -1,3 +1,4 @@
+import { getErrorMessage } from "../utils/get-error-message";
 import { Logger } from "../utils/logger";
 import { stagingArea, StagingEvent } from "./stagingArea";
 
@@ -40,10 +41,10 @@ export async function handleMatrixEvents(events: any[], context: any) {
       results
     };
   } catch (error) {
-    console.error(`Error handling Matrix events: ${error.message}`);
+    console.error(`Error handling Matrix events: ${getErrorMessage(error)}`);
     return {
       success: false,
-      error: error.message
+      error: getErrorMessage(error)
     };
   }
 }
