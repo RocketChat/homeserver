@@ -1,18 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import type { EventBase } from "../models/event.model";
 import { RoomRepository } from "../repositories/room.repository";
-import { LoggerService } from "./logger.service";
 
 @Injectable()
 export class RoomService {
-	private readonly logger: LoggerService;
+	private readonly logger = new Logger(RoomService.name)
 
-	constructor(
-    private readonly roomRepository: RoomRepository,
-    private readonly loggerService: LoggerService
-  ) {
-    this.logger = this.loggerService.setContext('RoomService');
-  }
+	constructor(private readonly roomRepository: RoomRepository) {}
 
 	async upsertRoom(roomId: string, state: EventBase[]) {
 		this.logger.log(

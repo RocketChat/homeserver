@@ -1,13 +1,8 @@
-import { Controller, Get } from "@nestjs/common";
-import { LoggerService } from "../services/logger.service";
+import { Controller, Get, Logger } from "@nestjs/common";
 
 @Controller("/ping")
 export class PingController {
-	private readonly logger: LoggerService;
-
-	constructor(loggerService: LoggerService) {
-		this.logger = loggerService.setContext('PingController');
-	}
+	private readonly logger = new Logger(PingController.name);
 
 	@Get()
 	ping() {

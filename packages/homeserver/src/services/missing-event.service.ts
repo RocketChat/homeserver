@@ -1,17 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { MissingEventsQueue, MissingEventType } from '../queues/missing-event.queue';
-import { LoggerService } from './logger.service';
 
 @Injectable()
 export class MissingEventService {
-  private readonly logger: LoggerService;
+  private readonly logger = new Logger(MissingEventService.name);
 
   constructor(
     private readonly missingEventsQueue: MissingEventsQueue,
-    private readonly loggerService: LoggerService
-  ) {
-    this.logger = this.loggerService.setContext('MissingEventService');
-  }
+  ) {}
 
   addEvent(event: MissingEventType) {
     this.logger.debug(`Adding missing event ${event.eventId} to missing events queue`);

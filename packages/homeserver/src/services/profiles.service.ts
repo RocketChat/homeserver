@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -6,19 +6,16 @@ import { RoomService } from './room.service';
 
 // Import EventStore from plugins/mongodb for type compatibility with makeJoinEventBuilder
 import type { EventStore as MongoEventStore } from '../plugins/mongodb';
-import { LoggerService } from './logger.service';
 
 @Injectable()
 export class ProfilesService {
-  private readonly logger: LoggerService;
+  private readonly logger = new Logger(ProfilesService.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly eventService: EventService,
     private readonly roomService: RoomService,
-    private readonly loggerService: LoggerService
-  ) {
-    this.logger = this.loggerService.setContext('ProfilesService');
-  }
+  ) {}
 
   async queryProfile(userId: string): Promise<{ avatar_url: string, displayname: string }> {
     return {

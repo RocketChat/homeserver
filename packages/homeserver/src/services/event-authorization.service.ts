@@ -1,14 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventBase } from '../models/event.model';
-import { LoggerService } from './logger.service';
 
 @Injectable()
 export class EventAuthorizationService {
-  private readonly logger: LoggerService;
-
-  constructor(private readonly loggerService: LoggerService) {
-    this.logger = this.loggerService.setContext('EventAuthorizationService');
-  }
+  private readonly logger = new Logger(EventAuthorizationService.name);
 
   async authorizeEvent(event: EventBase, authEvents: EventBase[]): Promise<boolean> {
     this.logger.debug(`Authorizing event ${event.event_id || 'unknown'} of type ${event.type}`);

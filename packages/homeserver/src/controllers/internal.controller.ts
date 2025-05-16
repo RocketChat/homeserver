@@ -1,4 +1,5 @@
 import type { EventBase } from "@hs/core/src/events/eventBase";
+import { FederationService } from "@hs/federation-sdk";
 import {
   Body,
   Controller,
@@ -9,7 +10,6 @@ import {
 import type { SigningKey } from "../keys"; // Ensure SigningKey is imported if not already
 import { ConfigService } from "../services/config.service";
 import { EventService } from "../services/event.service";
-import { FederationService } from "../services/federation.service";
 import { signEvent } from "../signEvent";
 
 @Controller("internal")

@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import type { z } from "zod";
 import { generateId } from "../authentication";
 import { MatrixError } from "../errors";
@@ -15,7 +15,6 @@ import { checkSignAndHashes } from "../utils/checkSignAndHashes";
 import { eventSchemas } from "../validation/schemas/event-schemas";
 import type { roomV10Type } from "../validation/schemas/room-v10.type";
 import { ConfigService } from "./config.service";
-import { LoggerService } from "./logger.service";
 
 type ValidationResult = {
 	eventId: string;
@@ -37,7 +36,7 @@ interface StagedEvent {
 
 @Injectable()
 export class EventService {
-	private readonly logger: LoggerService;
+	private readonly logger = new Logger(EventService.name);
 
 	constructor(
 		private readonly eventRepository: EventRepository,
@@ -45,10 +44,7 @@ export class EventService {
 		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		private readonly loggerService: LoggerService
-	) {
-		this.logger = this.loggerService.setContext('EventService');
-	}
+	) {}
 
 	async checkIfEventsExists(
 		eventIds: string[],

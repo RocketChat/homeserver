@@ -91,7 +91,8 @@ export const MakeJoinResponseSchema = z.object({
 export const SendJoinResponseSchema = z.object({
   state: z.array(z.any()),
   auth_chain: z.array(z.any()),
-  event_id: EventIdSchema.optional()
+  event_id: EventIdSchema.optional(),
+  event: z.any().optional()
 });
 
 export const TransactionSchema = z.object({

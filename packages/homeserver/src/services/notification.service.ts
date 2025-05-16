@@ -1,14 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventBase } from '../models/event.model';
-import { LoggerService } from './logger.service';
 
 @Injectable()
 export class NotificationService {
-  private readonly logger: LoggerService;
-
-  constructor(private readonly loggerService: LoggerService) {
-    this.logger = this.loggerService.setContext('NotificationService');
-  }
+  private readonly logger = new Logger();
   
   async notifyClientsOfEvent(roomId: string, event: EventBase): Promise<void> {
     this.logger.debug(`Notifying clients about event ${event.event_id || 'unknown'} in room ${roomId}`);

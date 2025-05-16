@@ -1,20 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Db, MongoClient, MongoClientOptions } from 'mongodb';
 import { ConfigService } from './config.service';
-import { LoggerService } from './logger.service';
 
 @Injectable()
 export class DatabaseConnectionService {
   private client: MongoClient | null = null;
   private db: Db | null = null;
   private connectionPromise: Promise<void> | null = null;
-  private readonly logger: LoggerService;
+  private readonly logger = new Logger(DatabaseConnectionService.name);
   
   constructor(
     private readonly configService: ConfigService,
-    private readonly loggerService: LoggerService
   ) {
-    this.logger = this.loggerService.setContext('DatabaseConnection');
     this.connect().catch(err => 
       this.logger.error(`Initial database connection failed: ${err.message}`)
     );

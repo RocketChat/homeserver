@@ -82,8 +82,6 @@ export class EventRepository {
 			...args,
 		});
 
-		console.log(`created event on collection ${collection.namespace}`, id, event);
-
 		return id;
 	}
 

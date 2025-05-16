@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { EventBase } from "../models/event.model";
 import {
 	type StagingAreaEventType,
@@ -7,10 +7,7 @@ import {
 import { EventAuthorizationService } from "./event-authorization.service";
 import { EventStateService } from "./event-state.service";
 import { EventService } from "./event.service";
-import { FederationService } from "./federation.service";
-import { LoggerService } from "./logger.service";
 import { MissingEventService } from "./missing-event.service";
-import { NotificationService } from "./notification.service";
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {
@@ -34,23 +31,18 @@ interface ExtendedStagingEvent extends StagingAreaEventType {
 
 @Injectable()
 export class StagingAreaService {
-	private readonly logger: LoggerService;
+	private readonly logger = new Logger(StagingAreaService.name);
 	private processingEvents = new Map<string, ExtendedStagingEvent>();
 
 	constructor(
-    private readonly eventService: EventService,
-    private readonly missingEventsService: MissingEventService,
-    private readonly stagingAreaQueue: StagingAreaQueue,
-    private readonly eventAuthService: EventAuthorizationService,
-    private readonly eventStateService: EventStateService,
-    private readonly federationService: FederationService,
-    private readonly notificationService: NotificationService,
-    private readonly loggerService: LoggerService
-  ) {
-    this.logger = this.loggerService.setContext('StagingAreaService');
-    // Start processing the queue when the service initializes
-    this.processQueue();
-  }
+		private readonly eventService: EventService,
+		private readonly missingEventsService: MissingEventService,
+		private readonly stagingAreaQueue: StagingAreaQueue,
+		private readonly eventAuthService: EventAuthorizationService,
+		private readonly eventStateService: EventStateService,
+	) {
+		this.processQueue();
+	}
 
 	addEventToQueue(event: StagingAreaEventType) {
 		const extendedEvent: ExtendedStagingEvent = {

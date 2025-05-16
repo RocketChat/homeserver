@@ -1,22 +1,19 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { MissingEventsQueue, MissingEventType } from "../queues/missing-event.queue";
 import { EventFetcherService } from "../services/event-fetcher.service";
 import { EventService } from "../services/event.service";
-import { LoggerService } from "../services/logger.service";
 import { StagingAreaService } from "../services/staging-area.service";
 
 @Injectable()
 export class MissingEventListener {
-  private readonly logger: LoggerService;
+  private readonly logger = new Logger(MissingEventListener.name);
   
 	constructor(
     private readonly missingEventsQueue: MissingEventsQueue,
     private readonly stagingAreaService: StagingAreaService,
     private readonly eventService: EventService,
     private readonly eventFetcherService: EventFetcherService,
-    private readonly loggerService: LoggerService
   ) {
-    this.logger = this.loggerService.setContext('MissingEventListener');
     this.missingEventsQueue.registerHandler(this.handleQueueItem.bind(this));
     // setInterval(() => this.processStagedEvents(), 30 * 1000);
   }
