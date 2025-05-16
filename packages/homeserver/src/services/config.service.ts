@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as dotenv from 'dotenv';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { getKeyPair } from '../keys';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
@@ -132,7 +132,7 @@ export class ConfigService {
   }
   
   private getNumberFromEnv(key: string, defaultValue: number): number {
-    return process.env[key] ? parseInt(process.env[key]!, 10) : defaultValue;
+    return process.env[key] ? Number.parseInt(process.env[key]!) : defaultValue;
   }
 
   getServerName(): string {

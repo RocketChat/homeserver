@@ -35,7 +35,6 @@ export class SignatureVerificationService {
         return false;
       }
 
-      // Extract the signing key ID and signature
       const signatureObj = event.signatures[originServer];
       const keyId = Object.keys(signatureObj)[0];
       const signature = signatureObj[keyId];
@@ -45,14 +44,11 @@ export class SignatureVerificationService {
         return false;
       }
 
-      // Get public key - either from cache, or using the provided function
       let publicKey: string;
       
       if (getPublicKeyFn) {
-        // Use provided function to fetch the key
         publicKey = await getPublicKeyFn(originServer, keyId);
       } else {
-        // Use cached key or fetch from key server
         const keyData = await this.getOrFetchPublicKey(originServer, keyId);
         if (!keyData || !keyData.verify_keys[keyId]) {
           this.logger.warn(`Public key not found for ${originServer}:${keyId}`);
@@ -61,15 +57,10 @@ export class SignatureVerificationService {
         publicKey = keyData.verify_keys[keyId].key;
       }
 
-      // Create a copy of the event without the signatures for verification
-      const eventToVerify = { ...event };
-      delete eventToVerify.signatures;
-      delete eventToVerify.unsigned;
+      const { signatures, unsigned, ...eventToVerify } = event;
 
-      // Convert to canonical JSON
       const canonicalJson = JSON.stringify(eventToVerify);
       
-      // Verify signature
       const publicKeyUint8 = Buffer.from(publicKey, 'base64');
       const signatureUint8 = Buffer.from(signature, 'base64');
       
@@ -95,7 +86,6 @@ export class SignatureVerificationService {
     }
     
     try {
-      // Fetch key from server
       const response = await fetch(`https://${serverName}/_matrix/key/v2/server`);
       
       if (!response.ok) {
@@ -105,7 +95,6 @@ export class SignatureVerificationService {
       
       const keyData = await response.json() as KeyData;
       
-      // Cache the key data
       this.cachedKeys.set(cacheKey, keyData);
       
       return keyData;

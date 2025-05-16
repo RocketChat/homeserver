@@ -4,15 +4,15 @@ import "@hs/endpoints/src/query";
 import "@hs/endpoints/src/server";
 import Crypto from "node:crypto";
 
+import type { EventBase } from "@hs/core/src/events/eventBase";
+import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
+import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import { generateId } from "@hs/homeserver/src/authentication";
+import { makeUnsignedRequest } from "@hs/homeserver/src/makeRequest";
 import { isConfigContext } from "@hs/homeserver/src/plugins/isConfigContext";
 import { isMongodbContext } from "@hs/homeserver/src/plugins/isMongodbContext";
 import { createRoom } from "@hs/homeserver/src/procedures/createRoom";
-import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import { signEvent } from "@hs/homeserver/src/signEvent";
-import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
-import { makeUnsignedRequest } from "@hs/homeserver/src/makeRequest";
-import type { EventBase } from "@hs/core/src/events/eventBase";
 
 function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -137,7 +137,7 @@ export const fakeEndpoints = new Elysia({ prefix: "/fake" })
 			}
 
 			const lastEventId = events[events.length - 1]._id;
-			const lastEvent = events[events.length - 1].event as any; //TODO: fix typing
+			const lastEvent = events[events.length - 1].event as EventBase;
 
 			const inviteEvent = await signEvent(
 				roomMemberEvent({

@@ -11,35 +11,31 @@ export class ServerController {
 
     @Get("/server")
     async server() {
-        try {
-            const config = this.configService.getConfig();
-            const signingKeys = await this.configService.getSigningKey();
-            
-            const keys = Object.fromEntries(
-                signingKeys.map((signingKey: SigningKey) => [
-                    `${signingKey.algorithm}:${signingKey.version}`,
-                    {
-                        key: toUnpaddedBase64(signingKey.publicKey),
-                    },
-                ]),
-            );
-            
-            const baseResponse = {
-                old_verify_keys: {},
-                server_name: config.server.name,
-                signatures: {},
-                valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
-                verify_keys: keys,
-            };
-            
-            let signedResponse = baseResponse;
-            for (const key of signingKeys) {
-                signedResponse = await signJson(signedResponse, key, config.server.name);
-            }
-            
-            return signedResponse;
-        } catch (error: any) {
-            throw error;
+        const config = this.configService.getConfig();
+        const signingKeys = await this.configService.getSigningKey();
+        
+        const keys = Object.fromEntries(
+            signingKeys.map((signingKey: SigningKey) => [
+                `${signingKey.algorithm}:${signingKey.version}`,
+                {
+                    key: toUnpaddedBase64(signingKey.publicKey),
+                },
+            ]),
+        );
+        
+        const baseResponse = {
+            old_verify_keys: {},
+            server_name: config.server.name,
+            signatures: {},
+            valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
+            verify_keys: keys,
+        };
+        
+        let signedResponse = baseResponse;
+        for (const key of signingKeys) {
+            signedResponse = await signJson(signedResponse, key, config.server.name);
         }
+        
+        return signedResponse;
     }
 }

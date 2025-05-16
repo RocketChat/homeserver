@@ -11,7 +11,8 @@
 				"useImportType": "off"
 			},
 			"complexity": {
-				"noUselessConstructor": "warn"
+				"noUselessConstructor": "warn",
+				"noStaticOnlyClass": "off"
 			}
 		}
 	},

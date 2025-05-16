@@ -1,3 +1,4 @@
+import type { EventBase } from '@hs/core/src/events/eventBase';
 import { Injectable, Logger } from '@nestjs/common';
 import type { MakeJoinResponse, SendJoinResponse, SendTransactionResponse, Transaction } from '../specs/federation-api';
 import { FederationEndpoints } from '../specs/federation-api';
@@ -29,7 +30,7 @@ export class FederationService {
       const queryParams: Record<string, string> = {};
       
       if (version) {
-        queryParams['ver'] = version;
+        queryParams.ver = version;
       } else {
         for (let ver = 1; ver <= 11; ver++) {
           queryParams[`ver${ver === 1 ? '' : ver}`] = ver.toString();
@@ -38,7 +39,7 @@ export class FederationService {
 
       return await this.requestService.get<MakeJoinResponse>(domain, uri, queryParams);
     } catch (error: any) {
-      this.logger.error(`makeJoin failed: ${error.message}`, error.stack);
+      this.logger.error(`makeJoin failed: ${error?.message}`, error?.stack);
       throw error;
     }
   }
@@ -50,7 +51,7 @@ export class FederationService {
     domain: string,
     roomId: string,
     userId: string,
-    joinEvent: any,
+    joinEvent: EventBase,
     omitMembers = false,
   ): Promise<SendJoinResponse> {
     try {
@@ -70,7 +71,7 @@ export class FederationService {
         queryParams
       );
     } catch (error: any) {
-      this.logger.error(`sendJoin failed: ${error.message}`, error.stack);
+      this.logger.error(`sendJoin failed: ${error?.message}`, error?.stack);
       throw error;
     }
   }
@@ -88,7 +89,7 @@ export class FederationService {
       
       return await this.requestService.put<SendTransactionResponse>(domain, uri, transaction);
     } catch (error: any) {
-      this.logger.error(`sendTransaction failed: ${error.message}`, error.stack);
+      this.logger.error(`sendTransaction failed: ${error?.message}`, error?.stack);
       throw error;
     }
   }
@@ -96,7 +97,7 @@ export class FederationService {
   /**
    * Send an event to a remote server
    */
-  async sendEvent(domain: string, event: any): Promise<SendTransactionResponse> {
+  async sendEvent(domain: string, event: EventBase): Promise<SendTransactionResponse> {
     try {
       const transaction: Transaction = {
         origin: this.configService.serverName,
@@ -106,7 +107,7 @@ export class FederationService {
       
       return await this.sendTransaction(domain, transaction);
     } catch (error: any) {
-      this.logger.error(`sendEvent failed: ${error.message}`, error.stack);
+      this.logger.error(`sendEvent failed: ${error?.message}`, error?.stack);
       throw error;
     }
   }
@@ -114,12 +115,12 @@ export class FederationService {
   /**
    * Get events from a remote server
    */
-  async getEvent(domain: string, eventId: string): Promise<any> {
+  async getEvent(domain: string, eventId: string): Promise<EventBase> {
     try {
       const uri = FederationEndpoints.getEvent(eventId);
-      return await this.requestService.get<any>(domain, uri);
+      return await this.requestService.get<EventBase>(domain, uri);
     } catch (error: any) {
-      this.logger.error(`getEvent failed: ${error.message}`, error.stack);
+      this.logger.error(`getEvent failed: ${error?.message}`, error?.stack);
       throw error;
     }
   }
@@ -127,14 +128,14 @@ export class FederationService {
   /**
    * Get state for a room from remote server
    */
-  async getState(domain: string, roomId: string, eventId: string): Promise<any> {
+  async getState(domain: string, roomId: string, eventId: string): Promise<EventBase> {
     try {
       const uri = FederationEndpoints.getState(roomId);
       const queryParams = { 'event_id': eventId };
       
-      return await this.requestService.get<any>(domain, uri, queryParams);
+      return await this.requestService.get<EventBase>(domain, uri, queryParams);
     } catch (error: any) {
-      this.logger.error(`getState failed: ${error.message}`, error.stack);
+      this.logger.error(`getState failed: ${error?.message}`, error?.stack);
       throw error;
     }
   }
@@ -142,10 +143,10 @@ export class FederationService {
   /**
    * Get state IDs for a room from remote server
    */
-  async getStateIds(domain: string, roomId: string): Promise<any> {
+  async getStateIds(domain: string, roomId: string): Promise<EventBase[]> {
     try {
       const uri = FederationEndpoints.getStateIds(roomId);
-      return await this.requestService.get<any>(domain, uri);
+      return await this.requestService.get<EventBase[]>(domain, uri);
     } catch (error: any) {
       this.logger.error(`getStateIds failed: ${error.message}`, error.stack);
       throw error;

@@ -1,4 +1,5 @@
 import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
+import type { SigningKey } from '@hs/homeserver/src/keys';
 import { Injectable, Logger } from '@nestjs/common';
 import * as nacl from 'tweetnacl';
 import { authorizationHeaders, computeAndMergeHash } from '../../../homeserver/src/authentication';
@@ -56,7 +57,7 @@ export class FederationRequestService {
       
       this.logger.debug(`Making ${method} request to ${url.toString()}`);
 
-      let signedBody;
+      let signedBody: unknown;
       if (body) {
         signedBody = await signJson(
           computeAndMergeHash({ ...body, signatures: {} }),
@@ -67,7 +68,7 @@ export class FederationRequestService {
       
       const auth = await authorizationHeaders(
         serverName,
-        signingKey as any,
+        signingKey as unknown as SigningKey,
         domain,
         method,
         extractURIfromURL(url),
@@ -123,11 +124,11 @@ export class FederationRequestService {
     return this.request<T>('GET', targetServer, endpoint, undefined, queryParams);
   }
   
-  async put<T>(targetServer: string, endpoint: string, body: any, queryParams?: Record<string, string>): Promise<T> {
+  async put<T>(targetServer: string, endpoint: string, body: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
     return this.request<T>('PUT', targetServer, endpoint, body, queryParams);
   }
   
-  async post<T>(targetServer: string, endpoint: string, body: any, queryParams?: Record<string, string>): Promise<T> {
+  async post<T>(targetServer: string, endpoint: string, body: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
     return this.request<T>('POST', targetServer, endpoint, body, queryParams);
   }
 } 
