@@ -30,6 +30,8 @@ import { RoomService } from "./services/room.service";
 import { ServerService } from "./services/server.service";
 import { StagingAreaService } from "./services/staging-area.service";
 import { WellKnownService } from "./services/well-known.service";
+import { ClientRoomsController } from "./controllers/client/room.controller";
+import { ClientRoomService } from "./services/client/room.service";
 
 // Create a ConfigModule to make ConfigService available to FederationModule
 @Module({
@@ -83,6 +85,9 @@ export class ConfigModule {}
 		WellKnownService,
 		ServerService,
 
+		// Client API services
+		ClientRoomService,
+
 		// Queues
 		MissingEventsQueue,
 		StagingAreaQueue,
@@ -111,6 +116,8 @@ export class ConfigModule {}
 		VersionsController,
 		WellKnownController,
 		InternalMessageController,
+		// Client API controllers
+		ClientRoomsController,
 	],
 })
 export class HomeserverModule {}

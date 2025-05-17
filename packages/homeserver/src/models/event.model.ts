@@ -3,12 +3,12 @@ export interface EventBase {
   room_id: string;
   type: string;
   sender: string;
-  content: any;
+  content?: any;
   origin_server_ts: number;
   state_key?: string;
   depth?: number;
-  prev_events?: string[][];
-  auth_events?: string[][];
+  prev_events?: string[];
+  auth_events?: string[];
   signatures?: Record<string, Record<string, string>>;
 }
 
