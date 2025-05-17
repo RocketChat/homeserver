@@ -82,6 +82,15 @@ export class EventRepository {
 		return id;
 	}
 
+	async createMany(events: EventBase[]): Promise<void> {
+		const collection = await this.getCollection();
+		const eventsToInsert = events.map((event) => ({
+			_id: event.event_id || generateId(event),
+			event,
+		}));
+		await collection.insertMany(eventsToInsert);
+	}
+
 	async createIfNotExists(event: EventBase): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
