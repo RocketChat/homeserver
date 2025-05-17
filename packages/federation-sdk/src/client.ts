@@ -14,6 +14,7 @@ import { resolveHostAddressByServerName } from '../../homeserver/src/helpers/ser
 import { extractURIfromURL } from '../../homeserver/src/helpers/url';
 import type { SigningKey } from '../../homeserver/src/keys';
 import { signJson } from '../../homeserver/src/signJson';
+import { getHomeserverFinalAddress } from './server-discovery/discovery';
 
 export interface FederationClientConfig {
   serverName: string;
@@ -41,9 +42,8 @@ export class FederationClient {
     body?: any
   ): Promise<T> {
     try {
-      const { address, headers } = await resolveHostAddressByServerName(
+      const [ address, headers ] = await getHomeserverFinalAddress(
         targetServer,
-        this.serverName
       );
       
       const url = new URL(`https://${address}${uri}`);
