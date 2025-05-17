@@ -1,22 +1,22 @@
 {
-  "name": "@hs/federation-sdk",
-  "version": "0.1.0",
-  "description": "Matrix Federation SDK for server-to-server communication",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "bun test"
-  },
-  "dependencies": {
-    "@nestjs/common": "^11.1.1",
-    "@nestjs/core": "^11.1.1",
-    "zod": "^3.22.4",
-    "rxjs": "^7.8.2",
-    "reflect-metadata": "^0.2.2",
-    "tweetnacl": "^1.0.3"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  }
-} 
+	"name": "@hs/federation-sdk",
+	"version": "0.1.0",
+	"description": "Matrix Federation SDK for server-to-server communication",
+	"main": "src/index.ts",
+	"types": "src/index.ts",
+	"scripts": {
+		"build": "tsc",
+		"test": "bun test"
+	},
+	"dependencies": {
+		"@nestjs/common": "^11.1.1",
+		"@nestjs/core": "^11.1.1",
+		"zod": "^3.22.4",
+		"rxjs": "^7.8.2",
+		"reflect-metadata": "^0.2.2",
+		"tweetnacl": "^1.0.3"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	}
+}
