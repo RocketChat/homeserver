@@ -5,15 +5,19 @@ import type {
   State,
   StateIds,
   Transaction,
-  Version
-} from './specs/federation-api';
-import { FederationEndpoints } from './specs/federation-api';
+  Version,
+} from "./specs/federation-api";
+import { FederationEndpoints } from "./specs/federation-api";
 
-import { authorizationHeaders, computeAndMergeHash } from '../../homeserver/src/authentication';
-import { resolveHostAddressByServerName } from '../../homeserver/src/helpers/server-discovery/discovery';
-import { extractURIfromURL } from '../../homeserver/src/helpers/url';
-import type { SigningKey } from '../../homeserver/src/keys';
-import { signJson } from '../../homeserver/src/signJson';
+import {
+  authorizationHeaders,
+  computeAndMergeHash,
+} from "../../homeserver/src/authentication";
+import { resolveHostAddressByServerName } from "../../homeserver/src/helpers/server-discovery/discovery";
+import { extractURIfromURL } from "../../homeserver/src/helpers/url";
+import type { SigningKey } from "../../homeserver/src/keys";
+import { signJson } from "../../homeserver/src/signJson";
+import { getHomeserverFinalAddress } from "./server-discovery/discovery";
 
 export interface FederationClientConfig {
   serverName: string;
@@ -21,19 +25,19 @@ export interface FederationClientConfig {
   debug?: boolean;
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
 export class FederationClient {
   private serverName: string;
   private signingKey: SigningKey;
   private debug: boolean;
-  
+
   constructor(config: FederationClientConfig) {
     this.serverName = config.serverName;
     this.signingKey = config.signingKey;
     this.debug = config.debug || false;
   }
-  
+
   private async sendRequest<T>(
     method: HttpMethod,
     targetServer: string,
@@ -41,38 +45,44 @@ export class FederationClient {
     body?: any
   ): Promise<T> {
     try {
-      const { address, headers } = await resolveHostAddressByServerName(
-        targetServer,
-        this.serverName
-      );
-      
+      const [address, headers] = await getHomeserverFinalAddress(targetServer);
+
       const url = new URL(`https://${address}${uri}`);
-      
+
       if (this.debug) {
-        console.log(`[FederationClient] Making ${method} request to ${url.toString()}`);
+        console.log(
+          `[FederationClient] Making ${method} request to ${url.toString()}`
+        );
       }
-      
+
       // Verify signing key has the required structure
-      if (!this.signingKey || typeof this.signingKey.sign !== 'function') {
-        const keyProps = this.signingKey ? Object.keys(this.signingKey).join(', ') : 'none';
-        throw new Error(`Invalid signing key configuration: Missing 'sign' method. Available properties: ${keyProps}`);
+      if (!this.signingKey || typeof this.signingKey.sign !== "function") {
+        const keyProps = this.signingKey
+          ? Object.keys(this.signingKey).join(", ")
+          : "none";
+        throw new Error(
+          `Invalid signing key configuration: Missing 'sign' method. Available properties: ${keyProps}`
+        );
       }
-      
+
       let signedBody;
       try {
-        signedBody = body ? 
-          await signJson(
-            computeAndMergeHash({ ...body, signatures: {} }),
-            this.signingKey,
-            this.serverName
-          ) : undefined;
+        signedBody = body
+          ? await signJson(
+              computeAndMergeHash({ ...body, signatures: {} }),
+              this.signingKey,
+              this.serverName
+            )
+          : undefined;
       } catch (signError: any) {
         if (this.debug) {
-          console.error(`[FederationClient] Error signing request: ${signError.message}`);
+          console.error(
+            `[FederationClient] Error signing request: ${signError.message}`
+          );
         }
         throw new Error(`Failed to sign request: ${signError.message}`);
       }
-      
+
       let auth;
       try {
         auth = await authorizationHeaders(
@@ -85,34 +95,38 @@ export class FederationClient {
         );
       } catch (authError: any) {
         if (this.debug) {
-          console.error(`[FederationClient] Error generating authorization headers: ${authError.message}`);
+          console.error(
+            `[FederationClient] Error generating authorization headers: ${authError.message}`
+          );
         }
-        throw new Error(`Failed to generate authorization headers: ${authError.message}`);
+        throw new Error(
+          `Failed to generate authorization headers: ${authError.message}`
+        );
       }
-      
+
       const response = await fetch(url.toString(), {
         method,
         ...(signedBody && { body: JSON.stringify(signedBody) }),
         headers: {
           Authorization: auth,
-          ...headers
-        }
+          ...headers,
+        },
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `Federation request failed with status ${response.status}`;
-        
+
         try {
           const errorObj = JSON.parse(errorText);
           errorMessage += `: ${JSON.stringify(errorObj)}`;
         } catch (parseError) {
           errorMessage += `: ${errorText}`;
         }
-        
+
         throw new Error(errorMessage);
       }
-      
+
       const responseText = await response.text();
       try {
         return JSON.parse(responseText) as T;
@@ -126,115 +140,129 @@ export class FederationClient {
       throw error;
     }
   }
-  
+
   async getVersion(targetServer: string): Promise<Version> {
     return this.sendRequest<Version>(
-      'GET',
+      "GET",
       targetServer,
       FederationEndpoints.version
     );
   }
-  
+
   async getStateIds(targetServer: string, roomId: string): Promise<StateIds> {
     return this.sendRequest<StateIds>(
-      'GET',
+      "GET",
       targetServer,
       FederationEndpoints.getStateIds(roomId)
     );
   }
-  
-  async getState(targetServer: string, roomId: string, eventType?: string, stateKey?: string, eventId?: string): Promise<State> {
+
+  async getState(
+    targetServer: string,
+    roomId: string,
+    eventType?: string,
+    stateKey?: string,
+    eventId?: string
+  ): Promise<State> {
     let uri = FederationEndpoints.getState(roomId);
 
     const params = new URLSearchParams();
-    
+
     if (eventId) {
-      params.append('event_id', eventId);
+      params.append("event_id", eventId);
     }
-    
+
     if (eventType) {
-      params.append('event_type', eventType);
+      params.append("event_type", eventType);
     }
-    
+
     if (stateKey !== undefined) {
-      params.append('state_key', stateKey);
+      params.append("state_key", stateKey);
     }
-    
+
     const queryString = params.toString();
     if (queryString) {
       uri += `?${queryString}`;
     }
-    
-    return this.sendRequest<State>(
-      'GET',
-      targetServer,
-      uri
-    );
+
+    return this.sendRequest<State>("GET", targetServer, uri);
   }
-  
+
   async getEvent(targetServer: string, eventId: string): Promise<any> {
     return this.sendRequest<any>(
-      'GET',
+      "GET",
       targetServer,
       FederationEndpoints.getEvent(eventId)
     );
   }
-  
-  async makeJoin(targetServer: string, roomId: string, userId: string): Promise<MakeJoinResponse> {
-    const uri = `${FederationEndpoints.makeJoin(roomId, userId)}?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11`;
-    
-    return this.sendRequest<MakeJoinResponse>(
-      'GET',
-      targetServer,
-      uri
-    );
+
+  async makeJoin(
+    targetServer: string,
+    roomId: string,
+    userId: string
+  ): Promise<MakeJoinResponse> {
+    const uri = `${FederationEndpoints.makeJoin(
+      roomId,
+      userId
+    )}?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11`;
+
+    return this.sendRequest<MakeJoinResponse>("GET", targetServer, uri);
   }
-  
-  async sendJoin(targetServer: string, roomId: string, eventId: string, joinEvent: any): Promise<SendJoinResponse> {
+
+  async sendJoin(
+    targetServer: string,
+    roomId: string,
+    eventId: string,
+    joinEvent: any
+  ): Promise<SendJoinResponse> {
     return this.sendRequest<SendJoinResponse>(
-      'PUT',
+      "PUT",
       targetServer,
       FederationEndpoints.sendJoinV2(roomId, eventId),
       joinEvent
     );
   }
-  
-  async sendTransaction(targetServer: string, transaction: Transaction): Promise<SendTransactionResponse> {
+
+  async sendTransaction(
+    targetServer: string,
+    transaction: Transaction
+  ): Promise<SendTransactionResponse> {
     const txnId = Date.now().toString();
-    
+
     return this.sendRequest<SendTransactionResponse>(
-      'PUT',
+      "PUT",
       targetServer,
       FederationEndpoints.sendTransaction(txnId),
       transaction
     );
   }
-  
-  async sendEvent(targetServer: string, event: any): Promise<SendTransactionResponse> {
+
+  async sendEvent(
+    targetServer: string,
+    event: any
+  ): Promise<SendTransactionResponse> {
     const transaction: Transaction = {
       origin: this.serverName,
       origin_server_ts: Date.now(),
-      pdus: [event]
+      pdus: [event],
     };
-    
+
     return this.sendTransaction(targetServer, transaction);
   }
-  
+
   async getUserDevices(targetServer: string, userId: string): Promise<any> {
     return this.sendRequest<any>(
-      'GET',
+      "GET",
       targetServer,
       FederationEndpoints.userDevices(userId)
     );
   }
-  
+
   async queryProfile(targetServer: string, userId: string): Promise<any> {
-    const uri = `${FederationEndpoints.queryProfile(userId)}?user_id=${encodeURIComponent(userId)}`;
-    
-    return this.sendRequest<any>(
-      'GET',
-      targetServer,
-      uri
-    );
+    const uri = `${FederationEndpoints.queryProfile(
+      userId
+    )}?user_id=${encodeURIComponent(userId)}`;
+
+    return this.sendRequest<any>("GET", targetServer, uri);
   }
-} 
+}
