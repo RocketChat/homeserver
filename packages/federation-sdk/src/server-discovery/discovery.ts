@@ -3,6 +3,7 @@ import { isIP, isIPv4, isIPv6 } from "node:net";
 import { transpileModule } from "typescript";
 
 // typing below are purely to document and make sure we conform to how we are returning the address
+// ge4tting typescript to help me not return wrong stuff
 
 type PortString = string;
 
@@ -56,6 +57,15 @@ class _URL extends URL {
       super(`https://${url}`);
     }
   }
+
+  isIP() {
+    return isIPv4(this.hostname) || isIPv6(this.ipv6);
+  }
+
+  // isIPv6 fails if ip is wrapped in []
+  get ipv6() {
+    return this.hostname.replace(/^\[|\]$/g, "");
+  }
 }
 
 function isMultiError(error: unknown): error is MultiError {
@@ -76,11 +86,12 @@ function getResolver() {
   return resolver;
 }
 
-function fixForIpv6(addr: string): `[${string}]` {
+// should only be needed if input is from a dns server
+function fix6(addr: string): `[${string}]` {
   return /^\[.+\]$/.test(addr) ? (addr as `[${string}]`) : `[${addr}]`;
 }
 
-const resolver = getResolver();
+export const resolver = getResolver();
 
 export async function resolveHostname(
   hostname: string,
@@ -105,8 +116,6 @@ export async function resolveHostname(
         return result.value;
       }
 
-      console.log(result);
-
       errors.append("", result.reason);
       return [];
     });
@@ -115,7 +124,7 @@ export async function resolveHostname(
   for (const resolved of all) {
     if (resolved.length > 0) {
       return isIPv6(resolved[0])
-        ? fixForIpv6(resolved[0])
+        ? fix6(resolved[0])
         : (resolved[0] as IP4or6String); // FIXME: the typing for some reason is not allowing me to do 'as const'
     }
   }
@@ -132,18 +141,16 @@ export async function resolveHostname(
 export async function getHomeserverFinalAddress(
   addr: AddressString
 ): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
-  const { hostname, port } = new _URL(addr);
+  const url = new _URL(addr);
 
-  // hostname here would have [] for ip6
-
-  const strippedMaybeIpv6 = hostname.replace(/^\[|\]$/g, "");
+  const { hostname, port } = url;
 
   /*
    * SPEC:
    * 1. If the hostname is an IP literal, then that IP address should be used, together with the given port number, or 8448 if no port is given. The target server must present a valid certificate for the IP address. The Host header in the request should be set to the server name, including the port if the server name included one.
    */
 
-  if (isIP(strippedMaybeIpv6) !== 0) {
+  if (url.isIP()) {
     const finalIp = hostname; // should already be wrapped in [] if it is ipv6
     const finalPort = port || DEFAULT_PORT;
     // "Target server must present a valid certificate for the IP address", i.e. always https
@@ -263,34 +270,33 @@ async function fromWellKnownDelegation(
   }
 
   // SPEC: Servers should respect the cache control headers present on the response, or use a sensible default when headers are not present. The recommended sensible default is 24 hours. Servers should additionally impose a maximum cache time for responses: 48 hours is recommended.
-  const cacheControl = response.headers.get("cache-control");
-  let maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-  const MAX_CACHE_ALLOWED_IN_SECONDS = 48 * 60 * 60 * 1000; // 48 hours in milli9seconds
+  //   const cacheControl = response.headers.get("cache-control");
+  //   let maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  //   const MAX_CACHE_ALLOWED_IN_SECONDS = 48 * 60 * 60 * 1000; // 48 hours in milli9seconds
 
-  if (cacheControl) {
-    const match = cacheControl.match(/max-age=(\d+)/);
-    if (match) {
-      maxAge = Math.min(
-        Number.parseInt(match[1], 10),
-        MAX_CACHE_ALLOWED_IN_SECONDS
-      );
-    }
-  }
+  //   if (cacheControl) {
+  //     const match = cacheControl.match(/max-age=(\d+)/);
+  //     if (match) {
+  //       maxAge = Math.min(
+  //         Number.parseInt(match[1], 10),
+  //         MAX_CACHE_ALLOWED_IN_SECONDS
+  //       );
+  //     }
+  //   }
 
-  const validUntil = Date.now() + maxAge;
+  //   const validUntil = Date.now() + maxAge;
 
-  WELLKNOWN_CACHE.set(host, { addr: data["m.server"], validUntil });
+  //   WELLKNOWN_CACHE.set(host, { addr: data["m.server"], validUntil });
 
-  const { hostname: delegatedHostname, port: delegatedPort } = new _URL(
-    data["m.server"]
-  );
+  const url = new _URL(data["m.server"]);
+
+  const { hostname: delegatedHostname, port: delegatedPort } = url;
 
   // SPEC: 3.1. If <delegated_hostname> is an IP literal, then that IP address should be used together with the <delegated_port> or 8448 if no port is provided. The target server must present a valid TLS certificate for the IP address.
 
-  if (isIP(delegatedHostname)) {
-    const delegatedIp = isIPv6(delegatedHostname)
-      ? fixForIpv6(delegatedHostname)
-      : delegatedHostname;
+  if (url.isIP()) {
+    // compiler should take care of this redundant reassignment
+    const delegatedIp = delegatedHostname;
     const finalAddress = `https://${delegatedIp}:${
       delegatedPort || DEFAULT_PORT
     }` as const;
@@ -298,7 +304,7 @@ async function fromWellKnownDelegation(
       finalAddress,
       {
         /* SPEC: Requests must be made with a Host header containing the IP address, including the port if one was provided. */
-        Host: `${delegatedIp}:${delegatedPort ? `:${delegatedPort}` : ""}`,
+        Host: `${delegatedIp}${delegatedPort ? `:${delegatedPort}` : ""}`,
       },
     ];
   }
@@ -332,9 +338,21 @@ async function fromSRVDelegation(
     const srvs = await resolver.resolveSrv(name);
 
     for (const srv of srvs) {
+      const _is4 = isIPv4(srv.name);
+      const _is6 = isIPv6(srv.name);
+
+      if (_is4 || _is6) {
+        // use as is
+        const finalAddress = `${_is6 ? fix6(srv.name) : srv.name}:${
+          srv.port
+        }` as const;
+
+        return [finalAddress, { Host: hostname }];
+      }
+
       try {
         const _addr = await resolveHostname(srv.name, false);
-        const addr = isIPv6(_addr) ? fixForIpv6(_addr) : _addr;
+        const addr = isIPv6(_addr) ? fix6(_addr) : _addr;
         return [`${addr}:${srv.port}` as const, { Host: hostname }];
       } catch (_e) {
         // noop
