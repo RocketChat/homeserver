@@ -1,5 +1,6 @@
 import { Resolver } from "node:dns/promises";
-import { isIP, isIPv6 } from "node:net";
+import { isIP, isIPv4, isIPv6 } from "node:net";
+import { transpileModule } from "typescript";
 
 // typing below are purely to document and make sure we conform to how we are returning the address
 
@@ -75,9 +76,13 @@ function getResolver() {
   return resolver;
 }
 
+function fixForIpv6(addr: string): `[${string}]` {
+  return /^\[.+\]$/.test(addr) ? (addr as `[${string}]`) : `[${addr}]`;
+}
+
 const resolver = getResolver();
 
-async function resolveHostname(
+export async function resolveHostname(
   hostname: string,
   resolveCname: boolean
 ): Promise<IP4or6String> {
@@ -100,6 +105,8 @@ async function resolveHostname(
         return result.value;
       }
 
+      console.log(result);
+
       errors.append("", result.reason);
       return [];
     });
@@ -108,7 +115,7 @@ async function resolveHostname(
   for (const resolved of all) {
     if (resolved.length > 0) {
       return isIPv6(resolved[0])
-        ? (`[${resolved[0]}]` as const)
+        ? fixForIpv6(resolved[0])
         : (resolved[0] as IP4or6String); // FIXME: the typing for some reason is not allowing me to do 'as const'
     }
   }
@@ -123,17 +130,21 @@ async function resolveHostname(
  */
 
 export async function getHomeserverFinalAddress(
-  addr: AddressSrring
+  addr: AddressString
 ): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
   const { hostname, port } = new _URL(addr);
+
+  // hostname here would have [] for ip6
+
+  const strippedMaybeIpv6 = hostname.replace(/^\[|\]$/g, "");
 
   /*
    * SPEC:
    * 1. If the hostname is an IP literal, then that IP address should be used, together with the given port number, or 8448 if no port is given. The target server must present a valid certificate for the IP address. The Host header in the request should be set to the server name, including the port if the server name included one.
    */
 
-  if (isIP(hostname)) {
-    const finalIp = isIPv6(hostname) ? `[${hostname}]` : hostname; // wrap in []
+  if (isIP(strippedMaybeIpv6) !== 0) {
+    const finalIp = hostname; // should already be wrapped in [] if it is ipv6
     const finalPort = port || DEFAULT_PORT;
     // "Target server must present a valid certificate for the IP address", i.e. always https
     const finalAddress = `https://${finalIp}:${finalPort}` as const;
@@ -277,8 +288,9 @@ async function fromWellKnownDelegation(
   // SPEC: 3.1. If <delegated_hostname> is an IP literal, then that IP address should be used together with the <delegated_port> or 8448 if no port is provided. The target server must present a valid TLS certificate for the IP address.
 
   if (isIP(delegatedHostname)) {
-    // bundler will take care of this pointless reassignment
-    const delegatedIp = delegatedHostname;
+    const delegatedIp = isIPv6(delegatedHostname)
+      ? fixForIpv6(delegatedHostname)
+      : delegatedHostname;
     const finalAddress = `https://${delegatedIp}:${
       delegatedPort || DEFAULT_PORT
     }` as const;
@@ -321,7 +333,8 @@ async function fromSRVDelegation(
 
     for (const srv of srvs) {
       try {
-        const addr = await resolveHostname(srv.name, false);
+        const _addr = await resolveHostname(srv.name, false);
+        const addr = isIPv6(_addr) ? fixForIpv6(_addr) : _addr;
         return [`${addr}:${srv.port}` as const, { Host: hostname }];
       } catch (_e) {
         // noop
