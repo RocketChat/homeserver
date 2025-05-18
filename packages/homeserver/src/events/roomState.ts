@@ -1,7 +1,4 @@
-import { Logger } from "../utils/logger";
-import { EventType } from "../validation/pipelines";
-
-const logger = new Logger("RoomState");
+import type { EventType } from "../validation/pipelines";
 
 export interface PowerLevels {
   ban?: number;
@@ -28,9 +25,9 @@ export class RoomState {
   
   private eventDepths: Map<string, number> = new Map();
   private depthToEvents: Map<number, Set<string>> = new Map();
-  private maxDepth: number = 0;
+  private maxDepth = 0;
   
-  private roomVersion: string = "10";
+  private roomVersion = "10";
   private roomCreator: string | null = null; 
   private joinedMembers: Set<string> = new Set();
   private invitedMembers: Set<string> = new Set();
@@ -40,17 +37,17 @@ export class RoomState {
 
   constructor(roomId: string) {
     this.roomId = roomId;
-    logger.info(`RoomState initialized for room ${roomId}`);
+    console.info(`RoomState initialized for room ${roomId}`);
   }
 
   public async addEvent({ eventId, event }: EventType): Promise<boolean> {
     if (event.room_id !== this.roomId) {
-      logger.warn(`Attempted to add event from room ${event.room_id} to room ${this.roomId}`);
+      console.warn(`Attempted to add event from room ${event.room_id} to room ${this.roomId}`);
       return false;
     }
 
     if (this.eventMap.has(eventId)) {
-      logger.debug(`Event ${eventId} already exists in room state`);
+      console.debug(`Event ${eventId} already exists in room state`);
       return true;
     }
 
@@ -82,12 +79,12 @@ export class RoomState {
         this.processMembershipChange(event);
       }
       
-      logger.debug(`Added event ${eventId} to room ${this.roomId}`);
+      console.debug(`Added event ${eventId} to room ${this.roomId}`);
       return true;
     } catch (error: any) {
-      logger.warn(`Failed to add event ${eventId}: ${error.message}`);
-      logger.debug(event);
-      logger.debug(error);
+      console.warn(`Failed to add event ${eventId}: ${error.message}`);
+      console.debug(event);
+      console.debug(error);
       return false;
     }
   }
@@ -148,7 +145,7 @@ export class RoomState {
     for (const authId of authEventIds) {
       if (!this.eventMap.has(authId)) {
         // In a real implementation, we would fetch missing auth events
-        logger.warn(`Auth event ${authId} not found for event ${event.event_id}`);
+        console.warn(`Auth event ${authId} not found for event ${event.event_id}`);
         this.backwardExtremities.add(authId);
       }
     }
@@ -287,7 +284,7 @@ export class RoomState {
     
     for (const prevEventId of prevEventIds) {
       if (!this.eventMap.has(prevEventId)) {
-        logger.debug(`Adding backward extremity: ${prevEventId}`);
+        console.debug(`Adding backward extremity: ${prevEventId}`);
         this.backwardExtremities.add(prevEventId);
       }
     }
@@ -310,7 +307,7 @@ export class RoomState {
   }
 
   private isStateEvent(event: any): boolean {
-    return event.type && event.hasOwnProperty('state_key');
+    return event.type && event.hasOwn('state_key');
   }
 
   public resolveState(eventIds: string[]): any[] {

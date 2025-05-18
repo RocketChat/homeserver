@@ -1,22 +1,19 @@
-import { Logger } from '../../utils/logger';
 import { Validator } from '../decorators/validator.decorator';
-import { IPipeline, ValidatorResponse } from '../pipelines';
-
-const logger = new Logger("OutlierDetectionValidator");
+import type { EventType, EventTypeArray, IPipeline } from '../pipelines';
 
 @Validator()
-export class OutlierDetectionValidator implements IPipeline {
-  async validate(events: any[], context: any): Promise<ValidatorResponse> {
+export class OutlierDetectionValidator implements IPipeline<EventTypeArray> {
+  async validate(events: (EventType & { type: string, state_key: string, event_id: string })[], context: any): Promise<EventTypeArray> {
     const pdus: Array<Record<string, any>> = [];
     const edus: Array<Record<string, any>> = [];
 
     for (const event of events) {
       try {
-        const eventId = event?.event_id || `${event.type}_${event.room_id}_${Date.now()}`;
-        logger.debug(`Checking for outlier status for event ${eventId}`);
+        const eventId = event?.event_id;
+        console.debug(`Checking for outlier status for event ${eventId}`);
         
-        if (event.type === 'm.room.create' && event.state_key === '') {
-          logger.debug(`Event ${eventId} is a create event, not an outlier`);
+        if (event.type === 'm.room.create' && event?.state_key === '') {
+          console.debug(`Event ${eventId} is a create event, not an outlier`);
           pdus.push({ [eventId]: {} });
           continue;
         }
@@ -26,7 +23,7 @@ export class OutlierDetectionValidator implements IPipeline {
         const isOutlier = !isReferenced || !hasKnownParents;
         
         if (isOutlier) {
-          logger.info(`Event ${eventId} identified as an outlier (referenced=${isReferenced}, known_parents=${hasKnownParents})`);
+          console.info(`Event ${eventId} identified as an outlier (referenced=${isReferenced}, known_parents=${hasKnownParents})`);
           
           // Mark event as an outlier but don't reject it
           // This is important information for further processing
@@ -36,12 +33,12 @@ export class OutlierDetectionValidator implements IPipeline {
             } 
           });
         } else {
-          logger.debug(`Event ${eventId} is part of the main event graph`);
+          console.debug(`Event ${eventId} is part of the main event graph`);
           pdus.push({ [eventId]: {} });
         }
       } catch (error: any) {
         const eventId = event?.event_id || 'unknown';
-        logger.error(`Error during outlier detection for ${eventId}: ${error.message || String(error)}`);
+        console.error(`Error during outlier detection for ${eventId}: ${error.message || String(error)}`);
         pdus.push({
           [eventId]: {
             errcode: 'M_OUTLIER_DETECTION_ERROR',
@@ -51,7 +48,7 @@ export class OutlierDetectionValidator implements IPipeline {
       }
     }
 
-    return { pdus, edus };
+    return pdus as unknown as EventTypeArray;
   }
   
   private async isEventReferenced(event: any, context: any): Promise<boolean> {
@@ -62,7 +59,7 @@ export class OutlierDetectionValidator implements IPipeline {
     try {
       return await context.mongo.isEventReferenced(event.event_id, event.room_id);
     } catch (error) {
-      logger.warn(`Error checking if event is referenced: ${error}`);
+      console.warn(`Error checking if event is referenced: ${error}`);
       return false;
     }
   }
@@ -79,7 +76,7 @@ export class OutlierDetectionValidator implements IPipeline {
       
       return await context.mongo.areEventsInMainDAG(prevEventIds, event.room_id);
     } catch (error) {
-      logger.warn(`Error checking if event has known parents: ${error}`);
+      console.warn(`Error checking if event has known parents: ${error}`);
       return false;
     }
   }

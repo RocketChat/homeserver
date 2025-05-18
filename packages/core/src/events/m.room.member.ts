@@ -122,4 +122,6 @@ export const roomMemberEvent = ({
 	});
 };
 
-export const createRoomMemberEvent = createEventWithId(roomMemberEvent);
+export const createRoomMemberEvent = createEventWithId(
+	roomMemberEvent as any,
+);

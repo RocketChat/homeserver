@@ -3,25 +3,11 @@ import Crypto from "node:crypto";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
-import type { HomeServerRoutes } from "../app";
 import { authorizationHeaders, generateId } from "../authentication";
 import { toUnpaddedBase64 } from "../binaryData";
 import { type SigningKey, generateKeyPairsFromString } from "../keys";
-import type {
-	getAllResponsesByMethod,
-	getAllResponsesByPath,
-} from "../makeRequest";
 import type { EventStore } from "../plugins/mongodb";
 import { createRoom } from "../procedures/createRoom";
-
-type MockedFakeRequest = <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
->(
-	method: M,
-	uri: U,
-	body: getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
-) => Promise<Request>;
 
 export function createMediaId(length: number) {
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -111,7 +97,7 @@ export class ContextBuilder {
 		name: string;
 		app: Elysia<any, any, any, any, any, any>;
 		instance: ContextBuilder;
-		makeRequest: MockedFakeRequest;
+		makeRequest: (method: 'GET' | 'POST' | 'PUT' | 'DELETE', uri: string, body: unknown) => Promise<Request>;
 		createRoom: (sender: string, ...members: string[]) => Promise<MockedRoom>;
 	}> {
 		const signature = await generateKeyPairsFromString(this.signingSeed);
@@ -162,7 +148,7 @@ export class ContextBuilder {
 			})
 			.decorate("config", config);
 
-		const makeRequest: MockedFakeRequest = async (method, uri, body) => {
+		const makeRequest = async (method: 'GET' | 'POST' | 'PUT' | 'DELETE', uri: string, body: unknown) => {
 			const signingName = this.name;
 			const domain = "localhost";
 
@@ -179,7 +165,7 @@ export class ContextBuilder {
 					"content-type": "application/json",
 				},
 				method,
-				body: body && JSON.stringify(body),
+				body: body && JSON.stringify(body) as any,
 			});
 		};
 

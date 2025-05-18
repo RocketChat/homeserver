@@ -1,13 +1,13 @@
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
-import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import { createRoomCreateEvent } from "@hs/core/src/events/m.room.create";
+import { createRoomGuestAccessEvent } from "@hs/core/src/events/m.room.guest_access";
+import { createRoomHistoryVisibilityEvent } from "@hs/core/src/events/m.room.history_visibility";
+import { createRoomJoinRulesEvent } from "@hs/core/src/events/m.room.join_rules";
 import { createRoomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { createRoomPowerLevelsEvent } from "@hs/core/src/events/m.room.power_levels";
-import { createRoomJoinRulesEvent } from "@hs/core/src/events/m.room.join_rules";
-import { createRoomHistoryVisibilityEvent } from "@hs/core/src/events/m.room.history_visibility";
-import { createRoomGuestAccessEvent } from "@hs/core/src/events/m.room.guest_access";
+import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
+import "@hs/endpoints/src/query";
+import "@hs/endpoints/src/server";
 
 export const createRoom = async (
 	users: [sender: string, ...username: string[]],
@@ -122,6 +122,6 @@ export const createRoom = async (
 
 	return {
 		roomId,
-		events,
+		events: events as any,
 	};
 };

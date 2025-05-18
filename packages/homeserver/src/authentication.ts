@@ -144,7 +144,7 @@ export function computeAndMergeHash<T extends Record<string, unknown>>(
 		outlier,
 		destinations,
 		...toHash
-	} = content as any;
+	} = content;
 
 	const [algorithm, hash] = computeHash(toHash);
 
@@ -169,7 +169,7 @@ export function computeHash<T extends Record<string, unknown>>(
 		outlier,
 		destinations,
 		...toHash
-	} = content as any;
+	} = content;
 
 	return [
 		algorithm,

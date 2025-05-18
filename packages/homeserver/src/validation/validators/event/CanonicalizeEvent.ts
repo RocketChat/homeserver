@@ -1,7 +1,8 @@
-import { createValidator } from '../../Validator';
-import { success, failure } from '../../ValidationResult';
-import { Event, CanonicalizedEvent } from '../EventValidators';
 import { encodeCanonicalJson } from '../../../signJson';
+import { getErrorMessage } from '../../../utils/get-error-message';
+import { failure, success } from '../../ValidationResult';
+import { createValidator } from '../../Validator';
+import type { CanonicalizedEvent, Event } from '../EventValidators';
 
 /**
  * Canonicalizes event format to prepare for validation
@@ -43,8 +44,8 @@ export const canonicalizeEvent = createValidator<Event, CanonicalizedEvent>(asyn
     let canonicalJsonStr: string;
     try {
       canonicalJsonStr = encodeCanonicalJson(eventWithoutSignatures);
-    } catch (error: any) {
-      return failure('M_INVALID_EVENT', `Event could not be canonicalized: ${error.message || String(error)}`);
+    } catch (error) {
+      return failure('M_INVALID_EVENT', `Event could not be canonicalized: ${getErrorMessage(error)}`);
     }
     
     return success({
@@ -54,7 +55,7 @@ export const canonicalizeEvent = createValidator<Event, CanonicalizedEvent>(asyn
         canonicalJson: canonicalJsonStr
       }
     });
-  } catch (error: any) {
-    return failure('M_INVALID_EVENT', `Failed to canonicalize event: ${error.message || String(error)}`);
+  } catch (error) {
+    return failure('M_INVALID_EVENT', `Failed to canonicalize event: ${getErrorMessage(error)}`);
   }
 }); 

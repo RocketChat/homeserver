@@ -1,6 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
-import { Logger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
@@ -8,17 +7,17 @@ import { RoomService } from './room.service';
 // Import EventStore from plugins/mongodb for type compatibility with makeJoinEventBuilder
 import type { EventStore as MongoEventStore } from '../plugins/mongodb';
 
-const logger = new Logger('ProfilesService');
-
 @Injectable()
 export class ProfilesService {
+  private readonly logger = new Logger(ProfilesService.name);
+
   constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(RoomService) private readonly roomService: RoomService,
+    private readonly configService: ConfigService,
+    private readonly eventService: EventService,
+    private readonly roomService: RoomService,
   ) {}
 
-  async queryProfile(userId: string): Promise<any> {
+  async queryProfile(userId: string): Promise<{ avatar_url: string, displayname: string }> {
     return {
       avatar_url: "mxc://matrix.org/MyC00lAvatar",
       displayname: userId,
@@ -54,12 +53,12 @@ export class ProfilesService {
 
     // Adapt the EventService calls to match the signature expected by makeJoinEventBuilder
     const getAuthEvents = async (roomId: string): Promise<MongoEventStore[]> => {
-      const authEvents = await this.eventService.getAuthEventsForRoom(roomId);
+      const authEvents = await this.eventService.getAuthEventsIds({ roomId });
       // Convert to the expected format
-      return authEvents.map(event => ({
-        _id: event.event_id || '',
+      return authEvents.map((event: string) => ({
+        _id: event,
         event: {
-          ...event,
+          event_id: event,
           origin: '', // Add required property
         },
         staged: false,

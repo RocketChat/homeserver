@@ -1,86 +1,133 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { MissingEventsQueue, MissingEventType } from '../queues/missing-event.queue';
-import { StagingAreaQueue } from '../queues/staging-area.queue';
-import { ConfigService } from '../services/config.service';
-import { EventFetcherService, FetchedEvents } from '../services/event-fetcher.service';
-import { EventService } from '../services/event.service';
-import { StagingAreaService } from '../services/staging-area.service';
-import { Logger } from '../utils/logger';
+import { Injectable, Logger } from "@nestjs/common";
+import type { MissingEventType } from "../queues/missing-event.queue";
+import { MissingEventsQueue } from "../queues/missing-event.queue";
+import { EventFetcherService } from "../services/event-fetcher.service";
+import { EventService } from "../services/event.service";
+import { StagingAreaService } from "../services/staging-area.service";
 
 @Injectable()
 export class MissingEventListener {
-  private readonly logger = new Logger('MissingEventListener');
-  private readonly seenEvents = new Set<string>();
+  private readonly logger = new Logger(MissingEventListener.name);
   
-  constructor(
-    @Inject(forwardRef(() => MissingEventsQueue)) private readonly missingEventsQueue: MissingEventsQueue,
-    @Inject(forwardRef(() => StagingAreaQueue)) private readonly stagingAreaQueue: StagingAreaQueue,
-    @Inject(forwardRef(() => StagingAreaService)) private readonly stagingAreaService: StagingAreaService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventFetcherService) private readonly eventFetcherService: EventFetcherService
+	constructor(
+    private readonly missingEventsQueue: MissingEventsQueue,
+    private readonly stagingAreaService: StagingAreaService,
+    private readonly eventService: EventService,
+    private readonly eventFetcherService: EventFetcherService,
   ) {
     this.missingEventsQueue.registerHandler(this.handleQueueItem.bind(this));
+    // setInterval(() => this.processStagedEvents(), 30 * 1000);
   }
-
-  async handleQueueItem(data: MissingEventType) {
-    this.logger.debug(`Handling missing event ${data.eventId} from ${data.origin}`);
-    this.logger.debug(`Data: ${JSON.stringify(data)}`);
-    const { eventId, roomId, origin } = data;
+  
+  private async processStagedEvents() {
+    const stagedEvents = await this.eventService.findStagedEvents();
     
-    if (this.seenEvents.has(eventId)) {
-      this.logger.debug(`Already attempted to fetch event ${eventId}, skipping`);
+    if (stagedEvents.length === 0) {
       return;
     }
     
-    this.seenEvents.add(eventId);
-    this.logger.debug(`Fetching missing event ${eventId} from ${origin} for room ${roomId}`);
+    this.logger.debug(`Checking ${stagedEvents.length} staged events for processing`);
     
-    try {
-      const fetchedEvents: FetchedEvents = await this.eventFetcherService.fetchEventsByIds(
-        [eventId], 
-        roomId, 
-        origin
-      );
-      
-      if (fetchedEvents.events.length === 0) {
-        this.logger.warn(`Failed to fetch missing event ${eventId} from ${origin}`);
-        return;
-      }
-      
-      // Process fetched events directly without validation pipeline
-      // We'll use the standard event processing flow instead
-      let addedCount = 0;
-      for (const eventData of fetchedEvents.events) {
-        const event = eventData.event;
+    for (const stagedEvent of stagedEvents) {
+      try {
+        const missingDependencies = stagedEvent.missing_dependencies || [];
         
-        // Add the event to the staging area for processing
-        // It will go through normal validation there
-        this.stagingAreaService.addEventToQueue({
-          eventId: event.event_id || eventData.eventId,
-          roomId: event.room_id,
-          origin: event.origin || origin,
-          event
-        });
-        
-        addedCount++;
-      }
-      
-      this.logger.debug(`Added ${addedCount} fetched events to processing queue`);
-      
-      if (fetchedEvents.missingEventIds.length > 0) {
-        this.logger.debug(`Still missing ${fetchedEvents.missingEventIds.length} referenced events`);
-        
-        for (const missingId of fetchedEvents.missingEventIds) {
-          this.missingEventsQueue.enqueue({
-            eventId: missingId,
-            roomId,
-            origin
-          });
+        if (missingDependencies.length === 0) {
+          await this.processAndStoreStagedEvent(stagedEvent);
+          this.logger.debug(`Processed staged event ${stagedEvent._id}`);
         }
+      } catch (err) {
+        const error = err as Error;
+        this.logger.error(`Error processing staged event ${stagedEvent._id}: ${error.message || String(error)}`);
       }
-    } catch (error: any) {
-      this.logger.error(`Error fetching missing event ${eventId}: ${error?.message || String(error)}`);
     }
   }
+  
+  private extractDependencies(event: any): string[] {
+    const authEvents = event.auth_events || [];
+    const prevEvents = event.prev_events || [];
+    return [...new Set([...authEvents, ...prevEvents].flat())];
+  }
+  
+  private async processAndStoreStagedEvent(stagedEvent: any) {
+    try {
+      this.stagingAreaService.addEventToQueue({
+        eventId: stagedEvent._id,
+        roomId: stagedEvent.event.room_id,
+        origin: stagedEvent.event.origin || stagedEvent.origin,
+        event: stagedEvent.event,
+      });
+      
+      await this.eventService.markEventAsUnstaged(stagedEvent._id);
+      this.logger.debug(`Added previously staged event ${stagedEvent._id} to processing queue`);
+    } catch (err) {
+      const error = err as Error;
+      this.logger.error(`Error processing staged event ${stagedEvent._id}: ${error.message || String(error)}`);
+    }
+  }
+  
+  private async updateStagedEventDependencies(resolvedEventId: string) {
+    try {
+      const updatedCount = await this.eventService.removeDependencyFromStagedEvents(resolvedEventId);
+      
+      if (updatedCount > 0) {
+        this.logger.debug(`Updated ${updatedCount} staged events after resolving dependency ${resolvedEventId}`);
+      }
+    } catch (err) {
+      const error = err as Error;
+      this.logger.error(`Error updating staged event dependencies: ${error.message || String(error)}`);
+    }
+  }
+
+	async handleQueueItem(data: MissingEventType) {
+		const { eventId, roomId, origin } = data;
+
+    const exists = await this.eventService.checkIfEventExistsIncludingStaged(eventId);
+    if (exists) {
+      this.logger.debug(`Event ${eventId} already exists in database (staged or processed), marking as fetched`);
+      await this.updateStagedEventDependencies(eventId);
+      return;
+    }
+    
+    try {
+			const fetchedEvents = await this.eventFetcherService.fetchEventsByIds([eventId], roomId, origin);
+			if (fetchedEvents.events.length === 0) {
+				this.logger.warn(`Failed to fetch missing event ${eventId} from ${origin}`);
+				return;
+			}
+
+			for (const eventData of fetchedEvents.events) {
+				const event = eventData.event;
+        const id = event.event_id || eventData.eventId;
+        
+        const dependencies = this.extractDependencies(event);
+        const { missing } = await this.eventService.checkIfEventsExists(dependencies);
+        
+        this.logger.debug(`Storing event ${id} as staged${missing.length ? ` with ${missing.length} missing dependencies` : ' (ready to process)'}`);
+        
+        await this.eventService.storeEventAsStaged({
+          _id: id,
+          event: event,
+          origin: event.origin || origin,
+          missing_dependencies: missing,
+          staged_at: Date.now()
+        });
+        
+        if (missing.length > 0) {
+          for (const missingId of missing) {
+            this.missingEventsQueue.enqueue({
+              eventId: missingId,
+              roomId,
+              origin,
+            });
+          }
+        }
+        
+        await this.updateStagedEventDependencies(id);
+        return this.processStagedEvents();
+			}
+		} catch (err: any) {
+			this.logger.error(`Error fetching missing event ${eventId}: ${err.message || String(err)}`);
+		}
+	}
 }

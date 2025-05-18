@@ -1,8 +1,6 @@
-import { Logger } from '../../utils/logger';
-import { AuthorizedEvent, ValidationResult, failure, success } from '../validators/index';
+import { failure, success, type ValidationResult } from '../ValidationResult';
+import type { AuthorizedEvent } from '../validators/EventValidators';
 import { registerEventHandler } from './index';
-
-const logger = new Logger("m.room.join_rules");
 
 enum JoinRule {
   PUBLIC = 'public',
@@ -21,14 +19,14 @@ export async function validateJoinRules(
     
     // Join rules must have state_key = ""
     if (rawEvent.state_key !== '') {
-      logger.error(`Join rules event ${eventId} has invalid state_key: '${rawEvent.state_key}'`);
+      console.error(`Join rules event ${eventId} has invalid state_key: '${rawEvent.state_key}'`);
       return failure('M_INVALID_PARAM', 'Join rules events must have an empty state_key');
     }
     
     // Check for required auth events in auth_event_objects
     const { auth_event_objects } = event.authorizedEvent;
     if (!auth_event_objects || auth_event_objects.length === 0) {
-      logger.error(`Join rules event ${eventId} is missing required auth events`);
+      console.error(`Join rules event ${eventId} is missing required auth events`);
       return failure('M_MISSING_AUTH_EVENTS', 'Join rules events must have auth events');
     }
     
@@ -53,18 +51,18 @@ export async function validateJoinRules(
     
     // Always require create event
     if (!createEvent) {
-      logger.error(`Join rules event ${eventId} missing required m.room.create event`);
+      console.error(`Join rules event ${eventId} missing required m.room.create event`);
       return failure('M_MISSING_AUTH_EVENTS', 'Join rules event must reference the room create event');
     }
     
     // Check that the sender is in the room
     if (!senderMembership) {
-      logger.error(`Join rules event ${eventId} missing sender's membership event`);
+      console.error(`Join rules event ${eventId} missing sender's membership event`);
       return failure('M_MISSING_AUTH_EVENTS', 'Join rules events must reference the sender\'s membership');
     }
     
     if (senderMembership.content?.membership !== 'join') {
-      logger.error(`Join rules event ${eventId} sender is not joined to the room`);
+      console.error(`Join rules event ${eventId} sender is not joined to the room`);
       return failure('M_FORBIDDEN', 'Sender must be joined to the room to set join rules');
     }
     
@@ -73,13 +71,13 @@ export async function validateJoinRules(
     
     // join_rule is required
     if (!content.join_rule) {
-      logger.error(`Join rules event ${eventId} is missing required join_rule field`);
+      console.error(`Join rules event ${eventId} is missing required join_rule field`);
       return failure('M_MISSING_PARAM', 'Join rules events must specify a join_rule value');
     }
     
     // join_rule must be a valid value
     if (!Object.values(JoinRule).includes(content.join_rule)) {
-      logger.error(`Join rules event ${eventId} has invalid join_rule value: ${content.join_rule}`);
+      console.error(`Join rules event ${eventId} has invalid join_rule value: ${content.join_rule}`);
       return failure('M_INVALID_PARAM', 
         `Invalid join_rule value: ${content.join_rule}. Must be one of: ${Object.values(JoinRule).join(', ')}`);
     }
@@ -87,24 +85,24 @@ export async function validateJoinRules(
     // For restricted join rule, validate allow rules
     if (content.join_rule === JoinRule.RESTRICTED) {
       if (!content.allow || !Array.isArray(content.allow) || content.allow.length === 0) {
-        logger.error(`Join rules event ${eventId} with restricted join_rule is missing required allow rules`);
+        console.error(`Join rules event ${eventId} with restricted join_rule is missing required allow rules`);
         return failure('M_MISSING_PARAM', 'Restricted rooms must specify allow rules');
       }
       
       // Validate each allow rule
       for (const rule of content.allow) {
         if (!rule.type) {
-          logger.error(`Join rules event ${eventId} has allow rule missing required type field`);
+          console.error(`Join rules event ${eventId} has allow rule missing required type field`);
           return failure('M_MISSING_PARAM', 'Allow rules must specify a type');
         }
         
         if (rule.type === 'm.room_membership') {
           if (!rule.room_id) {
-            logger.error(`Join rules event ${eventId} has m.room_membership rule missing required room_id`);
+            console.error(`Join rules event ${eventId} has m.room_membership rule missing required room_id`);
             return failure('M_MISSING_PARAM', 'Room membership rules must specify a room_id');
           }
         } else {
-          logger.warn(`Join rules event ${eventId} has unknown allow rule type: ${rule.type}`);
+          console.warn(`Join rules event ${eventId} has unknown allow rule type: ${rule.type}`);
           // Don't fail on unknown types, just warn
         }
       }
@@ -124,16 +122,16 @@ export async function validateJoinRules(
       const isCreator = rawEvent.sender === createEvent.content?.creator;
       
       if (!isCreator && userPowerLevel < eventPowerLevel) {
-        logger.error(`Join rules event ${eventId} sender has insufficient power: ${userPowerLevel} < ${eventPowerLevel}`);
+        console.error(`Join rules event ${eventId} sender has insufficient power: ${userPowerLevel} < ${eventPowerLevel}`);
         return failure('M_FORBIDDEN', 'Sender does not have permission to change join rules');
       }
     }
     
-    logger.debug(`Join rules event ${eventId} passed validation`);
+    console.debug(`Join rules event ${eventId} passed validation`);
     return success(event);
     
   } catch (error: any) {
-    logger.error(`Error validating join rules event ${eventId}: ${error.message || String(error)}`);
+    console.error(`Error validating join rules event ${eventId}: ${error.message || String(error)}`);
     return failure('M_UNKNOWN', `Error validating join rules event: ${error.message || String(error)}`);
   }
 }

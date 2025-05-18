@@ -1,4 +1,4 @@
-import { EventBase as CoreEventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase as CoreEventBase } from '@hs/core/src/events/eventBase';
 
 export interface Event extends Partial<CoreEventBase> {
   event: {

@@ -1,6 +1,6 @@
 import type { InferContext } from "elysia";
 import Elysia from "elysia";
-import { type Db } from "mongodb";
+import type { Db, WithId } from "mongodb";
 
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import type { ServerKey } from "@hs/core/src/server";
@@ -134,7 +134,7 @@ export const routerWithMongodb = (db: Db) =>
 
 			const getRoomVersion = async (roomId: string) => {
 				const createRoomEvent = await eventsCollection.findOne({ "event.room_id": roomId, "event.type": "m.room.create" }, { projection: { "event.content.room_version": 1 } });
-				return createRoomEvent?.event.content?.room_version ?? null;
+				return (createRoomEvent?.event.content as any)?.room_version ?? null;
 			};
 
 			const getValidPublicKeyFromLocal = async (
@@ -148,11 +148,11 @@ export const routerWithMongodb = (db: Db) =>
 					return;
 				}
 				const [, publicKey] =
-					Object.entries(server.keys).find(
+					Object.entries((server as any).keys).find(
 						([protocolAndVersion, value]) =>
-							protocolAndVersion === key && value.validUntil > Date.now(),
+							protocolAndVersion === key && (value as any).validUntil > Date.now(),
 					) ?? [];
-				return publicKey?.key;
+				return (publicKey as any)?.key;
 			};
 
 			const storePublicKey = async (

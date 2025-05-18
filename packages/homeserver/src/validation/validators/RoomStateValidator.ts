@@ -1,8 +1,5 @@
 import { RoomState } from "../../events/roomState";
-import { Logger } from "../../utils/logger";
-import { EventType, EventTypeArray, IPipeline } from "../pipelines";
-
-const logger = new Logger("RoomStateValidator");
+import type { EventType, EventTypeArray, IPipeline } from "../pipelines";
 
 /**
  * Validates events against room state to ensure they comply with Matrix protocol rules
@@ -16,7 +13,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
   private roomStates: Map<string, RoomState> = new Map();
 
   async validate(events: EventTypeArray, context: any): Promise<EventTypeArray> {
-    logger.debug(`Validating ${events.length} events against room state`);
+    console.log(`Validating ${events.length} events against room state`);
     
     const eventsByRoom = this.groupEventsByRoom(events);
     
@@ -38,7 +35,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
       const roomId = this.extractRoomId(event.room_id);
       
       if (!roomId) {
-        logger.warn(`Event ${eventId} has invalid room ID: ${event.room_id}`);
+        console.warn(`Event ${eventId} has invalid room ID: ${event.room_id}`);
         continue;
       }
       
@@ -74,7 +71,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
         
         if (isValid) {
           validatedEvents.push(eventData);
-          logger.debug(`Event ${eventId} passed room state validation`);
+          console.debug(`Event ${eventId} passed room state validation`);
         } else {
           validatedEvents.push({
             eventId,
@@ -84,7 +81,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
               error: "Event does not comply with room state rules"
             }
           });
-          logger.warn(`Event ${eventId} failed room state validation`);
+          console.warn(`Event ${eventId} failed room state validation`);
         }
       } catch (error: any) {
         validatedEvents.push({
@@ -95,7 +92,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
             error: `Validation error: ${error.message}`
           }
         });
-        logger.warn(`Exception validating event ${eventId}: ${error.message}`);
+        console.warn(`Exception validating event ${eventId}: ${error.message}`);
       }
     }
     
@@ -108,7 +105,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
     if (!roomState) {
       roomState = new RoomState(roomId);
       this.roomStates.set(roomId, roomState);
-      logger.debug(`Created new RoomState for room ${roomId}`);
+      console.debug(`Created new RoomState for room ${roomId}`);
       
       await this.loadRoomStateFromDatabase(roomState, roomId, context);
     }
@@ -122,7 +119,7 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
     context: any
   ): Promise<void> {
     if (!context.mongo?.getRoomState) {
-      logger.debug(`No database connection available to load room state for ${roomId}`);
+      console.debug(`No database connection available to load room state for ${roomId}`);
       return;
     }
     
@@ -130,14 +127,14 @@ export class RoomStateValidator implements IPipeline<EventTypeArray> {
       const storedState = await context.mongo.getRoomState(roomId);
       
       if (storedState) {
-        logger.debug(`Loading stored state for room ${roomId}`);
+        console.debug(`Loading stored state for room ${roomId}`);
         await this.initializeRoomStateFromStorage(roomState, storedState);
-        logger.debug(`Successfully loaded stored state for room ${roomId}`);
+        console.debug(`Successfully loaded stored state for room ${roomId}`);
       } else {
-        logger.debug(`No stored state found for room ${roomId}`);
+        console.debug(`No stored state found for room ${roomId}`);
       }
     } catch (error: any) {
-      logger.warn(`Failed to load room state for ${roomId}: ${error.message}`);
+      console.warn(`Failed to load room state for ${roomId}: ${error.message}`);
     }
   }
 

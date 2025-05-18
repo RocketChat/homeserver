@@ -44,7 +44,7 @@ export const FederationEndpoints = {
   sendTransaction: (txnId: string) => `/_matrix/federation/v1/send/${txnId}`,
   
   // User and profile data
-  queryProfile: (userId: string) => `/_matrix/federation/v1/query/profile`,
+  queryProfile: (userId: string) => '/_matrix/federation/v1/query/profile',
   userDevices: (userId: string) => `/_matrix/federation/v1/user/devices/${userId}`,
   
   // Public room directory
@@ -85,13 +85,14 @@ export const RoomVersionSchema = z.union([
 
 export const MakeJoinResponseSchema = z.object({
   room_version: RoomVersionSchema,
-  event: z.record(z.any())
+  event: z.record(z.unknown())
 });
 
 export const SendJoinResponseSchema = z.object({
   state: z.array(z.any()),
   auth_chain: z.array(z.any()),
-  event_id: EventIdSchema.optional()
+  event_id: EventIdSchema.optional(),
+  event: z.unknown()
 });
 
 export const TransactionSchema = z.object({

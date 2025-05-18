@@ -1,8 +1,5 @@
-import { Logger } from '../utils/logger';
-import { EventTypeArray } from '../validation/pipelines';
+import type { EventTypeArray } from '../validation/pipelines';
 import { RoomState } from './roomState';
-
-const logger = new Logger("EventStagingArea");
 
 export class EventStagingArea {
   private events: Map<string, any> = new Map();
@@ -19,14 +16,14 @@ export class EventStagingArea {
     this.roomId = roomId;
     // this.eventFetcher = new EventFetcher(context);
     this.roomState = new RoomState(roomId);
-    logger.info(`EventStagingArea initialized for room ${roomId}`);
+    console.info(`EventStagingArea initialized for room ${roomId}`);
   }
   
   public async addEvents(events: EventTypeArray, context: any): Promise<void> {
     for (const { eventId, event } of events) {
       const roomId = event.room_id.split(':')[0];
       if (roomId !== this.roomId) {
-        logger.warn(`Ignoring event from wrong room: ${eventId}`);
+        console.warn(`Ignoring event from wrong room: ${eventId}`);
         continue;
       }
       
@@ -39,7 +36,7 @@ export class EventStagingArea {
   
   private async processEvents(context: any): Promise<void> {
     const pendingEventIds = Array.from(this.pendingEvents.keys());
-    logger.debug(`Processing ${pendingEventIds.length} pending events`);
+    console.debug(`Processing ${pendingEventIds.length} pending events`);
     
     for (const eventId of pendingEventIds) {
       const event = this.pendingEvents.get(eventId);
@@ -86,10 +83,10 @@ export class EventStagingArea {
     
     for (const event of readyEvents) {
       await this.roomState.addEvent(event);
-      logger.debug(`Added event ${event.event_id} to room state`);
+      console.debug(`Added event ${event.event_id} to room state`);
     }
     
-    logger.info(`Moved ${readyEvents.length} events to room state`);
+    console.info(`Moved ${readyEvents.length} events to room state`);
   }
   
   private getMissingEventIds(eventIds: string[]): string[] {
