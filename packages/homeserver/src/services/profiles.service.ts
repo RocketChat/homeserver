@@ -1,11 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { EventStore as MongoEventStore } from '../models/event.model';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
-
-// Import EventStore from plugins/mongodb for type compatibility with makeJoinEventBuilder
-import type { EventStore as MongoEventStore } from '../plugins/mongodb';
 
 @Injectable()
 export class ProfilesService {
@@ -99,4 +97,4 @@ export class ProfilesService {
       auth_chain: [],
     };
   }
-} 
+}
