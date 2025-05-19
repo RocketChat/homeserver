@@ -5,16 +5,20 @@ import { ServerKey } from "@hs/core/src/server";
 import { KeyRepository, ServerKeyDocument } from "../repositories/key.repository";
 import { WithId } from "mongodb";
 import { V2KeyQueryBody, V2KeyQueryResponse } from "@hs/core/src/query";
+import { getKeyPair, SigningKey } from "../keys";
 const logger = new Logger('KeyService');
 
 @Injectable()
 export class KeyService {
-	// TODO: add key repository
+	private key: SigningKey | undefined;
+
 	constructor(
 		@Inject(ConfigService)
 		private readonly configService: ConfigService,
 		@Inject (KeyRepository) private readonly keyRepository: KeyRepository,
-	) {}
+	) {
+		this.configService.getSigningKey().then(key => { this.key = key[0]; })
+	}
 	
 	private shouldRefetchKeys(
 		serverName: string, // for logging
@@ -195,5 +199,23 @@ export class KeyService {
 		await Promise.all(foundkeys.map(key => this.keyRepository.storeKey(key)));
 		
 		return foundkeys;
+	}
+	
+	// only a verify_key can verify a s<>s request
+	async getCurrentVerifyKey(serverName: string, keyId: string): Promise<string> {
+		const key = await this.keyRepository.findKey(serverName, keyId, Date.now());
+		
+		if (key) {
+			// decode first
+			return atob(key.verify_keys[keyId].key);
+		}
+		
+		// fetch from remote
+		const remoteKeys = await this.fetchKeysRemote(serverName);
+
+		// store too because why not
+		void this.keyRepository.storeKey(remoteKeys);
+
+		return atob(remoteKeys.verify_keys[keyId].key);
 	}
 }

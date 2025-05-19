@@ -37,6 +37,7 @@ import { EventFormatValidator } from './validation/validators/EventFormatValidat
 import { EventHashesAndSignaturesValidator } from './validation/validators/EventHashesAndSignaturesValidator';
 import { EventTypeSpecificValidator } from './validation/validators/EventTypeSpecificValidator';
 import { KeyService } from './services/key.service';
+import { AuthHeaderMiddleware } from './middleware/auth-header.middleware';
 
 const CONFIG_PROVIDER = {
   provide: ConfigService,
@@ -108,5 +109,9 @@ export class HomeserverModule implements NestModule {
     consumer
       .apply(HttpLoggerMiddleware)
       .forRoutes('*');
+
+    consumer
+      .apply(AuthHeaderMiddleware)
+      .forRoutes('/_matrix/federation/*');
   }
 }
