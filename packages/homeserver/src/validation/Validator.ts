@@ -1,4 +1,4 @@
-import { ValidationResult } from './ValidationResult';
+import type { ValidationResult } from './ValidationResult';
 
 /**
  * Base interface for all event validators

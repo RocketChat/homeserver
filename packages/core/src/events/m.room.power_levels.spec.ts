@@ -69,7 +69,7 @@ test("roomPowerLevelsEvent", async () => {
 
 	const signed = await signEvent(event, signature, "hs1");
 
-	expect(signed).toStrictEqual(finalEvent);
+	expect(signed).toStrictEqual(finalEvent as any);
 	expect(signed).toHaveProperty(
 		"signatures.hs1.ed25519:a_HDhg",
 		"UBNpsQBCDX7t6cPHSj+g4bfAf/9Gb1TxYnme2MCXF4JgN7P3X0OUq0leFjrI5p/+sTR60/nuaZCX7OUYWTTLDA",

@@ -1,13 +1,13 @@
 import Elysia from "elysia";
-import { Collection, FindOptions, WithId, WithoutId, type Db } from "mongodb";
+import type { Collection, Db, FindOptions, WithoutId } from "mongodb";
 
-import { type Key } from "./mongodb";
+import type { InferContext } from "@bogeychan/elysia-logger";
 import { makeRequest } from "../makeRequest";
-import { InferContext } from "@bogeychan/elysia-logger";
+import { type Key } from "./mongodb";
 
 import { type V2KeyQueryBody } from "@hs/core/src/query";
-import { Config } from "./config";
 import { getSignaturesFromRemote, signJson } from "../signJson";
+import type { Config } from "./config";
 
 type OnlyKey = Omit<WithoutId<Key>, "_createdAt">;
 
@@ -88,13 +88,13 @@ class KeysManager {
 		});
 
 		// TODO(deb): check what this does;
-		const [signature] = await getSignaturesFromRemote(response, serverName);
+		const [signature] = await getSignaturesFromRemote(response as any, serverName);
 
 		if (!signature) {
 			throw new Error("no signature found");
 		}
 
-		return response;
+		return response as OnlyKey;
 	}
 
 	async fetchAllkeysForServerName(

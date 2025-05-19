@@ -1,8 +1,6 @@
-import { Logger } from '../../utils/logger';
-import { AuthorizedEvent, ValidationResult, failure, success } from '../validators/index';
+import { failure, success, type ValidationResult } from '../ValidationResult';
+import type { AuthorizedEvent } from '../validators/EventValidators';
 import { registerEventHandler } from './index';
-
-const logger = new Logger("m.room.message");
 
 export async function validateRoomMessage(
   event: AuthorizedEvent,
@@ -12,7 +10,7 @@ export async function validateRoomMessage(
     // Messages must have auth events
     if (!event.authorizedEvent.auth_event_objects || 
         event.authorizedEvent.auth_event_objects.length === 0) {
-      logger.error(`Message ${eventId} is missing required auth events`);
+      console.error(`Message ${eventId} is missing required auth events`);
       return failure('M_MISSING_AUTH_EVENTS', 'Messages must have auth events');
     }
 
@@ -39,25 +37,25 @@ export async function validateRoomMessage(
 
     // 1. Check for create event
     if (!createEvent) {
-      logger.error(`Message ${eventId} missing required m.room.create event`);
+      console.error(`Message ${eventId} missing required m.room.create event`);
       return failure('M_MISSING_AUTH_EVENTS', 'Message must reference the room create event');
     }
 
     // 2. Check for power levels
     if (!powerLevels) {
-      logger.error(`Message ${eventId} missing required m.room.power_levels event`);
+      console.error(`Message ${eventId} missing required m.room.power_levels event`);
       return failure('M_MISSING_AUTH_EVENTS', 'Message must reference the room power levels');
     }
 
     // 3. Check for sender's membership
     if (!senderMembership) {
-      logger.error(`Message ${eventId} missing sender's membership event`);
+      console.error(`Message ${eventId} missing sender's membership event`);
       return failure('M_MISSING_AUTH_EVENTS', 'Message must reference the sender\'s membership');
     }
 
     // Check that sender is actually in the room
     if (senderMembership.content?.membership !== 'join') {
-      logger.error(`Message ${eventId} sender is not joined to the room`);
+      console.error(`Message ${eventId} sender is not joined to the room`);
       return failure('M_FORBIDDEN', 'Sender must be joined to the room to send messages');
     }
 
@@ -71,13 +69,13 @@ export async function validateRoomMessage(
                             0);
 
     if (userPowerLevel < eventPowerLevel) {
-      logger.error(`Message ${eventId} sender has insufficient power level: ${userPowerLevel} < ${eventPowerLevel}`);
+      console.error(`Message ${eventId} sender has insufficient power level: ${userPowerLevel} < ${eventPowerLevel}`);
       return failure('M_FORBIDDEN', 'Sender does not have sufficient power level to send messages');
     }
 
     // Validate basic message structure
     if (!event.event.content) {
-      logger.error(`Message ${eventId} missing content`);
+      console.error(`Message ${eventId} missing content`);
       return failure('M_MISSING_PARAM', 'Message must have content');
     }
 
@@ -86,16 +84,16 @@ export async function validateRoomMessage(
     if (msgtype) {
       const validTypes = ['m.text', 'm.emote', 'm.notice', 'm.image', 'm.file', 'm.audio', 'm.video', 'm.location'];
       if (!validTypes.includes(msgtype) && !msgtype.startsWith('m.')) {
-        logger.warn(`Message ${eventId} has non-standard msgtype: ${msgtype}`);
+        console.warn(`Message ${eventId} has non-standard msgtype: ${msgtype}`);
         // We don't fail on this, just warn
       }
     }
 
-    logger.debug(`Message ${eventId} passed validation`);
+    console.debug(`Message ${eventId} passed validation`);
     return success(event);
     
   } catch (error: any) {
-    logger.error(`Error validating message ${eventId}: ${error.message || String(error)}`);
+    console.error(`Error validating message ${eventId}: ${error.message || String(error)}`);
     return failure('M_UNKNOWN', `Error validating message: ${error.message || String(error)}`);
   }
 }

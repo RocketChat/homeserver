@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import 'reflect-metadata';
-import { EventBase } from '../models/event.model';
+import type { EventBase } from '../models/event.model';
 
 export interface StagingAreaEventType {
   eventId: string;

@@ -52,7 +52,9 @@ export const roomJoinRulesEvent = ({
 	});
 };
 
-export const createRoomJoinRulesEvent = createEventWithId(roomJoinRulesEvent);
+export const createRoomJoinRulesEvent = createEventWithId(
+	roomJoinRulesEvent as any,
+);
 
 export const isRoomJoinRulesEvent = (
 	event: EventBase,

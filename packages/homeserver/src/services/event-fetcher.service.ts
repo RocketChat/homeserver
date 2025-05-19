@@ -1,9 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { FederationClient } from '../../../federation-sdk/src';
+import { FederationService } from '@hs/federation-sdk';
+import { Injectable, Logger } from '@nestjs/common';
 import { generateId } from '../authentication';
 import { EventRepository } from '../repositories/event.repository';
-import { Logger } from '../utils/logger';
-import { ConfigService } from './config.service';
 
 export interface FetchedEvents {
   events: any[];
@@ -12,39 +10,12 @@ export interface FetchedEvents {
 
 @Injectable()
 export class EventFetcherService {
-  private readonly logger = new Logger('EventFetcherService');
-  private federationClient: FederationClient | null = null;
+  private readonly logger = new Logger(EventFetcherService.name);
   
   constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventRepository) private readonly eventRepository: EventRepository
-  ) {
-    console.log(`\n\n\n\n`);
-    
-    // Initialize the federation client
-    this.initFederationClient().catch(err => {
-      this.logger.error(`Failed to initialize federation client: ${err.message}`);
-    });
-
-    console.log(`\n\n\n\n`);
-  }
-  
-  private async initFederationClient(): Promise<void> {
-    try {
-      const signingKeys = await this.configService.getSigningKey();
-      const signingKey = Array.isArray(signingKeys) ? signingKeys[0] : signingKeys;
-
-      this.federationClient = new FederationClient({
-        serverName: this.configService.getServerName(),
-        signingKey,
-        debug: this.configService.isDebugEnabled()
-      });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to initialize federation client: ${errorMessage}`);
-      throw error;
-    }
-  }
+    private readonly eventRepository: EventRepository,
+    private readonly federationService: FederationService,
+  ) {}
   
   public async fetchEventsByIds(
     eventIds: string[], 
@@ -55,11 +26,6 @@ export class EventFetcherService {
 
     if (!eventIds || eventIds.length === 0) {
       return { events: [], missingEventIds: [] };
-    }
-    
-    // Ensure federation client is initialized
-    if (!this.federationClient) {
-      await this.initFederationClient();
     }
     
     // Try to get events from local database
@@ -138,10 +104,6 @@ export class EventFetcherService {
     eventIds: string[], 
     targetServerName: string
   ): Promise<any[]> {
-    if (!this.federationClient) {
-      await this.initFederationClient();
-    }
-
     const eventsToReturn: any[] = [];
     
     try {
@@ -150,17 +112,17 @@ export class EventFetcherService {
       
       for (const chunk of chunks) {
         if (targetServerName === 'rc1') {
-          this.logger.info('Skipping rc1');
+          this.logger.log('Skipping rc1');
           return [];
         }
 
         const federationResponses = await Promise.all(
-          chunk.map(id => this.federationClient!.getEvent(targetServerName, id))
+          chunk.map(id => this.federationService.getEvent(targetServerName, id))
         );
         
         for (const response of federationResponses) {
-          if (response.pdus && response.pdus.length > 0) {
-            eventsToReturn.push(...response.pdus);
+          if ((response as any).pdus && (response as any).pdus.length > 0) {
+            eventsToReturn.push(...(response as any).pdus);
           }
         }
       }

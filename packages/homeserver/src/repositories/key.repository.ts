@@ -1,6 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Collection } from 'mongodb';
-import { DatabaseConnection } from '../database/database.connection';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Key = {
   origin: string;
@@ -11,23 +11,19 @@ type Key = {
 
 @Injectable()
 export class KeyRepository {
-    private collection: Collection<Key> | null = null;
-    
-    constructor(
-        @Inject(DatabaseConnection) private readonly dbConnection: DatabaseConnection
-    ) {}
+	private collection: Collection<Key> | null = null;
 
-    private async getCollection(): Promise<Collection<Key>> {
-        if (!this.collection && !this.dbConnection) {
-            throw new Error('Database connection was not injected properly');
-        }
-        
-        const db = await this.dbConnection.getDb();
-        this.collection = db.collection<Key>('keys');
-        return this.collection;
-    }
+	constructor(private readonly dbConnection: DatabaseConnectionService) {
+		this.getCollection();
+	}
 
-  async getValidPublicKeyFromLocal(origin: string, keyId: string): Promise<string | null> {
+	private async getCollection(): Promise<Collection<Key>> {
+		const db = await this.dbConnection.getDb();
+		this.collection = db.collection<Key>("keys");
+		return this.collection;
+	}
+
+  async getValidPublicKeyFromLocal(origin: string, keyId: string): Promise<string | undefined> {
     const collection = await this.getCollection();
     const key = await collection.findOne({
       origin,
@@ -35,7 +31,7 @@ export class KeyRepository {
       valid_until: { $gt: new Date() }
     });
     
-    return key?.public_key || null;
+    return key?.public_key;
   }
 
   async storePublicKey(origin: string, keyId: string, publicKey: string, validUntil?: Date): Promise<void> {

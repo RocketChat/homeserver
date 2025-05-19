@@ -1,8 +1,5 @@
-import { Logger } from '../../utils/logger';
 import { Validator } from '../decorators/validator.decorator';
-import { EventTypeArray, IPipeline } from '../pipelines';
-
-const logger = new Logger("EventTypeSpecificValidator");
+import type { EventTypeArray, IPipeline } from '../pipelines';
 
 @Validator()
 export class EventTypeSpecificValidator implements IPipeline<EventTypeArray> {
@@ -14,13 +11,13 @@ export class EventTypeSpecificValidator implements IPipeline<EventTypeArray> {
         const eventId = event?.eventId;
         const eventType = event?.event.type;
         
-        logger.debug(`Validating event type specific rules for ${eventId} of type ${eventType}`);
+        console.debug(`Validating event type specific rules for ${eventId} of type ${eventType}`);
         
         if (eventType === 'm.room.create') {
           const errors = this.validateCreateEvent(event.event);
           
           if (errors.length > 0) {
-            logger.error(`Create event ${eventId} validation failed: ${errors.join(', ')}`);
+            console.error(`Create event ${eventId} validation failed: ${errors.join(', ')}`);
             response.push({
               eventId,
               error: {
@@ -35,7 +32,7 @@ export class EventTypeSpecificValidator implements IPipeline<EventTypeArray> {
           const errors = this.validateNonCreateEvent(event.event);
           
           if (errors.length > 0) {
-            logger.error(`Event ${eventId} validation failed: ${errors.join(', ')}`);
+            console.error(`Event ${eventId} validation failed: ${errors.join(', ')}`);
             response.push({
               eventId,
               error: {
@@ -48,14 +45,14 @@ export class EventTypeSpecificValidator implements IPipeline<EventTypeArray> {
           }
         }
         
-        logger.debug(`Event ${eventId} passed type-specific validation`);
+        console.debug(`Event ${eventId} passed type-specific validation`);
         response.push({
           eventId,
           event: event.event
         });
       } catch (error: any) {
         const eventId = event?.eventId || 'unknown';
-        logger.error(`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`);
+        console.error(`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`);
         response.push({
           eventId,
           error: {

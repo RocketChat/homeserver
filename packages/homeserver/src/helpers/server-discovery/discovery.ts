@@ -1,5 +1,5 @@
-import { isIPv6 } from 'node:net';
 import { Resolver } from 'node:dns/promises';
+import { isIPv6 } from 'node:net';
 
 const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d{1,5})?$/;
 const ipv6Regex = /^(\[([a-fA-F0-9:]+)\]|([a-fA-F0-9:]+))(?::(\d{1,5}))?$/;

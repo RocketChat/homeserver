@@ -1,4 +1,4 @@
-import { MongoClient, Collection } from 'mongodb';
+import { Collection, MongoClient } from 'mongodb';
 
 let client: MongoClient | null = null;
 let serversCollection: Collection | null = null;
@@ -29,7 +29,7 @@ export async function getValidPublicKeyFromLocal(
 ): Promise<string | undefined> {
   const { serversCollection } = await ensureConnection();
   
-  const server = await serversCollection.findOne({
+  const server = await serversCollection?.findOne({
     name: origin,
   });
   
@@ -63,7 +63,7 @@ export async function storePublicKey(
 ): Promise<void> {
   const { serversCollection } = await ensureConnection();
   
-  await serversCollection.findOneAndUpdate(
+  await serversCollection?.findOneAndUpdate(
     { name: origin },
     {
       $set: {

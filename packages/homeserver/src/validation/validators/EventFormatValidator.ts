@@ -1,29 +1,26 @@
 import { z } from 'zod';
-import { Config } from '../../plugins/config';
-import { Logger } from '../../utils/logger';
+import type { Config } from '../../plugins/config';
 import { Validator } from '../decorators/validator.decorator';
 import type { EventTypeArray, IPipeline } from '../pipelines';
 import { eventSchemas } from '../schemas/event-schemas';
 
-const logger = new Logger("EventFormatValidator");
-
 async function getCachedRoomVersion(roomId: string, context: any): Promise<string | null> {
   // TODO: Should load from an injected repository instead of passing in context
   if (!context.mongo?.getRoomVersion) {
-    logger.warn('No getRoomVersion method available');
+    console.warn('No getRoomVersion method available');
     return null;
   }
   
   try {
     return await context.mongo.getRoomVersion(roomId);
   } catch (error) {
-    logger.error(`Error getting cached room version: ${error}`);
+    console.error(`Error getting cached room version: ${error}`);
     return null;
   }
 }
 
 async function getRoomVersionFromOriginServer(origin: string, roomId: string, config: Config): Promise<string | null> {
-  logger.debug(`Fetching room version from origin server ${origin} for room ${roomId}`);
+  console.debug(`Fetching room version from origin server ${origin} for room ${roomId}`);
   return null;
 }
 
@@ -31,26 +28,26 @@ async function extractRoomVersion(event: any, context: any): Promise<string | nu
   if (event.type === 'm.room.create' && event.state_key === '') {
     const roomVersion = event.content?.room_version;
     if (roomVersion) {
-      logger.debug(`Extracted room version ${roomVersion} from create event`);
+      console.debug(`Extracted room version ${roomVersion} from create event`);
       return roomVersion;
     }
   }
   
   const cachedRoomVersion = await getCachedRoomVersion(event.room_id, context);
   if (cachedRoomVersion) {
-    logger.debug(`Using cached room version ${cachedRoomVersion} for room ${event.room_id}`);
+    console.debug(`Using cached room version ${cachedRoomVersion} for room ${event.room_id}`);
     return cachedRoomVersion;
   }
 
   if (event.origin) {
     const originRoomVersion = await getRoomVersionFromOriginServer(event.origin, event.room_id, context.config);
     if (originRoomVersion) {
-      logger.debug(`Using origin server room version ${originRoomVersion} for room ${event.room_id}`);
+      console.debug(`Using origin server room version ${originRoomVersion} for room ${event.room_id}`);
       return originRoomVersion;
     }
   }
 
-  logger.warn(`Could not determine room version for ${event.room_id}, using default version 11`);
+  console.warn(`Could not determine room version for ${event.room_id}, using default version 11`);
   return "11";
 }
 
@@ -77,12 +74,12 @@ export class EventFormatValidator implements IPipeline<EventTypeArray> {
       const eventId = event.eventId;
       const eventType = event.event.type;
 
-      logger.debug(`Validating format for event ${eventId} of type ${eventType}`);
+      console.debug(`Validating format for event ${eventId} of type ${eventType}`);
 
       try {
         const roomVersion = await extractRoomVersion(event.event, context);
         if (!roomVersion) {
-          logger.error(`Could not determine room version for event ${eventId}`);
+          console.error(`Could not determine room version for event ${eventId}`);
           response.push({
             eventId,
             error: {
@@ -98,7 +95,7 @@ export class EventFormatValidator implements IPipeline<EventTypeArray> {
         const validationResult = eventSchema.safeParse(event.event);
         if (!validationResult.success) {
           const formattedErrors = JSON.stringify(validationResult.error.format());
-          logger.error(`Event ${eventId} failed schema validation: ${formattedErrors}`);
+          console.error(`Event ${eventId} failed schema validation: ${formattedErrors}`);
           response.push({
             eventId,
             error: {
@@ -110,14 +107,14 @@ export class EventFormatValidator implements IPipeline<EventTypeArray> {
           continue;
         }
 
-        logger.debug(`Event ${eventId} passed schema validation for room version ${roomVersion}`);
+        console.debug(`Event ${eventId} passed schema validation for room version ${roomVersion}`);
         response.push({
           eventId,
           event: event.event
         });
       } catch (error: any) {
         const errorMessage = error?.message || String(error);
-        logger.error(`Error validating format for ${eventId}: ${errorMessage}`);
+        console.error(`Error validating format for ${eventId}: ${errorMessage}`);
         response.push({
           eventId,
           error: {
