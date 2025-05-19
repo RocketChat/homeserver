@@ -1,7 +1,5 @@
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
-import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
 import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
+import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
 import type { EventStore } from "../plugins/mongodb";
 
 // "method":"GET",

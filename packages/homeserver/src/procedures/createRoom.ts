@@ -6,8 +6,6 @@ import { createRoomJoinRulesEvent } from "@hs/core/src/events/m.room.join_rules"
 import { createRoomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { createRoomPowerLevelsEvent } from "@hs/core/src/events/m.room.power_levels";
 import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
 
 export const createRoom = async (
 	users: [sender: string, ...username: string[]],
