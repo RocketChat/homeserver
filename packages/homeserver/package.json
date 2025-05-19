@@ -8,6 +8,7 @@
 	"dependencies": {
 		"@hs/endpoints": "workspace:*",
 		"@hs/core": "workspace:*",
+		"@hs/crypto": "workspace:*",
 		"elysia": "latest"
 	},
 	"devDependencies": {
@@ -15,5 +16,7 @@
 	},
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"files": ["src"]
+	"files": [
+		"src"
+	]
 }

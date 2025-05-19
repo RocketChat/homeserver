@@ -160,12 +160,10 @@ export const verifySignature = (
 	publicKey: Uint8Array,
 	{
 		algorithm,
-		version,
 		signingName,
 	}: {
 		
 	algorithm: EncryptionValidAlgorithm,
-	version: string,
 	signingName: string,
 	}
 ) => {
