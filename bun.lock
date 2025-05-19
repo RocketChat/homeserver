@@ -8,8 +8,6 @@
         "@bogeychan/elysia-logger": "^0.1.4",
         "@elysiajs/swagger": "^1.1.6",
         "@grpc/grpc-js": "^1.13.3",
-        "@hs/fake": "workspace:*",
-        "@hs/homeserver": "workspace:*",
         "@nestjs/common": "^11.1.1",
         "@nestjs/core": "^11.1.1",
         "@nestjs/microservices": "^11.1.1",
@@ -59,37 +57,15 @@
         "typescript": "^5.4.2",
       },
     },
-    "packages/endpoints": {
-      "name": "@hs/endpoints",
-      "version": "1.0.50",
-      "dependencies": {
-        "elysia": "latest",
-        "typia": "^5.5.7",
-      },
-      "devDependencies": {
-        "bun-types": "latest",
-        "ts-node": "^10.9.2",
-        "ts-patch": "^3.1.2",
-        "typescript": "^5.4.2",
-      },
-    },
-    "packages/fake": {
-      "name": "@hs/fake",
-      "version": "1.0.50",
-      "dependencies": {
-        "@hs/core": "workspace:*",
-        "@hs/endpoints": "workspace:*",
-        "@hs/homeserver": "workspace:*",
-        "elysia": "latest",
-      },
-      "devDependencies": {
-        "bun-types": "latest",
-      },
-    },
     "packages/federation-sdk": {
       "name": "@hs/federation-sdk",
       "version": "0.1.0",
       "dependencies": {
+        "@nestjs/common": "^11.1.1",
+        "@nestjs/core": "^11.1.1",
+        "reflect-metadata": "^0.2.2",
+        "rxjs": "^7.8.2",
+        "tweetnacl": "^1.0.3",
         "zod": "^3.22.4",
       },
       "peerDependencies": {
@@ -101,8 +77,6 @@
       "version": "1.0.50",
       "dependencies": {
         "@hs/core": "workspace:*",
-        "@hs/endpoints": "workspace:*",
-        "elysia": "latest",
       },
       "devDependencies": {
         "bun-types": "latest",
@@ -143,10 +117,6 @@
     "@grpc/proto-loader": ["@grpc/proto-loader@0.7.15", "", { "dependencies": { "lodash.camelcase": "^4.3.0", "long": "^5.0.0", "protobufjs": "^7.2.5", "yargs": "^17.7.2" }, "bin": { "proto-loader-gen-types": "build/bin/proto-loader-gen-types.js" } }, "sha512-tMXdRCfYVixjuFK+Hk0Q1s38gV9zDiDJfWL3h1rv4Qc39oILCu1TRTDt7+fGUI8K4G1Fj125Hx/ru3azECWTyQ=="],
 
     "@hs/core": ["@hs/core@workspace:packages/core"],
-
-    "@hs/endpoints": ["@hs/endpoints@workspace:packages/endpoints"],
-
-    "@hs/fake": ["@hs/fake@workspace:packages/fake"],
 
     "@hs/federation-sdk": ["@hs/federation-sdk@workspace:packages/federation-sdk"],
 
