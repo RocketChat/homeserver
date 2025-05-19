@@ -36,6 +36,7 @@ import { SynchronousEventReceptionPipeline } from './validation/pipelines/synchr
 import { EventFormatValidator } from './validation/validators/EventFormatValidator';
 import { EventHashesAndSignaturesValidator } from './validation/validators/EventHashesAndSignaturesValidator';
 import { EventTypeSpecificValidator } from './validation/validators/EventTypeSpecificValidator';
+import { KeyService } from './services/key.service';
 
 const CONFIG_PROVIDER = {
   provide: ConfigService,
@@ -64,6 +65,7 @@ const CONFIG_PROVIDER = {
     ServerService,
     RoomService,
     EventFetcherService,
+	KeyService,
     
     // Repositories
     EventRepository,

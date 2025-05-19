@@ -19,6 +19,7 @@ export class TransactionsController {
 		try {
 			logger.info(`Received transaction ${txnId}`);
 
+			// TODO edu
 			const { pdus = [] } = body as { pdus: roomV10Type[] };
 
 			if (!this.eventService) {
