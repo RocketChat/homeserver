@@ -25,7 +25,7 @@ export class RoomService {
 	constructor(
 		private readonly roomRepository: RoomRepository,
 		private readonly eventService: EventService,
-		private readonly configService: ConfigService
+		private readonly configService: ConfigService,
 	) {}
 
 	async upsertRoom(roomId: string, state: ModelEventBase[]) {
@@ -65,7 +65,10 @@ export class RoomService {
 	/**
 	 * Create a new room with the given sender and username
 	 */
-	async createRoom(username: string, sender: string): Promise<{
+	async createRoom(
+		username: string,
+		sender: string,
+	): Promise<{
 		roomId: string;
 		events: EventBase[];
 	}> {
@@ -80,21 +83,27 @@ export class RoomService {
 		const roomId = `!${createMediaId(18)}:${config.name}`;
 		const result = await createRoom(
 			[sender, username],
-			createSignedEvent(Array.isArray(signingKey) ? signingKey[0] : signingKey, config.name),
-			roomId
+			createSignedEvent(
+				Array.isArray(signingKey) ? signingKey[0] : signingKey,
+				config.name,
+			),
+			roomId,
 		);
 
-		if (result.events.length === 0) {
-			throw new HttpException("Error creating room", HttpStatus.INTERNAL_SERVER_ERROR);
+		if (result.events.filter(Boolean).length === 0) {
+			throw new HttpException(
+				"Error creating room",
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
 		}
 
 		for (const eventObj of result.events) {
-			await this.eventService.insertEvent(eventObj.event as any, eventObj._id);
+			await this.eventService.insertEvent(eventObj.event, eventObj._id);
 		}
 
 		return {
 			roomId: result.roomId,
-			events: result.events.map(e => e.event)
+			events: result.events.map((e) => e.event),
 		};
 	}
 }

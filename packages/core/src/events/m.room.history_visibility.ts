@@ -7,7 +7,7 @@ declare module "./eventBase" {
 	}
 }
 
-interface RoomHistoryVisibilityEvent extends EventBase {
+export interface RoomHistoryVisibilityEvent extends EventBase {
 	content: {
 		history_visibility: "shared" | "invited" | "joined";
 	};
@@ -46,5 +46,5 @@ export const roomHistoryVisibilityEvent = ({
 };
 
 export const createRoomHistoryVisibilityEvent = createEventWithId(
-	roomHistoryVisibilityEvent as any,
+	roomHistoryVisibilityEvent,
 );

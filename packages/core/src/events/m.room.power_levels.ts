@@ -94,9 +94,8 @@ export const roomPowerLevelsEvent = ({
 	});
 };
 
-export const createRoomPowerLevelsEvent = createEventWithId(
-	roomPowerLevelsEvent as any,
-);
+export const createRoomPowerLevelsEvent =
+	createEventWithId(roomPowerLevelsEvent);
 
 export const isRoomPowerLevelsEvent = (
 	event: EventBase,
