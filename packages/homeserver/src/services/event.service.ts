@@ -1,8 +1,8 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { generateId } from '../authentication';
 import { MatrixError } from '../errors';
-import { EventBase, EventStore } from '../models/event.model';
+import type { EventBase, EventStore } from '../models/event.model';
 import { getPublicKeyFromRemoteServer, makeGetPublicKeyFromServerProcedure } from '../procedures/getPublicKeyFromServer';
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
@@ -10,9 +10,10 @@ import { RoomRepository } from '../repositories/room.repository';
 import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { Logger } from '../utils/logger';
 import { eventSchemas } from '../validation/schemas/event-schemas';
-import { roomV10Type } from '../validation/schemas/room-v10.type';
+import type { roomV10Type } from '../validation/schemas/room-v10.type';
 import { ConfigService } from './config.service';
 import { StagingAreaService } from './staging-area.service';
+import { KeyService } from './key.service';
 
 type ValidationResult = {
   eventId: string;
@@ -33,6 +34,7 @@ export class EventService {
     @Inject(RoomRepository) private readonly roomRepository: RoomRepository,
     @Inject(KeyRepository) private readonly keyRepository: KeyRepository,
     @Inject(ConfigService) private readonly configService: ConfigService,
+	@Inject(KeyService) private readonly keyService: KeyService,
     @Inject(forwardRef(() => StagingAreaService)) private readonly stagingAreaService: StagingAreaService
   ) {}
   
@@ -61,6 +63,34 @@ export class EventService {
         valid: true
       };
     });
+
+
+// since part of the same transaction it is safe to assume the events come from the same origin
+	// list the keys we need
+	// TODO: we are already mappinng above, i am just trying to avoid modifying the code
+	const keys: { [keyId: string]: { validUntil: number  } } = events.reduce((acc, event) => {
+		// should have one in practice
+		const signature= event.signatures[event.origin]
+		if (!signature) {
+			throw new Error(`No signature found for event ${event}`);
+		}
+		
+		for (const keyId of Object.keys(signature)) {
+			// TODO: this logic is not full proof
+			// i don't know yet what should be done in case events get signed by diff keys due to them expiring in the middle of multiple events
+			// depends on if they are signed at the time of PUTting or at the time of creation.
+			if (!acc[keyId]) {
+				acc[keyId] = { validUntil: event.origin_server_ts };
+			}
+		}
+
+		return acc;
+	}, {} as { [keyId: string]: { validUntil: number } });
+	
+	const origin = events[0].origin;
+
+	// since not using cache this is bad, but for now ok, it will pull all the necessary keys
+	await this.keyService.fetchKeysFromServer(origin, { [origin]: keys })
     
     this.logger.debug(`Processing ${eventsWithIds.length} incoming PDUs`);
     
@@ -202,27 +232,38 @@ export class EventService {
   }
 
   private async validateSignaturesAndHashes(eventId: string, event: roomV10Type): Promise<ValidationResult> {
-    try {
-      const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-        (origin, keyId) => this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
-        (origin, key) => getPublicKeyFromRemoteServer(origin, this.configService.getServerName(), key),
-        (origin, keyId, publicKey) => this.keyRepository.storePublicKey(origin, keyId, publicKey),
-      );
+    // try {
+    //   const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
+    //     (origin, keyId) => this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
+    //     (origin, key) => getPublicKeyFromRemoteServer(origin, this.configService.getServerName(), key),
+    //     (origin, keyId, publicKey) => this.keyRepository.storePublicKey(origin, keyId, publicKey),
+    //   );
 
-      await checkSignAndHashes(event, event.origin, getPublicKeyFromServer);
-      return { eventId, event, valid: true };
-    } catch (error: any) {
-      this.logger.error(`Error validating signatures for ${eventId}: ${error.message || String(error)}`);
-      return {
-        eventId,
-        event,
-        valid: false,
-        error: {
-          errcode: error instanceof MatrixError ? error.errcode : 'M_UNKNOWN',
-          error: error.message || String(error)
-        }
-      };
-    }
+    //   await checkSignAndHashes(event, event.origin, getPublicKeyFromServer);
+    //   return { eventId, event, valid: true };
+    // } catch (error: any) {
+    //   this.logger.error(`Error validating signatures for ${eventId}: ${error.message || String(error)}`);
+    //   return {
+    //     eventId,
+    //     event,
+    //     valid: false,
+    //     error: {
+    //       errcode: error instanceof MatrixError ? error.errcode : 'M_UNKNOWN',
+    //       error: error.message || String(error)
+    //     }
+    //   };
+    // }
+	
+	const getPublicKeyFromServer = async (origin: string, keyId: string) => {
+		const key = await this.keyRepository.findKey(origin, keyId, event.origin_server_ts);
+		if (!key) {
+			throw new Error(`No key found for ${keyId} from ${origin}`);
+		}
+
+		return key.verify_keys[keyId].key;
+	}
+	
+	await checkSignAndHashes(event, event.origin, getPublicKeyFromServer);
   }
 
   private validateCreateEvent(event: any): string[] {
