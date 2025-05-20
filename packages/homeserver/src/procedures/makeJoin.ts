@@ -1,4 +1,5 @@
-import { AuthEvents, roomMemberEvent } from "@hs/core/src/events/m.room.member";
+import type { AuthEvents } from "@hs/core/src/events/m.room.member";
+import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
 import type { EventStore } from "../models/event.model";
 
@@ -46,7 +47,7 @@ export const makeJoinEventBuilder =
 				origin,
 				ts: Date.now(),
 			});
-			
+
 			return {
 				event,
 				room_version: "10",

@@ -81,7 +81,7 @@ export const createRoom = async (
 		},
 		state_key: sender,
 		auth_events: {
-			create: createEvent._id,
+			"m.room.create": createEvent._id,
 		},
 		prev_events: [createEvent._id],
 	});

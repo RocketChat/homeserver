@@ -5,8 +5,8 @@ import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
 import { EventRepository } from '../repositories/event.repository';
-import { AuthEvents, RoomMemberEvent } from '@hs/core/src/events/m.room.member';
-import { EventStore } from '../models/event.model';
+import type { AuthEvents, RoomMemberEvent } from '@hs/core/src/events/m.room.member';
+import type { EventStore } from '../models/event.model';
 
 @Injectable()
 export class ProfilesService {

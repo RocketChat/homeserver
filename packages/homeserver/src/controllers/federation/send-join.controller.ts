@@ -6,7 +6,7 @@ import { EventService } from '../../services/event.service';
 import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
 import { z } from 'zod';
 import { ROOM_ID_REGEX, USERNAME_REGEX } from '../../utils/validation-regex';
-import { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '@hs/core/src/events/eventBase';
 
 const SendJoinEventSchema = z.object({
     type: z.literal('m.room.member'),
