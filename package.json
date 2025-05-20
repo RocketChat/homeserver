@@ -1,48 +1,46 @@
 {
-	"name": "homeserver",
-	"module": "index.ts",
-	"private": true,
-	"type": "module",
-	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
-		"@types/bun": "latest",
-		"@types/express": "^5.0.2",
-		"husky": "^9.1.7"
-	},
-	"peerDependencies": {
-		"typescript": "^5.0.0"
-	},
-	"workspaces": [
-		"packages/*"
-	],
-	"dependencies": {
-		"@bogeychan/elysia-etag": "^0.0.6",
-		"@bogeychan/elysia-logger": "^0.1.4",
-		"@elysiajs/swagger": "^1.1.6",
-		"@hs/fake": "workspace:*",
-		"@hs/homeserver": "workspace:*",
-		"@nestjs/common": "^11.1.0",
-		"@nestjs/core": "^11.1.0",
-		"bun-bagel": "^1.1.0",
-		"dotenv": "^16.5.0",
-		"elysia": "^1.1.26",
-		"mongodb": "^6.11.0",
-		"node-jsonwebtoken": "^0.0.1",
-		"reflect-metadata": "^0.2.2",
-		"tweetnacl": "^1.0.3",
-		"zod": "^3.24.3"
-	},
-	"husky": {
-		"hooks": {
-			"pre-commit": "bun test"
-		}
-	},
-	"scripts": {
-		"prepare": "husky",
-		"start": "bun run index.ts",
-		"test": "bun test",
-		"test:coverage": "bun test --coverage",
-		"lint": "bunx @biomejs/biome lint",
-		"tsc": "bunx tsc"
-	}
+  "name": "homeserver",
+  "module": "index.ts",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest",
+    "@types/express": "^5.0.2",
+    "husky": "^9.1.7"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "workspaces": ["packages/*"],
+  "dependencies": {
+    "@bogeychan/elysia-etag": "^0.0.6",
+    "@bogeychan/elysia-logger": "^0.1.4",
+    "@elysiajs/swagger": "^1.1.6",
+    "@hs/fake": "workspace:*",
+    "@hs/homeserver": "workspace:*",
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/core": "^11.1.0",
+    "bun-bagel": "^1.1.0",
+    "dotenv": "^16.5.0",
+    "elysia": "^1.1.26",
+    "mongodb": "^6.11.0",
+    "node-jsonwebtoken": "^0.0.1",
+    "reflect-metadata": "^0.2.2",
+    "tweetnacl": "^1.0.3",
+    "zod": "^3.24.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "bun test"
+    }
+  },
+  "scripts": {
+    "prepare": "husky",
+    "start": "bun run index.ts",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "lint": "bunx @biomejs/biome lint",
+    "tsc": "bunx tsc"
+  }
 }
