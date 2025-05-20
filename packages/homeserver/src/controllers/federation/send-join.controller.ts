@@ -80,7 +80,7 @@ export class SendJoinController {
             origin: event.origin || this.configService.getServerConfig().name
         };
 
-        const result: SendJoinResponseDto = {
+        const result = {
             event: {
                 ...event,
                 unsigned: lastInviteEvent ? {
