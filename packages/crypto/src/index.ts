@@ -2,7 +2,6 @@ import nacl from "tweetnacl";
 
 import crypto from "node:crypto";
 
-
 export function computeHash<T extends Record<string, unknown>>(
 	content: T,
 	algorithm: "sha256" = "sha256",
@@ -10,7 +9,10 @@ export function computeHash<T extends Record<string, unknown>>(
 	return [
 		algorithm,
 		toUnpaddedBase64(
-			crypto.createHash(algorithm).update(encodeCanonicalJson(content)).digest(),
+			crypto
+				.createHash(algorithm)
+				.update(encodeCanonicalJson(content))
+				.digest(),
 		),
 	];
 }
@@ -63,22 +65,22 @@ export enum EncryptionValidAlgorithm {
 type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
 export function getKeyPairFromSeed(seed: string) {
-	return nacl.sign.keyPair.fromSeed(Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)));
+	return nacl.sign.keyPair.fromSeed(
+		Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
+	);
 }
 
 // returns the signature as a string
-export async function signJson<
-	T extends object
->(
+export async function signJson<T extends object>(
 	jsonObject: T,
 	seed: string,
 ): Promise<string> {
 	const data = encodeCanonicalJson(jsonObject);
-	
+
 	const { secretKey } = getKeyPairFromSeed(seed);
 
 	const signed = await nacl.sign.detached(toBinaryData(data), secretKey);
-	
+
 	return toUnpaddedBase64(signed);
 }
 
@@ -162,10 +164,9 @@ export const verifySignature = (
 		algorithm,
 		signingName,
 	}: {
-		
-	algorithm: EncryptionValidAlgorithm,
-	signingName: string,
-	}
+		algorithm: EncryptionValidAlgorithm;
+		signingName: string;
+	},
 ) => {
 	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
 		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);

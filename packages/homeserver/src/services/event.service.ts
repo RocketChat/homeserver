@@ -64,6 +64,10 @@ export class EventService {
       };
     });
 
+	
+	// fetch all the keys needed to validate the signatures of these events
+	// remember old_verify_keys CAN sign these events
+	// however, querying by keyId and validUntil might just be enough ?? as these checks skip "real valdiity" cvhecks
 
 // since part of the same transaction it is safe to assume the events come from the same origin
 	// list the keys we need
@@ -255,7 +259,7 @@ export class EventService {
     // }
 	
 	const getPublicKeyFromServer = async (origin: string, keyId: string) => {
-		const key = await this.keyRepository.findKey(origin, keyId, event.origin_server_ts);
+		const key = await this.keyService.fetchKeys(origin, { [origin]: { [keyId]: { validUntil: event.origin_server_ts } } });
 		if (!key) {
 			throw new Error(`No key found for ${keyId} from ${origin}`);
 		}
