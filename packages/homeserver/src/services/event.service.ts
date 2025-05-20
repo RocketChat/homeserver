@@ -14,7 +14,7 @@ import { KeyRepository } from "../repositories/key.repository";
 import { RoomRepository } from "../repositories/room.repository";
 import { signEvent } from "../signEvent";
 import { checkSignAndHashes } from "../utils/checkSignAndHashes";
-import { eventSchemas } from "../validation/schemas/event-schemas";
+import { eventSchemas } from "../utils/event-schemas";
 import { ConfigService } from "./config.service";
 
 type ValidationResult = {
