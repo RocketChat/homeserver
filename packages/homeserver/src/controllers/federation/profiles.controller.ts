@@ -1,9 +1,33 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UsePipes } from '@nestjs/common';
 import { ProfilesService } from '../../services/profiles.service';
+import { z } from 'zod';
+import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
 
+const MakeJoinQueryParamsSchema = z.object({
+    ver: z.array(z.string()).optional()
+});
+
+type MakeJoinQueryParamsDto = z.infer<typeof MakeJoinQueryParamsSchema>;
+type MakeJoinResponseDto = {
+    room_version: string;
+    event: {
+        content: {
+            membership: 'join';
+            join_authorised_via_users_server?: string;
+            [key: string]: any;
+        };
+        room_id: string;
+        sender: string;
+        state_key: string;
+        type: 'm.room.member';
+        origin_server_ts: number;
+        origin: string;
+        [key: string]: any;
+    };
+};
 @Controller('/_matrix/federation/v1')
 export class ProfilesController {
-    constructor(private readonly profilesService: ProfilesService) {}
+    constructor(private readonly profilesService: ProfilesService) { }
 
     @Get("/query/profile")
     async queryProfile(@Query() queryParams: { user_id: string }) {
@@ -24,9 +48,28 @@ export class ProfilesController {
     async makeJoin(
         @Param("roomId") roomId: string,
         @Param("userId") userId: string,
-        @Query() query: any
-    ) {
-        return this.profilesService.makeJoin(roomId, userId, query.ver);
+        @Query(new ZodValidationPipe(MakeJoinQueryParamsSchema)) query: MakeJoinQueryParamsDto,
+    ): Promise<MakeJoinResponseDto> {
+        const response = await this.profilesService.makeJoin(roomId, userId, query.ver);
+
+        return {
+            room_version: response.room_version,
+            event: {
+                ...response.event,
+                content: {
+                    ...response.event.content,
+                    membership: 'join',
+                    join_authorised_via_users_server: response.event.content.join_authorised_via_users_server,
+
+                },
+                room_id: response.event.room_id,
+                sender: response.event.sender,
+                state_key: response.event.state_key,
+                type: 'm.room.member',
+                origin_server_ts: response.event.origin_server_ts,
+                origin: response.event.origin,
+            }
+        }
     }
 
     @Post("/get_missing_events/:roomId")

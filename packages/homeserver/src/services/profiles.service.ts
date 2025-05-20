@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { EventStore as MongoEventStore } from '../models/event.model';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
+
+import { EventRepository } from '../repositories/event.repository';
+import { AuthEvents, RoomMemberEvent } from '@hs/core/src/events/m.room.member';
+import { EventStore } from '../models/event.model';
 
 @Injectable()
 export class ProfilesService {
@@ -13,7 +16,8 @@ export class ProfilesService {
     private readonly configService: ConfigService,
     private readonly eventService: EventService,
     private readonly roomService: RoomService,
-  ) {}
+    private readonly eventRepository: EventRepository,
+  ) { }
 
   async queryProfile(userId: string): Promise<{ avatar_url: string, displayname: string }> {
     return {
@@ -41,7 +45,10 @@ export class ProfilesService {
     };
   }
 
-  async makeJoin(roomId: string, userId: string, version: string): Promise<any> {
+  async makeJoin(roomId: string, userId: string, version?: string[]): Promise<{
+    event: RoomMemberEvent;
+    room_version: string;
+  }> {
     if (!userId.includes(":") || !userId.includes("@")) {
       throw new Error("Invalid sender");
     }
@@ -49,42 +56,35 @@ export class ProfilesService {
       throw new Error("Invalid room Id");
     }
 
-    // Adapt the EventService calls to match the signature expected by makeJoinEventBuilder
-    const getAuthEvents = async (roomId: string): Promise<MongoEventStore[]> => {
-      const authEvents = await this.eventService.getAuthEventsIds({ roomId });
-      // Convert to the expected format
-      return authEvents.map((event: string) => ({
-        _id: event,
-        event: {
-          event_id: event,
-          origin: '', // Add required property
-        },
-        staged: false,
-      })) as unknown as MongoEventStore[];
+    const getAuthEvents = async (roomId: string): Promise<AuthEvents> => {
+      const authEvents = await this.eventRepository.findAuthEventsIdsByRoomId(roomId);
+      const eventsDict = authEvents.reduce((acc, event) => {
+        const isMemberEvent = event.event.type === 'm.room.member' && event.event.state_key;
+        if (isMemberEvent) {
+          acc[`m.room.member:${event.event.state_key}`] = event._id;
+        } else {
+          acc[event.event.type] = event._id;
+        }
+
+        return acc;
+      }, {} as Record<string, string>);
+
+      return {
+        'm.room.create': eventsDict['m.room.create'],
+        'm.room.power_levels': eventsDict['m.room.power_levels'],
+        'm.room.join_rules': eventsDict['m.room.join_rules'],
+        ...(eventsDict[`m.room.member:${userId}`] ? { [`m.room.member:${userId}`]: eventsDict[`m.room.member:${userId}`] } : {}),
+      };
     };
 
-    const getLastEvent = async (roomId: string): Promise<MongoEventStore | null> => {
-      const lastEvent = await this.eventService.getLastEventForRoom(roomId);
-      if (!lastEvent) return null;
-      
-      // Convert to the expected format
-      return {
-        _id: lastEvent.event.event_id || '',
-        event: {
-          ...lastEvent.event,
-          origin: '', // Add required property
-        },
-        staged: false,
-      } as unknown as MongoEventStore;
-    };
+    const getLastEvent = async (roomId: string): Promise<EventStore | null> => this.eventService.getLastEventForRoom(roomId);
 
     const makeJoinEvent = makeJoinEventBuilder(getLastEvent, getAuthEvents);
     const serverName = this.configService.getServerConfig().name;
-    
-    // Convert version string to array if provided
-    const versionArray = version ? [version] : ['1', '2', '9', '10'];
-    
-    return await makeJoinEvent(roomId, userId, versionArray, serverName);
+
+    const versionArray = version ? version : ['1'];
+
+    return makeJoinEvent(roomId, userId, versionArray, serverName);
   }
 
   async getMissingEvents(roomId: string, earliestEvents: string[], latestEvents: string[], limit: number): Promise<any> {
