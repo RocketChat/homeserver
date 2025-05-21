@@ -1,36 +1,28 @@
+import type { RoomMessageEvent } from "@hs/core/src/events/m.room.message";
 import {
   Body,
   Controller,
-  HttpException,
-  HttpStatus,
   Post
 } from "@nestjs/common";
-import { EventService } from "../../services/event.service";
+import { z } from "zod";
+import { MessageService } from "../../services/message.service";
+import type { SignedEvent } from "../../signEvent";
+
+const SendMessageSchema = z.object({
+  roomId: z.string(),
+  targetServer: z.string(),
+  message: z.string(),
+  senderUserId: z.string(),
+});
+
+type SendMessageResponseDto = SignedEvent<RoomMessageEvent>;
 
 @Controller("internal")
 export class InternalMessageController {
-	constructor(private readonly eventService: EventService) {}
+	constructor(private readonly messageService: MessageService) {}
 
 	@Post("messages")
-  async sendMessage(@Body() body: { roomId: string, targetServer: string, message: string, senderUserId: string }): Promise<unknown> {
-    const { roomId, targetServer, message, senderUserId } = body;
-    
-    try {
-      const { eventId, signedEvent } = await this.eventService.createAndSignMessageEvent({
-        roomId,
-        message,
-        senderUserId
-      });
-
-      await this.eventService.sendEventToServer(signedEvent, targetServer);
-
-      return {
-        message: 'Event built, signed, and dispatched to federation service',
-        eventId,
-        signedEvent
-      };
-    } catch (error: unknown) {
-        throw new HttpException(`Failed to send message: ${error instanceof Error ? error.message : String(error)}`, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  async sendMessage(@Body() body: z.infer<typeof SendMessageSchema>): Promise<SendMessageResponseDto> {
+    return this.messageService.sendMessage(body.roomId, body.message, body.senderUserId, body.targetServer);
   }
 }

@@ -27,6 +27,7 @@ import { EventFetcherService } from "./services/event-fetcher.service";
 import { EventStateService } from "./services/event-state.service";
 import { EventService } from "./services/event.service";
 import { InviteService } from "./services/invite.service";
+import { MessageService } from "./services/message.service";
 import { MissingEventService } from "./services/missing-event.service";
 import { NotificationService } from "./services/notification.service";
 import { ProfilesService } from "./services/profiles.service";
@@ -86,6 +87,7 @@ export class ConfigModule {}
 		EventFetcherService,
 		WellKnownService,
 		ServerService,
+		MessageService,
 
 		// Queues
 		MissingEventsQueue,
