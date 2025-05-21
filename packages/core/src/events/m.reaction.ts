@@ -1,0 +1,87 @@
+import { createEventBase, type EventBase } from "./eventBase";
+import { createEventWithId } from "./utils/createSignedEvent";
+
+declare module "./eventBase" {
+    interface Events {
+        "m.reaction": {
+            content: {
+                "m.relates_to": {
+                    rel_type: "m.annotation";
+                    event_id: string;
+                    key: string;
+                };
+            };
+        };
+    }
+}
+
+export type ReactionAuthEvents = {
+    "m.room.create": string;
+    "m.room.power_levels": string;
+    "m.room.member": string;
+}
+
+export const isReactionEvent = (
+    event: EventBase,
+): event is ReactionEvent => {
+    return event.type === "m.reaction";
+};
+
+export interface ReactionEvent extends EventBase {
+    type: "m.reaction";
+    content: {
+        "m.relates_to": {
+            rel_type: "m.annotation";
+            event_id: string;
+            key: string;
+        };
+    };
+}
+
+const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
+    return Boolean(value);
+};
+
+export const reactionEvent = ({
+    roomId,
+    sender,
+    auth_events,
+    prev_events,
+    depth,
+    content,
+    origin,
+    ts = Date.now(),
+}: {
+    roomId: string;
+    sender: string;
+    auth_events: ReactionAuthEvents;
+    prev_events: string[];
+    depth: number;
+    content: {
+        "m.relates_to": {
+            rel_type: "m.annotation";
+            event_id: string;
+            key: string;
+        };
+    };
+    origin?: string;
+    ts?: number;
+}): ReactionEvent => {
+    return createEventBase("m.reaction", {
+        roomId,
+        sender,
+        auth_events: [
+            auth_events["m.room.create"],
+            auth_events["m.room.power_levels"],
+            auth_events["m.room.member"]
+        ].filter(isTruthy),
+        prev_events,
+        depth,
+        content,
+        origin_server_ts: ts,
+        ts,
+        origin,
+    });
+};
+
+export const createReactionEvent = createEventWithId(reactionEvent); 

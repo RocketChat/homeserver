@@ -5,8 +5,8 @@ import { generateId } from "../authentication";
 import { MatrixError } from "../errors";
 import type { EventBase, EventStore } from "../models/event.model";
 import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
+    getPublicKeyFromRemoteServer,
+    makeGetPublicKeyFromServerProcedure,
 } from "../procedures/getPublicKeyFromServer";
 import { StagingAreaQueue } from "../queues/staging-area.queue";
 import { EventRepository } from "../repositories/event.repository";
@@ -42,6 +42,7 @@ export enum EventType {
 	MEMBER = "m.room.member",
 	MESSAGE = "m.room.message",
 	JOIN_RULES = "m.room.join_rules",
+	REACTION = "m.reaction",
 }
 
 interface AuthEventsOptions {
@@ -576,6 +577,50 @@ export class EventService {
 			[EventType.MEMBER]: [
 				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.CREATE }),
 				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.POWER_LEVELS }),
+			],
+			[EventType.REACTION]: [
+				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.CREATE }),
+				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.POWER_LEVELS }),
+				async (opts) => {
+					if (!opts.senderId) {
+						return null;
+					}
+					
+					// Try join membership first
+					const joinQuery = {
+						"event.room_id": opts.roomId,
+						"event.type": EventType.MEMBER,
+						"event.state_key": opts.senderId,
+						"event.content.membership": "join"
+					};
+					
+					const joinEvents = await this.eventRepository.find(joinQuery, {});
+					
+					// If join found, return that query
+					if (joinEvents.length > 0) {
+						return joinQuery;
+					}
+					
+					// Otherwise, try invite membership
+					this.logger.warn(`No join membership found for ${opts.senderId} in room ${opts.roomId}, checking for invite`);
+					
+					const inviteQuery = {
+						"event.room_id": opts.roomId,
+						"event.type": EventType.MEMBER,
+						"event.state_key": opts.senderId,
+						"event.content.membership": "invite"
+					};
+					
+					const inviteEvents = await this.eventRepository.find(inviteQuery, {});
+					
+					if (inviteEvents.length > 0) {
+						this.logger.warn(`Using invite membership for ${opts.senderId} since no join event was found`);
+						return inviteQuery;
+					}
+					
+					this.logger.error(`No membership events found for ${opts.senderId} in room ${opts.roomId}`);
+					return null;
+				}
 			]
 		};
 		
