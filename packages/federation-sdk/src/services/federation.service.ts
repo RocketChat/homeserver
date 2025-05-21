@@ -1,10 +1,11 @@
 import type { EventBase } from '@hs/core/src/events/eventBase';
 import { Injectable, Logger } from '@nestjs/common';
-import type { MakeJoinResponse, SendJoinResponse, SendTransactionResponse, Transaction } from '../specs/federation-api';
+import type { MakeJoinResponse, SendJoinResponse, SendTransactionResponse, Transaction, Version } from '../specs/federation-api';
 import { FederationEndpoints } from '../specs/federation-api';
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
+import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
 
 @Injectable()
 export class FederationService {
@@ -14,7 +15,7 @@ export class FederationService {
     private readonly configService: FederationConfigService,
     private readonly requestService: FederationRequestService,
     private readonly signatureService: SignatureVerificationService,
-  ) {}
+  ) { }
 
   /**
    * Get a make_join template for a room and user
@@ -28,7 +29,7 @@ export class FederationService {
     try {
       const uri = FederationEndpoints.makeJoin(roomId, userId);
       const queryParams: Record<string, string> = {};
-      
+
       if (version) {
         queryParams.ver = version;
       } else {
@@ -51,23 +52,23 @@ export class FederationService {
     domain: string,
     roomId: string,
     userId: string,
-    joinEvent: unknown,
+    joinEvent: MakeJoinResponse['event'],
     omitMembers = false,
   ): Promise<SendJoinResponse> {
     try {
       const eventWithOrigin = {
-        ...joinEvent as any,
+        ...joinEvent,
         origin: this.configService.serverName,
         origin_server_ts: Date.now(),
       };
-      
+
       const uri = FederationEndpoints.sendJoinV2(roomId, userId);
       const queryParams = omitMembers ? { 'omit_members': 'true' } : undefined;
-      
+
       return await this.requestService.put<SendJoinResponse>(
-        domain, 
-        uri, 
-        eventWithOrigin, 
+        domain,
+        uri,
+        eventWithOrigin,
         queryParams
       );
     } catch (error: any) {
@@ -86,7 +87,7 @@ export class FederationService {
     try {
       const txnId = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
       const uri = FederationEndpoints.sendTransaction(txnId);
-      
+
       return await this.requestService.put<SendTransactionResponse>(domain, uri, transaction);
     } catch (error: any) {
       this.logger.error(`sendTransaction failed: ${error?.message}`, error?.stack);
@@ -104,7 +105,7 @@ export class FederationService {
         origin_server_ts: Date.now(),
         pdus: [event],
       };
-      
+
       return await this.sendTransaction(domain, transaction);
     } catch (error: any) {
       this.logger.error(`sendEvent failed: ${error?.message}`, error?.stack);
@@ -132,7 +133,7 @@ export class FederationService {
     try {
       const uri = FederationEndpoints.getState(roomId);
       const queryParams = { 'event_id': eventId };
-      
+
       return await this.requestService.get<EventBase>(domain, uri, queryParams);
     } catch (error: any) {
       this.logger.error(`getState failed: ${error?.message}`, error?.stack);
@@ -156,19 +157,24 @@ export class FederationService {
   /**
    * Get server version information
    */
-  async getVersion(domain: string): Promise<any> {
+  async getVersion(domain: string): Promise<Version> {
     try {
-      return await this.requestService.get<any>(domain, FederationEndpoints.version);
+      return await this.requestService.get<Version>(domain, FederationEndpoints.version);
     } catch (error: any) {
       this.logger.error(`getVersion failed: ${error.message}`, error.stack);
       throw error;
     }
   }
-  
+
   /**
    * Verify PDU from a remote server
    */
-  async verifyPDU(event: any, originServer: string): Promise<boolean> {
+  async verifyPDU<
+    T extends object & {
+      signatures?: Record<string, Record<ProtocolVersionKey, string>>;
+      unsigned?: unknown;
+    },
+  >(event: T, originServer: string): Promise<boolean> {
     return this.signatureService.verifySignature(event, originServer);
   }
 } 
