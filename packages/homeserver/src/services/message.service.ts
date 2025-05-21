@@ -21,7 +21,8 @@ export class MessageService {
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
 		
 		const authEvents = await this.eventService.getAuthEventsIds({ roomId, eventType: EventType.MESSAGE, senderId: senderUserId });
-		const currentDepth = latestEventDoc?.event?.depth ?? 0;
+		
+        const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
 
         const authEventsMap: MessageAuthEvents = {
