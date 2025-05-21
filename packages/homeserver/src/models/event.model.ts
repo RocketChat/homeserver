@@ -5,10 +5,11 @@ export interface EventBase {
   sender: string;
   content: any;
   origin_server_ts: number;
+  origin: string;
   state_key?: string;
   depth?: number;
-  prev_events?: string[][];
-  auth_events?: string[][];
+  prev_events?: string[];
+  auth_events?: string[];
   signatures?: Record<string, Record<string, string>>;
 }
 

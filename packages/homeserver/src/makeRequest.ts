@@ -1,4 +1,3 @@
-import type { HomeServerRoutes } from "./app";
 import { authorizationHeaders, computeAndMergeHash } from "./authentication";
 import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
 import { extractURIfromURL } from "./helpers/url";
@@ -6,22 +5,7 @@ import type { SigningKey } from "./keys";
 
 import { signJson } from "./signJson";
 
-export type getAllResponsesByMethod<
-	T extends HomeServerRoutes,
-	M extends HomeServerRoutes["method"],
-> = T extends { method: M } ? T : never;
-
-export type getAllResponsesByPath<
-	T extends HomeServerRoutes,
-	M extends HomeServerRoutes["method"],
-	P extends HomeServerRoutes["path"],
-> = T extends { method: M; path: P } ? T : never;
-
-export const makeSignedRequest = async <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
->({
+export const makeSignedRequest = async({
 	method,
 	domain,
 	uri,
@@ -30,10 +14,11 @@ export const makeSignedRequest = async <
 	signingKey,
 	signingName,
 	queryString,
-}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
-	method: M;
+}: {
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
-	uri: U;
+	uri: string;
+	body?: unknown;
 	options?: Record<string, any>;
 	signingKey: SigningKey;
 	signingName: string;
@@ -63,14 +48,14 @@ export const makeSignedRequest = async <
 		domain,
 		method,
 		extractURIfromURL(url),
-		signedBody,
+		signedBody as any,
 	);
 
 	console.log("auth ->", method, domain, uri, auth);
 
 	const response = await fetch(url.toString(), {
 		...options,
-		...(body && { body: JSON.stringify(signedBody) }),
+		...(body && { body: JSON.stringify(signedBody) }) as any,
 		method,
 		...(queryString && { search: queryString }),
 		headers: {
@@ -79,16 +64,10 @@ export const makeSignedRequest = async <
 		},
 	});
 
-	return response.json() as Promise<
-		getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200]
-	>;
+	return response.json() as Promise<unknown>;
 };
 
-export const makeRequest = async <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
->({
+export const makeRequest = async({
 	method,
 	domain,
 	uri,
@@ -96,10 +75,11 @@ export const makeRequest = async <
 	signingName,
 	options = {},
 	queryString,
-}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
-	method: M;
+}: {
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
-	uri: U;
+	uri: string;
+	body?: unknown;
 	signingName: string;
 	options?: Record<string, any>;
 	queryString?: string;
@@ -115,23 +95,16 @@ export const makeRequest = async <
 
 	const response = await fetch(url.toString(), {
 		...options,
-		...(body && { body: JSON.stringify(body) }),
+		...(body && { body: JSON.stringify(body) }) as any,
 		method,
 		...(queryString && { search: queryString }),
 		headers,
 	});
 
-	return response.json() as Promise<
-		getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200]
-	>;
+	return response.json() as Promise<unknown>;
 };
 
-export const makeUnsignedRequest = async <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	R extends getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200],
-	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
->({
+export const makeUnsignedRequest = async({
 	method,
 	domain,
 	uri,
@@ -140,11 +113,11 @@ export const makeUnsignedRequest = async <
 	signingKey,
 	signingName,
 	queryString,
-}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
-	method: M;
+}: {
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
-	uri: U;
-	body: B;
+	uri: string;
+	body?: unknown;
 	options?: Record<string, any>;
 	signingKey: SigningKey;
 	signingName: string;
@@ -156,7 +129,7 @@ export const makeUnsignedRequest = async <
 		domain,
 		method,
 		uri,
-		body,
+		body as any,
 	);
 
 	const { address, headers } = await resolveHostAddressByServerName(
@@ -169,13 +142,14 @@ export const makeUnsignedRequest = async <
 	}
 	const response = await fetch(url.toString(), {
 		...options,
-		...(body && { body: JSON.stringify(body) }),
+		...(body && { body: JSON.stringify(body) }) as any,
 		method,
 		headers: {
 			Authorization: auth,
 			...headers,
+			'content-type': 'application/json',
 		},
 	});
 
-	return response.json() as Promise<R>;
+	return response.json() as Promise<unknown>;
 };

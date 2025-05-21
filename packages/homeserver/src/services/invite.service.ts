@@ -1,190 +1,235 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { generateId } from '../authentication';
-import { MatrixError } from '../errors';
-import { makeSignedRequest } from '../makeRequest';
-import { EventBase } from '../models/event.model';
-import { getPublicKeyFromRemoteServer, makeGetPublicKeyFromServerProcedure } from '../procedures/getPublicKeyFromServer';
-import { checkSignAndHashes } from '../utils/checkSignAndHashes';
-import { Logger } from '../utils/logger';
-import { ConfigService } from './config.service';
-import { EventService } from './event.service';
-import { RoomService } from './room.service';
-import { ServerService } from './server.service';
+import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
+import { FederationService } from "@hs/federation-sdk";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
+import { generateId } from "../authentication";
+import { makeUnsignedRequest } from "../makeRequest";
+import type { EventBase } from "../models/event.model";
+import { signEvent } from "../signEvent";
+import { ConfigService } from "./config.service";
+import { EventService } from "./event.service";
+import { RoomService } from "./room.service";
 
-const logger = new Logger('InviteService');
-
-interface MatrixEvent extends EventBase {
-  origin: string;
-}
-
-type MakeJoinResponse = {
-  event: any;
-};
-
-type SendJoinResponse = {
-  state: any[];
-  auth_chain: any[];
-  event?: any;
+// TODO: Have better (detailed/specific) event input type
+export type ProcessInviteEvent = {
+	event: EventBase & { origin: string, room_id: string, state_key: string };
+	invite_room_state: unknown;
+	room_version: string;
 };
 
 @Injectable()
 export class InviteService {
-  constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(ServerService) private readonly serverService: ServerService,
-    @Inject(RoomService) private readonly roomService: RoomService,
-  ) {}
+	private readonly logger = new Logger(InviteService.name);
+	
+	constructor(
+		private readonly eventService: EventService,
+		private readonly federationService: FederationService,
+		private readonly configService: ConfigService,
+		private readonly roomService: RoomService,
+  	) {}
 
-  async processInvite(event: any): Promise<any> {
-    logger.info(`Processing invite for room ${event.room_id} from ${event.sender} to ${event.state_key}`);
-    
-    try {
-      await this.eventService.insertEvent(event);
-      logger.info(`Successfully stored invite event for ${event.state_key}`);
-      
-      // Process the invite asynchronously
-      setTimeout(async () => {
-        try {
-          await this.handleInviteProcessing(event);
-        } catch (error: any) {
-          logger.error(`Error in async invite processing: ${error.message}`);
-        }
-      }, 1000);
+	/**
+	 * Invite a user to an existing room, or create a new room if none is provided
+	 */
+	async inviteUserToRoom(username: string, roomId?: string, sender?: string): Promise<unknown> {
+		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
 
-      return { event };
-    } catch (error: any) {
-      logger.error(`Failed to process invite: ${error.message}`);
-      throw error;
-    }
-  }
+		const config = this.configService.getServerConfig();
+		const signingKey = await this.configService.getSigningKey();
+		let finalRoomId = roomId;
 
-  private async handleInviteProcessing(event: any): Promise<void> {
-    try {
-      logger.info(`Starting invite processing for ${event.state_key} in room ${event.room_id}`);
-      
-      const signingKey = await this.configService.getSigningKey();
-      logger.info(`Loaded signing key for server ${this.configService.getServerConfig().name}`);
-      
-      const serverConfig = this.configService.getServerConfig();
+		if (!username.includes(":") || !username.includes("@")) {
+			throw new HttpException("Invalid username", HttpStatus.BAD_REQUEST);
+		}
 
-      // Step 1: Make a join request to get the join event template
-      logger.info(`Making join request to ${event.origin} for room ${event.room_id}`);
-      const responseMake = await makeSignedRequest({
-        method: 'GET',
-        domain: event.origin,
-        uri: `/_matrix/federation/v1/make_join/${event.room_id}/${event.state_key}` as any,
-        signingKey: signingKey[0],
-        signingName: serverConfig.name,
-        queryString: 'ver=10',
-      }) as MakeJoinResponse;
+		// Create room if no roomId was provided
+		if (sender && !finalRoomId) {
+			if (sender.split(":").pop() !== config.name) {
+				throw new HttpException("Invalid sender", HttpStatus.BAD_REQUEST);
+			}
 
-      logger.info(`Received make_join response for ${event.state_key}`);
+			const { roomId: createdRoomId } = await this.roomService.createRoom(username, sender);
+			finalRoomId = createdRoomId;
+		}
 
-      // Step 2: Send the join event
-      logger.info(`Sending join event to ${event.origin} for room ${event.room_id}`);
-      const responseBody = await makeSignedRequest({
-        method: 'PUT',
-        domain: event.origin,
-        uri: `/_matrix/federation/v2/send_join/${event.room_id}/${event.state_key}` as any,
-        body: {
-          ...responseMake.event,
-          origin: serverConfig.name,
-          origin_server_ts: Date.now(),
-          depth: responseMake.event.depth + 1,
-        },
-        signingKey: signingKey[0],
-        signingName: serverConfig.name,
-        queryString: 'omit_members=false',
-      }) as SendJoinResponse;
+		if (!finalRoomId) {
+			throw new HttpException("Invalid room_id", HttpStatus.BAD_REQUEST);
+		}
 
-      logger.info(`Received send_join response for ${event.state_key}`);
+		const roomEvents = await this.eventService.findEvents(
+			{ "event.room_id": finalRoomId },
+			{ sort: { "event.depth": 1 } }
+		);
+		
+		if (roomEvents.length === 0) {
+			throw new HttpException("No events found", HttpStatus.BAD_REQUEST);
+		}
 
-      // Step 3: Validate the response
-      const createEvent = responseBody.state.find((e: any) => e.type === 'm.room.create');
-      if (!createEvent) {
-        throw new MatrixError('400', 'Invalid response: missing m.room.create event');
-      }
+		const lastEvent = roomEvents[roomEvents.length - 1];
+		const lastEventId = lastEvent._id;
+		const currentTimestamp = Date.now();
 
-      logger.info(`Found create event for room ${event.room_id}`);
+		// Find auth events
+		const createEvent = roomEvents.find(e => e.event.type === "m.room.create")?._id || "";
+		const powerLevelsEvent = roomEvents.find(e => e.event.type === "m.room.power_levels")?._id || "";
+		const joinRulesEvent = roomEvents.find(e => e.event.type === "m.room.join_rules")?._id || "";
+		const historyVisibilityEvent = roomEvents.find(e => e.event.type === "m.room.history_visibility")?._id || "";
 
-      if (responseBody.event) {
-        await this.eventService.insertEvent(responseBody.event);
-        logger.info(`Stored join event for ${event.state_key}`);
-      }
+		// Create invite event
+		const inviteEvent = await signEvent(
+			roomMemberEvent({
+				auth_events: {
+					create: createEvent,
+					power_levels: powerLevelsEvent,
+					join_rules: joinRulesEvent,
+					history_visibility: historyVisibilityEvent,
+				},
+				membership: "invite",
+				depth: (lastEvent.event.depth || 0) + 1,
+				content: {
+					is_direct: true,
+				},
+				roomId: finalRoomId,
+				ts: currentTimestamp,
+				prev_events: [lastEventId],
+				sender: roomEvents[0].event.sender,
+				state_key: username,
+				unsigned: {
+					age: 4,
+					age_ts: currentTimestamp,
+					invite_room_state: [
+						{
+							content: { join_rule: "invite" },
+							sender: roomEvents[0].event.sender,
+							state_key: "",
+							type: "m.room.join_rules",
+						},
+						{
+							content: { room_version: "10", creator: roomEvents[0].event.sender },
+							sender: roomEvents[0].event.sender,
+							state_key: "",
+							type: "m.room.create",
+						},
+						{
+							content: { 
+								membership: "join", 
+								displayname: "admin" 
+							},
+							sender: roomEvents[0].event.sender,
+							state_key: roomEvents[0].event.sender,
+							type: "m.room.member",
+						},
+					],
+				},
+			}),
+			Array.isArray(signingKey) ? signingKey[0] : signingKey,
+			config.name,
+		);
 
-      // Step 4: Process auth chain and state
-      logger.info(`Processing auth chain with ${responseBody.auth_chain.length} events and state with ${responseBody.state.length} events`);
-      
-      const auth_chain = new Map(
-        responseBody.auth_chain.map((e: any) => [generateId(e), e])
-      );
-      const state = new Map(
-        responseBody.state.map((e: any) => [generateId(e), e])
-      );
+		const inviteEventId = generateId(inviteEvent);
 
-      // Step 5: Setup public key retrieval function
-      logger.info(`Setting up public key retrieval function`);
-      const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-        this.serverService.getValidPublicKeyFromLocal,
-        (origin: string, key: string) => getPublicKeyFromRemoteServer(origin, serverConfig.name, key),
-        this.serverService.storePublicKey
-      );
+		const payload = {
+			event: inviteEvent,
+			invite_room_state: inviteEvent.unsigned.invite_room_state,
+			room_version: "10",
+		};
 
-      // Step 6: Validate PDUs
-      logger.info(`Validating ${auth_chain.size + state.size} PDUs`);
-      const validPDUs = new Map<string, MatrixEvent>();
-      let validCount = 0;
-      let invalidCount = 0;
-      
-      for await (const [eventId, pduEvent] of [...auth_chain.entries(), ...state.entries()]) {
-        try {
-          const isValid = await checkSignAndHashes(
-            pduEvent as any,
-            (pduEvent as any).origin,
-            getPublicKeyFromServer
-          );
+		// TODO: Move it to the federation-sdk service
+		const targetDomain = username.split(":").pop() as string;
 
-          if (isValid) {
-            validPDUs.set(eventId as string, pduEvent as MatrixEvent);
-            validCount++;
-          } else {
-            logger.warn(`Invalid event ${eventId} of type ${pduEvent.type}`);
-            invalidCount++;
-          }
-        } catch (e: any) {
-          logger.error(`Error checking signature for event ${eventId}: ${e.message}`);
-          invalidCount++;
-        }
-      }
-      
-      logger.info(`Validated PDUs: ${validCount} valid, ${invalidCount} invalid`);
+		const responseMake = await makeUnsignedRequest({
+			method: "PUT",
+			domain: targetDomain,
+			uri: `/_matrix/federation/v2/invite/${finalRoomId}/${inviteEventId}`,
+			body: payload,
+			options: {},
+			signingKey: Array.isArray(signingKey) ? signingKey[0] : signingKey,
+			signingName: config.name,
+		});
 
-      // Step 7: Get the create event
-      const signedCreateEvent = [...validPDUs.entries()].find(
-        ([, eventData]) => eventData.type === 'm.room.create'
-      );
+		if (responseMake && (responseMake as any).event) {
+			const responseEventId = generateId((responseMake as any).event);
+			await this.eventService.insertEvent((responseMake as any).event, responseEventId);
+		}
 
-      if (!signedCreateEvent) {
-        throw new MatrixError('400', 'Unexpected create event(s) in auth chain');
-      }
+		return responseMake;
+	}
 
-      logger.info(`Found signed create event: ${signedCreateEvent[0]}`);
+	async processInvite(event: ProcessInviteEvent, roomId: string, eventId: string): Promise<unknown> {
+		try {
+			// TODO: Validate before inserting
+			try {
+				await this.eventService.insertEvent(event.event, undefined, {
+					invite_room_state: event.invite_room_state,
+					room_version: event.room_version,
+				});	
+			} catch (error: any) {
+				this.logger.error(`Event already exists: ${error.message}`);
+				throw error;
+			}
 
-      // Step 8: Upsert room and events
-      logger.info(`Upserting room ${signedCreateEvent[1].room_id} with ${validPDUs.size} events`);
-      await this.roomService.upsertRoom(
-        signedCreateEvent[1].room_id,
-        [...validPDUs.values()]
-      );
+			this.logger.debug('Received invite event', {
+				room_id: roomId,
+				event_id: eventId,
+				user_id: event.event.state_key,
+				origin: event.event.origin,
+			});
 
-      logger.info(`Storing ${validPDUs.size} events in the event repository`);
-      await Promise.all([...validPDUs.entries()].map(([_, eventData]) => this.eventService.insertEvent(eventData)));
-      
-      logger.info(`Successfully processed invite for ${event.state_key} in room ${event.room_id}`);
-    } catch (error: any) {
-      logger.error(`Error processing invite for ${event?.state_key} in room ${event?.room_id}: ${error.message}`);
-      throw error;
-    }
-  }
-} 
+			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
+			void new Promise(resolve => setTimeout(resolve, 5000))
+				.then(() => this.acceptInvite(roomId, event.event.state_key));
+			
+			return { event: event.event };
+		} catch (error: any) {
+			this.logger.error(`Failed to process invite: ${error.message}`);
+			throw error;
+		}
+	}
+
+	async acceptInvite(roomId: string, userId: string): Promise<void> {
+		try {
+			const inviteEvent = await this.eventService.findInviteEvent(roomId, userId);
+
+			if (!inviteEvent) {
+				throw new Error(`No invite found for user ${userId} in room ${roomId}`);
+			}
+			
+			await this.handleInviteProcessing({
+				event: inviteEvent.event as EventBase & { origin: string, room_id: string, state_key: string },
+				invite_room_state: inviteEvent.invite_room_state,
+				room_version: inviteEvent.room_version || "10",
+			});
+		} catch (error: any) {
+			this.logger.error(`Failed to accept invite: ${error.message}`);
+			throw error;
+		}
+	}
+
+	private async handleInviteProcessing(event: ProcessInviteEvent): Promise<void> {
+		try {
+			const responseMake = await this.federationService.makeJoin(event.event.origin, event.event.room_id, event.event.state_key, event.room_version);
+			const responseBody = await this.federationService.sendJoin(event.event.origin, event.event.room_id, event.event.state_key, responseMake.event, false);
+
+			if (!responseBody.state || !responseBody.auth_chain) {
+				this.logger.warn(`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`);
+				return;
+			}
+
+			const allEvents = [...responseBody.state, ...responseBody.auth_chain, responseBody.event];
+			
+			// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
+			// await this.eventService.processIncomingPDUs(allEvents);
+
+			// TODO: Also remove the insertEvent calls :)
+			for (const event of allEvents) {
+				await this.eventService.insertEventIfNotExists(event);
+			}
+
+			this.logger.debug(`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`);
+		} catch (error: any) {
+			this.logger.error(
+				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${error.message}`,
+			);
+			throw error;
+		}
+	}
+}

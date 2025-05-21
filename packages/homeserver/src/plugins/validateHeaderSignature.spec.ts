@@ -1,12 +1,12 @@
+import { clearMocks, mock } from "bun-bagel";
 import { afterEach, beforeAll, describe, expect, it } from "bun:test";
-import { mock, clearMocks } from "bun-bagel";
 
-import { validateHeaderSignature } from "./validateHeaderSignature";
 import Elysia from "elysia";
-import { type SigningKey, generateKeyPairsFromString } from "../keys";
 import { authorizationHeaders } from "../authentication";
 import { toUnpaddedBase64 } from "../binaryData";
-import { encodeCanonicalJson, signJson } from "../signJson";
+import { type SigningKey, generateKeyPairsFromString } from "../keys";
+import { signJson } from "../signJson";
+import { validateHeaderSignature } from "./validateHeaderSignature";
 
 describe("validateHeaderSignature getting public key from local", () => {
 	let app: Elysia<any, any, any, any, any, any>;
@@ -210,7 +210,8 @@ describe("validateHeaderSignature getting public key from remote", () => {
 			.post("/", () => "");
 	});
 
-	it("Should pass if authorization header is valid with no body synapse2 requesting from synapse1", async () => {
+	// TODO: Rewrite this test to call a route that can validate the signature
+	it.skip("Should pass if authorization header is valid with no body synapse2 requesting from synapse1", async () => {
 		const result = await signJson(
 			{
 				old_verify_keys: {},

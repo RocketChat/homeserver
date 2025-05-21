@@ -1,15 +1,12 @@
 import { EventStagingArea } from "../../events/EventStagingArea";
-import { StagingEvent } from "../../events/stagingArea";
-import { Logger } from "../../utils/logger";
+import type { StagingEvent } from "../../events/stagingArea";
 import { Pipeline } from "../decorators/pipeline.decorator";
 // import {
 //   EventAuthChainValidator,
 //   MissingEventDownloader,
 //   RoomStateValidator
 // } from "../validators";
-import { EventTypeArray, IPipeline, SequentialPipeline } from "./index";
-
-const logger = new Logger("StagingAreaPipeline");
+import { type EventTypeArray, type IPipeline, SequentialPipeline } from "./index";
 
 /**
  * Validates and processes events through a staging area
@@ -37,13 +34,13 @@ export class StagingAreaPipeline {
       // .add(new RoomStateValidator());
   }
 
-  async validate(events: EventTypeArray, context: any): Promise<EventTypeArray> {
+  async validate(events: EventTypeArray, context: any): Promise<void> {
     // if (!events || events.length === 0) {
-    //   logger.warn("No events to validate");
+    //   console.warn("No events to validate");
     //   return [];
     // }
 
-    // logger.debug(`Validating ${events.length} events in staging area pipeline`);
+    // console.debug(`Validating ${events.length} events in staging area pipeline`);
     
     // const validatedEvents = await this.validationPipeline.validate(events, context);
     // const successfulEvents = validatedEvents.filter(e => !e.error);
@@ -83,27 +80,27 @@ export class StagingAreaPipeline {
     if (!stagingArea) {
       stagingArea = new EventStagingArea(roomId, context);
       this.stagingAreas.set(roomId, stagingArea);
-      logger.debug(`Created new staging area for room ${roomId}`);
+      console.debug(`Created new staging area for room ${roomId}`);
     }
     
     await stagingArea.addEvents(events, context);
     const stats = stagingArea.getStats();
-    logger.debug(`Staging area for room ${roomId}: ${JSON.stringify(stats)}`);
+    console.debug(`Staging area for room ${roomId}: ${JSON.stringify(stats)}`);
   }
 
   async saveValidatedEvents(events: any[], context: any) {
     if (!context.mongo?.createEvent) {
-      logger.warn('No createEvent function provided');
+      console.warn('No createEvent function provided');
       return;
     }
 
-    logger.debug(`Saving ${events.length} validated events to database`);
+    console.debug(`Saving ${events.length} validated events to database`);
     for (const event of events) {
       try {
         await context.mongo.createEvent(event);
-        logger.debug(`Saved event: ${event.event_id || 'unknown'}`);
+        console.debug(`Saved event: ${event.event_id || 'unknown'}`);
       } catch (error) {
-        logger.error(`Failed to save validated event: ${error}`);
+        console.error(`Failed to save validated event: ${error}`);
       }
     }
   }
@@ -118,15 +115,15 @@ export class StagingAreaPipeline {
   public async downloadAndProcessEvents(events: StagingEvent[], context: any): Promise<{ 
     downloadedEvents: { eventId: string, event: any }[] 
   }> {
-    const processedEvents = await this.validate(events, context);
-    const successfulEvents = processedEvents.filter(e => !e.error);
-    if (successfulEvents.length > 0) {
-      logger.info(`Processing ${successfulEvents.length} downloaded events`);
-      await this.saveValidatedEvents(successfulEvents.map(e => e.event), context);
-    }
+    // const processedEvents = await this.validate(events, context);
+    // const successfulEvents = processedEvents.filter(e => !e.error);
+    // if (successfulEvents.length > 0) {
+    //   console.info(`Processing ${successfulEvents.length} downloaded events`);
+    //   await this.saveValidatedEvents(successfulEvents.map(e => e.event), context);
+    // }
     
     return {
-      downloadedEvents: processedEvents
+      downloadedEvents: []
     };
   }
 } 

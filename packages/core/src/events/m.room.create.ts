@@ -42,7 +42,7 @@ export const roomCreateEvent = ({
 		unsigned: { age_ts: ts },
 	});
 
-export const createRoomCreateEvent = createEventWithId(roomCreateEvent);
+export const createRoomCreateEvent = createEventWithId((...args: any[]) => roomCreateEvent(args[0]));
 
 export const isRoomCreateEvent = (event: EventBase): event is RoomCreateEvent =>
 	event.type === "m.room.create";

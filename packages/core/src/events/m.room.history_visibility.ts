@@ -46,5 +46,5 @@ export const roomHistoryVisibilityEvent = ({
 };
 
 export const createRoomHistoryVisibilityEvent = createEventWithId(
-	roomHistoryVisibilityEvent,
+	roomHistoryVisibilityEvent as any,
 );

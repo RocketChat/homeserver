@@ -48,14 +48,14 @@ export const getPublicKeyFromRemoteServer = async (
 		uri: "/_matrix/key/v2/server",
 		signingName: origin,
 	});
-	if (result.valid_until_ts < Date.now()) {
+	if ((result as any).valid_until_ts < Date.now()) {
 		throw new Error("Expired remote public key");
 	}
 
-	const [signature] = await getSignaturesFromRemote(result, domain);
+	const [signature] = await getSignaturesFromRemote(result as any, domain);
 
 	const [, publickey] =
-		Object.entries(result.verify_keys).find(
+		Object.entries((result as any).verify_keys).find(
 			([key]) => key === algorithmAndVersion,
 		) ?? [];
 
@@ -68,11 +68,11 @@ export const getPublicKeyFromRemoteServer = async (
 	}
 
 	if (
-		!(await verifyJsonSignature(
-			result,
+		!(verifyJsonSignature(
+			result as object,
 			domain,
 			Uint8Array.from(atob(signature.signature), (c) => c.charCodeAt(0)),
-			Uint8Array.from(atob(publickey.key), (c) => c.charCodeAt(0)),
+			Uint8Array.from(atob((publickey as any).key), (c) => c.charCodeAt(0)),
 			signature.algorithm,
 			signature.version,
 		))
@@ -87,7 +87,7 @@ export const getPublicKeyFromRemoteServer = async (
 	}
 
 	return {
-		key: publickey.key,
-		validUntil: result.valid_until_ts,
+		key: (publickey as any).key,
+		validUntil: (result as any).valid_until_ts,
 	};
 };

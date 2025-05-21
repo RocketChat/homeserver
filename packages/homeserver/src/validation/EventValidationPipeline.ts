@@ -1,21 +1,15 @@
-import { Pipeline, ParallelValidation } from './Validator';
-import { 
-  Event, 
-  CanonicalizedEvent,
+import type { ValidationResult } from './ValidationResult';
+import { ParallelValidation, Pipeline } from './Validator';
+import type {
   AuthorizedEvent,
+  CanonicalizedEvent,
+  Event,
 } from './validators/EventValidators';
-import { 
-  canonicalizeEvent, 
-  fetchAuthEvents, 
-  validateEventHash, 
-  validateEventSignature, 
-  validateAuthChain,
-  validateRoomRules 
+import {
+  canonicalizeEvent,
+  fetchAuthEvents,
+  validateEventHash
 } from './validators/event';
-import { ValidationResult } from './ValidationResult';
-import { Logger } from '../routes/federation/logger';
-
-const logger = new Logger("EventValidationPipeline");
 
 /**
  * Creates a complete validation pipeline for Matrix federation events
@@ -64,9 +58,9 @@ export async function validateMatrixEvent(
   const result = await pipeline.validate(event, txnId, eventId);
   
   if (result.success) {
-    logger.debug(`Validation success for event ${eventId}`);
+    console.debug(`Validation success for event ${eventId}`);
   } else {
-    logger.warn(`Validation failed for event ${eventId}: ${result.error?.message}`);
+    console.warn(`Validation failed for event ${eventId}: ${result.error?.message}`);
   }
   
   return result;

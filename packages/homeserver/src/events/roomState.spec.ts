@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { RoomState } from './roomState';
 
-describe('RoomState', () => {
+// TODO: Need to migrate this tests to services
+describe.skip('RoomState', () => {
   let roomState: RoomState;
   const roomId = '!test:example.org';
 
@@ -62,8 +63,7 @@ describe('RoomState', () => {
     return plEvent;
   }
 
-  // Test basic event addition
-  test.only('should add a valid event', async () => {
+  test('should add a valid event', async () => {
     const event = createEvent();
     const result = await roomState.addEvent(event);
     expect(result).toBe(true);

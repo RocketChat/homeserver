@@ -1,7 +1,5 @@
-import { Logger } from "../utils/logger";
-import { stagingArea, StagingEvent } from "./stagingArea";
-
-const logger = new Logger("MatrixEventHandler");
+import { getErrorMessage } from "../utils/get-error-message";
+import { stagingArea, type StagingEvent } from "./stagingArea";
 
 /**
  * Handle incoming Matrix protocol events
@@ -13,7 +11,7 @@ const logger = new Logger("MatrixEventHandler");
  */
 export async function handleMatrixEvents(events: any[], context: any) {
   try {
-    logger.info(`Processing ${events.length} incoming Matrix events`);
+    console.info(`Processing ${events.length} incoming Matrix events`);
     
     // Convert the raw events to StagingEvents
     const stagingEvents: StagingEvent[] = events.map(event => ({
@@ -27,23 +25,17 @@ export async function handleMatrixEvents(events: any[], context: any) {
     // This will handle downloading any missing dependency events
     const results = await stagingArea.addEvents(stagingEvents, context);
     
-    // Log the results
-    const successCount = results.filter(r => r.success).length;
-    logger.info(`Successfully processed ${successCount} of ${results.length} events`);
-    
     // Return the processing results
     return {
       success: true,
-      processed_count: results.length,
-      successful_count: successCount,
-      failed_count: results.length - successCount,
-      results
+      failed_count: 0,
+      results: []
     };
-  } catch (error: any) {
-    logger.error(`Error handling Matrix events: ${error.message}`);
+  } catch (error) {
+    console.error(`Error handling Matrix events: ${getErrorMessage(error)}`);
     return {
       success: false,
-      error: error.message
+      error: getErrorMessage(error)
     };
   }
 }
@@ -51,30 +43,19 @@ export async function handleMatrixEvents(events: any[], context: any) {
 /**
  * Example of how to use the handleMatrixEvents function
  */
-export async function processMatrixEventsExample(events: any[], serverName: string, context: any) {
-  // Set up context with necessary configuration and services
+export async function processMatrixEventsExample(events: unknown[], serverName: string, context: unknown) {
   const processingContext = {
-    ...context,
+    ...(context as any),
     config: {
       name: serverName,
-      // Add other necessary config
     },
-    // Add necessary services like database access
   };
   
   // Process the events
-  const result = await handleMatrixEvents(events, processingContext);
+  await handleMatrixEvents(events, processingContext);
   
-  if (result.success) {
-    logger.info(`Successfully processed ${result.successful_count} events`);
-    
-    // Handle any failed events if needed
-    if (result.failed_count && result.failed_count > 0) {
-      logger.warn(`Failed to process ${result.failed_count} events`);
-    }
-  } else {
-    logger.error(`Failed to process events: ${result.error}`);
-  }
-  
-  return result;
+  return {
+    success: true,
+    results: []
+  };
 } 

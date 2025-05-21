@@ -1,14 +1,8 @@
-import { createValidator } from '../../Validator';
-import { success, failure } from '../../ValidationResult';
-import { CanonicalizedEvent } from '../EventValidators';
-import { Logger } from '../../../routes/federation/logger';
 import { computeHash } from '../../../authentication';
-import { encodeCanonicalJson } from '../../../signJson';
-import { EventBase } from '@hs/core/src/events/eventBase';
-import crypto from 'crypto';
-import { toUnpaddedBase64 } from '../../../binaryData';
-
-const logger = new Logger("EventHashValidator");
+import { getErrorMessage } from '../../../utils/get-error-message';
+import { failure, success } from '../../ValidationResult';
+import { createValidator } from '../../Validator';
+import type { CanonicalizedEvent } from '../EventValidators';
 
 /**
  * Validates the event hash against the canonical event
@@ -21,7 +15,7 @@ export const validateEventHash = createValidator<CanonicalizedEvent>(async (even
     const { event: eventData } = event;
     
     if (!eventData.hashes || !eventData.hashes.sha256) {
-      logger.warn(`Event ${eventId} missing required hash`);
+      console.warn(`Event ${eventId} missing required hash`);
       return failure('M_MISSING_HASH', 'Event is missing required sha256 hash');
     }
 
@@ -29,13 +23,13 @@ export const validateEventHash = createValidator<CanonicalizedEvent>(async (even
     const expectedHash = eventData.hashes[algorithm];
     
     if (hash !== expectedHash) {
-      logger.warn(`Hash validation failed for event ${eventId}, expected: ${expectedHash}, got: ${hash}`);
+      console.warn(`Hash validation failed for event ${eventId}, expected: ${expectedHash}, got: ${hash}`);
       return failure('M_INVALID_HASH', 'Event hash validation failed - hashes do not match');
     }
     
     return success(event);
-  } catch (error: any) {
-    logger.error(`Error validating event hash: ${error.message || String(error)}`);
-    return failure('M_INVALID_HASH', `Error validating event hash: ${error.message || String(error)}`);
+  } catch (error) {
+    console.error(`Error validating event hash: ${getErrorMessage(error)}`);
+    return failure('M_INVALID_HASH', `Error validating event hash: ${getErrorMessage(error)}`);
   }
 }); 

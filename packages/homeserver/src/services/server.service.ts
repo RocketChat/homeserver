@@ -1,11 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ServerRepository } from '../repositories/server.repository';
 
 @Injectable()
 export class ServerService {
-  constructor(
-    @Inject(ServerRepository) private readonly serverRepository: ServerRepository,
-  ) {}
+  constructor(private readonly serverRepository: ServerRepository) {}
 
   async getValidPublicKeyFromLocal(origin: string, key: string): Promise<string | undefined> {
     return await this.serverRepository.getValidPublicKeyFromLocal(origin, key);

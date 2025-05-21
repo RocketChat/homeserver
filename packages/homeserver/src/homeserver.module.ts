@@ -1,110 +1,121 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { InviteController, InviteControllerV1 } from './controllers/invite.controller';
-import { PingController } from './controllers/ping.controller';
-import { ProfilesController } from './controllers/profiles.controller';
-import { SendJoinController } from './controllers/send-join.controller';
-import { ServerController } from './controllers/server.controller';
-import { TransactionsController } from './controllers/transactions.controller';
-import { VersionsController } from './controllers/versions.controller';
-import { WellKnownController } from './controllers/well-known.controller';
-import { DatabaseConnection } from './database/database.connection';
-import { MissingEventListener } from './listeners/missing-event.listener';
-import { StagingAreaListener } from './listeners/staging-area.listener';
-import { HttpLoggerMiddleware } from './middleware/http-logger.middleware';
-import { MissingEventsQueue } from './queues/missing-event.queue';
-import { QueueModule } from './queues/queue.module';
-import { StagingAreaQueue } from './queues/staging-area.queue';
-import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { ConfigService } from './services/config.service';
-import { EventAuthorizationService } from './services/event-authorization.service';
-import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
-import { EventService } from './services/event.service';
-import { FederationService } from './services/federation.service';
-import { InviteService } from './services/invite.service';
-import { MissingEventService } from './services/missing-event.service';
-import { NotificationService } from './services/notification.service';
-import { ProfilesService } from './services/profiles.service';
-import { RoomService } from './services/room.service';
-import { ServerService } from './services/server.service';
-import { StagingAreaService } from './services/staging-area.service';
-import { DownloadedEventValidationPipeline } from './validation/pipelines/DownloadedEventValidationPipeline';
-import { SynchronousEventReceptionPipeline } from './validation/pipelines/synchronousEventReceptionPipeline';
-import { EventFormatValidator } from './validation/validators/EventFormatValidator';
-import { EventHashesAndSignaturesValidator } from './validation/validators/EventHashesAndSignaturesValidator';
-import { EventTypeSpecificValidator } from './validation/validators/EventTypeSpecificValidator';
+import { FederationModule } from "@hs/federation-sdk";
+import { Module } from "@nestjs/common";
+import { InviteController } from "./controllers/federation/invite.controller";
+import { ProfilesController } from "./controllers/federation/profiles.controller";
+import { SendJoinController } from "./controllers/federation/send-join.controller";
+import { TransactionsController } from "./controllers/federation/transactions.controller";
+import { VersionsController } from "./controllers/federation/versions.controller";
+import { InternalInviteController } from "./controllers/internal/invite.controller";
+import { InternalMessageController } from "./controllers/internal/message.controller";
+import { PingController } from "./controllers/internal/ping.controller";
+import { InternalRoomController } from "./controllers/internal/room.controller";
+import { ServerController } from "./controllers/key/server.controller";
+import { WellKnownController } from "./controllers/well-known/well-known.controller";
+import { MissingEventListener } from "./listeners/missing-event.listener";
+import { StagingAreaListener } from "./listeners/staging-area.listener";
+import { MissingEventsQueue } from "./queues/missing-event.queue";
+import { QueueModule } from "./queues/queue.module";
+import { StagingAreaQueue } from "./queues/staging-area.queue";
+import { EventRepository } from "./repositories/event.repository";
+import { KeyRepository } from "./repositories/key.repository";
+import { RoomRepository } from "./repositories/room.repository";
+import { ServerRepository } from "./repositories/server.repository";
+import { ConfigService } from "./services/config.service";
+import { DatabaseConnectionService } from "./services/database-connection.service";
+import { EventAuthorizationService } from "./services/event-authorization.service";
+import { EventFetcherService } from "./services/event-fetcher.service";
+import { EventStateService } from "./services/event-state.service";
+import { EventService } from "./services/event.service";
+import { InviteService } from "./services/invite.service";
+import { MissingEventService } from "./services/missing-event.service";
+import { NotificationService } from "./services/notification.service";
+import { ProfilesService } from "./services/profiles.service";
+import { RoomService } from "./services/room.service";
+import { ServerService } from "./services/server.service";
+import { StagingAreaService } from "./services/staging-area.service";
+import { WellKnownService } from "./services/well-known.service";
 
-const CONFIG_PROVIDER = {
-  provide: ConfigService,
-  useFactory: () => new ConfigService(),
-};
+// Create a ConfigModule to make ConfigService available to FederationModule
+@Module({
+	providers: [ConfigService],
+	exports: [ConfigService],
+})
+export class ConfigModule {}
 
 @Module({
-  imports: [
-    QueueModule
-  ],
-  providers: [
-    // Core services
-    CONFIG_PROVIDER,
-    DatabaseConnection,
-    EventService,
-    MissingEventService,
-    StagingAreaService,
-    
-    // Event processing services
-    EventAuthorizationService,
-    EventStateService,
-    FederationService,
-    NotificationService,
-    InviteService,
-    ProfilesService,
-    ServerService,
-    RoomService,
-    EventFetcherService,
-    
-    // Repositories
-    EventRepository,
-    RoomRepository,
-    KeyRepository,
-    ServerRepository,
-    
-    // Queues
-    MissingEventsQueue,
-    StagingAreaQueue,
-    
-    // Listeners
-    MissingEventListener,
-    StagingAreaListener,
-    
-    // Validation pipelines
-    DownloadedEventValidationPipeline,
-    SynchronousEventReceptionPipeline,
-    
-    // Validators
-    EventFormatValidator,
-    EventHashesAndSignaturesValidator,
-    EventTypeSpecificValidator,
-  ],
-  controllers: [
-    PingController,
-    ProfilesController,
-    InviteController,
-    InviteControllerV1,
-    SendJoinController,
-    ServerController,
-    TransactionsController,
-    VersionsController,
-    WellKnownController,
-  ],
-  exports: [ConfigService],
+	imports: [
+		QueueModule,
+		ConfigModule,
+		FederationModule.forRootAsync({
+			inject: [ConfigService],
+			imports: [ConfigModule],
+			useFactory: async (configService: ConfigService) => {
+				const signingKeys = await configService.getSigningKey();
+				const signingKey = signingKeys[0];
+				const privateKeyBase64 = Buffer.from(signingKey.privateKey).toString('base64');
+				return {
+					serverName: configService.getMatrixConfig().serverName,
+					signingKey: privateKeyBase64,
+					signingKeyId: `ed25519:${signingKey.version}`,
+					timeout: 30000,
+				};
+			},
+		}),
+	],
+	providers: [
+		// Core services
+		// ConfigService,
+		DatabaseConnectionService,
+		EventService,
+		StagingAreaService,
+		MissingEventService,
+
+		// Repositories
+		EventRepository,
+		RoomRepository,
+		KeyRepository,
+		ServerRepository,
+
+		// Event processing services
+		EventAuthorizationService,
+		EventStateService,
+		NotificationService,
+		InviteService,
+		ProfilesService,
+		RoomService,
+		EventFetcherService,
+		WellKnownService,
+		ServerService,
+
+		// Queues
+		MissingEventsQueue,
+		StagingAreaQueue,
+
+		// Listeners
+		MissingEventListener,
+		StagingAreaListener,
+
+		// Validation pipelines
+		// DownloadedEventValidationPipeline,
+		// SynchronousEventReceptionPipeline,
+
+		// Validators
+		// EventFormatValidator,
+		// EventHashesAndSignaturesValidator,
+		// EventTypeSpecificValidator,
+	],
+	controllers: [
+		PingController,
+		ProfilesController,
+		InviteController,
+		SendJoinController,
+		ServerController,
+		TransactionsController,
+		VersionsController,
+		WellKnownController,
+		InternalMessageController,
+		InternalRoomController,
+		InternalInviteController,
+	],
 })
-export class HomeserverModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(HttpLoggerMiddleware)
-      .forRoutes('*');
-  }
-}
+export class HomeserverModule {}

@@ -43,5 +43,6 @@ export const roomGuestAccessEvent = ({
 	});
 };
 
-export const createRoomGuestAccessEvent =
-	createEventWithId(roomGuestAccessEvent);
+export const createRoomGuestAccessEvent = createEventWithId(
+	roomGuestAccessEvent as any,
+);

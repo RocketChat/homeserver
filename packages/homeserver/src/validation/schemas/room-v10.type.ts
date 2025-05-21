@@ -20,6 +20,7 @@ export const roomV10Schema = z.object({
   signatures: z.record(z.record(z.string())),
   type: z.string(),
   unsigned: z.record(z.unknown()).optional(),
+  state_key: z.string().optional(),
 });
 
 export type roomV10Type = z.infer<typeof roomV10Schema>;
