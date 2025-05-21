@@ -19,13 +19,13 @@ export type ProcessInviteEvent = {
 @Injectable()
 export class InviteService {
 	private readonly logger = new Logger(InviteService.name);
-	
+
 	constructor(
 		private readonly eventService: EventService,
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
 		private readonly roomService: RoomService,
-  	) {}
+	) { }
 
 	/**
 	 * Invite a user to an existing room, or create a new room if none is provided
@@ -59,7 +59,7 @@ export class InviteService {
 			{ "event.room_id": finalRoomId },
 			{ sort: { "event.depth": 1 } }
 		);
-		
+
 		if (roomEvents.length === 0) {
 			throw new HttpException("No events found", HttpStatus.BAD_REQUEST);
 		}
@@ -78,10 +78,10 @@ export class InviteService {
 		const inviteEvent = await signEvent(
 			roomMemberEvent({
 				auth_events: {
-					create: createEvent,
-					power_levels: powerLevelsEvent,
-					join_rules: joinRulesEvent,
-					history_visibility: historyVisibilityEvent,
+					"m.room.create": createEvent,
+					"m.room.power_levels": powerLevelsEvent,
+					"m.room.join_rules": joinRulesEvent,
+					"m.room.history_visibility": historyVisibilityEvent,
 				},
 				membership: "invite",
 				depth: (lastEvent.event.depth || 0) + 1,
@@ -110,9 +110,9 @@ export class InviteService {
 							type: "m.room.create",
 						},
 						{
-							content: { 
-								membership: "join", 
-								displayname: "admin" 
+							content: {
+								membership: "join",
+								displayname: "admin"
 							},
 							sender: roomEvents[0].event.sender,
 							state_key: roomEvents[0].event.sender,
@@ -161,7 +161,7 @@ export class InviteService {
 				await this.eventService.insertEvent(event.event, undefined, {
 					invite_room_state: event.invite_room_state,
 					room_version: event.room_version,
-				});	
+				});
 			} catch (error: any) {
 				this.logger.error(`Event already exists: ${error.message}`);
 				throw error;
@@ -177,7 +177,7 @@ export class InviteService {
 			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
 			void new Promise(resolve => setTimeout(resolve, 5000))
 				.then(() => this.acceptInvite(roomId, event.event.state_key));
-			
+
 			return { event: event.event };
 		} catch (error: any) {
 			this.logger.error(`Failed to process invite: ${error.message}`);
@@ -192,7 +192,7 @@ export class InviteService {
 			if (!inviteEvent) {
 				throw new Error(`No invite found for user ${userId} in room ${roomId}`);
 			}
-			
+
 			await this.handleInviteProcessing({
 				event: inviteEvent.event as EventBase & { origin: string, room_id: string, state_key: string },
 				invite_room_state: inviteEvent.invite_room_state,
@@ -215,7 +215,7 @@ export class InviteService {
 			}
 
 			const allEvents = [...responseBody.state, ...responseBody.auth_chain, responseBody.event];
-			
+
 			// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
 			// await this.eventService.processIncomingPDUs(allEvents);
 

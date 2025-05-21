@@ -3,20 +3,22 @@ export interface EventBase {
   room_id: string;
   type: string;
   sender: string;
-  content: any;
+  content?: Record<string, unknown>;
   origin_server_ts: number;
   origin: string;
   state_key?: string;
-  depth?: number;
-  prev_events?: string[];
-  auth_events?: string[];
+  depth: number;
+  prev_events: string[];
+  auth_events: string[];
   signatures?: Record<string, Record<string, string>>;
+  unsigned?: Record<string, unknown> | undefined;
 }
 
 export interface EventStore {
   _id: string;
   event: EventBase;
   staged?: boolean;
+  outlier?: boolean;
 }
 
 export interface StateEvent extends EventBase {

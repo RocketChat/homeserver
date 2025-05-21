@@ -18,6 +18,15 @@ declare module "./eventBase" {
 	}
 }
 
+export type AuthEvents = {
+	"m.room.create": string;
+	"m.room.power_levels"?: string;
+	"m.room.join_rules"?: string;
+	"m.room.history_visibility"?: string;
+} & {
+	[K in `m.room.member:${string}`]?: string;
+}
+
 export const isRoomMemberEvent = (
 	event: EventBase,
 ): event is RoomMemberEvent => {
@@ -48,26 +57,29 @@ export interface RoomMemberEvent extends EventBase {
 		age_ts: number;
 		invite_room_state: (
 			| {
-					type: "m.room.join_rules";
-					state_key: "";
-					content: { join_rule: "invite" };
-					sender: string;
-			  }
+				type: "m.room.join_rules";
+				state_key: "";
+				content: { join_rule: "invite" };
+				sender: string;
+			}
 			| {
-					type: "m.room.create";
-					state_key: "";
-					content: { room_version: "10"; creator: string };
-					sender: string;
-			  }
+				type: "m.room.create";
+				state_key: "";
+				content: { room_version: "10"; creator: string };
+				sender: string;
+			}
 			| {
-					type: "m.room.member";
-					state_key: string;
-					content: { displayname: "admin"; membership: "join" };
-					sender: string;
-			  }
+				type: "m.room.member";
+				state_key: string;
+				content: { displayname: "admin"; membership: "join" };
+				sender: string;
+			}
 		)[];
 	};
 }
+const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
+	return Boolean(value);
+};
 
 export const roomMemberEvent = ({
 	membership,
@@ -86,12 +98,7 @@ export const roomMemberEvent = ({
 	roomId: string;
 	sender: string;
 	state_key: string;
-	auth_events: {
-		create: string;
-		power_levels?: string;
-		join_rules?: string;
-		history_visibility?: string;
-	};
+	auth_events: AuthEvents;
 	prev_events: string[];
 	depth: number;
 	unsigned?: RoomMemberEvent["unsigned"];
@@ -103,11 +110,12 @@ export const roomMemberEvent = ({
 		roomId,
 		sender,
 		auth_events: [
-			auth_events.create,
-			auth_events.power_levels,
-			auth_events.join_rules,
-			auth_events.history_visibility,
-		].filter(Boolean) as string[],
+			auth_events["m.room.create"],
+			auth_events["m.room.power_levels"],
+			auth_events["m.room.join_rules"],
+			auth_events["m.room.history_visibility"],
+			auth_events[`m.room.member:${state_key}`],
+		].filter(isTruthy),
 		prev_events,
 		depth,
 		content: {
