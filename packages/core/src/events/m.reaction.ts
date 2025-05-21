@@ -11,6 +11,9 @@ declare module "./eventBase" {
                     key: string;
                 };
             };
+            unsigned: {
+                age_ts: number;
+            };
         };
     }
 }
@@ -36,6 +39,9 @@ export interface ReactionEvent extends EventBase {
             key: string;
         };
     };
+    unsigned: {
+        age_ts: number;
+    };
 }
 
 const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
@@ -51,6 +57,7 @@ export const reactionEvent = ({
     content,
     origin,
     ts = Date.now(),
+    unsigned,
 }: {
     roomId: string;
     sender: string;
@@ -66,6 +73,7 @@ export const reactionEvent = ({
     };
     origin?: string;
     ts?: number;
+    unsigned?: { age_ts?: number };
 }): ReactionEvent => {
     return createEventBase("m.reaction", {
         roomId,
@@ -81,7 +89,8 @@ export const reactionEvent = ({
         origin_server_ts: ts,
         ts,
         origin,
+        unsigned: { ...unsigned, age_ts: ts },
     });
 };
 
-export const createReactionEvent = createEventWithId(reactionEvent); 
+export const createReactionEvent = createEventWithId(reactionEvent);

@@ -1,9 +1,9 @@
 import type { ReactionEvent } from "@hs/core/src/events/m.reaction";
 import type { RoomMessageEvent } from "@hs/core/src/events/m.room.message";
 import {
-    Body,
-    Controller,
-    Post
+  Body,
+  Controller,
+  Post
 } from "@nestjs/common";
 import { z } from "zod";
 import { MessageService } from "../../services/message.service";

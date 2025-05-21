@@ -104,7 +104,11 @@ export class MessageService {
             serverName
         );
 
+        console.log(signedEvent);
+
         await this.federationService.sendEvent(targetServer, signedEvent);
+        
+        this.logger.log(`Sent reaction ${emoji} to ${targetServer} for event ${eventId} - ${generateId(signedEvent)}`);
 
         return signedEvent;
     }
