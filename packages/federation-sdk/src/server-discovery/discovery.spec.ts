@@ -1,7 +1,6 @@
 import { describe, expect, it, mock } from "bun:test";
 import sinon from "sinon";
 
-import { Resolver } from "node:dns";
 
 const stubs = {
   fetch: sinon.stub(),
@@ -121,7 +120,9 @@ function spec_3_2(): [INPUT[], OUTPUT[]] {
   stubs.resolveHostname.callsFake((hostname: string) => {
     if (hostname === "example.com") {
       return Promise.resolve("11.0.0.1");
-    } else if (hostname === "example2.com") {
+    }
+    
+    if (hostname === "example2.com") {
       return Promise.resolve("[::1]");
     }
   });

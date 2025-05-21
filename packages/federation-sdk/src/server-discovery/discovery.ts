@@ -1,6 +1,5 @@
 import { Resolver } from "node:dns/promises";
-import { isIP, isIPv4, isIPv6 } from "node:net";
-import { transpileModule } from "typescript";
+import { isIPv4, isIPv6 } from "node:net";
 
 // typing below are purely to document and make sure we conform to how we are returning the address
 // ge4tting typescript to help me not return wrong stuff
@@ -30,7 +29,7 @@ const DEFAULT_PORT = "8448";
 const WELLKNOWN_CACHE = new Map<string, { addr: string; validUntil: number }>();
 
 class MultiError extends Error {
-  private _finalMessage: string = "";
+  private _finalMessage = "";
   append(message: string, error: Error) {
     this._finalMessage += message
       ? `\n${message}: ${error.message}`
