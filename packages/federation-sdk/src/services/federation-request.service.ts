@@ -1,10 +1,10 @@
-import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
 import type { SigningKey } from '@hs/homeserver/src/keys';
 import { Injectable, Logger } from '@nestjs/common';
 import * as nacl from 'tweetnacl';
 import { authorizationHeaders, computeAndMergeHash } from '../../../homeserver/src/authentication';
 import { extractURIfromURL } from '../../../homeserver/src/helpers/url';
 import { EncryptionValidAlgorithm, signJson } from '../../../homeserver/src/signJson';
+import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { FederationConfigService } from './federation-config.service';
 
 interface SignedRequest {
@@ -44,13 +44,10 @@ export class FederationRequestService {
         publicKey: keyPair.publicKey,
         sign: async (data: Uint8Array) => nacl.sign.detached(data, keyPair.secretKey)
       };
-      
-      const { address, headers: discoveryHeaders } = await resolveHostAddressByServerName(
-        domain,
-        serverName,
-      );
-      
-      const url = new URL(`https://${address}${uri}`);
+
+      const [address, discoveryHeaders] = await getHomeserverFinalAddress(domain);
+
+      const url = new URL(`${address}${uri}`);
       if (queryString) {
         url.search = queryString;
       }
