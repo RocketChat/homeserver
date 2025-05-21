@@ -10,5 +10,10 @@
 				"noNonNullAssertion": "warn"
 			}
 		}
+	},
+	"javascript": {
+		"parser": {
+			"unsafeParameterDecoratorsEnabled": true
+		}
 	}
 }
