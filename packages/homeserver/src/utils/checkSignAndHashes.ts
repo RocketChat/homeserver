@@ -4,11 +4,11 @@ import { MatrixError } from "../errors";
 import { pruneEventDict } from "../pruneEventDict";
 import {
 	getSignaturesFromRemote,
-	verifyJsonSignature,
 	type SignedJson,
+	verifyJsonSignature,
 } from "../signJson";
 
-export async function checkSignAndHashes(pdu: EventBase, origin: string, getPublicKeyFromServer: (origin: string, key: string) => Promise<string>) {
+export async function checkSignAndHashes<T extends SignedJson<EventBase>>(pdu: HashedEvent<T>, origin: string, getPublicKeyFromServer: (origin: string, key: string) => Promise<string>) {
 	const [signature] = await getSignaturesFromRemote(pdu, origin);
 	const publicKey = await getPublicKeyFromServer(origin, `${signature.algorithm}:${signature.version}`);
 
@@ -27,7 +27,7 @@ export async function checkSignAndHashes(pdu: EventBase, origin: string, getPubl
 
 	const [algorithm, hash] = computeHash(pdu);
 
-	const expectedHash = (pdu as SignedJson<HashedEvent<EventBase>>).hashes[algorithm];
+	const expectedHash = pdu.hashes[algorithm];
 
 	if (hash !== expectedHash) {
 		console.error("Invalid hash", hash, expectedHash);
