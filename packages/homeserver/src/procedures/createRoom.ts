@@ -1,13 +1,34 @@
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
-import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import type { EventBase } from "@hs/core/src/events/eventBase";
-import { createRoomCreateEvent } from "@hs/core/src/events/m.room.create";
-import { createRoomMemberEvent } from "@hs/core/src/events/m.room.member";
-import { createRoomPowerLevelsEvent } from "@hs/core/src/events/m.room.power_levels";
-import { createRoomJoinRulesEvent } from "@hs/core/src/events/m.room.join_rules";
-import { createRoomHistoryVisibilityEvent } from "@hs/core/src/events/m.room.history_visibility";
-import { createRoomGuestAccessEvent } from "@hs/core/src/events/m.room.guest_access";
+import {
+	createRoomCreateEvent,
+	type RoomCreateEvent,
+} from "@hs/core/src/events/m.room.create";
+import {
+	createRoomGuestAccessEvent,
+	type RoomGuestAccessEvent,
+} from "@hs/core/src/events/m.room.guest_access";
+import {
+	createRoomHistoryVisibilityEvent,
+	type RoomHistoryVisibilityEvent,
+} from "@hs/core/src/events/m.room.history_visibility";
+import {
+	createRoomJoinRulesEvent,
+	type RoomJoinRulesEvent,
+} from "@hs/core/src/events/m.room.join_rules";
+import {
+	createRoomMemberEvent,
+	type RoomMemberEvent,
+} from "@hs/core/src/events/m.room.member";
+import {
+	createRoomPowerLevelsEvent,
+	type RoomPowerLevelsEvent,
+} from "@hs/core/src/events/m.room.power_levels";
+import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
+
+type IdAndEvent<T extends EventBase> = {
+	event: T;
+	_id: string;
+};
 
 export const createRoom = async (
 	users: [sender: string, ...username: string[]],
@@ -15,10 +36,14 @@ export const createRoom = async (
 	roomId: string,
 ): Promise<{
 	roomId: string;
-	events: {
-		event: EventBase;
-		_id: string;
-	}[];
+	events: [
+		createEvent: IdAndEvent<RoomCreateEvent>,
+		memberEvent: IdAndEvent<RoomMemberEvent>,
+		powerLevelsEvent: IdAndEvent<RoomPowerLevelsEvent>,
+		joinRulesEvent: IdAndEvent<RoomJoinRulesEvent>,
+		historyVisibilityEvent: IdAndEvent<RoomHistoryVisibilityEvent>,
+		guestAccessEvent: IdAndEvent<RoomGuestAccessEvent>,
+	];
 }> => {
 	// Create
 
@@ -56,7 +81,7 @@ export const createRoom = async (
 		},
 		state_key: sender,
 		auth_events: {
-			create: createEvent._id,
+			"m.room.create": createEvent._id,
 		},
 		prev_events: [createEvent._id],
 	});
@@ -111,17 +136,15 @@ export const createRoom = async (
 		depth: 6,
 	});
 
-	const events = [
-		createEvent,
-		memberEvent,
-		powerLevelsEvent,
-		joinRulesEvent,
-		historyVisibilityEvent,
-		guestAccessEvent,
-	];
-
 	return {
 		roomId,
-		events,
+		events: [
+			createEvent,
+			memberEvent,
+			powerLevelsEvent,
+			joinRulesEvent,
+			historyVisibilityEvent,
+			guestAccessEvent,
+		],
 	};
 };

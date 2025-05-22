@@ -6,7 +6,8 @@ export const createSignedEvent = (
 	signature: SigningKey,
 	signingName: string,
 ) => {
-	return <F extends (...args: any) => any>(fn: F) => {
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	return <F extends (...args: any[]) => any>(fn: F) => {
 		return async (...args: Parameters<F>): Promise<ReturnType<F>> => {
 			return signEvent(await fn(...args), signature, signingName) as Promise<
 				ReturnType<F>
@@ -15,7 +16,8 @@ export const createSignedEvent = (
 	};
 };
 
-export const createEventWithId = <F extends (...args: any) => any>(fn: F) => {
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+export const createEventWithId = <F extends (...args: any[]) => any>(fn: F) => {
 	return <S extends ReturnType<typeof createSignedEvent>>(sign: S) => {
 		return async (
 			...args: Parameters<F>

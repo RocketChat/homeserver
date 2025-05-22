@@ -52,7 +52,7 @@ test("roomMemberEvent", async () => {
 		ts: 1733107418672,
 		depth: 2,
 		auth_events: {
-			create: createEventId,
+			"m.room.create": createEventId,
 		},
 		prev_events: [createEventId],
 	});

@@ -5,13 +5,13 @@ import { generateKeyPairsFromString } from "../../../homeserver/src/keys";
 import { signEvent } from "../../../homeserver/src/signEvent";
 import { roomMemberEvent } from "./m.room.member";
 
-const finalEventId = "$GAcbc4lUMhfCAWFZxoVZ6Pmzhcea1zKoY92ji4LjMqk";
+const finalEventId = "$nzfaHPXjmyOQerkm4WOlFupYVq56ZDHqC42DlgPydaI";
 const finalEvent = {
 	auth_events: [
 		"$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4",
 		"$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE",
 		"$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4",
-		"$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8",
+		"$HistVisAuthEvent123456789012345678901234567890",
 	],
 	prev_events: ["$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas"],
 	type: "m.room.member",
@@ -27,11 +27,11 @@ const finalEvent = {
 	state_key: "@asd6:rc1",
 	origin: "hs1",
 	origin_server_ts: 1733107418773,
-	hashes: { sha256: "669gCNgB3VnQWmH+vIg/9CwyC5wOQmGuA8+PiIhiT50" },
+	hashes: { sha256: "1tVvOpcM7iQz9kacDoUa8vhNMQVZZhA+5txzwsH8NR8" },
 	signatures: {
 		hs1: {
 			"ed25519:a_HDhg":
-				"ZGtHq5OuryBhQZOhZRAxGSej9BKU+5nDhzhQ9GfuUoAvP3InUch+Jznca3sblfy0LeZcdGJ866QpbH1eAGYsBQ",
+				"8/qPp2d0PTc4bVMNdbTl32OSFnNqXan9ACQr1QcDV3SgdsDnm+sZv2mXW8rdhIOLOohRG2cED0+1aNxV7VH2Cw",
 		},
 	},
 	unsigned: {
@@ -73,10 +73,11 @@ test("roomMemberInviteEvent", async () => {
 		ts: 1733107418773,
 		depth: 7,
 		auth_events: {
-			create: "$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4",
-			power_levels: "$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE",
-			join_rules: "$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4",
-			history_visibility: "$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8",
+			"m.room.create": "$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4",
+			"m.room.power_levels": "$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE",
+			"m.room.join_rules": "$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4",
+			"m.room.member:@admin:hs1": "$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8",
+			"m.room.history_visibility": "$HistVisAuthEvent123456789012345678901234567890",
 		},
 		prev_events: ["$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas"],
 		content: {
@@ -112,11 +113,12 @@ test("roomMemberInviteEvent", async () => {
 		},
 	} as const);
 	const signed = await signEvent(memberEvent, signature, "hs1");
+
 	// @ts-ignore
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
 		"signatures.hs1.ed25519:a_HDhg",
-		"ZGtHq5OuryBhQZOhZRAxGSej9BKU+5nDhzhQ9GfuUoAvP3InUch+Jznca3sblfy0LeZcdGJ866QpbH1eAGYsBQ",
+		"8/qPp2d0PTc4bVMNdbTl32OSFnNqXan9ACQr1QcDV3SgdsDnm+sZv2mXW8rdhIOLOohRG2cED0+1aNxV7VH2Cw",
 	);
 
 	const memberEventId = generateId(signed);

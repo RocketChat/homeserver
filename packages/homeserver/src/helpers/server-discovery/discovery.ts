@@ -1,5 +1,5 @@
-import { isIPv6 } from 'node:net';
 import { Resolver } from 'node:dns/promises';
+import { isIPv6 } from 'node:net';
 
 const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d{1,5})?$/;
 const ipv6Regex = /^(\[([a-fA-F0-9:]+)\]|([a-fA-F0-9:]+))(?::(\d{1,5}))?$/;
@@ -189,7 +189,8 @@ export const resolveHostAddressByServerName = async (serverName: string, ownServ
         const rawAddress = await getAddressFromWellKnownData(serverName);
         const address = await resolveFollowingWellKnownRules(rawAddress);
 
-        return { address, headers: { Host: rawAddress } };
+        // TODO: Check it later... only way I found to make the request work
+        return { address: rawAddress, headers: { Host: rawAddress } };
     } catch (error) {
         if (error instanceof Error && error.message === 'No address found') {
             const address = await resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName).catch(() => addressWithDefaultPort(serverName));

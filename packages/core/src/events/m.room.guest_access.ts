@@ -7,11 +7,11 @@ declare module "./eventBase" {
 	}
 }
 
-interface RoomGuestAccessEvent extends EventBase {
+export interface RoomGuestAccessEvent extends EventBase {
 	content: {
 		guest_access: "can_join" | "forbidden";
 	};
-	unsigned?: object;
+	unsigned?: Record<string, unknown>;
 }
 
 export const roomGuestAccessEvent = ({

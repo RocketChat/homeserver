@@ -7,24 +7,45 @@
 		"@biomejs/biome": "^1.9.4",
 		"@types/bun": "latest",
 		"@types/node": "^22.14.1",
-		"husky": "^9.1.7"
+		"@types/express": "^5.0.1",
+		"@types/node": "^22.15.18",
+		"husky": "^9.1.7",
+		"tsconfig-paths": "^4.2.0",
+		"typescript": "^5.8.3"
 	},
-	"peerDependencies": {
-		"typescript": "^5.0.0"
-	},
-	"workspaces": ["packages/*"],
+	"workspaces": [
+		"packages/*"
+	],
 	"dependencies": {
 		"@bogeychan/elysia-etag": "^0.0.6",
 		"@bogeychan/elysia-logger": "^0.1.4",
 		"@datastructures-js/priority-queue": "^6.3.2",
 		"@elysiajs/swagger": "^1.1.6",
-		"@hs/fake": "workspace:*",
-		"@hs/homeserver": "workspace:*",
+		"@grpc/grpc-js": "^1.13.3",
+		"@nestjs/common": "^11.1.1",
+		"@nestjs/core": "^11.1.1",
+		"@nestjs/microservices": "^11.1.1",
+		"@nestjs/platform-express": "^11.1.1",
+		"@nestjs/platform-socket.io": "^11.1.1",
+		"@nestjs/websockets": "^11.1.1",
+		"amqp-connection-manager": "^4.1.14",
+		"amqplib": "^0.10.8",
 		"bun-bagel": "^1.1.0",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.2",
+		"dotenv": "^16.5.0",
 		"elysia": "^1.1.26",
+		"express": "^5.1.0",
+		"ioredis": "^5.6.1",
+		"kafkajs": "^2.2.4",
 		"mongodb": "^6.11.0",
+		"mqtt": "^5.13.0",
+		"nats": "^2.29.3",
 		"node-jsonwebtoken": "^0.0.1",
-		"tweetnacl": "^1.0.3"
+		"reflect-metadata": "^0.2.2",
+		"rxjs": "^7.8.2",
+		"tweetnacl": "^1.0.3",
+		"zod": "^3.24.3"
 	},
 	"husky": {
 		"hooks": {
