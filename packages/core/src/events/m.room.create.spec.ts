@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { generateId } from "../../../homeserver/src/authentication";
 import { generateKeyPairsFromString } from "../../../homeserver/src/keys";
 import { type SignedEvent, signEvent } from "../../../homeserver/src/signEvent";
-import { type RoomCreateEvent, roomCreateEvent } from "./m.room.create";
+import { type RoomCreateEvent, isRoomCreateEvent, roomCreateEvent } from "./m.room.create";
 
 const finalEventId = "$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4";
 const finalEvent = {
@@ -54,4 +54,19 @@ test("roomCreateEvent", async () => {
 	const eventId = generateId(signed);
 
 	expect(eventId).toBe(finalEventId);
+});
+
+test("isRoomCreateEvent", () => {
+	const validEvent = roomCreateEvent({
+		roomId: "!someRoom:example.org",
+		sender: "@user:example.org",
+	});
+
+	const invalidEvent = {
+		...validEvent,
+		type: "m.room.member"
+	};
+
+	expect(isRoomCreateEvent(validEvent)).toBe(true);
+	expect(isRoomCreateEvent(invalidEvent)).toBe(false);
 });

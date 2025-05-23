@@ -12,7 +12,6 @@ import { StagingAreaQueue } from "../queues/staging-area.queue";
 import { EventRepository } from "../repositories/event.repository";
 import { KeyRepository } from "../repositories/key.repository";
 import { RoomRepository } from "../repositories/room.repository";
-import { signEvent } from "../signEvent";
 import { checkSignAndHashes } from "../utils/checkSignAndHashes";
 import { eventSchemas } from "../utils/event-schemas";
 import { ConfigService } from "./config.service";
@@ -37,7 +36,7 @@ export interface StagedEvent {
 	invite_room_state?: Record<string, unknown>;
 }
 
-enum EventType {
+export enum EventType {
 	CREATE = "m.room.create",
 	POWER_LEVELS = "m.room.power_levels",
 	MEMBER = "m.room.member",
@@ -526,7 +525,7 @@ export class EventService {
 		return this.eventRepository.createIfNotExists(event);
 	}
 
-	async getAuthEventsIds(options: AuthEventsOptions): Promise<string[]> {
+	async getAuthEventsIds(options: AuthEventsOptions): Promise<{ _id: string, type: string }[]> {
 		const { eventType } = options;
 		
 		const queryGenerators: EventQueryMapping = {
@@ -585,7 +584,7 @@ export class EventService {
 			throw new Error(`No generators found for event type ${eventType}`);
 		}
 		
-		const authEventIds: string[] = [];
+		const authEvents: { _id: string, type: string }[] = [];
 		
 		for (const generator of generators) {
 			const query = await generator(options);
@@ -594,10 +593,10 @@ export class EventService {
 			}
 			
 			const events = await this.eventRepository.find(query, {});
-			authEventIds.push(...events.map(event => event._id));
+			authEvents.push(...events.map(event => ({ _id: event._id, type: event.event.type })));
 		}
 		
-		return authEventIds;
+		return authEvents;
 	}
 
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
@@ -690,76 +689,5 @@ export class EventService {
 		) as StagedEvent[];
 
 		return events[0];
-	}
-
-	/**
-	 * Create and sign a message event
-	 */
-	async createAndSignMessageEvent(params: { 
-		roomId: string, 
-		message: string, 
-		senderUserId: string 
-	}): Promise<{ eventId: string; signedEvent: any }> {
-		const { roomId, message, senderUserId } = params;
-		
-		const serverName = this.configService.getServerConfig().name;
-
-		const latestEventDoc = await this.getLastEventForRoom(roomId);
-		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
-		
-		// For m.room.message, typical auth events are create, power_levels, sender's member event.
-		const authEventIds = await this.getAuthEventsIds({ roomId, eventType: EventType.MESSAGE, senderId: senderUserId });
-		this.logger.debug(`Auth event IDs: ${authEventIds}`);
-		const currentDepth = latestEventDoc?.event?.depth ?? 0;
-		const newDepth = currentDepth + 1;
-
-		const eventContent = {
-			msgtype: 'm.text',
-			body: message,
-			"m.mentions": {},
-		};
-
-		// Using any here to avoid type conflicts between different EventBase definitions
-		const eventForSigning: any = {
-			prev_events: prevEvents,
-			auth_events: authEventIds,
-			type: 'm.room.message',
-			depth: newDepth,
-			content: eventContent,
-			origin: serverName,
-			origin_server_ts: Date.now(),
-			room_id: roomId,
-			unsigned: {},
-			sender: senderUserId,
-		};
-
-		const signingKeyResult = await this.configService.getSigningKey();
-		const signingKey = (Array.isArray(signingKeyResult) ? signingKeyResult[0] : signingKeyResult);
-
-		if (!signingKey) {
-			throw new Error('Signing key not found or configured');
-		}
-
-		const signedEvent = await signEvent(eventForSigning, signingKey, serverName);
-		
-		return {
-			eventId: signedEvent.event_id,
-			signedEvent
-		};
-	}
-	
-	/**
-	 * Send a signed event to a target server via federation
-	 */
-	async sendEventToServer(event: any, targetServer: string): Promise<void> {
-		this.logger.debug(`Sending event ${event.event_id} to server ${targetServer}`);
-		
-		try {
-			await this.federationService.sendEvent(targetServer, event);
-			this.logger.debug(`Successfully sent event ${event.event_id} to server ${targetServer}`);
-		} catch (error) {
-			this.logger.error(`Failed to send event ${event.event_id} to server ${targetServer}: ${error instanceof Error ? error.message : String(error)}`);
-			throw new Error(`Federation error: ${error instanceof Error ? error.message : String(error)}`);
-		}
 	}
 }
