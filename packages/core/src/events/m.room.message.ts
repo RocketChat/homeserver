@@ -15,10 +15,35 @@ declare module "./eventBase" {
 				"m.mentions"?: Record<string, any>;
 				format?: string;
 				formatted_body?: string;
+				"m.relates_to"?: MessageRelation;
+				"m.new_content"?: {
+					body: string;
+					msgtype: MessageType;
+					format?: string;
+					formatted_body?: string;
+				};
 			};
 		};
 	}
 }
+
+export type MessageRelation = {
+	rel_type: RelationType;
+	event_id: string;
+} & (RelationTypeReplace | Record<string, never>);
+
+export type RelationType = "m.replace" | "m.annotation";
+
+export type RelationTypeReplace = {
+	rel_type: "m.replace";
+	event_id: string;
+	"m.new_content"?: {
+		body: string;
+		msgtype: MessageType;
+		format?: string;
+		formatted_body?: string;
+	};
+};
 
 export type MessageAuthEvents = {
 	"m.room.create": string;
@@ -40,6 +65,13 @@ export interface RoomMessageEvent extends EventBase {
 		"m.mentions"?: Record<string, any>;
 		format?: string;
 		formatted_body?: string;
+		"m.relates_to"?: MessageRelation;
+		"m.new_content"?: {
+			body: string;
+			msgtype: MessageType;
+			format?: string;
+			formatted_body?: string;
+		};
 	};
 	unsigned: {
 		age: number;
@@ -74,6 +106,13 @@ export const roomMessageEvent = ({
 		"m.mentions"?: Record<string, any>;
 		format?: string;
 		formatted_body?: string;
+		"m.relates_to"?: MessageRelation;
+		"m.new_content"?: {
+			body: string;
+			msgtype: MessageType;
+			format?: string;
+			formatted_body?: string;
+		};
 	};
 	origin?: string;
 	ts?: number;
