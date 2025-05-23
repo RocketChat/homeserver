@@ -26,7 +26,7 @@ type ValidationResult = {
 	};
 };
 
-interface StagedEvent {
+export interface StagedEvent {
 	_id: string;
 	event: EventBase;
 	origin: string;

@@ -25,8 +25,12 @@ export abstract class BaseQueue<T> {
 
     this.processing = true;
     while (this.queue.length > 0) {
-      const item = this.queue.shift()!;
+      const item = this.queue.shift();
       try {
+        if (!item) {
+          continue;
+        }
+        
         await this.handler(item);
       } catch (err) {
         console.error(`${this.constructor.name}: Error processing item`, err);

@@ -2,8 +2,9 @@ import { Injectable, Logger } from "@nestjs/common";
 import type { MissingEventType } from "../queues/missing-event.queue";
 import { MissingEventsQueue } from "../queues/missing-event.queue";
 import { EventFetcherService } from "../services/event-fetcher.service";
-import { EventService } from "../services/event.service";
+import { EventService, type StagedEvent } from "../services/event.service";
 import { StagingAreaService } from "../services/staging-area.service";
+import type { EventBase } from "@hs/core/src/events/eventBase";
 
 @Injectable()
 export class MissingEventListener {
@@ -16,7 +17,6 @@ export class MissingEventListener {
     private readonly eventFetcherService: EventFetcherService,
   ) {
     this.missingEventsQueue.registerHandler(this.handleQueueItem.bind(this));
-    // setInterval(() => this.processStagedEvents(), 30 * 1000);
   }
   
   private async processStagedEvents() {
@@ -43,13 +43,13 @@ export class MissingEventListener {
     }
   }
   
-  private extractDependencies(event: any): string[] {
+  private extractDependencies(event: EventBase): string[] {
     const authEvents = event.auth_events || [];
     const prevEvents = event.prev_events || [];
     return [...new Set([...authEvents, ...prevEvents].flat())];
   }
   
-  private async processAndStoreStagedEvent(stagedEvent: any) {
+  private async processAndStoreStagedEvent(stagedEvent: StagedEvent) {
     try {
       this.stagingAreaService.addEventToQueue({
         eventId: stagedEvent._id,
