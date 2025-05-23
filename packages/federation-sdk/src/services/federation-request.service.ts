@@ -4,14 +4,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as nacl from 'tweetnacl';
 import { authorizationHeaders, computeAndMergeHash } from '../../../homeserver/src/authentication';
 import { extractURIfromURL } from '../../../homeserver/src/helpers/url';
-import { signJson } from '../../../homeserver/src/signJson';
+import { EncryptionValidAlgorithm, signJson } from '../../../homeserver/src/signJson';
 import { FederationConfigService } from './federation-config.service';
 
 interface SignedRequest {
   method: string;
   domain: string;
   uri: string;
-  body?: any;
+  body?: Record<string, unknown>;
   queryString?: string;
 }
 
@@ -37,8 +37,8 @@ export class FederationRequestService {
       const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
       const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
       
-      const signingKey = {
-        algorithm: 'ed25519',
+      const signingKey: SigningKey = {
+        algorithm: EncryptionValidAlgorithm.ed25519,
         version: signingKeyId.split(':')[1] || '1',
         privateKey: keyPair.secretKey,
         publicKey: keyPair.publicKey,
@@ -57,27 +57,27 @@ export class FederationRequestService {
       
       this.logger.debug(`Making ${method} request to ${url.toString()}`);
 
-      let signedBody: unknown;
+      let signedBody: Record<string, unknown> | undefined;
       if (body) {
         signedBody = await signJson(
           computeAndMergeHash({ ...body, signatures: {} }),
-          signingKey as any,
+          signingKey,
           serverName
         );
       }
       
       const auth = await authorizationHeaders(
         serverName,
-        signingKey as unknown as SigningKey,
+        signingKey,
         domain,
         method,
         extractURIfromURL(url),
-        signedBody as any,
+        signedBody,
       );
       
       const response = await fetch(url.toString(), {
         method,
-        ...(signedBody && { body: JSON.stringify(signedBody) }) as any,
+        ...(signedBody && { body: JSON.stringify(signedBody) }),
         headers: {
           Authorization: auth,
           ...discoveryHeaders,
@@ -93,14 +93,14 @@ export class FederationRequestService {
         throw new Error(`Federation request failed: ${response.status} ${errorDetail}`);
       }
       
-      return response.json() as Promise<T>;
+      return response.json();
     } catch (error: any) {
       this.logger.error(`Federation request failed: ${error.message}`, error.stack);
       throw error;
     }
   }
 
-  async request<T>(method: HttpMethod, targetServer: string, endpoint: string, body?: any, queryParams?: Record<string, string>): Promise<T> {
+  async request<T>(method: HttpMethod, targetServer: string, endpoint: string, body?: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
     let queryString = '';
     
     if (queryParams) {
