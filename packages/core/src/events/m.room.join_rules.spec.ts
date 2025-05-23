@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { generateId } from "../../../homeserver/src/authentication";
 import { generateKeyPairsFromString } from "../../../homeserver/src/keys";
 import { signEvent } from "../../../homeserver/src/signEvent";
-import { roomJoinRulesEvent } from "./m.room.join_rules";
+import { isRoomJoinRulesEvent, roomJoinRulesEvent } from "./m.room.join_rules";
 
 const finalEventId = "$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4";
 const finalEvent = {
@@ -60,4 +60,22 @@ test("roomJoinRulesEvent", async () => {
 	const eventId = generateId(signed);
 
 	expect(eventId).toBe(finalEventId);
+});
+
+test("isRoomJoinRulesEvent", () => {
+	const validEvent = roomJoinRulesEvent({
+		roomId: "!someRoom:example.org",
+		sender: "@user:example.org",
+		auth_events: [],
+		prev_events: [],
+		depth: 1,
+	});
+
+	const invalidEvent = {
+		...validEvent,
+		type: "m.room.member",
+	};
+
+	expect(isRoomJoinRulesEvent(validEvent)).toBe(true);
+	expect(isRoomJoinRulesEvent(invalidEvent)).toBe(false);
 });
