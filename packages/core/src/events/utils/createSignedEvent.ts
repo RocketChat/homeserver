@@ -1,6 +1,5 @@
-import { generateId } from "../../../../homeserver/src/authentication";
 import type { SigningKey } from "../../../../homeserver/src/keys";
-import { signEvent } from "../../../../homeserver/src/signEvent";
+import type { SignedEvent } from "../../../../homeserver/src/signEvent";
 
 export const createSignedEvent = (
 	signature: SigningKey,
@@ -8,9 +7,15 @@ export const createSignedEvent = (
 ) => {
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	return <F extends (...args: any[]) => any>(fn: F) => {
-		return async (...args: Parameters<F>): Promise<ReturnType<F>> => {
-			return signEvent(await fn(...args), signature, signingName) as Promise<
-				ReturnType<F>
+		return async (
+			...args: Parameters<F>
+		): Promise<SignedEvent<ReturnType<F>>> => {
+			const event = await fn(...args);
+			const { signEvent } = await import(
+				"../../../../homeserver/src/signEvent"
+			);
+			return signEvent(event, signature, signingName) as Promise<
+				SignedEvent<ReturnType<F>>
 			>;
 		};
 	};
@@ -21,8 +26,11 @@ export const createEventWithId = <F extends (...args: any[]) => any>(fn: F) => {
 	return <S extends ReturnType<typeof createSignedEvent>>(sign: S) => {
 		return async (
 			...args: Parameters<F>
-		): Promise<{ event: ReturnType<F>; _id: string }> => {
+		): Promise<{ event: SignedEvent<ReturnType<F>>; _id: string }> => {
 			const event = await sign(fn)(...args);
+			const { generateId } = await import(
+				"../../../../homeserver/src/authentication"
+			);
 			const id = generateId(event);
 			return {
 				event,
