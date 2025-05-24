@@ -1,3 +1,4 @@
+import type { ReactionEvent } from "@hs/core/src/events/m.reaction";
 import type { RoomMessageEvent } from "@hs/core/src/events/m.room.message";
 import {
   Body,
@@ -17,6 +18,16 @@ const SendMessageSchema = z.object({
 
 type SendMessageResponseDto = SignedEvent<RoomMessageEvent>;
 
+const SendReactionSchema = z.object({
+  roomId: z.string(),
+  targetServer: z.string(),
+  eventId: z.string(),
+  emoji: z.string(),
+  senderUserId: z.string(),
+});
+
+type SendReactionResponseDto = SignedEvent<ReactionEvent>;
+
 @Controller("internal")
 export class InternalMessageController {
 	constructor(private readonly messageService: MessageService) {}
@@ -24,5 +35,10 @@ export class InternalMessageController {
 	@Post("messages")
   async sendMessage(@Body() body: z.infer<typeof SendMessageSchema>): Promise<SendMessageResponseDto> {
     return this.messageService.sendMessage(body.roomId, body.message, body.senderUserId, body.targetServer);
+  }
+
+  @Post("reactions")
+  async sendReaction(@Body() body: z.infer<typeof SendReactionSchema>): Promise<SendReactionResponseDto> {
+    return this.messageService.sendReaction(body.roomId, body.eventId, body.emoji, body.senderUserId, body.targetServer);
   }
 }

@@ -47,6 +47,17 @@ const messageEventSchema = baseEventSchema.extend({
   }).and(z.record(z.any())),
 });
 
+const reactionEventSchema = baseEventSchema.extend({
+  type: z.literal('m.reaction'),
+  content: z.object({
+    'm.relates_to': z.object({
+      rel_type: z.literal('m.annotation'),
+      event_id: z.string(),
+      key: z.string(),
+    }),
+  }).and(z.record(z.any())),
+});
+
 const powerLevelsEventSchema = baseEventSchema.extend({
   type: z.literal('m.room.power_levels'),
   state_key: z.literal(''),
@@ -77,6 +88,7 @@ const roomV10Schemas = {
   'm.room.message': messageEventSchema,
   'm.room.power_levels': powerLevelsEventSchema,
   'm.room.join_rules': joinRulesEventSchema,
+  'm.reaction': reactionEventSchema,
   'default': baseEventSchema,
 };
 
