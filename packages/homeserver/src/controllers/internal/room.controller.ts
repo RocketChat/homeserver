@@ -7,13 +7,17 @@ import {
   Post,
   Put
 } from "@nestjs/common";
+import { z } from 'zod';
 import { RoomService } from "../../services/room.service";
+import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
 
-interface UpdateRoomNameDto {
-  name: string;
-  senderUserId: string;
-  targetServer: string;
-}
+const UpdateRoomNameDtoSchema = z.object({
+  name: z.string().trim().min(1, { message: "Room name must be a non-empty string" }),
+  senderUserId: z.string().trim().min(1, { message: "Sender ID must be a non-empty string" }),
+  targetServer: z.string().trim().min(1, { message: "Target server must be a non-empty string" }),
+});
+
+type UpdateRoomNameDto = z.infer<typeof UpdateRoomNameDtoSchema>;
 
 @Controller("internal/rooms")
 export class InternalRoomController {
@@ -38,31 +42,13 @@ export class InternalRoomController {
 
   @Put("/:roomId/name")
     async updateRoomNameEndpoint(
-      @Param("roomId") roomId: string,
-      @Body() body: UpdateRoomNameDto,
+      @Param("roomId", new ZodValidationPipe(z.string().trim().min(1, { message: "Room ID must be a non-empty string" }))) roomId: string,
+      @Body(new ZodValidationPipe(UpdateRoomNameDtoSchema)) body: UpdateRoomNameDto,
     ): Promise<{ eventId: string }> {
       const { name, senderUserId, targetServer } = body;
   
-      // TODO: Add proper authentication and authorization here.
-      // For example, verify that `senderUserId` is allowed to update this room's name.
-      // const authenticatedUserId = request.user.id; // Example if using Passport or similar
-      // if (authenticatedUserId !== senderUserId) {
-      //   throw new HttpException("Mismatch in sender ID", HttpStatus.FORBIDDEN);
-      // }
-  
-      // TODO: Move it to Zod validation
-      if (!name || typeof name !== 'string' || name.trim() === '') {
-        throw new HttpException("Room name must be a non-empty string", HttpStatus.BAD_REQUEST);
-      }
-      if (!senderUserId || typeof senderUserId !== 'string' || senderUserId.trim() === '') {
-        throw new HttpException("Sender ID must be a non-empty string", HttpStatus.BAD_REQUEST);
-      }
-      if (!roomId || typeof roomId !== 'string' || roomId.trim() === '') {
-        throw new HttpException("Room ID must be a non-empty string", HttpStatus.BAD_REQUEST);
-      }
-  
       try {
-        const eventId = await this.roomService.updateRoomName(roomId, name.trim(), senderUserId, targetServer);
+        const eventId = await this.roomService.updateRoomName(roomId.trim(), name, senderUserId, targetServer);
         return { eventId };
       } catch (error) {
         if (error instanceof HttpException) {
