@@ -28,18 +28,7 @@ export async function getAuthEvents(
 		state,
 	}: { store: EventStore; remote: EventStoreRemote; state: Map<string, V2Pdu> },
 ): Promise<V2Pdu[]> {
-	const authEvents = [] as V2Pdu[];
-	if (!event.auth_events) {
-		for (const key of getStateTypesForEventAuth(event)) {
-			const authEvent = state.get(key);
-
-			if (authEvent && authEvent.event_id !== event.event_id) {
-				authEvents.push(authEvent);
-			}
-		}
-
-		return authEvents;
-	}
+	const authEvents = new Map<string, V2Pdu>();
 
 	for (const authEventId of event.auth_events) {
 		const authEvent = await getEvent(authEventId, { store, remote });
@@ -47,10 +36,18 @@ export async function getAuthEvents(
 			console.warn("auth event not found in store or remote", authEventId);
 			continue;
 		}
-		authEvents.push(authEvent);
+		authEvents.set(getStateMapKey(authEvent), authEvent);
 	}
 
-	return authEvents;
+	for (const statekey of getStateTypesForEventAuth(event)) {
+		const authEvent = state.get(statekey);
+		if (authEvent) {
+			// replace existing events
+			authEvents.set(getStateMapKey(authEvent), authEvent);
+		}
+	}
+
+	return authEvents.values().toArray();
 }
 
 // https://spec.matrix.org/v1.12/rooms/v2/#definitions
@@ -206,7 +203,7 @@ export async function getAuthChainDifference(
 	//   const authChains = [] as Map<string, V2Pdu>[];
 
 	const _getAuthChain = async (eventId: string) => {
-		const [, event] = await store.getEvents([firstEventId]);
+		const [event] = await store.getEvents([firstEventId]);
 		if (!event) {
 			console.warn("event not found in store", firstEventId);
 			return [];
@@ -293,7 +290,6 @@ export async function getFullConflictedSet(
 
 	const authChainDiff = await getAuthChainDifference(events, { store, remote });
 
-	console.log("authChainDiff", authChainDiff);
 	/*
   const conflictedSet = (await Promise.all(
     conflicted.values().map(async (c) => {
@@ -356,8 +352,6 @@ export function _kahnsOrder<T, P extends Queue<T>>(
 		}
 	}
 
-	console.log("indegree", indegree);
-
 	const zeroIndegreeQueue: Queue<T> = new queueClass(compareFunc);
 	// TODO: optimize
 
@@ -367,8 +361,6 @@ export function _kahnsOrder<T, P extends Queue<T>>(
 	indegree
 		.keys()
 		.forEach((k) => indegree.get(k) === 0 && zeroIndegreeQueue.enqueue(k));
-
-	console.log("zeroIndegreeQueue", (zeroIndegreeQueue as any).toArray());
 
 	// While the queue is not empty:
 	while (!zeroIndegreeQueue.isEmpty()) {
@@ -473,7 +465,7 @@ export async function lexicographicalTopologicalSort<T>(
 	// 	PriorityQueue,
 	// );
 
-	const sorted = _kahnsOrder(graph, compareFunc);
+	const sorted = _kahnsOrder(graph, compareFunc, PriorityQueue);
 
 	// PA2, PB, T5
 
@@ -527,7 +519,6 @@ export async function mainlineOrdering(
 		remote: EventStoreRemote;
 	},
 ): Promise<V2Pdu[]> {
-	console.log("mainlineOrdering", events);
 	const getMainline = async (event: V2Pdu) => {
 		const mainline = [] as V2Pdu[];
 
@@ -538,10 +529,14 @@ export async function mainlineOrdering(
 				state: authEventMap,
 			});
 
+			// if (event.event_id.includes("PA2")) {
+			// 	console.log("power auth", authEvents);
+			// }
+
 			for (const authEvent of authEvents) {
 				// when testing this is double the work but meh
 				if (authEvent.type === PDUType.PowerLevels) {
-					mainline.push(event);
+					mainline.push(authEvent);
 					return fn(authEvent);
 				}
 				// Increment i and repeat until Pi has no m.room.power_levels in its auth_events.
@@ -559,8 +554,6 @@ export async function mainlineOrdering(
 
 	mainline.unshift(powerLevelEvent); // add the power level event to the mainline
 
-	console.log("mainline", mainline);
-
 	assert(mainline && mainline.length > 0, "mainline should not be empty");
 
 	const mainlinePositions = new Map<EventID, number>(); // NOTE: see comment in the loop
@@ -573,8 +566,6 @@ export async function mainlineOrdering(
 			j /* the more we "walk" the grap the older we get to in the room state, so the older the event, the least depth it has */,
 		);
 	}
-
-	console.log("mainlineMap", mainlineMap);
 
 	const getMainlinePositionOfEvent = async (event: V2Pdu): Promise<number> => {
 		let _event: V2Pdu | null = event;
@@ -629,15 +620,13 @@ export async function mainlineOrdering(
 		);
 	}
 
-	console.log("mainlinePositions", mainlinePositions);
-
 	// the mainline ordering based on P of a set of events is the ordering
 	// from smallest to largest
 	//   using the following comparison relation on events: for events x and y, x < y if
 	const comparisonFn = (e1: V2Pdu, e2: V2Pdu) => {
 		// the mainline position of x is greater than the mainline position of y
 		if (
-			mainlinePositions.get(e1.event_id)! > mainlinePositions.get(e2.event_id)!
+			mainlinePositions.get(e1.event_id)! < mainlinePositions.get(e2.event_id)!
 		) {
 			return -1;
 		}
@@ -664,7 +653,6 @@ export async function iterativeAuthChecks(
 	events: V2Pdu[],
 	{ store, remote }: { store: EventStore; remote: EventStoreRemote },
 ) {
-	console.log("iterativeAuthChecks", events);
 	const newState = new Map<string, V2Pdu>(state.entries().toArray());
 	for (const event of events) {
 		const authEventStateMap = new Map<string, V2Pdu>();
@@ -675,8 +663,6 @@ export async function iterativeAuthChecks(
 		})) {
 			authEventStateMap.set(getStateMapKey(authEvent), authEvent);
 		}
-
-		console.log("authEventStateMap", authEventStateMap);
 
 		if (isAllowedEvent(event, authEventStateMap)) {
 			newState.set(getStateMapKey(event), event);

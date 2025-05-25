@@ -51,164 +51,158 @@
  */
 
 import assert from "node:assert";
-import { isPowerEvent, PDUType, type PDUPowerLevelsEvent, type V2Pdu } from "./events";
-import { type EventStore, type EventStoreRemote, getStateMapKey, partitionState, getFullConflictedSet, getAuthChain, getStateTypesForEventAuth, reverseTopologicalPowerSort, getEvent, iterativeAuthChecks, mainlineOrdering } from "./state_resolution/definitions/definitions";
+import {
+	isPowerEvent,
+	PDUType,
+	type PDUPowerLevelsEvent,
+	type V2Pdu,
+} from "./events";
+import {
+	type EventStore,
+	type EventStoreRemote,
+	getStateMapKey,
+	partitionState,
+	getFullConflictedSet,
+	getAuthChain,
+	getStateTypesForEventAuth,
+	reverseTopologicalPowerSort,
+	getEvent,
+	iterativeAuthChecks,
+	mainlineOrdering,
+} from "./state_resolution/definitions/definitions";
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
 	events: V2Pdu[],
-	{ store, remote }: { store: EventStore; remote: EventStoreRemote }
-  ) {
+	{ store, remote }: { store: EventStore; remote: EventStoreRemote },
+) {
 	// memory o'memory
 	const eventMap = new Map<string, V2Pdu>();
-  
+
 	const stateMap = new Map<string, V2Pdu>();
-  
+
 	const stateEvents = [];
-  
+
 	for (const event of events) {
-	  eventMap.set(event.event_id, event);
-	  if (event.type !== PDUType.Message) {
-		stateMap.set(getStateMapKey(event), event);
-		stateEvents.push(event);
-	  }
+		eventMap.set(event.event_id, event);
+		if (event.type !== PDUType.Message) {
+			stateMap.set(getStateMapKey(event), event);
+			stateEvents.push(event);
+		}
 	}
-  
+
 	// 1. Select the set X of all power events that appear in the full conflicted set.
-  
+
 	const [unconflicted, conflicted] = partitionState(stateEvents);
-  
-	console.log("unconflicted", unconflicted);
-	console.log("conflicted", conflicted);
-  
+
 	if (conflicted.size === 0) {
-	  // no conflicted state, return the unconflicted state
-	  return unconflicted.keys().reduce((accum, curr) => {
-		const event = stateMap.get(curr);
-		assert(event, "event should not be null");
-		accum.set(curr, event);
-		return accum;
-	  }, new Map<string, V2Pdu>());
+		// no conflicted state, return the unconflicted state
+		return unconflicted.keys().reduce((accum, curr) => {
+			const event = stateMap.get(curr);
+			assert(event, "event should not be null");
+			accum.set(curr, event);
+			return accum;
+		}, new Map<string, V2Pdu>());
 	}
-  
+
 	const fullConflictedSet = await getFullConflictedSet(
-	  stateEvents,
-	  {
-		store,
-		remote,
-	  },
-	  conflicted
+		stateEvents,
+		{
+			store,
+			remote,
+		},
+		conflicted,
 	);
-  
-	console.log("fullConflictedSet", fullConflictedSet);
-  
+
 	const powerEvents = [] as V2Pdu[];
-  
+
 	for (const eventid of fullConflictedSet) {
-	  const event = eventMap.get(eventid);
-	  if (event && isPowerEvent(event)) {
-		powerEvents.push(event);
-	  }
+		const event = eventMap.get(eventid);
+		if (event && isPowerEvent(event)) {
+			powerEvents.push(event);
+		}
 	}
-  
-	console.log("powerEvents partial", powerEvents);
-  
+
 	//  For each such power event P, enlarge X by adding the events in the auth chain of P which also belong to the full conflicted set.
-  
+
 	for (const event of powerEvents) {
-	  const authChain = await getAuthChain(event, { store, remote });
-	  // when testing this authChain will be empty
-	  // so we fetch those manually from existing state events
-	  if (authChain.length === 0) {
-		for (const key of getStateTypesForEventAuth(event)) {
-		  const authEvent = stateMap.get(key);
-		  if (authEvent) {
-			authChain.push(authEvent);
-		  }
+		const authChain = await getAuthChain(event, { store, remote });
+		// when testing this authChain will be empty
+		// so we fetch those manually from existing state events
+		if (authChain.length === 0) {
+			for (const key of getStateTypesForEventAuth(event)) {
+				const authEvent = stateMap.get(key);
+				if (authEvent) {
+					authChain.push(authEvent);
+				}
+			}
 		}
-	  }
-  
-	  for (const authEvent of authChain) {
-		if (
-		  fullConflictedSet.has(authEvent.event_id) &&
-		  !powerEvents.find((e) => e.event_id === authEvent.event_id) &&
-		  isPowerEvent(authEvent)
-		) {
-		  powerEvents.push(authEvent);
+
+		for (const authEvent of authChain) {
+			if (
+				fullConflictedSet.has(authEvent.event_id) &&
+				!powerEvents.find((e) => e.event_id === authEvent.event_id) &&
+				isPowerEvent(authEvent)
+			) {
+				powerEvents.push(authEvent);
+			}
 		}
-	  }
 	}
-  
-	console.log("powerEvents", powerEvents);
-  
+
 	// Sort X into a list using the reverse topological power ordering.
 	const sortedPowerEvents = await reverseTopologicalPowerSort(powerEvents, {
-	  store,
-	  remote,
+		store,
+		remote,
 	});
-  
-	console.log("sortedPowerEvents", sortedPowerEvents);
-  
+
 	// 2. Apply the iterative auth checks algorithm, starting from the unconflicted state map, to the list of events from the previous step to get a partially resolved state.
 	const initialState = new Map<string, V2Pdu>();
 	for (const [key, eventId] of unconflicted) {
-	  const event = await getEvent(eventId, { store, remote });
-	  assert(event, "event should not be null");
-	  initialState.set(key, event);
+		const event = await getEvent(eventId, { store, remote });
+		assert(event, "event should not be null");
+		initialState.set(key, event);
 	}
-  
-	console.log("initialState", initialState);
-  
+
 	const partiallyResolvedState = await iterativeAuthChecks(
-	  initialState,
-	  sortedPowerEvents.map((e) => eventMap.get(e)!).filter(Boolean),
-	  { store, remote }
+		initialState,
+		sortedPowerEvents.map((e) => eventMap.get(e)!).filter(Boolean),
+		{ store, remote },
 	);
-  
-	console.log("partiallyResolvedState", partiallyResolvedState);
-  
+
 	// 3. Take all remaining events that weren’t picked in step 1 and order them by the mainline ordering based on the power level in the partially resolved state obtained in step 2.
 	const remainingEvents = fullConflictedSet
-	  .values()
-	  .filter((e) => !sortedPowerEvents.includes(e))
-	  .toArray();
-  
-	console.log("remainingEvents", remainingEvents);
-  
+		.values()
+		.filter((e) => !sortedPowerEvents.includes(e))
+		.toArray();
+
 	const powerLevelEvent = partiallyResolvedState.get(
-	  getStateMapKey({ type: PDUType.PowerLevels })
+		getStateMapKey({ type: PDUType.PowerLevels }),
 	) as PDUPowerLevelsEvent | undefined;
-  
+
 	assert(powerLevelEvent, "power level event should not be null");
-  
+
 	const orderedRemainingEvents = await mainlineOrdering(
-	  remainingEvents.map((e) => eventMap.get(e)!).filter(Boolean),
-	  powerLevelEvent,
-	  stateMap,
-	  { store, remote }
+		remainingEvents.map((e) => eventMap.get(e)!).filter(Boolean),
+		powerLevelEvent,
+		initialState,
+		{ store, remote },
 	);
-  
-	console.log("partiallyResolvedState", partiallyResolvedState);
-	console.log("orderedRemainingEvents", orderedRemainingEvents);
-  
+
 	// 4. Apply the iterative auth checks algorithm on the partial resolved state and the list of events from the previous step.
 	const finalState = await iterativeAuthChecks(
-	  partiallyResolvedState,
-	  orderedRemainingEvents,
-	  { store, remote }
+		partiallyResolvedState,
+		orderedRemainingEvents,
+		{ store, remote },
 	);
-  
-	console.log("finalState", finalState);
-  
+
 	// 5. Update the result by replacing any event with the event with the same key from the unconflicted state map, if such an event exists, to get the final resolved state.
 	for (const [key, value] of unconflicted) {
-	  if (finalState.has(key)) {
-		const event = await getEvent(value, { store, remote });
-		assert(event, "event should not be null");
-		finalState.set(key, event);
-	  }
+		if (finalState.has(key)) {
+			const event = await getEvent(value, { store, remote });
+			assert(event, "event should not be null");
+			finalState.set(key, event);
+		}
 	}
-  
+
 	return finalState;
-  }
-  
+}

@@ -2,6 +2,9 @@ import { PriorityQueue } from "@datastructures-js/priority-queue";
 import { type V2Pdu, PDUType } from "./events";
 import {
 	_kahnsOrder,
+	getAuthEvents,
+	getStateMapKey,
+	getStateTypesForEventAuth,
 	lexicographicalTopologicalSort,
 	type EventStore,
 	type EventStoreRemote,
@@ -58,147 +61,6 @@ class MockQueue implements Queue<number> {
 	}
 }
 
-/*
- * ALICE = "@alice:example.com"
-BOB = "@bob:example.com"
-CHARLIE = "@charlie:example.com"
-EVELYN = "@evelyn:example.com"
-ZARA = "@zara:example.com"
-
-ROOM_ID = "!test:example.com"
-
-MEMBERSHIP_CONTENT_JOIN = {"membership": Membership.JOIN}
-MEMBERSHIP_CONTENT_BAN = {"membership": Membership.BAN}
-
-
-ORIGIN_SERVER_TS = 0
-
-
-class FakeClock:
-    def sleep(self, msec: float) -> "tefer.Deferred[None]":
-        return defer.succeed(None)
-
-
-class FakeEvent:
-    """A fake event we use as a convenience.
-
-    NOTE: Again as a convenience we use "node_ids" rather than event_ids to
-    refer to events. The event_id has node_id as localpart and example.com
-    as domain.
-    """
-
-    def __init__(
-        self,
-        id: str,
-        sender: str,
-        type: str,
-        state_key: Optional[str],
-        content: Mapping[str, object],
-    ):
-        self.node_id = id
-        self.event_id = EventID(id, "example.com").to_string()
-        self.sender = sender
-        self.type = type
-        self.state_key = state_key
-        self.content = content
-        self.room_id = ROOM_ID
-
-    def to_event(self, auth_events: List[str], prev_events: List[str]) -> EventBase:
-        """Given the auth_events and prev_events, convert to a Frozen Event
-
-        Args:
-            auth_events: list of event_ids
-            prev_events: list of event_ids
-
-        Returns:
-            FrozenEvent
-        """
-        global ORIGIN_SERVER_TS
-
-        ts = ORIGIN_SERVER_TS
-        ORIGIN_SERVER_TS = ORIGIN_SERVER_TS + 1
-
-        event_dict = {
-            "auth_events": [(a, {}) for a in auth_events],
-            "prev_events": [(p, {}) for p in prev_events],
-            "event_id": self.event_id,
-            "sender": self.sender,
-            "type": self.type,
-            "content": self.content,
-            "origin_server_ts": ts,
-            "room_id": ROOM_ID,
-        }
-
-        if self.state_key is not None:
-            event_dict["state_key"] = self.state_key
-
-        return make_event_from_dict(event_dict)
-
-
-# All graphs start with this set of events
-INITIAL_EVENTS = [
-    FakeEvent(
-        id="CREATE",
-        sender=ALICE,
-        type=EventTypes.Create,
-        state_key="",
-        content={"creator": ALICE},
-    ),
-    FakeEvent(
-        id="IMA",
-        sender=ALICE,
-        type=EventTypes.Member,
-        state_key=ALICE,
-        content=MEMBERSHIP_CONTENT_JOIN,
-    ),
-    FakeEvent(
-        id="IPOWER",
-        sender=ALICE,
-        type=EventTypes.PowerLevels,
-        state_key="",
-        content={"users": {ALICE: 100}},
-    ),
-    FakeEvent(
-        id="IJR",
-        sender=ALICE,
-        type=EventTypes.JoinRules,
-        state_key="",
-        content={"join_rule": JoinRules.PUBLIC},
-    ),
-    FakeEvent(
-        id="IMB",
-        sender=BOB,
-        type=EventTypes.Member,
-        state_key=BOB,
-        content=MEMBERSHIP_CONTENT_JOIN,
-    ),
-    FakeEvent(
-        id="IMC",
-        sender=CHARLIE,
-        type=EventTypes.Member,
-        state_key=CHARLIE,
-        content=MEMBERSHIP_CONTENT_JOIN,
-    ),
-    FakeEvent(
-        id="IMZ",
-        sender=ZARA,
-        type=EventTypes.Member,
-        state_key=ZARA,
-        content=MEMBERSHIP_CONTENT_JOIN,
-    ),
-    FakeEvent(
-        id="START", sender=ZARA, type=EventTypes.Message, state_key=None, content={}
-    ),
-    FakeEvent(
-        id="END", sender=ZARA, type=EventTypes.Message, state_key=None, content={}
-    ),
-]
-
-INITIAL_EDGES = ["START", "IMZ", "IMC", "IMB", "IJR", "IPOWER", "IMA", "CREATE"]
-*/
-
-// convert above comment to typescript and my code
-
 const ALICE = "@alice:example.com";
 const BOB = "@bob:example.com";
 const CHARLIE = "@charlie:example.com";
@@ -230,7 +92,7 @@ class FakeEvent {
 		content: Record<string, any>,
 	) {
 		this.node_id = id;
-		this.event_id = id;
+		this.event_id = `${id}:example.com`;
 		this.sender = sender;
 		this.type = type;
 		this.state_key = state_key;
@@ -238,7 +100,7 @@ class FakeEvent {
 		this.room_id = ROOM_ID;
 	}
 
-	toEvent(auth_events: string[], prev_events: string[]) {
+	toEvent(auth_events: string[], prev_events: string[]): V2Pdu {
 		// tackle timestamp
 		/*
 		 *         event_dict = {
@@ -257,8 +119,8 @@ class FakeEvent {
 
 		*/
 		const event_dict = {
-			auth_events: auth_events.map((a) => [a, {}]),
-			prev_events: prev_events.map((p) => [p, {}]),
+			auth_events: auth_events,
+			prev_events: prev_events,
 			event_id: this.event_id,
 			sender: this.sender,
 			type: this.type,
@@ -311,66 +173,18 @@ const INITIAL_EDGES = [
 
 describe("Definitions", () => {
 	it("mainline sort", async () => {
-		/*
-		def test_mainline_sort(self) -> None:
-        """Tests that the mainline ordering works correctly."""
-
-        events = [
-            FakeEvent(
-                id="T1", sender=ALICE, type=EventTypes.Topic, state_key="", content={}
-            ),
-            FakeEvent(
-                id="PA1",
-                sender=ALICE,
-                type=EventTypes.PowerLevels,
-                state_key="",
-                content={"users": {ALICE: 100, BOB: 50}},
-            ),
-            FakeEvent(
-                id="T2", sender=ALICE, type=EventTypes.Topic, state_key="", content={}
-            ),
-            FakeEvent(
-                id="PA2",
-                sender=ALICE,
-                type=EventTypes.PowerLevels,
-                state_key="",
-                content={
-                    "users": {ALICE: 100, BOB: 50},
-                    "events": {EventTypes.PowerLevels: 100},
-                },
-            ),
-            FakeEvent(
-                id="PB",
-                sender=BOB,
-                type=EventTypes.PowerLevels,
-                state_key="",
-                content={"users": {ALICE: 100, BOB: 50}},
-            ),
-            FakeEvent(
-                id="T3", sender=BOB, type=EventTypes.Topic, state_key="", content={}
-            ),
-            FakeEvent(
-                id="T4", sender=ALICE, type=EventTypes.Topic, state_key="", content={}
-            ),
-        ]
-
-        edges = [
-            ["END", "T3", "PA2", "T2", "PA1", "T1", "START"],
-            ["END", "T4", "PB", "PA1"],
-        ]
-		*/
 		const events = [
 			new FakeEvent("T1", ALICE, PDUType.Topic, "", {}),
 			new FakeEvent("PA1", ALICE, PDUType.PowerLevels, "", {
-				users: { ALICE: 100, BOB: 50 },
+				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
 			new FakeEvent("T2", ALICE, PDUType.Topic, "", {}),
 			new FakeEvent("PA2", ALICE, PDUType.PowerLevels, "", {
-				users: { ALICE: 100, BOB: 50 },
+				users: { [ALICE]: 100, [BOB]: 50 },
 				events: { [PDUType.PowerLevels]: 100 },
 			}),
 			new FakeEvent("PB", BOB, PDUType.PowerLevels, "", {
-				users: { ALICE: 100, BOB: 50 },
+				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
 			new FakeEvent("T3", BOB, PDUType.Topic, "", {}),
 			new FakeEvent("T4", ALICE, PDUType.Topic, "", {}),
@@ -386,22 +200,22 @@ describe("Definitions", () => {
 		const reverseGraph = new Map<string, Set<string>>();
 
 		for (const node of INITIAL_EVENTS) {
-			graph.set(node.event_id, new Set());
-			reverseGraph.set(node.event_id, new Set());
+			graph.set(node.node_id, new Set());
+			reverseGraph.set(node.node_id, new Set());
 		}
 
 		for (const node of events) {
-			graph.set(node.event_id, new Set());
-			reverseGraph.set(node.event_id, new Set());
+			graph.set(node.node_id, new Set());
+			reverseGraph.set(node.node_id, new Set());
 		}
 
 		const fakeEventMap = new Map<string, FakeEvent>();
 
 		for (const node of INITIAL_EVENTS) {
-			fakeEventMap.set(node.event_id, node);
+			fakeEventMap.set(node.node_id, node);
 		}
 		for (const node of events) {
-			fakeEventMap.set(node.event_id, node);
+			fakeEventMap.set(node.node_id, node);
 		}
 
 		// because I am porting the tests :/
@@ -426,11 +240,6 @@ describe("Definitions", () => {
 				}
 			}
 		}
-
-		console.log("Graph:", graph);
-
-		// @ts-ignore
-		eventStore.events = [...INITIAL_EVENTS, ...events];
 
 		// @ts-ignore
 		const sorted = _kahnsOrder(
@@ -461,21 +270,22 @@ describe("Definitions", () => {
 		expect(sorted).toEqual(expectationSort);
 
 		/*
-		*prev_events IMA ['CREATE']
-prev_events IPOWER ['IMA']
-prev_events IJR ['IPOWER']
-prev_events IMB ['IJR']
-prev_events IMC ['IMB']
-prev_events IMZ ['IMC']
-prev_events START ['IMZ']
-prev_events T1 ['START']
-prev_events PA1 ['T1']
-prev_events PB ['PA1']
-prev_events T2 ['PA1']
-prev_events PA2 ['T2']
-prev_events T3 ['PA2']
-prev_events T4 ['PB']
-prev_events END ['T3', 'T4']*/
+		 * prev_events IMA ['CREATE']
+		 * prev_events IPOWER ['IMA']
+		 * prev_events IJR ['IPOWER']
+		 * prev_events IMB ['IJR']
+		 * prev_events IMC ['IMB']
+		 * prev_events IMZ ['IMC']
+		 * prev_events START ['IMZ']
+		 * prev_events T1 ['START']
+		 * prev_events PA1 ['T1']
+		 * prev_events PB ['PA1']
+		 * prev_events T2 ['PA1']
+		 * prev_events PA2 ['T2']
+		 * prev_events T3 ['PA2']
+		 * prev_events T4 ['PB']
+		 * prev_events END ['T3', 'T4']
+		 */
 		const expectedPrevEvents = new Map<string, string[]>([
 			["IMA", ["CREATE"]],
 			["IPOWER", ["IMA"]],
@@ -494,11 +304,91 @@ prev_events END ['T3', 'T4']*/
 			["END", ["T3", "T4"]],
 		]);
 
-		for (const nodeId of sorted) {
-			const fakeEvent = fakeEventMap.get(nodeId)!;
+		type StateKey = `${PDUType}:${string}`;
 
-			const prevEvents = reverseGraph.get(nodeId)!;
-			expect([...prevEvents]).toEqual(expectedPrevEvents.get(nodeId) ?? []);
+		const stateAtEventId = new Map<string, Map<StateKey, V2Pdu>>();
+
+		const [create, ...rest] = sorted;
+
+		// the first one should be prevEvents.length === 0
+		expect(create).toEqual("CREATE");
+
+		const createEvent = fakeEventMap.get(create)!.toEvent([], []);
+
+		eventStore.events.push(createEvent);
+
+		stateAtEventId.set(
+			createEvent.event_id,
+			new Map([
+				[getStateMapKey(createEvent) as unknown as StateKey, createEvent],
+			]),
+		);
+
+		for (const nodeId of rest) {
+			const prevEventsNodeIds = reverseGraph.get(nodeId)!;
+			expect([...prevEventsNodeIds]).toEqual(
+				expectedPrevEvents.get(nodeId) ?? [],
+			);
+
+			let stateBefore: Map<string, V2Pdu>;
+
+			if (prevEventsNodeIds.size === 1) {
+				// very next to CREATE
+				stateBefore = stateAtEventId.get(
+					fakeEventMap.get(prevEventsNodeIds.values().next().value!)!.event_id,
+				)!;
+			} else {
+				// get all the events from the last state
+				const eventsToResolve = prevEventsNodeIds
+					.values()
+					.map((nodeId) => {
+						const { event_id } = fakeEventMap.get(nodeId)!;
+						return stateAtEventId.get(event_id)!;
+					})
+					.flatMap((state) => state.values())
+					.toArray();
+
+				stateBefore = await resolveStateV2Plus(eventsToResolve, {
+					store: eventStore,
+					remote: eventStoreRemote,
+				});
+			}
+
+			// whatever was state before, append current event info to new state
+			const stateAfter = structuredClone(stateBefore);
+
+			/// get the authEvents for the current event
+			const authEvents = [];
+			const authTypes = getStateTypesForEventAuth(
+				fakeEventMap.get(nodeId)!.toEvent([], []),
+			);
+			for (const type of authTypes) {
+				// get the auth event id from the seen state
+				const authEvent = stateBefore.get(type);
+				if (authEvent) {
+					authEvents.push(authEvent.event_id);
+				}
+			}
+			const event = fakeEventMap.get(nodeId)!.toEvent(
+				authEvents,
+				prevEventsNodeIds
+					.values()
+					.map((nodeId) => fakeEventMap.get(nodeId)!.event_id)
+					.toArray(),
+			);
+
+			eventStore.events.push(event);
+
+			stateAfter.set(getStateMapKey(event), event);
+
+			stateAtEventId.set(event.event_id, stateAfter as any);
 		}
+
+		expect(
+			stateAtEventId.get("END:example.com")?.get("m.room.topic:"),
+		).toHaveProperty("event_id", "T3:example.com");
+		expect(
+			stateAtEventId.get("END:example.com")?.get("m.room.power_levels:"),
+		).toHaveProperty("event_id", "PA2:example.com");
 	});
 });
