@@ -24,7 +24,7 @@ export class MessageService {
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
 		
-		const authEvents = await this.eventService.getAuthEventsIds({ roomId, eventType: EventType.MESSAGE, senderId: senderUserId });
+		const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId, senderId: senderUserId });
 		
         const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
@@ -70,7 +70,7 @@ export class MessageService {
         const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
         const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
         
-        const authEvents = await this.eventService.getAuthEventsIds({ roomId, eventType: EventType.REACTION, senderId: senderUserId });
+        const authEvents = await this.eventService.getAuthEventIds(EventType.REACTION, { roomId, senderId: senderUserId });
         
         const currentDepth = latestEventDoc?.event?.depth ?? 0;
         const newDepth = currentDepth + 1;

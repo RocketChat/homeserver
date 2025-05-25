@@ -43,20 +43,29 @@ export enum EventType {
 	MESSAGE = "m.room.message",
 	JOIN_RULES = "m.room.join_rules",
 	REACTION = "m.reaction",
+	NAME = "m.room.name",
 }
 
-interface AuthEventsOptions {
-	roomId: string;
-	eventType?: EventType | string;
-	senderId?: string;
+// Define what attributes each event type expects
+type EventAttributes = {
+	[EventType.NAME]: { roomId: string; senderId: string };
+	[EventType.MESSAGE]: { roomId: string; senderId: string };
+	[EventType.REACTION]: { roomId: string; senderId: string };
+	[EventType.MEMBER]: { roomId: string; senderId: string };
+	[EventType.CREATE]: { roomId: string };
+	[EventType.POWER_LEVELS]: { roomId: string };
+	[EventType.JOIN_RULES]: { roomId: string };
+};
+
+interface AuthEventResult {
+	_id: string;
+	type: string;
 }
 
-// Define a type for our query generators
-type QueryGenerator = (options: AuthEventsOptions) => Promise<Record<string, any> | null> | Record<string, any> | null;
-
-// Define a type for our event mapping
-interface EventQueryMapping {
-	[key: string]: QueryGenerator[];
+interface QueryConfig {
+	query: Record<string, any>;
+	sort?: Record<string, 1 | -1>;
+	limit?: number;
 }
 
 @Injectable()
@@ -526,124 +535,6 @@ export class EventService {
 		return this.eventRepository.createIfNotExists(event);
 	}
 
-	async getAuthEventsIds(options: AuthEventsOptions): Promise<{ _id: string, type: string }[]> {
-		const { eventType } = options;
-		
-		const queryGenerators: EventQueryMapping = {
-			[EventType.MESSAGE]: [
-				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.CREATE }),
-				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.POWER_LEVELS }),
-				async (opts) => {
-					if (!opts.senderId) {
-						return null;
-					}
-					
-					// Try join membership first
-					const joinQuery = {
-						"event.room_id": opts.roomId,
-						"event.type": EventType.MEMBER,
-						"event.state_key": opts.senderId,
-						"event.content.membership": "join"
-					};
-					
-					const joinEvents = await this.eventRepository.find(joinQuery, {});
-					
-					// If join found, return that query
-					if (joinEvents.length > 0) {
-						return joinQuery;
-					}
-					
-					// Otherwise, try invite membership
-					this.logger.warn(`No join membership found for ${opts.senderId} in room ${opts.roomId}, checking for invite`);
-					
-					const inviteQuery = {
-						"event.room_id": opts.roomId,
-						"event.type": EventType.MEMBER,
-						"event.state_key": opts.senderId,
-						"event.content.membership": "invite"
-					};
-					
-					const inviteEvents = await this.eventRepository.find(inviteQuery, {});
-					
-					if (inviteEvents.length > 0) {
-						this.logger.warn(`Using invite membership for ${opts.senderId} since no join event was found`);
-						return inviteQuery;
-					}
-					
-					this.logger.error(`No membership events found for ${opts.senderId} in room ${opts.roomId}`);
-					return null;
-				}
-			],
-			[EventType.MEMBER]: [
-				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.CREATE }),
-				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.POWER_LEVELS }),
-			],
-			[EventType.REACTION]: [
-				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.CREATE }),
-				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.POWER_LEVELS }),
-				async (opts) => {
-					if (!opts.senderId) {
-						return null;
-					}
-					
-					// Try join membership first
-					const joinQuery = {
-						"event.room_id": opts.roomId,
-						"event.type": EventType.MEMBER,
-						"event.state_key": opts.senderId,
-						"event.content.membership": "join"
-					};
-					
-					const joinEvents = await this.eventRepository.find(joinQuery, {});
-					
-					// If join found, return that query
-					if (joinEvents.length > 0) {
-						return joinQuery;
-					}
-					
-					// Otherwise, try invite membership
-					this.logger.warn(`No join membership found for ${opts.senderId} in room ${opts.roomId}, checking for invite`);
-					
-					const inviteQuery = {
-						"event.room_id": opts.roomId,
-						"event.type": EventType.MEMBER,
-						"event.state_key": opts.senderId,
-						"event.content.membership": "invite"
-					};
-					
-					const inviteEvents = await this.eventRepository.find(inviteQuery, {});
-					
-					if (inviteEvents.length > 0) {
-						this.logger.warn(`Using invite membership for ${opts.senderId} since no join event was found`);
-						return inviteQuery;
-					}
-					
-					this.logger.error(`No membership events found for ${opts.senderId} in room ${opts.roomId}`);
-					return null;
-				}
-			]
-		};
-		
-		const generators = queryGenerators[eventType as string] || [];
-		if (!generators) {
-			throw new Error(`No generators found for event type ${eventType}`);
-		}
-		
-		const authEvents: { _id: string, type: string }[] = [];
-		
-		for (const generator of generators) {
-			const query = await generator(options);
-			if (!query) {
-				continue;
-			}
-			
-			const events = await this.eventRepository.find(query, {});
-			authEvents.push(...events.map(event => ({ _id: event._id, type: event.event.type })));
-		}
-		
-		return authEvents;
-	}
-
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
 		return this.eventRepository.findLatestInRoom(roomId);
 	}
@@ -734,5 +625,98 @@ export class EventService {
 		) as StagedEvent[];
 
 		return events[0];
+	}
+
+	async getAuthEventIds<T extends EventType>(eventType: T, attributes: EventAttributes[T]): Promise<AuthEventResult[]> {
+		const queries = this.getAuthEventQueries(eventType, attributes);
+		const authEvents: AuthEventResult[] = [];
+
+		for (const query of queries) {
+			try {
+				const events = await this.eventRepository.find(query.query, {
+					sort: query.sort,
+					limit: query.limit
+				});
+
+				if (events.length > 0) {
+					const latestEvent = events[0];
+					authEvents.push({
+						_id: latestEvent._id,
+						type: latestEvent.event.type
+					});
+				}
+			} catch (error) {
+				this.logger.error(`Failed to execute query for ${eventType}:`, error);
+			}
+		}
+
+		return authEvents;
+	}
+
+	private getAuthEventQueries<T extends EventType>(eventType: T, attributes: EventAttributes[T]): QueryConfig[] {
+		const { roomId } = attributes;
+		const senderId = 'senderId' in attributes ? (attributes as any).senderId : undefined;
+
+		const baseQueries = {
+			create: { query: { "event.room_id": roomId, "event.type": EventType.CREATE } },
+			powerLevels: { 
+				query: { "event.room_id": roomId, "event.type": EventType.POWER_LEVELS },
+				sort: { "event.origin_server_ts": -1 },
+				limit: 1
+			},
+			membership: {
+				query: { "event.room_id": roomId, "event.type": EventType.MEMBER, "event.state_key": senderId, "event.content.membership": "join" },
+				sort: { "event.origin_server_ts": -1 },
+				limit: 1
+			}
+		};
+
+		switch (eventType) {
+			case EventType.NAME:
+				return [
+					baseQueries.create,
+					baseQueries.powerLevels,
+					baseQueries.membership
+				];
+
+			case EventType.MESSAGE:
+				return [
+					baseQueries.create,
+					baseQueries.powerLevels,
+					baseQueries.membership
+				];
+
+			case EventType.REACTION:
+				return [
+					baseQueries.create,
+					baseQueries.powerLevels,
+					baseQueries.membership
+				];
+
+			case EventType.MEMBER:
+				return [
+					baseQueries.create,
+					baseQueries.powerLevels,
+					baseQueries.membership
+				];
+
+			case EventType.CREATE:
+				return [baseQueries.create];
+
+			case EventType.POWER_LEVELS:
+				return [
+					baseQueries.create,
+					baseQueries.powerLevels
+				];
+
+			case EventType.JOIN_RULES:
+				return [
+					baseQueries.create,
+					baseQueries.powerLevels
+				];
+
+			default:
+				throw new Error(`Unsupported event type: ${eventType}`);
+		}
 	}
 }

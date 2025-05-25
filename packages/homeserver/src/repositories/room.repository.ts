@@ -45,4 +45,13 @@ export class RoomRepository {
     const room = await collection.findOne({ room_id: roomId }, { projection: { version: 1 } });
     return room?.version || null;
   }
+
+  async updateRoomName(roomId: string, name: string): Promise<void> {
+    const collection = await this.getCollection();
+    await collection.updateOne(
+      { room_id: roomId },
+      { $set: { name: name } },
+      { upsert: false }
+    );
+  }
 }
