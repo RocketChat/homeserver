@@ -2,10 +2,8 @@ import { PriorityQueue } from "@datastructures-js/priority-queue";
 import { type V2Pdu, PDUType } from "./events";
 import {
 	_kahnsOrder,
-	getAuthEvents,
 	getStateMapKey,
 	getStateTypesForEventAuth,
-	lexicographicalTopologicalSort,
 	type EventStore,
 	type EventStoreRemote,
 	type Queue,
@@ -30,10 +28,6 @@ class MockEventStoreRemote implements EventStoreRemote {
 	async getEvent(eventId: string): Promise<V2Pdu | null> {
 		return null;
 	}
-}
-
-function createEvent(pdu: Partial<V2Pdu>) {
-	// TODO:
 }
 
 const eventStore = new MockEventStore();
@@ -74,8 +68,6 @@ const MEMBERSHIP_CONTENT_BAN = { membership: "ban" };
 
 let ORIGIN_SERVER_TS = 0;
 
-// igore clock
-
 class FakeEvent {
 	node_id: string;
 	event_id: string;
@@ -101,23 +93,6 @@ class FakeEvent {
 	}
 
 	toEvent(auth_events: string[], prev_events: string[]): V2Pdu {
-		// tackle timestamp
-		/*
-		 *         event_dict = {
-            "auth_events": [(a, {}) for a in auth_events],
-            "prev_events": [(p, {}) for p in prev_events],
-            "event_id": self.event_id,
-            "sender": self.sender,
-            "type": self.type,
-            "content": self.content,
-            "origin_server_ts": ts,
-            "room_id": ROOM_ID,
-        }
-
-        if self.state_key is not None:
-            event_dict["state_key"] = self.state_key
-
-		*/
 		const event_dict = {
 			auth_events: auth_events,
 			prev_events: prev_events,
@@ -171,8 +146,292 @@ const INITIAL_EDGES = [
 	"CREATE",
 ];
 
+function getGraph(events: FakeEvent[], edges: string[][]) {
+	const graph = new Map<string, Set<string>>();
+
+	const reverseGraph = new Map<string, Set<string>>();
+
+	for (const node of INITIAL_EVENTS) {
+		graph.set(node.node_id, new Set());
+		reverseGraph.set(node.node_id, new Set());
+	}
+
+	for (const node of events) {
+		graph.set(node.node_id, new Set());
+		reverseGraph.set(node.node_id, new Set());
+	}
+
+	const fakeEventMap = new Map<string, FakeEvent>();
+
+	for (const node of INITIAL_EVENTS) {
+		fakeEventMap.set(node.node_id, node);
+	}
+	for (const node of events) {
+		fakeEventMap.set(node.node_id, node);
+	}
+
+	// because I am porting the tests :/
+	const pairwise = function* <T>(arr: T[]) {
+		for (let i = 0; i < arr.length - 1; i += 1) {
+			yield [arr[i], arr[i + 1]];
+		}
+	};
+
+	for (const [a, b] of pairwise(INITIAL_EDGES)) {
+		if (a && b) {
+			graph.get(b)?.add(a);
+			reverseGraph.get(a)?.add(b);
+		}
+	}
+
+	for (const edge of edges) {
+		for (const [a, b] of pairwise(edge)) {
+			if (a && b) {
+				graph.get(b)?.add(a);
+				reverseGraph.get(a)?.add(b);
+			}
+		}
+	}
+
+	return { graph, reverseGraph, fakeEventMap };
+}
+
+async function runTest(events: FakeEvent[], edges: string[][]) {
+	const { graph, reverseGraph, fakeEventMap } = getGraph(events, edges);
+
+	const sorted = _kahnsOrder(
+		graph,
+		(a, b) => a.localeCompare(b),
+		PriorityQueue,
+	);
+
+	type StateKey = `${PDUType}:${string}`;
+
+	const stateAtEventId = new Map<string, Map<StateKey, V2Pdu>>();
+
+	const [create, ...rest] = sorted;
+
+	// the first one should be prevEvents.length === 0
+	expect(create).toEqual("CREATE");
+
+	const createEvent = fakeEventMap.get(create)!.toEvent([], []);
+
+	eventStore.events.push(createEvent);
+
+	stateAtEventId.set(
+		createEvent.event_id,
+		new Map([
+			[getStateMapKey(createEvent) as unknown as StateKey, createEvent],
+		]),
+	);
+
+	for (const nodeId of rest) {
+		const prevEventsNodeIds = reverseGraph.get(nodeId)!;
+
+		let stateBefore: Map<string, V2Pdu>;
+
+		if (prevEventsNodeIds.size === 1) {
+			// very next to CREATE
+			stateBefore = stateAtEventId.get(
+				fakeEventMap.get(prevEventsNodeIds.values().next().value!)!.event_id,
+			)!;
+		} else {
+			// get all the events from the last state
+			const eventsToResolve = prevEventsNodeIds
+				.values()
+				.map((nodeId) => {
+					const { event_id } = fakeEventMap.get(nodeId)!;
+					return stateAtEventId.get(event_id)!;
+				})
+				.flatMap((state) => state.values())
+				.toArray();
+
+			stateBefore = await resolveStateV2Plus(eventsToResolve, {
+				store: eventStore,
+				remote: eventStoreRemote,
+			});
+		}
+
+		// whatever was state before, append current event info to new state
+		const stateAfter = structuredClone(stateBefore);
+
+		/// get the authEvents for the current event
+		const authEvents = [];
+		const authTypes = getStateTypesForEventAuth(
+			fakeEventMap.get(nodeId)!.toEvent([], []),
+		);
+		for (const type of authTypes) {
+			// get the auth event id from the seen state
+			const authEvent = stateBefore.get(type);
+			if (authEvent) {
+				authEvents.push(authEvent.event_id);
+			}
+		}
+		const event = fakeEventMap.get(nodeId)!.toEvent(
+			authEvents,
+			prevEventsNodeIds
+				.values()
+				.map((nodeId) => fakeEventMap.get(nodeId)!.event_id)
+				.toArray(),
+		);
+
+		eventStore.events.push(event);
+
+		stateAfter.set(getStateMapKey(event), event);
+
+		stateAtEventId.set(event.event_id, stateAfter as any);
+	}
+
+	return stateAtEventId.get("END:example.com");
+}
+
 describe("Definitions", () => {
-	it("mainline sort", async () => {
+	it("join rule evasion", async () => {
+		// FIXME:
+		const events = [
+			new FakeEvent("JR", ALICE, PDUType.JoinRules, "", {
+				join_rules: "private",
+			}),
+			new FakeEvent("ME", EVELYN, PDUType.Member, EVELYN, {
+				membership: "join",
+			}),
+		];
+
+		const edges = [
+			["END", "JR", "START"],
+			["END", "ME", "START"],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState?.get("m.room.join_rules:")).toHaveProperty(
+			"event_id",
+			"JR:example.com",
+		);
+	});
+	it("offtopic pl", async () => {
+		// FIXME:
+		const events = [
+			new FakeEvent("PA", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("PB", BOB, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50, [CHARLIE]: 50 },
+			}),
+			new FakeEvent("PC", CHARLIE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50, [CHARLIE]: 0 },
+			}),
+		];
+
+		const edges = [
+			["END", "PC", "PB", "PA", "START"],
+			["END", "PA"],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
+			"event_id",
+			"PC:example.com",
+		);
+	});
+	it("topic basic", async () => {
+		const events = [
+			new FakeEvent("T1", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA1", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T2", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA2", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 0 },
+			}),
+			new FakeEvent("PB", BOB, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T3", BOB, PDUType.Topic, "", {}),
+		];
+
+		const edges = [
+			["END", "PA2", "T2", "PA1", "T1", "START"],
+			["END", "T3", "PB", "PA1"],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState?.get("m.room.topic:")).toHaveProperty(
+			"event_id",
+			"T2:example.com",
+		);
+		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
+			"event_id",
+			"PA2:example.com",
+		);
+	});
+	it("topic reset", async () => {
+		const events = [
+			new FakeEvent("T1", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T2", BOB, PDUType.Topic, "", {}),
+			new FakeEvent("MB", ALICE, PDUType.Member, BOB, MEMBERSHIP_CONTENT_BAN),
+		];
+
+		const edges = [
+			["END", "MB", "T2", "PA", "T1", "START"],
+			["END", "T1"],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState?.get("m.room.topic:")).toHaveProperty(
+			"event_id",
+			"T1:example.com",
+		);
+		expect(finalState?.get("m.room.member:@bob:example.com")).toHaveProperty(
+			"event_id",
+			"MB:example.com",
+		);
+		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
+			"event_id",
+			"PA:example.com",
+		);
+	});
+	it("topic", async () => {
+		const events = [
+			new FakeEvent("T1", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA1", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T2", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA2", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("PB", BOB, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T3", BOB, PDUType.Topic, "", {}),
+			new FakeEvent("MZ1", ZARA, PDUType.Message, null, {}),
+			new FakeEvent("T4", ALICE, PDUType.Topic, "", {}),
+		];
+
+		const edges = [
+			["END", "T3", "PA2", "T2", "PA1", "T1", "START"],
+			["END", "T4", "PB", "PA1"],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState?.get("m.room.topic:")).toHaveProperty(
+			"event_id",
+			"T4:example.com",
+		);
+		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
+			"event_id",
+			"PA2:example.com",
+		);
+	});
+	it("kahns", () => {
 		const events = [
 			new FakeEvent("T1", ALICE, PDUType.Topic, "", {}),
 			new FakeEvent("PA1", ALICE, PDUType.PowerLevels, "", {
@@ -195,51 +454,7 @@ describe("Definitions", () => {
 			["END", "T4", "PB", "PA1"],
 		];
 
-		const graph = new Map<string, Set<string>>();
-
-		const reverseGraph = new Map<string, Set<string>>();
-
-		for (const node of INITIAL_EVENTS) {
-			graph.set(node.node_id, new Set());
-			reverseGraph.set(node.node_id, new Set());
-		}
-
-		for (const node of events) {
-			graph.set(node.node_id, new Set());
-			reverseGraph.set(node.node_id, new Set());
-		}
-
-		const fakeEventMap = new Map<string, FakeEvent>();
-
-		for (const node of INITIAL_EVENTS) {
-			fakeEventMap.set(node.node_id, node);
-		}
-		for (const node of events) {
-			fakeEventMap.set(node.node_id, node);
-		}
-
-		// because I am porting the tests :/
-		const pairwise = function* <T>(arr: T[]) {
-			for (let i = 0; i < arr.length - 1; i += 1) {
-				yield [arr[i], arr[i + 1]];
-			}
-		};
-
-		for (const [a, b] of pairwise(INITIAL_EDGES)) {
-			if (a && b) {
-				graph.get(b)?.add(a);
-				reverseGraph.get(a)?.add(b);
-			}
-		}
-
-		for (const edge of edges) {
-			for (const [a, b] of pairwise(edge)) {
-				if (a && b) {
-					graph.get(b)?.add(a);
-					reverseGraph.get(a)?.add(b);
-				}
-			}
-		}
+		const { graph, reverseGraph, fakeEventMap } = getGraph(events, edges);
 
 		// @ts-ignore
 		const sorted = _kahnsOrder(
@@ -304,91 +519,50 @@ describe("Definitions", () => {
 			["END", ["T3", "T4"]],
 		]);
 
-		type StateKey = `${PDUType}:${string}`;
-
-		const stateAtEventId = new Map<string, Map<StateKey, V2Pdu>>();
-
 		const [create, ...rest] = sorted;
 
 		// the first one should be prevEvents.length === 0
 		expect(create).toEqual("CREATE");
-
-		const createEvent = fakeEventMap.get(create)!.toEvent([], []);
-
-		eventStore.events.push(createEvent);
-
-		stateAtEventId.set(
-			createEvent.event_id,
-			new Map([
-				[getStateMapKey(createEvent) as unknown as StateKey, createEvent],
-			]),
-		);
 
 		for (const nodeId of rest) {
 			const prevEventsNodeIds = reverseGraph.get(nodeId)!;
 			expect([...prevEventsNodeIds]).toEqual(
 				expectedPrevEvents.get(nodeId) ?? [],
 			);
-
-			let stateBefore: Map<string, V2Pdu>;
-
-			if (prevEventsNodeIds.size === 1) {
-				// very next to CREATE
-				stateBefore = stateAtEventId.get(
-					fakeEventMap.get(prevEventsNodeIds.values().next().value!)!.event_id,
-				)!;
-			} else {
-				// get all the events from the last state
-				const eventsToResolve = prevEventsNodeIds
-					.values()
-					.map((nodeId) => {
-						const { event_id } = fakeEventMap.get(nodeId)!;
-						return stateAtEventId.get(event_id)!;
-					})
-					.flatMap((state) => state.values())
-					.toArray();
-
-				stateBefore = await resolveStateV2Plus(eventsToResolve, {
-					store: eventStore,
-					remote: eventStoreRemote,
-				});
-			}
-
-			// whatever was state before, append current event info to new state
-			const stateAfter = structuredClone(stateBefore);
-
-			/// get the authEvents for the current event
-			const authEvents = [];
-			const authTypes = getStateTypesForEventAuth(
-				fakeEventMap.get(nodeId)!.toEvent([], []),
-			);
-			for (const type of authTypes) {
-				// get the auth event id from the seen state
-				const authEvent = stateBefore.get(type);
-				if (authEvent) {
-					authEvents.push(authEvent.event_id);
-				}
-			}
-			const event = fakeEventMap.get(nodeId)!.toEvent(
-				authEvents,
-				prevEventsNodeIds
-					.values()
-					.map((nodeId) => fakeEventMap.get(nodeId)!.event_id)
-					.toArray(),
-			);
-
-			eventStore.events.push(event);
-
-			stateAfter.set(getStateMapKey(event), event);
-
-			stateAtEventId.set(event.event_id, stateAfter as any);
 		}
+	});
+	it("mainline sort", async () => {
+		const events = [
+			new FakeEvent("T1", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA1", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T2", ALICE, PDUType.Topic, "", {}),
+			new FakeEvent("PA2", ALICE, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+				events: { [PDUType.PowerLevels]: 100 },
+			}),
+			new FakeEvent("PB", BOB, PDUType.PowerLevels, "", {
+				users: { [ALICE]: 100, [BOB]: 50 },
+			}),
+			new FakeEvent("T3", BOB, PDUType.Topic, "", {}),
+			new FakeEvent("T4", ALICE, PDUType.Topic, "", {}),
+		];
 
-		expect(
-			stateAtEventId.get("END:example.com")?.get("m.room.topic:"),
-		).toHaveProperty("event_id", "T3:example.com");
-		expect(
-			stateAtEventId.get("END:example.com")?.get("m.room.power_levels:"),
-		).toHaveProperty("event_id", "PA2:example.com");
+		const edges = [
+			["END", "T3", "PA2", "T2", "PA1", "T1", "START"],
+			["END", "T4", "PB", "PA1"],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState?.get("m.room.topic:")).toHaveProperty(
+			"event_id",
+			"T3:example.com",
+		);
+		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
+			"event_id",
+			"PA2:example.com",
+		);
 	});
 });
