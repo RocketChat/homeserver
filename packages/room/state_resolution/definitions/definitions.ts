@@ -138,7 +138,7 @@ export async function getAuthChain(
 	const auths = event.auth_events;
 
 	// event.type === 'm.room.create'
-	if (!auths || auths.length === 0) {
+	if (auths.length === 0) {
 		return [];
 	}
 

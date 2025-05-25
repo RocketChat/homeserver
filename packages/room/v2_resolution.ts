@@ -45,10 +45,17 @@
  * // mainline of a power level event is all the power level event that came before it.
  * // "mainline position" of an event is how far back in the historical power level of the room was th event created.
  * // we sort the events by their mainline position first, indicating how far back in the history of the room the event was created, then we sort by origin_server_ts and event_id (event_id because we have to pick one, yknow)
+ * // so we get a sorted list of events where the lower the index, the earlier the event was created (based on earlier power level) even if it was sent later.
  * 9. Run the auth rule validation on the sorted events list, and the last partially resolved state list;
  * 10. Finally merge with the initial unconflicted state list to get the final resolved state;
  * // ^^^ this is the final state of the room, all events are in order of preference and are allowed by the auth rules
  */
+
+// parts of above explanation is in each segment of written code.
+// you may think I am a responsible developer, that I am writing comments to explain the code.
+// I am not.
+// these comments are more for me, these are keeping me sane.
+// i am too early in this to remember everything by heart.
 
 import assert from "node:assert";
 import {
@@ -73,7 +80,7 @@ import {
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
-	events: V2Pdu[],
+	events: V2Pdu[], // TODO: maybe this should start with a map??
 	{ store, remote }: { store: EventStore; remote: EventStoreRemote },
 ) {
 	// memory o'memory
@@ -81,10 +88,12 @@ export async function resolveStateV2Plus(
 
 	const stateMap = new Map<string, V2Pdu>();
 
-	const stateEvents = [];
+	const stateEvents = [] as V2Pdu[];
 
 	for (const event of events) {
 		eventMap.set(event.event_id, event);
+		// TODO: should already get only state events
+		// change this
 		if (event.type !== PDUType.Message) {
 			stateMap.set(getStateMapKey(event), event);
 			stateEvents.push(event);
@@ -105,6 +114,7 @@ export async function resolveStateV2Plus(
 		}, new Map<string, V2Pdu>());
 	}
 
+	// all confirmed conflicts and graph deviations
 	const fullConflictedSet = await getFullConflictedSet(
 		stateEvents,
 		{
@@ -114,6 +124,13 @@ export async function resolveStateV2Plus(
 		conflicted,
 	);
 
+	// events that dictate authorization logic
+	// should a user be able to change the power level of another user?
+	// should a user be able to change the topic of the room?
+	// should a user be able to change the name of the room?
+	// should a user be able to change the room visibility?
+	// should a user be able to change the room join rules?
+	// etc.
 	const powerEvents = [] as V2Pdu[];
 
 	for (const eventid of fullConflictedSet) {
@@ -127,27 +144,23 @@ export async function resolveStateV2Plus(
 
 	for (const event of powerEvents) {
 		const authChain = await getAuthChain(event, { store, remote });
-		// when testing this authChain will be empty
-		// so we fetch those manually from existing state events
-		if (authChain.length === 0) {
-			for (const key of getStateTypesForEventAuth(event)) {
-				const authEvent = stateMap.get(key);
-				if (authEvent) {
-					authChain.push(authEvent);
-				}
-			}
-		}
-
 		for (const authEvent of authChain) {
 			if (
+				/* authEvent is conflicted */
 				fullConflictedSet.has(authEvent.event_id) &&
-				!powerEvents.find((e) => e.event_id === authEvent.event_id) &&
-				isPowerEvent(authEvent)
+				/* is power event */
+				isPowerEvent(authEvent) &&
+				/* it isn't in the list already */
+				// TODO: use a map here
+				!powerEvents.find((e) => e.event_id === authEvent.event_id)
 			) {
 				powerEvents.push(authEvent);
 			}
 		}
 	}
+
+	// should now have all power events and all events that allows those power events to exist
+	// now we have to sort them by preference (power level, time created at)
 
 	// Sort X into a list using the reverse topological power ordering.
 	const sortedPowerEvents = await reverseTopologicalPowerSort(powerEvents, {
@@ -158,11 +171,18 @@ export async function resolveStateV2Plus(
 	// 2. Apply the iterative auth checks algorithm, starting from the unconflicted state map, to the list of events from the previous step to get a partially resolved state.
 	const initialState = new Map<string, V2Pdu>();
 	for (const [key, eventId] of unconflicted) {
+		// self explanatory
 		const event = await getEvent(eventId, { store, remote });
 		assert(event, "event should not be null");
 		initialState.set(key, event);
 	}
 
+	// we have all the power events by their preference
+	// with the initialState i.e. the unconflicted state, as reference
+	// we'll run authorization logic check on the power events.
+	// the more priority an event has, the earlier it will be resolved.
+	// so subsequent event validation will be biased by the earlier events.
+	// why kahns' algorithm matters :)
 	const partiallyResolvedState = await iterativeAuthChecks(
 		initialState,
 		sortedPowerEvents.map((e) => eventMap.get(e)!).filter(Boolean),
@@ -172,14 +192,25 @@ export async function resolveStateV2Plus(
 	// 3. Take all remaining events that weren’t picked in step 1 and order them by the mainline ordering based on the power level in the partially resolved state obtained in step 2.
 	const remainingEvents = fullConflictedSet
 		.values()
-		.filter((e) => !sortedPowerEvents.includes(e))
+
 		.toArray();
+
+	// ^^ non power events, since we should have power events figured out already, i.e. having single resolved power level event, single resolved join rules event, etc.
+	// we can validate if the rest of the events are "allowed" or not
 
 	const powerLevelEvent = partiallyResolvedState.get(
 		getStateMapKey({ type: PDUType.PowerLevels }),
 	) as PDUPowerLevelsEvent | undefined;
 
 	assert(powerLevelEvent, "power level event should not be null");
+
+	// mainline ordering essentially sorts the rest of the events
+	// by their place in the history of the room's power levels.
+	// each event will have an associated power level event (auth event), which allows the event to be valid.
+	// if we have two power level events A -> B, A earlier, B overriding A.
+	// two state events X, Y - Y sent earlier than X, however, X is allowed by A and Y by B. [{ Y, (B) }, { X, (A) }]
+	// since the power level event that allowed X (A) is earlier, the mainline ordering will put X before Y.
+	// mainlineSort([Y, X]) -> [X, Y] because A < B
 
 	const orderedRemainingEvents = await mainlineOrdering(
 		remainingEvents.map((e) => eventMap.get(e)!).filter(Boolean),
