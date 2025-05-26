@@ -69,3 +69,73 @@ test("roomMemberEvent", async () => {
 
 	expect(memberEventId).toBe(finalEventId);
 });
+
+test("roomMemberEvent - leave", async () => {
+	const signature = await generateKeyPairsFromString(
+		"ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
+	);
+	const serverName = "hs1";
+	const roomId = "!leaveRoomTest:hs1";
+	const userId = "@user_to_leave:hs1";
+	const ts = Date.now();
+
+	const createEventPayload = roomCreateEvent({
+		roomId,
+		sender: userId,
+		ts: ts - 1000,
+	});
+	const signedCreateEvent = await signEvent(createEventPayload, signature, serverName);
+	const createEventId = generateId(signedCreateEvent);
+
+	// A user usually joins before they can leave
+	const joinMemberEventPayload = roomMemberEvent({
+		membership: "join",
+		roomId,
+		sender: userId,
+		state_key: userId,
+		content: { displayname: "User To Leave" },
+		depth: 2, // Assuming create is depth 1
+		auth_events: { "m.room.create": createEventId },
+		prev_events: [createEventId],
+		ts: ts - 500,
+		origin: serverName,
+	});
+	const signedJoinEvent = await signEvent(joinMemberEventPayload, signature, serverName);
+	const joinEventId = generateId(signedJoinEvent);
+
+	// Now, the leave event
+	const leaveMemberEventPayload = roomMemberEvent({
+		membership: "leave",
+		roomId,
+		sender: userId,
+		state_key: userId, // User leaving themselves
+		depth: 3, // After create and join
+		auth_events: {
+			"m.room.create": createEventId,
+			[`m.room.member:${userId}`]: joinEventId, 
+		},
+		prev_events: [joinEventId],
+		ts,
+		origin: serverName,
+		content: {
+			membership: "leave",
+		},
+	});
+
+	const signedLeaveEvent = await signEvent(leaveMemberEventPayload, signature, serverName);
+	const leaveEventId = generateId(signedLeaveEvent);
+
+	expect(signedLeaveEvent.type).toBe("m.room.member");
+	expect(signedLeaveEvent.room_id).toBe(roomId);
+	expect(signedLeaveEvent.sender).toBe(userId);
+	expect(signedLeaveEvent.state_key).toBe(userId);
+	expect(signedLeaveEvent.content.membership).toBe("leave");
+	expect(signedLeaveEvent.origin).toBe(serverName);
+	expect(signedLeaveEvent.origin_server_ts).toBe(ts);
+	expect(signedLeaveEvent.prev_events).toEqual([joinEventId]);
+	expect(signedLeaveEvent.auth_events).toContain(createEventId);
+	expect(signedLeaveEvent.auth_events).toContain(joinEventId);
+	expect(leaveEventId).toBeDefined();
+	expect(signedLeaveEvent.signatures[serverName][`${signature.algorithm}:${signature.version}`]).toBeString();
+	expect(Object.keys(signedLeaveEvent.content).length).toBe(1);
+});

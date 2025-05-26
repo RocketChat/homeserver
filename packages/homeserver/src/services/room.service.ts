@@ -1,4 +1,5 @@
 import type { EventBase } from "@hs/core/src/events/eventBase";
+import { roomMemberEvent, type AuthEvents as RoomMemberAuthEvents } from "@hs/core/src/events/m.room.member";
 import { roomNameEvent, type RoomNameAuthEvents, type RoomNameEvent } from "@hs/core/src/events/m.room.name";
 import {
 	roomPowerLevelsEvent,
@@ -358,6 +359,93 @@ export class RoomService {
 				this.logger.error(`Failed to send m.room.power_levels event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		}
+
+		return eventId;
+	}
+
+	async leaveRoom(roomId: string, senderId: string, targetServers: string[] = []): Promise<string> {
+		this.logger.log(`User ${senderId} leaving room ${roomId}`);
+
+		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
+		if (!lastEvent) {
+			throw new HttpException("Room has no history, cannot leave", HttpStatus.BAD_REQUEST);
+		}
+
+		const authEventIds = await this.eventService.getAuthEventIds(EventType.MEMBER, { roomId, senderId });
+
+		// For a leave event, the user must have permission to send m.room.member events.
+		// This is typically covered by them being a member, but power levels might restrict it.
+		const powerLevelsEventId = authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id;
+		if (!powerLevelsEventId) {
+			this.logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to leave.`);
+			throw new HttpException("Cannot verify permission to leave room.", HttpStatus.FORBIDDEN);
+		}
+
+		const canLeaveRoom = await this.eventService.checkUserPermission(
+			powerLevelsEventId,
+			senderId,
+			EventType.MEMBER 
+		);
+
+		if (!canLeaveRoom) {
+			this.logger.warn(`User ${senderId} does not have permission to send m.room.member events in ${roomId} (i.e., to leave).`);
+			throw new HttpException("You don't have permission to leave this room.", HttpStatus.FORBIDDEN);
+		}
+		
+		const createEventId = authEventIds.find(e => e.type === EventType.CREATE)?._id;
+		const memberEventId = authEventIds.find(e => e.type === EventType.MEMBER && e.state_key === senderId)?._id;
+
+		if (!createEventId || !memberEventId) {
+			this.logger.error(`Critical auth events missing for leave. Create: ${createEventId}, Member: ${memberEventId}`);
+			throw new HttpException("Critical auth events missing, cannot leave room", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		const authEvents: RoomMemberAuthEvents = {
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+			[`m.room.member:${senderId}`]: memberEventId,
+		};
+
+		const serverName = this.configService.getServerConfig().name;
+		const signingKeyConfig = await this.configService.getSigningKey();
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
+
+		const unsignedEvent = roomMemberEvent({
+			roomId,
+			sender: senderId,
+			state_key: senderId,
+			auth_events: authEvents,
+			prev_events: [lastEvent._id],
+			depth: lastEvent.event.depth + 1,
+			membership: "leave",
+			origin: serverName,
+			content: {
+				membership: "leave",
+			}
+		});
+
+		const signedEvent = await signEvent(unsignedEvent, signingKey, serverName);
+		const eventId = generateId(signedEvent);
+		
+		// After leaving, update local room membership state if necessary (e.g., remove from active members list)
+		// This might be handled by whatever consumes these events, or could be an explicit step here.
+		// For now, we assume event persistence is the primary concern of this service method.
+
+		for (const server of targetServers) {
+			if (server === serverName) {
+				continue;
+			}
+
+			try {
+				await this.federationService.sendEvent(server, signedEvent);
+				this.logger.log(`Successfully sent m.room.member (leave) event ${eventId} over federation to ${server} for room ${roomId}`);
+			} catch (error) {
+				this.logger.error(`Failed to send m.room.member (leave) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+
+		await this.eventService.insertEvent(signedEvent, eventId);
+		this.logger.log(`Successfully created and stored m.room.member (leave) event ${eventId} for user ${senderId} in room ${roomId}`);
 
 		return eventId;
 	}

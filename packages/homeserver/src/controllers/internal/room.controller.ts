@@ -23,8 +23,14 @@ const UpdateUserPowerLevelSchema = z.object({
   targetServers: z.array(z.string()).optional(), 
 });
 
+const LeaveRoomDtoSchema = z.object({
+  senderUserId: z.string().trim().min(1, { message: "Sender ID must be a non-empty string" }),
+  targetServers: z.array(z.string()).optional(),
+});
+
 type UpdateRoomNameDto = z.infer<typeof UpdateRoomNameDtoSchema>;
 type UpdateUserPowerLevelDto = z.infer<typeof UpdateUserPowerLevelSchema>;
+type LeaveRoomDto = z.infer<typeof LeaveRoomDtoSchema>;
 
 @Controller("internal/rooms")
 export class InternalRoomController {
@@ -94,4 +100,25 @@ export class InternalRoomController {
 			);
 		}
 	}
+
+  @Post("/:roomId/leave")
+  async leaveRoomEndpoint(
+    @Param("roomId", new ZodValidationPipe(z.string().trim().min(1, { message: "Room ID must be a non-empty string" }))) roomId: string,
+    @Body(new ZodValidationPipe(LeaveRoomDtoSchema)) body: LeaveRoomDto,
+  ): Promise<{ eventId: string }> {
+    const { senderUserId, targetServers } = body;
+
+    try {
+      const eventId = await this.roomService.leaveRoom(roomId.trim(), senderUserId, targetServers);
+      return { eventId };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to leave room: ${error instanceof Error ? error.message : String(error)}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 } 
