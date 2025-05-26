@@ -21,4 +21,16 @@ export class StateEventRepository {
 		const collection = await this.getCollection();
 		return collection.find({ roomId });
 	}
+
+	async updateState(roomId: string, state: EventBase[]): Promise<void> {
+		const collection = await this.getCollection();
+		await Promise.all(
+			state.map((event) => {
+				return collection.updateOne(
+					{ room_id: roomId, type: event.type, state_key: event.state_key },
+					{ $set: event },
+				);
+			}),
+		);
+	}
 }

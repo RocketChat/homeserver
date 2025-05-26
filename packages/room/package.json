@@ -1,0 +1,19 @@
+{
+	"name": "@hs/room",
+	"version": "1.0.50",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "bun run --watch src/index.ts"
+	},
+	"dependencies": {
+		"@hs/core": "workspace:*"
+	},
+	"devDependencies": {
+		"bun-types": "latest"
+	},
+	"main": "./src/index.ts",
+	"types": "./src/index.ts",
+	"files": [
+		"src"
+	]
+}
