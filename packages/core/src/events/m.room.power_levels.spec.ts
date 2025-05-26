@@ -51,8 +51,7 @@ const finalEvent = {
 };
 
 const finalCustomEventId = "$WGaFkwMwZjjIx-cLZ-vgRIPdc_5w2VtTvJT2N_9iufY";
-const finalCustomEvent: SignedEvent<RoomPowerLevelsEvent> = {
-	event_id: finalCustomEventId,
+const finalCustomEvent: Omit<SignedEvent<RoomPowerLevelsEvent>, "event_id"> = {
 	auth_events: [
 		"$auth1:hs1",
 		"$auth2:hs1",
@@ -175,7 +174,7 @@ test("roomPowerLevelsEvent with custom content", async () => {
 		ts: 1748224026175,
 	});
 
-	const signed = await signEvent(event, signature, "hs1");
+	const signed: Omit<SignedEvent<RoomPowerLevelsEvent>, "event_id"> = await signEvent(event, signature, "hs1");
 	const eventId = generateId(signed);
 
 	expect(signed).toStrictEqual(finalCustomEvent);
