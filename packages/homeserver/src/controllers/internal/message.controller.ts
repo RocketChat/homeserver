@@ -46,11 +46,18 @@ export class InternalMessageController {
     return this.messageService.sendMessage(body.roomId, body.message, body.senderUserId, body.targetServer);
   }
 
-  @Patch(":messageId")
+  @Patch("/:messageId")
   async updateMessage(
     @Param("messageId", new ZodValidationPipe(z.string())) eventId: string,
     @Body(new ZodValidationPipe(UpdateMessageSchema)) body: z.infer<typeof UpdateMessageSchema>,
   ): Promise<SendMessageResponseDto> {
     return this.messageService.updateMessage(body.roomId, body.message, body.senderUserId, body.targetServer, eventId);
+  }
+
+  @Post("/:messageId/reactions")
+  async sendReaction(
+    @Param("messageId", new ZodValidationPipe(z.string())) messageId: string,
+    @Body(new ZodValidationPipe(SendReactionSchema)) body: z.infer<typeof SendReactionSchema>): Promise<SendReactionResponseDto> {
+    return this.messageService.sendReaction(body.roomId, messageId, body.emoji, body.senderUserId, body.targetServer);
   }
 }
