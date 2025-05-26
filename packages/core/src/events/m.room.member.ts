@@ -13,6 +13,7 @@ declare module "./eventBase" {
 			content: {
 				join_authorised_via_users_server?: string;
 				membership: Membership;
+				reason?: string;
 			};
 		};
 	}
@@ -49,6 +50,7 @@ export interface RoomMemberEvent extends EventBase {
 				};
 			};
 		};
+		reason?: string;
 	};
 	state_key: string;
 	unsigned: {
