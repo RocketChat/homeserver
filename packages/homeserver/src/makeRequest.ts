@@ -5,7 +5,7 @@ import type { SigningKey } from "./keys";
 
 import { signJson } from "./signJson";
 
-export const makeSignedRequest = async({
+export const makeSignedRequest = async<T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -18,12 +18,12 @@ export const makeSignedRequest = async({
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
 	uri: string;
-	body?: unknown;
-	options?: Record<string, any>;
+	body?: Record<string, unknown>;
+	options?: Record<string, unknown>;
 	signingKey: SigningKey;
 	signingName: string;
 	queryString?: string;
-}) => {
+}): Promise<T> => {
 	const { address, headers } = await resolveHostAddressByServerName(
 		domain,
 		signingName,
@@ -48,26 +48,34 @@ export const makeSignedRequest = async({
 		domain,
 		method,
 		extractURIfromURL(url),
-		signedBody as any,
+		signedBody as Record<string, unknown>,
 	);
 
 	console.log("auth ->", method, domain, uri, auth);
 
-	const response = await fetch(url.toString(), {
+	const requestOptions: RequestInit = {
 		...options,
-		...(body && { body: JSON.stringify(signedBody) }) as any,
 		method,
-		...(queryString && { search: queryString }),
 		headers: {
 			Authorization: auth,
 			...headers,
 		},
-	});
+	};
 
-	return response.json() as Promise<unknown>;
+	if (body && signedBody) {
+		requestOptions.body = JSON.stringify(signedBody);
+	}
+
+	if (queryString) {
+		url.search = queryString.startsWith('?') ? queryString : `?${queryString}`;
+	}
+
+	const response = await fetch(url.toString(), requestOptions);
+
+	return response.json() as Promise<T>;
 };
 
-export const makeRequest = async({
+export const makeRequest = async<T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -79,11 +87,11 @@ export const makeRequest = async({
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
 	uri: string;
-	body?: unknown;
+	body?: Record<string, unknown>;
 	signingName: string;
-	options?: Record<string, any>;
+	options?: Record<string, unknown>;
 	queryString?: string;
-}) => {
+}): Promise<T> => {
 	const { address, headers } = await resolveHostAddressByServerName(
 		domain,
 		signingName,
@@ -93,18 +101,22 @@ export const makeRequest = async({
 		url.search = queryString;
 	}
 
-	const response = await fetch(url.toString(), {
+	const requestOptions: RequestInit = {
 		...options,
-		...(body && { body: JSON.stringify(body) }) as any,
 		method,
-		...(queryString && { search: queryString }),
-		headers,
-	});
+		headers
+	};
 
-	return response.json() as Promise<unknown>;
+	if (body) {
+		requestOptions.body = JSON.stringify(body);
+	}
+
+	const response = await fetch(url.toString(), requestOptions);
+
+	return response.json() as Promise<T>;
 };
 
-export const makeUnsignedRequest = async({
+export const makeUnsignedRequest = async<T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -117,19 +129,19 @@ export const makeUnsignedRequest = async({
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
 	uri: string;
-	body?: unknown;
-	options?: Record<string, any>;
+	body?: Record<string, unknown>;
+	options?: Record<string, unknown>;
 	signingKey: SigningKey;
 	signingName: string;
 	queryString?: string;
-}) => {
-	const auth = await authorizationHeaders(
+}): Promise<T> => {
+	const auth = await authorizationHeaders<Record<string, unknown>>(
 		signingName,
 		signingKey,
 		domain,
 		method,
 		uri,
-		body as any,
+		body,
 	);
 
 	const { address, headers } = await resolveHostAddressByServerName(
@@ -140,16 +152,22 @@ export const makeUnsignedRequest = async({
 	if (queryString) {
 		url.search = queryString;
 	}
-	const response = await fetch(url.toString(), {
+
+	const requestOptions: RequestInit = {
 		...options,
-		...(body && { body: JSON.stringify(body) }) as any,
 		method,
 		headers: {
 			Authorization: auth,
 			...headers,
 			'content-type': 'application/json',
 		},
-	});
+	};
 
-	return response.json() as Promise<unknown>;
+	if (body) {
+		requestOptions.body = JSON.stringify(body);
+	}
+
+	const response = await fetch(url.toString(), requestOptions);
+
+	return response.json() as Promise<T>;
 };
