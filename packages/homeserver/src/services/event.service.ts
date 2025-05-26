@@ -5,8 +5,8 @@ import { generateId } from "../authentication";
 import { MatrixError } from "../errors";
 import type { EventBase, EventStore } from "../models/event.model";
 import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
+    getPublicKeyFromRemoteServer,
+    makeGetPublicKeyFromServerProcedure,
 } from "../procedures/getPublicKeyFromServer";
 import { StagingAreaQueue } from "../queues/staging-area.queue";
 import { EventRepository } from "../repositories/event.repository";
