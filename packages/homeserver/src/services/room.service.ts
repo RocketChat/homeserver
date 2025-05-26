@@ -38,6 +38,64 @@ export class RoomService {
 		private readonly federationService: FederationService,
 	) {}
 
+	private validatePowerLevelChange(
+		currentPowerLevelsContent: RoomPowerLevelsEvent["content"],
+		senderId: string,
+		targetUserId: string,
+		newPowerLevel: number,
+	): void {
+		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default;
+
+		// 1. Check if sender can modify m.room.power_levels event itself
+		const requiredLevelToModifyEvent = 
+			currentPowerLevelsContent.events?.["m.room.power_levels"] ?? 
+			currentPowerLevelsContent.state_default ?? 
+			100;
+
+		if (senderPower < requiredLevelToModifyEvent) {
+			this.logger.warn(
+				`Sender ${senderId} (power ${senderPower}) lacks global permission (needs ${requiredLevelToModifyEvent}) to modify power levels event.`,
+			);
+			throw new HttpException(
+				"You don't have permission to change power levels events.",
+				HttpStatus.FORBIDDEN,
+			);
+		}
+
+		// 2. Specific checks when changing another user's power level
+		if (senderId !== targetUserId) {
+			const targetUserCurrentPower = currentPowerLevelsContent.users?.[targetUserId] ?? currentPowerLevelsContent.users_default;
+
+			// Rule: Cannot set another user's power level higher than one's own.
+			if (newPowerLevel > senderPower) {
+				this.logger.warn(
+					`Sender ${senderId} (power ${senderPower}) cannot set user ${targetUserId}'s power to ${newPowerLevel} (higher than own).`,
+				);
+				throw new HttpException(
+					"You cannot set another user's power level higher than your own.",
+					HttpStatus.FORBIDDEN,
+				);
+			}
+
+			// Rule: Cannot change power level of a user whose current power is >= sender's power.
+			if (targetUserCurrentPower >= senderPower) {
+				this.logger.warn(
+					`Sender ${senderId} (power ${senderPower}) cannot change power level of user ${targetUserId} (current power ${targetUserCurrentPower}).`,
+				);
+				throw new HttpException(
+					"You cannot change the power level of a user with equal or greater power than yourself.",
+					HttpStatus.FORBIDDEN,
+				);
+			}
+		} else {
+			// Optional: If sender is changing their own power level.
+			// The main check (requiredLevelToModifyEvent) already ensures they *can* send the event.
+			// One might argue they shouldn't be able to elevate themselves beyond what others at their original level could grant them,
+			// but if they have rights to change m.room.power_levels, they effectively control the rules.
+			// For now, if they can modify the event, they can set their own level.
+		}
+	}
+
 	async upsertRoom(roomId: string, state: ModelEventBase[]) {
 		this.logger.log(
 			`Upserting room ${roomId} with ${state.length} state events`,
@@ -211,23 +269,39 @@ export class RoomService {
 		targetServers: string[] = [],
 	): Promise<string> {
 		this.logger.log(`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`);
-		
-		// TODO: Add power level checks for both the sender and the target user.
-		// The senderId must have a power level greater than or equal to the target user's power level.
-		// The target user's power level must be greater than or equal to the sender's power level.
 
 		const authEventIds = await this.eventService.getAuthEventIds(EventType.POWER_LEVELS, { roomId, senderId });
-		const powerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id || "");
-		if (!powerLevelsEvent) {
+		const currentPowerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id || "");
+		
+		if (!currentPowerLevelsEvent) {
 			this.logger.error(`No m.room.power_levels event found for room ${roomId}`);
 			throw new HttpException("Room power levels not found, cannot update.", HttpStatus.NOT_FOUND);
 		}
 
+		this.validatePowerLevelChange(
+			currentPowerLevelsEvent.content,
+			senderId,
+			userId,
+			powerLevel
+		);
+
+		const createAuthResult = authEventIds.find(e => e.type === EventType.CREATE);
+		const powerLevelsAuthResult = authEventIds.find(e => e.type === EventType.POWER_LEVELS);
+		const memberAuthResult = authEventIds.find(e => e.type === EventType.MEMBER && e.state_key === senderId);
+
 		const authEventsMap = {
-			"m.room.create": authEventIds.find(e => e.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels": authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id || "",
-			"m.room.member": authEventIds.find(e => e.type === EventType.MEMBER)?._id || "",
+			"m.room.create": createAuthResult?._id || "",
+			"m.room.power_levels": powerLevelsAuthResult?._id || "",
+			"m.room.member": memberAuthResult?._id || "",
 		};
+		
+		// Ensure critical auth events were found
+		if (!authEventsMap["m.room.create"] || !authEventsMap["m.room.power_levels"] || !authEventsMap["m.room.member"]) {
+			this.logger.error(
+				`Critical auth events missing for power level update. Create: ${authEventsMap["m.room.create"]}, PowerLevels: ${authEventsMap["m.room.power_levels"]}, Member: ${authEventsMap["m.room.member"]}`
+			);
+			throw new HttpException("Internal server error: Missing auth events for power level update.", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
 
 		const lastEventStore = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEventStore) {
@@ -245,15 +319,16 @@ export class RoomService {
 			roomId,
 			members: [senderId, userId],
 			auth_events: Object.values(authEventsMap).filter(id => typeof id === 'string'),
-			prev_events: [lastEventStore._id],
+			prev_events: [lastEventStore.event.event_id!],
 			depth: lastEventStore.event.depth + 1,
 			content: {
-				...powerLevelsEvent.content,
+				...currentPowerLevelsEvent.content,
 				users: {
-					...powerLevelsEvent.content.users,
+					...(currentPowerLevelsEvent.content.users || {}),
 					[userId]: powerLevel,
 				},
 			},
+			ts: Date.now()
 		});
 
 		const signingKeyConfig = await this.configService.getSigningKey();
@@ -267,6 +342,10 @@ export class RoomService {
 
 		const eventId = generateId(signedEvent); 
 
+		// Store the event locally BEFORE attempting federation
+		await this.eventService.insertEvent(signedEvent, eventId);
+		this.logger.log(`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`);
+
 		for (const server of targetServers) {
 			if (server === this.configService.getServerConfig().name) {
 				continue;
@@ -279,9 +358,6 @@ export class RoomService {
 				this.logger.error(`Failed to send m.room.power_levels event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		}
-
-		await this.eventService.insertEvent(signedEvent, eventId);
-		this.logger.log(`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`);
 
 		return eventId;
 	}

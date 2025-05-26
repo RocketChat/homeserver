@@ -60,6 +60,7 @@ type EventAttributes = {
 interface AuthEventResult {
 	_id: string;
 	type: EventType;
+	state_key?: string;
 }
 
 interface QueryConfig {
@@ -650,16 +651,21 @@ export class EventService {
 				{
 					sort: queryConfig.sort,
 					limit: queryConfig.limit,
-					projection: { _id: 1, "event.type": 1, "event.state_key": 1, "event.event_id": 1 },
+					projection: { _id: 1, "event.type": 1, "event.state_key": 1 },
 				}
 			);
 			
 			for (const storeEvent of events) {
 				const currentEventType = storeEvent.event?.type as EventType;
+				const currentStateKey = storeEvent.event?.state_key;
 				const eventTypeKey = Object.keys(EventType).find(key => EventType[key as keyof typeof EventType] === currentEventType);
 
 				if (eventTypeKey && currentEventType) {
-					authEvents.push({ _id: storeEvent._id, type: currentEventType });
+					authEvents.push({ 
+						_id: storeEvent._id, 
+						type: currentEventType,
+						...(currentStateKey !== undefined && { state_key: currentStateKey })
+					});
 				} else {
 					this.logger.warn(`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`);
 				}
