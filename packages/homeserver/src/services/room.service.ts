@@ -1,5 +1,9 @@
 import type { EventBase } from "@hs/core/src/events/eventBase";
 import { roomNameEvent, type RoomNameAuthEvents, type RoomNameEvent } from "@hs/core/src/events/m.room.name";
+import {
+	roomPowerLevelsEvent,
+	type RoomPowerLevelsEvent
+} from "@hs/core/src/events/m.room.power_levels";
 import { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
 import { FederationService } from "@hs/federation-sdk";
 import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
@@ -166,9 +170,19 @@ export class RoomService {
 		const serverName = this.configService.getServerConfig().name;
 
 		const unsignedEvent: RoomNameEvent = roomNameEvent(roomNameEventPayload);
-		const signedEvent: SignedEvent<RoomNameEvent> = await signEvent(unsignedEvent, signingKey, serverName);
 		
-		const eventId = generateId(signedEvent); 
+		const signedEventPart: Omit<SignedEvent<RoomNameEvent>, "event_id"> = 
+			await signEvent(unsignedEvent, signingKey, serverName);
+		
+		const eventId = generateId(signedEventPart); 
+
+		const signedEvent: SignedEvent<RoomNameEvent> = {
+			...(signedEventPart as RoomNameEvent), // Spread the base event properties
+			event_id: eventId,
+			hashes: signedEventPart.hashes, // Explicitly include hashes
+			signatures: signedEventPart.signatures, // Explicitly include signatures
+		};
+		
 		const eventToStore: ModelEventBase = { ...signedEvent, event_id: eventId };
 
 		await this.eventService.insertEvent(eventToStore, eventId);
@@ -185,6 +199,89 @@ export class RoomService {
 				this.logger.error(`Failed to send m.room.name event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		}
+
+		return eventId;
+	}
+
+	async updateUserPowerLevel(
+		roomId: string,
+		userId: string,
+		powerLevel: number,
+		senderId: string,
+		targetServers: string[] = [],
+	): Promise<string> {
+		this.logger.log(`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`);
+		
+		// TODO: Add power level checks for both the sender and the target user.
+		// The senderId must have a power level greater than or equal to the target user's power level.
+		// The target user's power level must be greater than or equal to the sender's power level.
+
+		const authEventIds = await this.eventService.getAuthEventIds(EventType.POWER_LEVELS, { roomId, senderId });
+		const powerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id || "");
+		if (!powerLevelsEvent) {
+			this.logger.error(`No m.room.power_levels event found for room ${roomId}`);
+			throw new HttpException("Room power levels not found, cannot update.", HttpStatus.NOT_FOUND);
+		}
+
+		const authEventsMap = {
+			"m.room.create": authEventIds.find(e => e.type === EventType.CREATE)?._id || "",
+			"m.room.power_levels": authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id || "",
+			"m.room.member": authEventIds.find(e => e.type === EventType.MEMBER)?._id || "",
+		};
+
+		const lastEventStore = await this.eventService.getLastEventForRoom(roomId);
+		if (!lastEventStore) {
+			this.logger.error(`No last event found for room ${roomId}`);
+			throw new HttpException("Room has no history, cannot update power levels", HttpStatus.BAD_REQUEST);
+		}
+
+		const serverName = this.configService.getServerConfig().name;
+		if (!serverName) {
+			this.logger.error("Server name is not configured. Cannot set event origin.");
+			throw new HttpException("Server configuration error for event origin.", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		const eventToSign = roomPowerLevelsEvent({
+			roomId,
+			members: [senderId, userId],
+			auth_events: Object.values(authEventsMap).filter(id => typeof id === 'string'),
+			prev_events: [lastEventStore._id],
+			depth: lastEventStore.event.depth + 1,
+			content: {
+				...powerLevelsEvent.content,
+				users: {
+					...powerLevelsEvent.content.users,
+					[userId]: powerLevel,
+				},
+			},
+		});
+
+		const signingKeyConfig = await this.configService.getSigningKey();
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
+
+		const signedEvent: SignedEvent<RoomPowerLevelsEvent> = await signEvent(
+			eventToSign, 
+			signingKey, 
+			serverName
+		);
+
+		const eventId = generateId(signedEvent); 
+
+		for (const server of targetServers) {
+			if (server === this.configService.getServerConfig().name) {
+				continue;
+			}
+
+			try {
+				await this.federationService.sendEvent(server, signedEvent);
+				this.logger.log(`Successfully sent m.room.power_levels event ${eventId} over federation to ${server} for room ${roomId}`);
+			} catch (error) {
+				this.logger.error(`Failed to send m.room.power_levels event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+
+		await this.eventService.insertEvent(signedEvent, eventId);
+		this.logger.log(`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`);
 
 		return eventId;
 	}

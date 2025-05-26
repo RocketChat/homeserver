@@ -47,6 +47,7 @@ export const roomPowerLevelsEvent = ({
 	auth_events,
 	prev_events,
 	depth,
+	content,
 	ts = Date.now(),
 }: {
 	roomId: string;
@@ -54,6 +55,7 @@ export const roomPowerLevelsEvent = ({
 	auth_events: string[];
 	prev_events: string[];
 	depth: number;
+	content?: RoomPowerLevelsEvent["content"];
 	ts?: number;
 }) => {
 	const [sender, ...members] = usernames;
@@ -64,7 +66,7 @@ export const roomPowerLevelsEvent = ({
 		prev_events,
 		depth,
 		ts,
-		content: {
+		content: content || {
 			users: {
 				[sender]: 100,
 				...Object.fromEntries(usernames.map((member) => [member, 100])),

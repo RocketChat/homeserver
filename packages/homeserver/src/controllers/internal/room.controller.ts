@@ -17,7 +17,14 @@ const UpdateRoomNameDtoSchema = z.object({
   targetServer: z.string().trim().min(1, { message: "Target server must be a non-empty string" }),
 });
 
+const UpdateUserPowerLevelSchema = z.object({
+  senderUserId: z.string().min(1), 
+  powerLevel: z.number().int(), 
+  targetServers: z.array(z.string()).optional(), 
+});
+
 type UpdateRoomNameDto = z.infer<typeof UpdateRoomNameDtoSchema>;
+type UpdateUserPowerLevelDto = z.infer<typeof UpdateUserPowerLevelSchema>;
 
 @Controller("internal/rooms")
 export class InternalRoomController {
@@ -60,4 +67,31 @@ export class InternalRoomController {
         );
       }
     }
+
+	@Put("/:roomId/permissions/:userId")
+	async updateUserPowerLevel(
+		@Param("roomId", new ZodValidationPipe(z.string().trim().min(1, { message: "Room ID must be a non-empty string" }))) roomId: string,
+		@Param("userId", new ZodValidationPipe(z.string().trim().min(1, { message: "User ID must be a non-empty string" }))) userId: string,
+		@Body(new ZodValidationPipe(UpdateUserPowerLevelSchema)) body: UpdateUserPowerLevelDto,
+	): Promise<{ eventId: string }> {
+		try {
+			const eventId = await this.roomService.updateUserPowerLevel(
+				roomId,
+				userId,
+				body.powerLevel,
+				body.senderUserId,
+				body.targetServers,
+			);
+			return { eventId };
+		} catch (error) {
+      console.error(error);
+			if (error instanceof HttpException) {
+				throw error;
+			}
+			throw new HttpException(
+				"Failed to update user power level.",
+				HttpStatus.INTERNAL_SERVER_ERROR,
+			);
+		}
+	}
 } 

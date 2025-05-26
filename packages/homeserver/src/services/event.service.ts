@@ -39,34 +39,38 @@ interface StagedEvent {
 
 export enum EventType {
 	CREATE = "m.room.create",
-	POWER_LEVELS = "m.room.power_levels",
 	MEMBER = "m.room.member",
 	MESSAGE = "m.room.message",
-	JOIN_RULES = "m.room.join_rules",
+	REDACTION = "m.room.redaction",
 	REACTION = "m.reaction",
 	NAME = "m.room.name",
+	POWER_LEVELS = "m.room.power_levels",
 }
 
-// Define what attributes each event type expects
 type EventAttributes = {
 	[EventType.NAME]: { roomId: string; senderId: string };
 	[EventType.MESSAGE]: { roomId: string; senderId: string };
 	[EventType.REACTION]: { roomId: string; senderId: string };
 	[EventType.MEMBER]: { roomId: string; senderId: string };
 	[EventType.CREATE]: { roomId: string };
-	[EventType.POWER_LEVELS]: { roomId: string };
-	[EventType.JOIN_RULES]: { roomId: string };
+	[EventType.POWER_LEVELS]: { roomId: string, senderId: string };
+	[EventType.REDACTION]: { roomId: string; senderId: string };
 };
 
 interface AuthEventResult {
 	_id: string;
-	type: string;
+	type: EventType;
 }
 
 interface QueryConfig {
 	query: Record<string, any>;
 	sort?: Record<string, 1 | -1>;
 	limit?: number;
+}
+
+export interface AuthEventParams {
+	roomId: string;
+	senderId: string;
 }
 
 @Injectable()
@@ -81,6 +85,11 @@ export class EventService {
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly federationService: FederationService,
 	) {}
+
+	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
+		const event = await this.eventRepository.findById(eventId);
+		return event?.event as T ?? null;
+	}
 
 	async checkIfEventsExists(
 		eventIds: string[],
@@ -628,29 +637,34 @@ export class EventService {
 		return events[0];
 	}
 
-	async getAuthEventIds<T extends EventType>(eventType: T, attributes: EventAttributes[T]): Promise<AuthEventResult[]> {
-		const queries = this.getAuthEventQueries(eventType, attributes);
+	async getAuthEventIds(
+		eventType: EventType,
+		params: AuthEventParams,
+	): Promise<AuthEventResult[]> {
+		const queries = this.getAuthEventQueries(eventType, params);
 		const authEvents: AuthEventResult[] = [];
 
-		for (const query of queries) {
-			try {
-				const events = await this.eventRepository.find(query.query, {
-					sort: query.sort,
-					limit: query.limit
-				});
-
-				if (events.length > 0) {
-					const latestEvent = events[0];
-					authEvents.push({
-						_id: latestEvent._id,
-						type: latestEvent.event.type
-					});
+		for (const queryConfig of queries) {
+			const events: EventStore[] = await this.eventRepository.find(
+				queryConfig.query,
+				{
+					sort: queryConfig.sort,
+					limit: queryConfig.limit,
+					projection: { _id: 1, "event.type": 1, "event.state_key": 1, "event.event_id": 1 },
 				}
-			} catch (error) {
-				this.logger.error(`Failed to execute query for ${eventType}:`, error);
+			);
+			
+			for (const storeEvent of events) {
+				const currentEventType = storeEvent.event?.type as EventType;
+				const eventTypeKey = Object.keys(EventType).find(key => EventType[key as keyof typeof EventType] === currentEventType);
+
+				if (eventTypeKey && currentEventType) {
+					authEvents.push({ _id: storeEvent._id, type: currentEventType });
+				} else {
+					this.logger.warn(`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`);
+				}
 			}
 		}
-
 		return authEvents;
 	}
 
@@ -707,10 +721,11 @@ export class EventService {
 			case EventType.POWER_LEVELS:
 				return [
 					baseQueries.create,
-					baseQueries.powerLevels
+					baseQueries.powerLevels,
+					baseQueries.membership
 				];
 
-			case EventType.JOIN_RULES:
+			case EventType.REDACTION:
 				return [
 					baseQueries.create,
 					baseQueries.powerLevels
@@ -721,7 +736,11 @@ export class EventService {
 		}
 	}
 
-	async checkUserPermission(powerLevelsEventId: string, userId: string, eventType: string): Promise<boolean> {
+	async checkUserPermission(
+		powerLevelsEventId: string,
+		userId: string,
+		actionType: EventType,
+	): Promise<boolean> {
 		const powerLevelsEvent = await this.eventRepository.findById(powerLevelsEventId);
 		if (!powerLevelsEvent) {
 			this.logger.warn(`Power levels event ${powerLevelsEventId} not found`);
@@ -731,12 +750,12 @@ export class EventService {
 		const powerLevelsContent = powerLevelsEvent.event.content as RoomPowerLevelsEvent['content'];
 		const userPowerLevel = powerLevelsContent.users?.[userId] ?? powerLevelsContent.users_default ?? 0;
 		
-		let requiredPowerLevel = powerLevelsContent.events?.[eventType];
+		let requiredPowerLevel = powerLevelsContent.events?.[actionType];
 		if (requiredPowerLevel === undefined) {
 			requiredPowerLevel = powerLevelsContent.events_default ?? 0;
 		}
 
-		this.logger.debug(`Permission check for ${userId} to send ${eventType}: UserLevel=${userPowerLevel}, RequiredLevel=${requiredPowerLevel}`);
+		this.logger.debug(`Permission check for ${userId} to send ${actionType}: UserLevel=${userPowerLevel}, RequiredLevel=${requiredPowerLevel}`);
 		return userPowerLevel >= requiredPowerLevel;
 	}
 }
