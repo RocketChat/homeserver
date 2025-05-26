@@ -1,3 +1,4 @@
+import type { RoomPowerLevelsEvent } from "@hs/core/src/events/m.room.power_levels";
 import { FederationService } from "@hs/federation-sdk";
 import { Injectable, Logger } from "@nestjs/common";
 import type { z } from "zod";
@@ -718,5 +719,24 @@ export class EventService {
 			default:
 				throw new Error(`Unsupported event type: ${eventType}`);
 		}
+	}
+
+	async checkUserPermission(powerLevelsEventId: string, userId: string, eventType: string): Promise<boolean> {
+		const powerLevelsEvent = await this.eventRepository.findById(powerLevelsEventId);
+		if (!powerLevelsEvent) {
+			this.logger.warn(`Power levels event ${powerLevelsEventId} not found`);
+			return false;
+		}
+
+		const powerLevelsContent = powerLevelsEvent.event.content as RoomPowerLevelsEvent['content'];
+		const userPowerLevel = powerLevelsContent.users?.[userId] ?? powerLevelsContent.users_default ?? 0;
+		
+		let requiredPowerLevel = powerLevelsContent.events?.[eventType];
+		if (requiredPowerLevel === undefined) {
+			requiredPowerLevel = powerLevelsContent.events_default ?? 0;
+		}
+
+		this.logger.debug(`Permission check for ${userId} to send ${eventType}: UserLevel=${userPowerLevel}, RequiredLevel=${requiredPowerLevel}`);
+		return userPowerLevel >= requiredPowerLevel;
 	}
 }

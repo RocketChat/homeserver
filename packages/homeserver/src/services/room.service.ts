@@ -122,19 +122,32 @@ export class RoomService {
 		}
 
 		const authEventIds = await this.eventService.getAuthEventIds(EventType.NAME, { roomId, senderId });
-		if (authEventIds.length < 3) {
+		const powerLevelsEventId = authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id;
+
+		const canUpdateRoomName = await this.eventService.checkUserPermission(
+			powerLevelsEventId || '',
+			senderId,
+			EventType.NAME
+		);
+
+		if (!canUpdateRoomName) {
+			this.logger.warn(`User ${senderId} does not have permission to set room name in ${roomId} based on power levels.`);
+			throw new HttpException("You don\'t have permission to set the room name.", HttpStatus.FORBIDDEN);
+		}
+
+		if (authEventIds.length < 3) { 
 			this.logger.error(`Could not find all auth events for room name update. Found: ${JSON.stringify(authEventIds)}`);
 			throw new HttpException("Not authorized or missing prerequisites to set room name", HttpStatus.FORBIDDEN);
 		}
 
 		const authEvents: RoomNameAuthEvents = {
 			"m.room.create": authEventIds.find(e => e.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels": authEventIds.find(e => e.type === EventType.POWER_LEVELS)?._id || "",
+			"m.room.power_levels": powerLevelsEventId || "",
 			"m.room.member": authEventIds.find(e => e.type === EventType.MEMBER)?._id || "",
 		};
 
-		if (!authEvents["m.room.create"] || !authEvents["m.room.power_levels"] || !authEvents["m.room.member"]) {
-			this.logger.error(`One or more critical auth events missing for room name update. Create: ${authEvents["m.room.create"]}, PL: ${authEvents["m.room.power_levels"]}, Member: ${authEvents["m.room.member"]}`);
+		if (!authEvents["m.room.create"] || !authEvents["m.room.member"]) { // power_levels already checked
+			this.logger.error(`Critical auth events missing (create or member). Create: ${authEvents["m.room.create"]}, Member: ${authEvents["m.room.member"]}`);
 			throw new HttpException("Critical auth events missing, cannot set room name", HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
@@ -159,7 +172,10 @@ export class RoomService {
 		const eventToStore: ModelEventBase = { ...signedEvent, event_id: eventId };
 
 		await this.eventService.insertEvent(eventToStore, eventId);
+		this.logger.log(`Successfully created and stored m.room.name event ${eventId} for room ${roomId}`);
+
 		await this.roomRepository.updateRoomName(roomId, name);
+		this.logger.log(`Successfully updated room name in repository for room ${roomId}`);
 
 		for (const server of [targetServer]) {
 			try {
