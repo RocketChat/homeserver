@@ -139,3 +139,147 @@ test("roomMemberEvent - leave", async () => {
 	expect(signedLeaveEvent.signatures[serverName][`${signature.algorithm}:${signature.version}`]).toBeString();
 	expect(Object.keys(signedLeaveEvent.content).length).toBe(1);
 });
+
+test("roomMemberEvent - kick", async () => {
+	const kickerSignature = await generateKeyPairsFromString(
+		"ed25519 kicker_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
+	);
+	const userToKickSignature = await generateKeyPairsFromString(
+		"ed25519 kicked_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
+	);
+	const serverName = "hs1";
+	const roomId = "!kickRoomTest:hs1";
+	const kickerId = "@kicker:hs1";
+	const userToKickId = "@user_to_kick:hs1";
+	const kickReason = "Not a team player";
+	let ts = Date.now();
+
+	// 1. Create Event (sent by kicker)
+	const createEventPayload = roomCreateEvent({
+		roomId,
+		sender: kickerId,
+		ts: ts - 4000,
+	});
+	const signedCreateEvent = await signEvent(createEventPayload, kickerSignature, serverName);
+	const createEventId = generateId(signedCreateEvent);
+	let lastEventId = createEventId;
+	let currentDepth = 1;
+
+	// 2. Power Levels Event (sent by kicker)
+	// Kicker has power 100, can kick at 50. UserToKick has power 0.
+	const powerLevelsEventPayload = {
+		type: "m.room.power_levels",
+		room_id: roomId,
+		sender: kickerId,
+		state_key: "",
+		content: {
+			users: {
+				[kickerId]: 100,
+				[userToKickId]: 0,
+			},
+			users_default: 0,
+			events: {
+				"m.room.name": 50,
+				"m.room.power_levels": 100,
+			},
+			events_default: 50,
+			state_default: 50,
+			kick: 50, // Kicker (100) can kick users if kick level is 50
+			ban: 50,
+			redact: 50,
+		},
+		depth: ++currentDepth,
+		auth_events: [createEventId],
+		prev_events: [lastEventId],
+		origin: serverName,
+		origin_server_ts: ts - 3000,
+	};
+	const signedPowerLevelsEvent = await signEvent(powerLevelsEventPayload, kickerSignature, serverName);
+	const powerLevelsEventId = generateId(signedPowerLevelsEvent);
+	lastEventId = powerLevelsEventId;
+
+	// 3. Kicker Joins (sent by kicker)
+	const kickerJoinEventPayload = roomMemberEvent({
+		membership: "join",
+		roomId,
+		sender: kickerId,
+		state_key: kickerId,
+		content: { displayname: "Kicker User" },
+		depth: ++currentDepth,
+		auth_events: { 
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+		 },
+		prev_events: [lastEventId],
+		ts: ts - 2000,
+		origin: serverName,
+	});
+	const signedKickerJoinEvent = await signEvent(kickerJoinEventPayload, kickerSignature, serverName);
+	const kickerJoinEventId = generateId(signedKickerJoinEvent);
+	lastEventId = kickerJoinEventId;
+
+	// 4. UserToKick Joins (sent by userToKick)
+	const userToKickJoinEventPayload = roomMemberEvent({
+		membership: "join",
+		roomId,
+		sender: userToKickId,
+		state_key: userToKickId,
+		content: { displayname: "User To Be Kicked" },
+		depth: ++currentDepth,
+		auth_events: { 
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+		 },
+		prev_events: [lastEventId],
+		ts: ts - 1000,
+		origin: serverName,
+	});
+	const signedUserToKickJoinEvent = await signEvent(userToKickJoinEventPayload, userToKickSignature, serverName);
+	const userToKickJoinEventId = generateId(signedUserToKickJoinEvent);
+	lastEventId = userToKickJoinEventId;
+
+	// 5. Kick Event (sent by kicker, targets userToKick)
+	ts = Date.now();
+	const kickMemberEventPayload = roomMemberEvent({
+		membership: "leave",
+		roomId,
+		sender: kickerId,
+		state_key: userToKickId,
+		depth: ++currentDepth,
+		auth_events: {
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+			[`m.room.member:${userToKickId}`]: kickerJoinEventId, 
+		},
+		prev_events: [lastEventId],
+		ts,
+		origin: serverName,
+		content: {
+			membership: "leave",
+			reason: kickReason,
+		},
+	});
+
+	const signedKickEvent = await signEvent(kickMemberEventPayload, kickerSignature, serverName);
+	const kickEventId = generateId(signedKickEvent);
+
+	// Assertions
+	expect(signedKickEvent.type).toBe("m.room.member");
+	expect(signedKickEvent.room_id).toBe(roomId);
+	expect(signedKickEvent.sender).toBe(kickerId);
+	expect(signedKickEvent.state_key).toBe(userToKickId);
+	expect(signedKickEvent.content.membership).toBe("leave");
+	expect(signedKickEvent.content.reason).toBe(kickReason);
+	expect(signedKickEvent.origin).toBe(serverName);
+	expect(signedKickEvent.origin_server_ts).toBe(ts);
+	expect(signedKickEvent.prev_events).toEqual([userToKickJoinEventId]);
+
+	// Verify that the PDU's auth_events contains the kicker's join event, power levels, and create event
+	expect(signedKickEvent.auth_events).toContain(createEventId);
+	expect(signedKickEvent.auth_events).toContain(powerLevelsEventId);
+	expect(signedKickEvent.auth_events).toContain(kickerJoinEventId); 
+
+	expect(kickEventId).toBeDefined();
+	expect(signedKickEvent.signatures[serverName][`${kickerSignature.algorithm}:${kickerSignature.version}`]).toBeString();
+	expect(Object.keys(signedKickEvent.content).length).toBe(2); // membership + reason
+});
