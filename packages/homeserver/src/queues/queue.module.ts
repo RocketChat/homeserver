@@ -12,6 +12,4 @@ const QUEUES = [
   providers: [...QUEUES],
   exports: [...QUEUES],
 })
-export class QueueModule {
-  constructor() {}
-} 
+export class QueueModule { }

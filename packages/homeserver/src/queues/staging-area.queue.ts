@@ -7,7 +7,7 @@ export interface StagingAreaEventType {
   roomId: string;
   origin: string;
   event: EventBase;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 type QueueHandler = (item: StagingAreaEventType) => Promise<void>;

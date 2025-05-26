@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 
-import { type EventBase } from "./eventBase";
 import { isRoomThirdPartyInviteEvent } from "./m.room.third_party_invite";
 
 test("isRoomThirdPartyInviteEvent", () => {
@@ -17,7 +16,11 @@ test("isRoomThirdPartyInviteEvent", () => {
             key_validity_url: "https://example.org/valid"
         },
         origin_server_ts: Date.now(),
-        state_key: "someKey"
+        state_key: "someKey",
+        auth_events: [],
+        prev_events: [],
+        depth: 0,
+        origin: "example.org"
     };
 
     const invalidEvent = {
@@ -25,6 +28,6 @@ test("isRoomThirdPartyInviteEvent", () => {
         type: "m.room.member"
     };
 
-    expect(isRoomThirdPartyInviteEvent(validEvent as EventBase)).toBe(true);
-    expect(isRoomThirdPartyInviteEvent(invalidEvent as EventBase)).toBe(false);
+    expect(isRoomThirdPartyInviteEvent(validEvent)).toBe(true);
+    expect(isRoomThirdPartyInviteEvent(invalidEvent)).toBe(false);
 });
