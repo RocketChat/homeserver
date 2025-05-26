@@ -1,12 +1,15 @@
 import { roomMessageEvent, type MessageAuthEvents, type RoomMessageEvent } from "@hs/core/src/events/m.room.message";
 import { FederationService } from "@hs/federation-sdk";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
+import { generateId } from "../authentication";
 import { signEvent, type SignedEvent } from "../signEvent";
 import { ConfigService } from "./config.service";
 import { EventService, EventType } from "./event.service";
 
 @Injectable()
 export class MessageService {
+    private readonly logger = new Logger(MessageService.name);
+
     constructor(
         private readonly eventService: EventService,
         private readonly configService: ConfigService,
@@ -53,6 +56,8 @@ export class MessageService {
         );
 
 		await this.federationService.sendEvent(targetServer, signedEvent);
+
+        this.logger.log(`Sent message to ${targetServer} - ${generateId(signedEvent)}`);
 
 		return signedEvent;
     }

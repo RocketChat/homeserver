@@ -2,14 +2,15 @@ import nacl from "tweetnacl";
 import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
 import type { SigningKey } from "./keys";
 import type { EventBase } from "@hs/core/src/events/eventBase";
+import type { IdAndEvent } from "./procedures/createRoom";
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = "ed25519",
 }
 
-type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
+export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
-export type SignedEvent<T extends EventBase> = T & {
+export type SignedEvent<T extends IdAndEvent<EventBase>> = T & {
 	signatures: {
 		[key: string]: {
 			[key: string]: string;

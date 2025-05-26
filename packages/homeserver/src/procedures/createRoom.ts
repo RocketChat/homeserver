@@ -1,4 +1,3 @@
-import type { EventBase } from "@hs/core/src/events/eventBase";
 import {
 	createRoomCreateEvent,
 	type RoomCreateEvent,
@@ -24,8 +23,9 @@ import {
 	type RoomPowerLevelsEvent,
 } from "@hs/core/src/events/m.room.power_levels";
 import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
+import type { SignedEvent } from "../signEvent";
 
-type IdAndEvent<T extends EventBase> = {
+export type IdAndEvent<T> = {
 	event: T;
 	_id: string;
 };
@@ -37,12 +37,12 @@ export const createRoom = async (
 ): Promise<{
 	roomId: string;
 	events: [
-		createEvent: IdAndEvent<RoomCreateEvent>,
-		memberEvent: IdAndEvent<RoomMemberEvent>,
-		powerLevelsEvent: IdAndEvent<RoomPowerLevelsEvent>,
-		joinRulesEvent: IdAndEvent<RoomJoinRulesEvent>,
-		historyVisibilityEvent: IdAndEvent<RoomHistoryVisibilityEvent>,
-		guestAccessEvent: IdAndEvent<RoomGuestAccessEvent>,
+		IdAndEvent<SignedEvent<RoomCreateEvent>>,
+		IdAndEvent<SignedEvent<RoomMemberEvent>>,
+		IdAndEvent<SignedEvent<RoomPowerLevelsEvent>>,
+		IdAndEvent<SignedEvent<RoomJoinRulesEvent>>,
+		IdAndEvent<SignedEvent<RoomHistoryVisibilityEvent>>,
+		IdAndEvent<SignedEvent<RoomGuestAccessEvent>>
 	];
 }> => {
 	// Create

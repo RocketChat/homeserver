@@ -1,3 +1,4 @@
+import type { ReactionEvent } from "@hs/core/src/events/m.reaction";
 import type { RoomMessageEvent } from "@hs/core/src/events/m.room.message";
 import {
   Body,
@@ -25,6 +26,15 @@ const UpdateMessageSchema = z.object({
   senderUserId: z.string(),
 });
 
+const SendReactionSchema = z.object({
+  roomId: z.string(),
+  targetServer: z.string(),
+  eventId: z.string(),
+  emoji: z.string(),
+  senderUserId: z.string(),
+});
+
+type SendReactionResponseDto = SignedEvent<ReactionEvent>;
 type SendMessageResponseDto = SignedEvent<RoomMessageEvent>;
 
 @Controller("internal/messages")
@@ -36,9 +46,9 @@ export class InternalMessageController {
     return this.messageService.sendMessage(body.roomId, body.message, body.senderUserId, body.targetServer);
   }
 
-  @Patch(":eventId")
+  @Patch(":messageId")
   async updateMessage(
-    @Param("eventId", new ZodValidationPipe(z.string())) eventId: string,
+    @Param("messageId", new ZodValidationPipe(z.string())) eventId: string,
     @Body(new ZodValidationPipe(UpdateMessageSchema)) body: z.infer<typeof UpdateMessageSchema>,
   ): Promise<SendMessageResponseDto> {
     return this.messageService.updateMessage(body.roomId, body.message, body.senderUserId, body.targetServer, eventId);

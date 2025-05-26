@@ -9,6 +9,7 @@ export type EventBase = {
 		| "m.room.aliases"
 		| "m.room.history_visibility"
 		| "m.room.redaction"
+		| "m.reaction"
 		| string;
 	room_id: string;
 	sender: string;
@@ -17,7 +18,7 @@ export type EventBase = {
 	origin: string;
 	origin_server_ts: number;
 
-	content?: object;
+	content?: Record<string, unknown>;
 	unsigned?: Record<string, any> | undefined;
 };
 

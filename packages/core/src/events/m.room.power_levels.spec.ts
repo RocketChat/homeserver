@@ -3,7 +3,7 @@ import { expect, test } from "bun:test";
 import { generateId } from "../../../homeserver/src/authentication";
 import { generateKeyPairsFromString } from "../../../homeserver/src/keys";
 import { signEvent } from "../../../homeserver/src/signEvent";
-import { roomPowerLevelsEvent } from "./m.room.power_levels";
+import { isRoomPowerLevelsEvent, roomPowerLevelsEvent } from "./m.room.power_levels";
 
 const finalEventId = "$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE";
 const finalEvent = {
@@ -78,4 +78,22 @@ test("roomPowerLevelsEvent", async () => {
 	const eventId = generateId(signed);
 
 	expect(eventId).toBe(finalEventId);
+});
+
+test("isRoomPowerLevelsEvent", () => {
+	const validEvent = roomPowerLevelsEvent({
+		roomId: "!someRoom:example.org",
+		members: ["@user:example.org"],
+		auth_events: [],
+		prev_events: [],
+		depth: 1,
+	});
+
+	const invalidEvent = {
+		...validEvent,
+		type: "m.room.member",
+	};
+
+	expect(isRoomPowerLevelsEvent(validEvent)).toBe(true);
+	expect(isRoomPowerLevelsEvent(invalidEvent)).toBe(false);
 });
