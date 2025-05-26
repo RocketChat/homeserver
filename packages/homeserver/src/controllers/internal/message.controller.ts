@@ -4,11 +4,12 @@ import {
   Controller,
   Param,
   Patch,
-  Post
+  Post,
 } from "@nestjs/common";
 import { z } from "zod";
 import { MessageService } from "../../services/message.service";
 import type { SignedEvent } from "../../signEvent";
+import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
 
 const SendMessageSchema = z.object({
   roomId: z.string(),
@@ -31,14 +32,14 @@ export class InternalMessageController {
 	constructor(private readonly messageService: MessageService) {}
 
 	@Post()
-  async sendMessage(@Body() body: z.infer<typeof SendMessageSchema>): Promise<SendMessageResponseDto> {
+  async sendMessage(@Body(new ZodValidationPipe(SendMessageSchema)) body: z.infer<typeof SendMessageSchema>): Promise<SendMessageResponseDto> {
     return this.messageService.sendMessage(body.roomId, body.message, body.senderUserId, body.targetServer);
   }
 
   @Patch(":eventId")
   async updateMessage(
-    @Param("eventId") eventId: string,
-    @Body() body: z.infer<typeof UpdateMessageSchema>,
+    @Param("eventId", new ZodValidationPipe(z.string())) eventId: string,
+    @Body(new ZodValidationPipe(UpdateMessageSchema)) body: z.infer<typeof UpdateMessageSchema>,
   ): Promise<SendMessageResponseDto> {
     return this.messageService.updateMessage(body.roomId, body.message, body.senderUserId, body.targetServer, eventId);
   }
