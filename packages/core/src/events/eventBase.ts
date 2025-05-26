@@ -9,6 +9,7 @@ export type EventBase = {
 		| "m.room.aliases"
 		| "m.room.history_visibility"
 		| "m.room.redaction"
+		| "m.reaction"
 		| string;
 	room_id: string;
 	sender: string;
