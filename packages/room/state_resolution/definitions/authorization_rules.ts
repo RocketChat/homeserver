@@ -2,7 +2,6 @@ import {
 	getPowerLevel,
 	isCreateEvent,
 	isMembershipEvent,
-	isPowerEvent,
 	PDUType,
 	type PDUCreateEvent,
 	type PDUJoinRuleEvent,
@@ -12,7 +11,7 @@ import {
 	type V2Pdu,
 } from "../../events";
 
-import { getStateMapKey } from "./definitions";
+import { getStateMapKey, isPowerEvent } from "./definitions";
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events
@@ -97,12 +96,9 @@ function isRoomAliasAllowed(event: V2Pdu) {
 
 export function getPowerLevelForUser(
 	userId: string,
-	authEventMap: Map<StateKey, V2Pdu>,
+	powerLevelEvent?: PDUPowerLevelsEvent,
+	roomCreateEvent?: PDUCreateEvent,
 ) {
-	const powerLevelEvent = authEventMap.get(
-		getStateMapKey({ type: PDUType.PowerLevels }),
-	) as PDUPowerLevelsEvent | undefined;
-
 	if (powerLevelEvent) {
 		const userPowerLevel = powerLevelEvent.content.users?.[userId];
 		if (userPowerLevel) {
@@ -116,10 +112,6 @@ export function getPowerLevelForUser(
 		}
 	}
 
-	const roomCreateEvent = authEventMap.get(
-		getStateMapKey({ type: PDUType.Create }),
-	) as PDUCreateEvent | undefined;
-
 	// no event so defaults
 	//     // NOTE: When there is no m.room.power_levels event in the room, the room creator has a power level of 100, and all other users have a power level of 0.
 	if (roomCreateEvent?.content.creator === userId) {
@@ -131,12 +123,8 @@ export function getPowerLevelForUser(
 
 export function getPowerLevelForEvent(
 	event: V2Pdu,
-	authEventMap: Map<StateKey, V2Pdu>,
+	powerLevelEvent: PDUPowerLevelsEvent = { content: {} } as PDUPowerLevelsEvent,
 ) {
-	const powerLevelEvent = (authEventMap.get(
-		getStateMapKey({ type: PDUType.PowerLevels }),
-	) ?? { content: {} }) as PDUPowerLevelsEvent;
-
 	const userPowerLevel = powerLevelEvent.content.events?.[event.type];
 	if (userPowerLevel) {
 		return userPowerLevel;
@@ -189,6 +177,10 @@ function isMembershipChangeAllowed(
 			getStateMapKey({ type: PDUType.PowerLevels }),
 		) as PDUPowerLevelsEvent,
 	);
+
+	const roomCreateEvent = authEventStateMap.get(
+		getStateMapKey({ type: PDUType.Create }),
+	) as PDUCreateEvent | undefined;
 
 	switch (event.content.membership) {
 		case "join": {
@@ -268,7 +260,11 @@ function isMembershipChangeAllowed(
 			}
 
 			// If the sender’s power level is greater than or equal to the invite level, allow.
-			const senderPowerLevel = getPowerLevelForUser(sender, authEventStateMap);
+			const senderPowerLevel = getPowerLevelForUser(
+				sender,
+				powerLevelEvent,
+				roomCreateEvent,
+			);
 			//  The level required to invite a user. Defaults to 0 if unspecified.
 			const inviteLevel = powerLevelEvent?.content.invite ?? 0;
 
@@ -295,7 +291,11 @@ function isMembershipChangeAllowed(
 			}
 
 			// If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
-			const senderPowerLevel = getPowerLevelForUser(sender, authEventStateMap);
+			const senderPowerLevel = getPowerLevelForUser(
+				sender,
+				powerLevelEvent,
+				roomCreateEvent,
+			);
 			// defaults to 50 if not specified
 			const banLevel = powerLevelEvent?.content.ban ?? 50;
 			if (
@@ -309,7 +309,8 @@ function isMembershipChangeAllowed(
 			const kickRequiredLevel = powerLevelEvent?.content.kick ?? 50;
 			if (
 				senderPowerLevel >= kickRequiredLevel &&
-				getPowerLevelForUser(invitee, authEventStateMap) < senderPowerLevel
+				getPowerLevelForUser(invitee, powerLevelEvent, roomCreateEvent) <
+					senderPowerLevel
 			) {
 				return true;
 			}
@@ -324,12 +325,17 @@ function isMembershipChangeAllowed(
 			}
 
 			// If the sender’s power level is greater than or equal to the ban level, and the target user’s power level is less than the sender’s power level, allow.
-			const senderPowerLevel = getPowerLevelForUser(sender, authEventStateMap);
+			const senderPowerLevel = getPowerLevelForUser(
+				sender,
+				powerLevelEvent,
+				roomCreateEvent,
+			);
 			// defaults to 50 if not specified
 			const banLevel = powerLevelEvent?.content.ban ?? 50;
 			if (
 				senderPowerLevel >= banLevel &&
-				getPowerLevelForUser(invitee, authEventStateMap) < senderPowerLevel
+				getPowerLevelForUser(invitee, powerLevelEvent, roomCreateEvent) <
+					senderPowerLevel
 			) {
 				return true;
 			}
@@ -359,7 +365,15 @@ function validatePowerLevelEvent(
 		return true;
 	}
 
-	const senderPowerLevel = getPowerLevelForUser(event.sender, authEventMap);
+	const roomCreateEvent = authEventMap.get(
+		getStateMapKey({ type: PDUType.Create }),
+	) as PDUCreateEvent | undefined;
+
+	const senderPowerLevel = getPowerLevelForUser(
+		event.sender,
+		existingPowerLevel,
+		roomCreateEvent,
+	);
 
 	// For each found alteration:
 
@@ -524,7 +538,7 @@ function validatePowerLevelEvent(
 // could call it a sub-state, which is why using the same type as State
 export function isAllowedEvent(
 	event: V2Pdu,
-	authEventMap: Map<StateKey, V2Pdu>,
+	authEventStateMap: Map<StateKey, V2Pdu>,
 ): boolean {
 	if (isCreateEvent(event)) {
 		return true;
@@ -536,11 +550,11 @@ export function isAllowedEvent(
 	}
 
 	if (isMembershipEvent(event)) {
-		return isMembershipChangeAllowed(event, authEventMap);
+		return isMembershipChangeAllowed(event, authEventStateMap);
 	}
 
 	// If the sender’s current membership state is not join, reject.
-	const senderMembership = authEventMap.get(
+	const senderMembership = authEventStateMap.get(
 		getStateMapKey({ type: PDUType.Member, state_key: event.sender }),
 	) as PDUMembershipEvent | undefined;
 	if (senderMembership && senderMembership.content.membership !== "join") {
@@ -553,9 +567,20 @@ export function isAllowedEvent(
 		return false;
 	}
 
+	const powerLevelEvent = authEventStateMap.get(
+		getStateMapKey({ type: PDUType.PowerLevels }),
+	) as PDUPowerLevelsEvent | undefined;
+	const roomCreateEvent = authEventStateMap.get(
+		getStateMapKey({ type: PDUType.Create }),
+	) as PDUCreateEvent | undefined;
+
 	// If the event type’s required power level is greater than the sender’s power level, reject.
-	const eventRequiredPowerLevel = getPowerLevelForEvent(event, authEventMap);
-	const userPowerLevel = getPowerLevelForUser(event.sender, authEventMap);
+	const eventRequiredPowerLevel = getPowerLevelForEvent(event, powerLevelEvent);
+	const userPowerLevel = getPowerLevelForUser(
+		event.sender,
+		powerLevelEvent,
+		roomCreateEvent,
+	);
 
 	if (userPowerLevel < eventRequiredPowerLevel) {
 		return false;
@@ -568,7 +593,7 @@ export function isAllowedEvent(
 
 	// If type is m.room.power_levels:
 	if (isPowerEvent(event)) {
-		return validatePowerLevelEvent(event, authEventMap);
+		return validatePowerLevelEvent(event, authEventStateMap);
 	}
 
 	// TODO: redaction

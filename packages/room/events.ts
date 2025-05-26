@@ -172,10 +172,6 @@ export type PDUPowerLevelsEvent = V2Pdu & {
 	};
 };
 
-export function isPowerEvent(event: V2Pdu): event is PDUPowerLevelsEvent {
-	return event.type === PDUType.PowerLevels && event.state_key === "";
-}
-
 // if unspecified just sets the default number
 export function getPowerLevel(
 	event?: PDUPowerLevelsEvent,
