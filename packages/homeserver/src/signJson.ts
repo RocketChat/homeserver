@@ -8,7 +8,7 @@ export enum EncryptionValidAlgorithm {
 	ed25519 = "ed25519",
 }
 
-type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
+export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
 export type SignedEvent<T extends IdAndEvent<EventBase>> = T & {
 	signatures: {

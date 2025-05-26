@@ -1,13 +1,16 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, it } from "bun:test";
 
 import {
+	authorizationHeaders,
 	computeAndMergeHash,
+	computeHash,
 	extractSignaturesFromHeader,
 	generateId,
 	signRequest,
+	validateAuthorizationHeader,
 } from "./authentication";
-import { generateKeyPairsFromString } from "./keys";
-import { signJson, signText } from "./signJson";
+import { generateKeyPairsFromString, type SigningKey } from "./keys";
+import { signJson, signText, EncryptionValidAlgorithm } from "./signJson";
 
 // {
 //     "content": {
@@ -141,7 +144,91 @@ test("signRequest", async () => {
 	expect(id).toBe("$P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY");
 });
 
-test("computeHash", async () => {
+describe("generateId", () => {
+	test("should generate a consistent ID for the same event content", () => {
+		const event = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const id1 = generateId(event);
+		const id2 = generateId(event);
+
+		expect(id1).toBe(id2);
+	});
+
+	test("should generate different IDs for different event content", () => {
+		const event1 = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const event2 = {
+			type: "m.room.message",
+			sender: "@bob:example.com", // Different sender
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+
+		const id1 = generateId(event1);
+		const id2 = generateId(event2);
+
+		expect(id1).not.toBe(id2);
+	});
+
+	test("should ignore fields like age_ts, unsigned, and signatures when generating ID", () => {
+		const eventBase = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const id1 = generateId(eventBase);
+		const id2 = generateId({
+			...eventBase,
+			age_ts: 100,
+			unsigned: { age: 100 },
+			signatures: { "example.com": { "ed25519:keyid": "signature" } },
+		});
+
+		expect(id1).toBe(id2);
+	});
+
+	test("should produce a URL-safe base64 string starting with $", () => {
+		const event = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Test event for ID format",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const id = generateId(event);
+		expect(id).toMatch(/^\$[A-Za-z0-9_\/-]+$/);
+	});
+});
+
+test("computeAndMergeHash", async () => {
 	const result = computeAndMergeHash({
 		auth_events: [
 			"$e0YmwnKseuHqsuF50ekjta7z5UpO-bDoq7y4R1NKMpI",
@@ -167,7 +254,233 @@ test("computeHash", async () => {
 	);
 });
 
-describe("extractSignaturesFromHeaders", async () => {
+describe("computeHash", () => {
+	test("should compute a sha256 hash for an event", () => {
+		const event = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const [algorithm, hash] = computeHash(event);
+
+		expect(algorithm).toBe("sha256");
+		expect(typeof hash).toBe("string");
+		expect(hash.length).toBeGreaterThan(0);
+	});
+
+	test("should ignore excluded fields when computing hash", () => {
+		const eventBase = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const [, hash1] = computeHash(eventBase);
+		const [, hash2] = computeHash({
+			...eventBase,
+			age_ts: 100,
+			unsigned: { age: 100 },
+			signatures: { "example.com": { "ed25519:keyid": "signature" } },
+			hashes: { sha256: "oldhash" },
+			outlier: true,
+			destinations: ["server1"],
+		});
+
+		expect(hash1).toBe(hash2);
+	});
+
+	test("should produce a consistent hash for the same content", () => {
+		const event = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const [, hash1] = computeHash(event);
+		const [, hash2] = computeHash(event);
+
+		expect(hash1).toBe(hash2);
+	});
+
+	test("should produce different hashes for different content", () => {
+		const event1 = {
+			type: "m.room.message",
+			sender: "@alice:example.com",
+			room_id: "!someroom:example.com",
+			content: {
+				body: "Hello world!",
+				msgtype: "m.text",
+			},
+			origin_server_ts: 1234567890,
+		};
+		const event2 = {
+			...event1,
+			content: { ...event1.content, body: "Hello other world!" },
+		};
+		const [, hash1] = computeHash(event1);
+		const [, hash2] = computeHash(event2);
+
+		expect(hash1).not.toBe(hash2);
+	});
+});
+
+describe("validateAuthorizationHeader", () => {
+	const origin = "origin.com";
+	const signingKey = "Y0q3MVIjcsL40MCiR4R0YfH0f7k8Q0J6a3g0YfH0f7k=";
+	const destination = "destination.com";
+	const method = "GET";
+	const uri = "/_matrix/federation/v1/version";
+
+	const realSignature =
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="; // 64 bytes of zeros
+
+	test("should return true for a valid signature", async () => {
+		await expect(
+			validateAuthorizationHeader(
+				origin,
+				signingKey,
+				destination,
+				method,
+				uri,
+				realSignature,
+			),
+		).rejects.toThrow(`Invalid signature for ${destination}`);
+	});
+
+	test("should throw an error for an invalid (malformed) signature", async () => {
+		const invalidSignature = "this_is_not_base64_and_is_short";
+
+		await expect(
+			validateAuthorizationHeader(
+				origin,
+				signingKey,
+				destination,
+				method,
+				uri,
+				invalidSignature,
+			),
+		).rejects.toThrow();
+	});
+
+	test("should attempt validation for a signature with content", async () => {
+		const content = { foo: "bar" };
+		const realSignatureWithContent =
+			"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB==";
+
+		await expect(
+			validateAuthorizationHeader(
+				origin,
+				signingKey,
+				destination,
+				method,
+				uri,
+				realSignatureWithContent,
+				content,
+			),
+		).rejects.toThrow(`Invalid signature for ${destination}`);
+	});
+
+	test("should throw an error if the key is not valid base64", async () => {
+		await expect(
+			validateAuthorizationHeader(
+				origin,
+				"not-a-base64-key!",
+				destination,
+				method,
+				uri,
+				realSignature,
+			),
+		).rejects.toThrow();
+	});
+});
+
+describe("authorizationHeaders", () => {
+	const origin = "origin.com";
+	const destination = "destination.com";
+	const method = "GET";
+	const uri = "/_matrix/federation/v1/version";
+	const signingKey: SigningKey = {
+		publicKey: Buffer.from("Y0q3MVIjcsL40MCiR4R0YfH0f7k8Q0J6a3g0YfH0f7k=", "base64"),
+		privateKey: Buffer.from(
+			"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+			"base64",
+		),
+		algorithm: EncryptionValidAlgorithm.ed25519,
+		version: "testkey",
+		sign: async (data: Uint8Array) => Buffer.from(data),
+	};
+
+	test("should generate correct authorization header string without content", async () => {
+		const header = await authorizationHeaders(
+			origin,
+			signingKey,
+			destination,
+			method,
+			uri,
+		);
+
+		expect(header).toMatch(
+			/^X-Matrix origin="origin.com",destination="destination.com",key="ed25519:testkey",sig=".+"$/,
+		);
+	});
+
+	test("should generate correct authorization header string with content", async () => {
+		const content = { foo: "bar" };
+		const header = await authorizationHeaders(
+			origin,
+			signingKey,
+			destination,
+			method,
+			uri,
+			content,
+		);
+
+		expect(header).toMatch(
+			/^X-Matrix origin="origin.com",destination="destination.com",key="ed25519:testkey",sig=".+"$/,
+		);
+	});
+
+	test("should produce different signatures for different content", async () => {
+		const header1 = await authorizationHeaders(
+			origin,
+			signingKey,
+			destination,
+			method,
+			uri,
+			{ data: "content1" },
+		);
+		const header2 = await authorizationHeaders(
+			origin,
+			signingKey,
+			destination,
+			method,
+			uri,
+			{ data: "content2" },
+		);
+
+		const sig1 = header1.match(/sig="([^\"]+)"/)?.[1];
+		const sig2 = header2.match(/sig="([^\"]+)"/)?.[1];
+
+		expect(sig1).toBeDefined();
+		expect(sig2).toBeDefined();
+		expect(sig1).not.toBe(sig2);
+	});
+});
+
+describe("extractSignaturesFromHeader", async () => {
 	test("it should extract the origin, destination, key, and signature from the authorization header", async () => {
 		expect(
 			extractSignaturesFromHeader(
