@@ -2,6 +2,7 @@ import { PriorityQueue } from "@datastructures-js/priority-queue";
 import { type V2Pdu, PDUType } from "./events";
 import {
 	_kahnsOrder,
+	getAuthChainDifference,
 	getStateMapKey,
 	getStateTypesForEventAuth,
 	type EventStore,
@@ -288,43 +289,6 @@ describe("Definitions", () => {
 	});
 
 	it("ban vs pl", async () => {
-		/*
-		 *         events = [
-            FakeEvent(
-                id="PA",
-                sender=ALICE,
-                type=EventTypes.PowerLevels,
-                state_key="",
-                content={"users": {ALICE: 100, BOB: 50}},
-            ),
-            FakeEvent(
-                id="MA",
-                sender=ALICE,
-                type=EventTypes.Member,
-                state_key=ALICE,
-                content={"membership": Membership.JOIN},
-            ),
-            FakeEvent(
-                id="MB",
-                sender=ALICE,
-                type=EventTypes.Member,
-                state_key=BOB,
-                content={"membership": Membership.BAN},
-            ),
-            FakeEvent(
-                id="PB",
-                sender=BOB,
-                type=EventTypes.PowerLevels,
-                state_key="",
-                content={"users": {ALICE: 100, BOB: 50}},
-            ),
-        ]
-
-        edges = [["END", "MB", "MA", "PA", "START"], ["END", "PB", "PA"]]
-
-        expected_state_ids = ["PA", "MA", "MB"]
-
-		*/
 		const events = [
 			new FakeEvent("PA", ALICE, PDUType.PowerLevels, "", {
 				users: { [ALICE]: 100, [BOB]: 50 },
@@ -403,10 +367,6 @@ describe("Definitions", () => {
 			["END", "PC", "PB", "PA", "START"],
 			["END", "PA"],
 		];
-
-		const { graph, reverseGraph, fakeEventMap } = getGraph(events, edges);
-
-		console.log({ reverseGraph });
 
 		const finalState = await runTest(events, edges);
 
@@ -547,5 +507,148 @@ describe("Definitions", () => {
 			"event_id",
 			"PA2:example.com",
 		);
+	});
+
+	it("kahns", () => {
+		/* 
+		        graph: Dict[str, Set[str]] = {
+            "l": {"o"},
+            "m": {"n", "o"},
+            "n": {"o"},
+            "o": set(),
+            "p": {"o"},
+        }
+*/
+
+		const graph = new Map<string, Set<string>>([
+			["l", new Set(["o"])],
+			["m", new Set(["n", "o"])],
+			["n", new Set(["o"])],
+			["o", new Set()],
+			["p", new Set(["o"])],
+		]);
+
+		const sorted = _kahnsOrder({
+			indegreeGraph: graph,
+			compareFunc: (a, b) => a.localeCompare(b),
+			queueClass: PriorityQueue,
+		});
+
+		expect(sorted).toEqual(["o", "l", "n", "m", "p"]);
+	});
+
+	it("auth chain difference 1", async () => {
+		const a = new FakeEvent("A", ALICE, PDUType.Member, "", {});
+		const b = new FakeEvent("B", ALICE, PDUType.Member, "", {});
+		const c = new FakeEvent("C", ALICE, PDUType.Member, "", {});
+
+		const aEvent = a.toEvent([], []);
+		const bEvent = b.toEvent([aEvent.event_id], []);
+		const cEvent = c.toEvent([bEvent.event_id], []);
+
+		const eventMap = new Map<string, V2Pdu>([
+			[aEvent.event_id, aEvent],
+			[bEvent.event_id, bEvent],
+			[cEvent.event_id, cEvent],
+		]);
+
+		const stateSets: Parameters<typeof getAuthChainDifference>[0] = [
+			new Map([
+				[`${a.type}:` as const, a.event_id],
+				[`${b.type}:` as const, b.event_id],
+			]),
+			new Map([[`${c.type}:` as const, c.event_id]]),
+		];
+
+		eventStore.events.push(aEvent, bEvent, cEvent);
+
+		const diff = await getAuthChainDifference(stateSets, eventMap, {
+			store: eventStore,
+			remote: eventStoreRemote,
+		});
+
+		expect(diff).toEqual(new Set([c.event_id]));
+	});
+
+	it("auth chain difference 2", async () => {
+		const a = new FakeEvent("A", ALICE, PDUType.Member, "", {});
+		const b = new FakeEvent("B", ALICE, PDUType.Member, "", {});
+		const c = new FakeEvent("C", ALICE, PDUType.Member, "", {});
+		const d = new FakeEvent("D", ALICE, PDUType.Member, "", {});
+
+		const aEvent = a.toEvent([], []);
+		const bEvent = b.toEvent([aEvent.event_id], []);
+		const cEvent = c.toEvent([bEvent.event_id], []);
+		const dEvent = d.toEvent([cEvent.event_id], []);
+
+		const eventMap = new Map<string, V2Pdu>([
+			[aEvent.event_id, aEvent],
+			[bEvent.event_id, bEvent],
+			[cEvent.event_id, cEvent],
+			[dEvent.event_id, dEvent],
+		]);
+
+		const stateSets: Parameters<typeof getAuthChainDifference>[0] = [
+			new Map([
+				[`${a.type}:` as const, a.event_id],
+				[`${b.type}:` as const, b.event_id],
+			]),
+			new Map([
+				[`${c.type}:` as const, c.event_id],
+				[`${d.type}:` as const, d.event_id],
+			]),
+		];
+
+		eventStore.events.push(aEvent, bEvent, cEvent, dEvent);
+
+		const diff = await getAuthChainDifference(stateSets, eventMap, {
+			store: eventStore,
+			remote: eventStoreRemote,
+		});
+
+		expect(diff).toEqual(new Set([d.event_id, c.event_id]));
+	});
+
+	it("auth chain difference 3", async () => {
+		const a = new FakeEvent("A", ALICE, PDUType.Member, "", {});
+		const b = new FakeEvent("B", ALICE, PDUType.Member, "", {});
+		const c = new FakeEvent("C", ALICE, PDUType.Member, "", {});
+		const d = new FakeEvent("D", ALICE, PDUType.Member, "", {});
+		const e = new FakeEvent("E", ALICE, PDUType.Member, "", {});
+
+		const aEvent = a.toEvent([], []);
+		const bEvent = b.toEvent([aEvent.event_id], []);
+		const cEvent = c.toEvent([bEvent.event_id], []);
+		const dEvent = d.toEvent([cEvent.event_id], []);
+		const eEvent = e.toEvent([cEvent.event_id, bEvent.event_id], []);
+
+		const eventMap = new Map<string, V2Pdu>([
+			[aEvent.event_id, aEvent],
+			[bEvent.event_id, bEvent],
+			[cEvent.event_id, cEvent],
+			[dEvent.event_id, dEvent],
+			[eEvent.event_id, eEvent],
+		]);
+
+		const stateSets: Parameters<typeof getAuthChainDifference>[0] = [
+			new Map([
+				[`${a.type}:` as const, a.event_id],
+				[`${b.type}:` as const, b.event_id],
+				[`${e.type}:` as const, e.event_id],
+			]),
+			new Map([
+				[`${c.type}:` as const, c.event_id],
+				[`${d.type}:` as const, d.event_id],
+			]),
+		];
+
+		eventStore.events.push(aEvent, bEvent, cEvent, dEvent, eEvent);
+
+		const diff = await getAuthChainDifference(stateSets, eventMap, {
+			store: eventStore,
+			remote: eventStoreRemote,
+		});
+
+		expect(diff).toEqual(new Set([d.event_id, c.event_id, e.event_id]));
 	});
 });

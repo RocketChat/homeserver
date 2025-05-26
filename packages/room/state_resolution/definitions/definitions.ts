@@ -347,8 +347,6 @@ export function _kahnsOrder<T, P extends Queue<T>>(
 
 	const indegree = new Map<T, number>();
 
-	console.log({ graph: indegreeGraph });
-
 	const reverseIndegreeGraph = new Map() as typeof indegreeGraph;
 
 	for (const [v, edges] of indegreeGraph.entries()) {
@@ -380,7 +378,6 @@ export function _kahnsOrder<T, P extends Queue<T>>(
 	// While the queue is not empty:
 	while (!zeroIndegreeQueue.isEmpty()) {
 		const node = zeroIndegreeQueue.pop();
-		console.log("node", node);
 		assert(
 			node !== null,
 			"undefined element in zeroIndegreeQueue should not happen",
@@ -654,7 +651,6 @@ export async function iterativeAuthChecks(
 	events: V2Pdu[],
 	{ store, remote }: { store: EventStore; remote: EventStoreRemote },
 ) {
-	console.log("iterative auth", events);
 	const newState = new Map<string, V2Pdu>(state.entries());
 	for (const event of events) {
 		const authEventStateMap = new Map<string, V2Pdu>();
