@@ -19,9 +19,9 @@ declare module "./eventBase" {
 }
 
 export type ReactionAuthEvents = {
-    "m.room.create": string;
-    "m.room.power_levels": string;
-    "m.room.member": string;
+    "m.room.create": string | undefined;
+    "m.room.power_levels": string | undefined;
+    "m.room.member": string | undefined;
 }
 
 export const isReactionEvent = (
