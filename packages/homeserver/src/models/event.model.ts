@@ -29,7 +29,7 @@ export interface MessageEvent extends EventBase {
   content: {
     msgtype: string;
     body: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

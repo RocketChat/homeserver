@@ -1,3 +1,4 @@
+import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
 import { Injectable, Logger } from '@nestjs/common';
 import * as nacl from 'tweetnacl';
 
@@ -24,8 +25,13 @@ export class SignatureVerificationService {
   /**
    * Verify a signature from a remote server
    */
-  async verifySignature(
-    event: any, 
+  async verifySignature<
+	T extends object & {
+		signatures?: Record<string, Record<ProtocolVersionKey, string>>;
+		unsigned?: unknown;
+	},
+>(
+    event: T,
     originServer: string,
     getPublicKeyFn?: (origin: string, keyId: string) => Promise<string>,
   ): Promise<boolean> {
@@ -36,8 +42,14 @@ export class SignatureVerificationService {
       }
 
       const signatureObj = event.signatures[originServer];
-      const keyId = Object.keys(signatureObj)[0];
-      const signature = signatureObj[keyId];
+      
+      const entries = Object.entries(signatureObj);
+      if (entries.length === 0) {
+        this.logger.warn(`No signature keys found for ${originServer}`);
+        return false;
+      }
+      
+      const [keyId, signature] = entries[0];
 
       if (!keyId || !signature) {
         this.logger.warn(`Invalid signature data for ${originServer}`);
@@ -78,11 +90,11 @@ export class SignatureVerificationService {
   /**
    * Get public key from cache or fetch it from the server
    */
-  private async getOrFetchPublicKey(serverName: string, keyId: string): Promise<KeyData | null> {
+  private async getOrFetchPublicKey(serverName: string, keyId: string): Promise<KeyData | null | undefined> {
     const cacheKey = `${serverName}:${keyId}`;
     
     if (this.cachedKeys.has(cacheKey)) {
-      return this.cachedKeys.get(cacheKey)!;
+      return this.cachedKeys.get(cacheKey);
     }
     
     try {
