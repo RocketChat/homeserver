@@ -76,6 +76,12 @@ export interface RoomMemberEvent extends EventBase {
 				content: { displayname: "admin"; membership: "join" };
 				sender: string;
 			}
+			| {
+				type: "m.room.name";
+				state_key: "";
+				content: { name: string };
+				sender: string;
+			}
 		)[];
 	};
 }
