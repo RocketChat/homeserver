@@ -35,10 +35,18 @@ const KickUserDtoSchema = z.object({
   targetServers: z.array(z.string()).optional(),
 });
 
+const BanUserDtoSchema = z.object({
+  userIdToBan: z.string().trim().min(1, { message: "User ID to ban must be a non-empty string" }),
+  senderUserId: z.string().trim().min(1, { message: "Sender ID must be a non-empty string" }),
+  reason: z.string().optional(),
+  targetServers: z.array(z.string()).optional(),
+});
+
 type UpdateRoomNameDto = z.infer<typeof UpdateRoomNameDtoSchema>;
 type UpdateUserPowerLevelDto = z.infer<typeof UpdateUserPowerLevelSchema>;
 type LeaveRoomDto = z.infer<typeof LeaveRoomDtoSchema>;
 type KickUserDto = z.infer<typeof KickUserDtoSchema>;
+type BanUserDto = z.infer<typeof BanUserDtoSchema>;
 
 @Controller("internal/rooms")
 export class InternalRoomController {
@@ -160,6 +168,41 @@ export class InternalRoomController {
       }
       throw new HttpException(
         `Failed to kick user from room: ${error instanceof Error ? error.message : String(error)}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post("/:roomId/members/:memberId/ban")
+  async banUserFromRoom(
+    @Param("roomId", new ZodValidationPipe(z.string().trim().min(1, { message: "Room ID must be a non-empty string" }))) roomId: string,
+    @Param("memberId", new ZodValidationPipe(z.string().trim().min(1, { message: "Member ID must be a non-empty string" }))) memberId: string, // This is the user being banned
+    @Body(new ZodValidationPipe(BanUserDtoSchema)) body: BanUserDto,
+  ): Promise<{ eventId: string }> {
+    const { senderUserId, reason, targetServers } = body;
+
+    if (body.userIdToBan !== memberId) {
+        throw new HttpException(
+            "User ID in path does not match user ID in body (userIdToBan).",
+            HttpStatus.BAD_REQUEST,
+        );
+    }
+
+    try {
+      const eventId = await this.roomService.banUser(
+        roomId.trim(),
+        memberId,
+        senderUserId,
+        reason,
+        targetServers,
+      );
+      return { eventId };
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        `Failed to ban user from room: ${error instanceof Error ? error.message : String(error)}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

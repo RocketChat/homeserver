@@ -283,3 +283,147 @@ test("roomMemberEvent - kick", async () => {
 	expect(signedKickEvent.signatures[serverName][`${kickerSignature.algorithm}:${kickerSignature.version}`]).toBeString();
 	expect(Object.keys(signedKickEvent.content).length).toBe(2); // membership + reason
 });
+
+test("roomMemberEvent - ban", async () => {
+	const bannerSignature = await generateKeyPairsFromString(
+		"ed25519 banner_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
+	);
+	const userToBanSignature = await generateKeyPairsFromString(
+		"ed25519 banned_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw",
+	);
+	const serverName = "hs1";
+	const roomId = "!banRoomTest:hs1";
+	const bannerId = "@banner:hs1";
+	const userToBanId = "@user_to_ban:hs1";
+	const banReason = "Breaking the rules";
+	let ts = Date.now();
+
+	// 1. Create Event (sent by banner)
+	const createEventPayload = roomCreateEvent({
+		roomId,
+		sender: bannerId,
+		ts: ts - 4000,
+	});
+	const signedCreateEvent = await signEvent(createEventPayload, bannerSignature, serverName);
+	const createEventId = generateId(signedCreateEvent);
+	let lastEventId = createEventId;
+	let currentDepth = 1;
+
+	// 2. Power Levels Event (sent by banner)
+	// Banner has power 100, can ban at 50. UserToBan has power 0.
+	const powerLevelsEventPayload = {
+		type: "m.room.power_levels",
+		room_id: roomId,
+		sender: bannerId,
+		state_key: "",
+		content: {
+			users: {
+				[bannerId]: 100,
+				[userToBanId]: 0,
+			},
+			users_default: 0,
+			events: {
+				"m.room.name": 50,
+				"m.room.power_levels": 100,
+			},
+			events_default: 50,
+			state_default: 50,
+			kick: 50,
+			ban: 50, // Banner (100) can ban users if ban level is 50
+			redact: 50,
+		},
+		depth: ++currentDepth,
+		auth_events: [createEventId],
+		prev_events: [lastEventId],
+		origin: serverName,
+		origin_server_ts: ts - 3000,
+	};
+	const signedPowerLevelsEvent = await signEvent(powerLevelsEventPayload, bannerSignature, serverName);
+	const powerLevelsEventId = generateId(signedPowerLevelsEvent);
+	lastEventId = powerLevelsEventId;
+
+	// 3. Banner Joins (sent by banner)
+	const bannerJoinEventPayload = roomMemberEvent({
+		membership: "join",
+		roomId,
+		sender: bannerId,
+		state_key: bannerId,
+		content: { displayname: "Banner User" },
+		depth: ++currentDepth,
+		auth_events: { 
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+		 },
+		prev_events: [lastEventId],
+		ts: ts - 2000,
+		origin: serverName,
+	});
+	const signedBannerJoinEvent = await signEvent(bannerJoinEventPayload, bannerSignature, serverName);
+	const bannerJoinEventId = generateId(signedBannerJoinEvent);
+	lastEventId = bannerJoinEventId;
+
+	// 4. UserToBan Joins (sent by userToBan)
+	const userToBanJoinEventPayload = roomMemberEvent({
+		membership: "join",
+		roomId,
+		sender: userToBanId,
+		state_key: userToBanId,
+		content: { displayname: "User To Be Banned" },
+		depth: ++currentDepth,
+		auth_events: { 
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+		 },
+		prev_events: [lastEventId],
+		ts: ts - 1000,
+		origin: serverName,
+	});
+	const signedUserToBanJoinEvent = await signEvent(userToBanJoinEventPayload, userToBanSignature, serverName);
+	const userToBanJoinEventId = generateId(signedUserToBanJoinEvent);
+	lastEventId = userToBanJoinEventId;
+
+	// 5. Ban Event (sent by banner, targets userToBan)
+	ts = Date.now();
+	const banMemberEventPayload = roomMemberEvent({
+		membership: "ban",
+		roomId,
+		sender: bannerId,
+		state_key: userToBanId,
+		depth: ++currentDepth,
+		auth_events: {
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+			[`m.room.member:${userToBanId}`]: bannerJoinEventId, 
+		},
+		prev_events: [lastEventId],
+		ts,
+		origin: serverName,
+		content: {
+			membership: "ban",
+			reason: banReason,
+		},
+	});
+
+	const signedBanEvent = await signEvent(banMemberEventPayload, bannerSignature, serverName);
+	const banEventId = generateId(signedBanEvent);
+
+	// Assertions
+	expect(signedBanEvent.type).toBe("m.room.member");
+	expect(signedBanEvent.room_id).toBe(roomId);
+	expect(signedBanEvent.sender).toBe(bannerId);
+	expect(signedBanEvent.state_key).toBe(userToBanId);
+	expect(signedBanEvent.content.membership).toBe("ban");
+	expect(signedBanEvent.content.reason).toBe(banReason);
+	expect(signedBanEvent.origin).toBe(serverName);
+	expect(signedBanEvent.origin_server_ts).toBe(ts);
+	expect(signedBanEvent.prev_events).toEqual([userToBanJoinEventId]);
+
+	// Verify that the PDU's auth_events contains the banner's join event, power levels, and create event
+	expect(signedBanEvent.auth_events).toContain(createEventId);
+	expect(signedBanEvent.auth_events).toContain(powerLevelsEventId);
+	expect(signedBanEvent.auth_events).toContain(bannerJoinEventId); 
+
+	expect(banEventId).toBeDefined();
+	expect(signedBanEvent.signatures[serverName][`${bannerSignature.algorithm}:${bannerSignature.version}`]).toBeString();
+	expect(Object.keys(signedBanEvent.content).length).toBe(2); // membership + reason
+});
