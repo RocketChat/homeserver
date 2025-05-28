@@ -121,6 +121,36 @@ export class RoomService {
 		}
 	}
 
+	private validateBanPermission(
+		currentPowerLevelsContent: RoomPowerLevelsEvent["content"],
+		senderId: string,
+		bannedUserId: string,
+	): void {
+		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
+		const bannedUserPower = currentPowerLevelsContent.users?.[bannedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
+		const banLevel = currentPowerLevelsContent.ban ?? 50; // Default ban level if not specified
+
+		if (senderPower < banLevel) {
+			this.logger.warn(
+				`Sender ${senderId} (power ${senderPower}) does not meet required power level (${banLevel}) to ban users.`,
+			);
+			throw new HttpException(
+				"You don't have permission to ban users from this room.",
+				HttpStatus.FORBIDDEN,
+			);
+		}
+
+		if (bannedUserPower >= senderPower) {
+			this.logger.warn(
+				`Sender ${senderId} (power ${senderPower}) cannot ban user ${bannedUserId} (power ${bannedUserPower}) who has equal or greater power.`,
+			);
+			throw new HttpException(
+				"You cannot ban a user with power greater than or equal to your own.",
+				HttpStatus.FORBIDDEN,
+			);
+		}
+	}
+
 	async upsertRoom(roomId: string, state: ModelEventBase[]) {
 		this.logger.log(
 			`Upserting room ${roomId} with ${state.length} state events`,
@@ -543,6 +573,89 @@ export class RoomService {
 				this.logger.log(`Successfully sent m.room.member (kick) event ${eventId} over federation to ${server} for room ${roomId}`);
 			} catch (error) {
 				this.logger.error(`Failed to send m.room.member (kick) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
+			}
+		}
+		return eventId;
+	}
+
+	async banUser(
+		roomId: string,
+		bannedUserId: string,
+		senderId: string,
+		reason?: string,
+		targetServers: string[] = [],
+	): Promise<string> {
+		this.logger.log(`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`);
+
+		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
+		if (!lastEvent) {
+			throw new HttpException("Room has no history, cannot ban user", HttpStatus.BAD_REQUEST);
+		}
+
+		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(EventType.POWER_LEVELS, { roomId, senderId });
+		const powerLevelsEventId = authEventIdsForPowerLevels.find(e => e.type === EventType.POWER_LEVELS)?._id;
+
+		if (!powerLevelsEventId) {
+			this.logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to ban.`);
+			throw new HttpException("Cannot verify permission to ban user.", HttpStatus.FORBIDDEN);
+		}
+		const powerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(powerLevelsEventId);
+		if (!powerLevelsEvent) {
+			this.logger.error(`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`);
+			throw new HttpException("Internal server error: Power levels event data missing.", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+
+		this.validateBanPermission(powerLevelsEvent.content, senderId, bannedUserId);
+		
+		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(EventType.MEMBER, { roomId, senderId });
+		const createEventId = authEventIdsForMemberEvent.find(e => e.type === EventType.CREATE)?._id;
+		const senderMemberEventId = authEventIdsForMemberEvent.find(e => e.type === EventType.MEMBER && e.state_key === senderId)?._id;
+
+		if (!createEventId || !senderMemberEventId || !powerLevelsEventId) {
+			this.logger.error(`Critical auth events missing for ban. Create: ${createEventId}, Sender's Member: ${senderMemberEventId}, PowerLevels: ${powerLevelsEventId}`);
+			throw new HttpException("Critical auth events missing, cannot ban user", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		
+		const authEvents: RoomMemberAuthEvents = {
+			"m.room.create": createEventId,
+			"m.room.power_levels": powerLevelsEventId,
+			[`m.room.member:${bannedUserId}`]: senderMemberEventId,
+		};
+
+		const serverName = this.configService.getServerConfig().name;
+		const signingKeyConfig = await this.configService.getSigningKey();
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
+
+		const unsignedEvent = roomMemberEvent({
+			roomId,
+			sender: senderId,
+			state_key: bannedUserId,
+			auth_events: authEvents,
+			prev_events: [lastEvent._id],
+			depth: lastEvent.event.depth + 1,
+			membership: "ban",
+			origin: serverName,
+			content: {
+				membership: "ban",
+				...(reason ? { reason } : {}),
+			},
+		});
+
+		const signedEvent = await signEvent(unsignedEvent, signingKey, serverName);
+		const eventId = generateId(signedEvent);
+		
+		await this.eventService.insertEvent(signedEvent, eventId);
+		this.logger.log(`Successfully created and stored m.room.member (ban) event ${eventId} for user ${bannedUserId} in room ${roomId}`);
+
+		for (const server of targetServers) {
+			if (server === serverName) {
+				continue;
+			}
+			try {
+				await this.federationService.sendEvent(server, signedEvent);
+				this.logger.log(`Successfully sent m.room.member (ban) event ${eventId} over federation to ${server} for room ${roomId}`);
+			} catch (error) {
+				this.logger.error(`Failed to send m.room.member (ban) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		}
 		return eventId;
