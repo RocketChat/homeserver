@@ -1,12 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { EventBase } from "../models/event.model";
 import {
-    type StagingAreaEventType,
-    StagingAreaQueue,
+	type StagingAreaEventType,
+	StagingAreaQueue,
 } from "../queues/staging-area.queue";
 import { EventAuthorizationService } from "./event-authorization.service";
 import { EventStateService } from "./event-state.service";
-import { EventService } from "./event.service";
+import { EventService, EventType } from "./event.service";
 import { MissingEventService } from "./missing-event.service";
 
 // ProcessingState indicates where in the flow an event is
@@ -197,9 +197,7 @@ export class StagingAreaService {
 
 		try {
 			this.logger.debug(`Authorizing event ${eventId}`);
-			const authEvents = await this.eventService.getAuthEventsIds({
-				roomId: event.roomId
-			});
+			const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId: event.roomId, senderId: event.event.sender });
 
 			const isAuthorized = await this.eventAuthService.authorizeEvent(
 				event.event,

@@ -24,7 +24,7 @@ export class MessageService {
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
 		
-		const authEvents = await this.eventService.getAuthEventsIds({ roomId, eventType: EventType.MESSAGE, senderId: senderUserId });
+		const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId, senderId: senderUserId });
 		
         const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
@@ -70,21 +70,17 @@ export class MessageService {
         const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
         const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
         
-        const authEvents = await this.eventService.getAuthEventsIds({ roomId, eventType: EventType.REACTION, senderId: senderUserId });
+        const authEvents = await this.eventService.getAuthEventIds(EventType.REACTION, { roomId, senderId: senderUserId });
         
         const currentDepth = latestEventDoc?.event?.depth ?? 0;
         const newDepth = currentDepth + 1;
 
         const authEventsMap: ReactionAuthEvents = {
-            "m.room.create": authEvents.find(event => event.type === EventType.CREATE)?._id,
-            "m.room.power_levels": authEvents.find(event => event.type === EventType.POWER_LEVELS)?._id,
-            "m.room.member": authEvents.find(event => event.type === EventType.MEMBER)?._id,
+            "m.room.create": authEvents.find(event => event.type === EventType.CREATE)?._id || "",
+            "m.room.power_levels": authEvents.find(event => event.type === EventType.POWER_LEVELS)?._id || "",
+            "m.room.member": authEvents.find(event => event.type === EventType.MEMBER)?._id || "",
         };
-
-        if (!authEventsMap["m.room.create"] || !authEventsMap["m.room.power_levels"] || !authEventsMap["m.room.member"]) {
-            throw new Error("There are missing auth events for the reaction event");
-        }
-
+        
         const { state_key, ...eventForSigning } = reactionEvent({
             roomId,
             sender: senderUserId,
@@ -108,8 +104,9 @@ export class MessageService {
             serverName
         );
 
+        console.log(signedEvent);
+
         await this.federationService.sendEvent(targetServer, signedEvent);
-        await this.eventService.insertEvent(signedEvent, eventId);
         
         this.logger.log(`Sent reaction ${emoji} to ${targetServer} for event ${eventId} - ${generateId(signedEvent)}`);
 
@@ -123,7 +120,7 @@ export class MessageService {
         const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
         const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
         
-        const authEvents = await this.eventService.getAuthEventsIds({ roomId, eventType: EventType.MESSAGE, senderId: senderUserId });
+        const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId, senderId: senderUserId });
         
         const currentDepth = latestEventDoc?.event?.depth ?? 0;
         const newDepth = currentDepth + 1;
