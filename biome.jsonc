@@ -20,5 +20,12 @@
 		"parser": {
 			"unsafeParameterDecoratorsEnabled": true
 		}
+	},
+	"files": {
+		"ignore": [
+			"node_modules",
+			"**/node_modules",
+			".vscode"
+		]
 	}
 }
