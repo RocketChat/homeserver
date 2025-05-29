@@ -2,27 +2,23 @@
 // of rooms and applicable methods.
 
 import {
-	PduV1Schema,
 	type PduCanonicalAliasEventContent,
 	type PduCreateEventContent,
 	type PduJoinRuleEventContent,
 	type PduMembershipEventContent,
 	type PduPowerLevelsEventContent,
 	type PduV1,
-	isCreateEvent,
-	isMembershipEvent,
-	isPowerLevelsEvent,
-	isJoinRuleEvent,
-	isCanonicalAliasEvent,
 } from "../types/v1";
 
 import type { PduV3 } from "../types/v3";
 
-export interface IRoomManager {
+import { RoomV1Validator } from "./v1";
+
+export interface IRoomValidator {
 	// START: event validation
 	// throw error
 	// TODO: custom error for this
-	validateEvent(event: PduV1 | PduV3): Promise<PduV1 | PduV3>;
+	parseEvent(event: PduV1 | PduV3): Promise<PduV1 | PduV3>;
 
 	// mostly typecheckers
 	isCreateEvent(
@@ -46,17 +42,10 @@ export interface IRoomManager {
 	): event is (PduV1 | PduV3) & PduCanonicalAliasEventContent;
 
 	// END: event validation
+}
 
-	// START: state resolution
-
-	resolveState<T extends PduV1 | PduV3>(stateEvents: T[]): T[];
-
-	// END: state resolution
-
-	// START: authorization
-	isEventAllowed<T extends PduV1 | PduV3>(event: T, state: T[]): boolean;
-
-	// END: authorization
+export interface IRoomAuthorizer {
+	isEventAllowed(event: PduV1 | PduV3, state: PduV1[]): boolean;
 }
 
 /*
@@ -65,44 +54,12 @@ export interface IRoomManager {
  * 2. authorization rules
  * 3. state resolution algorithms
  */
-export class RoomManager {
-	constructor(private readonly createEventContent: PduCreateEventContent) {}
-}
+export class RoomManagerFactory {
+	static createValidator(version: number): IRoomValidator {
+		if (version === 1) {
+			return new RoomV1Validator();
+		}
 
-export class RoomV1Manager implements IRoomManager {
-	async validateEvent(event: PduV1): Promise<PduV1> {
-		return (await PduV1Schema.parseAsync(event)) as PduV1;
-	}
-
-	isCreateEvent(event: PduV1): event is PduV1 & PduCreateEventContent {
-		return isCreateEvent(event);
-	}
-
-	isMembershipEvent(event: PduV1): event is PduV1 & PduMembershipEventContent {
-		return isMembershipEvent(event);
-	}
-
-	isPowerLevelsEvent(
-		event: PduV1,
-	): event is PduV1 & PduPowerLevelsEventContent {
-		return isPowerLevelsEvent(event);
-	}
-
-	isJoinRuleEvent(event: PduV1): event is PduV1 & PduJoinRuleEventContent {
-		return isJoinRuleEvent(event);
-	}
-
-	isCanonicalAliasEvent(
-		event: PduV1,
-	): event is PduV1 & PduCanonicalAliasEventContent {
-		return isCanonicalAliasEvent(event);
-	}
-
-	resolveState<T extends PduV1 | PduV3>(stateEvents: T[]): T[] {
-		throw new Error("state resolution not implemented for v1");
-	}
-
-	isEventAllowed<T extends PduV1 | PduV3>(event: T, state: T[]): boolean {
-		throw new Error("Method not implemented.");
+		throw new Error(`Unsupported room version: ${version}`);
 	}
 }

@@ -35,10 +35,6 @@ import { type EventID, type StateMapKey } from "../../types/_common";
 //   ].includes(type as PDUType); // FIXME: typing
 // }
 
-function extractDomain(identifier: string): string | undefined {
-	return identifier.split(":").pop();
-}
-
 function getPowerLevel(
 	event?: PduV3 & PduPowerLevelsEventV3Content,
 ): (PduV3 & PduPowerLevelsEventV3Content) | undefined {

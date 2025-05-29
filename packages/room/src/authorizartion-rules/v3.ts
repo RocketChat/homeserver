@@ -1,9 +1,10 @@
-// https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
+// v3 changes event schema, therefore so does how we validate events, sort of
+//
 
-import { RoomV1Validator } from "../manager/v1";
-import { getStateMapKey } from "../state_resolution/definitions/definitions";
-import type { EventID } from "../types/_common";
 import {
+	isCreateEvent,
+	isMembershipEvent,
+	isPowerLevelsEvent,
 	PduTypeRoomCanonicalAlias,
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
@@ -11,21 +12,59 @@ import {
 	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomThirdPartyInvite,
-	type PduCreateEvent,
-	type PduJoinRuleEvent,
-	type PduMembershipEvent,
-	type PduPowerLevelsEvent,
-	type PduV1,
 } from "../types/v1";
 
-// auth rules are ran against the "previous" state of the room.
-// this state can be a partially resolved state, as part of conflict resolution, that is.
+import {
+	type PduCreateEventV3,
+	type PduJoinRuleEventV3,
+	type PduMembershipEventV3,
+	type PduPowerLevelsEventV3,
+	type PduPowerLevelsEventV3Content,
+	type PduV3,
+} from "../types/v3";
 
-export function extractDomain(identifier: string): string | undefined {
-	return identifier.split(":").pop();
+import {
+	getStateMapKey,
+	isPowerEvent,
+} from "../state_resolution/definitions/definitions";
+import { type EventID, type StateMapKey } from "../types/_common";
+import { extractDomain } from "./v1";
+
+// https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
+// skip if not any of the specified type of events
+// function shouldSkip({ type }: { type: V2Pdu["type"] }) {
+//   return ![
+//     PDUType.Create,
+//     PDUType.Member,
+//     PDUType.JoinRules,
+//     PDUType.PowerLevels,
+//     PDUType.ThirdPartyInvite,
+//   ].includes(type as PDUType); // FIXME: typing
+// }
+
+function getPowerLevel(
+	event?: PduPowerLevelsEventV3,
+): PduPowerLevelsEventV3 | undefined {
+	return (
+		event && {
+			...event,
+			...{
+				content: {
+					...event.content,
+					ban: event.content.ban ?? 50,
+					invite: event.content.invite ?? 0,
+					kick: event.content.kick ?? 50,
+					redact: event.content.redact ?? 50,
+					state_default: event.content.state_default ?? 50,
+					events_default: event.content.events_default ?? 0,
+					users_default: event.content.users_default ?? 0,
+				},
+			},
+		}
+	);
 }
 
-export function isCreateAllowed(event: PduCreateEvent) {
+function isCreateAllowed(event: PduCreateEventV3) {
 	// If it has any prev_events, reject.
 	if (event.prev_events.length > 0) {
 		return false;
@@ -51,53 +90,8 @@ export function isCreateAllowed(event: PduCreateEvent) {
 	return true;
 }
 
-export function isEventAllowed(
-	event: PduV1,
-	authEventStateMap: Map<EventID, PduV1>,
-): boolean {
-	if (RoomV1Validator.isCreateEvent(event)) {
-		return isCreateAllowed(event);
-	}
-
-	return true;
-}
-
-// https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
-// skip if not any of the specified type of events
-// function shouldSkip({ type }: { type: V2Pdu["type"] }) {
-//   return ![
-//     PDUType.Create,
-//     PDUType.Member,
-//     PDUType.JoinRules,
-//     PDUType.PowerLevels,
-//     PDUType.ThirdPartyInvite,
-//   ].includes(type as PDUType); // FIXME: typing
-// }
-
-function getPowerLevel(
-	event?: PduPowerLevelsEvent,
-): PduPowerLevelsEvent | undefined {
-	return (
-		event && {
-			...event,
-			...{
-				content: {
-					...event.content,
-					ban: event.content.ban ?? "50",
-					invite: event.content.invite ?? "0",
-					kick: event.content.kick ?? "50",
-					redact: event.content.redact ?? "50",
-					state_default: event.content.state_default ?? "50",
-					events_default: event.content.events_default ?? "0",
-					users_default: event.content.users_default ?? "0",
-				},
-			},
-		}
-	);
-}
-
 // TODO: better typing for alias event
-function isRoomAliasAllowed(event: PduV1) {
+function isRoomAliasAllowed(event: PduV3) {
 	// If event has no state_key, reject.
 	if (!event.state_key) {
 		return false;
@@ -113,19 +107,19 @@ function isRoomAliasAllowed(event: PduV1) {
 
 export function getPowerLevelForUser(
 	userId: string,
-	powerLevelEvent?: PduPowerLevelsEvent,
-	roomCreateEvent?: PduCreateEvent,
+	powerLevelEvent?: PduPowerLevelsEventV3,
+	roomCreateEvent?: PduCreateEventV3,
 ) {
 	if (powerLevelEvent) {
 		const userPowerLevel = powerLevelEvent.content.users?.[userId];
 		if (userPowerLevel) {
-			return Number.parseInt(userPowerLevel, 10);
+			return userPowerLevel;
 		}
 
 		// check for users_default
 		const usersDefault = powerLevelEvent.content.users_default;
 		if (usersDefault) {
-			return Number.parseInt(usersDefault, 10);
+			return usersDefault;
 		}
 	}
 
@@ -139,28 +133,28 @@ export function getPowerLevelForUser(
 }
 
 export function getPowerLevelForEvent(
-	event: PduV1,
-	powerLevelEvent: PduPowerLevelsEvent = {
+	event: PduV3,
+	powerLevelEvent: PduV3 & PduPowerLevelsEventV3Content = {
 		content: {},
-	} as PduPowerLevelsEvent,
+	} as PduV3 & PduPowerLevelsEventV3Content,
 ) {
 	const userPowerLevel = powerLevelEvent.content.events?.[event.type];
 	if (userPowerLevel) {
-		return Number.parseInt(userPowerLevel, 10);
+		return userPowerLevel;
 	}
 
 	// state_default || events_default
 	// TODO: better way to know if state event?
 	if (event.type === PduTypeRoomMessage) {
-		return Number.parseInt(powerLevelEvent.content.events_default ?? "0", 10);
+		return powerLevelEvent.content.events_default ?? 0;
 	}
 
-	return Number.parseInt(powerLevelEvent.content.state_default ?? "50", 10);
+	return powerLevelEvent.content.state_default ?? 50;
 }
 
 function isMembershipChangeAllowed(
-	event: PduMembershipEvent,
-	authEventStateMap: Map<EventID, PduV1>,
+	event: PduMembershipEventV3,
+	authEventStateMap: Map<EventID, PduV3>,
 ): boolean {
 	// If there is no state_key property, or no membership property in content, reject.
 	if (!event.state_key || !event.content.membership) {
@@ -174,13 +168,13 @@ function isMembershipChangeAllowed(
 	const sender = event.sender;
 	const senderMembership = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomMember, state_key: sender }),
-	) as PduMembershipEvent | undefined;
+	) as PduMembershipEventV3 | undefined;
 
 	// user to be invited
 	const invitee = event.state_key;
 	const inviteeMembership = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomMember, state_key: invitee }),
-	) as PduMembershipEvent | undefined;
+	) as PduMembershipEventV3 | undefined;
 
 	//   const roomEvent = authEventMap.get(getStateMapKey({ type: PDUType.Create })) as PDUCreateEvent;
 	//   const room = {
@@ -188,18 +182,18 @@ function isMembershipChangeAllowed(
 	//   } as const;
 	const joinRuleEvent = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomJoinRules }),
-	) as PduJoinRuleEvent;
+	) as PduJoinRuleEventV3;
 	const joinRule = joinRuleEvent?.content.join_rule;
 
 	const powerLevelEvent = getPowerLevel(
 		authEventStateMap.get(
 			getStateMapKey({ type: PduTypeRoomPowerLevels }),
-		) as PduPowerLevelsEvent,
+		) as PduPowerLevelsEventV3,
 	);
 
 	const roomCreateEvent = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomCreate }),
-	) as PduCreateEvent | undefined;
+	) as PduCreateEventV3 | undefined;
 
 	switch (event.content.membership) {
 		case "join": {
@@ -209,13 +203,10 @@ function isMembershipChangeAllowed(
 
 			// If the only previous event is an m.room.create and the state_key is the creator, allow.
 			if (event.prev_events?.length === 1) {
-				// FIXME: v1 allows prev_events to be a sha256, but we don't support that yet
-				// @ts-expect-error ^^^
 				const prevEvent = authEventStateMap.get(event.prev_events[0]);
 
 				return prevEvent
-					? RoomV1Validator.isCreateEvent(prevEvent) &&
-							prevEvent.state_key === event.state_key
+					? isCreateEvent(prevEvent) && prevEvent.state_key === event.state_key
 					: false;
 			}
 
@@ -288,10 +279,7 @@ function isMembershipChangeAllowed(
 				roomCreateEvent,
 			);
 			//  The level required to invite a user. Defaults to 0 if unspecified.
-			const inviteLevel = Number.parseInt(
-				powerLevelEvent?.content.invite ?? "0",
-				10,
-			);
+			const inviteLevel = powerLevelEvent?.content.invite ?? 0;
 
 			if (senderPowerLevel >= inviteLevel) {
 				return true;
@@ -322,10 +310,7 @@ function isMembershipChangeAllowed(
 				roomCreateEvent,
 			);
 			// defaults to 50 if not specified
-			const banLevel = Number.parseInt(
-				powerLevelEvent?.content.ban ?? "50",
-				10,
-			);
+			const banLevel = powerLevelEvent?.content.ban ?? 50;
 			if (
 				inviteeMembership?.content.membership === "ban" &&
 				senderPowerLevel < banLevel
@@ -334,10 +319,7 @@ function isMembershipChangeAllowed(
 			}
 
 			// If the sender’s power level is greater than or equal to the kick level, and the target user’s power level is less than the sender’s power level, allow.
-			const kickRequiredLevel = Number.parseInt(
-				powerLevelEvent?.content.kick ?? "50",
-				10,
-			);
+			const kickRequiredLevel = powerLevelEvent?.content.kick ?? 50;
 			if (
 				senderPowerLevel >= kickRequiredLevel &&
 				getPowerLevelForUser(invitee, powerLevelEvent, roomCreateEvent) <
@@ -362,10 +344,7 @@ function isMembershipChangeAllowed(
 				roomCreateEvent,
 			);
 			// defaults to 50 if not specified
-			const banLevel = Number.parseInt(
-				powerLevelEvent?.content.ban ?? "50",
-				10,
-			);
+			const banLevel = powerLevelEvent?.content.ban ?? 50;
 			if (
 				senderPowerLevel >= banLevel &&
 				getPowerLevelForUser(invitee, powerLevelEvent, roomCreateEvent) <
@@ -384,14 +363,14 @@ function isMembershipChangeAllowed(
 }
 
 function validatePowerLevelEvent(
-	event: PduPowerLevelsEvent,
-	authEventMap: Map<EventID, PduV1>,
+	event: PduPowerLevelsEventV3,
+	authEventMap: Map<EventID, PduV3>,
 ) {
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
 	// If there is no previous m.room.power_levels event in the room, allow.
 	const existingPowerLevel = authEventMap.get(
 		getStateMapKey({ type: PduTypeRoomPowerLevels }),
-	) as PduPowerLevelsEvent | undefined;
+	) as PduPowerLevelsEventV3 | undefined;
 
 	const newPowerLevel = event;
 
@@ -401,7 +380,7 @@ function validatePowerLevelEvent(
 
 	const roomCreateEvent = authEventMap.get(
 		getStateMapKey({ type: PduTypeRoomCreate }),
-	) as PduCreateEvent | undefined;
+	) as PduCreateEventV3 | undefined;
 
 	const senderPowerLevel = getPowerLevelForUser(
 		event.sender,
@@ -419,15 +398,14 @@ function validatePowerLevelEvent(
 	) {
 		if (
 			event.content.users_default &&
-			Number.parseInt(event.content.users_default, 10) > senderPowerLevel
+			event.content.users_default > senderPowerLevel
 		) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.users_default &&
-			Number.parseInt(existingPowerLevel.content.users_default, 10) >
-				senderPowerLevel
+			existingPowerLevel.content.users_default > senderPowerLevel
 		) {
 			return false;
 		}
@@ -438,15 +416,14 @@ function validatePowerLevelEvent(
 	) {
 		if (
 			event.content.events_default &&
-			Number.parseInt(event.content.events_default, 10) > senderPowerLevel
+			event.content.events_default > senderPowerLevel
 		) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.events_default &&
-			Number.parseInt(existingPowerLevel.content.events_default, 10) >
-				senderPowerLevel
+			existingPowerLevel.content.events_default > senderPowerLevel
 		) {
 			return false;
 		}
@@ -457,15 +434,14 @@ function validatePowerLevelEvent(
 	) {
 		if (
 			event.content.state_default &&
-			Number.parseInt(event.content.state_default, 10) > senderPowerLevel
+			event.content.state_default > senderPowerLevel
 		) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.state_default &&
-			Number.parseInt(existingPowerLevel.content.state_default, 10) >
-				senderPowerLevel
+			existingPowerLevel.content.state_default > senderPowerLevel
 		) {
 			return false;
 		}
@@ -473,16 +449,13 @@ function validatePowerLevelEvent(
 
 	// for ban
 	if (existingPowerLevel.content.ban !== event.content.ban) {
-		if (
-			event.content.ban &&
-			Number.parseInt(event.content.ban, 10) > senderPowerLevel
-		) {
+		if (event.content.ban && event.content.ban > senderPowerLevel) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.ban &&
-			Number.parseInt(existingPowerLevel.content.ban, 10) > senderPowerLevel
+			existingPowerLevel.content.ban > senderPowerLevel
 		) {
 			return false;
 		}
@@ -490,16 +463,13 @@ function validatePowerLevelEvent(
 
 	// for kick
 	if (existingPowerLevel.content.kick !== event.content.kick) {
-		if (
-			event.content.kick &&
-			Number.parseInt(event.content.kick, 10) > senderPowerLevel
-		) {
+		if (event.content.kick && event.content.kick > senderPowerLevel) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.kick &&
-			Number.parseInt(existingPowerLevel.content.kick, 10) > senderPowerLevel
+			existingPowerLevel.content.kick > senderPowerLevel
 		) {
 			return false;
 		}
@@ -507,16 +477,13 @@ function validatePowerLevelEvent(
 
 	// for redact
 	if (existingPowerLevel.content.redact !== event.content.redact) {
-		if (
-			event.content.redact &&
-			Number.parseInt(event.content.redact, 10) > senderPowerLevel
-		) {
+		if (event.content.redact && event.content.redact > senderPowerLevel) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.redact &&
-			Number.parseInt(existingPowerLevel.content.redact, 10) > senderPowerLevel
+			existingPowerLevel.content.redact > senderPowerLevel
 		) {
 			return false;
 		}
@@ -524,16 +491,13 @@ function validatePowerLevelEvent(
 
 	// for invite
 	if (existingPowerLevel.content.invite !== event.content.invite) {
-		if (
-			event.content.invite &&
-			Number.parseInt(event.content.invite, 10) > senderPowerLevel
-		) {
+		if (event.content.invite && event.content.invite > senderPowerLevel) {
 			return false;
 		}
 
 		if (
 			existingPowerLevel.content.invite &&
-			Number.parseInt(existingPowerLevel.content.invite, 10) > senderPowerLevel
+			existingPowerLevel.content.invite > senderPowerLevel
 		) {
 			return false;
 		}
@@ -551,11 +515,7 @@ function validatePowerLevelEvent(
 		) {
 			// changed or removed
 			// If the current value is greater than the sender’s current power level, reject.
-			if (
-				existingPowerLevel.content.events?.[eventType] &&
-				Number.parseInt(existingPowerLevel.content.events?.[eventType], 10) >
-					senderPowerLevel
-			) {
+			if (existingPowerLevel.content.events?.[eventType] > senderPowerLevel) {
 				return false;
 			}
 		}
@@ -571,11 +531,7 @@ function validatePowerLevelEvent(
 		) {
 			// changed or added
 			// If the new value is greater than the sender’s current power level, reject.
-			if (
-				newPowerLevel.content.events?.[eventType] &&
-				Number.parseInt(newPowerLevel.content.events?.[eventType], 10) >
-					senderPowerLevel
-			) {
+			if (newPowerLevel.content.events?.[eventType] > senderPowerLevel) {
 				return false;
 			}
 		}
@@ -596,11 +552,7 @@ function validatePowerLevelEvent(
 		) {
 			// changed or removed
 			// If the current value is greater than the sender’s current power level, reject.
-			if (
-				existingPowerLevel.content.users?.[userId] &&
-				Number.parseInt(existingPowerLevel.content.users?.[userId], 10) >
-					senderPowerLevel
-			) {
+			if (existingPowerLevel.content.users?.[userId] > senderPowerLevel) {
 				return false;
 			}
 		}
@@ -616,11 +568,7 @@ function validatePowerLevelEvent(
 		) {
 			// changed or added
 			// If the new value is greater than the sender’s current power level, reject.
-			if (
-				newPowerLevel.content.users?.[userId] &&
-				Number.parseInt(newPowerLevel.content.users?.[userId], 10) >
-					senderPowerLevel
-			) {
+			if (newPowerLevel.content.users?.[userId] > senderPowerLevel) {
 				return false;
 			}
 		}
@@ -632,10 +580,10 @@ function validatePowerLevelEvent(
 // autheventmap as described here https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
 // could call it a sub-state, which is why using the same type as State
 export function isAllowedEvent(
-	event: PduV1,
-	authEventStateMap: Map<EventID, PduV1>,
+	event: PduV3,
+	authEventStateMap: Map<EventID, PduV3>,
 ): boolean {
-	if (RoomV1Validator.isCreateEvent(event)) {
+	if (isCreateEvent(event)) {
 		return true;
 		// return isCreateAllowed(event);
 	}
@@ -644,14 +592,14 @@ export function isAllowedEvent(
 		return isRoomAliasAllowed(event);
 	}
 
-	if (RoomV1Validator.isMembershipEvent(event)) {
+	if (isMembershipEvent(event)) {
 		return isMembershipChangeAllowed(event, authEventStateMap);
 	}
 
 	// If the sender’s current membership state is not join, reject.
 	const senderMembership = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomMember, state_key: event.sender }),
-	) as PduMembershipEvent | undefined;
+	) as PduMembershipEventV3 | undefined;
 	if (senderMembership && senderMembership.content.membership !== "join") {
 		return false;
 	}
@@ -664,10 +612,10 @@ export function isAllowedEvent(
 
 	const powerLevelEvent = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomPowerLevels }),
-	) as PduPowerLevelsEvent | undefined;
+	) as PduPowerLevelsEventV3 | undefined;
 	const roomCreateEvent = authEventStateMap.get(
 		getStateMapKey({ type: PduTypeRoomCreate }),
-	) as PduCreateEvent | undefined;
+	) as PduCreateEventV3 | undefined;
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.
 	const eventRequiredPowerLevel = getPowerLevelForEvent(event, powerLevelEvent);
@@ -687,7 +635,7 @@ export function isAllowedEvent(
 	}
 
 	// If type is m.room.power_levels:
-	if (RoomV1Validator.isPowerLevelsEvent(event)) {
+	if (isPowerLevelsEvent(event)) {
 		return validatePowerLevelEvent(event, authEventStateMap);
 	}
 
