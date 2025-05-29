@@ -1,17 +1,7 @@
-export interface EventBase {
+
+import type { EventBase as CoreEventBase } from "@hs/core/src/events/eventBase";
+export interface EventBase extends CoreEventBase {
   event_id?: string;
-  room_id: string;
-  type: string;
-  sender: string;
-  content?: Record<string, unknown>;
-  origin_server_ts: number;
-  origin: string;
-  state_key?: string;
-  depth: number;
-  prev_events: string[];
-  auth_events: string[];
-  signatures?: Record<string, Record<string, string>>;
-  unsigned?: Record<string, unknown> | undefined;
 }
 
 export interface EventStore {
