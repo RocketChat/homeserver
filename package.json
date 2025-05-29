@@ -6,7 +6,6 @@
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@types/bun": "latest",
-		"@types/node": "^22.14.1",
 		"@types/express": "^5.0.1",
 		"@types/node": "^22.15.18",
 		"husky": "^9.1.7",

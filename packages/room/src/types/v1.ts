@@ -1,43 +1,43 @@
 import { z } from "zod";
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
-const PduTypeRoomMember = "m.room.member" as const;
-const PduTypeRoomCreate = "m.room.create" as const;
-const PduTypeRoomTombstone = "m.room.tombstone" as const;
-const PduTypeRoomJoinRules = "m.room.join_rules" as const;
-const PduTypeRoomPowerLevels = "m.room.power_levels" as const;
-const PduTypeRoomAliases = "m.room.aliases" as const;
-const PduTypeRoomRedaction = "m.room.redaction" as const;
-const PduTypeRoomThirdPartyInvite = "m.room.third_party_invite" as const;
-const PduTypeRoomHistoryVisibility = "m.room.history_visibility" as const;
-const PduTypeRoomCanonicalAlias = "m.room.canonical_alias" as const;
-const PduTypeRoomEncrypted = "m.room.encrypted" as const;
-const PduTypeRoomAvatar = "m.room.avatar" as const;
-const PduTypeRoomEncryption = "m.room.encryption" as const;
-const PduTypeRoomGuestAccess = "m.room.guest_access" as const;
-const PduTypeRoomMessage = "m.room.message" as const;
-const PduTypeRoomTopic = "m.room.topic" as const;
-const PduTypeRoomName = "m.room.name" as const;
-const PduTypeRoomServerACL = "m.room.server_acl" as const;
-const PduTypeRoomPinned = "m.room.pinned_events" as const;
-const PduTypeRoomRetention = "m.room.retention" as const;
-const PduTypeDummy = "org.matrix.dummy_event" as const;
-const PduTypeSpaceChild = "m.space.child" as const;
-const PduTypeSpaceParent = "m.space.parent" as const;
-const PduTypeReaction = "m.reaction" as const;
-const PduTypeSticker = "m.sticker" as const;
-const PduTypeLiveLocationShareStart = "m.beacon_info" as const;
-const PduTypeCallInvite = "m.call.invite" as const;
-const PduTypePollStart = "m.poll.start" as const;
-
-const EduTypePresence = "m.presence" as const;
-const EduTypeTyping = "m.typing" as const;
-const EduTypeReceipt = "m.receipt" as const;
-const EduTypeDeviceListUpdate = "m.device_list_update" as const;
-const EduTypeSigningKeyUpdate = "m.signing" as const;
-const EduTypeUnstableSigningKeyUpdate =
+export const PduTypeRoomMember = "m.room.member" as const;
+export const PduTypeRoomCreate = "m.room.create" as const;
+export const PduTypeRoomTombstone = "m.room.tombstone" as const;
+export const PduTypeRoomJoinRules = "m.room.join_rules" as const;
+export const PduTypeRoomPowerLevels = "m.room.power_levels" as const;
+export const PduTypeRoomAliases = "m.room.aliases" as const;
+export const PduTypeRoomRedaction = "m.room.redaction" as const;
+export const PduTypeRoomThirdPartyInvite = "m.room.third_party_invite" as const;
+export const PduTypeRoomHistoryVisibility =
+	"m.room.history_visibility" as const;
+export const PduTypeRoomCanonicalAlias = "m.room.canonical_alias" as const;
+export const PduTypeRoomEncrypted = "m.room.encrypted" as const;
+export const PduTypeRoomAvatar = "m.room.avatar" as const;
+export const PduTypeRoomEncryption = "m.room.encryption" as const;
+export const PduTypeRoomGuestAccess = "m.room.guest_access" as const;
+export const PduTypeRoomMessage = "m.room.message" as const;
+export const PduTypeRoomTopic = "m.room.topic" as const;
+export const PduTypeRoomName = "m.room.name" as const;
+export const PduTypeRoomServerACL = "m.room.server_acl" as const;
+export const PduTypeRoomPinned = "m.room.pinned_events" as const;
+export const PduTypeRoomRetention = "m.room.retention" as const;
+export const PduTypeDummy = "org.matrix.dummy_event" as const;
+export const PduTypeSpaceChild = "m.space.child" as const;
+export const PduTypeSpaceParent = "m.space.parent" as const;
+export const PduTypeReaction = "m.reaction" as const;
+export const PduTypeSticker = "m.sticker" as const;
+export const PduTypeLiveLocationShareStart = "m.beacon_info" as const;
+export const PduTypeCallInvite = "m.call.invite" as const;
+export const PduTypePollStart = "m.poll.start" as const;
+export const EduTypePresence = "m.presence" as const;
+export const EduTypeTyping = "m.typing" as const;
+export const EduTypeReceipt = "m.receipt" as const;
+export const EduTypeDeviceListUpdate = "m.device_list_update" as const;
+export const EduTypeSigningKeyUpdate = "m.signing" as const;
+export const EduTypeUnstableSigningKeyUpdate =
 	"org.matrix.signing_key_update" as const;
-const EduTypeDirectToDevice = "m.direct_to_device" as const;
+export const EduTypeDirectToDevice = "m.direct_to_device" as const;
 
 export const PduTypeSchema = z.enum([
 	PduTypeRoomMember,
@@ -91,88 +91,6 @@ export const EventHashSchema = z.object({
 
 export type EventHash = z.infer<typeof EventHashSchema>;
 
-// SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
-export const PduV1Schema = z.object({
-	auth_events: z
-		.array(z.string().or(EventHashSchema))
-		.describe(
-			"A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.",
-		),
-	// TODO: add content schema
-	content: z
-		.object({})
-		.describe(
-			"The content of the event. This is an object with arbitrary keys and values.",
-		),
-	depth: z
-		.number()
-		.describe(
-			"The depth of the event in the DAG. This is a number that is incremented for each event in the DAG.",
-		),
-	event_id: z
-		.string()
-		.describe(
-			"The ID of the event. This is a unique identifier for the event.",
-		),
-	hashes: EventHashSchema.describe(
-		"The hashes of the event. This is an object with arbitrary keys and values.",
-	),
-	origin_server_ts: z
-		.number()
-		.describe(
-			"The timestamp of the event. This is a number that is the number of milliseconds since the Unix epoch.",
-		),
-	prev_events: z
-		.array(z.string().or(EventHashSchema))
-		.describe(
-			"A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.",
-		),
-	redacts: z
-		.string()
-		.describe(
-			"The ID of the event that this event redacts. This is an optional field.",
-		)
-		.optional(),
-	room_id: z
-		.string()
-		.describe(
-			"The ID of the room that the event is in. This is a unique identifier for the room.",
-		),
-	sender: z
-		.string()
-		.describe(
-			"The ID of the user that sent the event. This is a unique identifier for the user.",
-		),
-	signatures: z
-		.record(
-			z.string().describe("signing server name"),
-			z.record(
-				z.string().describe("signing key id"),
-				z.string().describe("signature base64"),
-			),
-		)
-		.describe(
-			"The signatures of the event. This is an object with arbitrary keys and values.",
-		),
-	state_key: z
-		.string()
-		.describe("The state key of the event. This is an optional field.")
-		.optional(),
-	type: z
-		.enum(PduTypeSchema.options)
-		.describe(
-			"The type of the event. This is a unique identifier for the event.",
-		),
-	unsigned: z
-		.object({})
-		.describe(
-			"An object with arbitrary keys and values. This is an optional field.",
-		)
-		.optional(),
-});
-
-export type PduV1 = z.infer<typeof PduV1Schema>;
-
 // SPEC: https://spec.matrix.org/v1.12/client-server-api/#events
 // types all individual event types
 // https://spec.matrix.org/v1.12/client-server-api/#room-events
@@ -224,100 +142,82 @@ export type PduMembershipEventContent = z.infer<
 	typeof PduMembershipEventContentSchema
 >;
 
-export function isMembershipEvent(
-	event: PduV1,
-): event is PduV1 & PduMembershipEventContent {
-	return event.type === PduTypeRoomMember;
-}
-
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcreate
 
 export const PduCreateEventContentSchema = z.object({
-	creator: z
-		.string()
-		.describe(
-			" The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.",
-		),
-	"m.federate": z
-		.boolean()
-		.describe(
-			" Whether users on other servers can join this room. Defaults to true if key does not exist.",
-		)
-		.optional()
-		.default(true),
-	predecessor: z
-		.object({
-			event_id: z
-				.string()
-				.describe("The event ID of the last known event in the old room."),
-			room_id: z.string().describe("The ID of the old room."),
-		})
-		.optional(),
-	room_version: z
-		.string()
-		.describe(
-			" The version of the room. Defaults to '1' if the key does not exist.",
-		)
-		.optional()
-		.default("1"),
-	type: z.string().describe("The type of the event.").optional(),
+	content: z.object({
+		creator: z
+			.string()
+			.describe(
+				" The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.",
+			),
+		"m.federate": z
+			.boolean()
+			.describe(
+				" Whether users on other servers can join this room. Defaults to true if key does not exist.",
+			)
+			.optional()
+			.default(true),
+		predecessor: z
+			.object({
+				event_id: z
+					.string()
+					.describe("The event ID of the last known event in the old room."),
+				room_id: z.string().describe("The ID of the old room."),
+			})
+			.optional(),
+		room_version: z
+			.string()
+			.describe(
+				" The version of the room. Defaults to '1' if the key does not exist.",
+			)
+			.optional()
+			.default("1"),
+		type: z.string().describe("The type of the event.").optional(),
+	}),
 });
 
 export type PduCreateEventContent = z.infer<typeof PduCreateEventContentSchema>;
 
-export function isCreateEvent(
-	event: PduV1,
-): event is PduV1 & PduCreateEventContent {
-	return event.type === PduTypeRoomCreate && event.state_key === "";
-}
-
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcreate
 
 export const PduJoinRuleEventContentSchema = z.object({
-	join_rule: z
-		.enum([
-			"public",
-			"invite",
-			"knock",
-			"private",
-			"restricted",
-			"knock_restricted",
-		])
-		.describe("The type of rules used for users wishing to join this room."),
-	allow: z
-		.array(
-			z.object({
-				room_id: z
-					.string()
-					.describe(
-						" Required if type is m.room_membership. The room ID to check the user’s membership against. If the user is joined to this room, they satisfy the condition and thus are permitted to join the restricted room.",
-					),
-				type: z
-					.enum(["m.room_membership"])
-					.describe(
-						"The type of condition: m.room_membership - the user satisfies the condition if they are joined to the referenced room. One of: [m.room_membership]",
-					),
-			}),
-		)
-		.describe(
-			"For restricted rooms, the conditions the user will be tested against. The user needs only to satisfy one of the conditions to join the restricted room. If the user fails to meet any condition, or the condition is unable to be confirmed as satisfied, then the user requires an invite to join the room. Improper or no allow conditions on a restricted join rule imply the room is effectively invite-only (no conditions can be satisfied).",
-		)
-		.optional(),
+	content: z.object({
+		join_rule: z
+			.enum([
+				"public",
+				"invite",
+				"knock",
+				"private",
+				"restricted",
+				"knock_restricted",
+			])
+			.describe("The type of rules used for users wishing to join this room."),
+		allow: z
+			.array(
+				z.object({
+					room_id: z
+						.string()
+						.describe(
+							" Required if type is m.room_membership. The room ID to check the user’s membership against. If the user is joined to this room, they satisfy the condition and thus are permitted to join the restricted room.",
+						),
+					type: z
+						.enum(["m.room_membership"])
+						.describe(
+							"The type of condition: m.room_membership - the user satisfies the condition if they are joined to the referenced room. One of: [m.room_membership]",
+						),
+				}),
+			)
+			.describe(
+				"For restricted rooms, the conditions the user will be tested against. The user needs only to satisfy one of the conditions to join the restricted room. If the user fails to meet any condition, or the condition is unable to be confirmed as satisfied, then the user requires an invite to join the room. Improper or no allow conditions on a restricted join rule imply the room is effectively invite-only (no conditions can be satisfied).",
+			)
+			.optional(),
+	}),
 });
 
 export type PduJoinRuleEventContent = z.infer<
 	typeof PduJoinRuleEventContentSchema
 >;
-
-export function isJoinRuleEvent(
-	event: PduV1,
-): event is PduV1 & PduJoinRuleEventContent {
-	return (
-		event.type === PduTypeRoomJoinRules &&
-		event.state_key === "" &&
-		"join_rule" in event.content
-	);
-}
 
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
 
@@ -406,12 +306,6 @@ export type PduPowerLevelsEventContent = z.infer<
 	typeof PduPowerLevelsEventContentSchema
 >;
 
-export function isPowerLevelsEvent(
-	event: PduV1,
-): event is PduV1 & PduPowerLevelsEventContent {
-	return event.type === PduTypeRoomPowerLevels && event.state_key === "";
-}
-
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcanonical_alias
 
 export const PduCanonicalAliasEventContentSchema = z.object({
@@ -431,9 +325,126 @@ export type PduCanonicalAliasEventContent = z.infer<
 	typeof PduCanonicalAliasEventContentSchema
 >;
 
+// SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
+export const PduV1Schema = z.object({
+	auth_events: z
+		.array(z.string().or(EventHashSchema))
+		.describe(
+			"A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.",
+		),
+	content: z
+		.union([
+			PduMembershipEventContentSchema,
+			PduCreateEventContentSchema,
+			PduJoinRuleEventContentSchema,
+			PduPowerLevelsEventContentSchema,
+			PduCanonicalAliasEventContentSchema,
+		])
+		.describe(
+			"The content of the event. This is an object with arbitrary keys and values.",
+		),
+	depth: z
+		.number()
+		.describe(
+			"The depth of the event in the DAG. This is a number that is incremented for each event in the DAG.",
+		),
+	event_id: z
+		.string()
+		.describe(
+			"The ID of the event. This is a unique identifier for the event.",
+		),
+	hashes: EventHashSchema.describe(
+		"The hashes of the event. This is an object with arbitrary keys and values.",
+	),
+	origin_server_ts: z
+		.number()
+		.describe(
+			"The timestamp of the event. This is a number that is the number of milliseconds since the Unix epoch.",
+		),
+	prev_events: z
+		.array(z.string().or(EventHashSchema))
+		.describe(
+			"A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.",
+		),
+	redacts: z
+		.string()
+		.describe(
+			"The ID of the event that this event redacts. This is an optional field.",
+		)
+		.optional(),
+	room_id: z
+		.string()
+		.describe(
+			"The ID of the room that the event is in. This is a unique identifier for the room.",
+		),
+	sender: z
+		.string()
+		.describe(
+			"The ID of the user that sent the event. This is a unique identifier for the user.",
+		),
+	signatures: z
+		.record(
+			z.string().describe("signing server name"),
+			z.record(
+				z.string().describe("signing key id"),
+				z.string().describe("signature base64"),
+			),
+		)
+		.describe(
+			"The signatures of the event. This is an object with arbitrary keys and values.",
+		),
+	state_key: z
+		.string()
+		.describe("The state key of the event. This is an optional field.")
+		.optional(),
+	type: z
+		.enum(PduTypeSchema.options)
+		.describe(
+			"The type of the event. This is a unique identifier for the event.",
+		),
+	unsigned: z
+		.object({})
+		.describe(
+			"An object with arbitrary keys and values. This is an optional field.",
+		)
+		.optional(),
+});
+
+export type PduV1 = z.infer<typeof PduV1Schema>;
+
+export type PduMembershipEvent = PduV1 & PduMembershipEventContent;
+
+export function isMembershipEvent(event: PduV1): event is PduMembershipEvent {
+	return event.type === PduTypeRoomMember;
+}
+
+export type PduCreateEvent = PduV1 & PduCreateEventContent;
+
+export function isCreateEvent(event: PduV1): event is PduCreateEvent {
+	return event.type === PduTypeRoomCreate && event.state_key === "";
+}
+
+export type PduJoinRuleEvent = PduV1 & PduJoinRuleEventContent;
+
+export function isJoinRuleEvent(event: PduV1): event is PduJoinRuleEvent {
+	return (
+		event.type === PduTypeRoomJoinRules &&
+		event.state_key === "" &&
+		"join_rule" in event.content
+	);
+}
+
+export type PduPowerLevelsEvent = PduV1 & PduPowerLevelsEventContent;
+
+export function isPowerLevelsEvent(event: PduV1): event is PduPowerLevelsEvent {
+	return event.type === PduTypeRoomPowerLevels && event.state_key === "";
+}
+
+export type PduCanonicalAliasEvent = PduV1 & PduCanonicalAliasEventContent;
+
 export function isCanonicalAliasEvent(
 	event: PduV1,
-): event is PduV1 & PduCanonicalAliasEventContent {
+): event is PduCanonicalAliasEvent {
 	return (
 		event.type === PduTypeRoomCanonicalAlias &&
 		event.state_key === "" &&

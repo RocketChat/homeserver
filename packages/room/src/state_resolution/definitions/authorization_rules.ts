@@ -1,17 +1,27 @@
 import {
-	getPowerLevel,
 	isCreateEvent,
 	isMembershipEvent,
-	PDUType,
-	type PDUCreateEvent,
-	type PDUJoinRuleEvent,
-	type PDUMembershipEvent,
-	type PDUPowerLevelsEvent,
-	type StateKey,
-	type V2Pdu,
-} from "../../events";
+	isPowerLevelsEvent,
+	PduTypeRoomCanonicalAlias,
+	PduTypeRoomCreate,
+	PduTypeRoomJoinRules,
+	PduTypeRoomMember,
+	PduTypeRoomMessage,
+	PduTypeRoomPowerLevels,
+	PduTypeRoomThirdPartyInvite,
+} from "../../types/v1";
+
+import {
+	type PduCreateEventV3,
+	type PduJoinRuleEventV3,
+	type PduMembershipEventV3,
+	type PduPowerLevelsEventV3,
+	type PduPowerLevelsEventV3Content,
+	type PduV3,
+} from "../../types/v3";
 
 import { getStateMapKey, isPowerEvent } from "./definitions";
+import { type EventID, type StateMapKey } from "../../types/_common";
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events
@@ -29,7 +39,29 @@ function extractDomain(identifier: string): string | undefined {
 	return identifier.split(":").pop();
 }
 
-function isCreateAllowed(event: V2Pdu) {
+function getPowerLevel(
+	event?: PduV3 & PduPowerLevelsEventV3Content,
+): (PduV3 & PduPowerLevelsEventV3Content) | undefined {
+	return (
+		event && {
+			...event,
+			...{
+				content: {
+					...event.content,
+					ban: event.content.ban ?? 50,
+					invite: event.content.invite ?? 0,
+					kick: event.content.kick ?? 50,
+					redact: event.content.redact ?? 50,
+					state_default: event.content.state_default ?? 50,
+					events_default: event.content.events_default ?? 0,
+					users_default: event.content.users_default ?? 0,
+				},
+			},
+		}
+	);
+}
+
+function isCreateAllowed(event: PduV3) {
 	return true; // synapse just allows this event, maybe because it also sends event that doesn't conform to the spec
 
 	// uncomment for spec compliance
@@ -80,7 +112,7 @@ function isCreateAllowed(event: V2Pdu) {
 }
 
 // TODO: better typing for alias event
-function isRoomAliasAllowed(event: V2Pdu) {
+function isRoomAliasAllowed(event: PduV3) {
 	// If event has no state_key, reject.
 	if (!event.state_key) {
 		return false;
@@ -96,8 +128,8 @@ function isRoomAliasAllowed(event: V2Pdu) {
 
 export function getPowerLevelForUser(
 	userId: string,
-	powerLevelEvent?: PDUPowerLevelsEvent,
-	roomCreateEvent?: PDUCreateEvent,
+	powerLevelEvent?: PduPowerLevelsEventV3,
+	roomCreateEvent?: PduCreateEventV3,
 ) {
 	if (powerLevelEvent) {
 		const userPowerLevel = powerLevelEvent.content.users?.[userId];
@@ -122,8 +154,10 @@ export function getPowerLevelForUser(
 }
 
 export function getPowerLevelForEvent(
-	event: V2Pdu,
-	powerLevelEvent: PDUPowerLevelsEvent = { content: {} } as PDUPowerLevelsEvent,
+	event: PduV3,
+	powerLevelEvent: PduV3 & PduPowerLevelsEventV3Content = {
+		content: {},
+	} as PduV3 & PduPowerLevelsEventV3Content,
 ) {
 	const userPowerLevel = powerLevelEvent.content.events?.[event.type];
 	if (userPowerLevel) {
@@ -132,7 +166,7 @@ export function getPowerLevelForEvent(
 
 	// state_default || events_default
 	// TODO: better way to know if state event?
-	if (event.type === PDUType.Message) {
+	if (event.type === PduTypeRoomMessage) {
 		return powerLevelEvent.content.events_default ?? 0;
 	}
 
@@ -140,8 +174,8 @@ export function getPowerLevelForEvent(
 }
 
 function isMembershipChangeAllowed(
-	event: PDUMembershipEvent,
-	authEventStateMap: Map<StateKey, V2Pdu>,
+	event: PduMembershipEventV3,
+	authEventStateMap: Map<EventID, PduV3>,
 ): boolean {
 	// If there is no state_key property, or no membership property in content, reject.
 	if (!event.state_key || !event.content.membership) {
@@ -154,33 +188,33 @@ function isMembershipChangeAllowed(
 	// sender information, like does this user have permission?
 	const sender = event.sender;
 	const senderMembership = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.Member, state_key: sender }),
-	) as PDUMembershipEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomMember, state_key: sender }),
+	) as PduMembershipEventV3 | undefined;
 
 	// user to be invited
 	const invitee = event.state_key;
 	const inviteeMembership = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.Member, state_key: invitee }),
-	) as PDUMembershipEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomMember, state_key: invitee }),
+	) as PduMembershipEventV3 | undefined;
 
 	//   const roomEvent = authEventMap.get(getStateMapKey({ type: PDUType.Create })) as PDUCreateEvent;
 	//   const room = {
 	// 	  join_rules: roomEvent?.content.join_rules,
 	//   } as const;
 	const joinRuleEvent = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.JoinRules }),
-	) as PDUJoinRuleEvent;
+		getStateMapKey({ type: PduTypeRoomJoinRules }),
+	) as PduJoinRuleEventV3;
 	const joinRule = joinRuleEvent?.content.join_rule;
 
 	const powerLevelEvent = getPowerLevel(
 		authEventStateMap.get(
-			getStateMapKey({ type: PDUType.PowerLevels }),
-		) as PDUPowerLevelsEvent,
+			getStateMapKey({ type: PduTypeRoomPowerLevels }),
+		) as PduPowerLevelsEventV3,
 	);
 
 	const roomCreateEvent = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.Create }),
-	) as PDUCreateEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomCreate }),
+	) as PduCreateEventV3 | undefined;
 
 	switch (event.content.membership) {
 		case "join": {
@@ -350,14 +384,14 @@ function isMembershipChangeAllowed(
 }
 
 function validatePowerLevelEvent(
-	event: PDUPowerLevelsEvent,
-	authEventMap: Map<string, V2Pdu>,
+	event: PduPowerLevelsEventV3,
+	authEventMap: Map<EventID, PduV3>,
 ) {
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
 	// If there is no previous m.room.power_levels event in the room, allow.
 	const existingPowerLevel = authEventMap.get(
-		getStateMapKey({ type: PDUType.PowerLevels }),
-	) as PDUPowerLevelsEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomPowerLevels }),
+	) as PduPowerLevelsEventV3 | undefined;
 
 	const newPowerLevel = event;
 
@@ -366,8 +400,8 @@ function validatePowerLevelEvent(
 	}
 
 	const roomCreateEvent = authEventMap.get(
-		getStateMapKey({ type: PDUType.Create }),
-	) as PDUCreateEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomCreate }),
+	) as PduCreateEventV3 | undefined;
 
 	const senderPowerLevel = getPowerLevelForUser(
 		event.sender,
@@ -383,11 +417,17 @@ function validatePowerLevelEvent(
 	if (
 		existingPowerLevel.content.users_default !== event.content.users_default
 	) {
-		if (event.content.users_default > senderPowerLevel) {
+		if (
+			event.content.users_default &&
+			event.content.users_default > senderPowerLevel
+		) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.users_default > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.users_default &&
+			existingPowerLevel.content.users_default > senderPowerLevel
+		) {
 			return false;
 		}
 	}
@@ -395,11 +435,17 @@ function validatePowerLevelEvent(
 	if (
 		existingPowerLevel.content.events_default !== event.content.events_default
 	) {
-		if (event.content.events_default > senderPowerLevel) {
+		if (
+			event.content.events_default &&
+			event.content.events_default > senderPowerLevel
+		) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.events_default > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.events_default &&
+			existingPowerLevel.content.events_default > senderPowerLevel
+		) {
 			return false;
 		}
 	}
@@ -407,55 +453,73 @@ function validatePowerLevelEvent(
 	if (
 		existingPowerLevel.content.state_default !== event.content.state_default
 	) {
-		if (event.content.state_default > senderPowerLevel) {
+		if (
+			event.content.state_default &&
+			event.content.state_default > senderPowerLevel
+		) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.state_default > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.state_default &&
+			existingPowerLevel.content.state_default > senderPowerLevel
+		) {
 			return false;
 		}
 	}
 
 	// for ban
 	if (existingPowerLevel.content.ban !== event.content.ban) {
-		if (event.content.ban > senderPowerLevel) {
+		if (event.content.ban && event.content.ban > senderPowerLevel) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.ban > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.ban &&
+			existingPowerLevel.content.ban > senderPowerLevel
+		) {
 			return false;
 		}
 	}
 
 	// for kick
 	if (existingPowerLevel.content.kick !== event.content.kick) {
-		if (event.content.kick > senderPowerLevel) {
+		if (event.content.kick && event.content.kick > senderPowerLevel) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.kick > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.kick &&
+			existingPowerLevel.content.kick > senderPowerLevel
+		) {
 			return false;
 		}
 	}
 
 	// for redact
 	if (existingPowerLevel.content.redact !== event.content.redact) {
-		if (event.content.redact > senderPowerLevel) {
+		if (event.content.redact && event.content.redact > senderPowerLevel) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.redact > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.redact &&
+			existingPowerLevel.content.redact > senderPowerLevel
+		) {
 			return false;
 		}
 	}
 
 	// for invite
 	if (existingPowerLevel.content.invite !== event.content.invite) {
-		if (event.content.invite > senderPowerLevel) {
+		if (event.content.invite && event.content.invite > senderPowerLevel) {
 			return false;
 		}
 
-		if (existingPowerLevel.content.invite > senderPowerLevel) {
+		if (
+			existingPowerLevel.content.invite &&
+			existingPowerLevel.content.invite > senderPowerLevel
+		) {
 			return false;
 		}
 	}
@@ -537,15 +601,15 @@ function validatePowerLevelEvent(
 // autheventmap as described here https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
 // could call it a sub-state, which is why using the same type as State
 export function isAllowedEvent(
-	event: V2Pdu,
-	authEventStateMap: Map<StateKey, V2Pdu>,
+	event: PduV3,
+	authEventStateMap: Map<EventID, PduV3>,
 ): boolean {
 	if (isCreateEvent(event)) {
 		return true;
 		// return isCreateAllowed(event);
 	}
 
-	if (event.type === PDUType.Aliases) {
+	if (event.type === PduTypeRoomCanonicalAlias) {
 		return isRoomAliasAllowed(event);
 	}
 
@@ -555,24 +619,24 @@ export function isAllowedEvent(
 
 	// If the sender’s current membership state is not join, reject.
 	const senderMembership = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.Member, state_key: event.sender }),
-	) as PDUMembershipEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomMember, state_key: event.sender }),
+	) as PduMembershipEventV3 | undefined;
 	if (senderMembership && senderMembership.content.membership !== "join") {
 		return false;
 	}
 
 	// If type is m.room.third_party_invite:
-	if (event.type === PDUType.ThirdPartyInvite) {
+	if (event.type === PduTypeRoomThirdPartyInvite) {
 		console.warn("third_party_invite not implemented");
 		return false;
 	}
 
 	const powerLevelEvent = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.PowerLevels }),
-	) as PDUPowerLevelsEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomPowerLevels }),
+	) as PduPowerLevelsEventV3 | undefined;
 	const roomCreateEvent = authEventStateMap.get(
-		getStateMapKey({ type: PDUType.Create }),
-	) as PDUCreateEvent | undefined;
+		getStateMapKey({ type: PduTypeRoomCreate }),
+	) as PduCreateEventV3 | undefined;
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.
 	const eventRequiredPowerLevel = getPowerLevelForEvent(event, powerLevelEvent);
@@ -592,7 +656,7 @@ export function isAllowedEvent(
 	}
 
 	// If type is m.room.power_levels:
-	if (isPowerEvent(event)) {
+	if (isPowerLevelsEvent(event)) {
 		return validatePowerLevelEvent(event, authEventStateMap);
 	}
 
