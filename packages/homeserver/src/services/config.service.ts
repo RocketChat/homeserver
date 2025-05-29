@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import * as dotenv from 'dotenv';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getKeyPair } from '../keys';
+import { injectable } from 'tsyringe';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
@@ -32,11 +33,11 @@ export interface AppConfig {
 	path?: string;
 }
 
-@Injectable()
+@injectable()
 export class ConfigService {
-	private readonly logger = new Logger(ConfigService.name);
 	private config: AppConfig;
 	private fileConfig: Partial<AppConfig> = {};
+	private logger = createLogger('ConfigService');
 
 	constructor() {
 		this.loadEnvFiles();
@@ -69,19 +70,19 @@ export class ConfigService {
 		const defaultEnvPath = path.resolve(process.cwd(), '.env');
 		if (fs.existsSync(defaultEnvPath)) {
 			dotenv.config({ path: defaultEnvPath });
-			this.logger.log('Loaded configuration from .env');
+			this.logger.info('Loaded configuration from .env');
 		}
 
 		const envSpecificPath = path.resolve(process.cwd(), `.env.${nodeEnv}`);
 		if (fs.existsSync(envSpecificPath)) {
 			dotenv.config({ path: envSpecificPath });
-			this.logger.log(`Loaded configuration from .env.${nodeEnv}`);
+			this.logger.info(`Loaded configuration from .env.${nodeEnv}`);
 		}
 
 		const localEnvPath = path.resolve(process.cwd(), '.env.local');
 		if (fs.existsSync(localEnvPath)) {
 			dotenv.config({ path: localEnvPath });
-			this.logger.log('Loaded configuration from .env.local');
+			this.logger.info('Loaded configuration from .env.local');
 		}
 	}
 
@@ -100,11 +101,11 @@ export class ConfigService {
 
 	async loadSigningKey() {
 		const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
-		this.logger.log(`Loading signing key from ${signingKeyPath}`);
+		this.logger.info(`Loading signing key from ${signingKeyPath}`);
 
 		try {
 			const keys = await getKeyPair({ signingKeyPath });
-			this.logger.log(
+			this.logger.info(
 				`Successfully loaded signing key for server ${this.config.server.name}`,
 			);
 			return keys;

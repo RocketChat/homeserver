@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import { BaseQueue } from './base.queue';
 
 export type MissingEventType = {
@@ -7,5 +6,4 @@ export type MissingEventType = {
 	origin: string;
 };
 
-@Injectable()
 export class MissingEventsQueue extends BaseQueue<MissingEventType> {}

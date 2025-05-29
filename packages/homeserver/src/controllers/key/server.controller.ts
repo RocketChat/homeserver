@@ -1,17 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
 import { toUnpaddedBase64 } from '../../binaryData';
 import type { SigningKey } from '../../keys';
 import { ConfigService } from '../../services/config.service';
 import { signJson } from '../../signJson';
 
-@Controller('/_matrix/key/v2')
-export class ServerController {
-	constructor(private readonly configService: ConfigService) {}
-
-	@Get('/server')
-	async server() {
-		const config = this.configService.getConfig();
-		const signingKeys = await this.configService.getSigningKey();
+export const serverKeyPlugin = (app: Elysia) => {
+	const configService = container.resolve(ConfigService);
+	return app.get('/_matrix/key/v2/server', async () => {
+		const config = configService.getConfig();
+		const signingKeys = await configService.getSigningKey();
 
 		const keys = Object.fromEntries(
 			signingKeys.map((signingKey: SigningKey) => [
@@ -36,5 +34,5 @@ export class ServerController {
 		}
 
 		return signedResponse;
-	}
-}
+	});
+};

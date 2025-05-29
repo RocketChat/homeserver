@@ -1,4 +1,3 @@
-import { Injectable } from '@nestjs/common';
 import 'reflect-metadata';
 import type { EventBase } from '../models/event.model';
 
@@ -12,7 +11,6 @@ export interface StagingAreaEventType {
 
 type QueueHandler = (item: StagingAreaEventType) => Promise<void>;
 
-@Injectable()
 export class StagingAreaQueue {
 	private queue: StagingAreaEventType[] = [];
 	private handlers: QueueHandler[] = [];

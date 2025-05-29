@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import logger from '../utils/logger';
 
 export type QueueHandler<T> = (item: T) => Promise<void> | void;
 
-@Injectable()
 export abstract class BaseQueue<T> {
 	protected queue: T[] = [];
 	protected processing = false;
@@ -33,7 +32,7 @@ export abstract class BaseQueue<T> {
 
 				await this.handler(item);
 			} catch (err) {
-				console.error(`${this.constructor.name}: Error processing item`, err);
+				logger.error(`${this.constructor.name}: Error processing item`, err);
 			}
 		}
 		this.processing = false;

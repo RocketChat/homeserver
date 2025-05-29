@@ -7,6 +7,7 @@ import {
 	type SignedJson,
 	verifyJsonSignature,
 } from '../signJson';
+import logger from '../utils/logger';
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 	pdu: HashedEvent<T>,
@@ -37,7 +38,7 @@ export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 	const expectedHash = pdu.hashes[algorithm];
 
 	if (hash !== expectedHash) {
-		console.error('Invalid hash', hash, expectedHash);
+		logger.error('Invalid hash', hash, expectedHash);
 		throw new MatrixError('400', 'Invalid hash');
 	}
 

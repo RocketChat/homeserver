@@ -1,14 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
 import type { MissingEventType } from '../queues/missing-event.queue';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { EventFetcherService } from '../services/event-fetcher.service';
 import { EventService, type StagedEvent } from '../services/event.service';
 import { StagingAreaService } from '../services/staging-area.service';
 import type { EventBase } from '@hs/core/src/events/eventBase';
+import { injectable } from 'tsyringe';
+import { createLogger } from '../utils/logger';
 
-@Injectable()
+@injectable()
 export class MissingEventListener {
-	private readonly logger = new Logger(MissingEventListener.name);
+	private readonly logger = createLogger('MissingEventListener');
 
 	constructor(
 		private readonly missingEventsQueue: MissingEventsQueue,

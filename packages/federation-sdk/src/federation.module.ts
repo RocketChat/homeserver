@@ -1,5 +1,3 @@
-import type { DynamicModule } from '@nestjs/common';
-import { Module } from '@nestjs/common';
 import { FederationConfigService } from './services/federation-config.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
@@ -21,9 +19,8 @@ export type FederationModuleAsyncOptions = {
 	imports?: any[];
 };
 
-@Module({})
 export class FederationModule {
-	static forRootAsync(options: FederationModuleAsyncOptions): DynamicModule {
+	static forRootAsync(options: FederationModuleAsyncOptions) {
 		return {
 			module: FederationModule,
 			imports: options.imports || [],

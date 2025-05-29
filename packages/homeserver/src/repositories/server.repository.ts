@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { Collection } from 'mongodb';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { injectable } from "tsyringe";
+import { Collection } from "mongodb";
+import { DatabaseConnectionService } from "../services/database-connection.service";
 
 type Server = {
 	name: string;
@@ -12,7 +12,7 @@ type Server = {
 	};
 };
 
-@Injectable()
+@injectable()
 export class ServerRepository {
 	private collection: Collection<Server> | null = null;
 
