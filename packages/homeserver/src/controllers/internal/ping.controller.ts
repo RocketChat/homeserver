@@ -1,12 +1,12 @@
-import { Controller, Get, Logger } from "@nestjs/common";
+import { Controller, Get, Logger } from '@nestjs/common';
 
-@Controller("/internal/ping")
+@Controller('/internal/ping')
 export class PingController {
 	private readonly logger = new Logger(PingController.name);
 
 	@Get()
 	ping() {
-		this.logger.debug("Ping endpoint called");
-		return "PONG!";
+		this.logger.debug('Ping endpoint called');
+		return 'PONG!';
 	}
 }

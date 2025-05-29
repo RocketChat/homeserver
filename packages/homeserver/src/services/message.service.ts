@@ -2,20 +2,20 @@ import {
 	reactionEvent,
 	type ReactionAuthEvents,
 	type ReactionEvent,
-} from "@hs/core/src/events/m.reaction";
+} from '@hs/core/src/events/m.reaction';
 import {
 	roomMessageEvent,
 	type MessageAuthEvents,
 	type RoomMessageEvent,
-} from "@hs/core/src/events/m.room.message";
-import { FederationService } from "@hs/federation-sdk";
-import { Injectable, Logger } from "@nestjs/common";
-import { generateId } from "../authentication";
-import { signEvent, type SignedEvent } from "../signEvent";
-import { ConfigService } from "./config.service";
-import { EventService, EventType } from "./event.service";
-import { RoomService } from "./room.service";
-import { ForbiddenError } from "../errors";
+} from '@hs/core/src/events/m.room.message';
+import { FederationService } from '@hs/federation-sdk';
+import { Injectable, Logger } from '@nestjs/common';
+import { generateId } from '../authentication';
+import { signEvent, type SignedEvent } from '../signEvent';
+import { ConfigService } from './config.service';
+import { EventService, EventType } from './event.service';
+import { RoomService } from './room.service';
+import { ForbiddenError } from '../errors';
 
 @Injectable()
 export class MessageService {
@@ -39,7 +39,7 @@ export class MessageService {
 			this.logger.warn(
 				`Attempted to react to a message in a tombstoned room: ${roomId}`,
 			);
-			throw new ForbiddenError("Cannot send message to a tombstoned room");
+			throw new ForbiddenError('Cannot send message to a tombstoned room');
 		}
 		const serverName = this.configService.getServerConfig().name;
 		const signingKey = await this.configService.getSigningKey();
@@ -56,13 +56,13 @@ export class MessageService {
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: MessageAuthEvents = {
-			"m.room.create":
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels":
+			'm.room.create':
+				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels':
 				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || "",
-			"m.room.member":
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || "",
+					?._id || '',
+			'm.room.member':
+				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
 		const { state_key, ...eventForSigning } = roomMessageEvent({
@@ -72,9 +72,9 @@ export class MessageService {
 			prev_events: prevEvents,
 			depth: newDepth,
 			content: {
-				msgtype: "m.text",
+				msgtype: 'm.text',
 				body: message,
-				"m.mentions": {},
+				'm.mentions': {},
 			},
 			origin: serverName,
 			ts: Date.now(),
@@ -108,7 +108,7 @@ export class MessageService {
 				`Attempted to send message to a tombstoned room: ${roomId}`,
 			);
 			throw new ForbiddenError(
-				"Cannot react to a message in a tombstoned room",
+				'Cannot react to a message in a tombstoned room',
 			);
 		}
 
@@ -127,13 +127,13 @@ export class MessageService {
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: ReactionAuthEvents = {
-			"m.room.create":
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels":
+			'm.room.create':
+				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels':
 				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || "",
-			"m.room.member":
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || "",
+					?._id || '',
+			'm.room.member':
+				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
 		const { state_key, ...eventForSigning } = reactionEvent({
@@ -143,8 +143,8 @@ export class MessageService {
 			prev_events: prevEvents,
 			depth: newDepth,
 			content: {
-				"m.relates_to": {
-					rel_type: "m.annotation",
+				'm.relates_to': {
+					rel_type: 'm.annotation',
 					event_id: eventId,
 					key: emoji,
 				},
@@ -194,13 +194,13 @@ export class MessageService {
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: MessageAuthEvents = {
-			"m.room.create":
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels":
+			'm.room.create':
+				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels':
 				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || "",
-			"m.room.member":
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || "",
+					?._id || '',
+			'm.room.member':
+				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
 		// For message edits, Matrix requires:
@@ -214,15 +214,15 @@ export class MessageService {
 			prev_events: prevEvents,
 			depth: newDepth,
 			content: {
-				msgtype: "m.text",
+				msgtype: 'm.text',
 				body: `* ${message}`, // Fallback for clients not supporting edits
-				"m.mentions": {},
-				"m.relates_to": {
-					rel_type: "m.replace",
+				'm.mentions': {},
+				'm.relates_to': {
+					rel_type: 'm.replace',
 					event_id: eventIdToReplace,
 				},
-				"m.new_content": {
-					msgtype: "m.text",
+				'm.new_content': {
+					msgtype: 'm.text',
 					body: message, // The actual new content
 				},
 			},

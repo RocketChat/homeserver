@@ -1,14 +1,14 @@
-import { Body, Controller, Logger, Put } from "@nestjs/common";
-import type { EventBase } from "../../models/event.model";
-import { EventService } from "../../services/event.service";
+import { Body, Controller, Logger, Put } from '@nestjs/common';
+import type { EventBase } from '../../models/event.model';
+import { EventService } from '../../services/event.service';
 
-@Controller("/_matrix/federation/v1")
+@Controller('/_matrix/federation/v1')
 export class TransactionsController {
 	private readonly logger = new Logger(TransactionsController.name);
 
 	constructor(private readonly eventService: EventService) {}
 
-	@Put("/send/:txnId")
+	@Put('/send/:txnId')
 	async send(@Body() body: { pdus: EventBase[] }) {
 		const { pdus = [] } = body;
 
