@@ -28,65 +28,6 @@ type HostHeaders = {
 
 const DEFAULT_PORT = "8448";
 
-const WELLKNOWN_CACHE = new Map<string, { addr: string; validUntil: number }>();
-
-class MultiError extends Error {
-  private _finalMessage = "";
-  append(message: string, error: Error) {
-    this._finalMessage += message
-      ? `\n${message}: ${error.message}`
-      : error.message;
-  }
-
-  concat(other: MultiError) {
-    const n = new MultiError();
-    n._finalMessage = this._finalMessage + other._finalMessage;
-    return n;
-  }
-
-  get message() {
-    return this._finalMessage;
-  }
-}
-
-// use this to parse since .split would incorrectly parse any ipv6 addresses
-class _URL extends URL {
-  constructor(url: string) {
-    if (/https?:\/\//.test(url)) {
-      super(url);
-    } else {
-      super(`https://${url}`);
-    }
-  }
-
-  isIP() {
-    return isIPv4(this.hostname) || isIPv6(this.ipv6);
-  }
-
-  // isIPv6 fails if ip is wrapped in []
-  get ipv6() {
-    return this.hostname.replace(/^\[|\]$/g, "");
-  }
-}
-
-function isMultiError(error: unknown): error is MultiError {
-  return error instanceof MultiError;
-}
-
-function getResolver() {
-  const resolver = new Resolver();
-
-  if (process.env.HOMESERVER_CONFIG_DNS_SERVERS) {
-    const servers = process.env.HOMESERVER_CONFIG_DNS_SERVERS.split(",").map(
-      (s) => s.trim()
-    );
-
-    resolver.setServers(servers);
-  }
-
-  return resolver;
-}
-
 // should only be needed if input is from a dns server
 function fix6(addr: string): `[${string}]` {
 	return /^\[.+\]$/.test(addr) ? (addr as `[${string}]`) : `[${addr}]`;
