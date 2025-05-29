@@ -4,9 +4,10 @@ import type { z } from "zod";
 import { generateId } from "../authentication";
 import { MatrixError } from "../errors";
 import type { EventBase, EventStore } from "../models/event.model";
+import { pruneEventDict } from "../pruneEventDict";
 import {
-    getPublicKeyFromRemoteServer,
-    makeGetPublicKeyFromServerProcedure,
+	getPublicKeyFromRemoteServer,
+	makeGetPublicKeyFromServerProcedure,
 } from "../procedures/getPublicKeyFromServer";
 import { StagingAreaQueue } from "../queues/staging-area.queue";
 import { EventRepository } from "../repositories/event.repository";
@@ -15,6 +16,7 @@ import { RoomRepository } from "../repositories/room.repository";
 import { checkSignAndHashes } from "../utils/checkSignAndHashes";
 import { eventSchemas } from "../utils/event-schemas";
 import { ConfigService } from "./config.service";
+import { RedactionEvent } from "@hs/core/src/events/m.room.redaction";
 
 type ValidationResult = {
 	eventId: string;
@@ -43,6 +45,7 @@ export enum EventType {
 	MESSAGE = "m.room.message",
 	JOIN_RULES = "m.room.join_rules",
 	REACTION = "m.reaction",
+	REDACTION = "m.room.redaction",
 }
 
 interface AuthEventsOptions {
@@ -70,7 +73,7 @@ export class EventService {
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly federationService: FederationService,
-	) {}
+	) { }
 
 	async checkIfEventsExists(
 		eventIds: string[],
@@ -105,16 +108,16 @@ export class EventService {
 		if (regularEvent) {
 			return true;
 		}
-		
+
 		// Then check staged events
-		const stagedEvents = await this.eventRepository.find({ 
+		const stagedEvents = await this.eventRepository.find({
 			_id: eventId,
-			is_staged: true 
+			is_staged: true
 		}, {});
-		
+
 		return stagedEvents.length > 0;
 	}
-	
+
 	/**
 	 * Store an event as staged with its missing dependencies
 	 */
@@ -128,7 +131,7 @@ export class EventService {
 					this.logger.debug(`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`);
 					return;
 				}
-				
+
 				// Update the staged event with potentially new dependencies info
 				await this.eventRepository.upsert(stagedEvent.event);
 				// Make a separate update for metadata since upsert only handles the event data
@@ -138,20 +141,20 @@ export class EventService {
 			} else {
 				// Create a new staged event
 				await this.eventRepository.createStaged(stagedEvent.event);
-				
+
 				// Add metadata for tracking dependencies
 				const collection = await (this.eventRepository as any).getCollection();
 				await collection.updateOne(
 					{ _id: stagedEvent._id },
-					{ 
-						$set: { 
+					{
+						$set: {
 							missing_dependencies: stagedEvent.missing_dependencies,
 							staged_at: stagedEvent.staged_at,
 							is_staged: true
-						} 
+						}
 					}
 				);
-				
+
 				this.logger.debug(`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`);
 			}
 		} catch (error) {
@@ -159,7 +162,7 @@ export class EventService {
 			throw error;
 		}
 	}
-	
+
 	/**
 	 * Find all staged events in the database
 	 */
@@ -167,12 +170,12 @@ export class EventService {
 		// We need to find all events with the staged flag
 		// The explicit is_staged flag might be present, or the traditional staged flag
 		const events = await this.eventRepository.find(
-			{ $or: [{ is_staged: true }, { staged: true }] }, 
+			{ $or: [{ is_staged: true }, { staged: true }] },
 			{}
 		);
 		return events as unknown as StagedEvent[];
 	}
-	
+
 	/**
 	 * Mark an event as no longer staged
 	 */
@@ -180,28 +183,28 @@ export class EventService {
 		try {
 			// Use the existing repository method which is designed for this
 			await this.eventRepository.removeFromStaging("", eventId); // Room ID not needed
-			
+
 			// Also remove other staging metadata we might have added
 			// We need to do this directly since removeFromStaging only clears the staged flag
 			const collection = await (this.eventRepository as any).getCollection();
 			await collection.updateOne(
 				{ _id: eventId },
-				{ 
-					$unset: { 
-						is_staged: "", 
-						missing_dependencies: "", 
-						staged_at: "" 
-					} 
+				{
+					$unset: {
+						is_staged: "",
+						missing_dependencies: "",
+						staged_at: ""
+					}
 				}
 			);
-			
+
 			this.logger.debug(`Marked event ${eventId} as no longer staged`);
 		} catch (error) {
 			this.logger.error(`Error unmarking staged event ${eventId}: ${error}`);
 			throw error;
 		}
 	}
-	
+
 	/**
 	 * Remove a dependency from all staged events that reference it
 	 */
@@ -209,27 +212,27 @@ export class EventService {
 		try {
 			// We need to do this manually since there's no repository method specifically for this
 			let updatedCount = 0;
-			
+
 			// Get all staged events that have this dependency
 			const collection = await (this.eventRepository as any).getCollection();
 			const stagedEvents = await collection.find({
 				$or: [{ is_staged: true }, { staged: true }],
 				missing_dependencies: dependencyId
 			}).toArray();
-			
+
 			// Update each one to remove the dependency
 			for (const event of stagedEvents) {
 				const missingDeps = event.missing_dependencies || [];
 				const updatedDeps = missingDeps.filter((dep: string) => dep !== dependencyId);
-				
+
 				await collection.updateOne(
 					{ _id: event._id },
 					{ $set: { missing_dependencies: updatedDeps } }
 				);
-				
+
 				updatedCount++;
 			}
-			
+
 			return updatedCount;
 		} catch (error) {
 			this.logger.error(`Error removing dependency ${dependencyId} from staged events: ${error}`);
@@ -301,7 +304,7 @@ export class EventService {
 			if (!validationResult.success) {
 				const formattedErrors = JSON.stringify(validationResult.error.format());
 				this.logger.error(`Event ${eventId} failed schema validation: ${formattedErrors}`);
-				
+
 				return {
 					eventId,
 					event,
@@ -528,7 +531,7 @@ export class EventService {
 
 	async getAuthEventsIds(options: AuthEventsOptions): Promise<{ _id: string, type: string }[]> {
 		const { eventType } = options;
-		
+
 		const queryGenerators: EventQueryMapping = {
 			[EventType.MESSAGE]: [
 				(opts) => ({ "event.room_id": opts.roomId, "event.type": EventType.CREATE }),
@@ -537,7 +540,7 @@ export class EventService {
 					if (!opts.senderId) {
 						return null;
 					}
-					
+
 					// Try join membership first
 					const joinQuery = {
 						"event.room_id": opts.roomId,
@@ -545,31 +548,31 @@ export class EventService {
 						"event.state_key": opts.senderId,
 						"event.content.membership": "join"
 					};
-					
+
 					const joinEvents = await this.eventRepository.find(joinQuery, {});
-					
+
 					// If join found, return that query
 					if (joinEvents.length > 0) {
 						return joinQuery;
 					}
-					
+
 					// Otherwise, try invite membership
 					this.logger.warn(`No join membership found for ${opts.senderId} in room ${opts.roomId}, checking for invite`);
-					
+
 					const inviteQuery = {
 						"event.room_id": opts.roomId,
 						"event.type": EventType.MEMBER,
 						"event.state_key": opts.senderId,
 						"event.content.membership": "invite"
 					};
-					
+
 					const inviteEvents = await this.eventRepository.find(inviteQuery, {});
-					
+
 					if (inviteEvents.length > 0) {
 						this.logger.warn(`Using invite membership for ${opts.senderId} since no join event was found`);
 						return inviteQuery;
 					}
-					
+
 					this.logger.error(`No membership events found for ${opts.senderId} in room ${opts.roomId}`);
 					return null;
 				}
@@ -585,7 +588,7 @@ export class EventService {
 					if (!opts.senderId) {
 						return null;
 					}
-					
+
 					// Try join membership first
 					const joinQuery = {
 						"event.room_id": opts.roomId,
@@ -593,54 +596,54 @@ export class EventService {
 						"event.state_key": opts.senderId,
 						"event.content.membership": "join"
 					};
-					
+
 					const joinEvents = await this.eventRepository.find(joinQuery, {});
-					
+
 					// If join found, return that query
 					if (joinEvents.length > 0) {
 						return joinQuery;
 					}
-					
+
 					// Otherwise, try invite membership
 					this.logger.warn(`No join membership found for ${opts.senderId} in room ${opts.roomId}, checking for invite`);
-					
+
 					const inviteQuery = {
 						"event.room_id": opts.roomId,
 						"event.type": EventType.MEMBER,
 						"event.state_key": opts.senderId,
 						"event.content.membership": "invite"
 					};
-					
+
 					const inviteEvents = await this.eventRepository.find(inviteQuery, {});
-					
+
 					if (inviteEvents.length > 0) {
 						this.logger.warn(`Using invite membership for ${opts.senderId} since no join event was found`);
 						return inviteQuery;
 					}
-					
+
 					this.logger.error(`No membership events found for ${opts.senderId} in room ${opts.roomId}`);
 					return null;
 				}
-			]
+			],
 		};
-		
+
 		const generators = queryGenerators[eventType as string] || [];
 		if (!generators) {
 			throw new Error(`No generators found for event type ${eventType}`);
 		}
-		
+
 		const authEvents: { _id: string, type: string }[] = [];
-		
+
 		for (const generator of generators) {
 			const query = await generator(options);
 			if (!query) {
 				continue;
 			}
-			
+
 			const events = await this.eventRepository.find(query, {});
 			authEvents.push(...events.map(event => ({ _id: event._id, type: event.event.type })));
 		}
-		
+
 		return authEvents;
 	}
 
@@ -660,7 +663,7 @@ export class EventService {
 		if (createEvents && createEvents.length > 0) {
 			return createEvents[0].event;
 		}
-		
+
 		return null;
 	}
 
@@ -705,7 +708,7 @@ export class EventService {
 		const events = await this.eventRepository.find(query, options);
 		return events;
 	}
-	
+
 	/**
 	 * Find all events for a room
 	 */
@@ -734,5 +737,179 @@ export class EventService {
 		) as StagedEvent[];
 
 		return events[0];
+	}
+
+	async processRedaction(redactionEvent: RedactionEvent): Promise<boolean> {
+		try {
+			this.logger.debug(`[REDACTION] Processing redaction event with ID ${generateId(redactionEvent)}`);
+			this.logger.debug(`[REDACTION] Redaction event sender: ${redactionEvent.sender}, room: ${redactionEvent.room_id}`);
+
+			const eventIdToRedact = redactionEvent.content?.redacts;
+			if (!eventIdToRedact) {
+				this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
+				return false;
+			}
+
+			this.logger.debug(`[REDACTION] Attempting to redact event: ${eventIdToRedact}`);
+
+			const eventToRedact = await this.eventRepository.findById(eventIdToRedact);
+			if (!eventToRedact) {
+				this.logger.warn(`[REDACTION] Event to redact ${eventIdToRedact} not found`);
+				return false;
+			}
+
+			this.logger.debug(`[REDACTION] Found event to redact: ${eventIdToRedact} of type ${eventToRedact.event.type}`);
+
+			const roomVersion = await this.getRoomVersion(eventToRedact.event);
+			this.logger.debug(`[REDACTION] Using room version: ${roomVersion}`);
+
+			try {
+				const redactedEventContent = pruneEventDict(eventToRedact.event, {
+					updated_redaction_rules: true,
+					restricted_join_rule_fix: true,
+					implicit_room_creator: false,
+					restricted_join_rule: true,
+					special_case_aliases_auth: true,
+					msc3389_relation_redactions: true,
+				});
+
+				if (!redactedEventContent.unsigned) {
+					redactedEventContent.unsigned = {};
+				}
+
+				(redactedEventContent.unsigned as Record<string, unknown>).redacted_because = redactionEvent;
+				this.logger.debug(`[REDACTION] Prepared redacted event content for ${eventIdToRedact}`);
+
+				let updateSuccess = false;
+
+				try {
+					await this.eventRepository.update(eventIdToRedact, {
+						event: redactedEventContent,
+					});
+					this.logger.debug(`[REDACTION] Successfully updated redacted event ${eventIdToRedact} with update method`);
+					updateSuccess = true;
+				} catch (updateError) {
+					this.logger.error(`[REDACTION] Error using update method: ${updateError}`);
+				}
+
+				// Method 2: Use upsert if update failed
+				if (!updateSuccess) {
+					try {
+						await this.eventRepository.upsert(redactedEventContent as EventBase);
+						this.logger.debug(`[REDACTION] Successfully updated redacted event ${eventIdToRedact} with upsert method`);
+						updateSuccess = true;
+					} catch (upsertError) {
+						this.logger.error(`[REDACTION] Error using upsert method: ${upsertError}`);
+					}
+				}
+
+				this.logger.log(`Successfully redacted event ${eventIdToRedact}`);
+				return true;
+			} catch (innerError) {
+				this.logger.error(`Error during redaction processing: ${innerError}`);
+				return false;
+			}
+		} catch (error) {
+			this.logger.error(`Unexpected error in processRedaction: ${error}`);
+			return false;
+		}
+	}
+
+	/**
+	 * Update an event that has been redacted with the redacted content
+	 */
+	async updateRedactedEvent(eventId: string, redactedContent: Partial<EventBase>): Promise<void> {
+		try {
+			this.logger.debug(`Updating redacted event ${eventId}`);
+
+			// First check if the event exists
+			const eventExists = await this.eventRepository.findById(eventId);
+			if (!eventExists) {
+				this.logger.warn(`Cannot update redacted event ${eventId}: Event not found`);
+				return;
+			}
+
+			// Update the event with the redacted content using direct update
+			await this.eventRepository.update(eventId, { event: redactedContent as EventBase });
+
+			this.logger.debug(`Successfully updated redacted event ${eventId}`);
+		} catch (error) {
+			this.logger.error(`Error updating redacted event ${eventId}: ${error}`);
+			throw error;
+		}
+	}
+
+	/**
+	 * Get an event by its ID
+	 */
+	async getEventById(eventId: string): Promise<EventStore | null> {
+		try {
+			return await this.eventRepository.findById(eventId);
+		} catch (error) {
+			this.logger.error(`Error retrieving event ${eventId}: ${error}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Get all member events for a room
+	 */
+	async getMemberEventsForRoom(roomId: string): Promise<EventStore[]> {
+		try {
+			return await this.eventRepository.find(
+				{
+					"event.room_id": roomId,
+					"event.type": EventType.MEMBER,
+				},
+				{}
+			);
+		} catch (error) {
+			this.logger.error(`Error getting member events for room ${roomId}: ${error}`);
+			return [];
+		}
+	}
+
+	/**
+	 * Find an event by its event_id or various other criteria if direct ID lookup fails
+	 * This is useful when dealing with potentially inconsistent event references
+	 */
+	async findEventByIdOrAlternatives(eventId: string, roomId?: string): Promise<EventStore | null> {
+		try {
+			// First try direct ID lookup
+			const directResult = await this.eventRepository.findById(eventId);
+			if (directResult) {
+				return directResult;
+			}
+
+			this.logger.debug(`Direct lookup failed for ${eventId}, trying alternative lookups`);
+
+			// If we have a roomId, try to find the event by roomId and look for fields that might match
+			if (roomId) {
+				// Try to find an event with a matching event_id field or in content.redacts
+				const alternatives = await this.eventRepository.find({
+					$and: [
+						{ "event.room_id": roomId },
+						{
+							$or: [
+								{ "event.event_id": eventId },
+								{ "event.content.redacts": eventId },
+								{ "event.content.m.relates_to.event_id": eventId }
+							]
+						}
+					]
+				}, { limit: 1 });
+
+				if (alternatives && alternatives.length > 0) {
+					this.logger.debug(`Found event ${eventId} using alternative lookup: ${JSON.stringify(alternatives[0])}`);
+					return alternatives[0];
+				}
+			}
+
+			this.logger.debug(`No alternative matches found for event ${eventId}`);
+			return null;
+		} catch (error) {
+			this.logger.error(`Error in findEventByIdOrAlternatives for ${eventId}: ${error}`);
+			return null;
+		}
 	}
 }

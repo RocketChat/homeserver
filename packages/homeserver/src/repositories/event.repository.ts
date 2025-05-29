@@ -135,6 +135,14 @@ export class EventRepository {
 		return id;
 	}
 
+	async update(eventId: string, updates: Partial<EventStore>): Promise<void> {
+		const collection = await this.getCollection();
+		await collection.updateOne(
+			{ _id: eventId },
+			{ $set: updates }
+		);
+	}
+
 	async upsert(event: EventBase): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);

@@ -1,8 +1,10 @@
 import type { ReactionEvent } from "@hs/core/src/events/m.reaction";
+import type { RedactionEvent } from "@hs/core/src/events/m.room.redaction";
 import type { RoomMessageEvent } from "@hs/core/src/events/m.room.message";
 import {
   Body,
   Controller,
+  Delete,
   Param,
   Patch,
   Post,
@@ -34,8 +36,16 @@ const SendReactionSchema = z.object({
   senderUserId: z.string(),
 });
 
+const RedactMessageSchema = z.object({
+  roomId: z.string(),
+  targetServer: z.string(),
+  reason: z.string().optional(),
+  senderUserId: z.string(),
+});
+
 type SendReactionResponseDto = SignedEvent<ReactionEvent>;
 type SendMessageResponseDto = SignedEvent<RoomMessageEvent>;
+type RedactMessageResponseDto = SignedEvent<RedactionEvent>;
 
 @Controller("internal/messages")
 export class InternalMessageController {
@@ -59,5 +69,13 @@ export class InternalMessageController {
     @Param("messageId", new ZodValidationPipe(z.string())) messageId: string,
     @Body(new ZodValidationPipe(SendReactionSchema)) body: z.infer<typeof SendReactionSchema>): Promise<SendReactionResponseDto> {
     return this.messageService.sendReaction(body.roomId, messageId, body.emoji, body.senderUserId, body.targetServer);
+  }
+
+  @Delete("/:messageId")
+  async redactMessage(
+    @Param("messageId", new ZodValidationPipe(z.string())) eventId: string,
+    @Body(new ZodValidationPipe(RedactMessageSchema)) body: z.infer<typeof RedactMessageSchema>,
+  ): Promise<RedactMessageResponseDto> {
+    return this.messageService.redactMessage(body.roomId, eventId, body.reason, body.senderUserId, body.targetServer);
   }
 }
