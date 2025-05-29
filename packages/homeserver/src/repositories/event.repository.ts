@@ -163,4 +163,25 @@ export class EventRepository {
 			{ sort: { "event.origin_server_ts": 1 } },
 		);
 	}
+
+	public async findPowerLevelsEventByRoomId(
+		roomId: string,
+	): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({
+			"event.room_id": roomId,
+			"event.type": "m.room.power_levels",
+		});
+	}
+
+	public async findAllJoinedMembersEventsByRoomId(
+		roomId: string,
+	): Promise<EventStore[]> {
+		const collection = await this.getCollection();
+		return collection.find({
+			"event.room_id": roomId,
+			"event.type": "m.room.member",
+			"event.content.membership": "join",
+		}).toArray();
+	}
 }

@@ -1,6 +1,6 @@
 import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
 import { FederationService } from "@hs/federation-sdk";
-import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
+import { ForbiddenException, HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { generateId } from "../authentication";
 import { makeUnsignedRequest } from "../makeRequest";
 import type { EventBase } from "../models/event.model";
@@ -8,6 +8,7 @@ import { signEvent } from "../signEvent";
 import { ConfigService } from "./config.service";
 import { EventService } from "./event.service";
 import { RoomService } from "./room.service";
+import { RoomRepository } from "../repositories/room.repository";
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -27,10 +28,11 @@ export class InviteService {
 		private readonly roomService: RoomService,
 	) { }
 
+
 	/**
 	 * Invite a user to an existing room, or create a new room if none is provided
 	 */
-	async inviteUserToRoom(username: string, roomId?: string, sender?: string): Promise<unknown> {
+	async inviteUserToRoom(username: string, roomId?: string, sender?: string, name?: string): Promise<unknown> {
 		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
 
 		const config = this.configService.getServerConfig();
@@ -41,13 +43,25 @@ export class InviteService {
 			throw new HttpException("Invalid username", HttpStatus.BAD_REQUEST);
 		}
 
+		if (!finalRoomId && !name) {
+			throw new HttpException("Either roomId or name must be provided", HttpStatus.BAD_REQUEST);
+		}
+
+		// Check if the room exists and is not tombstoned
+		if (finalRoomId) {
+			const isTombstoned = await this.roomService.isRoomTombstoned(finalRoomId);
+			if (isTombstoned) {
+				throw new HttpException("Cannot invite to a deleted room", HttpStatus.FORBIDDEN);
+			}
+		}
+
 		// Create room if no roomId was provided
-		if (sender && !finalRoomId) {
+		if (sender && !finalRoomId && name) {
 			if (sender.split(":").pop() !== config.name) {
 				throw new HttpException("Invalid sender", HttpStatus.BAD_REQUEST);
 			}
 
-			const { roomId: createdRoomId } = await this.roomService.createRoom(username, sender);
+			const { roomId: createdRoomId } = await this.roomService.createRoom(username, sender, name);
 			finalRoomId = createdRoomId;
 		}
 
@@ -118,6 +132,12 @@ export class InviteService {
 							state_key: roomEvents[0].event.sender,
 							type: "m.room.member",
 						},
+						{
+							type: "m.room.name" as const,
+							content: { name: name || "New Room" }, // TODO: Revisit this since the room creation must not be here
+							sender: roomEvents[0].event.sender,
+							state_key: "",
+						}
 					],
 				},
 			}),
@@ -146,9 +166,9 @@ export class InviteService {
 			signingName: config.name,
 		});
 
-		if (responseMake && (responseMake as any).event) {
-			const responseEventId = generateId((responseMake as any).event);
-			await this.eventService.insertEvent((responseMake as any).event, responseEventId);
+		if (responseMake && 'event' in responseMake) {
+			const responseEventId = generateId(responseMake.event as EventBase);
+			await this.eventService.insertEvent(responseMake.event as EventBase, responseEventId);
 		}
 
 		return responseMake;
@@ -156,14 +176,22 @@ export class InviteService {
 
 	async processInvite(event: ProcessInviteEvent, roomId: string, eventId: string): Promise<unknown> {
 		try {
+			// Check if the room is tombstoned (deleted)
+			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
+			if (isTombstoned) {
+				this.logger.warn(`Received invite for deleted room ${roomId}, rejecting`);
+				throw new ForbiddenException("Cannot process invite for a deleted room");
+			}
+
 			// TODO: Validate before inserting
 			try {
 				await this.eventService.insertEvent(event.event, undefined, {
 					invite_room_state: event.invite_room_state,
 					room_version: event.room_version,
 				});
-			} catch (error: any) {
-				this.logger.error(`Event already exists: ${error.message}`);
+			} catch (error: unknown) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				this.logger.error(`Event already exists: ${errorMessage}`);
 				throw error;
 			}
 
@@ -187,6 +215,13 @@ export class InviteService {
 
 	async acceptInvite(roomId: string, userId: string): Promise<void> {
 		try {
+			// Check if the room is tombstoned (deleted)
+			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
+			if (isTombstoned) {
+				this.logger.warn(`Attempt to accept invite for deleted room ${roomId}, rejecting`);
+				throw new ForbiddenException(`Cannot accept invite for deleted room ${roomId}`);
+			}
+
 			const inviteEvent = await this.eventService.findInviteEvent(roomId, userId);
 
 			if (!inviteEvent) {
@@ -198,8 +233,9 @@ export class InviteService {
 				invite_room_state: inviteEvent.invite_room_state,
 				room_version: inviteEvent.room_version || "10",
 			});
-		} catch (error: any) {
-			this.logger.error(`Failed to accept invite: ${error.message}`);
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			this.logger.error(`Failed to accept invite: ${errorMessage}`);
 			throw error;
 		}
 	}
@@ -225,9 +261,10 @@ export class InviteService {
 			}
 
 			this.logger.debug(`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`);
-		} catch (error: any) {
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			this.logger.error(
-				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${error.message}`,
+				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${errorMessage}`,
 			);
 			throw error;
 		}

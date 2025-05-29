@@ -177,4 +177,18 @@ export class FederationService {
   >(event: T, originServer: string): Promise<boolean> {
     return this.signatureService.verifySignature(event, originServer);
   }
-} 
+
+  /**
+   * Send a room tombstone event to a remote server
+   */
+  async sendTombstone(domain: string, tombstoneEvent: EventBase): Promise<SendTransactionResponse> {
+    try {
+      return await this.sendEvent(domain, tombstoneEvent);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`sendTombstone failed: ${errorMessage}`, errorStack);
+      throw error;
+    }
+  }
+}
