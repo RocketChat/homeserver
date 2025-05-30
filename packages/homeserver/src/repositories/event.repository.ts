@@ -1,8 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import type { Collection, Filter, FindOptions } from "mongodb";
-import { generateId } from "../authentication";
-import type { EventBase, EventStore } from "../models/event.model";
-import { DatabaseConnectionService } from "../services/database-connection.service";
+import { Injectable } from '@nestjs/common';
+import type { Collection, Filter, FindOptions } from 'mongodb';
+import { generateId } from '../authentication';
+import type { EventBase, EventStore } from '../models/event.model';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 @Injectable()
 export class EventRepository {
@@ -14,7 +14,7 @@ export class EventRepository {
 
 	private async getCollection(): Promise<Collection<EventStore>> {
 		const db = await this.dbConnection.getDb();
-		this.collection = db.collection<EventStore>("events");
+		this.collection = db.collection<EventStore>('events');
 		return this.collection;
 	}
 
@@ -37,8 +37,8 @@ export class EventRepository {
 	): Promise<EventStore[]> {
 		const collection = await this.getCollection();
 		return collection
-			.find({ "event.room_id": roomId })
-			.sort({ "event.origin_server_ts": -1 })
+			.find({ 'event.room_id': roomId })
+			.sort({ 'event.origin_server_ts': -1 })
 			.skip(skip)
 			.limit(limit)
 			.toArray();
@@ -52,24 +52,31 @@ export class EventRepository {
 
 		const collection = await this.getCollection();
 		return collection
-			.find({ "event.room_id": roomId, _id: { $in: eventIds } })
+			.find({ 'event.room_id': roomId, _id: { $in: eventIds } })
 			.toArray();
 	}
 
 	async findLatestInRoom(roomId: string): Promise<EventStore | null> {
 		const collection = await this.getCollection();
 		return collection.findOne(
-			{ "event.room_id": roomId },
-			{ sort: { "event.depth": -1 } },
+			{ 'event.room_id': roomId },
+			{ sort: { 'event.depth': -1 } },
 		);
 	}
 
-	async find(query: Filter<EventStore>, options: FindOptions): Promise<EventStore[]> {
+	async find(
+		query: Filter<EventStore>,
+		options: FindOptions,
+	): Promise<EventStore[]> {
 		const collection = await this.getCollection();
 		return collection.find(query, options).toArray();
 	}
 
-	async create(event: EventBase, eventId?: string, args?: object): Promise<string> {
+	async create(
+		event: EventBase,
+		eventId?: string,
+		args?: object,
+	): Promise<string> {
 		const collection = await this.getCollection();
 		const id = eventId || event.event_id || generateId(event);
 
@@ -101,24 +108,23 @@ export class EventRepository {
 		const collection = await this.getCollection();
 		return collection
 			.find({
-				"event.room_id": roomId,
+				'event.room_id': roomId,
 				$or: [
 					{
-						"event.type": {
+						'event.type': {
 							$in: [
-								"m.room.create",
-								"m.room.power_levels",
-								"m.room.join_rules",
+								'm.room.create',
+								'm.room.power_levels',
+								'm.room.join_rules',
 							],
 						},
 					},
 					{
-						"event.type": "m.room.member",
-						"event.content.membership": "invite",
+						'event.type': 'm.room.member',
+						'event.content.membership': 'invite',
 					},
 				],
-			},
-			)
+			})
 			.toArray();
 	}
 
@@ -160,7 +166,7 @@ export class EventRepository {
 	async removeFromStaging(roomId: string, eventId: string): Promise<void> {
 		const collection = await this.getCollection();
 		await collection.updateOne(
-			{ _id: eventId, "event.room_id": roomId },
+			{ _id: eventId, 'event.room_id': roomId },
 			{ $unset: { staged: 1 } },
 		);
 	}
@@ -168,8 +174,31 @@ export class EventRepository {
 	async findOldestStaged(roomId: string): Promise<EventStore | null> {
 		const collection = await this.getCollection();
 		return collection.findOne(
-			{ staged: true, "event.room_id": roomId },
-			{ sort: { "event.origin_server_ts": 1 } },
+			{ staged: true, 'event.room_id': roomId },
+			{ sort: { 'event.origin_server_ts': 1 } },
 		);
+	}
+
+	public async findPowerLevelsEventByRoomId(
+		roomId: string,
+	): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({
+			'event.room_id': roomId,
+			'event.type': 'm.room.power_levels',
+		});
+	}
+
+	public async findAllJoinedMembersEventsByRoomId(
+		roomId: string,
+	): Promise<EventStore[]> {
+		const collection = await this.getCollection();
+		return collection
+			.find({
+				'event.room_id': roomId,
+				'event.type': 'm.room.member',
+				'event.content.membership': 'join',
+			})
+			.toArray();
 	}
 }

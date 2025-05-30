@@ -1,10 +1,10 @@
-import crypto from "node:crypto";
+import crypto from 'node:crypto';
 
-import nacl from "tweetnacl";
-import { toUnpaddedBase64 } from "./binaryData";
-import type { SigningKey } from "./keys";
-import { pruneEventDict } from "./pruneEventDict";
-import { encodeCanonicalJson, signJson } from "./signJson";
+import nacl from 'tweetnacl';
+import { toUnpaddedBase64 } from './binaryData';
+import type { SigningKey } from './keys';
+import { pruneEventDict } from './pruneEventDict';
+import { encodeCanonicalJson, signJson } from './signJson';
 
 /**
  * Extracts the origin, destination, key, and signature from the authorization header.
@@ -31,11 +31,11 @@ export const extractSignaturesFromHeader = (authorizationHeader: string) => {
 
 	if (Object.keys(rest).length) {
 		// it should never happen since the regex should match all the parameters
-		throw new Error("Invalid authorization header, unexpected parameters");
+		throw new Error('Invalid authorization header, unexpected parameters');
 	}
 
 	if ([origin, destination, key, signature].some((value) => !value)) {
-		throw new Error("Invalid authorization header");
+		throw new Error('Invalid authorization header');
 	}
 
 	return {
@@ -158,8 +158,8 @@ export function computeAndMergeHash<T extends Record<string, unknown>>(
 
 export function computeHash<T extends Record<string, unknown>>(
 	content: T,
-	algorithm: "sha256" = "sha256",
-): ["sha256", string] {
+	algorithm: 'sha256' = 'sha256',
+): ['sha256', string] {
 	// remove the fields that are not part of the hash
 	const {
 		age_ts,
@@ -186,7 +186,7 @@ export function generateId<T extends object>(content: T): string {
 	);
 
 	return `\$${toUnpaddedBase64(
-		crypto.createHash("sha256").update(encodeCanonicalJson(toHash)).digest(),
+		crypto.createHash('sha256').update(encodeCanonicalJson(toHash)).digest(),
 		{ urlSafe: true },
 	)}`;
 }

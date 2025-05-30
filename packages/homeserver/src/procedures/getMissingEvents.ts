@@ -1,4 +1,4 @@
-import type { EventBase } from "@hs/core/src/events/eventBase";
+import type { EventBase } from '@hs/core/src/events/eventBase';
 
 export const makeGetMissingEventsProcedure = (
 	getDeepEarliestAndLatestEvents: (

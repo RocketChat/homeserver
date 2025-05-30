@@ -1,4 +1,4 @@
-import typia, { tags } from "typia";
+import typia, { tags } from 'typia';
 
 // https://spec.matrix.org/v1.10/server-server-api/#post_matrixkeyv2query
 
@@ -34,20 +34,20 @@ export interface V2KeyQueryResponse {
 		>;
 	}[];
 }
-declare module "./endpoints" {
+declare module './endpoints' {
 	interface Endpoints {
-		"/v2/query": {
+		'/v2/query': {
 			POST: {
-				description: "Query for keys from multiple servers in a batch format. The receiving (notary) server must sign the keys returned by the queried servers.";
+				description: 'Query for keys from multiple servers in a batch format. The receiving (notary) server must sign the keys returned by the queried servers.';
 				auth: false;
 				rateLimit: false;
 				body: V2KeyQueryBody;
 				response: V2KeyQueryResponse;
 			};
 		};
-		"/v2/query/:serverName": {
+		'/v2/query/:serverName': {
 			GET: {
-				description: "Query for keys from a single server. The receiving (notary) server must sign the keys returned by the queried server.";
+				description: 'Query for keys from a single server. The receiving (notary) server must sign the keys returned by the queried server.';
 				auth: false;
 				rateLimit: false;
 				query: V2KeyQueryCriteria;
