@@ -16,7 +16,7 @@ import { RoomRepository } from "../repositories/room.repository";
 import { checkSignAndHashes } from "../utils/checkSignAndHashes";
 import { eventSchemas } from "../utils/event-schemas";
 import { ConfigService } from "./config.service";
-import { RedactionEvent } from "@hs/core/src/events/m.room.redaction";
+import type { RedactionEvent } from "@hs/core/src/events/m.room.redaction";
 
 type ValidationResult = {
 	eventId: string;
@@ -739,177 +739,58 @@ export class EventService {
 		return events[0];
 	}
 
-	async processRedaction(redactionEvent: RedactionEvent): Promise<boolean> {
-		try {
-			this.logger.debug(`[REDACTION] Processing redaction event with ID ${generateId(redactionEvent)}`);
-			this.logger.debug(`[REDACTION] Redaction event sender: ${redactionEvent.sender}, room: ${redactionEvent.room_id}`);
-
-			const eventIdToRedact = redactionEvent.content?.redacts;
-			if (!eventIdToRedact) {
-				this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
-				return false;
-			}
-
-			this.logger.debug(`[REDACTION] Attempting to redact event: ${eventIdToRedact}`);
-
-			const eventToRedact = await this.eventRepository.findById(eventIdToRedact);
-			if (!eventToRedact) {
-				this.logger.warn(`[REDACTION] Event to redact ${eventIdToRedact} not found`);
-				return false;
-			}
-
-			this.logger.debug(`[REDACTION] Found event to redact: ${eventIdToRedact} of type ${eventToRedact.event.type}`);
-
-			const roomVersion = await this.getRoomVersion(eventToRedact.event);
-			this.logger.debug(`[REDACTION] Using room version: ${roomVersion}`);
-
-			try {
-				const redactedEventContent = pruneEventDict(eventToRedact.event, {
-					updated_redaction_rules: true,
-					restricted_join_rule_fix: true,
-					implicit_room_creator: false,
-					restricted_join_rule: true,
-					special_case_aliases_auth: true,
-					msc3389_relation_redactions: true,
-				});
-
-				if (!redactedEventContent.unsigned) {
-					redactedEventContent.unsigned = {};
-				}
-
-				(redactedEventContent.unsigned as Record<string, unknown>).redacted_because = redactionEvent;
-				this.logger.debug(`[REDACTION] Prepared redacted event content for ${eventIdToRedact}`);
-
-				let updateSuccess = false;
-
-				try {
-					await this.eventRepository.update(eventIdToRedact, {
-						event: redactedEventContent,
-					});
-					this.logger.debug(`[REDACTION] Successfully updated redacted event ${eventIdToRedact} with update method`);
-					updateSuccess = true;
-				} catch (updateError) {
-					this.logger.error(`[REDACTION] Error using update method: ${updateError}`);
-				}
-
-				// Method 2: Use upsert if update failed
-				if (!updateSuccess) {
-					try {
-						await this.eventRepository.upsert(redactedEventContent as EventBase);
-						this.logger.debug(`[REDACTION] Successfully updated redacted event ${eventIdToRedact} with upsert method`);
-						updateSuccess = true;
-					} catch (upsertError) {
-						this.logger.error(`[REDACTION] Error using upsert method: ${upsertError}`);
-					}
-				}
-
-				this.logger.log(`Successfully redacted event ${eventIdToRedact}`);
-				return true;
-			} catch (innerError) {
-				this.logger.error(`Error during redaction processing: ${innerError}`);
-				return false;
-			}
-		} catch (error) {
-			this.logger.error(`Unexpected error in processRedaction: ${error}`);
-			return false;
+	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
+		const eventIdToRedact = redactionEvent.redacts;
+		if (!eventIdToRedact) {
+			this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
+			return;
 		}
-	}
 
-	/**
-	 * Update an event that has been redacted with the redacted content
-	 */
-	async updateRedactedEvent(eventId: string, redactedContent: Partial<EventBase>): Promise<void> {
-		try {
-			this.logger.debug(`Updating redacted event ${eventId}`);
-
-			// First check if the event exists
-			const eventExists = await this.eventRepository.findById(eventId);
-			if (!eventExists) {
-				this.logger.warn(`Cannot update redacted event ${eventId}: Event not found`);
-				return;
-			}
-
-			// Update the event with the redacted content using direct update
-			await this.eventRepository.update(eventId, { event: redactedContent as EventBase });
-
-			this.logger.debug(`Successfully updated redacted event ${eventId}`);
-		} catch (error) {
-			this.logger.error(`Error updating redacted event ${eventId}: ${error}`);
-			throw error;
+		const eventToRedact = await this.eventRepository.findById(eventIdToRedact);
+		if (!eventToRedact) {
+			this.logger.warn(`[REDACTION] Event to redact ${eventIdToRedact} not found`);
+			return;
 		}
-	}
 
-	/**
-	 * Get an event by its ID
-	 */
-	async getEventById(eventId: string): Promise<EventStore | null> {
-		try {
-			return await this.eventRepository.findById(eventId);
-		} catch (error) {
-			this.logger.error(`Error retrieving event ${eventId}: ${error}`);
-			return null;
+		// Apply redaction rules according to Matrix spec for room versions 6 and above
+		// These parameters correspond to the features in newer room versions (v6+):
+		// - updated_redaction_rules: Uses stricter redaction rules from v6+
+		// - restricted_join_rule_fix: Preserves "authorising_user" field in membership events (v8+)
+		// - restricted_join_rule: Preserves "allow" field in join rules (v7+)
+		// - special_case_aliases_auth: Special handling for aliases events (v6+)
+		// - msc3389_relation_redactions: Preserves certain relation data per MSC3389 (v9+)
+		const redactedEventContent = pruneEventDict(eventToRedact.event, {
+			updated_redaction_rules: true,
+			restricted_join_rule_fix: true,
+			implicit_room_creator: false,
+			restricted_join_rule: true,
+			special_case_aliases_auth: true,
+			msc3389_relation_redactions: true,
+		});
+
+		// According to Matrix spec, redacted events must contain a reference to what redacted them
+		// in the unsigned section of the event
+		if (!redactedEventContent.unsigned) {
+			redactedEventContent.unsigned = {};
 		}
-	}
 
-	/**
-	 * Get all member events for a room
-	 */
-	async getMemberEventsForRoom(roomId: string): Promise<EventStore[]> {
-		try {
-			return await this.eventRepository.find(
-				{
-					"event.room_id": roomId,
-					"event.type": EventType.MEMBER,
-				},
-				{}
-			);
-		} catch (error) {
-			this.logger.error(`Error getting member events for room ${roomId}: ${error}`);
-			return [];
-		}
-	}
+		// Store the redaction event in the redacted_because field as specified in the Matrix spec
+		redactedEventContent.unsigned.redacted_because = redactionEvent;
 
-	/**
-	 * Find an event by its event_id or various other criteria if direct ID lookup fails
-	 * This is useful when dealing with potentially inconsistent event references
-	 */
-	async findEventByIdOrAlternatives(eventId: string, roomId?: string): Promise<EventStore | null> {
-		try {
-			// First try direct ID lookup
-			const directResult = await this.eventRepository.findById(eventId);
-			if (directResult) {
-				return directResult;
-			}
+		const finalRedactedEvent: EventBase = {
+			type: eventToRedact.event.type,
+			room_id: eventToRedact.event.room_id,
+			sender: eventToRedact.event.sender,
+			origin: eventToRedact.event.origin,
+			origin_server_ts: eventToRedact.event.origin_server_ts,
+			depth: eventToRedact.event.depth,
+			prev_events: eventToRedact.event.prev_events,
+			auth_events: eventToRedact.event.auth_events,
+			...redactedEventContent,
+		};
 
-			this.logger.debug(`Direct lookup failed for ${eventId}, trying alternative lookups`);
+		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
 
-			// If we have a roomId, try to find the event by roomId and look for fields that might match
-			if (roomId) {
-				// Try to find an event with a matching event_id field or in content.redacts
-				const alternatives = await this.eventRepository.find({
-					$and: [
-						{ "event.room_id": roomId },
-						{
-							$or: [
-								{ "event.event_id": eventId },
-								{ "event.content.redacts": eventId },
-								{ "event.content.m.relates_to.event_id": eventId }
-							]
-						}
-					]
-				}, { limit: 1 });
-
-				if (alternatives && alternatives.length > 0) {
-					this.logger.debug(`Found event ${eventId} using alternative lookup: ${JSON.stringify(alternatives[0])}`);
-					return alternatives[0];
-				}
-			}
-
-			this.logger.debug(`No alternative matches found for event ${eventId}`);
-			return null;
-		} catch (error) {
-			this.logger.error(`Error in findEventByIdOrAlternatives for ${eventId}: ${error}`);
-			return null;
-		}
+		this.logger.log(`Successfully redacted event ${eventIdToRedact}`);
 	}
 }

@@ -193,8 +193,6 @@ export class MessageService {
             "m.room.member": authEvents.find((event) => event.type === EventType.MEMBER)?._id || "",
         };
 
-        this.logger.debug(`Auth events map for redaction: ${JSON.stringify(authEventsMap)}`);
-
         if (!authEventsMap["m.room.create"] || !authEventsMap["m.room.power_levels"] || !authEventsMap["m.room.member"]) {
             throw new Error("There are missing critical auth events (create, power_levels, or sender's member event) for the redaction event on the sending server.");
         }
@@ -206,14 +204,12 @@ export class MessageService {
             prev_events: prevEvents,
             depth: newDepth,
             content: {
-                redacts: eventIdToRedact,  // This will be moved to top level by redactionEvent
+                redacts: eventIdToRedact,
                 ...(reason && { reason })
             },
             origin: serverName,
             ts: Date.now(),
         });
-
-        this.logger.debug(`[REDACTION] Created redaction event: ${JSON.stringify(eventForSigning)}`);
 
         const signedEvent = await signEvent(
             eventForSigning,
@@ -221,43 +217,14 @@ export class MessageService {
             serverName
         );
 
-        this.logger.debug(`[REDACTION] Final event to be sent: ${JSON.stringify({
-            type: signedEvent.type,
-            content: signedEvent.content,
-            redacts: signedEvent.redacts,
-            room_id: signedEvent.room_id,
-            sender: signedEvent.sender,
-            origin_server_ts: signedEvent.origin_server_ts
-        })}`);
-
-        try {
-            // First send the event to the target server
-            await this.federationService.sendEvent(targetServer, signedEvent);
-            this.logger.log(`Sent redaction event to target server ${targetServer}`);
-
-            // Then store it in our database 
-            await this.eventService.insertEvent(signedEvent);
-            this.logger.log('Inserted redaction event in local database');
-
-            // Finally, process the redaction locally
-            const success = await this.eventService.processRedaction(signedEvent);
-            if (success) {
-                this.logger.log(`Successfully processed redaction for event ${eventIdToRedact}`);
-            } else {
-                this.logger.warn(`Failed to process redaction for event ${eventIdToRedact} locally on ${serverName}, but event was sent to ${targetServer}. The event may still be redacted by the receiving server.`);
-
-                // Try a fallback approach - fetch the event directly and try redacting it
-                const eventToRedact = await this.eventService.getEventById(eventIdToRedact);
-                if (eventToRedact) {
-                    this.logger.log(`Found event ${eventIdToRedact} for potential direct redaction`);
-                    // The server may still handle this redaction even though our local processing failed
-                }
-            }
-
-            return signedEvent;
-        } catch (error) {
-            this.logger.error(`Failed to send redaction event: ${error}`);
-            throw new Error(`Failed to send redaction event: ${error}`);
+        const eventId = await this.eventService.insertEvent(signedEvent);
+        const eventToFederate: RedactionEvent = {
+            ...signedEvent,
+            redacts: eventForSigning.redacts,
         }
+        await this.federationService.sendEvent<RedactionEvent>(targetServer, eventToFederate);
+        await this.eventService.processRedaction(eventToFederate);
+
+        return { ...signedEvent, event_id: eventId };
     }
 }

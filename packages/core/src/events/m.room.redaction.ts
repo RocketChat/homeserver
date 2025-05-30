@@ -3,15 +3,7 @@ import { createEventWithId } from "./utils/createSignedEvent";
 
 declare module "./eventBase" {
     interface Events {
-        "m.room.redaction": {
-            content: {
-                reason?: string;
-            };
-            unsigned: {
-                age_ts: number;
-            };
-            redacts: string;
-        };
+        "m.room.redaction": RedactionEvent;
     }
 }
 
@@ -24,26 +16,23 @@ export type RedactionAuthEvents = {
 export const isRedactionEvent = (
     event: EventBase,
 ): event is RedactionEvent => {
-    return event.type === "m.room.redaction";
+    return event?.type === "m.room.redaction";
 };
 
 export interface RedactionEvent extends EventBase {
-    type: "m.room.redaction";
     content: {
         reason?: string;
     };
     unsigned: {
         age_ts: number;
     };
-    redacts: string;  // Required at top level only
+    redacts: string;
 }
 
 const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
     return Boolean(value);
 };
 
-// Redaction events must have 'redacts' at the top level only per Matrix spec,
-// not in content as our old types suggested.
 export const redactionEvent = ({
     roomId,
     sender,
@@ -61,7 +50,7 @@ export const redactionEvent = ({
     prev_events: string[];
     depth: number;
     content: {
-        redacts: string;  // We take redacts in content to maintain API compatibility
+        redacts: string;
         reason?: string;
     };
     origin?: string;
@@ -83,19 +72,18 @@ export const redactionEvent = ({
         prev_events,
         depth,
         content: {
-            ...(reason ? { reason } : {})  // Only include reason in content
+            ...(reason ? { reason } : {})
         },
         origin_server_ts: ts,
         ts,
         origin,
         unsigned: { ...unsigned, age_ts: ts },
-    }) as EventBase;
+    });
 
-    // Add redacts at the top level for Matrix spec compliance
     return {
         ...baseEvent,
         redacts,
-    } as RedactionEvent;
+    };
 };
 
 export const createRedactionEvent = createEventWithId(redactionEvent);

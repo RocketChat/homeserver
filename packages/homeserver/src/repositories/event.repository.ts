@@ -135,11 +135,12 @@ export class EventRepository {
 		return id;
 	}
 
-	async update(eventId: string, updates: Partial<EventStore>): Promise<void> {
+	async redactEvent(eventId: string, redactedEvent: EventBase): Promise<void> {
 		const collection = await this.getCollection();
+
 		await collection.updateOne(
 			{ _id: eventId },
-			{ $set: updates }
+			{ $set: { event: redactedEvent } } // Purposefully replacing the entire event
 		);
 	}
 
