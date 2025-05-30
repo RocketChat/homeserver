@@ -1,6 +1,5 @@
 import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
 import type { SigningKey } from '@hs/homeserver/src/keys';
-import { Injectable, Logger } from '@nestjs/common';
 import * as nacl from 'tweetnacl';
 import {
 	authorizationHeaders,
@@ -12,6 +11,8 @@ import {
 	signJson,
 } from '../../../homeserver/src/signJson';
 import { FederationConfigService } from './federation-config.service';
+import { inject, injectable } from 'tsyringe';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
 
 interface SignedRequest {
 	method: string;
@@ -23,10 +24,9 @@ interface SignedRequest {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-@Injectable()
+@injectable()
 export class FederationRequestService {
-	private readonly logger = new Logger(FederationRequestService.name);
-
+	private readonly logger = createLogger('FederationRequestService');
 	constructor(private readonly configService: FederationConfigService) {}
 
 	async makeSignedRequest<T>({

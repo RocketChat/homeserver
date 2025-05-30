@@ -1,18 +1,16 @@
-import { Controller, Get } from '@nestjs/common';
-import { ConfigService } from '../../services/config.service';
+import { Elysia } from "elysia";
+import { container } from "tsyringe";
+import { ConfigService } from "../../services/config.service";
 
-@Controller('/_matrix/federation/v1')
-export class VersionsController {
-	constructor(private readonly configService: ConfigService) {}
-
-	@Get('/version')
-	async version() {
-		const config = this.configService.getServerConfig();
+export const versionsPlugin = (app: Elysia) => {
+	const configService = container.resolve(ConfigService);
+	return app.get("/_matrix/federation/v1/version", () => {
+		const config = configService.getServerConfig();
 		return {
 			server: {
 				name: config.name,
 				version: config.version,
 			},
 		};
-	}
-}
+	});
+};

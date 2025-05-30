@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import type { EventBase } from '../models/event.model';
 import {
 	type StagingAreaEventType,
@@ -8,6 +8,7 @@ import { EventAuthorizationService } from './event-authorization.service';
 import { EventStateService } from './event-state.service';
 import { EventService, EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
+import { injectable } from 'tsyringe';
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {
@@ -29,10 +30,10 @@ interface ExtendedStagingEvent extends StagingAreaEventType {
 	retryCount?: number;
 }
 
-@Injectable()
+@injectable()
 export class StagingAreaService {
-	private readonly logger = new Logger(StagingAreaService.name);
 	private processingEvents = new Map<string, ExtendedStagingEvent>();
+	private readonly logger = createLogger('StagingAreaService');
 
 	constructor(
 		private readonly eventService: EventService,

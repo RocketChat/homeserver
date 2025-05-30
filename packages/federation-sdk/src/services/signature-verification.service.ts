@@ -1,5 +1,5 @@
 import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
 import * as nacl from 'tweetnacl';
 
 interface KeyData {
@@ -17,9 +17,8 @@ interface KeyData {
 	};
 }
 
-@Injectable()
 export class SignatureVerificationService {
-	private readonly logger = new Logger(SignatureVerificationService.name);
+	private readonly logger = createLogger('SignatureVerificationService');
 	private cachedKeys = new Map<string, KeyData>();
 
 	/**

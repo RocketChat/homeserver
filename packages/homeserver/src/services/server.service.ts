@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
 import { ServerRepository } from '../repositories/server.repository';
+import { injectable } from 'tsyringe';
 
-@Injectable()
+@injectable()
 export class ServerService {
 	constructor(private readonly serverRepository: ServerRepository) {}
 

@@ -1,12 +1,8 @@
-import { Controller, Get, Logger } from '@nestjs/common';
+import { Elysia } from 'elysia';
+import logger from '../../utils/logger';
 
-@Controller('/internal/ping')
-export class PingController {
-	private readonly logger = new Logger(PingController.name);
-
-	@Get()
-	ping() {
-		this.logger.debug('Ping endpoint called');
+export const pingPlugin = (app: Elysia) =>
+	app.get('/internal/ping', () => {
+		logger.debug('Ping endpoint called');
 		return 'PONG!';
-	}
-}
+	});

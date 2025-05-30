@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -10,10 +10,11 @@ import type {
 	RoomMemberEvent,
 } from '@hs/core/src/events/m.room.member';
 import type { EventStore } from '../models/event.model';
+import { injectable } from 'tsyringe';
 
-@Injectable()
+@injectable()
 export class ProfilesService {
-	private readonly logger = new Logger(ProfilesService.name);
+	private readonly logger = createLogger('ProfilesService');
 
 	constructor(
 		private readonly configService: ConfigService,

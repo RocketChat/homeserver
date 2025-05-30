@@ -6,7 +6,9 @@
 		"dev": "bun run --watch src/index.ts"
 	},
 	"dependencies": {
-		"@hs/core": "workspace:*"
+		"@hs/core": "workspace:*",
+		"mongodb": "^6.16.0",
+		"tsyringe": "^4.10.0"
 	},
 	"devDependencies": {
 		"bun-types": "latest"

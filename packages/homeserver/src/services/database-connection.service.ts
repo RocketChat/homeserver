@@ -1,13 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Db, MongoClient, type MongoClientOptions } from 'mongodb';
+import { createLogger } from '../utils/logger';
+import { MongoClient, type MongoClientOptions, Db } from 'mongodb';
 import { ConfigService } from './config.service';
+import { injectable } from 'tsyringe';
 
-@Injectable()
+@injectable()
 export class DatabaseConnectionService {
 	private client: MongoClient | null = null;
 	private db: Db | null = null;
 	private connectionPromise: Promise<void> | null = null;
-	private readonly logger = new Logger(DatabaseConnectionService.name);
+	private readonly logger = createLogger('DatabaseConnectionService');
 
 	constructor(private readonly configService: ConfigService) {
 		this.connect().catch((err) =>
@@ -48,7 +49,7 @@ export class DatabaseConnectionService {
 				this.client.connect();
 
 				this.db = this.client.db(dbConfig.name);
-				this.logger.log(`Connected to MongoDB database: ${dbConfig.name}`);
+				this.logger.info(`Connected to MongoDB database: ${dbConfig.name}`);
 
 				resolve();
 			} catch (error: unknown) {
@@ -68,7 +69,7 @@ export class DatabaseConnectionService {
 			this.client = null;
 			this.db = null;
 			this.connectionPromise = null;
-			this.logger.log('Disconnected from MongoDB');
+			this.logger.info('Disconnected from MongoDB');
 		}
 	}
 }

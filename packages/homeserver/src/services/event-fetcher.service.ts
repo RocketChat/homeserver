@@ -3,20 +3,21 @@ import {
 	isFederationEventWithPDUs,
 	type MatrixPDU,
 } from '@hs/core/src/events/pdu';
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import { generateId } from '../authentication';
 import { EventRepository } from '../repositories/event.repository';
 import type { EventBase } from '../models/event.model';
 import { ConfigService } from './config.service';
+import { injectable } from 'tsyringe';
 
 export interface FetchedEvents {
 	events: { eventId: string; event: EventBase }[];
 	missingEventIds: string[];
 }
 
-@Injectable()
+@injectable()
 export class EventFetcherService {
-	private readonly logger = new Logger(EventFetcherService.name);
+	private readonly logger = createLogger('EventFetcherService');
 
 	constructor(
 		private readonly eventRepository: EventRepository,
@@ -135,7 +136,7 @@ export class EventFetcherService {
 
 			for (const chunk of chunks) {
 				if (targetServerName === this.configService.getServerName()) {
-					this.logger.log(`Skipping request to self: ${targetServerName}`);
+					this.logger.info(`Skipping request to self: ${targetServerName}`);
 					return [];
 				}
 

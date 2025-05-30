@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
 import type { EventBase } from '../models/event.model';
 import { DatabaseConnectionService } from '../services/database-connection.service';
@@ -16,7 +16,7 @@ type Room = {
 	};
 };
 
-@Injectable()
+@injectable()
 export class RoomRepository {
 	private collection: Collection<Room> | null = null;
 

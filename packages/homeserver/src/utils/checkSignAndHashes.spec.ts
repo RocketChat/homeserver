@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { describe, expect, it, beforeAll, afterAll, spyOn } from 'bun:test';
 import { checkSignAndHashes } from './checkSignAndHashes';
 import { MatrixError } from '../errors';

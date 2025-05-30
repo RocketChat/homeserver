@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindOptions } from 'mongodb';
 import { generateId } from '../authentication';
 import type { EventBase, EventStore } from '../models/event.model';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
-@Injectable()
+@injectable()
 export class EventRepository {
 	private collection: Collection<EventStore> | null = null;
 

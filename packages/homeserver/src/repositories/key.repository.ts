@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
-import { Collection } from 'mongodb';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { injectable } from "tsyringe";
+import { Collection } from "mongodb";
+import { DatabaseConnectionService } from "../services/database-connection.service";
 
 type Key = {
 	origin: string;
@@ -9,7 +9,7 @@ type Key = {
 	valid_until: Date;
 };
 
-@Injectable()
+@injectable()
 export class KeyRepository {
 	private collection: Collection<Key> | null = null;
 

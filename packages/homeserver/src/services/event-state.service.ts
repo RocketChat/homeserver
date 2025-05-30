@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
+import { injectable } from 'tsyringe';
 
-@Injectable()
+@injectable()
 export class EventStateService {
-	private readonly logger = new Logger(EventStateService.name);
+	private readonly logger = createLogger('EventStateService');
 
 	async resolveState(roomId: string, eventId: string): Promise<void> {
 		this.logger.debug(

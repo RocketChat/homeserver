@@ -9,17 +9,18 @@ import {
 	type RoomMessageEvent,
 } from '@hs/core/src/events/m.room.message';
 import { FederationService } from '@hs/federation-sdk';
-import { Injectable, Logger } from '@nestjs/common';
-import { generateId } from '../authentication';
-import { signEvent, type SignedEvent } from '../signEvent';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 import { RoomService } from './room.service';
 import { ForbiddenError } from '../errors';
+import { injectable } from 'tsyringe';
+import { createLogger } from '../utils/logger';
+import { signEvent, type SignedEvent } from '../signEvent';
+import { generateId } from '../authentication';
 
-@Injectable()
+@injectable()
 export class MessageService {
-	private readonly logger = new Logger(MessageService.name);
+	private readonly logger = createLogger('MessageService');
 
 	constructor(
 		private readonly eventService: EventService,
@@ -88,7 +89,7 @@ export class MessageService {
 
 		await this.federationService.sendEvent(targetServer, signedEvent);
 
-		this.logger.log(
+		this.logger.info(
 			`Sent message to ${targetServer} - ${generateId(signedEvent)}`,
 		);
 
@@ -159,13 +160,13 @@ export class MessageService {
 			serverName,
 		);
 
-		console.log(signedEvent);
+		this.logger.debug(signedEvent);
 
 		await this.federationService.sendEvent(targetServer, signedEvent);
 
 		await this.eventService.insertEvent(signedEvent, eventId);
 
-		this.logger.log(
+		this.logger.info(
 			`Sent reaction $emojito $targetServerfor event $eventId- $generateId(${signedEvent})`,
 		);
 
