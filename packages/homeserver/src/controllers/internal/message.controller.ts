@@ -1,9 +1,17 @@
-import type { ReactionEvent } from '@hs/core/src/events/m.reaction';
-import type { RoomMessageEvent } from '@hs/core/src/events/m.room.message';
-import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
-import { z } from 'zod';
-import { MessageService } from '../../services/message.service';
-import type { SignedEvent } from '../../signEvent';
+import type { ReactionEvent } from "@hs/core/src/events/m.reaction";
+import type { RedactionEvent } from "@hs/core/src/events/m.room.redaction";
+import type { RoomMessageEvent } from "@hs/core/src/events/m.room.message";
+import {
+	Body,
+	Controller,
+	Delete,
+	Param,
+	Patch,
+	Post,
+} from "@nestjs/common";
+import { z } from "zod";
+import { MessageService } from "../../services/message.service";
+import type { SignedEvent } from "../../signEvent";
 import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
 
 const SendMessageSchema = z.object({
@@ -28,12 +36,20 @@ const SendReactionSchema = z.object({
 	senderUserId: z.string(),
 });
 
+const RedactMessageSchema = z.object({
+	roomId: z.string(),
+	targetServer: z.string(),
+	reason: z.string().optional(),
+	senderUserId: z.string(),
+});
+
 type SendReactionResponseDto = SignedEvent<ReactionEvent>;
 type SendMessageResponseDto = SignedEvent<RoomMessageEvent>;
+type RedactMessageResponseDto = SignedEvent<RedactionEvent>;
 
 @Controller('internal/messages')
 export class InternalMessageController {
-	constructor(private readonly messageService: MessageService) {}
+	constructor(private readonly messageService: MessageService) { }
 
 	@Post()
 	async sendMessage(
@@ -80,4 +96,13 @@ export class InternalMessageController {
 			body.targetServer,
 		);
 	}
+	
+	@Delete("/:messageId")
+	async redactMessage(
+		@Param("messageId", new ZodValidationPipe(z.string())) eventId: string,
+		@Body(new ZodValidationPipe(RedactMessageSchema)) body: z.infer<typeof RedactMessageSchema>,
+	): Promise<RedactMessageResponseDto> {
+		return this.messageService.redactMessage(body.roomId, eventId, body.reason, body.senderUserId, body.targetServer);
+	}
 }
+
