@@ -1,29 +1,28 @@
-
-import type { EventBase as CoreEventBase } from "@hs/core/src/events/eventBase";
+import type { EventBase as CoreEventBase } from '@hs/core/src/events/eventBase';
 export interface EventBase extends CoreEventBase {
-  event_id?: string;
+	event_id?: string;
 }
 
 export interface EventStore {
-  _id: string;
-  event: EventBase;
-  staged?: boolean;
-  outlier?: boolean;
+	_id: string;
+	event: EventBase;
+	staged?: boolean;
+	outlier?: boolean;
 }
 
 export interface StateEvent extends EventBase {
-  state_key: string;
+	state_key: string;
 }
 
 export interface MessageEvent extends EventBase {
-  content: {
-    msgtype: string;
-    body: string;
-    [key: string]: unknown;
-  };
+	content: {
+		msgtype: string;
+		body: string;
+		[key: string]: unknown;
+	};
 }
 
 export interface FetchedEvents {
-  events: { eventId: string; event: EventBase }[];
-  missingEventIds: string[];
-} 
+	events: { eventId: string; event: EventBase }[];
+	missingEventIds: string[];
+}

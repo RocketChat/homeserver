@@ -8,15 +8,15 @@ export class WellKnownController {
 
 	@Get()
 	getWellKnown(@Res({ passthrough: true }) res: Response) {
-                const responseData = this.wellKnownService.getWellKnownHostData();
+		const responseData = this.wellKnownService.getWellKnownHostData();
 
-                const etag = new Bun.CryptoHasher('md5')
-                        .update(JSON.stringify(responseData))
-                        .digest('hex');
+		const etag = new Bun.CryptoHasher('md5')
+			.update(JSON.stringify(responseData))
+			.digest('hex');
 
-                res.setHeader('ETag', etag);
-                res.setHeader('Content-Type', 'application/json');
-                
-                return responseData;
+		res.setHeader('ETag', etag);
+		res.setHeader('Content-Type', 'application/json');
+
+		return responseData;
 	}
 }

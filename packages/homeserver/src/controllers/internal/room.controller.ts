@@ -6,28 +6,28 @@ import {
 	Param,
 	Post,
 	Put,
-} from "@nestjs/common";
-import { z } from "zod";
-import { RoomService } from "../../services/room.service";
-import type { SignedEvent } from "../../signEvent";
-import { ZodValidationPipe } from "../../validation/pipes/zod-validation.pipe";
-import type { RoomTombstoneEvent } from "@hs/core/src/events/m.room.tombstone";
+} from '@nestjs/common';
+import { z } from 'zod';
+import { RoomService } from '../../services/room.service';
+import type { SignedEvent } from '../../signEvent';
+import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
+import type { RoomTombstoneEvent } from '@hs/core/src/events/m.room.tombstone';
 
 type TombstoneRoomResponseDto = SignedEvent<RoomTombstoneEvent>;
 
 const TombstoneRoomSchema = z.object({
 	sender: z
 		.string()
-		.startsWith("@")
-		.refine((val) => val.includes(":"), {
-			message: "Sender must be in the format @user:server.com",
+		.startsWith('@')
+		.refine((val) => val.includes(':'), {
+			message: 'Sender must be in the format @user:server.com',
 		}),
 	reason: z.string().optional(),
 	replacementRoomId: z
 		.string()
-		.startsWith("!")
-		.refine((val) => val.includes(":"), {
-			message: "Replacement room ID must be in the format !room:server.com",
+		.startsWith('!')
+		.refine((val) => val.includes(':'), {
+			message: 'Replacement room ID must be in the format !room:server.com',
 		})
 		.optional(),
 });
@@ -36,24 +36,24 @@ type TombstoneRoomDto = z.infer<typeof TombstoneRoomSchema>;
 
 const RoomIdSchema = z
 	.string()
-	.startsWith("!")
-	.refine((val) => val.includes(":"), {
-		message: "Room ID must be in the format !room:server.com",
+	.startsWith('!')
+	.refine((val) => val.includes(':'), {
+		message: 'Room ID must be in the format !room:server.com',
 	});
 
 const UpdateRoomNameDtoSchema = z.object({
 	name: z
 		.string()
 		.trim()
-		.min(1, { message: "Room name must be a non-empty string" }),
+		.min(1, { message: 'Room name must be a non-empty string' }),
 	senderUserId: z
 		.string()
 		.trim()
-		.min(1, { message: "Sender ID must be a non-empty string" }),
+		.min(1, { message: 'Sender ID must be a non-empty string' }),
 	targetServer: z
 		.string()
 		.trim()
-		.min(1, { message: "Target server must be a non-empty string" }),
+		.min(1, { message: 'Target server must be a non-empty string' }),
 });
 
 const UpdateUserPowerLevelSchema = z.object({
@@ -66,7 +66,7 @@ const LeaveRoomDtoSchema = z.object({
 	senderUserId: z
 		.string()
 		.trim()
-		.min(1, { message: "Sender ID must be a non-empty string" }),
+		.min(1, { message: 'Sender ID must be a non-empty string' }),
 	targetServers: z.array(z.string()).optional(),
 });
 
@@ -74,11 +74,11 @@ const KickUserDtoSchema = z.object({
 	userIdToKick: z
 		.string()
 		.trim()
-		.min(1, { message: "User ID to kick must be a non-empty string" }),
+		.min(1, { message: 'User ID to kick must be a non-empty string' }),
 	senderUserId: z
 		.string()
 		.trim()
-		.min(1, { message: "Sender ID must be a non-empty string" }),
+		.min(1, { message: 'Sender ID must be a non-empty string' }),
 	reason: z.string().optional(),
 	targetServers: z.array(z.string()).optional(),
 });
@@ -87,11 +87,11 @@ const BanUserDtoSchema = z.object({
 	userIdToBan: z
 		.string()
 		.trim()
-		.min(1, { message: "User ID to ban must be a non-empty string" }),
+		.min(1, { message: 'User ID to ban must be a non-empty string' }),
 	senderUserId: z
 		.string()
 		.trim()
-		.min(1, { message: "Sender ID must be a non-empty string" }),
+		.min(1, { message: 'Sender ID must be a non-empty string' }),
 	reason: z.string().optional(),
 	targetServers: z.array(z.string()).optional(),
 });
@@ -102,11 +102,11 @@ type LeaveRoomDto = z.infer<typeof LeaveRoomDtoSchema>;
 type KickUserDto = z.infer<typeof KickUserDtoSchema>;
 type BanUserDto = z.infer<typeof BanUserDtoSchema>;
 
-@Controller("internal/rooms")
+@Controller('internal/rooms')
 export class InternalRoomController {
 	constructor(private readonly roomService: RoomService) {}
 
-	@Post("rooms")
+	@Post('rooms')
 	async createRoomEndpoint(
 		@Body() body: {
 			username: string;
@@ -137,15 +137,15 @@ export class InternalRoomController {
 		}
 	}
 
-	@Put("/:roomId/name")
+	@Put('/:roomId/name')
 	async updateRoomNameEndpoint(
 		@Param(
-			"roomId",
+			'roomId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Room ID must be a non-empty string" }),
+					.min(1, { message: 'Room ID must be a non-empty string' }),
 			),
 		)
 		roomId: string,
@@ -173,25 +173,25 @@ export class InternalRoomController {
 		}
 	}
 
-	@Put("/:roomId/permissions/:userId")
+	@Put('/:roomId/permissions/:userId')
 	async updateUserPowerLevel(
 		@Param(
-			"roomId",
+			'roomId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Room ID must be a non-empty string" }),
+					.min(1, { message: 'Room ID must be a non-empty string' }),
 			),
 		)
 		roomId: string,
 		@Param(
-			"userId",
+			'userId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "User ID must be a non-empty string" }),
+					.min(1, { message: 'User ID must be a non-empty string' }),
 			),
 		)
 		userId: string,
@@ -212,21 +212,21 @@ export class InternalRoomController {
 				throw error;
 			}
 			throw new HttpException(
-				"Failed to update user power level.",
+				'Failed to update user power level.',
 				HttpStatus.INTERNAL_SERVER_ERROR,
 			);
 		}
 	}
 
-	@Post("/:roomId/leave")
+	@Post('/:roomId/leave')
 	async leaveRoomEndpoint(
 		@Param(
-			"roomId",
+			'roomId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Room ID must be a non-empty string" }),
+					.min(1, { message: 'Room ID must be a non-empty string' }),
 			),
 		)
 		roomId: string,
@@ -252,25 +252,25 @@ export class InternalRoomController {
 		}
 	}
 
-	@Post("/:roomId/members/:memberId/kick")
+	@Post('/:roomId/members/:memberId/kick')
 	async kickUserFromRoom(
 		@Param(
-			"roomId",
+			'roomId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Room ID must be a non-empty string" }),
+					.min(1, { message: 'Room ID must be a non-empty string' }),
 			),
 		)
 		roomId: string,
 		@Param(
-			"memberId",
+			'memberId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Member ID must be a non-empty string" }),
+					.min(1, { message: 'Member ID must be a non-empty string' }),
 			),
 		)
 		memberId: string,
@@ -280,7 +280,7 @@ export class InternalRoomController {
 
 		if (body.userIdToKick !== memberId) {
 			throw new HttpException(
-				"User ID in path does not match user ID in body (userIdToKick).",
+				'User ID in path does not match user ID in body (userIdToKick).',
 				HttpStatus.BAD_REQUEST,
 			);
 		}
@@ -305,25 +305,25 @@ export class InternalRoomController {
 		}
 	}
 
-	@Post("/:roomId/members/:memberId/ban")
+	@Post('/:roomId/members/:memberId/ban')
 	async banUserFromRoom(
 		@Param(
-			"roomId",
+			'roomId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Room ID must be a non-empty string" }),
+					.min(1, { message: 'Room ID must be a non-empty string' }),
 			),
 		)
 		roomId: string,
 		@Param(
-			"memberId",
+			'memberId',
 			new ZodValidationPipe(
 				z
 					.string()
 					.trim()
-					.min(1, { message: "Member ID must be a non-empty string" }),
+					.min(1, { message: 'Member ID must be a non-empty string' }),
 			),
 		)
 		memberId: string,
@@ -333,7 +333,7 @@ export class InternalRoomController {
 
 		if (body.userIdToBan !== memberId) {
 			throw new HttpException(
-				"User ID in path does not match user ID in body (userIdToBan).",
+				'User ID in path does not match user ID in body (userIdToBan).',
 				HttpStatus.BAD_REQUEST,
 			);
 		}
@@ -358,9 +358,9 @@ export class InternalRoomController {
 		}
 	}
 
-	@Post("rooms/:roomId/mark-room-as-tombstone")
+	@Post('rooms/:roomId/mark-room-as-tombstone')
 	async markRoomAsTombstone(
-		@Param("roomId", new ZodValidationPipe(RoomIdSchema)) roomId: string,
+		@Param('roomId', new ZodValidationPipe(RoomIdSchema)) roomId: string,
 		@Body(new ZodValidationPipe(TombstoneRoomSchema)) body: TombstoneRoomDto,
 	): Promise<TombstoneRoomResponseDto> {
 		const { sender, reason, replacementRoomId } = body;

@@ -1,6 +1,6 @@
-import { isRoomMemberEvent } from "@hs/core/src/events/m.room.member";
+import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
 
-import type { EventBase } from "@hs/core/src/events/eventBase";
+import type { EventBase } from '@hs/core/src/events/eventBase';
 
 interface RoomVersion {
 	updated_redaction_rules: boolean;
@@ -36,21 +36,21 @@ export function pruneEventDict<T extends EventBase>(
 	const eventType = eventDict.type;
 
 	const allowedKeys = [
-		"event_id",
-		"sender",
-		"room_id",
-		"hashes",
-		"signatures",
-		"content",
-		"type",
-		"state_key",
-		"depth",
-		"prev_events",
-		"auth_events",
-		"origin_server_ts",
+		'event_id',
+		'sender',
+		'room_id',
+		'hashes',
+		'signatures',
+		'content',
+		'type',
+		'state_key',
+		'depth',
+		'prev_events',
+		'auth_events',
+		'origin_server_ts',
 		// Earlier room versions had additional allowed keys.
 		...(!roomVersion.updated_redaction_rules
-			? ["prev_state", "membership", "origin"]
+			? ['prev_state', 'membership', 'origin']
 			: []),
 	];
 
@@ -59,18 +59,18 @@ export function pruneEventDict<T extends EventBase>(
 	if (roomVersion.msc3389_relation_redactions) {
 		const relatesTo =
 			eventDict.content &&
-			"m.relates_to" in eventDict.content &&
-			(eventDict.content["m.relates_to"] as Record<string, unknown>);
+			'm.relates_to' in eventDict.content &&
+			(eventDict.content['m.relates_to'] as Record<string, unknown>);
 
-		if (relatesTo && typeof relatesTo === "object") {
+		if (relatesTo && typeof relatesTo === 'object') {
 			const newRelatesTo: JsonDict = {};
-			for (const field of ["rel_type", "event_id"]) {
+			for (const field of ['rel_type', 'event_id']) {
 				if (field in relatesTo) {
 					newRelatesTo[field] = relatesTo[field];
 				}
 			}
 			if (Object.keys(newRelatesTo).length > 0) {
-				content["m.relates_to"] = newRelatesTo;
+				content['m.relates_to'] = newRelatesTo;
 			}
 		}
 	}
@@ -83,10 +83,10 @@ export function pruneEventDict<T extends EventBase>(
 	allowedFields.unsigned = unsigned;
 
 	const eventUnsigned = eventDict.unsigned || {};
-	if ("age_ts" in eventUnsigned) {
+	if ('age_ts' in eventUnsigned) {
 		unsigned.age_ts = eventUnsigned.age_ts;
 	}
-	if ("replaces_state" in eventUnsigned) {
+	if ('replaces_state' in eventUnsigned) {
 		unsigned.replaces_state = eventUnsigned.replaces_state;
 	}
 
@@ -105,8 +105,8 @@ export function pruneEventDict<T extends EventBase>(
 
 	if (isRoomMemberEvent(eventDict)) {
 		const contentKeys = [
-			"membership",
-			...(roomVersion.restricted_join_rule_fix ? ["authorising_user"] : []),
+			'membership',
+			...(roomVersion.restricted_join_rule_fix ? ['authorising_user'] : []),
 		];
 
 		addFields(...contentKeys);
@@ -114,16 +114,16 @@ export function pruneEventDict<T extends EventBase>(
 		if (roomVersion.updated_redaction_rules) {
 			// @ts-ignore
 			const thirdPartyInvite = eventDict.content.third_party_invite;
-			if (thirdPartyInvite && typeof thirdPartyInvite === "object") {
+			if (thirdPartyInvite && typeof thirdPartyInvite === 'object') {
 				content.third_party_invite = {};
-				if ("signed" in thirdPartyInvite) {
+				if ('signed' in thirdPartyInvite) {
 					content.third_party_invite.signed = thirdPartyInvite.signed;
 				}
 			}
 		}
 	}
 
-	if (eventType === "m.room.create") {
+	if (eventType === 'm.room.create') {
 		if (roomVersion.updated_redaction_rules) {
 			return {
 				...allowedFields,
@@ -131,41 +131,41 @@ export function pruneEventDict<T extends EventBase>(
 			} as T;
 		}
 		if (!roomVersion.implicit_room_creator) {
-			addFields("creator");
+			addFields('creator');
 		}
 	}
 
-	if (eventType === "m.room.join_rules") {
+	if (eventType === 'm.room.join_rules') {
 		addFields(
-			"join_rule",
-			...(roomVersion.restricted_join_rule ? ["allow"] : []),
+			'join_rule',
+			...(roomVersion.restricted_join_rule ? ['allow'] : []),
 		);
 	}
 
-	if (eventType === "m.room.power_levels") {
+	if (eventType === 'm.room.power_levels') {
 		addFields(
-			"users",
-			"users_default",
-			"events",
-			"events_default",
-			"state_default",
-			"ban",
-			"kick",
-			"redact",
-			...(roomVersion.updated_redaction_rules ? ["invite"] : []),
+			'users',
+			'users_default',
+			'events',
+			'events_default',
+			'state_default',
+			'ban',
+			'kick',
+			'redact',
+			...(roomVersion.updated_redaction_rules ? ['invite'] : []),
 		);
 	}
 
-	if (eventType === "m.room.aliases" && roomVersion.special_case_aliases_auth) {
-		addFields("aliases");
+	if (eventType === 'm.room.aliases' && roomVersion.special_case_aliases_auth) {
+		addFields('aliases');
 	}
 
-	if (eventType === "m.room.history_visibility") {
-		addFields("history_visibility");
+	if (eventType === 'm.room.history_visibility') {
+		addFields('history_visibility');
 	}
 
-	if (eventType === "m.room.redaction" && roomVersion.updated_redaction_rules) {
-		addFields("redacts");
+	if (eventType === 'm.room.redaction' && roomVersion.updated_redaction_rules) {
+		addFields('redacts');
 	}
 
 	return {
