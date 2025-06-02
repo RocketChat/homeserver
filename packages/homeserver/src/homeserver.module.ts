@@ -1,6 +1,30 @@
+import 'reflect-metadata';
+
+import {
+	type FederationModuleOptions,
+	FederationRequestService,
+} from '@hs/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-// Import all services and repositories to register with tsyringe
+import { toUnpaddedBase64 } from './binaryData';
+import { invitePlugin } from './controllers/federation/invite.controller';
+import { profilesPlugin } from './controllers/federation/profiles.controller';
+import { sendJoinPlugin } from './controllers/federation/send-join.controller';
+import { transactionsPlugin } from './controllers/federation/transactions.controller';
+import { versionsPlugin } from './controllers/federation/versions.controller';
+import { internalInvitePlugin } from './controllers/internal/invite.controller';
+import { internalMessagePlugin } from './controllers/internal/message.controller';
+import { pingPlugin } from './controllers/internal/ping.controller';
+import { internalRoomPlugin } from './controllers/internal/room.controller';
+import { serverKeyPlugin } from './controllers/key/server.controller';
+import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
+import { MissingEventListener } from './listeners/missing-event.listener';
+import { MissingEventsQueue } from './queues/missing-event.queue';
+import { StagingAreaQueue } from './queues/staging-area.queue';
+import { EventRepository } from './repositories/event.repository';
+import { KeyRepository } from './repositories/key.repository';
+import { RoomRepository } from './repositories/room.repository';
+import { ServerRepository } from './repositories/server.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
@@ -16,26 +40,6 @@ import { RoomService } from './services/room.service';
 import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
-import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { invitePlugin } from './controllers/federation/invite.controller';
-import { profilesPlugin } from './controllers/federation/profiles.controller';
-import { sendJoinPlugin } from './controllers/federation/send-join.controller';
-import { transactionsPlugin } from './controllers/federation/transactions.controller';
-import { versionsPlugin } from './controllers/federation/versions.controller';
-import { internalInvitePlugin } from './controllers/internal/invite.controller';
-import { internalMessagePlugin } from './controllers/internal/message.controller';
-import { pingPlugin } from './controllers/internal/ping.controller';
-import { internalRoomPlugin } from './controllers/internal/room.controller';
-import { serverKeyPlugin } from './controllers/key/server.controller';
-import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { toUnpaddedBase64 } from './binaryData';
-import {
-	type FederationModuleOptions,
-	FederationRequestService,
-} from '@hs/federation-sdk';
 
 let app: Elysia;
 
@@ -79,6 +83,15 @@ async function setup() {
 	container.registerSingleton(KeyRepository);
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(ServerRepository);
+	container.registerSingleton(MissingEventsQueue);
+	container.registerSingleton(MissingEventListener);
+	container.registerSingleton(StagingAreaQueue);
+	container.registerSingleton(StagingAreaService);
+
+	// Resolve the listeners to ensure they are registered and ready to use
+	// without relying on lazy injection
+	container.resolve(MissingEventListener);
+	container.resolve(StagingAreaService);
 
 	// Set up Elysia app instance
 	app = new Elysia();
