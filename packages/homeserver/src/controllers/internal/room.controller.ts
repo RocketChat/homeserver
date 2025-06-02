@@ -1,19 +1,9 @@
-import {
-	Body,
-	Controller,
-	HttpException,
-	HttpStatus,
-	Param,
-	Post,
-	Put,
-} from '@nestjs/common';
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
 import { z } from 'zod';
 import { RoomService } from '../../services/room.service';
 import type { SignedEvent } from '../../signEvent';
-import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
 import type { RoomTombstoneEvent } from '@hs/core/src/events/m.room.tombstone';
-
-type TombstoneRoomResponseDto = SignedEvent<RoomTombstoneEvent>;
 
 const TombstoneRoomSchema = z.object({
 	sender: z
@@ -33,6 +23,8 @@ const TombstoneRoomSchema = z.object({
 });
 
 type TombstoneRoomDto = z.infer<typeof TombstoneRoomSchema>;
+
+type TombstoneRoomResponseDto = SignedEvent<RoomTombstoneEvent>;
 
 const RoomIdSchema = z
 	.string()
@@ -96,290 +88,241 @@ const BanUserDtoSchema = z.object({
 	targetServers: z.array(z.string()).optional(),
 });
 
-type UpdateRoomNameDto = z.infer<typeof UpdateRoomNameDtoSchema>;
-type UpdateUserPowerLevelDto = z.infer<typeof UpdateUserPowerLevelSchema>;
-type LeaveRoomDto = z.infer<typeof LeaveRoomDtoSchema>;
-type KickUserDto = z.infer<typeof KickUserDtoSchema>;
-type BanUserDto = z.infer<typeof BanUserDtoSchema>;
-
-@Controller('internal/rooms')
-export class InternalRoomController {
-	constructor(private readonly roomService: RoomService) {}
-
-	@Post('rooms')
-	async createRoomEndpoint(
-		@Body() body: {
-			username: string;
-			sender: string;
-			name: string;
-			canonical_alias?: string;
-			alias?: string;
-		},
-	): Promise<unknown> {
-		const { username, sender, name, canonical_alias, alias } = body;
-
-		try {
-			return this.roomService.createRoom(
-				username,
-				sender,
-				name,
-				canonical_alias,
-				alias,
-			);
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+export const internalRoomPlugin = (app: Elysia) => {
+	const roomService = container.resolve(RoomService);
+	return app
+		.post('/internal/rooms/rooms', async ({ body, set }) => {
+			const { username, sender, name, canonical_alias, alias } = body as {
+				username: string;
+				sender: string;
+				name: string;
+				canonical_alias?: string;
+				alias?: string;
+			};
+			try {
+				return await roomService.createRoom(
+					username,
+					sender,
+					name,
+					canonical_alias,
+					alias,
+				);
+			} catch (error) {
+				set.status = 500;
+				return {
+					error: `Failed to create room: ${error instanceof Error ? error.message : String(error)}`,
+				};
 			}
-			throw new HttpException(
-				`Failed to create room: ${error instanceof Error ? error.message : String(error)}`,
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-
-	@Put('/:roomId/name')
-	async updateRoomNameEndpoint(
-		@Param(
-			'roomId',
-			new ZodValidationPipe(
-				z
-					.string()
-					.trim()
-					.min(1, { message: 'Room ID must be a non-empty string' }),
-			),
-		)
-		roomId: string,
-		@Body(new ZodValidationPipe(UpdateRoomNameDtoSchema))
-		body: UpdateRoomNameDto,
-	): Promise<{ eventId: string }> {
-		const { name, senderUserId, targetServer } = body;
-
-		try {
-			const eventId = await this.roomService.updateRoomName(
-				roomId.trim(),
-				name,
-				senderUserId,
-				targetServer,
-			);
-			return { eventId };
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+		})
+		.put('/internal/rooms/:roomId/name', async ({ params, body, set }) => {
+			const idParse = z.string().trim().min(1).safeParse(params.roomId);
+			const bodyParse = UpdateRoomNameDtoSchema.safeParse(body);
+			if (!idParse.success || !bodyParse.success) {
+				set.status = 400;
+				return {
+					error: 'Invalid request',
+					details: {
+						id: idParse.error?.flatten(),
+						body: bodyParse.error?.flatten(),
+					},
+				};
 			}
-			throw new HttpException(
-				`Failed to update room name: ${error instanceof Error ? error.message : String(error)}`,
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-
-	@Put('/:roomId/permissions/:userId')
-	async updateUserPowerLevel(
-		@Param(
-			'roomId',
-			new ZodValidationPipe(
-				z
-					.string()
-					.trim()
-					.min(1, { message: 'Room ID must be a non-empty string' }),
-			),
-		)
-		roomId: string,
-		@Param(
-			'userId',
-			new ZodValidationPipe(
-				z
-					.string()
-					.trim()
-					.min(1, { message: 'User ID must be a non-empty string' }),
-			),
-		)
-		userId: string,
-		@Body(new ZodValidationPipe(UpdateUserPowerLevelSchema))
-		body: UpdateUserPowerLevelDto,
-	): Promise<{ eventId: string }> {
-		try {
-			const eventId = await this.roomService.updateUserPowerLevel(
-				roomId,
-				userId,
-				body.powerLevel,
-				body.senderUserId,
-				body.targetServers,
-			);
-			return { eventId };
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+			const { name, senderUserId, targetServer } = bodyParse.data;
+			try {
+				const eventId = await roomService.updateRoomName(
+					idParse.data,
+					name,
+					senderUserId,
+					targetServer,
+				);
+				return { eventId };
+			} catch (error) {
+				set.status = 500;
+				return {
+					error: `Failed to update room name: ${error instanceof Error ? error.message : String(error)}`,
+				};
 			}
-			throw new HttpException(
-				'Failed to update user power level.',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-
-	@Post('/:roomId/leave')
-	async leaveRoomEndpoint(
-		@Param(
-			'roomId',
-			new ZodValidationPipe(
-				z
-					.string()
-					.trim()
-					.min(1, { message: 'Room ID must be a non-empty string' }),
-			),
+		})
+		.put(
+			'/internal/rooms/:roomId/permissions/:userId',
+			async ({ params, body, set }) => {
+				const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
+				const userIdParse = z.string().trim().min(1).safeParse(params.userId);
+				const bodyParse = UpdateUserPowerLevelSchema.safeParse(body);
+				if (
+					!roomIdParse.success ||
+					!userIdParse.success ||
+					!bodyParse.success
+				) {
+					set.status = 400;
+					return {
+						error: 'Invalid request',
+						details: {
+							roomId: roomIdParse.error?.flatten(),
+							userId: userIdParse.error?.flatten(),
+							body: bodyParse.error?.flatten(),
+						},
+					};
+				}
+				const { senderUserId, powerLevel, targetServers } = bodyParse.data;
+				try {
+					const eventId = await roomService.updateUserPowerLevel(
+						roomIdParse.data,
+						userIdParse.data,
+						powerLevel,
+						senderUserId,
+						targetServers,
+					);
+					return { eventId };
+				} catch (error) {
+					set.status = 500;
+					return {
+						error: `Failed to update user power level: ${error instanceof Error ? error.message : String(error)}`,
+					};
+				}
+			},
 		)
-		roomId: string,
-		@Body(new ZodValidationPipe(LeaveRoomDtoSchema)) body: LeaveRoomDto,
-	): Promise<{ eventId: string }> {
-		const { senderUserId, targetServers } = body;
-
-		try {
-			const eventId = await this.roomService.leaveRoom(
-				roomId.trim(),
-				senderUserId,
-				targetServers,
-			);
-			return { eventId };
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+		.put('/internal/rooms/:roomId/leave', async ({ params, body, set }) => {
+			const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
+			const bodyParse = LeaveRoomDtoSchema.safeParse(body);
+			if (!roomIdParse.success || !bodyParse.success) {
+				set.status = 400;
+				return {
+					error: 'Invalid request',
+					details: {
+						roomId: roomIdParse.error?.flatten(),
+						body: bodyParse.error?.flatten(),
+					},
+				};
 			}
-			throw new HttpException(
-				`Failed to leave room: ${error instanceof Error ? error.message : String(error)}`,
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-
-	@Post('/:roomId/members/:memberId/kick')
-	async kickUserFromRoom(
-		@Param(
-			'roomId',
-			new ZodValidationPipe(
-				z
-					.string()
-					.trim()
-					.min(1, { message: 'Room ID must be a non-empty string' }),
-			),
-		)
-		roomId: string,
-		@Param(
-			'memberId',
-			new ZodValidationPipe(
-				z
-					.string()
-					.trim()
-					.min(1, { message: 'Member ID must be a non-empty string' }),
-			),
-		)
-		memberId: string,
-		@Body(new ZodValidationPipe(KickUserDtoSchema)) body: KickUserDto,
-	): Promise<{ eventId: string }> {
-		const { senderUserId, reason, targetServers } = body;
-
-		if (body.userIdToKick !== memberId) {
-			throw new HttpException(
-				'User ID in path does not match user ID in body (userIdToKick).',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
-
-		try {
-			const eventId = await this.roomService.kickUser(
-				roomId.trim(),
-				memberId,
-				senderUserId,
-				reason,
-				targetServers,
-			);
-			return { eventId };
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+			const { senderUserId, targetServers } = bodyParse.data;
+			try {
+				const eventId = await roomService.leaveRoom(
+					roomIdParse.data,
+					senderUserId,
+					targetServers,
+				);
+				return { eventId };
+			} catch (error) {
+				set.status = 500;
+				return {
+					error: `Failed to leave room: ${error instanceof Error ? error.message : String(error)}`,
+				};
 			}
-			throw new HttpException(
-				`Failed to kick user from room: ${error instanceof Error ? error.message : String(error)}`,
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-
-	@Post('/:roomId/members/:memberId/ban')
-	async banUserFromRoom(
-		@Param(
-			'roomId',
-			new ZodValidationPipe(
-				z
+		})
+		.put(
+			'/internal/rooms/:roomId/kick/:memberId',
+			async ({ params, body, set }) => {
+				const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
+				const memberIdParse = z
 					.string()
 					.trim()
-					.min(1, { message: 'Room ID must be a non-empty string' }),
-			),
+					.min(1)
+					.safeParse(params.memberId);
+				const bodyParse = KickUserDtoSchema.safeParse(body);
+				if (
+					!roomIdParse.success ||
+					!memberIdParse.success ||
+					!bodyParse.success
+				) {
+					set.status = 400;
+					return {
+						error: 'Invalid request',
+						details: {
+							roomId: roomIdParse.error?.flatten(),
+							memberId: memberIdParse.error?.flatten(),
+							body: bodyParse.error?.flatten(),
+						},
+					};
+				}
+				const { userIdToKick, senderUserId, reason, targetServers } =
+					bodyParse.data;
+				try {
+					const eventId = await roomService.kickUser(
+						roomIdParse.data,
+						memberIdParse.data,
+						senderUserId,
+						reason,
+						targetServers,
+					);
+					return { eventId };
+				} catch (error) {
+					set.status = 500;
+					return {
+						error: `Failed to kick user: ${error instanceof Error ? error.message : String(error)}`,
+					};
+				}
+			},
 		)
-		roomId: string,
-		@Param(
-			'memberId',
-			new ZodValidationPipe(
-				z
+		.put(
+			'/internal/rooms/:roomId/ban/:memberId',
+			async ({ params, body, set }) => {
+				const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
+				const memberIdParse = z
 					.string()
 					.trim()
-					.min(1, { message: 'Member ID must be a non-empty string' }),
-			),
+					.min(1)
+					.safeParse(params.memberId);
+				const bodyParse = BanUserDtoSchema.safeParse(body);
+				if (
+					!roomIdParse.success ||
+					!memberIdParse.success ||
+					!bodyParse.success
+				) {
+					set.status = 400;
+					return {
+						error: 'Invalid request',
+						details: {
+							roomId: roomIdParse.error?.flatten(),
+							memberId: memberIdParse.error?.flatten(),
+							body: bodyParse.error?.flatten(),
+						},
+					};
+				}
+				const { userIdToBan, senderUserId, reason, targetServers } =
+					bodyParse.data;
+				try {
+					const eventId = await roomService.banUser(
+						roomIdParse.data,
+						memberIdParse.data,
+						senderUserId,
+						reason,
+						targetServers,
+					);
+					return { eventId };
+				} catch (error) {
+					set.status = 500;
+					return {
+						error: `Failed to ban user: ${error instanceof Error ? error.message : String(error)}`,
+					};
+				}
+			},
 		)
-		memberId: string,
-		@Body(new ZodValidationPipe(BanUserDtoSchema)) body: BanUserDto,
-	): Promise<{ eventId: string }> {
-		const { senderUserId, reason, targetServers } = body;
-
-		if (body.userIdToBan !== memberId) {
-			throw new HttpException(
-				'User ID in path does not match user ID in body (userIdToBan).',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
-
-		try {
-			const eventId = await this.roomService.banUser(
-				roomId.trim(),
-				memberId,
-				senderUserId,
-				reason,
-				targetServers,
-			);
-			return { eventId };
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+		.put('/internal/rooms/:roomId/tombstone', async ({ params, body, set }) => {
+			const roomIdParse = RoomIdSchema.safeParse(params.roomId);
+			const bodyParse = TombstoneRoomSchema.safeParse(body);
+			if (!roomIdParse.success || !bodyParse.success) {
+				set.status = 400;
+				return {
+					error: 'Invalid request',
+					details: {
+						roomId: roomIdParse.error?.flatten(),
+						body: bodyParse.error?.flatten(),
+					},
+				};
 			}
-			throw new HttpException(
-				`Failed to ban user from room: ${error instanceof Error ? error.message : String(error)}`,
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-
-	@Post('rooms/:roomId/mark-room-as-tombstone')
-	async markRoomAsTombstone(
-		@Param('roomId', new ZodValidationPipe(RoomIdSchema)) roomId: string,
-		@Body(new ZodValidationPipe(TombstoneRoomSchema)) body: TombstoneRoomDto,
-	): Promise<TombstoneRoomResponseDto> {
-		const { sender, reason, replacementRoomId } = body;
-
-		try {
-			return this.roomService.markRoomAsTombstone(
-				roomId,
-				sender,
-				reason,
-				replacementRoomId,
-			);
-		} catch (error) {
-			if (error instanceof HttpException) {
-				throw error;
+			try {
+				return await roomService.markRoomAsTombstone(
+					roomIdParse.data,
+					bodyParse.data.sender,
+					bodyParse.data.reason,
+					bodyParse.data.replacementRoomId,
+				);
+			} catch (error) {
+				set.status = 500;
+				return {
+					error: `Failed to tombstone room: ${error instanceof Error ? error.message : String(error)}`,
+				};
 			}
-			throw new HttpException(
-				`Failed to delete room: ${error instanceof Error ? error.message : String(error)}`,
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-	}
-}
+		});
+};

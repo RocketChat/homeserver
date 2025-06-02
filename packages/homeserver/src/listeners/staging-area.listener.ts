@@ -1,18 +1,13 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
-import {
-	type StagingAreaEventType,
-	StagingAreaQueue,
-} from '../queues/staging-area.queue';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { StagingAreaService } from '../services/staging-area.service';
+import { createLogger } from '../utils/logger';
+import type { StagingAreaEventType } from '../queues/staging-area.queue';
 
-@Injectable()
 export class StagingAreaListener {
-	private readonly logger = new Logger(StagingAreaListener.name);
+	private readonly logger = createLogger('StagingAreaListener');
 
 	constructor(
-		@Inject(forwardRef(() => StagingAreaQueue))
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		@Inject(forwardRef(() => StagingAreaService))
 		private readonly stagingAreaService: StagingAreaService,
 	) {
 		this.stagingAreaQueue.registerHandler(this.handleQueueItem.bind(this));

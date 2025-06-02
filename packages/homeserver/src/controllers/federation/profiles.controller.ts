@@ -1,15 +1,7 @@
-import {
-	Body,
-	Controller,
-	Get,
-	Param,
-	Post,
-	Query,
-	UsePipes,
-} from '@nestjs/common';
-import { ProfilesService } from '../../services/profiles.service';
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
 import { z } from 'zod';
-import { ZodValidationPipe } from '../../validation/pipes/zod-validation.pipe';
+import { ProfilesService } from '../../services/profiles.service';
 
 const MakeJoinQueryParamsSchema = z.object({
 	ver: z.array(z.string()).optional(),
@@ -33,80 +25,67 @@ type MakeJoinResponseDto = {
 		[key: string]: any;
 	};
 };
-@Controller('/_matrix/federation/v1')
-export class ProfilesController {
-	constructor(private readonly profilesService: ProfilesService) {}
 
-	@Get('/query/profile')
-	async queryProfile(@Query() queryParams: { user_id: string }) {
-		return this.profilesService.queryProfile(queryParams.user_id);
-	}
-
-	@Post('/user/keys/query')
-	async queryKeys(@Body() body: { device_keys: Record<string, string> }) {
-		return this.profilesService.queryKeys(body.device_keys);
-	}
-
-	@Get('/user/devices/:userId')
-	async getDevices(@Param('userId') userId: string) {
-		return this.profilesService.getDevices(userId);
-	}
-
-	@Get('/make_join/:roomId/:userId')
-	async makeJoin(
-		@Param('roomId') roomId: string,
-		@Param('userId') userId: string,
-		@Query(new ZodValidationPipe(MakeJoinQueryParamsSchema))
-		query: MakeJoinQueryParamsDto,
-	): Promise<MakeJoinResponseDto> {
-		const response = await this.profilesService.makeJoin(
-			roomId,
-			userId,
-			query.ver,
-		);
-
-		return {
-			room_version: response.room_version,
-			event: {
-				...response.event,
-				content: {
-					...response.event.content,
-					membership: 'join',
-					join_authorised_via_users_server:
-						response.event.content.join_authorised_via_users_server,
-				},
-				room_id: response.event.room_id,
-				sender: response.event.sender,
-				state_key: response.event.state_key,
-				type: 'm.room.member',
-				origin_server_ts: response.event.origin_server_ts,
-				origin: response.event.origin,
+export const profilesPlugin = (app: Elysia) => {
+	const profilesService = container.resolve(ProfilesService);
+	return app
+		.get('/_matrix/federation/v1/query/profile', ({ query }) =>
+			profilesService.queryProfile(query.user_id as string),
+		)
+		.post('/_matrix/federation/v1/user/keys/query', async ({ body }) =>
+			profilesService.queryKeys(
+				(body as { device_keys: Record<string, string> }).device_keys,
+			),
+		)
+		.get('/_matrix/federation/v1/user/devices/:userId', ({ params }) =>
+			profilesService.getDevices(params.userId as string),
+		)
+		.get(
+			'/_matrix/federation/v1/make_join/:roomId/:userId',
+			async ({ params, query }) => {
+				const parsed = MakeJoinQueryParamsSchema.safeParse(query);
+				if (!parsed.success) {
+					return { error: 'Invalid query params' };
+				}
+				const response = await profilesService.makeJoin(
+					params.roomId as string,
+					params.userId as string,
+					parsed.data.ver,
+				);
+				return {
+					room_version: response.room_version,
+					event: {
+						...response.event,
+						content: {
+							...response.event.content,
+							membership: 'join',
+							join_authorised_via_users_server:
+								response.event.content.join_authorised_via_users_server,
+						},
+						room_id: response.event.room_id,
+						sender: response.event.sender,
+						state_key: response.event.state_key,
+						type: 'm.room.member',
+						origin_server_ts: response.event.origin_server_ts,
+						origin: response.event.origin,
+					},
+				} as MakeJoinResponseDto;
 			},
-		};
-	}
-
-	@Post('/get_missing_events/:roomId')
-	async getMissingEvents(
-		@Param('roomId') roomId: string,
-		@Body() body: {
-			earliest_events: string[];
-			latest_events: string[];
-			limit: number;
-		},
-	) {
-		return this.profilesService.getMissingEvents(
-			roomId,
-			body.earliest_events,
-			body.latest_events,
-			body.limit,
+		)
+		.post(
+			'/_matrix/federation/v1/get_missing_events/:roomId',
+			async ({ params, body }) =>
+				profilesService.getMissingEvents(
+					params.roomId as string,
+					(body as { earliest_events: string[] }).earliest_events,
+					(body as { latest_events: string[] }).latest_events,
+					(body as { limit: number }).limit,
+				),
+		)
+		.get('/_matrix/federation/v1/event_auth/:roomId/:eventId', ({ params }) =>
+			profilesService.eventAuth(
+				params.roomId as string,
+				params.eventId as string,
+			),
 		);
-	}
-
-	@Get('/event_auth/:roomId/:eventId')
-	async eventAuth(
-		@Param('roomId') roomId: string,
-		@Param('eventId') eventId: string,
-	) {
-		return this.profilesService.eventAuth(roomId, eventId);
-	}
-}
+};

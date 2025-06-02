@@ -1,6 +1,6 @@
 import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
 import { FederationService } from '@hs/federation-sdk';
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
 import { MatrixError } from '../errors';
@@ -16,6 +16,7 @@ import { RoomRepository } from '../repositories/room.repository';
 import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
+import { injectable } from 'tsyringe';
 
 type ValidationResult = {
 	eventId: string;
@@ -74,9 +75,9 @@ export interface AuthEventParams {
 	senderId: string;
 }
 
-@Injectable()
+@injectable()
 export class EventService {
-	private readonly logger = new Logger(EventService.name);
+	private readonly logger = createLogger('EventService');
 
 	constructor(
 		private readonly eventRepository: EventRepository,
