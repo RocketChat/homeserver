@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { toUnpaddedBase64 } from '../../binaryData';
+import { ServerKeyResponseDto } from '../../dtos';
 import type { SigningKey } from '../../keys';
 import { ConfigService } from '../../services/config.service';
 import { signJson } from '../../signJson';
@@ -34,5 +35,14 @@ export const serverKeyPlugin = (app: Elysia) => {
 		}
 
 		return signedResponse;
+	}, {
+		response: {
+			200: ServerKeyResponseDto,
+		},
+		detail: {
+			tags: ['Key'],
+			summary: 'Get server key',
+			description: 'Get the server key'
+		}
 	});
 };

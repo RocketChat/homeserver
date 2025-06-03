@@ -1,154 +1,99 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-import { z } from 'zod';
+import {
+	type ErrorResponse,
+	type InternalBanUserResponse,
+	type InternalCreateRoomResponse,
+	type InternalKickUserResponse,
+	type InternalLeaveRoomResponse,
+	type InternalTombstoneRoomResponse,
+	type InternalUpdateRoomNameResponse,
+	type InternalUpdateUserPowerLevelResponse,
+	ErrorResponseDto,
+	InternalBanUserBodyDto,
+	InternalBanUserParamsDto,
+	InternalCreateRoomBodyDto,
+	InternalCreateRoomResponseDto,
+	InternalKickUserBodyDto,
+	InternalKickUserParamsDto,
+	InternalLeaveRoomBodyDto,
+	InternalLeaveRoomParamsDto,
+	InternalRoomEventResponseDto,
+	InternalTombstoneRoomBodyDto,
+	InternalTombstoneRoomParamsDto,
+	InternalTombstoneRoomResponseDto,
+	InternalUpdateRoomNameBodyDto,
+	InternalUpdateRoomNameParamsDto,
+	InternalUpdateUserPowerLevelBodyDto,
+	InternalUpdateUserPowerLevelParamsDto,
+	RoomIdDto,
+	UsernameDto
+} from '../../dtos';
 import { RoomService } from '../../services/room.service';
-import type { SignedEvent } from '../../signEvent';
-import type { RoomTombstoneEvent } from '@hs/core/src/events/m.room.tombstone';
-
-const TombstoneRoomSchema = z.object({
-	sender: z
-		.string()
-		.startsWith('@')
-		.refine((val) => val.includes(':'), {
-			message: 'Sender must be in the format @user:server.com',
-		}),
-	reason: z.string().optional(),
-	replacementRoomId: z
-		.string()
-		.startsWith('!')
-		.refine((val) => val.includes(':'), {
-			message: 'Replacement room ID must be in the format !room:server.com',
-		})
-		.optional(),
-});
-
-type TombstoneRoomDto = z.infer<typeof TombstoneRoomSchema>;
-
-type TombstoneRoomResponseDto = SignedEvent<RoomTombstoneEvent>;
-
-const RoomIdSchema = z
-	.string()
-	.startsWith('!')
-	.refine((val) => val.includes(':'), {
-		message: 'Room ID must be in the format !room:server.com',
-	});
-
-const UpdateRoomNameDtoSchema = z.object({
-	name: z
-		.string()
-		.trim()
-		.min(1, { message: 'Room name must be a non-empty string' }),
-	senderUserId: z
-		.string()
-		.trim()
-		.min(1, { message: 'Sender ID must be a non-empty string' }),
-	targetServer: z
-		.string()
-		.trim()
-		.min(1, { message: 'Target server must be a non-empty string' }),
-});
-
-const UpdateUserPowerLevelSchema = z.object({
-	senderUserId: z.string().min(1),
-	powerLevel: z.number().int(),
-	targetServers: z.array(z.string()).optional(),
-});
-
-const LeaveRoomDtoSchema = z.object({
-	senderUserId: z
-		.string()
-		.trim()
-		.min(1, { message: 'Sender ID must be a non-empty string' }),
-	targetServers: z.array(z.string()).optional(),
-});
-
-const KickUserDtoSchema = z.object({
-	userIdToKick: z
-		.string()
-		.trim()
-		.min(1, { message: 'User ID to kick must be a non-empty string' }),
-	senderUserId: z
-		.string()
-		.trim()
-		.min(1, { message: 'Sender ID must be a non-empty string' }),
-	reason: z.string().optional(),
-	targetServers: z.array(z.string()).optional(),
-});
-
-const BanUserDtoSchema = z.object({
-	userIdToBan: z
-		.string()
-		.trim()
-		.min(1, { message: 'User ID to ban must be a non-empty string' }),
-	senderUserId: z
-		.string()
-		.trim()
-		.min(1, { message: 'Sender ID must be a non-empty string' }),
-	reason: z.string().optional(),
-	targetServers: z.array(z.string()).optional(),
-});
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
 	return app
-		.post('/internal/rooms/rooms', async ({ body, set }) => {
-			const { username, sender, name, canonical_alias, alias } = body as {
-				username: string;
-				sender: string;
-				name: string;
-				canonical_alias?: string;
-				alias?: string;
-			};
-			try {
-				return await roomService.createRoom(
-					username,
-					sender,
-					name,
-					canonical_alias,
-					alias,
-				);
-			} catch (error) {
-				set.status = 500;
-				return {
-					error: `Failed to create room: ${error instanceof Error ? error.message : String(error)}`,
-				};
+		.post('/internal/rooms/rooms', async ({ body, set }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
+			const { username, sender, name, canonical_alias, alias } = body;
+			return roomService.createRoom(
+				username,
+				sender,
+				name,
+				canonical_alias,
+				alias,
+			);
+		}, {
+			body: InternalCreateRoomBodyDto,
+			response: {
+				200: InternalCreateRoomResponseDto,
+				400: ErrorResponseDto,
+			},
+			detail: {
+				tags: ['Internal'],
+				summary: 'Create a room',
+				description: 'Create a room'
 			}
 		})
-		.put('/internal/rooms/:roomId/name', async ({ params, body, set }) => {
-			const idParse = z.string().trim().min(1).safeParse(params.roomId);
-			const bodyParse = UpdateRoomNameDtoSchema.safeParse(body);
-			if (!idParse.success || !bodyParse.success) {
+		.put('/internal/rooms/:roomId/name', async ({ params, body, set }): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
+			const roomIdParse = RoomIdDto.safeParse(params.roomId);
+			const bodyParse = InternalUpdateRoomNameBodyDto.safeParse(body);
+			if (!roomIdParse.success || !bodyParse.success) {
 				set.status = 400;
 				return {
 					error: 'Invalid request',
 					details: {
-						id: idParse.error?.flatten(),
+						roomId: roomIdParse.error?.flatten(),
 						body: bodyParse.error?.flatten(),
 					},
 				};
 			}
 			const { name, senderUserId, targetServer } = bodyParse.data;
-			try {
-				const eventId = await roomService.updateRoomName(
-					idParse.data,
-					name,
-					senderUserId,
-					targetServer,
-				);
-				return { eventId };
-			} catch (error) {
-				set.status = 500;
-				return {
-					error: `Failed to update room name: ${error instanceof Error ? error.message : String(error)}`,
-				};
+			return roomService.updateRoomName(
+				roomIdParse.data,
+				name,
+				senderUserId,
+				targetServer,
+			);
+		}, {
+			params: InternalUpdateRoomNameParamsDto,
+			body: InternalUpdateRoomNameBodyDto,
+			response: {
+				200: InternalRoomEventResponseDto,
+				400: ErrorResponseDto,
+			},
+			detail: {
+				tags: ['Internal'],
+				summary: 'Update a room name',
+				description: 'Update a room name'
 			}
 		})
 		.put(
 			'/internal/rooms/:roomId/permissions/:userId',
-			async ({ params, body, set }) => {
-				const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
-				const userIdParse = z.string().trim().min(1).safeParse(params.userId);
-				const bodyParse = UpdateUserPowerLevelSchema.safeParse(body);
+			async ({ params, body, set }): Promise<InternalUpdateUserPowerLevelResponse | ErrorResponse> => {
+				const roomIdParse = RoomIdDto.safeParse(params.roomId);
+				const userIdParse = UsernameDto.safeParse(params.userId);
+				const bodyParse = InternalUpdateUserPowerLevelBodyDto.safeParse(body);
 				if (
 					!roomIdParse.success ||
 					!userIdParse.success ||
@@ -178,13 +123,26 @@ export const internalRoomPlugin = (app: Elysia) => {
 					set.status = 500;
 					return {
 						error: `Failed to update user power level: ${error instanceof Error ? error.message : String(error)}`,
+						details: {},
 					};
 				}
-			},
+			}, {
+				params: InternalUpdateUserPowerLevelParamsDto,
+				body: InternalUpdateUserPowerLevelBodyDto,
+				response: {
+					200: InternalRoomEventResponseDto,
+					400: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Internal'],
+					summary: 'Update a user power level',
+					description: 'Update a user power level'
+				}
+			}
 		)
-		.put('/internal/rooms/:roomId/leave', async ({ params, body, set }) => {
-			const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
-			const bodyParse = LeaveRoomDtoSchema.safeParse(body);
+		.put('/internal/rooms/:roomId/leave', async ({ params, body, set }): Promise<InternalLeaveRoomResponse | ErrorResponse> => {
+			const roomIdParse = RoomIdDto.safeParse(params.roomId);
+			const bodyParse = InternalLeaveRoomBodyDto.safeParse(body);
 			if (!roomIdParse.success || !bodyParse.success) {
 				set.status = 400;
 				return {
@@ -207,19 +165,28 @@ export const internalRoomPlugin = (app: Elysia) => {
 				set.status = 500;
 				return {
 					error: `Failed to leave room: ${error instanceof Error ? error.message : String(error)}`,
+					details: {},
 				};
+			}
+		}, {
+			params: InternalLeaveRoomParamsDto,
+			body: InternalLeaveRoomBodyDto,
+			response: {
+				200: InternalRoomEventResponseDto,
+				400: ErrorResponseDto,
+			},
+			detail: {
+				tags: ['Internal'],
+				summary: 'Leave a room',
+				description: 'Leave a room'
 			}
 		})
 		.put(
 			'/internal/rooms/:roomId/kick/:memberId',
-			async ({ params, body, set }) => {
-				const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
-				const memberIdParse = z
-					.string()
-					.trim()
-					.min(1)
-					.safeParse(params.memberId);
-				const bodyParse = KickUserDtoSchema.safeParse(body);
+			async ({ params, body, set }): Promise<InternalKickUserResponse | ErrorResponse> => {
+				const roomIdParse = RoomIdDto.safeParse(params.roomId);
+				const memberIdParse = UsernameDto.safeParse(params.memberId);
+				const bodyParse = InternalKickUserBodyDto.safeParse(body);
 				if (
 					!roomIdParse.success ||
 					!memberIdParse.success ||
@@ -250,23 +217,32 @@ export const internalRoomPlugin = (app: Elysia) => {
 					set.status = 500;
 					return {
 						error: `Failed to kick user: ${error instanceof Error ? error.message : String(error)}`,
+						details: {},
 					};
 				}
-			},
+			}, {
+				params: InternalKickUserParamsDto,
+				body: InternalKickUserBodyDto,
+				response: {
+					200: InternalRoomEventResponseDto,
+					400: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Internal'],
+					summary: 'Kick a user from a room',
+					description: 'Kick a user from a room'
+				}
+			}
 		)
 		.put(
-			'/internal/rooms/:roomId/ban/:memberId',
-			async ({ params, body, set }) => {
-				const roomIdParse = z.string().trim().min(1).safeParse(params.roomId);
-				const memberIdParse = z
-					.string()
-					.trim()
-					.min(1)
-					.safeParse(params.memberId);
-				const bodyParse = BanUserDtoSchema.safeParse(body);
+			'/internal/rooms/:roomId/ban/:userIdToBan',
+			async ({ params, body, set }): Promise<InternalBanUserResponse | ErrorResponse> => {
+				const roomIdParse = RoomIdDto.safeParse(params.roomId);
+				const userIdParse = UsernameDto.safeParse(params.userIdToBan);
+				const bodyParse = InternalBanUserBodyDto.safeParse(body);
 				if (
 					!roomIdParse.success ||
-					!memberIdParse.success ||
+					!userIdParse.success ||
 					!bodyParse.success
 				) {
 					set.status = 400;
@@ -274,7 +250,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 						error: 'Invalid request',
 						details: {
 							roomId: roomIdParse.error?.flatten(),
-							memberId: memberIdParse.error?.flatten(),
+							userId: userIdParse.error?.flatten(),
 							body: bodyParse.error?.flatten(),
 						},
 					};
@@ -284,7 +260,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				try {
 					const eventId = await roomService.banUser(
 						roomIdParse.data,
-						memberIdParse.data,
+						userIdParse.data,
 						senderUserId,
 						reason,
 						targetServers,
@@ -294,13 +270,26 @@ export const internalRoomPlugin = (app: Elysia) => {
 					set.status = 500;
 					return {
 						error: `Failed to ban user: ${error instanceof Error ? error.message : String(error)}`,
+						details: {},
 					};
 				}
-			},
+			}, {
+				params: InternalBanUserParamsDto,
+				body: InternalBanUserBodyDto,
+				response: {
+					200: InternalRoomEventResponseDto,
+					400: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Internal'],
+					summary: 'Ban a user from a room',
+					description: 'Ban a user from a room'
+				}
+			}
 		)
-		.put('/internal/rooms/:roomId/tombstone', async ({ params, body, set }) => {
-			const roomIdParse = RoomIdSchema.safeParse(params.roomId);
-			const bodyParse = TombstoneRoomSchema.safeParse(body);
+		.put('/internal/rooms/:roomId/tombstone', async ({ params, body, set }): Promise<InternalTombstoneRoomResponse | ErrorResponse> => {
+			const roomIdParse = RoomIdDto.safeParse(params.roomId);
+			const bodyParse = InternalTombstoneRoomBodyDto.safeParse(body);
 			if (!roomIdParse.success || !bodyParse.success) {
 				set.status = 400;
 				return {
@@ -311,18 +300,23 @@ export const internalRoomPlugin = (app: Elysia) => {
 					},
 				};
 			}
-			try {
-				return await roomService.markRoomAsTombstone(
-					roomIdParse.data,
-					bodyParse.data.sender,
-					bodyParse.data.reason,
-					bodyParse.data.replacementRoomId,
-				);
-			} catch (error) {
-				set.status = 500;
-				return {
-					error: `Failed to tombstone room: ${error instanceof Error ? error.message : String(error)}`,
-				};
+			return roomService.markRoomAsTombstone(
+				roomIdParse.data,
+				bodyParse.data.sender,
+				bodyParse.data.reason,
+				bodyParse.data.replacementRoomId,
+			);
+		}, {
+			params: InternalTombstoneRoomParamsDto,
+			body: InternalTombstoneRoomBodyDto,
+			response: {
+				200: InternalTombstoneRoomResponseDto,
+				400: ErrorResponseDto,
+			},
+			detail: {
+				tags: ['Internal'],
+				summary: 'Tombstone a room',
+				description: 'Tombstone a room'
 			}
 		});
 };
