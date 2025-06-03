@@ -23,10 +23,12 @@ export const signEvent = async <T extends EventBase>(
 		import('./authentication'),
 		import('./pruneEventDict'),
 	]);
+	// Compute hash and sign
 	const eventToSign = pruneEventDict(computeAndMergeHash(event));
 	const { signJson } = await import('./signJson');
 	const signedJsonResult = await signJson(eventToSign, signature, signingName);
-
+	// For non-redaction events, restore the original content
+	
 	return {
 		...signedJsonResult,
 		content: event.content,

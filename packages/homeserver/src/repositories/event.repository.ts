@@ -141,6 +141,15 @@ export class EventRepository {
 		return id;
 	}
 
+	async redactEvent(eventId: string, redactedEvent: EventBase): Promise<void> {
+		const collection = await this.getCollection();
+
+		await collection.updateOne(
+			{ _id: eventId },
+			{ $set: { event: redactedEvent } } // Purposefully replacing the entire event
+		);
+	}
+
 	async upsert(event: EventBase): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);

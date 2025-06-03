@@ -1,10 +1,7 @@
-import type { ReactionEvent } from '@hs/core/src/events/m.reaction';
-import type { RoomMessageEvent } from '@hs/core/src/events/m.room.message';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { z } from 'zod';
 import { MessageService } from '../../services/message.service';
-import type { SignedEvent } from '../../signEvent';
 
 const SendMessageSchema = z.object({
 	roomId: z.string(),
@@ -28,8 +25,12 @@ const SendReactionSchema = z.object({
 	senderUserId: z.string(),
 });
 
-type SendReactionResponseDto = SignedEvent<ReactionEvent>;
-type SendMessageResponseDto = SignedEvent<RoomMessageEvent>;
+const RedactMessageSchema = z.object({
+	roomId: z.string(),
+	targetServer: z.string(),
+	reason: z.string().optional(),
+	senderUserId: z.string(),
+});
 
 export const internalMessagePlugin = (app: Elysia) => {
 	const messageService = container.resolve(MessageService);
@@ -97,5 +98,27 @@ export const internalMessagePlugin = (app: Elysia) => {
 					targetServer,
 				);
 			},
-		);
+		)
+		.delete('/internal/messages/:messageId', async ({ params, body, set }) => {
+			const idParse = z.string().safeParse(params.messageId);
+			const bodyParse = RedactMessageSchema.safeParse(body);
+			if (!idParse.success || !bodyParse.success) {
+				set.status = 400;
+				return {
+					error: 'Invalid request',
+					details: {
+						id: idParse.error?.flatten(),
+						body: bodyParse.error?.flatten(),
+					},
+				};
+			}
+			const { roomId, reason, senderUserId, targetServer } = bodyParse.data;
+			return messageService.redactMessage(
+				roomId,
+				idParse.data,
+				reason,
+				senderUserId,
+				targetServer,
+			);
+		});
 };

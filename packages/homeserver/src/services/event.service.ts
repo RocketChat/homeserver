@@ -16,6 +16,8 @@ import { RoomRepository } from '../repositories/room.repository';
 import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
+import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
+import { pruneEventDict } from '../pruneEventDict';
 import { injectable } from 'tsyringe';
 
 type ValidationResult = {
@@ -86,7 +88,7 @@ export class EventService {
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly federationService: FederationService,
-	) {}
+	) { }
 
 	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
 		const event = await this.eventRepository.findById(eventId);
@@ -728,6 +730,61 @@ export class EventService {
 			}
 		}
 		return authEvents;
+	}
+
+	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
+		const eventIdToRedact = redactionEvent.redacts;
+		if (!eventIdToRedact) {
+			this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
+			return;
+		}
+
+		const eventToRedact = await this.eventRepository.findById(eventIdToRedact);
+		if (!eventToRedact) {
+			this.logger.warn(`[REDACTION] Event to redact ${eventIdToRedact} not found`);
+			return;
+		}
+
+		// Apply redaction rules according to Matrix spec for room versions 6 and above
+		// These parameters correspond to the features in newer room versions (v6+):
+		// - updated_redaction_rules: Uses stricter redaction rules from v6+
+		// - restricted_join_rule_fix: Preserves "authorising_user" field in membership events (v8+)
+		// - restricted_join_rule: Preserves "allow" field in join rules (v7+)
+		// - special_case_aliases_auth: Special handling for aliases events (v6+)
+		// - msc3389_relation_redactions: Preserves certain relation data per MSC3389 (v9+)
+		const redactedEventContent = pruneEventDict(eventToRedact.event, {
+			updated_redaction_rules: true,
+			restricted_join_rule_fix: true,
+			implicit_room_creator: false,
+			restricted_join_rule: true,
+			special_case_aliases_auth: true,
+			msc3389_relation_redactions: true,
+		});
+
+		// According to Matrix spec, redacted events must contain a reference to what redacted them
+		// in the unsigned section of the event
+		if (!redactedEventContent.unsigned) {
+			redactedEventContent.unsigned = {};
+		}
+
+		// Store the redaction event in the redacted_because field as specified in the Matrix spec
+		redactedEventContent.unsigned.redacted_because = redactionEvent;
+
+		const finalRedactedEvent: EventBase = {
+			type: eventToRedact.event.type,
+			room_id: eventToRedact.event.room_id,
+			sender: eventToRedact.event.sender,
+			origin: eventToRedact.event.origin,
+			origin_server_ts: eventToRedact.event.origin_server_ts,
+			depth: eventToRedact.event.depth,
+			prev_events: eventToRedact.event.prev_events,
+			auth_events: eventToRedact.event.auth_events,
+			...redactedEventContent,
+		};
+
+		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
+
+		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}
 
 	private getAuthEventQueries<T extends EventType>(
