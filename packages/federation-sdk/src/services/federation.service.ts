@@ -1,21 +1,22 @@
 import type { EventBase } from '@hs/core/src/events/eventBase';
-import { Injectable, Logger } from '@nestjs/common';
-import type {
-	MakeJoinResponse,
-	SendJoinResponse,
-	SendTransactionResponse,
-	Transaction,
-	Version,
+import {
+	FederationEndpoints,
+	type MakeJoinResponse,
+	type SendJoinResponse,
+	type SendTransactionResponse,
+	type Transaction,
+	type Version,
 } from '../specs/federation-api';
-import { FederationEndpoints } from '../specs/federation-api';
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
 import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
+import { injectable } from 'tsyringe';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
 
-@Injectable()
+@injectable()
 export class FederationService {
-	private readonly logger = new Logger(FederationService.name);
+	private readonly logger = createLogger('FederationService');
 
 	constructor(
 		private readonly configService: FederationConfigService,
@@ -170,7 +171,7 @@ export class FederationService {
 			const uri = FederationEndpoints.getStateIds(roomId);
 			return await this.requestService.get<EventBase[]>(domain, uri);
 		} catch (error: any) {
-			this.logger.error(`getStateIds failed: ${error.message}`, error.stack);
+			this.logger.error(`getStateIds failed: ${error?.message}`, error?.stack);
 			throw error;
 		}
 	}
@@ -185,7 +186,7 @@ export class FederationService {
 				FederationEndpoints.version,
 			);
 		} catch (error: any) {
-			this.logger.error(`getVersion failed: ${error.message}`, error.stack);
+			this.logger.error(`getVersion failed: ${error?.message}`, error?.stack);
 			throw error;
 		}
 	}

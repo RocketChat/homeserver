@@ -1,10 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { inject, injectable } from 'tsyringe';
 import type { FederationModuleOptions } from '../federation.module';
 
-@Injectable()
+@injectable()
 export class FederationConfigService {
 	constructor(
-		@Inject('FEDERATION_OPTIONS')
+		@inject('FEDERATION_OPTIONS')
 		private readonly options: FederationModuleOptions,
 	) {}
 

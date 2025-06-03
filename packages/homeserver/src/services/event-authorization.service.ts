@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import type { EventBase } from '../models/event.model';
+import { injectable } from 'tsyringe';
 
-@Injectable()
+@injectable()
 export class EventAuthorizationService {
-	private readonly logger = new Logger(EventAuthorizationService.name);
+	private readonly logger = createLogger('EventAuthorizationService');
 
 	async authorizeEvent(
 		event: EventBase,

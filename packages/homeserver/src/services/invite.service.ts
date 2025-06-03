@@ -5,7 +5,6 @@ import {
 	HttpException,
 	HttpStatus,
 	Injectable,
-	Logger,
 } from '@nestjs/common';
 import { generateId } from '../authentication';
 import { makeUnsignedRequest } from '../makeRequest';
@@ -15,6 +14,8 @@ import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 import { RoomRepository } from '../repositories/room.repository';
+import { injectable } from 'tsyringe';
+import { createLogger } from '../utils/logger';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -23,9 +24,9 @@ export type ProcessInviteEvent = {
 	room_version: string;
 };
 
-@Injectable()
+@injectable()
 export class InviteService {
-	private readonly logger = new Logger(InviteService.name);
+	private readonly logger = createLogger('InviteService');
 
 	constructor(
 		private readonly eventService: EventService,

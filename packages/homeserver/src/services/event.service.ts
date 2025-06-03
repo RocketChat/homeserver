@@ -1,6 +1,6 @@
 import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
 import { FederationService } from '@hs/federation-sdk';
-import { Injectable, Logger } from '@nestjs/common';
+import { createLogger } from '../utils/logger';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
 import { MatrixError } from '../errors';
@@ -18,6 +18,7 @@ import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
 import { pruneEventDict } from '../pruneEventDict';
+import { injectable } from 'tsyringe';
 
 type ValidationResult = {
 	eventId: string;
@@ -76,9 +77,9 @@ export interface AuthEventParams {
 	senderId: string;
 }
 
-@Injectable()
+@injectable()
 export class EventService {
-	private readonly logger = new Logger(EventService.name);
+	private readonly logger = createLogger('EventService');
 
 	constructor(
 		private readonly eventRepository: EventRepository,
@@ -87,7 +88,7 @@ export class EventService {
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly federationService: FederationService,
-	) {}
+	) { }
 
 	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
 		const event = await this.eventRepository.findById(eventId);
@@ -783,7 +784,7 @@ export class EventService {
 
 		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
 
-		this.logger.log(`Successfully redacted event ${eventIdToRedact}`);
+		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}
 
 	private getAuthEventQueries<T extends EventType>(

@@ -2,6 +2,7 @@ import { authorizationHeaders, computeAndMergeHash } from './authentication';
 import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
 import { extractURIfromURL } from './helpers/url';
 import type { SigningKey } from './keys';
+import logger from './utils/logger';
 
 import { signJson } from './signJson';
 
@@ -40,7 +41,7 @@ export const makeSignedRequest = async <T = Record<string, unknown>>({
 			signingName,
 		));
 
-	console.log('body ->', method, domain, url.toString(), signedBody);
+	logger.debug('body ->', method, domain, url.toString(), signedBody);
 
 	const auth = await authorizationHeaders(
 		signingName,
@@ -51,7 +52,7 @@ export const makeSignedRequest = async <T = Record<string, unknown>>({
 		signedBody as Record<string, unknown>,
 	);
 
-	console.log('auth ->', method, domain, uri, auth);
+	logger.debug('auth ->', method, domain, uri, auth);
 
 	const requestOptions: RequestInit = {
 		...options,
