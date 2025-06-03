@@ -8,8 +8,8 @@ import {
 	type RoomNameAuthEvents,
 } from '@hs/core/src/events/m.room.name';
 import {
-	roomPowerLevelsEvent,
 	isRoomPowerLevelsEvent,
+	roomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
 } from '@hs/core/src/events/m.room.power_levels';
 import {
@@ -20,7 +20,10 @@ import {
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from '@hs/federation-sdk';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { injectable } from 'tsyringe';
 import { generateId } from '../authentication';
+import type { InternalCreateRoomResponse, InternalUpdateRoomNameResponse } from '../dtos';
+import { ForbiddenError } from '../errors';
 import type { SigningKey } from '../keys';
 import type {
 	EventStore,
@@ -30,11 +33,9 @@ import { createRoom } from '../procedures/createRoom';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { signEvent, type SignedEvent } from '../signEvent';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
-import { ForbiddenError } from '../errors';
-import { injectable } from 'tsyringe';
-import { createLogger } from '../utils/logger';
 
 const logger = createLogger('RoomService');
 
@@ -228,10 +229,7 @@ export class RoomService {
 		name: string,
 		canonicalAlias?: string,
 		alias?: string,
-	): Promise<{
-		roomId: string;
-		events: EventBase[];
-	}> {
+	): Promise<InternalCreateRoomResponse> {
 		logger.debug(`Creating room for ${sender} with ${username}`);
 		const config = this.configService.getServerConfig();
 		const signingKey = await this.configService.getSigningKey();
@@ -265,8 +263,8 @@ export class RoomService {
 		logger.info(`Successfully saved room ${roomId} to rooms collection`);
 
 		return {
-			roomId: result.roomId,
-			events: result.events.map((e) => e.event),
+			room_id: result.roomId,
+			event_id: result.events[0]._id,
 		};
 	}
 
@@ -275,7 +273,7 @@ export class RoomService {
 		name: string,
 		senderId: string,
 		targetServer: string,
-	): Promise<string> {
+	): Promise<InternalUpdateRoomNameResponse> {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
 		);
@@ -388,7 +386,9 @@ export class RoomService {
 			}
 		}
 
-		return eventId;
+		return {
+			eventId: eventId,
+		};
 	}
 
 	async updateUserPowerLevel(

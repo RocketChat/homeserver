@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import { WellKnownServerResponseDto } from '../../dtos';
 import { WellKnownService } from '../../services/well-known.service';
 
 export const wellKnownPlugin = (app: Elysia) => {
@@ -12,5 +13,14 @@ export const wellKnownPlugin = (app: Elysia) => {
 		set.headers.ETag = etag;
 		set.headers['Content-Type'] = 'application/json';
 		return responseData;
+	}, {
+		response: {
+			200: WellKnownServerResponseDto,
+		},
+		detail: {
+			tags: ['Well-Known'],
+			summary: 'Get well-known host data',
+			description: 'Get the well-known host data'
+		}
 	});
 };

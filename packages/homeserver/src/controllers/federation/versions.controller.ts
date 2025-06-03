@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { container } from "tsyringe";
+import { GetVersionsResponseDto } from "../../dtos";
 import { ConfigService } from "../../services/config.service";
 
 export const versionsPlugin = (app: Elysia) => {
@@ -12,5 +13,14 @@ export const versionsPlugin = (app: Elysia) => {
 				version: config.version,
 			},
 		};
+	}, {
+		response: {
+			200: GetVersionsResponseDto,
+		},
+		detail: {
+			tags: ['Federation'],
+			summary: 'Get versions',
+			description: 'Get the versions of the server'
+		}
 	});
 };

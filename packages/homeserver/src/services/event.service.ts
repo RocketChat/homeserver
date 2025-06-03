@@ -1,8 +1,9 @@
 import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
 import { FederationService } from '@hs/federation-sdk';
-import { createLogger } from '../utils/logger';
+import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
+import type { GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, SendTransactionBody } from '../dtos';
 import { MatrixError } from '../errors';
 import type { EventBase, EventStore } from '../models/event.model';
 import {
@@ -15,6 +16,7 @@ import { KeyRepository } from '../repositories/key.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
 import { pruneEventDict } from '../pruneEventDict';
@@ -281,8 +283,8 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(events: EventBase[]) {
-		const eventsWithIds = events.map((event) => ({
+	async processIncomingPDUs(pdus: SendTransactionBody['pdus']): Promise<void> {
+		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
 			valid: true,
@@ -291,13 +293,14 @@ export class EventService {
 		const validatedEvents: ValidationResult[] = [];
 
 		for (const { eventId, event } of eventsWithIds) {
-			let result = await this.validateEventFormat(eventId, event);
+			// TODO: Rewrite this poor typing
+			let result = await this.validateEventFormat(eventId, event as EventBase);
 			if (result.valid) {
-				result = await this.validateEventTypeSpecific(eventId, event);
+				result = await this.validateEventTypeSpecific(eventId, event as EventBase);
 			}
 
 			if (result.valid) {
-				result = await this.validateSignaturesAndHashes(eventId, event);
+				result = await this.validateSignaturesAndHashes(eventId, event as EventBase);
 			}
 
 			validatedEvents.push(result);
@@ -315,7 +318,7 @@ export class EventService {
 				eventId: event.eventId,
 				roomId: event.event.room_id,
 				origin: event.event.origin,
-				event: event.event as unknown as EventBase,
+				event: event.event,
 			});
 		}
 	}
@@ -613,11 +616,11 @@ export class EventService {
 	}
 
 	async getMissingEvents(
-		roomId: string,
-		earliestEvents: string[],
-		latestEvents: string[],
-		limit: number,
-	): Promise<EventBase[]> {
+		roomId: GetMissingEventsParams['roomId'],
+		earliestEvents: GetMissingEventsBody['earliest_events'],
+		latestEvents: GetMissingEventsBody['latest_events'],
+		limit: GetMissingEventsBody['limit'],
+	): Promise<GetMissingEventsResponse> {
 		const events = await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
@@ -626,7 +629,12 @@ export class EventService {
 			{ limit },
 		);
 
-		return events.map((event) => event.event);
+		return {
+			events: events.map((event) => ({
+				_id: event._id,
+				event: event.event,
+			})),
+		};
 	}
 
 	async getEventsByIds(

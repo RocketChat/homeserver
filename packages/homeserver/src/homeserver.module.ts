@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import { swagger } from '@elysiajs/swagger';
 import {
 	type FederationModuleOptions,
 	FederationRequestService,
@@ -93,10 +94,19 @@ async function setup() {
 	container.resolve(MissingEventListener);
 	container.resolve(StagingAreaService);
 
-	// Set up Elysia app instance
 	app = new Elysia();
 
 	app
+		// @ts-expect-error - Elysia is not typed correctly
+		.use(swagger({
+			documentation: {
+				info: {
+					title: 'Matrix Homeserver API',
+					version: '1.0.0',
+					description: 'Matrix Protocol Implementation - Federation and Internal APIs',
+				},
+			},
+		}))
 		.use(invitePlugin)
 		.use(profilesPlugin)
 		.use(sendJoinPlugin)

@@ -3,19 +3,18 @@ import { FederationService } from '@hs/federation-sdk';
 import {
 	ForbiddenException,
 	HttpException,
-	HttpStatus,
-	Injectable,
+	HttpStatus
 } from '@nestjs/common';
+import { injectable } from 'tsyringe';
 import { generateId } from '../authentication';
+import type { InternalInviteUserResponse, ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { makeUnsignedRequest } from '../makeRequest';
 import type { EventBase } from '../models/event.model';
 import { signEvent } from '../signEvent';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
-import { RoomRepository } from '../repositories/room.repository';
-import { injectable } from 'tsyringe';
-import { createLogger } from '../utils/logger';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -43,7 +42,7 @@ export class InviteService {
 		roomId?: string,
 		sender?: string,
 		name?: string,
-	): Promise<unknown> {
+	): Promise<InternalInviteUserResponse> {
 		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
 
 		const config = this.configService.getServerConfig();
@@ -78,7 +77,7 @@ export class InviteService {
 				throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
 			}
 
-			const { roomId: createdRoomId } = await this.roomService.createRoom(
+			const { room_id: createdRoomId } = await this.roomService.createRoom(
 				username,
 				sender,
 				name,
@@ -203,14 +202,17 @@ export class InviteService {
 			);
 		}
 
-		return responseMake;
+		return {
+			event_id: inviteEventId,
+			room_id: finalRoomId,
+		};
 	}
 
 	async processInvite(
-		event: ProcessInviteEvent,
+		event: ProcessInviteBody,
 		roomId: string,
 		eventId: string,
-	): Promise<unknown> {
+	): Promise<ProcessInviteResponse> {
 		try {
 			// Check if the room is tombstoned (deleted)
 			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
@@ -225,10 +227,7 @@ export class InviteService {
 
 			// TODO: Validate before inserting
 			try {
-				await this.eventService.insertEvent(event.event, undefined, {
-					invite_room_state: event.invite_room_state,
-					room_version: event.room_version,
-				});
+				await this.eventService.insertEvent(event as EventBase, eventId);
 			} catch (error: unknown) {
 				const errorMessage =
 					error instanceof Error ? error.message : String(error);
@@ -239,16 +238,16 @@ export class InviteService {
 			this.logger.debug('Received invite event', {
 				room_id: roomId,
 				event_id: eventId,
-				user_id: event.event.state_key,
-				origin: event.event.origin,
+				user_id: event.state_key,
+				origin: event.origin,
 			});
 
 			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
 			void new Promise((resolve) => setTimeout(resolve, 5000)).then(() =>
-				this.acceptInvite(roomId, event.event.state_key),
+				this.acceptInvite(roomId, event.state_key),
 			);
 
-			return { event: event.event };
+			return { event: event };
 		} catch (error: any) {
 			this.logger.error(`Failed to process invite: ${error.message}`);
 			throw error;
