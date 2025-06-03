@@ -19,6 +19,7 @@ import { z } from "zod";
 // 2. Additionally, the format of the auth_events and prev_events fields are changed: instead of lists of (event_id, hash) pairs, they are now plain lists of event IDs.
 
 export const PduV3Schema = PduV1Schema.extend({
+	event_id: z.never(),
 	auth_events: z
 		.array(z.string())
 		.describe(

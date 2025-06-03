@@ -4,6 +4,14 @@
 	"editor.codeActionsOnSave": {
 		"quickfix.biome": "explicit"
 	},
-	"cSpell.words": ["displayname", "Elysia", "homeserver", "Unpadded"],
-	"typescript.tsdk": "node_modules/typescript/lib"
+	"cSpell.words": [
+		"displayname",
+		"Elysia",
+		"homeserver",
+		"Unpadded"
+	],
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	}
 }

@@ -30,7 +30,8 @@
 			"request": "attach",
 			"name": "Attach Bun",
 			"url": "ws://localhost:6499/",
-			"stopOnEntry": false
+			"stopOnEntry": false,
+			"preLaunchTask": "bun: test"
 		}
 	]
 }

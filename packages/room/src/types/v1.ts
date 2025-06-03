@@ -108,34 +108,32 @@ export const PduMembershipTypeSchema = z.enum([
 ]);
 
 export const PduMembershipEventContentSchema = z.object({
-	content: z.object({
-		avatar_url: z.string().url().optional(),
-		displayname: z.string().optional(),
-		is_direct: z
-			.boolean()
-			.describe(
-				"Flag indicating if the room containing this event was created with the intention of being a direct chat",
-			),
-		join_authorised_via_users_server: z.string(),
-		membership: PduMembershipTypeSchema,
-		reason: z.string().optional(),
-		third_party_invite: z
-			.object({
-				display_name: z.string().optional(),
-				signed: z.object({
-					mxid: z
-						.string()
-						.describe(
-							"The invited matrix user ID. Must be equal to the user_id property of the event.",
-						),
-					signatures: z
-						.record(z.string(), z.string())
-						.describe("The signatures of the event."),
-					token: z.string(),
-				}),
-			})
-			.optional(),
-	}),
+	avatar_url: z.string().url().optional(),
+	displayname: z.string().optional(),
+	is_direct: z
+		.boolean()
+		.describe(
+			"Flag indicating if the room containing this event was created with the intention of being a direct chat",
+		),
+	join_authorised_via_users_server: z.string(),
+	membership: PduMembershipTypeSchema,
+	reason: z.string().optional(),
+	third_party_invite: z
+		.object({
+			display_name: z.string().optional(),
+			signed: z.object({
+				mxid: z
+					.string()
+					.describe(
+						"The invited matrix user ID. Must be equal to the user_id property of the event.",
+					),
+				signatures: z
+					.record(z.string(), z.string())
+					.describe("The signatures of the event."),
+				token: z.string(),
+			}),
+		})
+		.optional(),
 });
 
 export type PduMembershipEventContent = z.infer<
@@ -145,36 +143,34 @@ export type PduMembershipEventContent = z.infer<
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcreate
 
 export const PduCreateEventContentSchema = z.object({
-	content: z.object({
-		creator: z
-			.string()
-			.describe(
-				" The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.",
-			),
-		"m.federate": z
-			.boolean()
-			.describe(
-				" Whether users on other servers can join this room. Defaults to true if key does not exist.",
-			)
-			.optional()
-			.default(true),
-		predecessor: z
-			.object({
-				event_id: z
-					.string()
-					.describe("The event ID of the last known event in the old room."),
-				room_id: z.string().describe("The ID of the old room."),
-			})
-			.optional(),
-		room_version: z
-			.string()
-			.describe(
-				" The version of the room. Defaults to '1' if the key does not exist.",
-			)
-			.optional()
-			.default("1"),
-		type: z.string().describe("The type of the event.").optional(),
-	}),
+	creator: z
+		.string()
+		.describe(
+			" The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.",
+		),
+	"m.federate": z
+		.boolean()
+		.describe(
+			" Whether users on other servers can join this room. Defaults to true if key does not exist.",
+		)
+		.optional()
+		.default(true),
+	predecessor: z
+		.object({
+			event_id: z
+				.string()
+				.describe("The event ID of the last known event in the old room."),
+			room_id: z.string().describe("The ID of the old room."),
+		})
+		.optional(),
+	room_version: z
+		.string()
+		.describe(
+			" The version of the room. Defaults to '1' if the key does not exist.",
+		)
+		.optional()
+		.default("1"),
+	type: z.string().describe("The type of the event.").optional(),
 });
 
 export type PduCreateEventContent = z.infer<typeof PduCreateEventContentSchema>;
@@ -182,37 +178,35 @@ export type PduCreateEventContent = z.infer<typeof PduCreateEventContentSchema>;
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcreate
 
 export const PduJoinRuleEventContentSchema = z.object({
-	content: z.object({
-		join_rule: z
-			.enum([
-				"public",
-				"invite",
-				"knock",
-				"private",
-				"restricted",
-				"knock_restricted",
-			])
-			.describe("The type of rules used for users wishing to join this room."),
-		allow: z
-			.array(
-				z.object({
-					room_id: z
-						.string()
-						.describe(
-							" Required if type is m.room_membership. The room ID to check the user’s membership against. If the user is joined to this room, they satisfy the condition and thus are permitted to join the restricted room.",
-						),
-					type: z
-						.enum(["m.room_membership"])
-						.describe(
-							"The type of condition: m.room_membership - the user satisfies the condition if they are joined to the referenced room. One of: [m.room_membership]",
-						),
-				}),
-			)
-			.describe(
-				"For restricted rooms, the conditions the user will be tested against. The user needs only to satisfy one of the conditions to join the restricted room. If the user fails to meet any condition, or the condition is unable to be confirmed as satisfied, then the user requires an invite to join the room. Improper or no allow conditions on a restricted join rule imply the room is effectively invite-only (no conditions can be satisfied).",
-			)
-			.optional(),
-	}),
+	join_rule: z
+		.enum([
+			"public",
+			"invite",
+			"knock",
+			"private",
+			"restricted",
+			"knock_restricted",
+		])
+		.describe("The type of rules used for users wishing to join this room."),
+	allow: z
+		.array(
+			z.object({
+				room_id: z
+					.string()
+					.describe(
+						" Required if type is m.room_membership. The room ID to check the user’s membership against. If the user is joined to this room, they satisfy the condition and thus are permitted to join the restricted room.",
+					),
+				type: z
+					.enum(["m.room_membership"])
+					.describe(
+						"The type of condition: m.room_membership - the user satisfies the condition if they are joined to the referenced room. One of: [m.room_membership]",
+					),
+			}),
+		)
+		.describe(
+			"For restricted rooms, the conditions the user will be tested against. The user needs only to satisfy one of the conditions to join the restricted room. If the user fails to meet any condition, or the condition is unable to be confirmed as satisfied, then the user requires an invite to join the room. Improper or no allow conditions on a restricted join rule imply the room is effectively invite-only (no conditions can be satisfied).",
+		)
+		.optional(),
 });
 
 export type PduJoinRuleEventContent = z.infer<
@@ -234,68 +228,66 @@ export function getPduPowerLevelsEventContentSchema<T extends z.ZodType>(
 			: z.number()) as unknown as T;
 
 	return z.object({
-		content: z.object({
-			// The level required to ban a user.
-			ban: acceptedValueTypes
-				.describe("The level required to ban a user.")
-				.optional(),
-			// The level required to send specific event types. This is a mapping from event type to power level required.
-			events: z
-				.record(z.string(), acceptedValueTypes)
-				.describe(
-					"The level required to send specific event types. This is a mapping from event type to power level required.",
-				),
-			//  The default level required to send message events. Can be overridden by the events key.
-			events_default: acceptedValueTypes
-				.describe(
-					"The default level required to send message events. Can be overridden by the events key.",
-				)
-				.optional(),
-			//  The level required to invite a user. Defaults to 0 if unspecified.
-			invite: acceptedValueTypes
-				.describe("The level required to invite a user.")
-				.optional(),
-			//  The level required to kick a user. Defaults to 50 if unspecified.
-			kick: acceptedValueTypes
-				.describe("The level required to kick a user.")
-				.optional(),
-			//  The power level requirements for specific notification types. This is a mapping from key to power level for that notifications key.
-			notifications: z.union([
-				z.object({
-					//  The level required to trigger an @room notification. Defaults to 50 if unspecified.
-					room: acceptedValueTypes
-						.describe("The level required to trigger an @room notification.")
-						.optional(),
-				}),
-				// others as said in spec
-				z
-					.record(z.string(), acceptedValueTypes)
+		// The level required to ban a user.
+		ban: acceptedValueTypes
+			.describe("The level required to ban a user.")
+			.optional(),
+		// The level required to send specific event types. This is a mapping from event type to power level required.
+		events: z
+			.record(z.string(), acceptedValueTypes)
+			.describe(
+				"The level required to send specific event types. This is a mapping from event type to power level required.",
+			),
+		//  The default level required to send message events. Can be overridden by the events key.
+		events_default: acceptedValueTypes
+			.describe(
+				"The default level required to send message events. Can be overridden by the events key.",
+			)
+			.optional(),
+		//  The level required to invite a user. Defaults to 0 if unspecified.
+		invite: acceptedValueTypes
+			.describe("The level required to invite a user.")
+			.optional(),
+		//  The level required to kick a user. Defaults to 50 if unspecified.
+		kick: acceptedValueTypes
+			.describe("The level required to kick a user.")
+			.optional(),
+		//  The power level requirements for specific notification types. This is a mapping from key to power level for that notifications key.
+		notifications: z.union([
+			z.object({
+				//  The level required to trigger an @room notification. Defaults to 50 if unspecified.
+				room: acceptedValueTypes
 					.describe("The level required to trigger an @room notification.")
 					.optional(),
-			]),
-			//  The level required to redact an event sent by another user. Defaults to 50 if unspecified.
-			redact: acceptedValueTypes
-				.describe("The level required to redact an event sent by another user.")
-				.optional(),
-			//  The default level required to send state events. Can be overridden by the events key. Defaults to 50 if unspecified.
-			state_default: acceptedValueTypes
-				.describe(
-					"The default level required to send state events. Can be overridden by the events key.",
-				)
-				.optional(),
-			//  The power levels for specific users. This is a mapping from user_id to power level for that user.
-			users: z
+			}),
+			// others as said in spec
+			z
 				.record(z.string(), acceptedValueTypes)
-				.describe(
-					"The power levels for specific users. This is a mapping from user_id to power level for that user.",
-				),
-			//  The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.
-			users_default: acceptedValueTypes
-				.describe(
-					"The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.",
-				)
+				.describe("The level required to trigger an @room notification.")
 				.optional(),
-		}),
+		]),
+		//  The level required to redact an event sent by another user. Defaults to 50 if unspecified.
+		redact: acceptedValueTypes
+			.describe("The level required to redact an event sent by another user.")
+			.optional(),
+		//  The default level required to send state events. Can be overridden by the events key. Defaults to 50 if unspecified.
+		state_default: acceptedValueTypes
+			.describe(
+				"The default level required to send state events. Can be overridden by the events key.",
+			)
+			.optional(),
+		//  The power levels for specific users. This is a mapping from user_id to power level for that user.
+		users: z
+			.record(z.string(), acceptedValueTypes)
+			.describe(
+				"The power levels for specific users. This is a mapping from user_id to power level for that user.",
+			),
+		//  The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.
+		users_default: acceptedValueTypes
+			.describe(
+				"The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.",
+			)
+			.optional(),
 	});
 }
 
@@ -412,19 +404,19 @@ export const PduV1Schema = z.object({
 
 export type PduV1 = z.infer<typeof PduV1Schema>;
 
-export type PduMembershipEvent = PduV1 & PduMembershipEventContent;
+export type PduMembershipEvent = PduV1 & { content: PduMembershipEventContent };
 
 export function isMembershipEvent(event: PduV1): event is PduMembershipEvent {
 	return event.type === PduTypeRoomMember;
 }
 
-export type PduCreateEvent = PduV1 & PduCreateEventContent;
+export type PduCreateEvent = PduV1 & { content: PduCreateEventContent };
 
 export function isCreateEvent(event: PduV1): event is PduCreateEvent {
 	return event.type === PduTypeRoomCreate && event.state_key === "";
 }
 
-export type PduJoinRuleEvent = PduV1 & PduJoinRuleEventContent;
+export type PduJoinRuleEvent = PduV1 & { content: PduJoinRuleEventContent };
 
 export function isJoinRuleEvent(event: PduV1): event is PduJoinRuleEvent {
 	return (
@@ -434,13 +426,17 @@ export function isJoinRuleEvent(event: PduV1): event is PduJoinRuleEvent {
 	);
 }
 
-export type PduPowerLevelsEvent = PduV1 & PduPowerLevelsEventContent;
+export type PduPowerLevelsEvent = PduV1 & {
+	content: PduPowerLevelsEventContent;
+};
 
 export function isPowerLevelsEvent(event: PduV1): event is PduPowerLevelsEvent {
 	return event.type === PduTypeRoomPowerLevels && event.state_key === "";
 }
 
-export type PduCanonicalAliasEvent = PduV1 & PduCanonicalAliasEventContent;
+export type PduCanonicalAliasEvent = PduV1 & {
+	content: PduCanonicalAliasEventContent;
+};
 
 export function isCanonicalAliasEvent(
 	event: PduV1,
