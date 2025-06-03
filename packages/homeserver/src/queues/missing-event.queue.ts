@@ -1,3 +1,4 @@
+import { injectable } from 'tsyringe';
 import { BaseQueue } from './base.queue';
 
 export type MissingEventType = {
@@ -6,4 +7,5 @@ export type MissingEventType = {
 	origin: string;
 };
 
+@injectable()
 export class MissingEventsQueue extends BaseQueue<MissingEventType> {}

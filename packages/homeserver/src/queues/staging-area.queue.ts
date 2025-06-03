@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { injectable } from 'tsyringe';
 import type { EventBase } from '../models/event.model';
 
 export interface StagingAreaEventType {
@@ -11,6 +12,7 @@ export interface StagingAreaEventType {
 
 type QueueHandler = (item: StagingAreaEventType) => Promise<void>;
 
+@injectable()
 export class StagingAreaQueue {
 	private queue: StagingAreaEventType[] = [];
 	private handlers: QueueHandler[] = [];

@@ -1,8 +1,10 @@
+import { injectable } from 'tsyringe';
+import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { StagingAreaService } from '../services/staging-area.service';
 import { createLogger } from '../utils/logger';
-import type { StagingAreaEventType } from '../queues/staging-area.queue';
 
+@injectable()
 export class StagingAreaListener {
 	private readonly logger = createLogger('StagingAreaListener');
 
