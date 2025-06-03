@@ -97,7 +97,7 @@ async function setup() {
 	app = new Elysia();
 
 	app
-		// @ts-expect-error - Elysia is not typed correctly
+		// @ts-ignore - Elysia is not typed correctly
 		.use(swagger({
 			documentation: {
 				info: {
