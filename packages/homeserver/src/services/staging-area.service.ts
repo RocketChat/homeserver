@@ -1,14 +1,15 @@
-import { createLogger } from '../utils/logger';
+import { injectable } from 'tsyringe';
 import type { EventBase } from '../models/event.model';
 import {
 	type StagingAreaEventType,
 	StagingAreaQueue,
 } from '../queues/staging-area.queue';
+import { Lock } from '../utils/lock.decorator';
+import { createLogger } from '../utils/logger';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventStateService } from './event-state.service';
 import { EventService, EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
-import { injectable } from 'tsyringe';
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {
@@ -79,6 +80,7 @@ export class StagingAreaService {
 		return [...authEvents, ...prevEvents];
 	}
 
+	@Lock({ timeout: 10000, keyPath: 'event.room_id' })
 	async processEvent(event: StagingAreaEventType & { metadata?: any }) {
 		const eventId = event.eventId;
 		const trackedEvent = this.processingEvents.get(eventId);

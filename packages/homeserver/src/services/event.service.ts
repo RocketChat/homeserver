@@ -1,6 +1,7 @@
 import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
+import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
 import { FederationService } from '@hs/federation-sdk';
-import { createLogger } from '../utils/logger';
+import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
 import { MatrixError } from '../errors';
@@ -9,16 +10,15 @@ import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
 } from '../procedures/getPublicKeyFromServer';
+import { pruneEventDict } from '../pruneEventDict';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
-import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
-import { pruneEventDict } from '../pruneEventDict';
-import { injectable } from 'tsyringe';
 
 type ValidationResult = {
 	eventId: string;

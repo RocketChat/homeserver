@@ -19,6 +19,7 @@ import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
 import { MissingEventListener } from './listeners/missing-event.listener';
+import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
@@ -40,6 +41,7 @@ import { RoomService } from './services/room.service';
 import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
+import { LockManagerService } from './utils/lock.decorator';
 
 let app: Elysia;
 
@@ -87,11 +89,24 @@ async function setup() {
 	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaQueue);
 	container.registerSingleton(StagingAreaService);
+	
+	// Register the lock manager service with configuration
+	container.register(LockManagerService, {
+		useFactory: () => new LockManagerService({ type: 'memory' })
+		
+		// NATS configuration example:
+		// useFactory: () => new LockManagerService({
+		// 	type: 'nats',
+		// 	servers: ['nats://localhost:4222'],
+		// 	timeout: 5000,
+		// 	reconnect: true,
+		// 	maxReconnectAttempts: 10
+		// })
+	});
 
 	// Resolve the listeners to ensure they are registered and ready to use
-	// without relying on lazy injection
+	container.resolve(StagingAreaListener);
 	container.resolve(MissingEventListener);
-	container.resolve(StagingAreaService);
 
 	// Set up Elysia app instance
 	app = new Elysia();
