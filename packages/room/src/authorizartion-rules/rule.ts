@@ -171,9 +171,15 @@ async function isMembershipChangeAllowed(
 			if (previousEvents.length === 1) {
 				const [event] = previousEvents;
 
-				return (
-					event.isCreateEvent() && event.stateKey === membershipEvent.stateKey
-				);
+				if (
+					event.isCreateEvent() &&
+					event.getContent<PduCreateEventContent>().creator ===
+						membershipEvent.stateKey
+				) {
+					return true;
+				}
+
+				throw new Error("no powerlevel neither the owner");
 			}
 
 			// If the sender does not match state_key, reject.
@@ -630,6 +636,8 @@ export async function isAllowedEvent(
 			}
 
 			_authEventStateMap.set(key, authEvent);
+
+			continue;
 		}
 
 		// if stateMap does not have the key, this is an excess auth event
