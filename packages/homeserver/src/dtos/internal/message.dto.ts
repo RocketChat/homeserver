@@ -50,6 +50,20 @@ export const InternalReactionResponseDto = t.Object({
 	origin_server_ts: t.Number({ description: 'Server timestamp' }),
 }); 
 
+export const InternalRedactMessageParamsDto = t.Object({
+	messageId: t.String({ description: 'Message ID to redact' }),
+});
+
+export const InternalRedactMessageBodyDto = t.Object({
+	roomId: RoomIdDto,
+	targetServer: ServerNameDto,
+	reason: t.Optional(t.String({ description: 'Reason for redacting' })),
+	senderUserId: UsernameDto,
+});
+
+export const InternalRedactMessageResponseDto = InternalMessageResponseDto;
+
+
 export type InternalMessageResponse = Static<typeof InternalMessageResponseDto>;
 export type InternalReactionResponse = Static<typeof InternalReactionResponseDto>;
 export type InternalSendMessageBody = Static<typeof InternalSendMessageBodyDto>;
@@ -57,3 +71,6 @@ export type InternalUpdateMessageBody = Static<typeof InternalUpdateMessageBodyD
 export type InternalUpdateMessageParams = Static<typeof InternalUpdateMessageParamsDto>;
 export type InternalSendReactionBody = Static<typeof InternalSendReactionBodyDto>;
 export type InternalSendReactionParams = Static<typeof InternalSendReactionParamsDto>;
+export type InternalRedactMessageBody = Static<typeof InternalRedactMessageBodyDto>;
+export type InternalRedactMessageParams = Static<typeof InternalRedactMessageParamsDto>;
+export type InternalRedactMessageResponse = Static<typeof InternalRedactMessageResponseDto>;
