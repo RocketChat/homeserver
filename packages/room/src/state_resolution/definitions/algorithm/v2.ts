@@ -58,50 +58,35 @@
 // i am too early in this to remember everything by heart.
 
 import assert from "node:assert";
-import {
-	PduTypeRoomMessage,
-	PduTypeRoomPowerLevels,
-	type PduCreateEvent,
-	type PduPowerLevelsEventContent,
-} from "./types/v1";
-import type { PduV3 } from "./types/v3";
+import { PduTypeRoomPowerLevels } from "../../../types/v1";
 import {
 	type EventStore,
-	type EventStoreRemote,
 	getStateMapKey,
 	partitionState,
 	getAuthChain,
 	reverseTopologicalPowerSort,
-	getEvent,
 	iterativeAuthChecks,
 	mainlineOrdering,
 	getAuthChainDifference,
 	isPowerEvent,
-} from "./state_resolution/definitions/definitions";
-import type { EventID, State, StateMapKey } from "./types/_common";
-import { PersistentEventBase } from "./manager/event-manager";
+} from "../definitions";
+import type { EventID, StateMapKey } from "../../../types/_common";
+import { PersistentEventBase } from "../../../manager/event-manager";
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
-	events: PersistentEventBase[], // TODO: accept any room version >=2
-	roomVersion: string, // grab it either from store's first event or from the events list of the transaction
+	states: ReadonlyMap<StateMapKey, PersistentEventBase>[],
 	store: EventStore, // with cache
 ): Promise<Map<StateMapKey, PersistentEventBase>> {
 	// memory o'memory
 	// const eventMap = new Map<string, PduV3>();
 
-	const stateMap = new Map<StateMapKey, PersistentEventBase>();
 	const eventIdToEventMap = new Map<EventID, PersistentEventBase>(); // cache used everywhere
 
 	const eventHashToEventIdMap = new Map<string, EventID>();
 
-	for (const event of events) {
-		// eventMap.set(event.event_id, event);
-		// TODO: should already get only state events
-		// change this
-		if (event.isState()) {
-			// problem with this is it'll remove stuff
-			stateMap.set(event.getUniqueStateIdentifier(), event);
+	for (const state of states) {
+		for (const event of state.values()) {
 			eventIdToEventMap.set(event.eventId, event);
 			eventHashToEventIdMap.set(event.sha256hash, event.eventId);
 		}
@@ -165,32 +150,28 @@ export async function resolveStateV2Plus(
 
 	const [unconflicted, conflicted] = partitionState(eventIdToEventMap.values());
 
-	const unconflictedStateMap = unconflicted.keys().reduce((accum, curr) => {
-		const event = stateMap.get(curr);
-		assert(event, "event should not be null");
-		accum.set(curr, event);
-		return accum;
-	}, new Map<StateMapKey, PersistentEventBase>());
+	const unconflictedStateMap = unconflicted
+		.entries()
+		.reduce((accum, [stateKey, eventId]) => {
+			const event = eventIdToEventMap.get(eventId);
+			assert(event, "event should not be null");
+			accum.set(stateKey, event);
+			return accum;
+		}, new Map<StateMapKey, PersistentEventBase>());
 
 	if (conflicted.size === 0) {
 		// no conflicted state, return the unconflicted state
 		return unconflictedStateMap;
 	}
 
-	// conflicted state events cause two states, which we need the auth difference of
-	// convert [StateMapKey, EventID[]] to [StateMapKey, EventID][]
-	const conflictedStates = conflicted
-		.entries()
-		.flatMap(([stateKey, conflictingEvents]) => {
-			return conflictingEvents.map((eventId) => {
-				const state = structuredClone(unconflicted);
-				state.set(stateKey, eventId);
-				return state;
-			});
-		});
 	// ajuthchain diff calculation will require non unique statekeys
 	const authChainDifference = await getAuthChainDifference(
-		conflictedStates,
+		states.map(
+			(state) =>
+				new Map<StateMapKey, EventID>(
+					state.entries().map(([stateKey, event]) => [stateKey, event.eventId]),
+				),
+		),
 		wrappedStore,
 	);
 
@@ -225,7 +206,7 @@ export async function resolveStateV2Plus(
 
 	for (const event of powerEvents.values()) {
 		// pass cache
-		const authChain = await getAuthChain(event, store);
+		const authChain = await getAuthChain(event, wrappedStore);
 
 		for (const authEventId of authChain) {
 			const [authEvent] = await wrappedStore.getEvents([authEventId]);
@@ -265,7 +246,7 @@ export async function resolveStateV2Plus(
 	for (const [key, eventId] of unconflicted) {
 		// self explanatory
 		const [event] = await wrappedStore.getEvents([eventId]);
-		assert(event, "event should not be null");
+		assert(event, `event should not be null ${eventId}`);
 		initialState.set(key, event);
 	}
 

@@ -5,19 +5,22 @@ import {
 	PduTypeRoomPowerLevels,
 	PduTypeRoomJoinRules,
 	PduTypeRoomCreate,
+	type PduType,
 } from "../../types/v1";
 
 import assert from "node:assert";
 import {
+	checkEventAuthWithState,
 	getPowerLevelForUser,
-	isAllowedEvent,
-} from "../../authorizartion-rules/rule";
+} from "../../authorizartion-rules/rules";
 import type { PduV3 } from "../../types/v3";
 import type { PersistentEventBase } from "../../manager/event-manager";
+import { PowerLevelEvent } from "../../manager/power-level-event-manager";
 
-export function getStateMapKey(
-	event: Pick<PduV3, "type" | "state_key">,
-): StateMapKey {
+export function getStateMapKey(event: {
+	type: PduType;
+	state_key?: string;
+}): StateMapKey {
 	return `${event.type}:${event.state_key ?? ""}` as const;
 }
 
@@ -47,14 +50,14 @@ export function partitionState(
 	// Note that the unconflicted state map only has one event for each key K, whereas the conflicted state set may contain multiple events with the same key.
 	const conflictedStateEventsMap: Map<StateMapKey, EventID[]> = new Map();
 
-	const first = events[Symbol.iterator]().next().value as PduV3;
+	const first = events[Symbol.iterator]().next().value as PersistentEventBase;
 
 	if (!first) {
 		// sent empty events
 		return [unconflictedState, conflictedStateEventsMap];
 	}
 
-	unconflictedState.set(getStateMapKey(first), first.event_id);
+	unconflictedState.set(getStateMapKey(first), first.eventId);
 
 	for (const event of events) {
 		const eventId = event.eventId;
@@ -309,6 +312,16 @@ export async function reverseTopologicalPowerSort(
 
 	const eventMap = new Map<EventID, PersistentEventBase>();
 
+	const eventToPowerLevelMap = new Map<EventID, number>();
+
+	const roomCreateEvent = stateMap.get(
+		getStateMapKey({ type: PduTypeRoomCreate }),
+	);
+
+	if (!roomCreateEvent) {
+		throw new Error("room create event not found");
+	}
+
 	// event to the auth events
 	// so, all edges to each node is a parent
 
@@ -318,9 +331,30 @@ export async function reverseTopologicalPowerSort(
 	) => {
 		graph.set(event.eventId, new Set());
 
+		if (event.isPowerLevelEvent()) {
+			eventToPowerLevelMap.set(
+				event.eventId,
+				event
+					.toPowerLevelEvent()
+					.getPowerLevelForUser(event.sender, roomCreateEvent),
+			);
+		}
+
 		// auths are the parents, must be on tiop
 		for (const authEvent of await event.getAuthorizationEvents(store)) {
 			eventMap.set(authEvent.eventId, authEvent);
+
+			if (
+				!eventToPowerLevelMap.has(authEvent.eventId) &&
+				authEvent.isPowerLevelEvent()
+			) {
+				eventToPowerLevelMap.set(
+					event.eventId,
+					authEvent
+						.toPowerLevelEvent()
+						.getPowerLevelForUser(event.sender, roomCreateEvent),
+				);
+			}
 
 			if (conflictedSet.has(authEvent.eventId)) {
 				graph.get(event.eventId)!.add(authEvent.eventId); // add this as an edge
@@ -328,19 +362,22 @@ export async function reverseTopologicalPowerSort(
 				buildIndegreeGraph(graph, authEvent);
 			}
 		}
+
+		if (!eventToPowerLevelMap.has(event.eventId)) {
+			// insert a fake power level event for the power event
+			eventToPowerLevelMap.set(
+				event.eventId,
+				new PowerLevelEvent().getPowerLevelForUser(
+					event.sender,
+					roomCreateEvent,
+				),
+			);
+		}
 	};
 
 	for (const event of events) {
 		eventMap.set(event.eventId, event);
 		await buildIndegreeGraph(graph, event);
-	}
-
-	const roomCreateEvent = stateMap.get(
-		getStateMapKey({ type: PduTypeRoomCreate }),
-	);
-
-	if (!roomCreateEvent) {
-		throw new Error("room create event not found");
 	}
 
 	const compareFunc = (event1Id: EventID, event2Id: EventID): number => {
@@ -353,46 +390,21 @@ export async function reverseTopologicalPowerSort(
 		// event1 < event2 if
 		// ....
 		// event1’s sender has greater power level than event2’s sender, when looking at their respective auth_events;
-		//
-		// const sender1PowerLevel = getPowerLevelForUser(
-		// 	event1.sender,
-		// 	eventMap.get(event1Id) as PduV3 & PduPowerLevelsEventV3Content,
-		// 	roomCreateEvent,
-		// );
 
-		// const sender2PowerLevel = getPowerLevelForUser(
-		// 	event2.sender,
-		// 	eventMap.get(event2Id) as PduV3 & PduPowerLevelsEventV3Content,
-		// 	roomCreateEvent,
-		// );
+		const sender1PowerLevel = eventToPowerLevelMap.get(event1Id)!;
+		const sender2PowerLevel = eventToPowerLevelMap.get(event2Id)!;
 
-		const sender1PowerLevel = getPowerLevelForUser(
-			event1.sender,
-			roomCreateEvent,
-			event1,
-		);
-		const sender2PowerLevel = getPowerLevelForUser(
-			event2.sender,
-			roomCreateEvent,
-			event2,
-		);
-
-		// more power, earlier the position
-		if (sender1PowerLevel > sender2PowerLevel) {
-			return -1;
+		if (sender1PowerLevel !== sender2PowerLevel) {
+			return sender2PowerLevel - sender1PowerLevel;
 		}
 
 		// the senders have the same power level, but x’s origin_server_ts is less than y’s origin_server_ts
-		if (event1.originServerTs < event2.originServerTs) {
-			return -1;
+		if (event1.originServerTs !== event2.originServerTs) {
+			return event1.originServerTs - event2.originServerTs;
 		}
 
 		// the senders have the same power level and the events have the same origin_server_ts, but x’s event_id is less than y’s event_id.
-		if (event1.eventId < event2.eventId) {
-			return -1;
-		}
-
-		return 1;
+		return event1.eventId.localeCompare(event2.eventId);
 	};
 
 	return _kahnsOrder({
@@ -535,7 +547,7 @@ export async function mainlineOrdering(
 // The iterative auth checks algorithm takes as input an initial room state and a sorted list of state events
 export async function iterativeAuthChecks(
 	events: PersistentEventBase[],
-	stateMap: Map<StateMapKey, PersistentEventBase>,
+	stateMap: ReadonlyMap<StateMapKey, PersistentEventBase>,
 	store: EventStore,
 ) {
 	const newState = new Map<StateMapKey, PersistentEventBase>(
@@ -548,9 +560,26 @@ export async function iterativeAuthChecks(
 			authEventStateMap.set(getStateMapKey(authEvent), authEvent);
 		}
 
-		if (await isAllowedEvent(event, store)) {
-			newState.set(getStateMapKey(event), event);
+		const authEventTypesNeeded = event.getAuthEventStateKeys();
+
+		for (const authEventStateKey of authEventTypesNeeded) {
+			if (newState.has(authEventStateKey)) {
+				// is the event still valid against new resolved state for the same auth event type
+				authEventStateMap.set(
+					authEventStateKey,
+					newState.get(authEventStateKey)!,
+				);
+			}
 		}
+
+		try {
+			await checkEventAuthWithState(event, authEventStateMap, store);
+		} catch (e) {
+			console.warn("event not allowed", event.eventId, e);
+			continue;
+		}
+
+		newState.set(event.getUniqueStateIdentifier(), event);
 	}
 
 	return newState;

@@ -1,5 +1,3 @@
-import { PriorityQueue } from "@datastructures-js/priority-queue";
-import { type PduV3 } from "./types/v3";
 import {
 	PduTypeRoomCreate,
 	PduTypeRoomMember,
@@ -7,40 +5,40 @@ import {
 	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomTopic,
-} from "./types/v1";
+} from "../../../types/v1";
 import {
 	_kahnsOrder,
 	getAuthChainDifference,
-	getStateMapKey,
-	getStateTypesForEventAuth,
 	type EventStore,
-	type EventStoreRemote,
-} from "./state_resolution/definitions/definitions";
-import { type StateMapKey } from "./types/_common";
+} from "../definitions";
+import { type StateMapKey } from "../../../types/_common";
 
-import { resolveStateV2Plus } from "./v2_resolution";
+import { resolveStateV2Plus } from "./v2";
 
 import { it, describe, expect, afterEach } from "bun:test";
+import type { PersistentEventBase } from "../../../manager/event-manager";
+import { PersistentEventFactory } from "../../../manager/factory";
 
 class MockEventStore implements EventStore {
-	public events: Array<PduV3> = [];
-	async getEvents(eventIds: string[]): Promise<PduV3[]> {
-		return this.events.filter((e) => eventIds.includes(e.event_id));
+	public events: Array<PersistentEventBase> = [];
+	async getEvents(eventIds: string[]): Promise<PersistentEventBase[]> {
+		return this.events.filter((e) => eventIds.includes(e.eventId));
 	}
 
-	toMap(): Map<string, PduV3> {
-		return new Map(this.events.map((e) => [e.event_id, e]));
+	async getEventsByHashes(hashes: string[]): Promise<PersistentEventBase[]> {
+		const byHash = new Map<string, PersistentEventBase>();
+		for (const event of this.events) {
+			byHash.set(event.sha256hash, event);
+		}
+		return hashes.map((hash) => byHash.get(hash)!);
 	}
-}
 
-class MockEventStoreRemote implements EventStoreRemote {
-	async getEvent(eventId: string): Promise<PduV3 | null> {
-		return null;
+	toMap(): Map<string, PersistentEventBase> {
+		return new Map(this.events.map((e) => [e.eventId, e]));
 	}
 }
 
 const eventStore = new MockEventStore();
-const eventStoreRemote = new MockEventStoreRemote();
 
 const ALICE = "@alice:example.com";
 const BOB = "@bob:example.com";
@@ -79,7 +77,7 @@ class FakeEvent {
 		this.room_id = ROOM_ID;
 	}
 
-	toEvent(auth_events: string[], prev_events: string[]): PduV3 {
+	toEvent(auth_events: string[], prev_events: string[]): PersistentEventBase {
 		const event_dict = {
 			auth_events: auth_events,
 			prev_events: prev_events,
@@ -98,7 +96,7 @@ class FakeEvent {
 			event_dict.state_key = this.state_key;
 		}
 
-		return event_dict;
+		return PersistentEventFactory.create(event_dict, 1);
 	}
 }
 
@@ -194,7 +192,10 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		compareFunc: (a, b) => a.localeCompare(b),
 	});
 
-	const stateAtEventId = new Map<string, Map<StateMapKey, PduV3>>();
+	const stateAtEventId = new Map<
+		string,
+		Map<StateMapKey, PersistentEventBase>
+	>();
 
 	const [create, ...rest] = sorted;
 
@@ -206,14 +207,14 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 	eventStore.events.push(createEvent);
 
 	stateAtEventId.set(
-		createEvent.event_id,
-		new Map([[getStateMapKey(createEvent), createEvent]]),
+		createEvent.eventId,
+		new Map([[createEvent.getUniqueStateIdentifier(), createEvent]]),
 	);
 
 	for (const nodeId of rest) {
 		const prevEventsNodeIds = reverseGraph.get(nodeId)!;
 
-		let stateBefore: Map<StateMapKey, PduV3>;
+		let stateBefore: Map<StateMapKey, PersistentEventBase>;
 
 		if (prevEventsNodeIds.size === 1) {
 			// very next to CREATE
@@ -221,35 +222,33 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 				fakeEventMap.get(prevEventsNodeIds.values().next().value!)!.event_id,
 			)!;
 		} else {
-			// get all the events from the last state
-			const eventsToResolve = prevEventsNodeIds
-				.values()
-				.map((nodeId) => {
-					const { event_id } = fakeEventMap.get(nodeId)!;
-					return stateAtEventId.get(event_id)!;
-				})
-				.flatMap((state) => state.values())
-				.toArray();
-
-			stateBefore = await resolveStateV2Plus(eventsToResolve, {
-				store: eventStore,
-				remote: eventStoreRemote,
-			});
+			stateBefore = await resolveStateV2Plus(
+				prevEventsNodeIds
+					.values()
+					.map(
+						(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)!.event_id)!,
+					)
+					.toArray(),
+				eventStore,
+			);
 		}
 
 		// whatever was state before, append current event info to new state
-		const stateAfter = structuredClone(stateBefore);
+		const stateAfter = new Map(stateBefore.entries());
 
 		/// get the authEvents for the current event
 		const authEvents = [];
-		const authTypes = getStateTypesForEventAuth(
-			fakeEventMap.get(nodeId)!.toEvent([], []),
-		);
+
+		const authTypes = fakeEventMap
+			.get(nodeId)!
+			.toEvent([], [])
+			.getAuthEventStateKeys();
+
 		for (const type of authTypes) {
 			// get the auth event id from the seen state
 			const authEvent = stateBefore.get(type);
 			if (authEvent) {
-				authEvents.push(authEvent.event_id);
+				authEvents.push(authEvent.eventId);
 			}
 		}
 		const event = fakeEventMap.get(nodeId)!.toEvent(
@@ -262,9 +261,9 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 
 		eventStore.events.push(event);
 
-		stateAfter.set(getStateMapKey(event), event);
+		stateAfter.set(event.getUniqueStateIdentifier(), event);
 
-		stateAtEventId.set(event.event_id, stateAfter as any);
+		stateAtEventId.set(event.eventId, stateAfter as any);
 	}
 
 	return stateAtEventId.get("END:example.com");
@@ -275,7 +274,7 @@ describe("Definitions", () => {
 		eventStore.events = [];
 	});
 
-	it("ban vs pl", async () => {
+	it("01 ban vs pl", async () => {
 		const events = [
 			new FakeEvent("PA", ALICE, PduTypeRoomPowerLevels, "", {
 				users: { [ALICE]: 100, [BOB]: 50 },
@@ -307,20 +306,20 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"PA:example.com",
 		);
 		expect(finalState?.get("m.room.member:@bob:example.com")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"MB:example.com",
 		);
 		expect(finalState?.get("m.room.member:@alice:example.com")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"MA:example.com",
 		);
 	});
 
-	it("join rule evasion", async () => {
+	it("02 join rule evasion", async () => {
 		const events = [
 			new FakeEvent("JR", ALICE, PduTypeRoomJoinRules, "", {
 				join_rules: "private",
@@ -338,7 +337,7 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.join_rules:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"JR:example.com",
 		);
 	});
@@ -364,7 +363,7 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"PC:example.com",
 		);
 	});
@@ -392,11 +391,11 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"T2:example.com",
 		);
 		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"PA2:example.com",
 		);
 	});
@@ -424,15 +423,15 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"T1:example.com",
 		);
 		expect(finalState?.get("m.room.member:@bob:example.com")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"MB:example.com",
 		);
 		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"PA:example.com",
 		);
 	});
@@ -463,11 +462,11 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"T4:example.com",
 		);
 		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"PA2:example.com",
 		);
 	});
@@ -498,12 +497,12 @@ describe("Definitions", () => {
 		const finalState = await runTest(events, edges);
 
 		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"T3:example.com",
 		);
 
 		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"event_id",
+			"eventId",
 			"PA2:example.com",
 		);
 	});
@@ -541,29 +540,20 @@ describe("Definitions", () => {
 		const c = new FakeEvent("C", ALICE, PduTypeRoomMember, "", {});
 
 		const aEvent = a.toEvent([], []);
-		const bEvent = b.toEvent([aEvent.event_id], []);
-		const cEvent = c.toEvent([bEvent.event_id], []);
-
-		const eventMap = new Map<string, PduV3>([
-			[aEvent.event_id, aEvent],
-			[bEvent.event_id, bEvent],
-			[cEvent.event_id, cEvent],
-		]);
+		const bEvent = b.toEvent([aEvent.eventId], []);
+		const cEvent = c.toEvent([bEvent.eventId], []);
 
 		const stateSets: Parameters<typeof getAuthChainDifference>[0] = [
 			new Map([
-				[`${a.type}:` as const, a.event_id],
-				[`${b.type}:` as const, b.event_id],
+				[`${aEvent.type}:` as const, aEvent.eventId],
+				[`${bEvent.type}:` as const, bEvent.eventId],
 			]),
-			new Map([[`${c.type}:` as const, c.event_id]]),
+			new Map([[`${cEvent.type}:` as const, cEvent.eventId]]),
 		];
 
 		eventStore.events.push(aEvent, bEvent, cEvent);
 
-		const diff = await getAuthChainDifference(stateSets, eventMap, {
-			store: eventStore,
-			remote: eventStoreRemote,
-		});
+		const diff = await getAuthChainDifference(stateSets, eventStore);
 
 		expect(diff).toEqual(new Set([c.event_id]));
 	});
@@ -575,34 +565,24 @@ describe("Definitions", () => {
 		const d = new FakeEvent("D", ALICE, PduTypeRoomMember, "", {});
 
 		const aEvent = a.toEvent([], []);
-		const bEvent = b.toEvent([aEvent.event_id], []);
-		const cEvent = c.toEvent([bEvent.event_id], []);
-		const dEvent = d.toEvent([cEvent.event_id], []);
-
-		const eventMap = new Map<string, PduV3>([
-			[aEvent.event_id, aEvent],
-			[bEvent.event_id, bEvent],
-			[cEvent.event_id, cEvent],
-			[dEvent.event_id, dEvent],
-		]);
+		const bEvent = b.toEvent([aEvent.eventId], []);
+		const cEvent = c.toEvent([bEvent.eventId], []);
+		const dEvent = d.toEvent([cEvent.eventId], []);
 
 		const stateSets: Parameters<typeof getAuthChainDifference>[0] = [
 			new Map([
-				[`${a.type}:` as const, a.event_id],
-				[`${b.type}:` as const, b.event_id],
+				[`${aEvent.type}:` as const, aEvent.eventId],
+				[`${bEvent.type}:` as const, bEvent.eventId],
 			]),
 			new Map([
-				[`${c.type}:` as const, c.event_id],
-				[`${d.type}:` as const, d.event_id],
+				[`${cEvent.type}:` as const, cEvent.eventId],
+				[`${dEvent.type}:` as const, dEvent.eventId],
 			]),
 		];
 
 		eventStore.events.push(aEvent, bEvent, cEvent, dEvent);
 
-		const diff = await getAuthChainDifference(stateSets, eventMap, {
-			store: eventStore,
-			remote: eventStoreRemote,
-		});
+		const diff = await getAuthChainDifference(stateSets, eventStore);
 
 		expect(diff).toEqual(new Set([d.event_id, c.event_id]));
 	});
@@ -615,38 +595,27 @@ describe("Definitions", () => {
 		const e = new FakeEvent("E", ALICE, PduTypeRoomMember, "", {});
 
 		const aEvent = a.toEvent([], []);
-		const bEvent = b.toEvent([aEvent.event_id], []);
-		const cEvent = c.toEvent([bEvent.event_id], []);
-		const dEvent = d.toEvent([cEvent.event_id], []);
-		const eEvent = e.toEvent([cEvent.event_id, bEvent.event_id], []);
-
-		const eventMap = new Map<string, PduV3>([
-			[aEvent.event_id, aEvent],
-			[bEvent.event_id, bEvent],
-			[cEvent.event_id, cEvent],
-			[dEvent.event_id, dEvent],
-			[eEvent.event_id, eEvent],
-		]);
+		const bEvent = b.toEvent([aEvent.eventId], []);
+		const cEvent = c.toEvent([bEvent.eventId], []);
+		const dEvent = d.toEvent([cEvent.eventId], []);
+		const eEvent = e.toEvent([cEvent.eventId, bEvent.eventId], []);
 
 		const stateSets: Parameters<typeof getAuthChainDifference>[0] = [
 			new Map([
-				[`${a.type}:` as const, a.event_id],
-				[`${b.type}:` as const, b.event_id],
-				[`${e.type}:` as const, e.event_id],
+				[`${aEvent.type}:` as const, aEvent.eventId],
+				[`${bEvent.type}:` as const, bEvent.eventId],
+				[`${eEvent.type}:` as const, eEvent.eventId],
 			]),
 			new Map([
-				[`${c.type}:` as const, c.event_id],
-				[`${d.type}:` as const, d.event_id],
+				[`${cEvent.type}:` as const, cEvent.eventId],
+				[`${dEvent.type}:` as const, dEvent.eventId],
 			]),
 		];
 
 		eventStore.events.push(aEvent, bEvent, cEvent, dEvent, eEvent);
 
-		const diff = await getAuthChainDifference(stateSets, eventMap, {
-			store: eventStore,
-			remote: eventStoreRemote,
-		});
+		const diff = await getAuthChainDifference(stateSets, eventStore);
 
-		expect(diff).toEqual(new Set([d.event_id, c.event_id, e.event_id]));
+		expect(diff).toEqual(new Set([dEvent.eventId, eEvent.eventId]));
 	});
 });

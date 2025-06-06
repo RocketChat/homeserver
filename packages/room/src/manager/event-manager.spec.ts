@@ -1,6 +1,7 @@
 import type { EventStore } from "../state_resolution/definitions/definitions";
 import type { PduV1 } from "../types/v1";
-import { PersistentEventBase, PersistentEventFactory } from "./event-manager";
+import { PersistentEventBase } from "./event-manager";
+import { PersistentEventFactory } from "./factory";
 
 import { it, describe, expect, afterEach } from "bun:test";
 

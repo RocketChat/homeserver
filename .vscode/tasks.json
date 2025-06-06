@@ -1,9 +1,16 @@
 {
 	"version": "2.0.0",
+	"inputs": [
+		{
+			"id": "test-name",
+			"description": "name of test",
+			"type": "promptString"
+		}
+	],
 	"tasks": [
 		{
 			"type": "bun",
-			"script": "bun test --inspect-wait=localhost:6499/ ${file}",
+			"script": "bun test --inspect-wait=localhost:6499/ ${file} -t ${input:test-name}",
 			"label": "bun: test",
 			"detail": "start debugger",
 			"isBackground": true,
