@@ -17,7 +17,6 @@ class _Resolver extends Resolver {
 	// The implementation uses an operating system facility that can associate names with addresses and vice versa
 	// ^^ reason for this
 	async resolve4And6(hostname: string) {
-		console.log("resolve4And6", hostname);
 		const result = await lookup(hostname, {
 			all: true,
 			family: 0,

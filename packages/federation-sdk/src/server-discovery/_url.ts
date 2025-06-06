@@ -2,7 +2,7 @@ import { isIPv4, isIPv6 } from "node:net";
 
 // use this to parse since .split would incorrectly parse any ipv6 addresses
 export class _URL extends URL {
-	private __url!: string;
+	private __url: string;
 
 	constructor(url: string) {
 		let __url = url;
@@ -16,11 +16,11 @@ export class _URL extends URL {
 	}
 
 	isIP() {
-		return isIPv4(this.hostname) || isIPv6(this.ip6);
+		return isIPv4(this.hostname) || isIPv6(this.ipv6);
 	}
 
 	// isIPv6 fails if ip is wrapped in []
-	get ip6() {
+	get ipv6() {
 		return this.hostname.replace(/^\[|\]$/g, "");
 	}
 
