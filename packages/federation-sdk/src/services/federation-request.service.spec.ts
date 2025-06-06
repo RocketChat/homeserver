@@ -6,6 +6,7 @@ import {
 	expect,
 	spyOn,
 	mock,
+	afterAll,
 } from "bun:test";
 import { FederationRequestService } from "./federation-request.service";
 import { FederationConfigService } from "./federation-config.service";
@@ -35,9 +36,20 @@ describe("FederationRequestService", async () => {
 		},
 	];
 
+	const { getHomeserverFinalAddress } = await import(
+		"../server-discovery/discovery"
+	);
+
 	await mock.module("../server-discovery/discovery", () => ({
 		getHomeserverFinalAddress: () => mockDiscoveryResult,
 	}));
+
+	afterAll(() => {
+		mock.restore();
+		mock.module("../server-discovery/discovery", () => ({
+			getHomeserverFinalAddress,
+		}));
+	});
 
 	const mockSignature = new Uint8Array([7, 8, 9]);
 
