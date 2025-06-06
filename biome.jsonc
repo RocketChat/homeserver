@@ -1,5 +1,15 @@
 {
 	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": true,
+		"ignore": [],
+		"attributePosition": "auto",
+		"indentStyle": "tab",
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"lineWidth": 80
+	},
 	"linter": {
 		"rules": {
 			"suspicious": {
@@ -16,9 +26,15 @@
 			}
 		}
 	},
+
 	"javascript": {
 		"parser": {
 			"unsafeParameterDecoratorsEnabled": true
+		},
+		"formatter": {
+			"enabled": true,
+			"quoteStyle": "single",
+			"quoteProperties": "asNeeded"
 		}
 	},
 	"files": {

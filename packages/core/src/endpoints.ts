@@ -15,13 +15,13 @@ export interface Endpoint {
 }
 
 export type Method =
-	| "GET"
-	| "POST"
-	| "DELETE"
-	| "PUT"
-	| "OPTIONS"
-	| "HEAD"
-	| "PATCH";
+	| 'GET'
+	| 'POST'
+	| 'DELETE'
+	| 'PUT'
+	| 'OPTIONS'
+	| 'HEAD'
+	| 'PATCH';
 
 export type EndpointsPath = keyof Endpoints;
 
@@ -51,14 +51,14 @@ export type GetPropertyPath<
 export type ParametersByMethod<
 	TMethod extends Method,
 	TPath extends EndpointsByMethod[TMethod],
-> = GetPropertyPath<TMethod, TPath, "query">;
+> = GetPropertyPath<TMethod, TPath, 'query'>;
 
 export type ResponseByMethod<
 	TMethod extends Method,
 	TPath extends EndpointsByMethod[TMethod],
-> = GetPropertyPath<TMethod, TPath, "response">;
+> = GetPropertyPath<TMethod, TPath, 'response'>;
 
-export type FilterEndpointsByVersion<V extends "v1" | "v2" | "v3"> =
+export type FilterEndpointsByVersion<V extends 'v1' | 'v2' | 'v3'> =
 	EndpointsByMethod[keyof EndpointsByMethod] extends `/${infer U}/${string}`
 		? U extends V
 			? EndpointsByMethod[keyof EndpointsByMethod]

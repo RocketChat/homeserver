@@ -1,23 +1,36 @@
-import { Body, Controller, HttpException, HttpStatus, Post } from "@nestjs/common";
-import { InviteService } from "../../services/invite.service";
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
+import { type ErrorResponse, ErrorResponseDto, InternalInviteUserBodyDto, type InternalInviteUserResponse, InternalInviteUserResponseDto } from '../../dtos';
+import { InviteService } from '../../services/invite.service';
 
-@Controller("internal")
-export class InternalInviteController {
-  constructor(private readonly inviteService: InviteService) { }
-
-  @Post("invites")
-  async inviteUserToRoom(@Body() body: { username: string, roomId?: string, sender?: string, name: string }): Promise<unknown> {
-    const { username, roomId, sender, name } = body;
-    try {
-      return this.inviteService.inviteUserToRoom(username, roomId, sender, name);
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException(
-        `Failed to invite user: ${error instanceof Error ? error.message : String(error)}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-  }
-}
+export const internalInvitePlugin = (app: Elysia) => {
+	const inviteService = container.resolve(InviteService);
+	return app.post('/internal/invites', async ({ body, set }): Promise<InternalInviteUserResponse | ErrorResponse> => {
+		const { username, roomId, sender, name } = body;
+		try {
+			return inviteService.inviteUserToRoom(
+				username,
+				roomId,
+				sender,
+				name,
+			);
+		} catch (error) {
+			set.status = 500;
+			return {
+				error: `Failed to invite user: ${error instanceof Error ? error.message : String(error)}`,
+				details: {},
+			};
+		}
+	}, {
+		body: InternalInviteUserBodyDto,
+		response: {
+			200: InternalInviteUserResponseDto,
+			400: ErrorResponseDto,
+		},
+		detail: {
+			tags: ['Internal'],
+			summary: 'Invite user to room',
+			description: 'Invite a user to a room'
+		}
+	});
+};

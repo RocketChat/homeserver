@@ -1,6 +1,6 @@
-import nacl from "tweetnacl";
-import { toUnpaddedBase64 } from "./binaryData";
-import { EncryptionValidAlgorithm, signText } from "./signJson";
+import nacl from 'tweetnacl';
+import { toUnpaddedBase64 } from './binaryData';
+import { EncryptionValidAlgorithm, signText } from './signJson';
 
 export type SigningKey = {
 	algorithm: EncryptionValidAlgorithm;
@@ -13,7 +13,7 @@ export type SigningKey = {
 export async function generateKeyPairs(
 	seed: Uint8Array,
 	algorithm = EncryptionValidAlgorithm.ed25519,
-	version = "0",
+	version = '0',
 ): Promise<SigningKey> {
 	// Generate an Ed25519 key pair
 	const keyPair = await nacl.sign.keyPair.fromSeed(seed);
@@ -32,7 +32,7 @@ export async function generateKeyPairs(
 }
 
 export async function generateKeyPairsFromString(content: string) {
-	const [algorithm, version, seed] = content.trim().split(" ");
+	const [algorithm, version, seed] = content.trim().split(' ');
 
 	return await generateKeyPairs(
 		Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
@@ -68,8 +68,8 @@ export const getKeyPair = async (config: {
 
 	if (!hasStoredKeys) {
 		seeds.push({
-			algorithm: "ed25519" as EncryptionValidAlgorithm,
-			version: "0",
+			algorithm: 'ed25519' as EncryptionValidAlgorithm,
+			version: '0',
 			seed: nacl.randomBytes(32),
 		});
 
@@ -81,7 +81,7 @@ export const getKeyPair = async (config: {
 			await Bun.file(config.signingKeyPath).text()
 		)
 			.trim()
-			.split(" ");
+			.split(' ');
 		seeds.push({
 			algorithm: algorithm as EncryptionValidAlgorithm,
 			version,

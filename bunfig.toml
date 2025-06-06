@@ -1,3 +1,4 @@
 [test]
 coverage = true # always enable coverage
 coverageReporter  = ["text", "lcov"]  # default ["text"]
+preload = ["./test-setup.ts"]

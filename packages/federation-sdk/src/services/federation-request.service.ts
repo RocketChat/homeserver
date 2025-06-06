@@ -19,11 +19,16 @@ interface SignedRequest {
 	uri: string;
 	body?: Record<string, unknown>;
 	queryString?: string;
+	method: string;
+	domain: string;
+	uri: string;
+	body?: Record<string, unknown>;
+	queryString?: string;
 }
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
-@Injectable()
+@injectable()
 export class FederationRequestService {
 	private readonly logger = new Logger(FederationRequestService.name);
 

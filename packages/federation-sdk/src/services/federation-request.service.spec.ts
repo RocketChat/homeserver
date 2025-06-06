@@ -28,6 +28,10 @@ describe("FederationRequestService", async () => {
 		publicKey: new Uint8Array([1, 2, 3]),
 		secretKey: new Uint8Array([4, 5, 6]),
 	};
+	const mockKeyPair = {
+		publicKey: new Uint8Array([1, 2, 3]),
+		secretKey: new Uint8Array([4, 5, 6]),
+	};
 
 	const mockDiscoveryResult = [
 		"https://target.example.com:443" as const,
@@ -52,6 +56,7 @@ describe("FederationRequestService", async () => {
 	});
 
 	const mockSignature = new Uint8Array([7, 8, 9]);
+	const mockSignature = new Uint8Array([7, 8, 9]);
 
 	const mockSignedJson = {
 		content: "test",
@@ -64,7 +69,11 @@ describe("FederationRequestService", async () => {
 
 	const mockAuthHeaders =
 		'X-Matrix origin="example.com",destination="target.example.com",key="ed25519:1",sig="xyz123"';
+	const mockAuthHeaders =
+		'X-Matrix origin="example.com",destination="target.example.com",key="ed25519:1",sig="xyz123"';
 
+	beforeEach(() => {
+		originalFetch = globalThis.fetch;
 	beforeEach(() => {
 		originalFetch = globalThis.fetch;
 
@@ -97,10 +106,21 @@ describe("FederationRequestService", async () => {
 			signingKey: mockSigningKey,
 			signingKeyId: mockSigningKeyId,
 		} as FederationConfigService;
+		configService = {
+			serverName: mockServerName,
+			signingKey: mockSigningKey,
+			signingKeyId: mockSigningKeyId,
+		} as FederationConfigService;
 
 		service = new FederationRequestService(configService);
 	});
+		service = new FederationRequestService(configService);
+	});
 
+	afterEach(() => {
+		globalThis.fetch = originalFetch;
+		mock.restore();
+	});
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
 		mock.restore();
@@ -116,6 +136,9 @@ describe("FederationRequestService", async () => {
 				uri: "/test/path",
 			});
 
+			expect(configService.serverName).toBe(mockServerName);
+			expect(configService.signingKey).toBe(mockSigningKey);
+			expect(configService.signingKeyId).toBe(mockSigningKeyId);
 			expect(configService.serverName).toBe(mockServerName);
 			expect(configService.signingKey).toBe(mockSigningKey);
 			expect(configService.signingKeyId).toBe(mockSigningKeyId);

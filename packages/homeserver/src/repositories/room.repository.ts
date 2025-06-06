@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { Collection } from "mongodb";
-import type { EventBase } from "../models/event.model";
-import { DatabaseConnectionService } from "../services/database-connection.service";
+import { injectable } from 'tsyringe';
+import { Collection } from 'mongodb';
+import type { EventBase } from '../models/event.model';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Room = {
 	_id: string;
@@ -16,7 +16,7 @@ type Room = {
 	};
 };
 
-@Injectable()
+@injectable()
 export class RoomRepository {
 	private collection: Collection<Room> | null = null;
 
@@ -26,7 +26,7 @@ export class RoomRepository {
 
 	private async getCollection(): Promise<Collection<Room>> {
 		const db = await this.dbConnection.getDb();
-		this.collection = db.collection<Room>("rooms");
+		this.collection = db.collection<Room>('rooms');
 		return this.collection;
 	}
 
@@ -52,11 +52,11 @@ export class RoomRepository {
 		await collection.insertOne({
 			_id: roomId,
 			room: {
-				name: props.name || "",
-				join_rules: "public",
-				version: "1",
-				alias: props.alias || "",
-				canonical_alias: props.canonicalAlias || "",
+				name: props.name || '',
+				join_rules: 'public',
+				version: '1',
+				alias: props.alias || '',
+				canonical_alias: props.canonicalAlias || '',
 			},
 		});
 	}
@@ -92,8 +92,8 @@ export class RoomRepository {
 			{ _id: roomId },
 			{
 				$set: {
-					"room.deleted": true,
-					"room.tombstone_event_id": tombstoneEventId,
+					'room.deleted': true,
+					'room.tombstone_event_id': tombstoneEventId,
 				},
 			},
 		);

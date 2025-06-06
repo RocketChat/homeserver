@@ -1,22 +1,30 @@
-import { createEventBase, type EventBase } from "./eventBase";
-import { createEventWithId } from "./utils/createSignedEvent";
+import { createEventBase, type EventBase } from './eventBase';
+import { createEventWithId } from './utils/createSignedEvent';
 
-type MessageType = "m.text" | "m.emote" | "m.notice" | "m.image" | "m.file" | "m.audio" | "m.video" | "m.location";
+type MessageType =
+	| 'm.text'
+	| 'm.emote'
+	| 'm.notice'
+	| 'm.image'
+	| 'm.file'
+	| 'm.audio'
+	| 'm.video'
+	| 'm.location';
 
-declare module "./eventBase" {
+declare module './eventBase' {
 	interface Events {
-		"m.room.message": {
+		'm.room.message': {
 			unsigned: {
 				age_ts: number;
 			};
 			content: {
 				body: string;
 				msgtype: MessageType;
-				"m.mentions"?: Record<string, any>;
+				'm.mentions'?: Record<string, any>;
 				format?: string;
 				formatted_body?: string;
-				"m.relates_to"?: MessageRelation;
-				"m.new_content"?: {
+				'm.relates_to'?: MessageRelation;
+				'm.new_content'?: {
 					body: string;
 					msgtype: MessageType;
 					format?: string;
@@ -32,12 +40,12 @@ export type MessageRelation = {
 	event_id: string;
 } & (RelationTypeReplace | Record<string, never>);
 
-export type RelationType = "m.replace" | "m.annotation";
+export type RelationType = 'm.replace' | 'm.annotation';
 
 export type RelationTypeReplace = {
-	rel_type: "m.replace";
+	rel_type: 'm.replace';
 	event_id: string;
-	"m.new_content"?: {
+	'm.new_content'?: {
 		body: string;
 		msgtype: MessageType;
 		format?: string;
@@ -46,27 +54,27 @@ export type RelationTypeReplace = {
 };
 
 export type MessageAuthEvents = {
-	"m.room.create": string;
-	"m.room.power_levels": string;
-    "m.room.member": string;
-}
+	'm.room.create': string;
+	'm.room.power_levels': string;
+	'm.room.member': string;
+};
 
 export const isRoomMessageEvent = (
 	event: EventBase,
 ): event is RoomMessageEvent => {
-	return event.type === "m.room.message";
+	return event.type === 'm.room.message';
 };
 
 export interface RoomMessageEvent extends EventBase {
-	type: "m.room.message";
+	type: 'm.room.message';
 	content: {
 		body: string;
 		msgtype: MessageType;
-		"m.mentions"?: Record<string, any>;
+		'm.mentions'?: Record<string, any>;
 		format?: string;
 		formatted_body?: string;
-		"m.relates_to"?: MessageRelation;
-		"m.new_content"?: {
+		'm.relates_to'?: MessageRelation;
+		'm.new_content'?: {
 			body: string;
 			msgtype: MessageType;
 			format?: string;
@@ -79,7 +87,9 @@ export interface RoomMessageEvent extends EventBase {
 	};
 }
 
-const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
+const isTruthy = <T>(
+	value: T | null | undefined | false | 0 | '',
+): value is T => {
 	return Boolean(value);
 };
 
@@ -99,15 +109,15 @@ export const roomMessageEvent = ({
 	auth_events: MessageAuthEvents;
 	prev_events: string[];
 	depth: number;
-	unsigned?: RoomMessageEvent["unsigned"];
+	unsigned?: RoomMessageEvent['unsigned'];
 	content: {
 		body: string;
 		msgtype: MessageType;
-		"m.mentions"?: Record<string, any>;
+		'm.mentions'?: Record<string, any>;
 		format?: string;
 		formatted_body?: string;
-		"m.relates_to"?: MessageRelation;
-		"m.new_content"?: {
+		'm.relates_to'?: MessageRelation;
+		'm.new_content'?: {
 			body: string;
 			msgtype: MessageType;
 			format?: string;
@@ -117,13 +127,13 @@ export const roomMessageEvent = ({
 	origin?: string;
 	ts?: number;
 }): RoomMessageEvent => {
-	return createEventBase("m.room.message", {
+	return createEventBase('m.room.message', {
 		roomId,
 		sender,
 		auth_events: [
-			auth_events["m.room.create"],
-			auth_events["m.room.power_levels"],
-			auth_events["m.room.member"]
+			auth_events['m.room.create'],
+			auth_events['m.room.power_levels'],
+			auth_events['m.room.member'],
 		].filter(isTruthy),
 		prev_events,
 		depth,
@@ -135,4 +145,4 @@ export const roomMessageEvent = ({
 	});
 };
 
-export const createRoomMessageEvent = createEventWithId(roomMessageEvent); 
+export const createRoomMessageEvent = createEventWithId(roomMessageEvent);
