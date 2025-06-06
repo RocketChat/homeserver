@@ -1,18 +1,17 @@
-import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
-import type { SigningKey } from '@hs/homeserver/src/keys';
-import * as nacl from 'tweetnacl';
+import type { SigningKey } from "@hs/homeserver/src/keys";
+import { Injectable, Logger } from "@nestjs/common";
+import * as nacl from "tweetnacl";
 import {
 	authorizationHeaders,
 	computeAndMergeHash,
-} from '../../../homeserver/src/authentication';
-import { extractURIfromURL } from '../../../homeserver/src/helpers/url';
+} from "../../../homeserver/src/authentication";
+import { extractURIfromURL } from "../../../homeserver/src/helpers/url";
 import {
 	EncryptionValidAlgorithm,
 	signJson,
-} from '../../../homeserver/src/signJson';
-import { FederationConfigService } from './federation-config.service';
-import { inject, injectable } from 'tsyringe';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+} from "../../../homeserver/src/signJson";
+import { FederationConfigService } from "./federation-config.service";
+import { getHomeserverFinalAddress } from "../server-discovery/discovery";
 
 interface SignedRequest {
 	method: string;
@@ -22,11 +21,12 @@ interface SignedRequest {
 	queryString?: string;
 }
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
-@injectable()
+@Injectable()
 export class FederationRequestService {
-	private readonly logger = createLogger('FederationRequestService');
+	private readonly logger = new Logger(FederationRequestService.name);
+
 	constructor(private readonly configService: FederationConfigService) {}
 
 	async makeSignedRequest<T>({
@@ -40,22 +40,22 @@ export class FederationRequestService {
 			const serverName = this.configService.serverName;
 			const signingKeyBase64 = this.configService.signingKey;
 			const signingKeyId = this.configService.signingKeyId;
-			const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
+			const privateKeyBytes = Buffer.from(signingKeyBase64, "base64");
 			const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
 
 			const signingKey: SigningKey = {
 				algorithm: EncryptionValidAlgorithm.ed25519,
-				version: signingKeyId.split(':')[1] || '1',
+				version: signingKeyId.split(":")[1] || "1",
 				privateKey: keyPair.secretKey,
 				publicKey: keyPair.publicKey,
 				sign: async (data: Uint8Array) =>
 					nacl.sign.detached(data, keyPair.secretKey),
 			};
 
-			const { address, headers: discoveryHeaders } =
-				await resolveHostAddressByServerName(domain, serverName);
+			const [address, discoveryHeaders] =
+				await getHomeserverFinalAddress(domain);
 
-			const url = new URL(`https://${address}${uri}`);
+			const url = new URL(`${address}${uri}`);
 			if (queryString) {
 				url.search = queryString;
 			}
@@ -119,7 +119,7 @@ export class FederationRequestService {
 		body?: Record<string, unknown>,
 		queryParams?: Record<string, string>,
 	): Promise<T> {
-		let queryString = '';
+		let queryString = "";
 
 		if (queryParams) {
 			const params = new URLSearchParams();
@@ -144,7 +144,7 @@ export class FederationRequestService {
 		queryParams?: Record<string, string>,
 	): Promise<T> {
 		return this.request<T>(
-			'GET',
+			"GET",
 			targetServer,
 			endpoint,
 			undefined,
@@ -158,7 +158,7 @@ export class FederationRequestService {
 		body: Record<string, unknown>,
 		queryParams?: Record<string, string>,
 	): Promise<T> {
-		return this.request<T>('PUT', targetServer, endpoint, body, queryParams);
+		return this.request<T>("PUT", targetServer, endpoint, body, queryParams);
 	}
 
 	async post<T>(
@@ -167,6 +167,6 @@ export class FederationRequestService {
 		body: Record<string, unknown>,
 		queryParams?: Record<string, string>,
 	): Promise<T> {
-		return this.request<T>('POST', targetServer, endpoint, body, queryParams);
+		return this.request<T>("POST", targetServer, endpoint, body, queryParams);
 	}
 }
