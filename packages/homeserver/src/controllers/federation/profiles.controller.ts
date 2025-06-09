@@ -69,17 +69,10 @@ export const profilesPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
 			async ({ params, query }): Promise<MakeJoinResponse | ErrorResponse> => {
-				const parsed = MakeJoinQueryDto.safeParse(query);
-				if (!parsed.success) {
-					return {
-						error: 'Invalid query params',
-						details: parsed.error.flatten(),
-					};
-				}
 				const response = await profilesService.makeJoin(
 					params.roomId,
 					params.userId,
-					parsed.data.ver,
+					query.ver,
 				);
 				return {
 					room_version: response.room_version,
