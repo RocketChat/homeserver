@@ -1,4 +1,4 @@
-import { lookup, Resolver } from "node:dns/promises";
+import { lookup, Resolver } from 'node:dns/promises';
 
 // no caching, depends on system
 class _Resolver extends Resolver {
@@ -6,7 +6,7 @@ class _Resolver extends Resolver {
 		super();
 
 		if (process.env.HOMESERVER_CONFIG_DNS_SERVERS) {
-			const servers = process.env.HOMESERVER_CONFIG_DNS_SERVERS.split(",").map(
+			const servers = process.env.HOMESERVER_CONFIG_DNS_SERVERS.split(',').map(
 				(s) => s.trim(),
 			);
 
@@ -20,7 +20,7 @@ class _Resolver extends Resolver {
 		const result = await lookup(hostname, {
 			all: true,
 			family: 0,
-			order: "ipv6first",
+			order: 'ipv6first',
 		});
 
 		return result.map((r) => r.address);

@@ -1,4 +1,4 @@
-import { isIPv4, isIPv6 } from "node:net";
+import { isIPv4, isIPv6 } from 'node:net';
 
 // use this to parse since .split would incorrectly parse any ipv6 addresses
 export class _URL extends URL {
@@ -21,7 +21,7 @@ export class _URL extends URL {
 
 	// isIPv6 fails if ip is wrapped in []
 	get ipv6() {
-		return this.hostname.replace(/^\[|\]$/g, "");
+		return this.hostname.replace(/^\[|\]$/g, '');
 	}
 
 	get port(): string {
@@ -33,10 +33,10 @@ export class _URL extends URL {
 		if (this.__url === this.origin) {
 			// nodejs implementation will remove default ports for http and https from origin, maybe more but we don't care about those
 			// if the input (__url) and origin matches then no port was specified
-			return "";
+			return '';
 		}
 
 		// input url and origin (with port removed) did not match, port was removed because of it being defaiult
-		return this.protocol === "https:" ? "443" : "80";
+		return this.protocol === 'https:' ? '443' : '80';
 	}
 }

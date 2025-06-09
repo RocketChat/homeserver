@@ -1,7 +1,7 @@
-import { resolver } from "./_resolver";
-import { isIPv4, isIPv6 } from "node:net";
-import { _URL } from "./_url";
-import { MultiError } from "./_multi-error";
+import { resolver } from './_resolver';
+import { isIPv4, isIPv6 } from 'node:net';
+import { _URL } from './_url';
+import { MultiError } from './_multi-error';
 
 // typing below are purely to document and make sure we conform to how we are returning the address
 // ge4tting typescript to help me not return wrong stuff
@@ -15,18 +15,18 @@ type AddressWithPortString = `${AddressString}:${PortString | number}`;
 type IP4or6WithPortString = `${IP4or6String}:${PortString | number}`;
 
 type AddressWithPortAndProtocolString = `${
-	| "http"
-	| "https"}://${AddressWithPortString}`;
+	| 'http'
+	| 'https'}://${AddressWithPortString}`;
 
 type IP4or6WithPortAndProtocolString = `${
-	| "http"
-	| "https"}://${IP4or6WithPortString}`;
+	| 'http'
+	| 'https'}://${IP4or6WithPortString}`;
 
 type HostHeaders = {
 	Host: AddressString | AddressWithPortString | IP4or6WithPortString;
 };
 
-const DEFAULT_PORT = "8448";
+const DEFAULT_PORT = '8448';
 
 // should only be needed if input is from a dns server
 function fix6(addr: string): `[${string}]` {
@@ -52,8 +52,8 @@ export async function resolveHostname(
 	const results = await Promise.allSettled(promises);
 
 	for (const result of results) {
-		if (result.status === "rejected") {
-			errors.append("", result.reason);
+		if (result.status === 'rejected') {
+			errors.append('', result.reason);
 			continue;
 		}
 
@@ -88,12 +88,12 @@ export async function getHomeserverFinalAddress(
 	if (url.isIP()) {
 		const finalIp = hostname; // should already be wrapped in [] if it is ipv6
 		const finalPort = port || DEFAULT_PORT;
-		// "Target server must present a valid certificate for the IP address", i.e. always https
+		// 'Target server must present a valid certificate for the IP address', i.e. always https
 		const finalAddress = `https://${finalIp}:${finalPort}` as const;
 		const hostHeader = {
 			Host: `${hostname}${
 				/* only include port if it was included already */
-				port ? `:${port}` : ""
+				port ? `:${port}` : ''
 			}`,
 		};
 
@@ -145,7 +145,7 @@ export async function getHomeserverFinalAddress(
 }
 
 type WellKnownResponse = {
-	"m.server": string;
+	'm.server': string;
 };
 
 // error must be caught and handled by the caller
@@ -156,10 +156,10 @@ async function fromWellKnownDelegation(
 		response: unknown,
 	): response is WellKnownResponse => {
 		return (
-			typeof response === "object" &&
+			typeof response === 'object' &&
 			response !== null &&
-			"m.server" in response &&
-			typeof response["m.server"] === "string"
+			'm.server' in response &&
+			typeof response['m.server'] === 'string'
 		);
 	};
 
@@ -167,10 +167,10 @@ async function fromWellKnownDelegation(
 
 	const response = await fetch(`https://${host}/.well-known/matrix/server`, {
 		headers: {
-			Accept: "application/json",
+			Accept: 'application/json',
 		},
 		// SPEC: 30x redirects should be followed
-		redirect: "follow",
+		redirect: 'follow',
 	});
 
 	// SPEC: Errors are recommended to be cached for up to an hour, and servers are encouraged to exponentially back off for repeated failures.
@@ -190,13 +190,13 @@ async function fromWellKnownDelegation(
 		return [`https://${addr}` as const, hostHeaders];
 	}
 
-	if (!data["m.server"]) {
+	if (!data['m.server']) {
 		// TODO: should this be like this?
 		const [addr, hostHeaders] = await fromSRVResolutionWithBasicFallback(host);
 		return [`https://${addr}` as const, hostHeaders];
 	}
 
-	const url = new _URL(data["m.server"]);
+	const url = new _URL(data['m.server']);
 
 	const { hostname: delegatedHostname, port: delegatedPort } = url;
 
@@ -212,7 +212,7 @@ async function fromWellKnownDelegation(
 			finalAddress,
 			{
 				/* SPEC: Requests must be made with a Host header containing the IP address, including the port if one was provided. */
-				Host: `${delegatedIp}${delegatedPort ? `:${delegatedPort}` : ""}`,
+				Host: `${delegatedIp}${delegatedPort ? `:${delegatedPort}` : ''}`,
 			},
 		];
 	}
