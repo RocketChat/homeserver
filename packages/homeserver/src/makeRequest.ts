@@ -1,11 +1,12 @@
-import { authorizationHeaders, computeAndMergeHash } from "./authentication";
-import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
-import { extractURIfromURL } from "./helpers/url";
-import type { SigningKey } from "./keys";
+import { authorizationHeaders, computeAndMergeHash } from './authentication';
+import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
+import { extractURIfromURL } from './helpers/url';
+import type { SigningKey } from './keys';
+import logger from './utils/logger';
 
-import { signJson } from "./signJson";
+import { signJson } from './signJson';
 
-export const makeSignedRequest = async<T = Record<string, unknown>>({
+export const makeSignedRequest = async <T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -40,7 +41,7 @@ export const makeSignedRequest = async<T = Record<string, unknown>>({
 			signingName,
 		));
 
-	console.log("body ->", method, domain, url.toString(), signedBody);
+	logger.debug('body ->', method, domain, url.toString(), signedBody);
 
 	const auth = await authorizationHeaders(
 		signingName,
@@ -51,7 +52,7 @@ export const makeSignedRequest = async<T = Record<string, unknown>>({
 		signedBody as Record<string, unknown>,
 	);
 
-	console.log("auth ->", method, domain, uri, auth);
+	logger.debug('auth ->', method, domain, uri, auth);
 
 	const requestOptions: RequestInit = {
 		...options,
@@ -75,7 +76,7 @@ export const makeSignedRequest = async<T = Record<string, unknown>>({
 	return response.json() as Promise<T>;
 };
 
-export const makeRequest = async<T = Record<string, unknown>>({
+export const makeRequest = async <T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -104,7 +105,7 @@ export const makeRequest = async<T = Record<string, unknown>>({
 	const requestOptions: RequestInit = {
 		...options,
 		method,
-		headers
+		headers,
 	};
 
 	if (body) {
@@ -116,7 +117,7 @@ export const makeRequest = async<T = Record<string, unknown>>({
 	return response.json() as Promise<T>;
 };
 
-export const makeUnsignedRequest = async<T = Record<string, unknown>>({
+export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,

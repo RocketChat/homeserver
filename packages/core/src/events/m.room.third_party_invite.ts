@@ -1,14 +1,14 @@
-import { createEventBase, type EventBase } from "./eventBase";
-import { createEventWithId } from "./utils/createSignedEvent";
+import { createEventBase, type EventBase } from './eventBase';
+import { createEventWithId } from './utils/createSignedEvent';
 
-declare module "./eventBase" {
+declare module './eventBase' {
 	interface Events {
-		"m.room.third_party_invite": RoomThirdPartyInviteEvent;
+		'm.room.third_party_invite': RoomThirdPartyInviteEvent;
 	}
 }
 
 export interface RoomThirdPartyInviteEvent extends EventBase {
-	type: "m.room.third_party_invite";
+	type: 'm.room.third_party_invite';
 	content: {
 		display_name: string;
 		public_key?: string;
@@ -26,5 +26,5 @@ export interface RoomThirdPartyInviteEvent extends EventBase {
 export const isRoomThirdPartyInviteEvent = (
 	event: EventBase,
 ): event is RoomThirdPartyInviteEvent => {
-	return event.type === "m.room.third_party_invite";
+	return event.type === 'm.room.third_party_invite';
 };

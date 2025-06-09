@@ -1,29 +1,33 @@
-import { Body, Controller, Logger, Put } from "@nestjs/common";
-import type { EventBase } from "../../models/event.model";
-import { EventService } from "../../services/event.service";
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
+import { type ErrorResponse, ErrorResponseDto, SendTransactionBodyDto, type SendTransactionResponse, SendTransactionResponseDto } from '../../dtos';
+import { EventService } from '../../services/event.service';
 
-@Controller("/_matrix/federation/v1")
-export class TransactionsController {
-	private readonly logger = new Logger(TransactionsController.name);
-
-	constructor(private readonly eventService: EventService) {}
-
-	@Put("/send/:txnId")
-	async send(@Body() body: { pdus: EventBase[] }) {
+export const transactionsPlugin = (app: Elysia) => {
+	const eventService = container.resolve(EventService);
+	return app.put('/_matrix/federation/v1/send/:txnId', async ({ body }): Promise<SendTransactionResponse | ErrorResponse> => {
 		const { pdus = [] } = body;
-
 		if (pdus.length === 0) {
 			return {
 				pdus: {},
 				edus: {},
 			};
 		}
-
-		const processedPDUs = await this.eventService.processIncomingPDUs(pdus);
-
+		await eventService.processIncomingPDUs(pdus);
 		return {
-			pdus: processedPDUs,
+			pdus: {},
 			edus: {},
 		};
-	}
-}
+	}, {
+		body: SendTransactionBodyDto,
+		response: {
+			200: SendTransactionResponseDto,
+			400: ErrorResponseDto,
+		},
+		detail: {
+			tags: ['Federation'],
+			summary: 'Send transaction',
+			description: 'Send a transaction'
+		}
+	});
+};

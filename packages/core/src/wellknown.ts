@@ -9,9 +9,9 @@ interface Response {
 
 type Query = object;
 
-declare module "./endpoints" {
+declare module './endpoints' {
 	interface Endpoints {
-		"/.well-known/matrix/server": {
+		'/.well-known/matrix/server': {
 			GET: {
 				auth: false;
 				rateLimit: false;

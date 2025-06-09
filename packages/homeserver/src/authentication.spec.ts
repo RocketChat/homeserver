@@ -1,4 +1,4 @@
-import { describe, expect, test, it } from "bun:test";
+import { describe, expect, test, it } from 'bun:test';
 
 import {
 	authorizationHeaders,
@@ -8,9 +8,9 @@ import {
 	generateId,
 	signRequest,
 	validateAuthorizationHeader,
-} from "./authentication";
-import { generateKeyPairsFromString, type SigningKey } from "./keys";
-import { signJson, signText, EncryptionValidAlgorithm } from "./signJson";
+} from './authentication';
+import { generateKeyPairsFromString, type SigningKey } from './keys';
+import { signJson, signText, EncryptionValidAlgorithm } from './signJson';
 
 // {
 //     "content": {
@@ -56,41 +56,41 @@ import { signJson, signText, EncryptionValidAlgorithm } from "./signJson";
 //     "uri": "/_matrix/federation/v2/send_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%24UOFwq4Soj_komm7BQx5zhf-AmXiPw1nkTycvdlFT5tk?omit_members=true"
 // }
 
-test("signRequest", async () => {
+test('signRequest', async () => {
 	const signature = await generateKeyPairsFromString(
-		"ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U",
+		'ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U',
 	);
 
 	const event = Object.freeze({
 		auth_events: [
-			"$KMCKA2rA1vVCoN3ugpEnAja70o0jSksI-s2fqWy_1to",
-			"$DcuwuadjnOUTC-IZmPdWHfCyxEgzuYcDvAoNpIJHous",
-			"$tMNgmLPOG2gBqdDmNaT2iAjD54UQYaIzPpiGplxF5J4",
-			"$8KCjO1lBtHMCUAYwe8y4-FMTwXnzXUb6F2g_Y6jHr4c",
+			'$KMCKA2rA1vVCoN3ugpEnAja70o0jSksI-s2fqWy_1to',
+			'$DcuwuadjnOUTC-IZmPdWHfCyxEgzuYcDvAoNpIJHous',
+			'$tMNgmLPOG2gBqdDmNaT2iAjD54UQYaIzPpiGplxF5J4',
+			'$8KCjO1lBtHMCUAYwe8y4-FMTwXnzXUb6F2g_Y6jHr4c',
 		],
-		prev_events: ["$KYvjqKYmahXxkpD7O_217w6P6g6DMrUixsFrJ_NI0nA"],
-		type: "m.room.member",
-		room_id: "!EAuqyrnzwQoPNHvvmX:hs1",
-		sender: "@admin:hs2",
+		prev_events: ['$KYvjqKYmahXxkpD7O_217w6P6g6DMrUixsFrJ_NI0nA'],
+		type: 'm.room.member',
+		room_id: '!EAuqyrnzwQoPNHvvmX:hs1',
+		sender: '@admin:hs2',
 		depth: 10,
 
 		content: {
 			// avatar_url: null,
 			// displayname: "admin",
-			membership: "join",
+			membership: 'join',
 		},
 
 		hashes: {
-			sha256: "WUqhTZqxv+8GhGQv58qE/QFQ4Oua5BKqGFQGT35Dv10",
+			sha256: 'WUqhTZqxv+8GhGQv58qE/QFQ4Oua5BKqGFQGT35Dv10',
 		},
-		origin: "hs2",
+		origin: 'hs2',
 		origin_server_ts: 1733069433734,
 
-		state_key: "@admin:hs2",
+		state_key: '@admin:hs2',
 		signatures: {
 			hs2: {
-				"ed25519:a_XRhW":
-					"DR+DBqFTm7IUa35pFeOczsNw4shglIXW+3Ze63wC3dqQ4okzaSRgLuAUkYnVyxM2sZkSvlbeSBS7G6DeeaDEAA",
+				'ed25519:a_XRhW':
+					'DR+DBqFTm7IUa35pFeOczsNw4shglIXW+3Ze63wC3dqQ4okzaSRgLuAUkYnVyxM2sZkSvlbeSBS7G6DeeaDEAA',
 			},
 		},
 		unsigned: {
@@ -98,61 +98,61 @@ test("signRequest", async () => {
 		},
 	});
 
-	const signed = await signJson(event, signature, "hs2");
+	const signed = await signJson(event, signature, 'hs2');
 
-	expect(signed).toHaveProperty("signatures");
+	expect(signed).toHaveProperty('signatures');
 	expect(signed.signatures).toBeObject();
-	expect(signed.signatures).toHaveProperty("hs2");
+	expect(signed.signatures).toHaveProperty('hs2');
 	expect(signed.signatures.hs2).toBeObject();
-	expect(signed.signatures.hs2).toHaveProperty("ed25519:a_XRhW");
-	expect(signed.signatures.hs2["ed25519:a_XRhW"]).toBeString();
+	expect(signed.signatures.hs2).toHaveProperty('ed25519:a_XRhW');
+	expect(signed.signatures.hs2['ed25519:a_XRhW']).toBeString();
 
-	expect(signed.signatures.hs2["ed25519:a_XRhW"]).toBe(
-		"DR+DBqFTm7IUa35pFeOczsNw4shglIXW+3Ze63wC3dqQ4okzaSRgLuAUkYnVyxM2sZkSvlbeSBS7G6DeeaDEAA",
+	expect(signed.signatures.hs2['ed25519:a_XRhW']).toBe(
+		'DR+DBqFTm7IUa35pFeOczsNw4shglIXW+3Ze63wC3dqQ4okzaSRgLuAUkYnVyxM2sZkSvlbeSBS7G6DeeaDEAA',
 	);
 
 	const signedRequest = await signRequest(
-		"hs2",
+		'hs2',
 		signature,
-		"hs1",
-		"PUT",
-		"/_matrix/federation/v2/send_join/%21EAuqyrnzwQoPNHvvmX%3Ahs1/%24P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY?omit_members=true",
+		'hs1',
+		'PUT',
+		'/_matrix/federation/v2/send_join/%21EAuqyrnzwQoPNHvvmX%3Ahs1/%24P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY?omit_members=true',
 		{
 			...signed,
 			content: {
 				...signed.content,
 				avatar_url: null,
-				displayname: "admin",
+				displayname: 'admin',
 			},
 		},
 	);
 
 	expect(signedRequest).toBeObject();
-	expect(signedRequest).toHaveProperty("signatures");
+	expect(signedRequest).toHaveProperty('signatures');
 	expect(signedRequest.signatures).toBeObject();
-	expect(signedRequest.signatures).toHaveProperty("hs2");
+	expect(signedRequest.signatures).toHaveProperty('hs2');
 	expect(signedRequest.signatures.hs2).toBeObject();
-	expect(signedRequest.signatures.hs2).toHaveProperty("ed25519:a_XRhW");
-	expect(signedRequest.signatures.hs2["ed25519:a_XRhW"]).toBeString();
+	expect(signedRequest.signatures.hs2).toHaveProperty('ed25519:a_XRhW');
+	expect(signedRequest.signatures.hs2['ed25519:a_XRhW']).toBeString();
 
-	expect(signedRequest.signatures.hs2["ed25519:a_XRhW"]).toBe(
-		"KDhgfpGp+34ElXpvFIBjsGO2kldNZKj1CWFEbSjyQR142ZYx+kIg+N3muLlMXEK0Fw76T/2vjihEWhwffsbcAg",
+	expect(signedRequest.signatures.hs2['ed25519:a_XRhW']).toBe(
+		'KDhgfpGp+34ElXpvFIBjsGO2kldNZKj1CWFEbSjyQR142ZYx+kIg+N3muLlMXEK0Fw76T/2vjihEWhwffsbcAg',
 	);
 
 	const id = generateId(event);
 
-	expect(id).toBe("$P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY");
+	expect(id).toBe('$P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY');
 });
 
-describe("generateId", () => {
-	test("should generate a consistent ID for the same event content", () => {
+describe('generateId', () => {
+	test('should generate a consistent ID for the same event content', () => {
 		const event = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
@@ -162,24 +162,24 @@ describe("generateId", () => {
 		expect(id1).toBe(id2);
 	});
 
-	test("should generate different IDs for different event content", () => {
+	test('should generate different IDs for different event content', () => {
 		const event1 = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
 		const event2 = {
-			type: "m.room.message",
-			sender: "@bob:example.com", // Different sender
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@bob:example.com', // Different sender
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
@@ -190,14 +190,14 @@ describe("generateId", () => {
 		expect(id1).not.toBe(id2);
 	});
 
-	test("should ignore fields like age_ts, unsigned, and signatures when generating ID", () => {
+	test('should ignore fields like age_ts, unsigned, and signatures when generating ID', () => {
 		const eventBase = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
@@ -206,20 +206,20 @@ describe("generateId", () => {
 			...eventBase,
 			age_ts: 100,
 			unsigned: { age: 100 },
-			signatures: { "example.com": { "ed25519:keyid": "signature" } },
+			signatures: { 'example.com': { 'ed25519:keyid': 'signature' } },
 		});
 
 		expect(id1).toBe(id2);
 	});
 
-	test("should produce a URL-safe base64 string starting with $", () => {
+	test('should produce a URL-safe base64 string starting with $', () => {
 		const event = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Test event for ID format",
-				msgtype: "m.text",
+				body: 'Test event for ID format',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
@@ -228,59 +228,59 @@ describe("generateId", () => {
 	});
 });
 
-test("computeAndMergeHash", async () => {
+test('computeAndMergeHash', async () => {
 	const result = computeAndMergeHash({
 		auth_events: [
-			"$e0YmwnKseuHqsuF50ekjta7z5UpO-bDoq7y4R1NKMpI",
-			"$6_VX-xW821oaBwOuaaV_xoC6fD2iMg2QPWD4J7Bh3o4",
-			"$9m9s2DShzjg5WBpAsj2lfOSFVCHBJ1DIpayouOij5Nk",
-			"$fmahdKvkzQlGFCj9WM_eDtbI3IG08J6DNyqEFpgAT7Q",
+			'$e0YmwnKseuHqsuF50ekjta7z5UpO-bDoq7y4R1NKMpI',
+			'$6_VX-xW821oaBwOuaaV_xoC6fD2iMg2QPWD4J7Bh3o4',
+			'$9m9s2DShzjg5WBpAsj2lfOSFVCHBJ1DIpayouOij5Nk',
+			'$fmahdKvkzQlGFCj9WM_eDtbI3IG08J6DNyqEFpgAT7Q',
 		],
-		content: { membership: "join" },
+		content: { membership: 'join' },
 		depth: 9,
-		origin: "synapse1",
+		origin: 'synapse1',
 		origin_server_ts: 1733002629635,
-		prev_events: ["$lD8jXrQmHr7KhxekqNPHFC-gzjYq3Gf_Oyr896K69JY"],
-		room_id: "!bhjQdfkUhiyKSsJbFt:synapse1",
-		sender: "@asd11:homeserver",
-		state_key: "@asd11:homeserver",
-		type: "m.room.member",
+		prev_events: ['$lD8jXrQmHr7KhxekqNPHFC-gzjYq3Gf_Oyr896K69JY'],
+		room_id: '!bhjQdfkUhiyKSsJbFt:synapse1',
+		sender: '@asd11:homeserver',
+		state_key: '@asd11:homeserver',
+		type: 'm.room.member',
 		unsigned: { age: 2 },
 		signatures: {},
 	});
 
 	expect(result.hashes.sha256).toBe(
-		"nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4",
+		'nPC9Qk7Amj+ykakbc25gzyyCdHrukUflCNeAM5DGoU4',
 	);
 });
 
-describe("computeHash", () => {
-	test("should compute a sha256 hash for an event", () => {
+describe('computeHash', () => {
+	test('should compute a sha256 hash for an event', () => {
 		const event = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
 		const [algorithm, hash] = computeHash(event);
 
-		expect(algorithm).toBe("sha256");
-		expect(typeof hash).toBe("string");
+		expect(algorithm).toBe('sha256');
+		expect(typeof hash).toBe('string');
 		expect(hash.length).toBeGreaterThan(0);
 	});
 
-	test("should ignore excluded fields when computing hash", () => {
+	test('should ignore excluded fields when computing hash', () => {
 		const eventBase = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
@@ -289,23 +289,23 @@ describe("computeHash", () => {
 			...eventBase,
 			age_ts: 100,
 			unsigned: { age: 100 },
-			signatures: { "example.com": { "ed25519:keyid": "signature" } },
-			hashes: { sha256: "oldhash" },
+			signatures: { 'example.com': { 'ed25519:keyid': 'signature' } },
+			hashes: { sha256: 'oldhash' },
 			outlier: true,
-			destinations: ["server1"],
+			destinations: ['server1'],
 		});
 
 		expect(hash1).toBe(hash2);
 	});
 
-	test("should produce a consistent hash for the same content", () => {
+	test('should produce a consistent hash for the same content', () => {
 		const event = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
@@ -315,20 +315,20 @@ describe("computeHash", () => {
 		expect(hash1).toBe(hash2);
 	});
 
-	test("should produce different hashes for different content", () => {
+	test('should produce different hashes for different content', () => {
 		const event1 = {
-			type: "m.room.message",
-			sender: "@alice:example.com",
-			room_id: "!someroom:example.com",
+			type: 'm.room.message',
+			sender: '@alice:example.com',
+			room_id: '!someroom:example.com',
 			content: {
-				body: "Hello world!",
-				msgtype: "m.text",
+				body: 'Hello world!',
+				msgtype: 'm.text',
 			},
 			origin_server_ts: 1234567890,
 		};
 		const event2 = {
 			...event1,
-			content: { ...event1.content, body: "Hello other world!" },
+			content: { ...event1.content, body: 'Hello other world!' },
 		};
 		const [, hash1] = computeHash(event1);
 		const [, hash2] = computeHash(event2);
@@ -337,17 +337,17 @@ describe("computeHash", () => {
 	});
 });
 
-describe("validateAuthorizationHeader", () => {
-	const origin = "origin.com";
-	const signingKey = "Y0q3MVIjcsL40MCiR4R0YfH0f7k8Q0J6a3g0YfH0f7k=";
-	const destination = "destination.com";
-	const method = "GET";
-	const uri = "/_matrix/federation/v1/version";
+describe('validateAuthorizationHeader', () => {
+	const origin = 'origin.com';
+	const signingKey = 'Y0q3MVIjcsL40MCiR4R0YfH0f7k8Q0J6a3g0YfH0f7k=';
+	const destination = 'destination.com';
+	const method = 'GET';
+	const uri = '/_matrix/federation/v1/version';
 
 	const realSignature =
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="; // 64 bytes of zeros
+		'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=='; // 64 bytes of zeros
 
-	test("should return true for a valid signature", async () => {
+	test('should return true for a valid signature', async () => {
 		await expect(
 			validateAuthorizationHeader(
 				origin,
@@ -360,8 +360,8 @@ describe("validateAuthorizationHeader", () => {
 		).rejects.toThrow(`Invalid signature for ${destination}`);
 	});
 
-	test("should throw an error for an invalid (malformed) signature", async () => {
-		const invalidSignature = "this_is_not_base64_and_is_short";
+	test('should throw an error for an invalid (malformed) signature', async () => {
+		const invalidSignature = 'this_is_not_base64_and_is_short';
 
 		await expect(
 			validateAuthorizationHeader(
@@ -375,10 +375,10 @@ describe("validateAuthorizationHeader", () => {
 		).rejects.toThrow();
 	});
 
-	test("should attempt validation for a signature with content", async () => {
-		const content = { foo: "bar" };
+	test('should attempt validation for a signature with content', async () => {
+		const content = { foo: 'bar' };
 		const realSignatureWithContent =
-			"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB==";
+			'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB==';
 
 		await expect(
 			validateAuthorizationHeader(
@@ -393,11 +393,11 @@ describe("validateAuthorizationHeader", () => {
 		).rejects.toThrow(`Invalid signature for ${destination}`);
 	});
 
-	test("should throw an error if the key is not valid base64", async () => {
+	test('should throw an error if the key is not valid base64', async () => {
 		await expect(
 			validateAuthorizationHeader(
 				origin,
-				"not-a-base64-key!",
+				'not-a-base64-key!',
 				destination,
 				method,
 				uri,
@@ -407,23 +407,26 @@ describe("validateAuthorizationHeader", () => {
 	});
 });
 
-describe("authorizationHeaders", () => {
-	const origin = "origin.com";
-	const destination = "destination.com";
-	const method = "GET";
-	const uri = "/_matrix/federation/v1/version";
+describe('authorizationHeaders', () => {
+	const origin = 'origin.com';
+	const destination = 'destination.com';
+	const method = 'GET';
+	const uri = '/_matrix/federation/v1/version';
 	const signingKey: SigningKey = {
-		publicKey: Buffer.from("Y0q3MVIjcsL40MCiR4R0YfH0f7k8Q0J6a3g0YfH0f7k=", "base64"),
+		publicKey: Buffer.from(
+			'Y0q3MVIjcsL40MCiR4R0YfH0f7k8Q0J6a3g0YfH0f7k=',
+			'base64',
+		),
 		privateKey: Buffer.from(
-			"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-			"base64",
+			'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==',
+			'base64',
 		),
 		algorithm: EncryptionValidAlgorithm.ed25519,
-		version: "testkey",
+		version: 'testkey',
 		sign: async (data: Uint8Array) => Buffer.from(data),
 	};
 
-	test("should generate correct authorization header string without content", async () => {
+	test('should generate correct authorization header string without content', async () => {
 		const header = await authorizationHeaders(
 			origin,
 			signingKey,
@@ -437,8 +440,8 @@ describe("authorizationHeaders", () => {
 		);
 	});
 
-	test("should generate correct authorization header string with content", async () => {
-		const content = { foo: "bar" };
+	test('should generate correct authorization header string with content', async () => {
+		const content = { foo: 'bar' };
 		const header = await authorizationHeaders(
 			origin,
 			signingKey,
@@ -453,14 +456,14 @@ describe("authorizationHeaders", () => {
 		);
 	});
 
-	test("should produce different signatures for different content", async () => {
+	test('should produce different signatures for different content', async () => {
 		const header1 = await authorizationHeaders(
 			origin,
 			signingKey,
 			destination,
 			method,
 			uri,
-			{ data: "content1" },
+			{ data: 'content1' },
 		);
 		const header2 = await authorizationHeaders(
 			origin,
@@ -468,7 +471,7 @@ describe("authorizationHeaders", () => {
 			destination,
 			method,
 			uri,
-			{ data: "content2" },
+			{ data: 'content2' },
 		);
 
 		const sig1 = header1.match(/sig="([^\"]+)"/)?.[1];
@@ -480,26 +483,26 @@ describe("authorizationHeaders", () => {
 	});
 });
 
-describe("extractSignaturesFromHeader", async () => {
-	test("it should extract the origin, destination, key, and signature from the authorization header", async () => {
+describe('extractSignaturesFromHeader', async () => {
+	test('it should extract the origin, destination, key, and signature from the authorization header', async () => {
 		expect(
 			extractSignaturesFromHeader(
 				'X-Matrix origin="synapse1",destination="synapse2",key="ed25519:a_yNbw",sig="lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ"',
 			),
 		).toStrictEqual({
-			destination: "synapse2",
-			key: "ed25519:a_yNbw",
-			origin: "synapse1",
+			destination: 'synapse2',
+			key: 'ed25519:a_yNbw',
+			origin: 'synapse1',
 			signature:
-				"lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ",
+				'lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ',
 		});
 	});
 
-	test("it should throw an error if the authorization header is invalid", async () => {
+	test('it should throw an error if the authorization header is invalid', async () => {
 		expect(() =>
 			extractSignaturesFromHeader(
 				'X-Matrix origin="synapse1",destination="synapse2",key="ed25519:a_yNbw",sig="lxdmBBy9OtgsmRDbm1I3dhyslE4aFJgCcg48DBNDO0/rK4d7aUX3YjkDTMGLyugx9DT+s34AgxnBZOWRg1u6AQ',
 			),
-		).toThrow("Invalid authorization header");
+		).toThrow('Invalid authorization header');
 	});
 });

@@ -1,29 +1,29 @@
 import {
 	createRoomCreateEvent,
 	type RoomCreateEvent,
-} from "@hs/core/src/events/m.room.create";
+} from '@hs/core/src/events/m.room.create';
 import {
 	createRoomGuestAccessEvent,
 	type RoomGuestAccessEvent,
-} from "@hs/core/src/events/m.room.guest_access";
+} from '@hs/core/src/events/m.room.guest_access';
 import {
 	createRoomHistoryVisibilityEvent,
 	type RoomHistoryVisibilityEvent,
-} from "@hs/core/src/events/m.room.history_visibility";
+} from '@hs/core/src/events/m.room.history_visibility';
 import {
 	createRoomJoinRulesEvent,
 	type RoomJoinRulesEvent,
-} from "@hs/core/src/events/m.room.join_rules";
+} from '@hs/core/src/events/m.room.join_rules';
 import {
 	createRoomMemberEvent,
 	type RoomMemberEvent,
-} from "@hs/core/src/events/m.room.member";
+} from '@hs/core/src/events/m.room.member';
 import {
 	createRoomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
-} from "@hs/core/src/events/m.room.power_levels";
-import type { createSignedEvent } from "@hs/core/src/events/utils/createSignedEvent";
-import type { SignedEvent } from "../signEvent";
+} from '@hs/core/src/events/m.room.power_levels';
+import type { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
+import type { SignedEvent } from '../signEvent';
 
 export type IdAndEvent<T> = {
 	event: T;
@@ -42,7 +42,7 @@ export const createRoom = async (
 		IdAndEvent<SignedEvent<RoomPowerLevelsEvent>>,
 		IdAndEvent<SignedEvent<RoomJoinRulesEvent>>,
 		IdAndEvent<SignedEvent<RoomHistoryVisibilityEvent>>,
-		IdAndEvent<SignedEvent<RoomGuestAccessEvent>>
+		IdAndEvent<SignedEvent<RoomGuestAccessEvent>>,
 	];
 }> => {
 	// Create
@@ -75,13 +75,13 @@ export const createRoom = async (
 		roomId,
 		sender,
 		depth: 2,
-		membership: "join",
+		membership: 'join',
 		content: {
 			displayname: sender,
 		},
 		state_key: sender,
 		auth_events: {
-			"m.room.create": createEvent._id,
+			'm.room.create': createEvent._id,
 		},
 		prev_events: [createEvent._id],
 	});

@@ -1,24 +1,26 @@
-import { Injectable, Logger } from "@nestjs/common";
-import type { EventBase } from "../models/event.model";
+import { injectable } from 'tsyringe';
+import type { EventBase } from '../models/event.model';
 import {
-    type StagingAreaEventType,
-    StagingAreaQueue,
-} from "../queues/staging-area.queue";
-import { EventAuthorizationService } from "./event-authorization.service";
-import { EventStateService } from "./event-state.service";
-import { EventService } from "./event.service";
-import { MissingEventService } from "./missing-event.service";
+	type StagingAreaEventType,
+	StagingAreaQueue,
+} from '../queues/staging-area.queue';
+import { Lock } from '../utils/lock.decorator';
+import { createLogger } from '../utils/logger';
+import { EventAuthorizationService } from './event-authorization.service';
+import { EventStateService } from './event-state.service';
+import { EventService, EventType } from './event.service';
+import { MissingEventService } from './missing-event.service';
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {
-	PENDING_DEPENDENCIES = "pending_dependencies",
-	PENDING_AUTHORIZATION = "pending_authorization",
-	PENDING_STATE_RESOLUTION = "pending_state_resolution",
-	PENDING_PERSISTENCE = "pending_persistence",
-	PENDING_FEDERATION = "pending_federation",
-	PENDING_NOTIFICATION = "pending_notification",
-	COMPLETED = "completed",
-	REJECTED = "rejected",
+	PENDING_DEPENDENCIES = 'pending_dependencies',
+	PENDING_AUTHORIZATION = 'pending_authorization',
+	PENDING_STATE_RESOLUTION = 'pending_state_resolution',
+	PENDING_PERSISTENCE = 'pending_persistence',
+	PENDING_FEDERATION = 'pending_federation',
+	PENDING_NOTIFICATION = 'pending_notification',
+	COMPLETED = 'completed',
+	REJECTED = 'rejected',
 }
 
 // ExtendedStagingEvent adds processing state to track event flow
@@ -29,10 +31,10 @@ interface ExtendedStagingEvent extends StagingAreaEventType {
 	retryCount?: number;
 }
 
-@Injectable()
+@injectable()
 export class StagingAreaService {
-	private readonly logger = new Logger(StagingAreaService.name);
 	private processingEvents = new Map<string, ExtendedStagingEvent>();
+	private readonly logger = createLogger('StagingAreaService');
 
 	constructor(
 		private readonly eventService: EventService,
@@ -52,8 +54,8 @@ export class StagingAreaService {
 		};
 
 		this.processingEvents.set(event.eventId, extendedEvent);
-		
-    this.stagingAreaQueue.enqueue({
+
+		this.stagingAreaQueue.enqueue({
 			...event,
 			metadata: {
 				state: ProcessingState.PENDING_DEPENDENCIES,
@@ -78,6 +80,7 @@ export class StagingAreaService {
 		return [...authEvents, ...prevEvents];
 	}
 
+	@Lock({ timeout: 10000, keyPath: 'event.room_id' })
 	async processEvent(event: StagingAreaEventType & { metadata?: any }) {
 		const eventId = event.eventId;
 		const trackedEvent = this.processingEvents.get(eventId);
@@ -141,7 +144,9 @@ export class StagingAreaService {
 		if (!trackedEvent) return;
 
 		const eventIds = this.extractEventsFromIncomingPDU(event);
-		this.logger.debug(`Checking dependencies for event ${eventId}: ${eventIds.length} references`);
+		this.logger.debug(
+			`Checking dependencies for event ${eventId}: ${eventIds.length} references`,
+		);
 
 		const { missing } = await this.eventService.checkIfEventsExists(
 			eventIds.flat(),
@@ -197,9 +202,10 @@ export class StagingAreaService {
 
 		try {
 			this.logger.debug(`Authorizing event ${eventId}`);
-			const authEvents = await this.eventService.getAuthEventsIds({
-				roomId: event.roomId
-			});
+			const authEvents = await this.eventService.getAuthEventIds(
+				EventType.MESSAGE,
+				{ roomId: event.roomId, senderId: event.event.sender },
+			);
 
 			const isAuthorized = await this.eventAuthService.authorizeEvent(
 				event.event,
@@ -217,7 +223,7 @@ export class StagingAreaService {
 				});
 			} else {
 				trackedEvent.state = ProcessingState.REJECTED;
-				trackedEvent.error = "Event failed authorization checks";
+				trackedEvent.error = 'Event failed authorization checks';
 				this.processingEvents.set(eventId, trackedEvent);
 			}
 		} catch (error: any) {
@@ -300,7 +306,9 @@ export class StagingAreaService {
 				},
 			});
 		} catch (error: any) {
-			this.logger.warn(`Federation error for ${eventId}: ${error?.message || String(error)}`);
+			this.logger.warn(
+				`Federation error for ${eventId}: ${error?.message || String(error)}`,
+			);
 
 			trackedEvent.state = ProcessingState.PENDING_NOTIFICATION;
 			this.processingEvents.set(eventId, trackedEvent);
@@ -326,7 +334,9 @@ export class StagingAreaService {
 
 			trackedEvent.state = ProcessingState.COMPLETED;
 		} catch (error: unknown) {
-			this.logger.warn(`Notification error for ${event.eventId}: ${String(error)}`);
+			this.logger.warn(
+				`Notification error for ${event.eventId}: ${String(error)}`,
+			);
 			trackedEvent.state = ProcessingState.COMPLETED;
 		}
 

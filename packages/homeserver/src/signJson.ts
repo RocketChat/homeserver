@@ -1,11 +1,11 @@
-import nacl from "tweetnacl";
-import { toBinaryData, toUnpaddedBase64 } from "./binaryData";
-import type { SigningKey } from "./keys";
-import type { EventBase } from "@hs/core/src/events/eventBase";
-import type { IdAndEvent } from "./procedures/createRoom";
+import nacl from 'tweetnacl';
+import { toBinaryData, toUnpaddedBase64 } from './binaryData';
+import type { SigningKey } from './keys';
+import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { IdAndEvent } from './procedures/createRoom';
 
 export enum EncryptionValidAlgorithm {
-	ed25519 = "ed25519",
+	ed25519 = 'ed25519',
 }
 
 export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
@@ -89,7 +89,7 @@ export async function getSignaturesFromRemote<
 		signatures?.[signingName] &&
 		Object.entries(signatures[signingName])
 			.map(([keyId, signature]) => {
-				const [algorithm, version] = keyId.split(":");
+				const [algorithm, version] = keyId.split(':');
 				if (!isValidAlgorithm(algorithm)) {
 					throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
 				}
@@ -184,7 +184,7 @@ export async function verifySignaturesFromRemote<
 		if (
 			!nacl.sign.detached.verify(
 				new TextEncoder().encode(canonicalJson),
-				new Uint8Array(Buffer.from(signature, "base64")),
+				new Uint8Array(Buffer.from(signature, 'base64')),
 				publicKey,
 			)
 		) {
@@ -196,7 +196,7 @@ export async function verifySignaturesFromRemote<
 }
 
 export function encodeCanonicalJson(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
 		return JSON.stringify(value);
 	}
@@ -204,7 +204,7 @@ export function encodeCanonicalJson(value: unknown): string {
 	if (Array.isArray(value)) {
 		// Handle arrays recursively
 		const serializedArray = value.map(encodeCanonicalJson);
-		return `[${serializedArray.join(",")}]`;
+		return `[${serializedArray.join(',')}]`;
 	}
 
 	// Handle objects: sort keys lexicographically
@@ -213,14 +213,14 @@ export function encodeCanonicalJson(value: unknown): string {
 		(key) =>
 			`"${key}":${encodeCanonicalJson((value as Record<string, unknown>)[key])}`,
 	);
-	return `{${serializedEntries.join(",")}}`;
+	return `{${serializedEntries.join(',')}}`;
 }
 
 export async function signText(
 	data: string | Uint8Array,
 	signingKey: Uint8Array,
 ) {
-	if (typeof data === "string") {
+	if (typeof data === 'string') {
 		return nacl.sign.detached(toBinaryData(data), signingKey);
 	}
 

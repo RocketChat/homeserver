@@ -1,12 +1,16 @@
-import { Controller, Get, Logger } from "@nestjs/common";
+import { Elysia } from 'elysia';
+import { InternalPingResponseDto } from '../../dtos/internal/ping.dto';
 
-@Controller("/internal/ping")
-export class PingController {
-	private readonly logger = new Logger(PingController.name);
-
-	@Get()
-	ping() {
-		this.logger.debug("Ping endpoint called");
-		return "PONG!";
-	}
-}
+export const pingPlugin = (app: Elysia) =>
+	app.get('/internal/ping', () => {
+		return 'PONG!';
+	}, {
+		response: {
+			200: InternalPingResponseDto,
+		},
+		detail: {
+			tags: ['Internal'],
+			summary: 'Health check endpoint',
+			description: 'Simple ping endpoint to check if the server is running'
+		}
+	});
