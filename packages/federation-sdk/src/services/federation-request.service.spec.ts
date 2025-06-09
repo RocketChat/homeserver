@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import {
 	describe,
 	it,
@@ -7,16 +6,16 @@ import {
 	expect,
 	spyOn,
 	mock,
+	afterAll,
 } from 'bun:test';
 import { FederationRequestService } from './federation-request.service';
 import { FederationConfigService } from './federation-config.service';
 import * as nacl from 'tweetnacl';
-import * as discovery from '@hs/homeserver/src/helpers/server-discovery/discovery';
 import * as authentication from '@hs/homeserver/src/authentication';
 import * as signJson from '@hs/homeserver/src/signJson';
 import * as url from '@hs/homeserver/src/helpers/url';
 
-describe('FederationRequestService', () => {
+describe('FederationRequestService', async () => {
 	let service: FederationRequestService;
 	let configService: FederationConfigService;
 	let originalFetch: typeof globalThis.fetch;
@@ -30,13 +29,27 @@ describe('FederationRequestService', () => {
 		secretKey: new Uint8Array([4, 5, 6]),
 	};
 
-	const mockDiscoveryResult = {
-		address: 'target.example.com',
-		headers: {
+	const mockDiscoveryResult = [
+		'https://target.example.com:443' as const,
+		{
 			Host: 'target.example.com',
-			'X-Custom-Header': 'Test',
 		},
-	};
+	];
+
+	const { getHomeserverFinalAddress } = await import(
+		'../server-discovery/discovery'
+	);
+
+	await mock.module('../server-discovery/discovery', () => ({
+		getHomeserverFinalAddress: () => mockDiscoveryResult,
+	}));
+
+	afterAll(() => {
+		mock.restore();
+		mock.module('../server-discovery/discovery', () => ({
+			getHomeserverFinalAddress,
+		}));
+	});
 
 	const mockSignature = new Uint8Array([7, 8, 9]);
 
@@ -58,9 +71,6 @@ describe('FederationRequestService', () => {
 		spyOn(nacl.sign.keyPair, 'fromSecretKey').mockReturnValue(mockKeyPair);
 		spyOn(nacl.sign, 'detached').mockReturnValue(mockSignature);
 
-		spyOn(discovery, 'resolveHostAddressByServerName').mockResolvedValue(
-			mockDiscoveryResult,
-		);
 		spyOn(url, 'extractURIfromURL').mockReturnValue('/test/path?query=value');
 		spyOn(authentication, 'authorizationHeaders').mockResolvedValue(
 			mockAuthHeaders,
@@ -82,6 +92,11 @@ describe('FederationRequestService', () => {
 			{ preconnect: () => {} },
 		) as typeof fetch;
 
+		configService = {
+			serverName: mockServerName,
+			signingKey: mockSigningKey,
+			signingKeyId: mockSigningKeyId,
+		} as FederationConfigService;
 		configService = {
 			serverName: mockServerName,
 			signingKey: mockSigningKey,
@@ -109,13 +124,11 @@ describe('FederationRequestService', () => {
 			expect(configService.serverName).toBe(mockServerName);
 			expect(configService.signingKey).toBe(mockSigningKey);
 			expect(configService.signingKeyId).toBe(mockSigningKeyId);
+			expect(configService.serverName).toBe(mockServerName);
+			expect(configService.signingKey).toBe(mockSigningKey);
+			expect(configService.signingKeyId).toBe(mockSigningKeyId);
 
 			expect(nacl.sign.keyPair.fromSecretKey).toHaveBeenCalled();
-
-			expect(discovery.resolveHostAddressByServerName).toHaveBeenCalledWith(
-				'target.example.com',
-				mockServerName,
-			);
 
 			expect(fetchSpy).toHaveBeenCalledWith(
 				'https://target.example.com/test/path',
@@ -123,7 +136,7 @@ describe('FederationRequestService', () => {
 					method: 'GET',
 					headers: expect.objectContaining({
 						Authorization: mockAuthHeaders,
-						'X-Custom-Header': 'Test',
+						Host: 'target.example.com',
 					}),
 				}),
 			);

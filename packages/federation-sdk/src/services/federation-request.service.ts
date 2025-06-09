@@ -1,4 +1,3 @@
-import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
 import type { SigningKey } from '@hs/homeserver/src/keys';
 import * as nacl from 'tweetnacl';
 import {
@@ -11,7 +10,8 @@ import {
 	signJson,
 } from '../../../homeserver/src/signJson';
 import { FederationConfigService } from './federation-config.service';
-import { inject, injectable } from 'tsyringe';
+import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 
 interface SignedRequest {
@@ -27,7 +27,8 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 @injectable()
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
-	constructor(private readonly configService: FederationConfigService) {}
+
+	constructor(private readonly configService: FederationConfigService) { }
 
 	async makeSignedRequest<T>({
 		method,
@@ -52,10 +53,10 @@ export class FederationRequestService {
 					nacl.sign.detached(data, keyPair.secretKey),
 			};
 
-			const { address, headers: discoveryHeaders } =
-				await resolveHostAddressByServerName(domain, serverName);
+			const [address, discoveryHeaders] =
+				await getHomeserverFinalAddress(domain);
 
-			const url = new URL(`https://${address}${uri}`);
+			const url = new URL(`${address}${uri}`);
 			if (queryString) {
 				url.search = queryString;
 			}
