@@ -34,7 +34,7 @@ import { RoomService } from '../../services/room.service';
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
 	return app
-		.post('/internal/rooms/rooms', async ({ body, set }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
+		.post('/internal/rooms/rooms', async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
 			const { username, sender, name, canonical_alias, alias } = body;
 			return roomService.createRoom(
 				username,
@@ -55,22 +55,10 @@ export const internalRoomPlugin = (app: Elysia) => {
 				description: 'Create a room'
 			}
 		})
-		.put('/internal/rooms/:roomId/name', async ({ params, body, set }): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
-			const roomIdParse = RoomIdDto.safeParse(params.roomId);
-			const bodyParse = InternalUpdateRoomNameBodyDto.safeParse(body);
-			if (!roomIdParse.success || !bodyParse.success) {
-				set.status = 400;
-				return {
-					error: 'Invalid request',
-					details: {
-						roomId: roomIdParse.error?.flatten(),
-						body: bodyParse.error?.flatten(),
-					},
-				};
-			}
-			const { name, senderUserId, targetServer } = bodyParse.data;
+		.put('/internal/rooms/:roomId/name', async ({ params, body }): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
+			const { name, senderUserId, targetServer } = body;
 			return roomService.updateRoomName(
-				roomIdParse.data,
+				params.roomId,
 				name,
 				senderUserId,
 				targetServer,
@@ -91,29 +79,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 		.put(
 			'/internal/rooms/:roomId/permissions/:userId',
 			async ({ params, body, set }): Promise<InternalUpdateUserPowerLevelResponse | ErrorResponse> => {
-				const roomIdParse = RoomIdDto.safeParse(params.roomId);
-				const userIdParse = UsernameDto.safeParse(params.userId);
-				const bodyParse = InternalUpdateUserPowerLevelBodyDto.safeParse(body);
-				if (
-					!roomIdParse.success ||
-					!userIdParse.success ||
-					!bodyParse.success
-				) {
-					set.status = 400;
-					return {
-						error: 'Invalid request',
-						details: {
-							roomId: roomIdParse.error?.flatten(),
-							userId: userIdParse.error?.flatten(),
-							body: bodyParse.error?.flatten(),
-						},
-					};
-				}
-				const { senderUserId, powerLevel, targetServers } = bodyParse.data;
+				const { senderUserId, powerLevel, targetServers } = body;
 				try {
 					const eventId = await roomService.updateUserPowerLevel(
-						roomIdParse.data,
-						userIdParse.data,
+						params.roomId,
+						params.userId,
 						powerLevel,
 						senderUserId,
 						targetServers,
@@ -141,22 +111,10 @@ export const internalRoomPlugin = (app: Elysia) => {
 			}
 		)
 		.put('/internal/rooms/:roomId/leave', async ({ params, body, set }): Promise<InternalLeaveRoomResponse | ErrorResponse> => {
-			const roomIdParse = RoomIdDto.safeParse(params.roomId);
-			const bodyParse = InternalLeaveRoomBodyDto.safeParse(body);
-			if (!roomIdParse.success || !bodyParse.success) {
-				set.status = 400;
-				return {
-					error: 'Invalid request',
-					details: {
-						roomId: roomIdParse.error?.flatten(),
-						body: bodyParse.error?.flatten(),
-					},
-				};
-			}
-			const { senderUserId, targetServers } = bodyParse.data;
+			const { senderUserId, targetServers } = body;
 			try {
 				const eventId = await roomService.leaveRoom(
-					roomIdParse.data,
+					params.roomId,
 					senderUserId,
 					targetServers,
 				);
@@ -184,30 +142,12 @@ export const internalRoomPlugin = (app: Elysia) => {
 		.put(
 			'/internal/rooms/:roomId/kick/:memberId',
 			async ({ params, body, set }): Promise<InternalKickUserResponse | ErrorResponse> => {
-				const roomIdParse = RoomIdDto.safeParse(params.roomId);
-				const memberIdParse = UsernameDto.safeParse(params.memberId);
-				const bodyParse = InternalKickUserBodyDto.safeParse(body);
-				if (
-					!roomIdParse.success ||
-					!memberIdParse.success ||
-					!bodyParse.success
-				) {
-					set.status = 400;
-					return {
-						error: 'Invalid request',
-						details: {
-							roomId: roomIdParse.error?.flatten(),
-							memberId: memberIdParse.error?.flatten(),
-							body: bodyParse.error?.flatten(),
-						},
-					};
-				}
-				const { userIdToKick, senderUserId, reason, targetServers } =
-					bodyParse.data;
+				const { senderUserId, reason, targetServers } =
+					body;
 				try {
 					const eventId = await roomService.kickUser(
-						roomIdParse.data,
-						memberIdParse.data,
+						params.roomId,
+						params.memberId,
 						senderUserId,
 						reason,
 						targetServers,
@@ -237,30 +177,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 		.put(
 			'/internal/rooms/:roomId/ban/:userIdToBan',
 			async ({ params, body, set }): Promise<InternalBanUserResponse | ErrorResponse> => {
-				const roomIdParse = RoomIdDto.safeParse(params.roomId);
-				const userIdParse = UsernameDto.safeParse(params.userIdToBan);
-				const bodyParse = InternalBanUserBodyDto.safeParse(body);
-				if (
-					!roomIdParse.success ||
-					!userIdParse.success ||
-					!bodyParse.success
-				) {
-					set.status = 400;
-					return {
-						error: 'Invalid request',
-						details: {
-							roomId: roomIdParse.error?.flatten(),
-							userId: userIdParse.error?.flatten(),
-							body: bodyParse.error?.flatten(),
-						},
-					};
-				}
-				const { userIdToBan, senderUserId, reason, targetServers } =
-					bodyParse.data;
+				const { senderUserId, reason, targetServers } = body;
 				try {
 					const eventId = await roomService.banUser(
-						roomIdParse.data,
-						userIdParse.data,
+						params.roomId,
+						params.userIdToBan,
 						senderUserId,
 						reason,
 						targetServers,
@@ -287,24 +208,12 @@ export const internalRoomPlugin = (app: Elysia) => {
 				}
 			}
 		)
-		.put('/internal/rooms/:roomId/tombstone', async ({ params, body, set }): Promise<InternalTombstoneRoomResponse | ErrorResponse> => {
-			const roomIdParse = RoomIdDto.safeParse(params.roomId);
-			const bodyParse = InternalTombstoneRoomBodyDto.safeParse(body);
-			if (!roomIdParse.success || !bodyParse.success) {
-				set.status = 400;
-				return {
-					error: 'Invalid request',
-					details: {
-						roomId: roomIdParse.error?.flatten(),
-						body: bodyParse.error?.flatten(),
-					},
-				};
-			}
+		.put('/internal/rooms/:roomId/tombstone', async ({ params, body }): Promise<InternalTombstoneRoomResponse | ErrorResponse> => {
 			return roomService.markRoomAsTombstone(
-				roomIdParse.data,
-				bodyParse.data.sender,
-				bodyParse.data.reason,
-				bodyParse.data.replacementRoomId,
+				params.roomId,
+				body.sender,
+				body.reason,
+				body.replacementRoomId,
 			);
 		}, {
 			params: InternalTombstoneRoomParamsDto,

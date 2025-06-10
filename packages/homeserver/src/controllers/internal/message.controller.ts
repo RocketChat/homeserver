@@ -114,23 +114,11 @@ export const internalMessagePlugin = (app: Elysia) => {
 				}
 			}
 		)
-		.delete('/internal/messages/:messageId', async ({ params, body, set }): Promise<InternalRedactMessageResponse | ErrorResponse> => {
-			const idParse = InternalRedactMessageParamsDto.safeParse(params);
-			const bodyParse = InternalRedactMessageBodyDto.safeParse(body);
-			if (!idParse.success || !bodyParse.success) {
-				set.status = 400;
-				return {
-					error: 'Invalid request',
-					details: {
-						id: idParse.error?.flatten(),
-						body: bodyParse.error?.flatten(),
-					},
-				};
-			}
-			const { roomId, reason, senderUserId, targetServer } = bodyParse.data;
+		.delete('/internal/messages/:messageId', async ({ params, body }): Promise<InternalRedactMessageResponse | ErrorResponse> => {
+			const { roomId, reason, senderUserId, targetServer } = body;
 			return messageService.redactMessage(
 				roomId,
-				idParse.data,
+				params.messageId,
 				reason,
 				senderUserId,
 				targetServer,

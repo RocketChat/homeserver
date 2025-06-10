@@ -11,14 +11,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 	return app.put(
 		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
 		async ({ params, body }): Promise<SendJoinResponse | ErrorResponse> => {
-			const parseResult = SendJoinEventDto.safeParse(body);
-			if (!parseResult.success) {
-				return {
-					error: 'Invalid event body',
-					details: parseResult.error.flatten(),
-				};
-			}
-			const event = parseResult.data;
+			const event = body;
 			const { roomId, stateKey } = params;
 
 			const records = await eventService.findEvents(
@@ -40,10 +33,10 @@ export const sendJoinPlugin = (app: Elysia) => {
 					...event,
 					unsigned: lastInviteEvent
 						? {
-								replaces_state: lastInviteEvent._id,
-								prev_content: lastInviteEvent.event.content,
-								prev_sender: lastInviteEvent.event.sender,
-							}
+							replaces_state: lastInviteEvent._id,
+							prev_content: lastInviteEvent.event.content,
+							prev_sender: lastInviteEvent.event.sender,
+						}
 						: undefined,
 				},
 				state: events.map((event) => ({ ...event })),
