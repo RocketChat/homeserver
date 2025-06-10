@@ -1,7 +1,7 @@
 export function toBinaryData(
 	value: string | Uint8Array | ArrayBuffer | ArrayBufferView,
 ): Uint8Array {
-	if (typeof value === "string") {
+	if (typeof value === 'string') {
 		return new TextEncoder().encode(value);
 	}
 
@@ -19,7 +19,7 @@ export function toBinaryData(
 export function fromBinaryData(
 	value: string | Uint8Array | ArrayBuffer,
 ): string {
-	if (typeof value === "string") {
+	if (typeof value === 'string') {
 		return value;
 	}
 
@@ -32,9 +32,9 @@ export function toUnpaddedBase64(
 		urlSafe?: boolean;
 	} = { urlSafe: false },
 ): string {
-	const hash = btoa(String.fromCharCode(...value)).replace(/=+$/, "");
+	const hash = btoa(String.fromCharCode(...value)).replace(/=+$/, '');
 
 	if (!options.urlSafe) return hash;
 
-	return hash.replace(/\+/g, "-").replace(/\//g, "_");
+	return hash.replace(/\+/g, '-').replace(/\//g, '_');
 }

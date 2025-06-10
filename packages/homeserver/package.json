@@ -6,10 +6,10 @@
 		"dev": "bun run --watch src/index.ts"
 	},
 	"dependencies": {
-		"@hs/endpoints": "workspace:*",
 		"@hs/core": "workspace:*",
 		"@hs/crypto": "workspace:*",
-		"elysia": "latest"
+		"mongodb": "^6.16.0",
+		"tsyringe": "^4.10.0"
 	},
 	"devDependencies": {
 		"bun-types": "latest"

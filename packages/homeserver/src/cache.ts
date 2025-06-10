@@ -1,7 +1,6 @@
-export function cache<TFunction extends (...args: any[]) => Promise<any>>(
-	fn: TFunction,
-	timeout: number,
-): TFunction {
+export function cache<
+	TFunction extends (...args: unknown[]) => Promise<unknown>,
+>(fn: TFunction, timeout: number): TFunction {
 	let cached: Awaited<ReturnType<TFunction>> | undefined;
 	let timestamp = Date.now();
 
@@ -12,7 +11,7 @@ export function cache<TFunction extends (...args: any[]) => Promise<any>>(
 		}
 
 		if (cached === undefined) {
-			cached = await fn(...args);
+			cached = (await fn(...args)) as any;
 		}
 
 		return cached;

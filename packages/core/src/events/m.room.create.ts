@@ -1,5 +1,5 @@
-import { createEventBase, type EventBase } from "./eventBase";
-import { createEventWithId } from "./utils/createSignedEvent";
+import { createEventBase, type EventBase } from './eventBase';
+import { createEventWithId } from './utils/createSignedEvent';
 
 export interface RoomCreateEvent extends EventBase {
 	content: {
@@ -11,9 +11,9 @@ export interface RoomCreateEvent extends EventBase {
 	};
 }
 
-declare module "./eventBase" {
+declare module './eventBase' {
 	interface Events {
-		"m.room.create": RoomCreateEvent;
+		'm.room.create': RoomCreateEvent;
 	}
 }
 
@@ -28,21 +28,23 @@ export const roomCreateEvent = ({
 	sender,
 	ts = Date.now(),
 }: RoomCreateEventProps): RoomCreateEvent =>
-	createEventBase("m.room.create", {
+	createEventBase('m.room.create', {
 		roomId,
 		sender,
 		depth: 1,
 		ts,
 		content: {
-			room_version: "10",
+			room_version: '10',
 			creator: sender,
 		},
-		state_key: "",
+		state_key: '',
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});
 
-export const createRoomCreateEvent = createEventWithId(roomCreateEvent);
+export const createRoomCreateEvent = createEventWithId((...args: any[]) =>
+	roomCreateEvent(args[0]),
+);
 
 export const isRoomCreateEvent = (event: EventBase): event is RoomCreateEvent =>
-	event.type === "m.room.create";
+	event.type === 'm.room.create';

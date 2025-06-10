@@ -1,8 +1,12 @@
-import { HomeserverModule } from '@hs/homeserver/src/homeserver.module';
-import { HttpLoggerInterceptor } from '@hs/homeserver/src/middleware/http-logger.interceptor';
-import { ConfigService } from '@hs/homeserver/src/services/config.service';
-import { NestFactory } from '@nestjs/core';
 import 'reflect-metadata';
+import { appPromise } from './packages/homeserver/src/homeserver.module';
+import logger from './packages/homeserver/src/utils/logger';
+
+appPromise.then((app) => {
+	app.listen(8080, () => {
+		logger.info('🚀 App running on http://localhost:8080');
+	});
+});
 import * as fs from 'fs';
 
 async function bootstrap() {

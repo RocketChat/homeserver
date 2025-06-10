@@ -1,30 +1,40 @@
-import { createEventBase, type EventBase } from "./eventBase";
-import type { JoinRule } from "./m.room.join_rules";
-import { createEventWithId } from "./utils/createSignedEvent";
+import { createEventBase, type EventBase } from './eventBase';
+import type { JoinRule } from './m.room.join_rules';
+import { createEventWithId } from './utils/createSignedEvent';
 
-type Membership = "join" | "invite" | "leave" | "knock" | "ban";
+type Membership = 'join' | 'invite' | 'leave' | 'knock' | 'ban';
 
-declare module "./eventBase" {
+declare module './eventBase' {
 	interface Events {
-		"m.room.member": {
+		'm.room.member': {
 			unsigned: {
 				age_ts: number;
 			};
 			content: {
 				join_authorised_via_users_server?: string;
 				membership: Membership;
+				reason?: string;
 			};
 		};
 	}
 }
 
+export type AuthEvents = {
+	'm.room.create': string;
+	'm.room.power_levels'?: string;
+	'm.room.join_rules'?: string;
+	'm.room.history_visibility'?: string;
+} & {
+	[K in `m.room.member:${string}`]?: string;
+};
+
 export const isRoomMemberEvent = (
 	event: EventBase,
 ): event is RoomMemberEvent => {
-	return event.type === "m.room.member";
+	return event.type === 'm.room.member';
 };
 export interface RoomMemberEvent extends EventBase {
-	type: "m.room.member";
+	type: 'm.room.member';
 	content: {
 		membership: Membership;
 		join_rule: JoinRule;
@@ -40,6 +50,7 @@ export interface RoomMemberEvent extends EventBase {
 				};
 			};
 		};
+		reason?: string;
 	};
 	state_key: string;
 	unsigned: {
@@ -48,26 +59,37 @@ export interface RoomMemberEvent extends EventBase {
 		age_ts: number;
 		invite_room_state: (
 			| {
-					type: "m.room.join_rules";
-					state_key: "";
-					content: { join_rule: "invite" };
+					type: 'm.room.join_rules';
+					state_key: '';
+					content: { join_rule: 'invite' };
 					sender: string;
 			  }
 			| {
-					type: "m.room.create";
-					state_key: "";
-					content: { room_version: "10"; creator: string };
+					type: 'm.room.create';
+					state_key: '';
+					content: { room_version: '10'; creator: string };
 					sender: string;
 			  }
 			| {
-					type: "m.room.member";
+					type: 'm.room.member';
 					state_key: string;
-					content: { displayname: "admin"; membership: "join" };
+					content: { displayname: 'admin'; membership: 'join' };
+					sender: string;
+			  }
+			| {
+					type: 'm.room.name';
+					state_key: '';
+					content: { name: string };
 					sender: string;
 			  }
 		)[];
 	};
 }
+const isTruthy = <T>(
+	value: T | null | undefined | false | 0 | '',
+): value is T => {
+	return Boolean(value);
+};
 
 export const roomMemberEvent = ({
 	membership,
@@ -86,28 +108,24 @@ export const roomMemberEvent = ({
 	roomId: string;
 	sender: string;
 	state_key: string;
-	auth_events: {
-		create: string;
-		power_levels?: string;
-		join_rules?: string;
-		history_visibility?: string;
-	};
+	auth_events: AuthEvents;
 	prev_events: string[];
 	depth: number;
-	unsigned?: RoomMemberEvent["unsigned"];
+	unsigned?: RoomMemberEvent['unsigned'];
 	content?: Record<string, any>;
 	origin?: string;
 	ts?: number;
 }): RoomMemberEvent => {
-	return createEventBase("m.room.member", {
+	return createEventBase('m.room.member', {
 		roomId,
 		sender,
 		auth_events: [
-			auth_events.create,
-			auth_events.power_levels,
-			auth_events.join_rules,
-			auth_events.history_visibility,
-		].filter(Boolean) as string[],
+			auth_events['m.room.create'],
+			auth_events['m.room.power_levels'],
+			auth_events['m.room.join_rules'],
+			auth_events['m.room.history_visibility'],
+			auth_events[`m.room.member:${state_key}`],
+		].filter(isTruthy),
 		prev_events,
 		depth,
 		content: {

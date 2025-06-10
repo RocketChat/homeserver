@@ -1,103 +1,130 @@
-import { Inject, Injectable } from '@nestjs/common';
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
-import { Logger } from '../utils/logger';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
-// Import EventStore from plugins/mongodb for type compatibility with makeJoinEventBuilder
-import type { EventStore as MongoEventStore } from '../plugins/mongodb';
+import type {
+	AuthEvents
+} from '@hs/core/src/events/m.room.member';
+import { injectable } from 'tsyringe';
+import type { EventAuthParams, EventAuthResponse, GetDevicesParams, GetDevicesResponse, GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, MakeJoinParams, MakeJoinQuery, MakeJoinResponse, QueryKeysBody, QueryKeysResponse, QueryProfileResponse } from '../dtos/federation/profiles.dto';
+import type { EventStore } from '../models/event.model';
+import { EventRepository } from '../repositories/event.repository';
 
-const logger = new Logger('ProfilesService');
-
-@Injectable()
+@injectable()
 export class ProfilesService {
-  constructor(
-    @Inject(ConfigService) private readonly configService: ConfigService,
-    @Inject(EventService) private readonly eventService: EventService,
-    @Inject(RoomService) private readonly roomService: RoomService,
-  ) {}
+	private readonly logger = createLogger('ProfilesService');
 
-  async queryProfile(userId: string): Promise<any> {
-    return {
-      avatar_url: "mxc://matrix.org/MyC00lAvatar",
-      displayname: userId,
-    };
-  }
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly eventService: EventService,
+		private readonly roomService: RoomService,
+		private readonly eventRepository: EventRepository,
+	) {}
 
-  async queryKeys(deviceKeys: Record<string, string>): Promise<any> {
-    const keys = Object.keys(deviceKeys).reduce((v, cur) => {
-      v[cur] = "unknown_key";
-      return v;
-    }, {} as any);
+	async queryProfile(
+		userId: string,
+	): Promise<QueryProfileResponse> {
+		return {
+			avatar_url: 'mxc://matrix.org/MyC00lAvatar',
+			displayname: userId,
+		};
+	}
 
-    return {
-      device_keys: keys,
-    };
-  }
+	async queryKeys(deviceKeys: QueryKeysBody['device_keys']): Promise<QueryKeysResponse> {
+		const keys = Object.keys(deviceKeys).reduce((v, cur) => {
+			v[cur] = 'unknown_key';
+			return v;
+		}, {} as QueryKeysResponse['device_keys']);
 
-  async getDevices(userId: string): Promise<any> {
-    return {
-      user_id: userId,
-      stream_id: 1,
-      devices: [],
-    };
-  }
+		return {
+			device_keys: keys,
+		};
+	}
 
-  async makeJoin(roomId: string, userId: string, version: string): Promise<any> {
-    if (!userId.includes(":") || !userId.includes("@")) {
-      throw new Error("Invalid sender");
-    }
-    if (!roomId.includes(":") || !roomId.includes("!")) {
-      throw new Error("Invalid room Id");
-    }
+	async getDevices(userId: GetDevicesParams['userId']): Promise<GetDevicesResponse> {
+		return {
+			user_id: userId,
+			stream_id: 1,
+			devices: [],
+		};
+	}
 
-    // Adapt the EventService calls to match the signature expected by makeJoinEventBuilder
-    const getAuthEvents = async (roomId: string): Promise<MongoEventStore[]> => {
-      const authEvents = await this.eventService.getAuthEventsForRoom(roomId);
-      // Convert to the expected format
-      return authEvents.map(event => ({
-        _id: event.event_id || '',
-        event: {
-          ...event,
-          origin: '', // Add required property
-        },
-        staged: false,
-      })) as unknown as MongoEventStore[];
-    };
+	async makeJoin(
+		roomId: MakeJoinParams['roomId'],
+		userId: MakeJoinParams['userId'],
+		version: MakeJoinQuery['ver'],
+	): Promise<MakeJoinResponse> {
+		if (!userId.includes(':') || !userId.includes('@')) {
+			throw new Error('Invalid sender');
+		}
+		if (!roomId.includes(':') || !roomId.includes('!')) {
+			throw new Error('Invalid room Id');
+		}
 
-    const getLastEvent = async (roomId: string): Promise<MongoEventStore | null> => {
-      const lastEvent = await this.eventService.getLastEventForRoom(roomId);
-      if (!lastEvent) return null;
-      
-      // Convert to the expected format
-      return {
-        _id: lastEvent.event.event_id || '',
-        event: {
-          ...lastEvent.event,
-          origin: '', // Add required property
-        },
-        staged: false,
-      } as unknown as MongoEventStore;
-    };
+		const getAuthEvents = async (roomId: string): Promise<AuthEvents> => {
+			const authEvents =
+				await this.eventRepository.findAuthEventsIdsByRoomId(roomId);
+			const eventsDict = authEvents.reduce(
+				(acc, event) => {
+					const isMemberEvent =
+						event.event.type === 'm.room.member' && event.event.state_key;
+					if (isMemberEvent) {
+						acc[`m.room.member:${event.event.state_key}`] = event._id;
+					} else {
+						acc[event.event.type] = event._id;
+					}
 
-    const makeJoinEvent = makeJoinEventBuilder(getLastEvent, getAuthEvents);
-    const serverName = this.configService.getServerConfig().name;
-    
-    // Convert version string to array if provided
-    const versionArray = version ? [version] : ['1', '2', '9', '10'];
-    
-    return await makeJoinEvent(roomId, userId, versionArray, serverName);
-  }
+					return acc;
+				},
+				{} as Record<string, string>,
+			);
 
-  async getMissingEvents(roomId: string, earliestEvents: string[], latestEvents: string[], limit: number): Promise<any> {
-    const events = await this.eventService.getMissingEvents(roomId, earliestEvents, latestEvents, limit);
-    return events;
-  }
+			return {
+				'm.room.create': eventsDict['m.room.create'],
+				'm.room.power_levels': eventsDict['m.room.power_levels'],
+				'm.room.join_rules': eventsDict['m.room.join_rules'],
+				...(eventsDict[`m.room.member:${userId}`]
+					? {
+							[`m.room.member:${userId}`]:
+								eventsDict[`m.room.member:${userId}`],
+						}
+					: {}),
+			};
+		};
 
-  async eventAuth(roomId: string, eventId: string): Promise<any> {
-    return {
-      auth_chain: [],
-    };
-  }
-} 
+		const getLastEvent = async (roomId: string): Promise<EventStore | null> =>
+			this.eventService.getLastEventForRoom(roomId);
+
+		const makeJoinEvent = makeJoinEventBuilder(getLastEvent, getAuthEvents);
+		const serverName = this.configService.getServerConfig().name;
+
+		const versionArray = version ? version : ['1'];
+
+		return makeJoinEvent(roomId, userId, versionArray, serverName) as unknown as MakeJoinResponse;
+	}
+
+	async getMissingEvents(
+		roomId: GetMissingEventsParams['roomId'],
+		earliestEvents: GetMissingEventsBody['earliest_events'],
+		latestEvents: GetMissingEventsBody['latest_events'],
+		limit: GetMissingEventsBody['limit'],
+	): Promise<GetMissingEventsResponse> {
+		return this.eventService.getMissingEvents(
+			roomId,
+			earliestEvents,
+			latestEvents,
+			limit,
+		);
+	}
+
+	async eventAuth(
+		_roomId: EventAuthParams['roomId'],
+		_eventId: EventAuthParams['eventId'],
+	): Promise<EventAuthResponse> {
+		return {
+			auth_chain: [],
+		};
+	}
+}

@@ -1,27 +1,12 @@
-import type { HomeServerRoutes } from "./app";
-import { authorizationHeaders, computeAndMergeHash } from "./authentication";
-import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
-import { extractURIfromURL } from "./helpers/url";
-import type { SigningKey } from "./keys";
+import { authorizationHeaders, computeAndMergeHash } from './authentication';
+import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
+import { extractURIfromURL } from './helpers/url';
+import type { SigningKey } from './keys';
+import logger from './utils/logger';
 
-import { signJson } from "./signJson";
+import { signJson } from './signJson';
 
-export type getAllResponsesByMethod<
-	T extends HomeServerRoutes,
-	M extends HomeServerRoutes["method"],
-> = T extends { method: M } ? T : never;
-
-export type getAllResponsesByPath<
-	T extends HomeServerRoutes,
-	M extends HomeServerRoutes["method"],
-	P extends HomeServerRoutes["path"],
-> = T extends { method: M; path: P } ? T : never;
-
-export const makeSignedRequest = async <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
->({
+export const makeSignedRequest = async <T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -30,15 +15,16 @@ export const makeSignedRequest = async <
 	signingKey,
 	signingName,
 	queryString,
-}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
-	method: M;
+}: {
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
-	uri: U;
-	options?: Record<string, any>;
+	uri: string;
+	body?: Record<string, unknown>;
+	options?: Record<string, unknown>;
 	signingKey: SigningKey;
 	signingName: string;
 	queryString?: string;
-}) => {
+}): Promise<T> => {
 	const { address, headers } = await resolveHostAddressByServerName(
 		domain,
 		signingName,
@@ -55,7 +41,7 @@ export const makeSignedRequest = async <
 			signingName,
 		));
 
-	console.log("body ->", method, domain, url.toString(), signedBody);
+	logger.debug('body ->', method, domain, url.toString(), signedBody);
 
 	const auth = await authorizationHeaders(
 		signingName,
@@ -63,32 +49,34 @@ export const makeSignedRequest = async <
 		domain,
 		method,
 		extractURIfromURL(url),
-		signedBody,
+		signedBody as Record<string, unknown>,
 	);
 
-	console.log("auth ->", method, domain, uri, auth);
+	logger.debug('auth ->', method, domain, uri, auth);
 
-	const response = await fetch(url.toString(), {
+	const requestOptions: RequestInit = {
 		...options,
-		...(body && { body: JSON.stringify(signedBody) }),
 		method,
-		...(queryString && { search: queryString }),
 		headers: {
 			Authorization: auth,
 			...headers,
 		},
-	});
+	};
 
-	return response.json() as Promise<
-		getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200]
-	>;
+	if (body && signedBody) {
+		requestOptions.body = JSON.stringify(signedBody);
+	}
+
+	if (queryString) {
+		url.search = queryString.startsWith('?') ? queryString : `?${queryString}`;
+	}
+
+	const response = await fetch(url.toString(), requestOptions);
+
+	return response.json() as Promise<T>;
 };
 
-export const makeRequest = async <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
->({
+export const makeRequest = async <T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -96,14 +84,15 @@ export const makeRequest = async <
 	signingName,
 	options = {},
 	queryString,
-}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
-	method: M;
+}: {
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
-	uri: U;
+	uri: string;
+	body?: Record<string, unknown>;
 	signingName: string;
-	options?: Record<string, any>;
+	options?: Record<string, unknown>;
 	queryString?: string;
-}) => {
+}): Promise<T> => {
 	const { address, headers } = await resolveHostAddressByServerName(
 		domain,
 		signingName,
@@ -113,25 +102,22 @@ export const makeRequest = async <
 		url.search = queryString;
 	}
 
-	const response = await fetch(url.toString(), {
+	const requestOptions: RequestInit = {
 		...options,
-		...(body && { body: JSON.stringify(body) }),
 		method,
-		...(queryString && { search: queryString }),
 		headers,
-	});
+	};
 
-	return response.json() as Promise<
-		getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200]
-	>;
+	if (body) {
+		requestOptions.body = JSON.stringify(body);
+	}
+
+	const response = await fetch(url.toString(), requestOptions);
+
+	return response.json() as Promise<T>;
 };
 
-export const makeUnsignedRequest = async <
-	M extends HomeServerRoutes["method"],
-	U extends getAllResponsesByMethod<HomeServerRoutes, M>["path"],
-	R extends getAllResponsesByPath<HomeServerRoutes, M, U>["response"][200],
-	B extends getAllResponsesByPath<HomeServerRoutes, M, U>["body"],
->({
+export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 	method,
 	domain,
 	uri,
@@ -140,17 +126,17 @@ export const makeUnsignedRequest = async <
 	signingKey,
 	signingName,
 	queryString,
-}: (B extends Record<string, unknown> ? { body: B } : { body?: never }) & {
-	method: M;
+}: {
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
 	domain: string;
-	uri: U;
-	body: B;
-	options?: Record<string, any>;
+	uri: string;
+	body?: Record<string, unknown>;
+	options?: Record<string, unknown>;
 	signingKey: SigningKey;
 	signingName: string;
 	queryString?: string;
-}) => {
-	const auth = await authorizationHeaders(
+}): Promise<T> => {
+	const auth = await authorizationHeaders<Record<string, unknown>>(
 		signingName,
 		signingKey,
 		domain,
@@ -167,15 +153,22 @@ export const makeUnsignedRequest = async <
 	if (queryString) {
 		url.search = queryString;
 	}
-	const response = await fetch(url.toString(), {
+
+	const requestOptions: RequestInit = {
 		...options,
-		...(body && { body: JSON.stringify(body) }),
 		method,
 		headers: {
 			Authorization: auth,
 			...headers,
+			'content-type': 'application/json',
 		},
-	});
+	};
 
-	return response.json() as Promise<R>;
+	if (body) {
+		requestOptions.body = JSON.stringify(body);
+	}
+
+	const response = await fetch(url.toString(), requestOptions);
+
+	return response.json() as Promise<T>;
 };

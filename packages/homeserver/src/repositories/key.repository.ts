@@ -1,77 +1,61 @@
-import { Inject, Injectable } from "@nestjs/common";
-import type { Collection, FindCursor, WithId } from "mongodb";
-import { DatabaseConnection } from "../database/database.connection";
+import { injectable } from "tsyringe";
+import { Collection } from "mongodb";
+import { DatabaseConnectionService } from "../services/database-connection.service";
 
-import type { ServerKey } from "@hs/typings/src";
+type Key = {
+	origin: string;
+	key_id: string;
+	public_key: string;
+	valid_until: Date;
+};
 
-@Injectable()
+@injectable()
 export class KeyRepository {
-  private collection: Collection<ServerKey> | null = null;
+	private collection: Collection<Key> | null = null;
 
-  constructor(
-    @Inject(DatabaseConnection)
-    private readonly dbConnection: DatabaseConnection
-  ) {}
+	constructor(private readonly dbConnection: DatabaseConnectionService) {
+		this.getCollection();
+	}
 
-  private async getCollection(): Promise<Collection<ServerKey>> {
-    if (!this.collection && !this.dbConnection) {
-      throw new Error("Database connection was not injected properly");
-    }
+	private async getCollection(): Promise<Collection<Key>> {
+		const db = await this.dbConnection.getDb();
+		this.collection = db.collection<Key>('keys');
+		return this.collection;
+	}
 
-    const db = await this.dbConnection.getDb();
-    this.collection = db.collection<ServerKey>("keys");
-    return this.collection;
-  }
+	async getValidPublicKeyFromLocal(
+		origin: string,
+		keyId: string,
+	): Promise<string | undefined> {
+		const collection = await this.getCollection();
+		const key = await collection.findOne({
+			origin,
+			key_id: keyId,
+			valid_until: { $gt: new Date() },
+		});
 
-  // storeKey either inserts a key
-  async storeKey(
-    serverName: string,
-    keyId: string,
-    encodedBase64String: string,
-    expiresAt: number
-  ) {
-    const collection = await this.getCollection();
+		return key?.public_key;
+	}
 
-    return collection.findOneAndUpdate(
-      { serverName },
-      {
-        $set: {
-          serverName, // passing here to make sure upsert works
-          [`keys.${keyId}`]: {
-            key: encodedBase64String,
-            _createdAt: new Date(),
-            expiresAt,
-          },
-        },
-      },
-      {
-        upsert: true,
-        returnDocument: "after",
-      }
-    );
-  }
-
-  // there should be only one key for a server with the same id
-  // spec does not dictate whether we should expect more than one
-  async findKey(
-    serverName: string,
-    keyId: string,
-    validUntil?: number
-  ): Promise<WithId<ServerKey> | null> {
-    const collection = await this.getCollection();
-
-    return collection.findOne({
-      serverName,
-      [`keys.${keyId}`]: { $exists: true },
-      ...(validUntil && { [`keys.${keyId}.validUntil`]: { $lte: validUntil } }),
-    });
-  }
-
-  async findAllKeyForServerName(serverName: string) {
-    const collection = await this.getCollection();
-
-    return collection.findOne({
-      serverName,
-    });
-  }
+	async storePublicKey(
+		origin: string,
+		keyId: string,
+		publicKey: string,
+		validUntil?: Date,
+	): Promise<void> {
+		const collection = await this.getCollection();
+		await collection.updateOne(
+			{ origin, key_id: keyId },
+			{
+				$set: {
+					origin,
+					key_id: keyId,
+					public_key: publicKey,
+					valid_until: validUntil || new Date(Date.now() + 24 * 60 * 60 * 1000), // Default 24 hours validity
+					updated_at: new Date(),
+				},
+			},
+			{ upsert: true },
+		);
+	}
 }

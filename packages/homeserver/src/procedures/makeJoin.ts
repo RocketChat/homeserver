@@ -1,8 +1,7 @@
-import "@hs/endpoints/src/query";
-import "@hs/endpoints/src/server";
-import { IncompatibleRoomVersionError, NotFoundError } from "../errors";
-import { roomMemberEvent } from "@hs/core/src/events/m.room.member";
-import type { EventStore } from "../plugins/mongodb";
+import type { AuthEvents } from '@hs/core/src/events/m.room.member';
+import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
+import { IncompatibleRoomVersionError, NotFoundError } from '../errors';
+import type { EventStore } from '../models/event.model';
 
 // "method":"GET",
 // "url":"http://rc1:443/_matrix/federation/v1/make_join/%21kwkcWPpOXEJvlcollu%3Arc1/%40admin%3Ahs1?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11",
@@ -10,7 +9,7 @@ import type { EventStore } from "../plugins/mongodb";
 export const makeJoinEventBuilder =
 	(
 		getLastEvent: (roomId: string) => Promise<EventStore | null>,
-		getAuthEvents: (roomId: string) => Promise<EventStore[]>,
+		getAuthEvents: (roomId: string) => Promise<AuthEvents>,
 	) =>
 	async (
 		roomId: string,
@@ -18,10 +17,10 @@ export const makeJoinEventBuilder =
 		roomVersions: string[],
 		origin: string,
 	) => {
-		if (!roomVersions.includes("10")) {
+		if (!roomVersions.includes('10')) {
 			throw new IncompatibleRoomVersionError(
-				"Your homeserver does not support the features required to join this room",
-				{ roomVersion: "10" },
+				'Your homeserver does not support the features required to join this room',
+				{ roomVersion: '10' },
 			);
 		}
 		const lastEvent = await getLastEvent(roomId);
@@ -31,21 +30,16 @@ export const makeJoinEventBuilder =
 		}
 
 		const authEvents = await getAuthEvents(roomId);
-
-		const authEventsMap = new Map(
-			authEvents.map((event) => [event.event.type, event]),
-		);
+		if (authEvents['m.room.create'] === undefined) {
+			throw new NotFoundError(`No create event found for room ${roomId}`);
+		}
 
 		const event = roomMemberEvent({
-			membership: "join",
+			membership: 'join',
 			roomId,
 			sender: userId,
 			state_key: userId,
-			auth_events: {
-				create: authEventsMap.get("m.room.create")!._id,
-				power_levels: authEventsMap.get("m.room.power_levels")!._id,
-				join_rules: authEventsMap.get("m.room.join_rules")!._id,
-			},
+			auth_events: authEvents,
 			prev_events: [lastEvent._id],
 			depth: lastEvent.event.depth + 1,
 			origin,
@@ -54,6 +48,6 @@ export const makeJoinEventBuilder =
 
 		return {
 			event,
-			room_version: "10",
-		} as const;
+			room_version: '10',
+		};
 	};
