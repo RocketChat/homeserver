@@ -43,7 +43,7 @@
 	},
 	"scripts": {
 		"prepare": "husky",
-		"start": "bun run index.ts",
+		"start": "bun run index.ts --isolated-mode",
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint",

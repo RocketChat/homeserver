@@ -44,9 +44,7 @@ import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 
-let app: Elysia;
-
-async function setup() {
+export async function setup() {
 	// Load config and signing key
 	const config = new ConfigService();
 	const matrixConfig = config.getMatrixConfig();
@@ -108,38 +106,5 @@ async function setup() {
 	// Resolve the listeners to ensure they are registered and ready to use
 	container.resolve(StagingAreaListener);
 	container.resolve(MissingEventListener);
-
-	app = new Elysia();
-
-	app
-		// @ts-ignore - Elysia is not typed correctly
-		.use(swagger({
-			documentation: {
-				info: {
-					title: 'Matrix Homeserver API',
-					version: '1.0.0',
-					description: 'Matrix Protocol Implementation - Federation and Internal APIs',
-				},
-			},
-		}))
-		.use(invitePlugin)
-		.use(profilesPlugin)
-		.use(sendJoinPlugin)
-		.use(transactionsPlugin)
-		.use(versionsPlugin)
-		.use(internalInvitePlugin)
-		.use(internalMessagePlugin)
-		.use(pingPlugin)
-		.use(internalRoomPlugin)
-		.use(serverKeyPlugin)
-		.use(wellKnownPlugin);
-
-	return app;
 }
 
-export const appPromise = setup();
-
-// TODO: Register plugins/handlers for controllers here
-// e.g. app.use(profilesPlugin)
-
-// Export app for use in main entry point
