@@ -55,7 +55,7 @@
 	},
 	"scripts": {
 		"prepare": "husky",
-		"start": "bun run index.ts",
+		"start": "bun run index.ts --isolated-mode",
 		"test": "bun test",
 		"build": "turbo build",
 		"test:coverage": "bun test --coverage",
