@@ -18,7 +18,7 @@
 		"bun-types": "latest",
 		"ts-node": "^10.9.2",
 		"ts-patch": "^3.1.2",
-		"typescript": "^5.4.2"
+		"typescript": "^5.8.3"
 	},
 	"module": "src/index.js"
 }
