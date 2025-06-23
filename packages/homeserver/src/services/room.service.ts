@@ -35,8 +35,6 @@ import { signEvent, type SignedEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
-import { StateService } from './state.service';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 
 const logger = createLogger('RoomService');
 
@@ -59,7 +57,6 @@ export class RoomService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
-		private readonly stateService: StateService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -257,15 +254,8 @@ export class RoomService {
 			);
 		}
 
-		const roomVersion = '11';
-
 		for (const eventObj of result.events) {
-			const e = PersistentEventFactory.createFromRawEvent(
-				eventObj.event as any /* TODO: fix this with type unifi */,
-				roomVersion,
-			);
-			await this.stateService.persistStateEvent(e);
-			// await this.eventService.insertEvent(eventObj.event, eventObj._id);
+			await this.eventService.insertEvent(eventObj.event, eventObj._id);
 		}
 
 		await this.roomRepository.insert(roomId, { name, canonicalAlias, alias });
@@ -810,8 +800,6 @@ export class RoomService {
 		logger.info(
 			`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
 		);
-
-		// create a membership event with the ban
 
 		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
