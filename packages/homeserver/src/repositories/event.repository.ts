@@ -1,8 +1,9 @@
 import { injectable } from 'tsyringe';
-import type { Collection, Filter, FindOptions } from 'mongodb';
+import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '../authentication';
 import type { EventBase, EventStore } from '../models/event.model';
 import { DatabaseConnectionService } from '../services/database-connection.service';
+import { MongoError } from 'mongodb';
 
 @injectable()
 export class EventRepository {
@@ -12,7 +13,7 @@ export class EventRepository {
 		this.getCollection();
 	}
 
-	private async getCollection(): Promise<Collection<EventStore>> {
+	async getCollection(): Promise<Collection<EventStore>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<EventStore>('events');
 		return this.collection;
@@ -76,17 +77,32 @@ export class EventRepository {
 		event: EventBase,
 		eventId?: string,
 		args?: object,
+		stateId = '',
 	): Promise<string> {
 		const collection = await this.getCollection();
 		const id = eventId || event.event_id || generateId(event);
 
-		await collection.insertOne({
-			_id: id,
-			event,
-			...(args || {}),
-		});
+		try {
+			await collection.insertOne({
+				_id: id,
+				event,
+				stateId,
+				createdAt: new Date(),
+				...(args || {}),
+			});
 
-		return id;
+			return id;
+		} catch (e) {
+			if (e instanceof MongoError) {
+				if (e.code === 11000) {
+					// duplicate key error
+					// this is expected, if the same intentional event is attempted to be persisted again
+					return id;
+				}
+			}
+
+			throw e;
+		}
 	}
 
 	async createIfNotExists(event: EventBase): Promise<string> {
@@ -99,6 +115,8 @@ export class EventRepository {
 		await collection.insertOne({
 			_id: id,
 			event,
+			stateId: '',
+			createdAt: new Date(),
 		});
 
 		return id;
@@ -135,7 +153,9 @@ export class EventRepository {
 		await collection.insertOne({
 			_id: id,
 			event,
+			stateId: '',
 			staged: true,
+			createdAt: new Date(),
 		});
 
 		return id;
@@ -146,7 +166,7 @@ export class EventRepository {
 
 		await collection.updateOne(
 			{ _id: eventId },
-			{ $set: { event: redactedEvent } } // Purposefully replacing the entire event
+			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
 	}
 
@@ -200,5 +220,43 @@ export class EventRepository {
 				'event.content.membership': 'join',
 			})
 			.toArray();
+	}
+
+	async findLatestEventByRoomIdBeforeTimestamp(
+		roomId: string,
+		timestamp: number,
+	): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		return collection.findOne(
+			{
+				'event.room_id': roomId,
+				'event.origin_server_ts': { $lt: timestamp },
+			},
+			{
+				sort: {
+					'event.origin_server_ts': -1,
+				},
+			},
+		);
+	}
+
+	async findEventsByRoomIdAfterTimestamp(
+		roomId: string,
+		timestamp: number,
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection
+			.find({
+				'event.room_id': roomId,
+				'event.origin_server_ts': { $gt: timestamp },
+			})
+			.sort({
+				'event.origin_server_ts': 1,
+			});
+	}
+
+	async updateStateId(eventId: string, stateId: string): Promise<void> {
+		const collection = await this.getCollection();
+		await collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 }

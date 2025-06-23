@@ -1,7 +1,7 @@
-import type { PersistentEventBase } from "../manager/event-manager";
+import type { PersistentEventBase } from '../manager/event-wrapper';
 
 class StateResolverAuthorizationError extends Error {
-	name = "StateResolverAuthorizationError";
+	name = 'StateResolverAuthorizationError';
 
 	constructor(
 		message: string,

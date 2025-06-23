@@ -1,14 +1,14 @@
-import { it, describe, expect, afterEach } from "bun:test";
-import { PersistentEventBase } from "../manager/event-manager";
-import { PersistentEventFactory } from "../manager/factory";
-import { type PduJoinRuleEventContent, type PduType } from "../types/v1";
-import { checkEventAuthWithoutState, checkEventAuthWithState } from "./rules";
-import type { EventStore } from "../state_resolution/definitions/definitions";
-import type { PduPowerLevelsEventV10Content, PduV10 } from "../types/v10";
-import { type StateMapKey } from "../types/_common";
+import { it, describe, expect, afterEach } from 'bun:test';
+import { PersistentEventBase } from '../manager/event-wrapper';
+import { PersistentEventFactory } from '../manager/factory';
+import { type PduJoinRuleEventContent, type PduType } from '../types/v1';
+import { checkEventAuthWithoutState, checkEventAuthWithState } from './rules';
+import type { EventStore } from '../state_resolution/definitions/definitions';
+import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
+import { type StateMapKey } from '../types/_common';
 
 function getStateMapKey(event: PersistentEventBase): StateMapKey {
-	return `${event.type}:${event.stateKey ?? ""}`;
+	return `${event.type}:${event.stateKey ?? ''}`;
 }
 
 class MockStore implements EventStore {
@@ -31,13 +31,13 @@ class FakeStateEventCreator {
 	protected _event!: PduV10;
 	constructor() {
 		this._event = {
-			state_key: "", // always a state
+			state_key: '', // always a state
 			content: {},
-			type: "",
+			type: '',
 			auth_events: [],
 			prev_events: [],
-			room_id: "",
-			sender: "",
+			room_id: '',
+			sender: '',
 		} as unknown as PduV10;
 	}
 
@@ -46,7 +46,7 @@ class FakeStateEventCreator {
 		return this;
 	}
 
-	withType(type: PduType | "test") {
+	withType(type: PduType | 'test') {
 		this._event.type = type as PduType;
 		return this;
 	}
@@ -77,45 +77,45 @@ class FakeStateEventCreator {
 	}
 
 	asRoomCreate() {
-		return this.withType("m.room.create");
+		return this.withType('m.room.create');
 	}
 
 	asRoomMember() {
-		return this.withType("m.room.member");
+		return this.withType('m.room.member');
 	}
 
 	asRoomJoinRules() {
-		return this.withType("m.room.join_rules");
+		return this.withType('m.room.join_rules');
 	}
 
 	asPowerLevel() {
-		return this.withType("m.room.power_levels");
+		return this.withType('m.room.power_levels');
 	}
 
 	asTest() {
-		return this.withType("test");
+		return this.withType('test');
 	}
 
 	build() {
-		return PersistentEventFactory.create(this._event, 10);
+		return PersistentEventFactory.createFromRawEvent(this._event, '10');
 	}
 }
 
 class FakeMessageEventCreator extends FakeStateEventCreator {
 	constructor() {
 		super();
-		this.withType("m.room.message");
+		this.withType('m.room.message');
 	}
 }
 
 const store = new MockStore();
 
-const roomId = "!room:example.com";
-const creator = "@creator:example.com";
+const roomId = '!room:example.com';
+const creator = '@creator:example.com';
 
 function getInitialEvents({
-	joinRule = "public",
-}: { joinRule?: "public" | "invite" } = {}) {
+	joinRule = 'public',
+}: { joinRule?: 'public' | 'invite' } = {}) {
 	const create = new FakeStateEventCreator()
 		.asRoomCreate()
 		.withRoomId(roomId)
@@ -130,7 +130,7 @@ function getInitialEvents({
 		.withRoomId(roomId)
 		.withStateKey(creator)
 		.withSender(creator)
-		.withContent({ membership: "join" })
+		.withContent({ membership: 'join' })
 		.build();
 
 	store.events.set(join.eventId, join);
@@ -169,10 +169,10 @@ function getStateMap(events: PersistentEventBase[]) {
 
 // numbering tests for easier debugging, see tasks.json's inputs
 
-describe("authorization rules", () => {
+describe('authorization rules', () => {
 	afterEach(() => store.events.clear());
 
-	it("01 should reject any event with rejected auth events", async () => {
+	it('01 should reject any event with rejected auth events', async () => {
 		const { create, join } = getInitialEvents();
 
 		const randomEvent = new FakeStateEventCreator()
@@ -192,7 +192,7 @@ describe("authorization rules", () => {
 			.withRoomId(roomId)
 			.withSender(creator)
 			.withContent({
-				join_rule: "invite",
+				join_rule: 'invite',
 			})
 			.build();
 
@@ -201,7 +201,7 @@ describe("authorization rules", () => {
 		).toThrow();
 	});
 
-	it("02 should reject create event if has any prev_events", async () => {
+	it('02 should reject create event if has any prev_events', async () => {
 		const { create } = getInitialEvents();
 
 		expect(() => checkEventAuthWithoutState(create, [])).not.toThrow();
@@ -217,7 +217,7 @@ describe("authorization rules", () => {
 		expect(() => checkEventAuthWithoutState(create2, [])).toThrow();
 	});
 
-	it("03 should reject events with duplicate auth_events", async () => {
+	it('03 should reject events with duplicate auth_events', async () => {
 		// creator creates room
 		const { create } = getInitialEvents();
 
@@ -226,7 +226,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(creator)
 			.build();
 
@@ -259,7 +259,7 @@ describe("authorization rules", () => {
 		).toThrow();
 	});
 
-	it("04 should reject events with excess auth events", async () => {
+	it('04 should reject events with excess auth events', async () => {
 		const { create, join, powerLevel, joinRules } = getInitialEvents();
 
 		const goodEvent = new FakeStateEventCreator()
@@ -299,16 +299,16 @@ describe("authorization rules", () => {
 		).toThrow();
 	});
 
-	it("05 should reject state events from random users before first power level event", async () => {
+	it('05 should reject state events from random users before first power level event', async () => {
 		const { create, join } = getInitialEvents();
 
-		const alice = "@alice:example.com";
+		const alice = '@alice:example.com';
 
 		const inviteAlice = new FakeStateEventCreator()
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "invite" })
+			.withContent({ membership: 'invite' })
 			.withStateKey(alice)
 			.build();
 
@@ -340,11 +340,11 @@ describe("authorization rules", () => {
 		).toThrow();
 	});
 
-	it("06 users below state_default should not be able to send any state", async () => {
+	it('06 users below state_default should not be able to send any state', async () => {
 		const { create, join, powerLevel } = getInitialEvents();
 
-		const alice = "@alice:example.com";
-		const bob = "@bob:example.com";
+		const alice = '@alice:example.com';
+		const bob = '@bob:example.com';
 
 		powerLevel.setContent<PduPowerLevelsEventV10Content>({
 			events: {},
@@ -359,7 +359,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(bob)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(bob)
 			.build();
 
@@ -367,7 +367,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -397,20 +397,20 @@ describe("authorization rules", () => {
 	});
 
 	// TODO: alias rooms
-	it("07 joining rooms", async () => {
+	it('07 joining rooms', async () => {
 		const { create, join, powerLevel, joinRules } = getInitialEvents({
-			joinRule: "public",
+			joinRule: 'public',
 		});
 
 		const state = getStateMap([create, join, joinRules]);
 
-		const alice = "@alice:example.com";
+		const alice = '@alice:example.com';
 
 		const joinAlice = new FakeStateEventCreator()
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -425,7 +425,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -439,7 +439,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "ban" })
+			.withContent({ membership: 'ban' })
 			.withStateKey(alice)
 			.build();
 
@@ -455,7 +455,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "leave" })
+			.withContent({ membership: 'leave' })
 			.withStateKey(alice)
 			.build();
 
@@ -477,7 +477,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "invite" })
+			.withContent({ membership: 'invite' })
 			.withStateKey(alice)
 			.build();
 
@@ -492,7 +492,7 @@ describe("authorization rules", () => {
 			.asRoomJoinRules()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ join_rule: "private" })
+			.withContent({ join_rule: 'private' })
 			.build();
 
 		const stateWithPrivateJoinRules = getStateMap([
@@ -506,21 +506,21 @@ describe("authorization rules", () => {
 		).toThrow();
 	});
 
-	it("08 test joining an invite only room", async () => {
+	it('08 test joining an invite only room', async () => {
 		const { create, join, powerLevel, joinRules } = getInitialEvents({
-			joinRule: "invite",
+			joinRule: 'invite',
 		});
 
 		const state = getStateMap([create, join, joinRules]);
 
-		const alice = "@alice:example.com";
+		const alice = '@alice:example.com';
 
 		// NO join without an invite
 		const joinAlice = new FakeStateEventCreator()
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -531,7 +531,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -544,7 +544,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "ban" })
+			.withContent({ membership: 'ban' })
 			.withStateKey(alice)
 			.build();
 
@@ -559,7 +559,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "leave" })
+			.withContent({ membership: 'leave' })
 			.withStateKey(alice)
 			.build();
 
@@ -581,7 +581,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(creator)
-			.withContent({ membership: "invite" })
+			.withContent({ membership: 'invite' })
 			.withStateKey(alice)
 			.build();
 
@@ -592,12 +592,12 @@ describe("authorization rules", () => {
 		).not.toThrow();
 	});
 
-	it("09 should not allow state event sending if power level is too low", async () => {
+	it('09 should not allow state event sending if power level is too low', async () => {
 		const { create, join, powerLevel, joinRules } = getInitialEvents({
-			joinRule: "public",
+			joinRule: 'public',
 		});
 
-		const alice = "@alice:example.com";
+		const alice = '@alice:example.com';
 
 		powerLevel.setContent<PduPowerLevelsEventV10Content>({
 			events: {},
@@ -621,7 +621,7 @@ describe("authorization rules", () => {
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -703,14 +703,14 @@ describe("authorization rules", () => {
 		).not.toThrow();
 	});
 
-	it("10 should resolve power events correctly", async () => {
+	it('10 should resolve power events correctly', async () => {
 		const {
 			create,
 			join,
 			powerLevel: existingPowerLevel,
 			joinRules,
 		} = getInitialEvents({
-			joinRule: "public",
+			joinRule: 'public',
 		});
 
 		const initialState = getStateMap([create, join, joinRules]);
@@ -720,13 +720,13 @@ describe("authorization rules", () => {
 			checkEventAuthWithState(existingPowerLevel, initialState, store),
 		).not.toThrow();
 
-		const alice = "@alice:example.com";
+		const alice = '@alice:example.com';
 
 		const joinAlice = new FakeStateEventCreator()
 			.asRoomMember()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({ membership: "join" })
+			.withContent({ membership: 'join' })
 			.withStateKey(alice)
 			.build();
 
@@ -1017,7 +1017,7 @@ describe("authorization rules", () => {
 			checkEventAuthWithState(newPowerLevel, secondState, store),
 		).toThrow();
 
-		const bob = "@bob:example.com";
+		const bob = '@bob:example.com';
 
 		// can not increase bob's power level if alice doesn't have enough power
 		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({

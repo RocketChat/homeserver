@@ -1,5 +1,5 @@
-import { type EventStore, PersistentEventBase } from "./event-manager";
-import type { RoomVersion1And2 } from "./type";
+import { type EventStore, PersistentEventBase } from './event-wrapper';
+import type { RoomVersion1And2 } from './type';
 
 export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 	async getAuthorizationEvents(
@@ -9,7 +9,7 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 		const authEventHashes: string[] = [];
 
 		for (const id of this.rawEvent.auth_events) {
-			if (typeof id === "string") {
+			if (typeof id === 'string') {
 				authEventIds.push(id);
 			} else {
 				authEventHashes.push(id.sha256);
@@ -27,7 +27,7 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 		const prevEventHashes: string[] = [];
 
 		for (const id of this.rawEvent.prev_events) {
-			if (typeof id === "string") {
+			if (typeof id === 'string') {
 				prevEventIds.push(id);
 			} else {
 				prevEventHashes.push(id.sha256);
@@ -44,13 +44,13 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 	// $opaque_id:domain
 	// where domain is the server name of the homeserver which created the room, and opaque_id is a locally-unique string.
 	get eventId(): string {
-		return this.rawEvent.event_id;
+		return this.rawEvent.event_id!; //TODO: fix this
 	}
 
 	// v1 has all as strings
 	transformPowerLevelEventData(data: string): number {
 		// TODO: fix test acrtual;ly
-		if (typeof data === "number") {
+		if (typeof data === 'number') {
 			return data;
 		}
 		return Number.parseInt(data.trim(), 10);

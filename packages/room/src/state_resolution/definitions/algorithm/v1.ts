@@ -7,7 +7,7 @@ import {
 	type EventStore,
 } from '../definitions';
 import { type EventID, type StateMapKey } from '../../../types/_common';
-import { PersistentEventBase } from '../../../manager/event-manager';
+import { PersistentEventBase } from '../../../manager/event-wrapper';
 import {
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,

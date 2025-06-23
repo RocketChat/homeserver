@@ -2,10 +2,10 @@ import {
 	PduTypeRoomMessage,
 	type PduPowerLevelsEventContent,
 	type PduType,
-} from "../types/v1";
-import type { PduPowerLevelsEventV3Content } from "../types/v3";
-import type { PduPowerLevelsEventV10Content } from "../types/v10";
-import { PersistentEventBase } from "./event-manager";
+} from '../types/v1';
+import type { PduPowerLevelsEventV3Content } from '../types/v3';
+import type { PduPowerLevelsEventV10Content } from '../types/v10';
+import { PersistentEventBase } from './event-wrapper';
 
 // centralize all power level values here
 // whether there is an event or not
@@ -215,7 +215,7 @@ class PowerLevelEvent {
 
 	get sender() {
 		if (!this.event) {
-			throw new Error("PowerLevelEvent does not exist can not access sender");
+			throw new Error('PowerLevelEvent does not exist can not access sender');
 		}
 
 		return this.event.sender;

@@ -16,7 +16,7 @@ import { type StateMapKey } from '../../../types/_common';
 import { resolveStateV2Plus } from './v2';
 
 import { it, describe, expect, afterEach } from 'bun:test';
-import type { PersistentEventBase } from '../../../manager/event-manager';
+import type { PersistentEventBase } from '../../../manager/event-wrapper';
 import { PersistentEventFactory } from '../../../manager/factory';
 
 class MockEventStore implements EventStore {
@@ -96,7 +96,7 @@ class FakeEvent {
 			event_dict.state_key = this.state_key;
 		}
 
-		return PersistentEventFactory.create(event_dict, 1);
+		return PersistentEventFactory.createFromRawEvent(event_dict, '1');
 	}
 }
 

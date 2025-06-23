@@ -71,8 +71,8 @@ import {
 	isPowerEvent,
 } from '../definitions';
 import type { EventID, StateMapKey } from '../../../types/_common';
-import { PersistentEventBase } from '../../../manager/event-manager';
 import { isTruthy } from './v1';
+import { PersistentEventBase } from '../../../manager/event-wrapper';
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
