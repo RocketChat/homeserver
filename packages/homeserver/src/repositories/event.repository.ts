@@ -3,6 +3,7 @@ import type { Collection, Filter, FindOptions } from 'mongodb';
 import { generateId } from '../authentication';
 import type { EventBase, EventStore } from '../models/event.model';
 import { DatabaseConnectionService } from '../services/database-connection.service';
+import { MongoError } from 'mongodb';
 
 @injectable()
 export class EventRepository {
@@ -81,15 +82,27 @@ export class EventRepository {
 		const collection = await this.getCollection();
 		const id = eventId || event.event_id || generateId(event);
 
-		await collection.insertOne({
-			_id: id,
-			event,
-			stateId,
-			createdAt: new Date(),
-			...(args || {}),
-		});
+		try {
+			await collection.insertOne({
+				_id: id,
+				event,
+				stateId,
+				createdAt: new Date(),
+				...(args || {}),
+			});
 
-		return id;
+			return id;
+		} catch (e) {
+			if (e instanceof MongoError) {
+				if (e.code === 11000) {
+					// duplicate key error
+					// this is expected, if the same intentional event is attempted to be persisted again
+					return id;
+				}
+			}
+
+			throw e;
+		}
 	}
 
 	async createIfNotExists(event: EventBase): Promise<string> {

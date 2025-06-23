@@ -9,11 +9,15 @@ import {
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import type { RoomVersion } from '@hs/room/src/manager/type';
 import { resolveStateV2Plus } from '@hs/room/src/state_resolution/definitions/algorithm/v2';
+import type { PduCreateEventContent } from '@hs/room/src/types/v1';
+import { createLogger } from '../utils/logger';
+import { MongoError } from 'mongodb';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
 @injectable()
 export class StateService {
+	private readonly logger = createLogger('StateService');
 	constructor(
 		private readonly stateRepository: StateRepository,
 		private readonly eventRepository: EventRepository,
@@ -24,13 +28,26 @@ export class StateService {
 
 		const createEvent = await events.findOne({
 			'event.type': 'm.room.create',
-			room_id: roomId,
+			'event.room_id': roomId,
 		});
 		if (!createEvent) {
 			throw new Error('Create event not found');
 		}
 
 		return createEvent.event.content?.room_version as RoomVersion;
+	}
+
+	// the final state id of a room
+	// always use this to persist an event with it's respective stateId unless the event is rejected
+	async getStateIdForRoom(roomId: string): Promise<string> {
+		const stateMapping =
+			await this.stateRepository.getLatestStateMapping(roomId);
+
+		if (!stateMapping) {
+			throw new Error('State mapping not found');
+		}
+
+		return stateMapping._id.toString();
 	}
 
 	async getFullRoomState(roomId: string): Promise<State> {
@@ -40,7 +57,9 @@ export class StateService {
 		}
 
 		const stateMappings =
-			await this.stateRepository.getStateMappingsByRoomIdOrdered(roomId);
+			await this.stateRepository.getStateMappingsByRoomIdOrderedAscending(
+				roomId,
+			);
 		const state = new Map<StateMapKey, string>();
 
 		// first reconstruct the final state
@@ -65,7 +84,7 @@ export class StateService {
 			finalState.set(
 				stateKey as StateMapKey,
 				PersistentEventFactory.createFromRawEvent(
-					event as any /* TODO: fix this with type unifi */,
+					event.event as any,
 					roomVersion,
 				),
 			);
@@ -116,7 +135,10 @@ export class StateService {
 
 	// checks for conflicts, saves the event along with the new state
 	async persistStateEvent(event: PersistentEventBase): Promise<void> {
-		const roomVersion = await this.getRoomVersion(event.roomId);
+		const roomVersion = event.isCreateEvent()
+			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
+			: await this.getRoomVersion(event.roomId);
+
 		if (!roomVersion) {
 			throw new Error('Room version not found');
 		}
@@ -124,16 +146,35 @@ export class StateService {
 		// always check for conflicts at the prev_event state
 
 		// check if has conflicts
-		const state = await this.getFullRoomState(event.roomId);
+		const state = event.isCreateEvent()
+			? new Map()
+			: await this.getFullRoomState(event.roomId);
 
 		// ^ now we could avoid full state reconstruction with something like "dropped" prop inside the state mapping
+
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const lastState = await stateCollection.findOne(
+			{
+				roomId: event.roomId,
+			},
+			{
+				sort: {
+					createdAt: -1,
+				},
+			},
+		);
+
+		const prevStateIds = lastState?.prevStateIds?.concat(
+			lastState?._id?.toString(),
+		);
 
 		const hasConflict = state.has(event.getUniqueStateIdentifier());
 
 		if (!hasConflict) {
 			// save the state mapping
 			const { insertedId: stateMappingId } =
-				await this.stateRepository.createStateMapping(event);
+				await this.stateRepository.createStateMapping(event, prevStateIds);
 
 			this.eventRepository.create(
 				event.event as any /* TODO: fix this with type unifi */,
@@ -175,7 +216,10 @@ export class StateService {
 		// new state
 
 		const { insertedId: stateMappingId } =
-			await this.stateRepository.createStateMapping(resolvedEvent);
+			await this.stateRepository.createStateMapping(
+				resolvedEvent,
+				prevStateIds,
+			);
 
 		await this.eventRepository.create(
 			resolvedEvent.event as any /* TODO: fix this with type unifi */,

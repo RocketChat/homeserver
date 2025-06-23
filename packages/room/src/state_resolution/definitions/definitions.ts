@@ -57,7 +57,7 @@ export function partitionState(
 		return [unconflictedState, conflictedStateEventsMap];
 	}
 
-	unconflictedState.set(getStateMapKey(first), first.eventId);
+	unconflictedState.set(first.getUniqueStateIdentifier(), first.eventId);
 
 	for (const event of events) {
 		const eventId = event.eventId;
@@ -587,6 +587,7 @@ export async function iterativeAuthChecks(
 			await checkEventAuthWithState(event, authEventStateMap, store);
 		} catch (e) {
 			console.warn('event not allowed', event.eventId, e);
+			event.reject((e as Error).message);
 			continue;
 		}
 

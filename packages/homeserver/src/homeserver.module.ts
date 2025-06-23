@@ -27,6 +27,7 @@ import { EventRepository } from './repositories/event.repository';
 import { KeyRepository } from './repositories/key.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { ServerRepository } from './repositories/server.repository';
+import { StateRepository } from './repositories/state.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
@@ -40,6 +41,7 @@ import { NotificationService } from './services/notification.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { ServerService } from './services/server.service';
+import { StateService } from './services/state.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
@@ -70,6 +72,8 @@ async function setup() {
 	// Register services and repositories with tsyringe
 	container.registerSingleton(ConfigService);
 	container.registerSingleton(DatabaseConnectionService);
+	container.registerSingleton(StateRepository);
+	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);

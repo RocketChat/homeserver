@@ -30,7 +30,7 @@ function extractDomain(identifier: string) {
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
-	private _rejected = false;
+	private _rejectedReason?: string;
 	constructor(
 		protected readonly rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
 	) {
@@ -232,11 +232,25 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	}
 
 	get rejected() {
-		return this._rejected;
+		return this._rejectedReason !== undefined;
 	}
 
-	set rejected(value: boolean) {
-		this._rejected = value;
+	reject(reason: string) {
+		this._rejectedReason = reason;
+	}
+
+	get rejectedReason() {
+		return this._rejectedReason;
+	}
+
+	addPreviousEvent(event: PersistentEventBase) {
+		this.rawEvent.prev_events.push(event.eventId);
+		return this;
+	}
+
+	authedBy(event: PersistentEventBase) {
+		this.rawEvent.auth_events.push(event.eventId);
+		return this;
 	}
 }
 export type { EventStore };

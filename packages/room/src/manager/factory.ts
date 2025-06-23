@@ -1,10 +1,14 @@
 import {
+	type PduMembershipEventContent,
+	type PduPowerLevelsEventContent,
 	PduTypeRoomCreate,
+	PduTypeRoomMember,
+	PduTypeRoomPowerLevels,
 	type PduCreateEventContent,
 	type PduV1,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
-import type { PduV10 } from '../types/v10';
+import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
 
 import { PersistentEventV1 } from './v1';
 import { PersistentEventV3 } from './v3';
@@ -74,7 +78,7 @@ export class PersistentEventFactory {
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
-	newCreateEvent(creator: string, roomVersion: RoomVersion) {
+	static newCreateEvent(creator: string, roomVersion: RoomVersion) {
 		if (roomVersion !== '11') {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
@@ -87,10 +91,11 @@ export class PersistentEventFactory {
 
 		const domain = creator.split(':').pop();
 
-		const roomId = `${createRoomIdPrefix(8)}:${domain}`;
+		const roomId = `!${createRoomIdPrefix(8)}:${domain}`;
 
 		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
 			type: PduTypeRoomCreate,
+			state_key: '',
 			content: createContent,
 			sender: creator,
 			origin_server_ts: Date.now(),
@@ -101,6 +106,67 @@ export class PersistentEventFactory {
 		};
 
 		// FIXME: typing
+		return new PersistentEventV10(eventPartial as any);
+	}
+
+	static newMembershipEvent(
+		roomId: string,
+		sender: string,
+		userId: string,
+		membership: PduMembershipEventContent['membership'],
+		roomInformation: PduCreateEventContent,
+	) {
+		if (roomInformation.room_version !== '11') {
+			throw new Error(
+				`Room version ${roomInformation.room_version} is not supported`,
+			);
+		}
+
+		const membershipContent: PduMembershipEventContent = {
+			membership,
+			is_direct: roomInformation.type === 'direct',
+			join_authorised_via_users_server: '',
+		};
+
+		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+			type: PduTypeRoomMember,
+			content: membershipContent,
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: userId,
+			// fix these in the caller
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		// FIXME: typing
+		return new PersistentEventV10(eventPartial as any);
+	}
+
+	static newPowerLevelEvent(
+		roomId: string,
+		sender: string,
+		content: PduPowerLevelsEventV10Content,
+		roomVersion: RoomVersion,
+	) {
+		if (roomVersion !== '11') {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+			type: PduTypeRoomPowerLevels,
+			content: content,
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
 		return new PersistentEventV10(eventPartial as any);
 	}
 }

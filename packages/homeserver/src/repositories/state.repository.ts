@@ -6,10 +6,10 @@ import {
 	type Collection,
 	type WithId,
 } from 'mongodb';
-import type { DatabaseConnectionService } from '../services/database-connection.service';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 import type { StateMapKey } from '@hs/room/src/types/_common';
-import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
+import type { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
 
 type StateStore = {
 	delta: {
@@ -17,6 +17,7 @@ type StateStore = {
 	};
 
 	createdAt: Date;
+	roomId: string;
 
 	prevStateIds: string[];
 };
@@ -40,11 +41,18 @@ export class StateRepository {
 		return collection.findOne({ _id: new ObjectId(stateId) });
 	}
 
-	async getStateMappingsByRoomIdOrdered(
+	async getLatestStateMapping(
+		roomId: string,
+	): Promise<WithId<StateStore> | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({ roomId }, { sort: { createdAt: 1 } });
+	}
+
+	async getStateMappingsByRoomIdOrderedAscending(
 		roomId: string,
 	): Promise<FindCursor<WithId<StateStore>>> {
 		const collection = await this.getCollection();
-		return collection.find({ roomId }).sort({ createdAt: -1 });
+		return collection.find({ roomId }).sort({ createdAt: 1 });
 	}
 
 	async getStateMappingsByStateIdsOrdered(
@@ -68,6 +76,7 @@ export class StateRepository {
 			_id: new ObjectId(),
 			delta,
 			createdAt: new Date(),
+			roomId: event.roomId,
 			prevStateIds,
 		});
 	}
