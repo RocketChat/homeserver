@@ -8,6 +8,7 @@
 	"dependencies": {
 		"@hs/core": "workspace:*",
 		"mongodb": "^6.16.0",
+		"nats": "^2.29.3",
 		"tsyringe": "^4.10.0"
 	},
 	"devDependencies": {
