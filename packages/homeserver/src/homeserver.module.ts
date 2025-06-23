@@ -44,8 +44,6 @@ import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import { StateEventRepository } from './repositories/state-event.repository';
-import { StateService } from './services/state.service';
-import { StateRepository } from './repositories/state.repository';
 
 let app: Elysia;
 
@@ -76,8 +74,6 @@ async function setup() {
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
 	container.registerSingleton(EventService);
-	container.registerSingleton(StateService);
-	container.registerSingleton(StateRepository);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);

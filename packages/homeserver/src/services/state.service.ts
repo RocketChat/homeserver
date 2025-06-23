@@ -121,6 +121,8 @@ export class StateService {
 			throw new Error('Room version not found');
 		}
 
+		// always check for conflicts at the prev_event state
+
 		// check if has conflicts
 		const state = await this.getFullRoomState(event.roomId);
 
