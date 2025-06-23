@@ -19,11 +19,10 @@ import {
 } from '@hs/core/src/events/m.room.tombstone';
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from '@hs/federation-sdk';
-import { HttpException, HttpStatus } from '@nestjs/common';
 import { injectable } from 'tsyringe';
 import { generateId } from '../authentication';
 import type { InternalCreateRoomResponse, InternalUpdateRoomNameResponse } from '../dtos';
-import { ForbiddenError } from '../errors';
+import { ForbiddenError, HttpException, HttpStatus } from '../errors';
 import type { SigningKey } from '../keys';
 import type {
 	EventStore,
