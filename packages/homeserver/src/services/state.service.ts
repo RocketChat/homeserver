@@ -154,7 +154,11 @@ export class StateService {
 				throw new Error('State mapping has no delta');
 			}
 
-			const [stateKey, eventId] = Object.entries(stateMapping.delta).shift()!;
+			const event = Object.entries(stateMapping.delta).shift();
+			if (!event) {
+				throw new Error('State mapping delta is empty');
+			}
+			const [stateKey, eventId] = event;
 
 			state.set(stateKey as StateMapKey, eventId);
 		}
