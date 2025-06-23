@@ -1,4 +1,4 @@
-import { afterEach, describe, it } from "node:test";
+import { afterEach, describe, it } from 'bun:test';
 import { resolveStateV1 } from "./v1";
 import { type EventStore } from "../definitions";
 import { type PersistentEventBase } from "../../../manager/event-manager";

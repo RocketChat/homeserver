@@ -6,6 +6,7 @@
 		"dev": "bun run --watch src/index.ts"
 	},
 	"dependencies": {
+		"@datastructures-js/priority-queue": "^6.3.3",
 		"@hs/core": "workspace:*"
 	},
 	"devDependencies": {

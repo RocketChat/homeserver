@@ -5,19 +5,19 @@ import {
 	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomTopic,
-} from "../../../types/v1";
+} from '../../../types/v1';
 import {
 	_kahnsOrder,
 	getAuthChainDifference,
 	type EventStore,
-} from "../definitions";
-import { type StateMapKey } from "../../../types/_common";
+} from '../definitions';
+import { type StateMapKey } from '../../../types/_common';
 
-import { resolveStateV2Plus } from "./v2";
+import { resolveStateV2Plus } from './v2';
 
-import { it, describe, expect, afterEach } from "bun:test";
-import type { PersistentEventBase } from "../../../manager/event-manager";
-import { PersistentEventFactory } from "../../../manager/factory";
+import { it, describe, expect, afterEach } from 'bun:test';
+import type { PersistentEventBase } from '../../../manager/event-manager';
+import { PersistentEventFactory } from '../../../manager/factory';
 
 class MockEventStore implements EventStore {
 	public events: Array<PersistentEventBase> = [];
@@ -40,16 +40,16 @@ class MockEventStore implements EventStore {
 
 const eventStore = new MockEventStore();
 
-const ALICE = "@alice:example.com";
-const BOB = "@bob:example.com";
-const CHARLIE = "@charlie:example.com";
-const EVELYN = "@evelyn:example.com";
-const ZARA = "@zara:example.com";
+const ALICE = '@alice:example.com';
+const BOB = '@bob:example.com';
+const CHARLIE = '@charlie:example.com';
+const EVELYN = '@evelyn:example.com';
+const ZARA = '@zara:example.com';
 
-const ROOM_ID = "!test:example.com";
+const ROOM_ID = '!test:example.com';
 
-const MEMBERSHIP_CONTENT_JOIN = { membership: "join" };
-const MEMBERSHIP_CONTENT_BAN = { membership: "ban" };
+const MEMBERSHIP_CONTENT_JOIN = { membership: 'join' };
+const MEMBERSHIP_CONTENT_BAN = { membership: 'ban' };
 
 let ORIGIN_SERVER_TS = 0;
 
@@ -101,42 +101,42 @@ class FakeEvent {
 }
 
 const INITIAL_EVENTS = [
-	new FakeEvent("CREATE", ALICE, PduTypeRoomCreate, "", { creator: ALICE }),
+	new FakeEvent('CREATE', ALICE, PduTypeRoomCreate, '', { creator: ALICE }),
 	new FakeEvent(
-		"IMA",
+		'IMA',
 		ALICE,
 		PduTypeRoomMember,
 		ALICE,
 		MEMBERSHIP_CONTENT_JOIN,
 	),
-	new FakeEvent("IPOWER", ALICE, PduTypeRoomPowerLevels, "", {
+	new FakeEvent('IPOWER', ALICE, PduTypeRoomPowerLevels, '', {
 		users: { ALICE: 100 },
 	}),
-	new FakeEvent("IJR", ALICE, PduTypeRoomJoinRules, "", {
-		join_rule: "public",
+	new FakeEvent('IJR', ALICE, PduTypeRoomJoinRules, '', {
+		join_rule: 'public',
 	}),
-	new FakeEvent("IMB", BOB, PduTypeRoomMember, BOB, MEMBERSHIP_CONTENT_JOIN),
+	new FakeEvent('IMB', BOB, PduTypeRoomMember, BOB, MEMBERSHIP_CONTENT_JOIN),
 	new FakeEvent(
-		"IMC",
+		'IMC',
 		CHARLIE,
 		PduTypeRoomMember,
 		CHARLIE,
 		MEMBERSHIP_CONTENT_JOIN,
 	),
-	new FakeEvent("IMZ", ZARA, PduTypeRoomMember, ZARA, MEMBERSHIP_CONTENT_JOIN),
-	new FakeEvent("START", ZARA, PduTypeRoomMessage, null, {}),
-	new FakeEvent("END", ZARA, PduTypeRoomMessage, null, {}),
+	new FakeEvent('IMZ', ZARA, PduTypeRoomMember, ZARA, MEMBERSHIP_CONTENT_JOIN),
+	new FakeEvent('START', ZARA, PduTypeRoomMessage, null, {}),
+	new FakeEvent('END', ZARA, PduTypeRoomMessage, null, {}),
 ];
 
 const INITIAL_EDGES = [
-	"START",
-	"IMZ",
-	"IMC",
-	"IMB",
-	"IJR",
-	"IPOWER",
-	"IMA",
-	"CREATE",
+	'START',
+	'IMZ',
+	'IMC',
+	'IMB',
+	'IJR',
+	'IPOWER',
+	'IMA',
+	'CREATE',
 ];
 
 function getGraph(events: FakeEvent[], edges: string[][]) {
@@ -200,7 +200,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 	const [create, ...rest] = sorted;
 
 	// the first one should be prevEvents.length === 0
-	expect(create).toEqual("CREATE");
+	expect(create).toEqual('CREATE');
 
 	const createEvent = fakeEventMap.get(create)!.toEvent([], []);
 
@@ -266,148 +266,148 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		stateAtEventId.set(event.eventId, stateAfter as any);
 	}
 
-	return stateAtEventId.get("END:example.com");
+	return stateAtEventId.get('END:example.com');
 }
 
-describe("Definitions", () => {
+describe('Definitions', () => {
 	afterEach(() => {
 		eventStore.events = [];
 	});
 
-	it("01 ban vs pl", async () => {
+	it('01 ban vs pl', async () => {
 		const events = [
-			new FakeEvent("PA", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PA', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
 			new FakeEvent(
-				"MA",
+				'MA',
 				ALICE,
 				PduTypeRoomMember,
 				ALICE,
 				MEMBERSHIP_CONTENT_JOIN,
 			),
 			new FakeEvent(
-				"MB",
+				'MB',
 				ALICE,
 				PduTypeRoomMember,
 				BOB,
 				MEMBERSHIP_CONTENT_BAN,
 			),
-			new FakeEvent("PB", BOB, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
 		];
 
 		const edges = [
-			["END", "MB", "MA", "PA", "START"],
-			["END", "PB", "PA"],
+			['END', 'MB', 'MA', 'PA', 'START'],
+			['END', 'PB', 'PA'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"eventId",
-			"PA:example.com",
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
+			'eventId',
+			'PA:example.com',
 		);
-		expect(finalState?.get("m.room.member:@bob:example.com")).toHaveProperty(
-			"eventId",
-			"MB:example.com",
+		expect(finalState?.get('m.room.member:@bob:example.com')).toHaveProperty(
+			'eventId',
+			'MB:example.com',
 		);
-		expect(finalState?.get("m.room.member:@alice:example.com")).toHaveProperty(
-			"eventId",
-			"MA:example.com",
+		expect(finalState?.get('m.room.member:@alice:example.com')).toHaveProperty(
+			'eventId',
+			'MA:example.com',
 		);
 	});
 
-	it("02 join rule evasion", async () => {
+	it('02 join rule evasion', async () => {
 		const events = [
-			new FakeEvent("JR", ALICE, PduTypeRoomJoinRules, "", {
-				join_rules: "private",
+			new FakeEvent('JR', ALICE, PduTypeRoomJoinRules, '', {
+				join_rules: 'private',
 			}),
-			new FakeEvent("ME", EVELYN, PduTypeRoomMember, EVELYN, {
-				membership: "join",
+			new FakeEvent('ME', EVELYN, PduTypeRoomMember, EVELYN, {
+				membership: 'join',
 			}),
 		];
 
 		const edges = [
-			["END", "JR", "START"],
-			["END", "ME", "START"],
+			['END', 'JR', 'START'],
+			['END', 'ME', 'START'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.join_rules:")).toHaveProperty(
-			"eventId",
-			"JR:example.com",
+		expect(finalState?.get('m.room.join_rules:')).toHaveProperty(
+			'eventId',
+			'JR:example.com',
 		);
 	});
-	it("offtopic pl", async () => {
+	it('offtopic pl', async () => {
 		// FIXME:
 		const events = [
-			new FakeEvent("PA", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PA', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("PB", BOB, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50, [CHARLIE]: 50 },
 			}),
-			new FakeEvent("PC", CHARLIE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PC', CHARLIE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50, [CHARLIE]: 0 },
 			}),
 		];
 
 		const edges = [
-			["END", "PC", "PB", "PA", "START"],
-			["END", "PA"],
+			['END', 'PC', 'PB', 'PA', 'START'],
+			['END', 'PA'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"eventId",
-			"PC:example.com",
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
+			'eventId',
+			'PC:example.com',
 		);
 	});
-	it("topic basic", async () => {
+	it('topic basic', async () => {
 		const events = [
-			new FakeEvent("T1", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA1", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA1', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T2", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA2", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T2', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA2', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 0 },
 			}),
-			new FakeEvent("PB", BOB, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T3", BOB, PduTypeRoomTopic, "", {}),
+			new FakeEvent('T3', BOB, PduTypeRoomTopic, '', {}),
 		];
 
 		const edges = [
-			["END", "PA2", "T2", "PA1", "T1", "START"],
-			["END", "T3", "PB", "PA1"],
+			['END', 'PA2', 'T2', 'PA1', 'T1', 'START'],
+			['END', 'T3', 'PB', 'PA1'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"eventId",
-			"T2:example.com",
+		expect(finalState?.get('m.room.topic:')).toHaveProperty(
+			'eventId',
+			'T2:example.com',
 		);
-		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"eventId",
-			"PA2:example.com",
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
+			'eventId',
+			'PA2:example.com',
 		);
 	});
-	it("topic reset", async () => {
+	it('topic reset', async () => {
 		const events = [
-			new FakeEvent("T1", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T2", BOB, PduTypeRoomTopic, "", {}),
+			new FakeEvent('T2', BOB, PduTypeRoomTopic, '', {}),
 			new FakeEvent(
-				"MB",
+				'MB',
 				ALICE,
 				PduTypeRoomMember,
 				BOB,
@@ -416,98 +416,98 @@ describe("Definitions", () => {
 		];
 
 		const edges = [
-			["END", "MB", "T2", "PA", "T1", "START"],
-			["END", "T1"],
+			['END', 'MB', 'T2', 'PA', 'T1', 'START'],
+			['END', 'T1'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"eventId",
-			"T1:example.com",
+		expect(finalState?.get('m.room.topic:')).toHaveProperty(
+			'eventId',
+			'T1:example.com',
 		);
-		expect(finalState?.get("m.room.member:@bob:example.com")).toHaveProperty(
-			"eventId",
-			"MB:example.com",
+		expect(finalState?.get('m.room.member:@bob:example.com')).toHaveProperty(
+			'eventId',
+			'MB:example.com',
 		);
-		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"eventId",
-			"PA:example.com",
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
+			'eventId',
+			'PA:example.com',
 		);
 	});
 
-	it("topic", async () => {
+	it('topic', async () => {
 		const events = [
-			new FakeEvent("T1", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA1", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA1', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T2", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA2", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T2', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA2', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 0 },
 			}),
-			new FakeEvent("PB", BOB, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T3", BOB, PduTypeRoomTopic, "", {}),
-			new FakeEvent("MZ1", ZARA, PduTypeRoomMessage, null, {}),
-			new FakeEvent("T4", ALICE, PduTypeRoomTopic, "", {}),
+			new FakeEvent('T3', BOB, PduTypeRoomTopic, '', {}),
+			new FakeEvent('MZ1', ZARA, PduTypeRoomMessage, null, {}),
+			new FakeEvent('T4', ALICE, PduTypeRoomTopic, '', {}),
 		];
 
 		const edges = [
-			["END", "T3", "PA2", "T2", "PA1", "T1", "START"],
-			["END", "T4", "PB", "PA1"],
+			['END', 'T3', 'PA2', 'T2', 'PA1', 'T1', 'START'],
+			['END', 'T4', 'PB', 'PA1'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"eventId",
-			"T4:example.com",
+		expect(finalState?.get('m.room.topic:')).toHaveProperty(
+			'eventId',
+			'T4:example.com',
 		);
-		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"eventId",
-			"PA2:example.com",
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
+			'eventId',
+			'PA2:example.com',
 		);
 	});
 
-	it("mainline sort", async () => {
+	it('mainline sort', async () => {
 		const events = [
-			new FakeEvent("T1", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA1", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA1', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T2", ALICE, PduTypeRoomTopic, "", {}),
-			new FakeEvent("PA2", ALICE, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('T2', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('PA2', ALICE, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 				events: { [PduTypeRoomPowerLevels]: 100 },
 			}),
-			new FakeEvent("PB", BOB, PduTypeRoomPowerLevels, "", {
+			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent("T3", BOB, PduTypeRoomTopic, "", {}),
-			new FakeEvent("T4", ALICE, PduTypeRoomTopic, "", {}),
+			new FakeEvent('T3', BOB, PduTypeRoomTopic, '', {}),
+			new FakeEvent('T4', ALICE, PduTypeRoomTopic, '', {}),
 		];
 
 		const edges = [
-			["END", "T3", "PA2", "T2", "PA1", "T1", "START"],
-			["END", "T4", "PB", "PA1"],
+			['END', 'T3', 'PA2', 'T2', 'PA1', 'T1', 'START'],
+			['END', 'T4', 'PB', 'PA1'],
 		];
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get("m.room.topic:")).toHaveProperty(
-			"eventId",
-			"T3:example.com",
+		expect(finalState?.get('m.room.topic:')).toHaveProperty(
+			'eventId',
+			'T3:example.com',
 		);
 
-		expect(finalState?.get("m.room.power_levels:")).toHaveProperty(
-			"eventId",
-			"PA2:example.com",
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
+			'eventId',
+			'PA2:example.com',
 		);
 	});
 
-	it("kahns", () => {
+	it('kahns', () => {
 		/*
 			        graph: Dict[str, Set[str]] = {
 	            "l": {"o"},
@@ -519,11 +519,11 @@ describe("Definitions", () => {
 	*/
 
 		const graph = new Map<string, Set<string>>([
-			["l", new Set(["o"])],
-			["m", new Set(["n", "o"])],
-			["n", new Set(["o"])],
-			["o", new Set()],
-			["p", new Set(["o"])],
+			['l', new Set(['o'])],
+			['m', new Set(['n', 'o'])],
+			['n', new Set(['o'])],
+			['o', new Set()],
+			['p', new Set(['o'])],
 		]);
 
 		const sorted = _kahnsOrder({
@@ -531,13 +531,13 @@ describe("Definitions", () => {
 			compareFunc: (a, b) => a.localeCompare(b),
 		});
 
-		expect(sorted).toEqual(["o", "l", "n", "m", "p"]);
+		expect(sorted).toEqual(['o', 'l', 'n', 'm', 'p']);
 	});
 
-	it("auth chain difference 1", async () => {
-		const a = new FakeEvent("A", ALICE, PduTypeRoomMember, "", {});
-		const b = new FakeEvent("B", ALICE, PduTypeRoomMember, "", {});
-		const c = new FakeEvent("C", ALICE, PduTypeRoomMember, "", {});
+	it('auth chain difference 1', async () => {
+		const a = new FakeEvent('A', ALICE, PduTypeRoomMember, '', {});
+		const b = new FakeEvent('B', ALICE, PduTypeRoomMember, '', {});
+		const c = new FakeEvent('C', ALICE, PduTypeRoomMember, '', {});
 
 		const aEvent = a.toEvent([], []);
 		const bEvent = b.toEvent([aEvent.eventId], []);
@@ -558,11 +558,11 @@ describe("Definitions", () => {
 		expect(diff).toEqual(new Set([c.event_id]));
 	});
 
-	it("auth chain difference 2", async () => {
-		const a = new FakeEvent("A", ALICE, PduTypeRoomMember, "", {});
-		const b = new FakeEvent("B", ALICE, PduTypeRoomMember, "", {});
-		const c = new FakeEvent("C", ALICE, PduTypeRoomMember, "", {});
-		const d = new FakeEvent("D", ALICE, PduTypeRoomMember, "", {});
+	it('auth chain difference 2', async () => {
+		const a = new FakeEvent('A', ALICE, PduTypeRoomMember, '', {});
+		const b = new FakeEvent('B', ALICE, PduTypeRoomMember, '', {});
+		const c = new FakeEvent('C', ALICE, PduTypeRoomMember, '', {});
+		const d = new FakeEvent('D', ALICE, PduTypeRoomMember, '', {});
 
 		const aEvent = a.toEvent([], []);
 		const bEvent = b.toEvent([aEvent.eventId], []);
@@ -587,12 +587,12 @@ describe("Definitions", () => {
 		expect(diff).toEqual(new Set([d.event_id, c.event_id]));
 	});
 
-	it("auth chain difference 3", async () => {
-		const a = new FakeEvent("A", ALICE, PduTypeRoomMember, "", {});
-		const b = new FakeEvent("B", ALICE, PduTypeRoomMember, "", {});
-		const c = new FakeEvent("C", ALICE, PduTypeRoomMember, "", {});
-		const d = new FakeEvent("D", ALICE, PduTypeRoomMember, "", {});
-		const e = new FakeEvent("E", ALICE, PduTypeRoomMember, "", {});
+	it('auth chain difference 3', async () => {
+		const a = new FakeEvent('A', ALICE, PduTypeRoomMember, '', {});
+		const b = new FakeEvent('B', ALICE, PduTypeRoomMember, '', {});
+		const c = new FakeEvent('C', ALICE, PduTypeRoomMember, '', {});
+		const d = new FakeEvent('D', ALICE, PduTypeRoomMember, '', {});
+		const e = new FakeEvent('E', ALICE, PduTypeRoomMember, '', {});
 
 		const aEvent = a.toEvent([], []);
 		const bEvent = b.toEvent([aEvent.eventId], []);
