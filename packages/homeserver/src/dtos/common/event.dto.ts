@@ -19,17 +19,11 @@ export const EventBaseDto = t.Object({
 	origin_server_ts: TimestampDto,
 	depth: DepthDto,
 	prev_events: t.Array(
-		t.Union([
-			t.String(),
-			t.Tuple([t.String(), t.String()])
-		]),
+		t.String(),
 		{ description: 'Previous events in the room' }
 	),
 	auth_events: t.Array(
-		t.Union([
-			t.String(),
-			t.Tuple([t.String(), t.String()])
-		]),
+		t.String(),
 		{ description: 'Authorization events' }
 	),
 	origin: t.Optional(t.String({ description: 'Origin server' })),

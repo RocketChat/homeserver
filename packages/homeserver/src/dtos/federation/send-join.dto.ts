@@ -1,10 +1,10 @@
 import { type Static, t } from 'elysia';
 import { EventBaseDto, MembershipEventContentDto } from '../common/event.dto';
-import { RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
+import { EventIdDto, RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
 
 export const SendJoinParamsDto = t.Object({
 	roomId: RoomIdDto,
-	stateKey: UsernameDto,
+	stateKey: EventIdDto,
 });
 
 export const SendJoinEventDto = t.Intersect([
@@ -17,7 +17,7 @@ export const SendJoinEventDto = t.Intersect([
 				membership: t.Literal('join'),
 			})
 		]),
-		state_key: UsernameDto,
+		state_key: UsernameDto, // Using UsernameDto since it should be a user ID
 	})
 ]);
 
@@ -33,7 +33,7 @@ export const SendJoinResponseDto = t.Object({
 	),
 	members_omitted: t.Boolean({ description: 'Whether member events were omitted' }),
 	origin: ServerNameDto,
-}); 
+});
 
 export type SendJoinParams = Static<typeof SendJoinParamsDto>;
 export type SendJoinEvent = Static<typeof SendJoinEventDto>;

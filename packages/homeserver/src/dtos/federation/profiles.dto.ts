@@ -63,6 +63,18 @@ export const MakeJoinResponseDto = t.Object({
 		type: t.Literal('m.room.member'),
 		origin_server_ts: TimestampDto,
 		origin: ServerNameDto,
+		depth: t.Optional(t.Number({ description: 'Depth of the event in the DAG' })),
+		prev_events: t.Optional(t.Array(t.String(), { description: 'Previous events in the room' })),
+		auth_events: t.Optional(t.Array(t.String(), { description: 'Authorization events' })),
+		hashes: t.Optional(t.Object({
+			sha256: t.String({ description: 'SHA256 hash of the event' }),
+		})),
+		signatures: t.Optional(t.Record(
+			t.String(),
+			t.Record(t.String(), t.String()),
+			{ description: 'Event signatures by server and key ID' }
+		)),
+		unsigned: t.Optional(t.Record(t.String(), t.Any(), { description: 'Unsigned data' })),
 	}),
 });
 
