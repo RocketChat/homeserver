@@ -1,9 +1,9 @@
 import { injectable } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { StateMapKey } from '@hs/room/src/types/_common';
-import {
-	type EventStore,
+import type { EventID, StateMapKey } from '@hs/room/src/types/_common';
+import type {
+	EventStore,
 	PersistentEventBase,
 } from '@hs/room/src/manager/event-wrapper';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
@@ -35,6 +35,92 @@ export class StateService {
 		}
 
 		return createEvent.event.content?.room_version as RoomVersion;
+	}
+
+	async findStateAtEvent(eventId: string): Promise<State> {
+		const event = await this.eventRepository.findById(eventId);
+
+		if (!event) {
+			throw new Error(`Event ${eventId} not found`);
+		}
+
+		const roomVersion = await this.getRoomVersion(event.event.room_id);
+		if (!roomVersion) {
+			throw new Error('Room version not found');
+		}
+
+		const { stateId } = event;
+
+		const { delta: lastStateDelta, prevStateIds = [] } =
+			(await this.stateRepository.getStateMapping(stateId)) ?? {};
+
+		if (!lastStateDelta) {
+			throw new Error(`State at event ${eventId} not found`);
+		}
+
+		if (prevStateIds.length === 0) {
+			const state = new Map<StateMapKey, PersistentEventBase>();
+			for (const [stateKey, eventId] of Object.entries(lastStateDelta)) {
+				const event = await this.eventRepository.findById(eventId);
+				if (!event) {
+					throw new Error(`Event ${eventId} not found`);
+				}
+
+				state.set(
+					stateKey as StateMapKey,
+					PersistentEventFactory.createFromRawEvent(
+						event.event as any /* TODO: fix this with type unifi */,
+						roomVersion,
+					),
+				);
+			}
+
+			return state;
+		}
+
+		const stateMappings =
+			await this.stateRepository.getStateMappingsByStateIdsOrdered(
+				prevStateIds,
+			);
+
+		const state = new Map<StateMapKey, PersistentEventBase>();
+
+		for await (const { delta } of stateMappings) {
+			for (const [stateKey, eventId] of Object.entries(delta)) {
+				const event = await this.eventRepository.findById(eventId);
+				if (!event) {
+					throw new Error(`Event ${eventId} not found`);
+				}
+
+				state.set(
+					stateKey as StateMapKey,
+					PersistentEventFactory.createFromRawEvent(
+						event.event as any /* TODO: fix this with type unifi */,
+						roomVersion,
+					),
+				);
+			}
+		}
+
+		// update the last state
+		const [lastStateKey, lastStateEventId] = Object.entries(
+			lastStateDelta,
+		)[0] as [StateMapKey, EventID];
+
+		const lastEvent = await this.eventRepository.findById(lastStateEventId);
+		if (!lastEvent) {
+			throw new Error(`Event ${lastStateEventId} not found`);
+		}
+
+		state.set(
+			lastStateKey,
+			PersistentEventFactory.createFromRawEvent(
+				lastEvent.event as any /* TODO: fix this with type unifi */,
+				roomVersion,
+			),
+		);
+
+		return state;
 	}
 
 	// the final state id of a room
@@ -133,8 +219,10 @@ export class StateService {
 		};
 	}
 
-	// checks for conflicts, saves the event along with the new state
-	async persistStateEvent(event: PersistentEventBase): Promise<void> {
+	async _persistEventAgainstState(
+		event: PersistentEventBase,
+		state: State,
+	): Promise<void> {
 		const roomVersion = event.isCreateEvent()
 			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
 			: await this.getRoomVersion(event.roomId);
@@ -146,10 +234,6 @@ export class StateService {
 		// always check for conflicts at the prev_event state
 
 		// check if has conflicts
-		const state = event.isCreateEvent()
-			? new Map()
-			: await this.getFullRoomState(event.roomId);
-
 		// ^ now we could avoid full state reconstruction with something like "dropped" prop inside the state mapping
 
 		const stateCollection = await this.stateRepository.getCollection();
@@ -227,5 +311,120 @@ export class StateService {
 			undefined,
 			stateMappingId.toString(),
 		);
+	}
+
+	// checks for conflicts, saves the event along with the new state
+	async persistStateEvent(event: PersistentEventBase): Promise<void> {
+		const roomVersion = event.isCreateEvent()
+			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
+			: await this.getRoomVersion(event.roomId);
+
+		if (!roomVersion) {
+			throw new Error('Room version not found');
+		}
+		const lastEvent =
+			await this.eventRepository.findLatestEventByRoomIdBeforeTimestamp(
+				event.roomId,
+				event.originServerTs,
+			);
+
+		if (!lastEvent) {
+			// create
+			return this._persistEventAgainstState(event, new Map());
+		}
+
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const lastState = await stateCollection.findOne(
+			{
+				roomId: event.roomId,
+			},
+			{
+				sort: {
+					createdAt: -1,
+				},
+			},
+		);
+
+		const prevStateIds = lastState?.prevStateIds?.concat(
+			lastState?._id?.toString(),
+		);
+
+		const state = await this.findStateAtEvent(lastEvent._id);
+
+		await this._persistEventAgainstState(event, state);
+
+		// if event was not rejected, update local copy
+		if (!event.rejected) {
+			state.set(event.getUniqueStateIdentifier(), event);
+		}
+
+		const restOfTheEvents =
+			await this.eventRepository.findEventsByRoomIdAfterTimestamp(
+				event.roomId,
+				event.originServerTs,
+			);
+
+		const conflictedStates = [];
+
+		const conflicts = [];
+
+		for await (const event of restOfTheEvents) {
+			const e = PersistentEventFactory.createFromRawEvent(
+				event.event as any /* TODO: fix this with type unifi */,
+				roomVersion,
+			);
+
+			if (state.has(e.getUniqueStateIdentifier())) {
+				conflicts.push(e.getUniqueStateIdentifier());
+				const conflictedState = new Map(state.entries());
+				conflictedState.set(e.getUniqueStateIdentifier(), e);
+				conflictedStates.push(conflictedState);
+			}
+		}
+
+		// if we have any conflicts now, resolve all at once
+		if (conflictedStates.length > 0) {
+			const resolvedState = await resolveStateV2Plus(
+				conflictedStates,
+				this._getStore(roomVersion),
+			);
+
+			for (const stateKey of conflicts) {
+				const resolvedEvent = resolvedState.get(stateKey as StateMapKey);
+
+				if (!resolvedEvent) {
+					throw new Error('Resolved event not found, something is wrong');
+				}
+
+				const lastStateEvent = state.get(stateKey as StateMapKey);
+
+				if (resolvedEvent.eventId === lastStateEvent?.eventId) {
+					// state did not change
+					// just persist the event
+					// TODO: mark rejected, although no code yet uses it so let it go
+					this.eventRepository.create(
+						resolvedEvent.event as any /* TODO: fix this with type unifi */,
+						resolvedEvent.eventId,
+						undefined,
+						undefined,
+					);
+
+					continue;
+				}
+
+				// state changed
+				const { insertedId: stateMappingId } =
+					await this.stateRepository.createStateMapping(
+						resolvedEvent,
+						prevStateIds,
+					);
+
+				await this.eventRepository.updateStateId(
+					resolvedEvent.eventId,
+					stateMappingId.toString(),
+				);
+			}
+		}
 	}
 }

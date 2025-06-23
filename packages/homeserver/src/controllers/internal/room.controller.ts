@@ -276,7 +276,18 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/internal/rooms/:roomId/state',
-			async ({ params }) => {
+			async ({ params, query }) => {
+				const eventId = query.event_id;
+				if (eventId) {
+					const room = await stateService.findStateAtEvent(eventId);
+					const state: Record<string, any> = {};
+					for (const [key, value] of room.entries()) {
+						state[key] = value.event;
+					}
+					return {
+						...state,
+					};
+				}
 				const room = await stateService.getFullRoomState(params.roomId);
 				const state: Record<string, any> = {};
 				for (const [key, value] of room.entries()) {

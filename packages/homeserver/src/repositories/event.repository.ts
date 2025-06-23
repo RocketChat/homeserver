@@ -1,5 +1,5 @@
 import { injectable } from 'tsyringe';
-import type { Collection, Filter, FindOptions } from 'mongodb';
+import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '../authentication';
 import type { EventBase, EventStore } from '../models/event.model';
 import { DatabaseConnectionService } from '../services/database-connection.service';
@@ -220,5 +220,43 @@ export class EventRepository {
 				'event.content.membership': 'join',
 			})
 			.toArray();
+	}
+
+	async findLatestEventByRoomIdBeforeTimestamp(
+		roomId: string,
+		timestamp: number,
+	): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		return collection.findOne(
+			{
+				'event.room_id': roomId,
+				'event.origin_server_ts': { $lt: timestamp },
+			},
+			{
+				sort: {
+					'event.origin_server_ts': -1,
+				},
+			},
+		);
+	}
+
+	async findEventsByRoomIdAfterTimestamp(
+		roomId: string,
+		timestamp: number,
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection
+			.find({
+				'event.room_id': roomId,
+				'event.origin_server_ts': { $gt: timestamp },
+			})
+			.sort({
+				'event.origin_server_ts': 1,
+			});
+	}
+
+	async updateStateId(eventId: string, stateId: string): Promise<void> {
+		const collection = await this.getCollection();
+		await collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 }
