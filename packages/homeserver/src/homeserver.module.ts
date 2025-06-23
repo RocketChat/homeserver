@@ -43,6 +43,7 @@ import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
+import { StateEventRepository } from './repositories/state-event.repository';
 
 let app: Elysia;
 
@@ -90,7 +91,8 @@ async function setup() {
 	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaQueue);
 	container.registerSingleton(StagingAreaService);
-	
+	container.registerSingleton(StateEventRepository);
+
 	// Register the lock manager service with configuration
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService({ type: 'memory' })

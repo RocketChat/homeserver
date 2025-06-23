@@ -1,20 +1,20 @@
 {
-	"name": "@hs/homeserver",
+	"name": "@hs/room",
 	"version": "1.0.50",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"dev": "bun run --watch src/index.ts"
 	},
 	"dependencies": {
-		"@hs/core": "workspace:*",
-		"mongodb": "^6.16.0",
-		"nats": "^2.29.3",
-		"tsyringe": "^4.10.0"
+		"@datastructures-js/priority-queue": "^6.3.3",
+		"@hs/core": "workspace:*"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
 	},
 	"main": "./src/index.ts",
 	"types": "./src/index.ts",
-	"files": ["src"]
+	"files": [
+		"src"
+	]
 }
