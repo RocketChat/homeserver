@@ -1,13 +1,14 @@
-import { type EventStore, PersistentEventBase } from "./event-manager";
-import type { RoomVersion3To9, RoomVersion10And11 } from "./type";
-import { toUnpaddedBase64 } from "@hs/crypto";
-import type { PduVersionForRoomVersion } from "./type";
+import { type EventStore, PersistentEventBase } from './event-manager';
+import type { RoomVersion3To9, RoomVersion10And11 } from './type';
+import { toUnpaddedBase64 } from '@hs/crypto';
+import type { PduVersionForRoomVersion } from './type';
 
 // v3 is where it changes first
 export class PersistentEventV3Base<
 	T extends RoomVersion3To9 | RoomVersion10And11,
 > extends PersistentEventBase<T> {
-	private _eventId!: string;
+	private _eventId: string;
+
 	constructor(rawEvent: PduVersionForRoomVersion<T>) {
 		super(rawEvent);
 
@@ -33,7 +34,7 @@ export class PersistentEventV3Base<
 
 	// v3 needs backwards compatibility with v1
 	transformPowerLevelEventData(data: number | string): number {
-		return typeof data === "number" ? data : Number.parseInt(data, 10);
+		return typeof data === 'number' ? data : Number.parseInt(data, 10);
 	}
 }
 

@@ -1,9 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { injectable } from "tsyringe";
 import type { Collection, FindCursor } from "mongodb";
 import type { EventBase } from "../models/event.model";
 import { DatabaseConnectionService } from "../services/database-connection.service";
 
-@Injectable()
+@injectable()
 export class StateEventRepository {
 	private collection: Collection<EventBase> | null = null;
 

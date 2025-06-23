@@ -1,27 +1,27 @@
-import { PriorityQueue } from "@datastructures-js/priority-queue";
-import type { EventID, State, StateMapKey } from "../../types/_common";
+import { PriorityQueue } from '@datastructures-js/priority-queue';
+import type { EventID, State, StateMapKey } from '../../types/_common';
 import {
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomJoinRules,
 	PduTypeRoomCreate,
 	type PduType,
-} from "../../types/v1";
+} from '../../types/v1';
 
-import assert from "node:assert";
+import assert from 'node:assert';
 import {
 	checkEventAuthWithState,
 	getPowerLevelForUser,
-} from "../../authorizartion-rules/rules";
-import type { PduV3 } from "../../types/v3";
-import type { PersistentEventBase } from "../../manager/event-manager";
-import { PowerLevelEvent } from "../../manager/power-level-event-manager";
+} from '../../authorizartion-rules/rules';
+import type { PduV3 } from '../../types/v3';
+import type { PersistentEventBase } from '../../manager/event-manager';
+import { PowerLevelEvent } from '../../manager/power-level-event-manager';
 
 export function getStateMapKey(event: {
 	type: PduType;
 	state_key?: string;
 }): StateMapKey {
-	return `${event.type}:${event.state_key ?? ""}` as const;
+	return `${event.type}:${event.state_key ?? ''}`;
 }
 
 // https://spec.matrix.org/v1.12/rooms/v2/#definitions
@@ -34,7 +34,7 @@ export function isPowerEvent(event: PersistentEventBase): boolean {
 		event.isJoinRuleEvent() ||
 		// or a state event with type m.room.member where the membership is leave or ban and the sender does not match the state_key
 		(event.isMembershipEvent() &&
-			(membership === "leave" || membership === "ban") &&
+			(membership === 'leave' || membership === 'ban') &&
 			event.sender !== event.stateKey)
 	);
 }
@@ -64,7 +64,7 @@ export function partitionState(
 		const stateKey = event.getUniqueStateIdentifier();
 		// If a given key K is present in every Si with the same value V in each state map
 		if (unconflictedState.has(stateKey)) {
-			const existingEventid = unconflictedState.get(stateKey)!;
+			const existingEventid = unconflictedState.get(stateKey);
 			if (existingEventid === eventId) {
 				// then the pair (K, V) belongs to the unconflicted state map
 				continue;
@@ -75,8 +75,9 @@ export function partitionState(
 
 			// conflicted should not have this key at this point
 			// add both as each are conflicting with the other
-
-			conflictedStateEventsMap.set(stateKey, [existingEventid, eventId]);
+			if (existingEventid) {
+				conflictedStateEventsMap.set(stateKey, [existingEventid, eventId]);
+			}
 		} else if (conflictedStateEventsMap.has(stateKey)) {
 			// biome-ignore lint/style/noNonNullAssertion: `has` asserts non-null
 			conflictedStateEventsMap.get(stateKey)!.push(eventId);
@@ -117,7 +118,7 @@ export async function getAuthChain(
 		const eventId = event.eventId;
 
 		if (eventIdToAuthChainMap.has(eventId)) {
-			return eventIdToAuthChainMap.get(eventId)!;
+			return eventIdToAuthChainMap.get(eventId);
 		}
 
 		const authEvents = await event.getAuthorizationEvents(store);
@@ -136,13 +137,17 @@ export async function getAuthChain(
 				authEvent,
 				newAuthChainPart,
 			);
+			if (!nextAuthChainPart) {
+				continue;
+			}
 			newAuthChainPart = newAuthChainPart.union(nextAuthChainPart);
 		}
 
 		return newAuthChainPart;
 	};
 
-	return _getAuthChain(event, new Set([event.eventId]));
+	const result = await _getAuthChain(event, new Set([event.eventId]));
+	return result || new Set<EventID>([event.eventId]);
 }
 
 // Auth difference
@@ -159,7 +164,7 @@ export async function getAuthChainDifference(
 		for (const eventid of state.values()) {
 			const [event] = await store.getEvents([eventid]);
 			if (!event) {
-				console.warn("event not found in store or remote", eventid);
+				console.warn('event not found in store or remote', eventid);
 				continue;
 			}
 
@@ -176,9 +181,13 @@ export async function getAuthChainDifference(
 		new Set<EventID>(),
 	);
 	const intersection = authChainSets.reduce(
-		(accum, curr) => accum.intersection(curr),
-		authChainSets.shift()!,
+		(accum, curr) => accum?.intersection(curr),
+		authChainSets.shift(),
 	);
+
+	if (!intersection) {
+		return union;
+	}
 
 	return union.difference(intersection);
 }
@@ -257,7 +266,7 @@ export function _kahnsOrder<T>(
 			if (!reverseIndegreeGraph.has(edge)) {
 				reverseIndegreeGraph.set(edge, new Set([v]));
 			} else {
-				reverseIndegreeGraph.get(edge)!.add(v);
+				reverseIndegreeGraph.get(edge)?.add(v);
 			}
 		}
 	}
@@ -277,7 +286,7 @@ export function _kahnsOrder<T>(
 		const node = zeroIndegreeQueue.pop();
 		assert(
 			node !== null,
-			"undefined element in zeroIndegreeQueue should not happen",
+			'undefined element in zeroIndegreeQueue should not happen',
 		);
 
 		result.push(node);
@@ -290,7 +299,8 @@ export function _kahnsOrder<T>(
 		for (const neighbour of neighbours) {
 			// T1
 			// if we remove n -> m, i.e. n == node, m == neighbour, we decrement the indegree of m
-			const degree = indegree.get(neighbour)! - 1;
+			const indegreeValue = indegree.get(neighbour) || 0;
+			const degree = indegreeValue ? indegreeValue - 1 : 0;
 			indegree.set(neighbour, degree);
 			if (degree === 0) {
 				zeroIndegreeQueue.push(neighbour);
@@ -319,7 +329,7 @@ export async function reverseTopologicalPowerSort(
 	);
 
 	if (!roomCreateEvent) {
-		throw new Error("room create event not found");
+		throw new Error('room create event not found');
 	}
 
 	// event to the auth events
@@ -357,7 +367,7 @@ export async function reverseTopologicalPowerSort(
 			}
 
 			if (conflictedSet.has(authEvent.eventId)) {
-				graph.get(event.eventId)!.add(authEvent.eventId); // add this as an edge
+				graph.get(event.eventId)?.add(authEvent.eventId); // add this as an edge
 
 				buildIndegreeGraph(graph, authEvent);
 			}
@@ -391,10 +401,14 @@ export async function reverseTopologicalPowerSort(
 		// ....
 		// event1’s sender has greater power level than event2’s sender, when looking at their respective auth_events;
 
-		const sender1PowerLevel = eventToPowerLevelMap.get(event1Id)!;
-		const sender2PowerLevel = eventToPowerLevelMap.get(event2Id)!;
+		const sender1PowerLevel = eventToPowerLevelMap.get(event1Id);
+		const sender2PowerLevel = eventToPowerLevelMap.get(event2Id);
 
-		if (sender1PowerLevel !== sender2PowerLevel) {
+		if (
+			sender1PowerLevel &&
+			sender2PowerLevel &&
+			sender1PowerLevel !== sender2PowerLevel
+		) {
 			return sender2PowerLevel - sender1PowerLevel;
 		}
 
@@ -454,7 +468,7 @@ export async function mainlineOrdering(
 
 	mainline.unshift(powerLevelEvent); // add the power level event to the mainline
 
-	assert(mainline && mainline.length > 0, "mainline should not be empty");
+	assert(mainline && mainline.length > 0, 'mainline should not be empty');
 
 	const mainlinePositions = new Map<EventID, number>(); // NOTE: see comment in the loop
 
@@ -476,17 +490,18 @@ export async function mainlineOrdering(
 			// algorithm follows the same as mainline detection
 			if (mainlineMap.has(_event.eventId)) {
 				// if in map then this is already a powerLevel event
-				return mainlineMap.get(_event.eventId)!;
+				return mainlineMap.get(_event.eventId) || 0;
 			}
 
-			const authEvents = await _event.getAuthorizationEvents(store);
+			const authEvents: PersistentEventBase[] =
+				await _event.getAuthorizationEvents(store);
 
 			_event = null;
 
 			for (const authEvent of authEvents) {
 				assert(
 					authEvent,
-					"auth event should not be null, either in our store or remote",
+					'auth event should not be null, either in our store or remote',
 				);
 
 				// Find the smallest index j ≥ 1 for which e_j belongs to the mainline of P.
@@ -522,11 +537,9 @@ export async function mainlineOrdering(
 	//   using the following comparison relation on events: for events x and y, x < y if
 	const comparisonFn = (e1: PersistentEventBase, e2: PersistentEventBase) => {
 		// the mainline position of x is greater than the mainline position of y
-		if (
-			mainlinePositions.get(e1.eventId)! < mainlinePositions.get(e2.eventId)!
-		) {
-			return -1;
-		}
+		const e1Position = mainlinePositions.get(e1.eventId);
+		const e2Position = mainlinePositions.get(e2.eventId);
+		if (e1Position && e2Position && e1Position < e2Position) return -1;
 
 		// x’s origin_server_ts is less than y’s origin_server_ts
 		if (e1.originServerTs < e2.originServerTs) {
@@ -563,19 +576,17 @@ export async function iterativeAuthChecks(
 		const authEventTypesNeeded = event.getAuthEventStateKeys();
 
 		for (const authEventStateKey of authEventTypesNeeded) {
-			if (newState.has(authEventStateKey)) {
+			const value = newState.get(authEventStateKey);
+			if (value) {
 				// is the event still valid against new resolved state for the same auth event type
-				authEventStateMap.set(
-					authEventStateKey,
-					newState.get(authEventStateKey)!,
-				);
+				authEventStateMap.set(authEventStateKey, value);
 			}
 		}
 
 		try {
 			await checkEventAuthWithState(event, authEventStateMap, store);
 		} catch (e) {
-			console.warn("event not allowed", event.eventId, e);
+			console.warn('event not allowed', event.eventId, e);
 			continue;
 		}
 
@@ -600,7 +611,7 @@ export function getStateTypesForEventAuth(
 
 	if (
 		event.isMembershipEvent() &&
-		["join", "knock", "invite"].includes(event.getMembership())
+		['join', 'knock', 'invite'].includes(event.getMembership())
 	) {
 		authTypes.push(getStateMapKey({ type: PduTypeRoomJoinRules }));
 	}

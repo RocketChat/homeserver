@@ -57,8 +57,8 @@
 // these comments are more for me, these are keeping me sane.
 // i am too early in this to remember everything by heart.
 
-import assert from "node:assert";
-import { PduTypeRoomPowerLevels } from "../../../types/v1";
+import assert from 'node:assert';
+import { PduTypeRoomPowerLevels } from '../../../types/v1';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -69,9 +69,10 @@ import {
 	mainlineOrdering,
 	getAuthChainDifference,
 	isPowerEvent,
-} from "../definitions";
-import type { EventID, StateMapKey } from "../../../types/_common";
-import { PersistentEventBase } from "../../../manager/event-manager";
+} from '../definitions';
+import type { EventID, StateMapKey } from '../../../types/_common';
+import { PersistentEventBase } from '../../../manager/event-manager';
+import { isTruthy } from './v1';
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
@@ -128,7 +129,10 @@ export async function resolveStateV2Plus(
 			for (const hash of hashes) {
 				const eventId = eventHashToEventIdMap.get(hash);
 				if (eventId) {
-					resultEvents.push(eventIdToEventMap.get(eventId)!);
+					const value = eventIdToEventMap.get(eventId);
+					if (value) {
+						resultEvents.push(value);
+					}
 				} else {
 					hashesToFind.push(hash);
 				}
@@ -154,7 +158,7 @@ export async function resolveStateV2Plus(
 		.entries()
 		.reduce((accum, [stateKey, eventId]) => {
 			const event = eventIdToEventMap.get(eventId);
-			assert(event, "event should not be null");
+			assert(event, 'event should not be null');
 			accum.set(stateKey, event);
 			return accum;
 		}, new Map<StateMapKey, PersistentEventBase>());
@@ -194,7 +198,7 @@ export async function resolveStateV2Plus(
 	for (const eventid of fullConflictedSet) {
 		const [event] = await wrappedStore.getEvents([eventid]);
 		if (!event) {
-			console.warn("event not found in eventMap", eventid);
+			console.warn('event not found in eventMap', eventid);
 			continue;
 		}
 		if (isPowerEvent(event)) {
@@ -281,7 +285,7 @@ export async function resolveStateV2Plus(
 		getStateMapKey({ type: PduTypeRoomPowerLevels }),
 	);
 
-	assert(powerLevelEvent, "power level event should not be null");
+	assert(powerLevelEvent, 'power level event should not be null');
 
 	// mainline ordering essentially sorts the rest of the events
 	// by their place in the history of the room's power levels.
@@ -291,8 +295,10 @@ export async function resolveStateV2Plus(
 	// since the power level event that allowed X (A) is earlier, the mainline ordering will put X before Y.
 	// mainlineSort([Y, X]) -> [X, Y] because A < B
 
+	const sanitizedRemainingEvents = remainingEvents.map((e) => eventIdToEventMap.get(e)).filter(isTruthy);
+
 	const orderedRemainingEvents = await mainlineOrdering(
-		remainingEvents.map((e) => eventIdToEventMap.get(e)!).filter(Boolean),
+		sanitizedRemainingEvents,
 		powerLevelEvent,
 		initialState,
 		wrappedStore,
@@ -309,7 +315,7 @@ export async function resolveStateV2Plus(
 	for (const [key, value] of unconflicted) {
 		if (finalState.has(key)) {
 			const [event] = await wrappedStore.getEvents([value]);
-			assert(event, "event should not be null");
+			assert(event, 'event should not be null');
 			finalState.set(key, event);
 		}
 	}

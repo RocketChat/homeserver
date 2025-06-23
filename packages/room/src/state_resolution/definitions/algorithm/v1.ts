@@ -1,19 +1,25 @@
-import assert from "node:assert";
-import crypto from "node:crypto";
+import assert from 'node:assert';
+import crypto from 'node:crypto';
 import {
 	getStateMapKey,
 	iterativeAuthChecks,
 	partitionState,
 	type EventStore,
-} from "../definitions";
-import { type EventID, type StateMapKey } from "../../../types/_common";
-import { PersistentEventBase } from "../../../manager/event-manager";
+} from '../definitions';
+import { type EventID, type StateMapKey } from '../../../types/_common';
+import { PersistentEventBase } from '../../../manager/event-manager';
 import {
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-} from "../../../types/v1";
+} from '../../../types/v1';
+
+export const isTruthy = <T>(
+	value: T | null | undefined | false | 0 | '',
+): value is T => {
+	return Boolean(value);
+};
 
 export async function resolveStateV1(
 	events: PersistentEventBase[],
@@ -63,7 +69,10 @@ export async function resolveStateV1(
 			for (const hash of hashes) {
 				const eventId = eventHashToEventIdMap.get(hash);
 				if (eventId) {
-					resultEvents.push(eventIdMap.get(eventId)!);
+					const value = eventIdMap.get(eventId);
+					if (value) {
+						resultEvents.push(value);
+					}
 				} else {
 					hashesToFind.push(hash);
 				}
@@ -87,13 +96,20 @@ export async function resolveStateV1(
 		getStateMapKey({ type: PduTypeRoomCreate }),
 	);
 
-	const roomCreateEvent = eventIdMap.get(roomCreateEventId as string);
+	assert(roomCreateEventId, 'roomCreateEventId should not be null');
 
-	assert(roomCreateEvent, "roomCreateEvent should not be null");
+	const roomCreateEvent = eventIdMap.get(roomCreateEventId);
+
+	assert(roomCreateEvent, 'roomCreateEvent should not be null');
 
 	let R = new Map<StateMapKey, PersistentEventBase>();
 	for (const [key, value] of unconflicted.entries()) {
-		R.set(key, eventIdMap.get(value as string)!);
+		if (value) {
+			const RValue = eventIdMap.get(value);
+			if (RValue) {
+				R.set(key, RValue);
+			}
+		}
 	}
 
 	const powerLevelKey = getStateMapKey({ type: PduTypeRoomPowerLevels });
@@ -106,8 +122,8 @@ export async function resolveStateV1(
 			return aDepth - bDepth;
 		}
 
-		const ahash = crypto.createHash("sha1").update(a).digest("hex");
-		const bhash = crypto.createHash("sha1").update(b).digest("hex");
+		const ahash = crypto.createHash('sha1').update(a).digest('hex');
+		const bhash = crypto.createHash('sha1').update(b).digest('hex');
 		return bhash.localeCompare(ahash);
 	};
 
@@ -119,18 +135,23 @@ export async function resolveStateV1(
 		// Sort the list by ascending depth then descending sha1(event_id).
 		const sortedPowerlevels = [...conflictedPowerlevels].sort(compareFunc);
 
-		const currentPowerLevelEventId = sortedPowerlevels.shift()!;
+		const currentPowerLevelEventId = sortedPowerlevels.shift();
+		assert(
+			currentPowerLevelEventId,
+			'currentPowerLevelEventId should not be null',
+		);
 
-		const currentPowerLevelEvent = eventIdMap.get(currentPowerLevelEventId)!;
+		const currentPowerLevelEvent = eventIdMap.get(currentPowerLevelEventId);
+		assert(currentPowerLevelEvent, 'currentPowerLevelEvent should not be null');
 
 		// Add the first event in the list to R.
 		R.set(powerLevelKey, currentPowerLevelEvent);
 
-		R = await iterativeAuthChecks(
-			sortedPowerlevels.map((eid) => eventIdMap.get(eid)!),
-			R,
-			wrappedStore,
-		);
+		const powerLevelsEvents = sortedPowerlevels
+			.map((eid) => eventIdMap.get(eid))
+			.filter(isTruthy);
+
+		R = await iterativeAuthChecks(powerLevelsEvents, R, wrappedStore);
 
 		conflicted.delete(powerLevelKey);
 	}
@@ -141,16 +162,19 @@ export async function resolveStateV1(
 	if (conflictedJoinRules) {
 		const sortedJoinRules = [...conflictedJoinRules].sort(compareFunc);
 
-		const currentJoinRuleEventId = sortedJoinRules.shift()!;
-		const currentJoinRuleEvent = eventIdMap.get(currentJoinRuleEventId)!;
+		const currentJoinRuleEventId = sortedJoinRules.shift();
+		assert(currentJoinRuleEventId, 'currentJoinRuleEventId should not be null');
+
+		const currentJoinRuleEvent = eventIdMap.get(currentJoinRuleEventId);
+		assert(currentJoinRuleEvent, 'currentJoinRuleEvent should not be null');
 
 		R.set(joinRulesKey, currentJoinRuleEvent);
 
-		R = await iterativeAuthChecks(
-			sortedJoinRules.map((eid) => eventIdMap.get(eid)!),
-			R,
-			wrappedStore,
-		);
+		const joinRulesEvents = sortedJoinRules
+			.map((eid) => eventIdMap.get(eid))
+			.filter(isTruthy);
+
+		R = await iterativeAuthChecks(joinRulesEvents, R, wrappedStore);
 
 		conflicted.delete(joinRulesKey);
 	}
@@ -170,16 +194,19 @@ export async function resolveStateV1(
 			compareFunc,
 		);
 
-		const currentMemberEventId = sortedMemberEventIds.shift()!;
-		const currentMemberEvent = eventIdMap.get(currentMemberEventId)!;
+		const currentMemberEventId = sortedMemberEventIds.shift();
+		assert(currentMemberEventId, 'currentMemberEventId should not be null');
+
+		const currentMemberEvent = eventIdMap.get(currentMemberEventId);
+		assert(currentMemberEvent, 'currentMemberEvent should not be null');
 
 		R.set(conflictedMemberKey, currentMemberEvent);
 
-		R = await iterativeAuthChecks(
-			sortedMemberEventIds.map((eid) => eventIdMap.get(eid)!),
-			R,
-			wrappedStore,
-		);
+		const memberEventIds = sortedMemberEventIds
+			.map((eid) => eventIdMap.get(eid))
+			.filter(isTruthy);
+
+		R = await iterativeAuthChecks(memberEventIds, R, wrappedStore);
 
 		conflicted.delete(conflictedMemberKey);
 	}
@@ -198,13 +225,15 @@ export async function resolveStateV1(
 		const sortedEventIds = [...conflictedEventIds].sort(compareFunc);
 
 		for (const eventId of sortedEventIds) {
-			const event = eventIdMap.get(eventId)!;
-			try {
-				await iterativeAuthChecks([event], R, wrappedStore);
-				R.set(conflictedEventKey, event);
-				break;
-			} catch (e) {
-				console.warn("event failed", e);
+			const event = eventIdMap.get(eventId);
+			if (event) {
+				try {
+					await iterativeAuthChecks([event], R, wrappedStore);
+					R.set(conflictedEventKey, event);
+					break;
+				} catch (e) {
+					console.warn('event failed', e);
+				}
 			}
 		}
 
