@@ -12,7 +12,7 @@ export class EventRepository {
 		this.getCollection();
 	}
 
-	private async getCollection(): Promise<Collection<EventStore>> {
+	async getCollection(): Promise<Collection<EventStore>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<EventStore>('events');
 		return this.collection;
@@ -76,6 +76,7 @@ export class EventRepository {
 		event: EventBase,
 		eventId?: string,
 		args?: object,
+		stateId = '',
 	): Promise<string> {
 		const collection = await this.getCollection();
 		const id = eventId || event.event_id || generateId(event);
@@ -83,6 +84,8 @@ export class EventRepository {
 		await collection.insertOne({
 			_id: id,
 			event,
+			stateId,
+			createdAt: new Date(),
 			...(args || {}),
 		});
 
@@ -99,6 +102,8 @@ export class EventRepository {
 		await collection.insertOne({
 			_id: id,
 			event,
+			stateId: '',
+			createdAt: new Date(),
 		});
 
 		return id;
@@ -135,7 +140,9 @@ export class EventRepository {
 		await collection.insertOne({
 			_id: id,
 			event,
+			stateId: '',
 			staged: true,
+			createdAt: new Date(),
 		});
 
 		return id;
@@ -146,7 +153,7 @@ export class EventRepository {
 
 		await collection.updateOne(
 			{ _id: eventId },
-			{ $set: { event: redactedEvent } } // Purposefully replacing the entire event
+			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
 	}
 

@@ -33,6 +33,8 @@ describe('makeJoinEventBuilder', () => {
 					prev_events: [],
 					auth_events: [],
 				},
+				stateId: 'stateId',
+				createdAt: new Date(mockDate),
 			});
 		},
 	);

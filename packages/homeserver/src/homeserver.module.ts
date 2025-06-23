@@ -44,6 +44,8 @@ import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import { StateEventRepository } from './repositories/state-event.repository';
+import { StateService } from './services/state.service';
+import { StateRepository } from './repositories/state.repository';
 
 let app: Elysia;
 
@@ -74,6 +76,8 @@ async function setup() {
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
 	container.registerSingleton(EventService);
+	container.registerSingleton(StateService);
+	container.registerSingleton(StateRepository);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
@@ -95,8 +99,8 @@ async function setup() {
 
 	// Register the lock manager service with configuration
 	container.register(LockManagerService, {
-		useFactory: () => new LockManagerService({ type: 'memory' })
-		
+		useFactory: () => new LockManagerService({ type: 'memory' }),
+
 		// NATS configuration example:
 		// useFactory: () => new LockManagerService({
 		// 	type: 'nats',
@@ -115,15 +119,18 @@ async function setup() {
 
 	app
 		// @ts-ignore - Elysia is not typed correctly
-		.use(swagger({
-			documentation: {
-				info: {
-					title: 'Matrix Homeserver API',
-					version: '1.0.0',
-					description: 'Matrix Protocol Implementation - Federation and Internal APIs',
+		.use(
+			swagger({
+				documentation: {
+					info: {
+						title: 'Matrix Homeserver API',
+						version: '1.0.0',
+						description:
+							'Matrix Protocol Implementation - Federation and Internal APIs',
+					},
 				},
-			},
-		}))
+			}),
+		)
 		.use(invitePlugin)
 		.use(profilesPlugin)
 		.use(sendJoinPlugin)

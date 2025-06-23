@@ -4,7 +4,12 @@ import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
-import type { GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, SendTransactionBody } from '../dtos';
+import type {
+	GetMissingEventsBody,
+	GetMissingEventsParams,
+	GetMissingEventsResponse,
+	SendTransactionBody,
+} from '../dtos';
 import { MatrixError } from '../errors';
 import type { EventBase, EventStore } from '../models/event.model';
 import {
@@ -88,8 +93,7 @@ export class EventService {
 		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		private readonly federationService: FederationService,
-	) { }
+	) {}
 
 	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
 		const event = await this.eventRepository.findById(eventId);
@@ -295,11 +299,17 @@ export class EventService {
 			// TODO: Rewrite this poor typing
 			let result = await this.validateEventFormat(eventId, event as EventBase);
 			if (result.valid) {
-				result = await this.validateEventTypeSpecific(eventId, event as EventBase);
+				result = await this.validateEventTypeSpecific(
+					eventId,
+					event as EventBase,
+				);
 			}
 
 			if (result.valid) {
-				result = await this.validateSignaturesAndHashes(eventId, event as EventBase);
+				result = await this.validateSignaturesAndHashes(
+					eventId,
+					event as EventBase,
+				);
 			}
 
 			validatedEvents.push(result);
@@ -694,7 +704,7 @@ export class EventService {
 				'event.content.membership': 'invite',
 			},
 			{ limit: 1, sort: { 'event.origin_server_ts': -1 } },
-		)) as StagedEvent[];
+		)) as unknown as StagedEvent[];
 
 		return events[0];
 	}
@@ -742,13 +752,17 @@ export class EventService {
 	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
 		const eventIdToRedact = redactionEvent.redacts;
 		if (!eventIdToRedact) {
-			this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
+			this.logger.error(
+				`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`,
+			);
 			return;
 		}
 
 		const eventToRedact = await this.eventRepository.findById(eventIdToRedact);
 		if (!eventToRedact) {
-			this.logger.warn(`[REDACTION] Event to redact ${eventIdToRedact} not found`);
+			this.logger.warn(
+				`[REDACTION] Event to redact ${eventIdToRedact} not found`,
+			);
 			return;
 		}
 

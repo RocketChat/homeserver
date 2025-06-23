@@ -1,4 +1,4 @@
-import assert from "node:assert";
+import assert from 'node:assert';
 import {
 	isCreateEvent,
 	isMembershipEvent,
@@ -15,7 +15,7 @@ import {
 	type PduMembershipEventContent,
 	type PduPowerLevelsEventContent,
 	type PduType,
-} from "../types/v1";
+} from '../types/v1';
 
 import {
 	type PduCreateEventV3,
@@ -24,19 +24,19 @@ import {
 	type PduPowerLevelsEventV3,
 	type PduPowerLevelsEventV3Content,
 	type PduV3,
-} from "../types/v3";
+} from '../types/v3';
 
 import {
 	getStateMapKey,
 	isPowerEvent,
 	type EventStore,
-} from "../state_resolution/definitions/definitions";
-import { type EventID, type State, type StateMapKey } from "../types/_common";
-import type { PersistentEventBase } from "../manager/event-manager";
-import { join } from "node:path";
-import type { PduPowerLevelsEventV10Content } from "../types/v10";
-import { StateResolverAuthorizationError } from "./errors";
-import { PowerLevelEvent } from "../manager/power-level-event-manager";
+} from '../state_resolution/definitions/definitions';
+import { type EventID, type State, type StateMapKey } from '../types/_common';
+import type { PersistentEventBase } from '../manager/event-wrapper';
+import { join } from 'node:path';
+import type { PduPowerLevelsEventV10Content } from '../types/v10';
+import { StateResolverAuthorizationError } from './errors';
+import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events
@@ -51,7 +51,7 @@ import { PowerLevelEvent } from "../manager/power-level-event-manager";
 // }
 
 function extractDomain(identifier: string) {
-	return identifier.split(":").pop();
+	return identifier.split(':').pop();
 }
 
 export function getPowerLevelForUser(
@@ -74,7 +74,7 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 	// If it has any prev_events, reject.
 	if (createEvent.event.prev_events.length > 0) {
 		throw new StateResolverAuthorizationError(
-			"m.room.create event has prev_events",
+			'm.room.create event has prev_events',
 			{
 				eventFailed: createEvent,
 			},
@@ -84,7 +84,7 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 	// If the domain of the room_id does not match the domain of the sender, reject.
 	if (extractDomain(createEvent.roomId) !== extractDomain(createEvent.sender)) {
 		throw new StateResolverAuthorizationError(
-			"m.room.create event sender domain does not match room_id domain",
+			'm.room.create event sender domain does not match room_id domain',
 			{
 				eventFailed: createEvent,
 			},
@@ -96,12 +96,12 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 	// If content.room_version is assert(verifier(event as V2Pdu, authEvents), "not allowed"present and is not a recognised version, reject.
 	if (
 		content.room_version &&
-		!["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"].includes(
+		!['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'].includes(
 			content.room_version,
 		)
 	) {
 		throw new StateResolverAuthorizationError(
-			"m.room.create event content.room_version is not a recognised version",
+			'm.room.create event content.room_version is not a recognised version',
 			{
 				eventFailed: createEvent,
 			},
@@ -111,7 +111,7 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 	// If content has no creator property, reject.
 	if (!content.creator) {
 		throw new StateResolverAuthorizationError(
-			"m.room.create event content has no creator property",
+			'm.room.create event content has no creator property',
 			{
 				eventFailed: createEvent,
 			},
@@ -124,7 +124,7 @@ function isRoomAliasAllowed(roomAliasEvent: PersistentEventBase): void {
 	// If event has no state_key, reject.
 	if (!roomAliasEvent.stateKey) {
 		throw new StateResolverAuthorizationError(
-			"m.room.canonical_alias event has no state_key",
+			'm.room.canonical_alias event has no state_key',
 			{
 				eventFailed: roomAliasEvent,
 			},
@@ -134,7 +134,7 @@ function isRoomAliasAllowed(roomAliasEvent: PersistentEventBase): void {
 	// If sender’s domain doesn’t matches state_key, reject.
 	if (roomAliasEvent.domain !== roomAliasEvent.stateKey) {
 		throw new StateResolverAuthorizationError(
-			"m.room.canonical_alias event sender domain does not match state_key",
+			'm.room.canonical_alias event sender domain does not match state_key',
 			{
 				eventFailed: roomAliasEvent,
 			},
@@ -155,7 +155,7 @@ async function isMembershipChangeAllowed(
 		!membershipEventToCheck.getMembership()
 	) {
 		throw new StateResolverAuthorizationError(
-			"m.room.member event has no state_key or membership property",
+			'm.room.member event has no state_key or membership property',
 			{
 				eventFailed: membershipEventToCheck,
 			},
@@ -197,7 +197,7 @@ async function isMembershipChangeAllowed(
 		getStateMapKey({ type: PduTypeRoomCreate }),
 	);
 
-	assert(roomCreateEvent, "room create event not found"); // must exist
+	assert(roomCreateEvent, 'room create event not found'); // must exist
 
 	const content =
 		membershipEventToCheck.getContent<PduMembershipEventContent>();
@@ -205,7 +205,7 @@ async function isMembershipChangeAllowed(
 	const previousEvents = await membershipEventToCheck.getPreviousEvents(store);
 
 	switch (content.membership) {
-		case "join": {
+		case 'join': {
 			// if (senderMembershipEvent?.getMembership() === "join") {
 			// 	throw new StateResolverAuthorizationError(
 			// 		"sender is already a member",
@@ -230,35 +230,35 @@ async function isMembershipChangeAllowed(
 
 			// If the sender does not match state_key, reject.
 			if (sender !== invitee) {
-				throw new Error("state_key does not match the sender");
+				throw new Error('state_key does not match the sender');
 			}
 
 			// If the sender is banned, reject.
-			if (senderMembership === "ban") {
-				throw new Error("sender is banned");
+			if (senderMembership === 'ban') {
+				throw new Error('sender is banned');
 			}
 
 			// If the join_rule is public, allow.
-			if (joinRule === "public") {
+			if (joinRule === 'public') {
 				return;
 			}
 
 			// If the join_rule is invite then allow if membership state is invite or join.
-			if (joinRule === "invite") {
-				if (inviteeMembership === "invite" || inviteeMembership === "join") {
+			if (joinRule === 'invite') {
+				if (inviteeMembership === 'invite' || inviteeMembership === 'join') {
 					return;
 				}
 
 				throw new Error(
-					"join_rule is invite but membership is not invite or join",
+					'join_rule is invite but membership is not invite or join',
 				);
 			}
 
 			// otherwise reject
-			throw new Error("join_rule is not public or invite");
+			throw new Error('join_rule is not public or invite');
 		}
 
-		case "invite": {
+		case 'invite': {
 			// If content has a third_party_invite property:
 			if (content.third_party_invite) {
 				// // If target user is banned, reject.
@@ -283,17 +283,17 @@ async function isMembershipChangeAllowed(
 
 				// // If there is no m.room.third_party_invite event in the current room state with state_key matching token, reject.
 
-				throw new Error("third_party_invite not implemented");
+				throw new Error('third_party_invite not implemented');
 			}
 
 			// If the sender’s current membership state is not join, reject.
-			if (senderMembership !== "join") {
-				throw new Error("sender is not part of the room");
+			if (senderMembership !== 'join') {
+				throw new Error('sender is not part of the room');
 			}
 
 			// If target user’s current membership state is join or ban, reject.
-			if (inviteeMembership === "join" || inviteeMembership === "ban") {
-				throw new Error("invitee is not join or ban");
+			if (inviteeMembership === 'join' || inviteeMembership === 'ban') {
+				throw new Error('invitee is not join or ban');
 			}
 
 			// If the sender’s power level is greater than or equal to the invite level, allow.
@@ -309,21 +309,21 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error("sender power level is less than invite level");
+			throw new Error('sender power level is less than invite level');
 		} // If the sender does not match state_key,
 
-		case "leave": {
+		case 'leave': {
 			// If the sender matches state_key, allow if and only if that user’s current membership state is invite or join.
 			if (
 				sender === invitee &&
-				(inviteeMembership === "invite" || inviteeMembership === "join")
+				(inviteeMembership === 'invite' || inviteeMembership === 'join')
 			) {
 				return;
 			}
 
 			// If the sender’s current membership state is not join, reject.
-			if (senderMembership !== "join") {
-				throw new Error("sender is not join");
+			if (senderMembership !== 'join') {
+				throw new Error('sender is not join');
 			}
 
 			// If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
@@ -334,8 +334,8 @@ async function isMembershipChangeAllowed(
 			// defaults to 50 if not specified
 			const banLevel = powerLevelEvent.getRequiredPowerForBan();
 
-			if (inviteeMembership === "ban" && senderPowerLevel < banLevel) {
-				throw new Error("sender power level is less than ban level");
+			if (inviteeMembership === 'ban' && senderPowerLevel < banLevel) {
+				throw new Error('sender power level is less than ban level');
 			}
 
 			// If the sender’s power level is greater than or equal to the kick level, and the target user’s power level is less than the sender’s power level, allow.
@@ -348,13 +348,13 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error("sender power level is less than kick level");
+			throw new Error('sender power level is less than kick level');
 		}
 
-		case "ban": {
+		case 'ban': {
 			// If the sender’s current membership state is not join, reject.
-			if (senderMembership !== "join") {
-				throw new Error("sender is not join");
+			if (senderMembership !== 'join') {
+				throw new Error('sender is not join');
 			}
 
 			// If the sender’s power level is greater than or equal to the ban level, and the target user’s power level is less than the sender’s power level, allow.
@@ -372,12 +372,12 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error("sender power level is less than ban level");
+			throw new Error('sender power level is less than ban level');
 		}
 
 		default:
 			// unknown
-			throw new Error("unknown membership state");
+			throw new Error('unknown membership state');
 	}
 }
 
@@ -421,7 +421,7 @@ export function validatePowerLevelEvent(
 			newUserDefaultPowerLevel > senderCurrentPowerLevel
 		) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
@@ -430,7 +430,7 @@ export function validatePowerLevelEvent(
 			existingUserDefaultPowerLevel > senderCurrentPowerLevel
 		) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -445,7 +445,7 @@ export function validatePowerLevelEvent(
 			newEventsDefaultValue > senderCurrentPowerLevel
 		) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
@@ -454,7 +454,7 @@ export function validatePowerLevelEvent(
 			existingEventsDefaultValue > senderCurrentPowerLevel
 		) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -469,7 +469,7 @@ export function validatePowerLevelEvent(
 			newStateDefaultValue > senderCurrentPowerLevel
 		) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
@@ -478,7 +478,7 @@ export function validatePowerLevelEvent(
 			existingStateDefaultValue > senderCurrentPowerLevel
 		) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -490,13 +490,13 @@ export function validatePowerLevelEvent(
 	if (existingBanValue !== newBanValue) {
 		if (newBanValue && newBanValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
 		if (existingBanValue && existingBanValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -508,13 +508,13 @@ export function validatePowerLevelEvent(
 	if (existingKickValue !== newKickValue) {
 		if (newKickValue && newKickValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
 		if (existingKickValue && existingKickValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -526,13 +526,13 @@ export function validatePowerLevelEvent(
 	if (existingRedactValue !== newRedactValue) {
 		if (newRedactValue && newRedactValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
 		if (existingRedactValue && existingRedactValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -544,13 +544,13 @@ export function validatePowerLevelEvent(
 	if (existingInviteValue !== newInviteValue) {
 		if (newInviteValue && newInviteValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"new power level value is greater than sender power level",
+				'new power level value is greater than sender power level',
 			);
 		}
 
 		if (existingInviteValue && existingInviteValue > senderCurrentPowerLevel) {
 			throw new Error(
-				"existing power level value is greater than sender power level",
+				'existing power level value is greater than sender power level',
 			);
 		}
 	}
@@ -579,7 +579,7 @@ export function validatePowerLevelEvent(
 				existingPowerLevelValue > senderCurrentPowerLevel
 			) {
 				throw new Error(
-					"existing power level value is greater than sender power level",
+					'existing power level value is greater than sender power level',
 				);
 			}
 		}
@@ -599,7 +599,7 @@ export function validatePowerLevelEvent(
 			// If the new value is greater than the sender’s current power level, reject.
 			if (newPowerLevelValue && newPowerLevelValue > senderCurrentPowerLevel) {
 				throw new Error(
-					"new power level value is greater than sender power level",
+					'new power level value is greater than sender power level',
 				);
 			}
 		}
@@ -623,7 +623,7 @@ export function validatePowerLevelEvent(
 				existingPowerLevelValue > senderCurrentPowerLevel
 			) {
 				throw new Error(
-					"existing power level value is greater than sender power level",
+					'existing power level value is greater than sender power level',
 				);
 			}
 		}
@@ -643,7 +643,7 @@ export function validatePowerLevelEvent(
 			// If the new value is greater than the sender’s current power level, reject.
 			if (newPowerLevelValue && newPowerLevelValue > senderCurrentPowerLevel) {
 				throw new Error(
-					"new power level value is greater than sender power level",
+					'new power level value is greater than sender power level',
 				);
 			}
 		}
@@ -657,7 +657,7 @@ export function checkEventAuthWithoutState(
 	if (event.isCreateEvent()) {
 		if (authEvents.length > 0) {
 			throw new StateResolverAuthorizationError(
-				"m.room.create event has auth_events",
+				'm.room.create event has auth_events',
 				{
 					eventFailed: event,
 				},
@@ -726,7 +726,7 @@ export function checkEventAuthWithoutState(
 	);
 
 	if (!roomCreateEvent) {
-		throw new StateResolverAuthorizationError("missing m.room.create event", {
+		throw new StateResolverAuthorizationError('missing m.room.create event', {
 			eventFailed: event,
 		});
 	}
@@ -748,16 +748,16 @@ export async function checkEventAuthWithState(
 		getStateMapKey({ type: PduTypeRoomCreate }),
 	);
 
-	assert(roomCreateEvent, "missing m.room.create event");
+	assert(roomCreateEvent, 'missing m.room.create event');
 
 	// If the content of the m.room.create event in the room state has the property m.federate set to false, and the sender domain of the event does not match the sender domain of the create event, reject.
 	if (
-		roomCreateEvent.getContent<PduCreateEventContent>()["m.federate"] ===
+		roomCreateEvent.getContent<PduCreateEventContent>()['m.federate'] ===
 			false &&
 		event.domain !== roomCreateEvent.domain
 	) {
 		throw new StateResolverAuthorizationError(
-			"m.federate is false and sender domain does not match",
+			'm.federate is false and sender domain does not match',
 			{
 				eventFailed: event,
 				reason: roomCreateEvent,
@@ -777,7 +777,7 @@ export async function checkEventAuthWithState(
 	const senderMembership = state.get(
 		getStateMapKey({ type: PduTypeRoomMember, state_key: event.sender }),
 	);
-	if (senderMembership?.getMembership() !== "join") {
+	if (senderMembership?.getMembership() !== 'join') {
 		throw new StateResolverAuthorizationError(
 			"sender's membership is not join",
 			{
@@ -789,9 +789,9 @@ export async function checkEventAuthWithState(
 
 	// If type is m.room.third_party_invite:
 	if (event.type === PduTypeRoomThirdPartyInvite) {
-		console.warn("third_party_invite not implemented");
+		console.warn('third_party_invite not implemented');
 		throw new StateResolverAuthorizationError(
-			"third_party_invite not implemented",
+			'third_party_invite not implemented',
 			{
 				eventFailed: event,
 			},
@@ -814,7 +814,7 @@ export async function checkEventAuthWithState(
 
 	if (userPowerLevel < eventRequiredPowerLevel) {
 		throw new StateResolverAuthorizationError(
-			"user power level is less than event required power level",
+			'user power level is less than event required power level',
 			{
 				eventFailed: event,
 				reason: powerLevelEvent.toEventBase(),
@@ -823,9 +823,9 @@ export async function checkEventAuthWithState(
 	}
 
 	// If the event has a state_key that starts with an @ and does not match the sender, reject.
-	if (event.stateKey?.startsWith("@") && event.stateKey !== event.sender) {
+	if (event.stateKey?.startsWith('@') && event.stateKey !== event.sender) {
 		throw new StateResolverAuthorizationError(
-			"event state key does not match sender",
+			'event state key does not match sender',
 			{
 				eventFailed: event,
 				reason: event,

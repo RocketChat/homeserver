@@ -1,4 +1,4 @@
-import type { PersistentEventBase } from "./event-manager";
+import type { PersistentEventBase } from './event-wrapper';
 
 class MembershipEvent {
 	constructor(private readonly event: PersistentEventBase) {}

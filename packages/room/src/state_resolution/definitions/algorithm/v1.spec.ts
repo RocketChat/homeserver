@@ -1,8 +1,8 @@
 import { afterEach, describe, it } from 'bun:test';
-import { resolveStateV1 } from "./v1";
-import { type EventStore } from "../definitions";
-import { type PersistentEventBase } from "../../../manager/event-manager";
-import { PersistentEventFactory } from "../../../manager/factory";
+import { resolveStateV1 } from './v1';
+import { type EventStore } from '../definitions';
+import { type PersistentEventBase } from '../../../manager/event-wrapper';
+import { PersistentEventFactory } from '../../../manager/factory';
 
 class MockEventStore implements EventStore {
 	public events: Array<PersistentEventBase> = [];
@@ -25,69 +25,71 @@ class MockEventStore implements EventStore {
 
 const eventStore = new MockEventStore();
 
-describe("resolveStateV1", () => {
-	it("should resolve the state", async () => {
+describe('resolveStateV1', () => {
+	it('should resolve the state', async () => {
 		const events = [
 			{
-				event_id: "START",
-				type: "m.room.create",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'START',
+				type: 'm.room.create',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 1,
 				prev_events: [],
-				state_key: "",
+				state_key: '',
 				content: {},
 				signatures: {},
 				unsigned: {},
 			},
 			{
-				event_id: "A",
-				type: "m.room.message",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'A',
+				type: 'm.room.message',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 2,
-				prev_events: ["START"],
+				prev_events: ['START'],
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "B",
-				type: "m.room.message",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'B',
+				type: 'm.room.message',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 3,
-				prev_events: ["A"],
+				prev_events: ['A'],
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "C",
-				type: "m.room.name",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'C',
+				type: 'm.room.name',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 3,
-				prev_events: ["A"],
-				state_key: "",
+				prev_events: ['A'],
+				state_key: '',
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "D",
-				type: "m.room.message",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'D',
+				type: 'm.room.message',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 4,
-				prev_events: ["B", "C"],
+				prev_events: ['B', 'C'],
 				signatures: {},
 				unsigned: {},
 			},
 		];
 
 		for (const event of events) {
-			eventStore.events.push(PersistentEventFactory.create(event as any, 1));
+			eventStore.events.push(
+				PersistentEventFactory.createFromRawEvent(event as any, '1'),
+			);
 		}
 
 		const state = await resolveStateV1(
@@ -107,73 +109,75 @@ describe("resolveStateV1", () => {
 		eventStore.events = [];
 	});
 
-	it("should resolve the state with a conflict", async () => {
+	it('should resolve the state with a conflict', async () => {
 		const events = [
 			{
-				event_id: "START",
-				type: "m.room.create",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'START',
+				type: 'm.room.create',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 1,
 				prev_events: [],
-				state_key: "",
-				content: { creator: "@user_id:example.com" },
+				state_key: '',
+				content: { creator: '@user_id:example.com' },
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "A",
-				type: "m.room.member",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'A',
+				type: 'm.room.member',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 2,
-				prev_events: ["START"],
-				state_key: "@user_id:example.com",
-				content: { membership: "join" },
-				membership: "join",
+				prev_events: ['START'],
+				state_key: '@user_id:example.com',
+				content: { membership: 'join' },
+				membership: 'join',
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "B",
-				type: "m.room.name",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'B',
+				type: 'm.room.name',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 3,
-				prev_events: ["A"],
-				state_key: "",
+				prev_events: ['A'],
+				state_key: '',
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "C",
-				type: "m.room.name",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'C',
+				type: 'm.room.name',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 4,
-				prev_events: ["A"],
-				state_key: "",
+				prev_events: ['A'],
+				state_key: '',
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "D",
-				type: "m.room.message",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'D',
+				type: 'm.room.message',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 5,
-				prev_events: ["B", "C"],
+				prev_events: ['B', 'C'],
 				signatures: {},
 				unsigned: {},
 			},
 		];
 
 		for (const event of events) {
-			eventStore.events.push(PersistentEventFactory.create(event as any, 1));
+			eventStore.events.push(
+				PersistentEventFactory.createFromRawEvent(event as any, '1'),
+			);
 		}
 
 		const state = await resolveStateV1(
@@ -189,92 +193,94 @@ describe("resolveStateV1", () => {
 		);
 	});
 
-	it("ban conflict", async () => {
+	it('ban conflict', async () => {
 		const events = [
 			{
-				event_id: "START",
-				type: "m.room.create",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'START',
+				type: 'm.room.create',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 1,
 				prev_events: [],
 				auth_events: [],
-				state_key: "",
-				content: { creator: "@user_id:example.com" },
+				state_key: '',
+				content: { creator: '@user_id:example.com' },
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "A",
-				type: "m.room.member",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'A',
+				type: 'm.room.member',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 2,
-				prev_events: ["START"],
-				auth_events: ["START"],
-				state_key: "@user_id:example.com",
-				content: { membership: "join" },
+				prev_events: ['START'],
+				auth_events: ['START'],
+				state_key: '@user_id:example.com',
+				content: { membership: 'join' },
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "B",
-				type: "m.room.name",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'B',
+				type: 'm.room.name',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 3,
-				prev_events: ["A"],
-				auth_events: ["START", "A"],
-				state_key: "",
-				content: { name: "Room Name" },
+				prev_events: ['A'],
+				auth_events: ['START', 'A'],
+				state_key: '',
+				content: { name: 'Room Name' },
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "C",
-				type: "m.room.member",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'C',
+				type: 'm.room.member',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 4,
-				prev_events: ["B"],
-				auth_events: ["START", "A", "B"],
-				state_key: "@user_id_2:example.com",
-				content: { membership: "ban" },
+				prev_events: ['B'],
+				auth_events: ['START', 'A', 'B'],
+				state_key: '@user_id_2:example.com',
+				content: { membership: 'ban' },
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "D",
-				type: "m.room.name",
-				sender: "@user_id_2:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'D',
+				type: 'm.room.name',
+				sender: '@user_id_2:example.com',
+				room_id: '!room_id:example.com',
 				depth: 4,
-				prev_events: ["B"],
-				state_key: "",
-				auth_events: ["START", "A", "B", "C"],
+				prev_events: ['B'],
+				state_key: '',
+				auth_events: ['START', 'A', 'B', 'C'],
 				signatures: {},
 				unsigned: {},
 			},
 
 			{
-				event_id: "E",
-				type: "m.room.message",
-				sender: "@user_id:example.com",
-				room_id: "!room_id:example.com",
+				event_id: 'E',
+				type: 'm.room.message',
+				sender: '@user_id:example.com',
+				room_id: '!room_id:example.com',
 				depth: 5,
-				prev_events: ["C", "D"],
-				auth_events: ["START", "A", "B", "C", "D"],
+				prev_events: ['C', 'D'],
+				auth_events: ['START', 'A', 'B', 'C', 'D'],
 				signatures: {},
 				unsigned: {},
 			},
 		];
 
 		for (const event of events) {
-			eventStore.events.push(PersistentEventFactory.create(event as any, 1));
+			eventStore.events.push(
+				PersistentEventFactory.createFromRawEvent(event as any, '1'),
+			);
 		}
 
 		const state = await resolveStateV1(
