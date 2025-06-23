@@ -1,11 +1,10 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { FederationService } from '@hs/federation-sdk';
+import { injectable } from 'tsyringe';
 import {
-	ForbiddenException,
 	HttpException,
 	HttpStatus
-} from '@nestjs/common';
-import { injectable } from 'tsyringe';
+} from '../errors';
 import { generateId } from '../authentication';
 import type { InternalInviteUserResponse, ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { makeUnsignedRequest } from '../makeRequest';
@@ -32,7 +31,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
 		private readonly roomService: RoomService,
-	) {}
+	) { }
 
 	/**
 	 * Invite a user to an existing room, or create a new room if none is provided
@@ -220,8 +219,9 @@ export class InviteService {
 				this.logger.warn(
 					`Received invite for deleted room ${roomId}, rejecting`,
 				);
-				throw new ForbiddenException(
+				throw new HttpException(
 					'Cannot process invite for a deleted room',
+					HttpStatus.FORBIDDEN,
 				);
 			}
 
@@ -262,8 +262,9 @@ export class InviteService {
 				this.logger.warn(
 					`Attempt to accept invite for deleted room ${roomId}, rejecting`,
 				);
-				throw new ForbiddenException(
+				throw new HttpException(
 					`Cannot accept invite for deleted room ${roomId}`,
+					HttpStatus.FORBIDDEN,
 				);
 			}
 

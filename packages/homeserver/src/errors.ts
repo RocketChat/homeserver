@@ -329,3 +329,28 @@ export class CannotRejectServerNoticeRoomError extends MatrixError<'M_CANNOT_REJ
 		super('M_CANNOT_REJECT_SERVER_NOTICE_ROOM', message);
 	}
 }
+
+export enum HttpStatus {
+	OK = 200,
+	CREATED = 201,
+	BAD_REQUEST = 400,
+	UNAUTHORIZED = 401,
+	FORBIDDEN = 403,
+	NOT_FOUND = 404,
+	TOO_MANY_REQUESTS = 429,
+	INTERNAL_SERVER_ERROR = 500,
+}
+
+export class HttpException extends Error {
+	public readonly status: number;
+	public readonly response: string | Record<string, unknown>;
+
+	constructor(
+		response: string | Record<string, unknown>,
+		status: number
+	) {
+		super(typeof response === 'string' ? response : JSON.stringify(response));
+		this.status = status;
+		this.response = response;
+	}
+}
