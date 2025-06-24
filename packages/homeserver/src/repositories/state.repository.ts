@@ -13,7 +13,8 @@ import type { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
 
 type StateStore = {
 	delta: {
-		[key: StateMapKey]: string;
+		identifier: StateMapKey;
+		eventId: string;
 	};
 
 	createdAt: Date;
@@ -68,7 +69,10 @@ export class StateRepository {
 		event: PersistentEventBase,
 		prevStateIds: string[] = [],
 	): Promise<InsertOneResult<WithId<StateStore>>> {
-		const delta = { [event.getUniqueStateIdentifier()]: event.eventId };
+		const delta = {
+			identifier: event.getUniqueStateIdentifier(),
+			eventId: event.eventId,
+		};
 
 		const collection = await this.getCollection();
 
