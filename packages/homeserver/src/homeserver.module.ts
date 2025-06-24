@@ -46,6 +46,7 @@ import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import { StateEventRepository } from './repositories/state-event.repository';
+import { roomPlugin } from './controllers/federation/rooms.controller';
 
 let app: Elysia;
 
@@ -141,7 +142,8 @@ async function setup() {
 		.use(pingPlugin)
 		.use(internalRoomPlugin)
 		.use(serverKeyPlugin)
-		.use(wellKnownPlugin);
+		.use(wellKnownPlugin)
+		.use(roomPlugin);
 
 	return app;
 }

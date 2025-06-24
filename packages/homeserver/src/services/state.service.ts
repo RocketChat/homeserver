@@ -11,7 +11,7 @@ import type { RoomVersion } from '@hs/room/src/manager/type';
 import { resolveStateV2Plus } from '@hs/room/src/state_resolution/definitions/algorithm/v2';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 import { createLogger } from '../utils/logger';
-import { MongoError } from 'mongodb';
+import { MongoError, ObjectId } from 'mongodb';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -427,5 +427,93 @@ export class StateService {
 				);
 			}
 		}
+	}
+
+	async getAllRoomIds() {
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const stateMappings = await stateCollection.find({
+			'delta.identifier': 'm.room.create:',
+		});
+
+		return stateMappings.map((stateMapping) => stateMapping.roomId).toArray();
+	}
+
+	async getAllPublicRoomIdsAndNames() {
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const eventsCollection = await this.eventRepository.getCollection();
+
+		// all types
+		const roomIds = await this.getAllRoomIds();
+
+		const stateMappings = await stateCollection.find({
+			'delta.identifier': 'm.room.join_rules:', // those that has this
+		});
+
+		const eventsToFetch = await stateMappings
+			.map((stateMapping) => stateMapping.delta.eventId)
+			.toArray();
+
+		if (eventsToFetch.length === 0) {
+			const publicRoomsWithNames = await stateCollection
+				.find({
+					roomId: { $in: roomIds },
+					'delta.identifier': 'm.room.name:',
+				})
+				.toArray();
+
+			const publicRooms = eventsCollection.find({
+				_id: {
+					$in: publicRoomsWithNames.map(
+						(stateMapping) => stateMapping.delta.eventId,
+					),
+				},
+			});
+
+			return publicRooms
+				.map((event) => ({
+					room_id: event.event.room_id,
+					name: (event.event.content?.name as string) ?? '',
+				}))
+				.toArray();
+		}
+
+		const events = eventsCollection.find({
+			_id: { $in: eventsToFetch },
+		});
+
+		const nonPublicRooms = await events
+			.filter((event: any) => event.event.content.join_rule !== 'public')
+			.toArray();
+
+		// since no join_rule == public
+
+		const publicRooms = roomIds.filter(
+			(roomId) =>
+				!nonPublicRooms.some((event) => event.event.room_id === roomId),
+		);
+
+		const publicRoomsWithNames = await stateCollection
+			.find({
+				roomId: { $in: publicRooms },
+				'delta.identifier': 'm.room.name:',
+			})
+			.toArray();
+
+		const publicRoomsWithNamesEvents = eventsCollection.find({
+			_id: {
+				$in: publicRoomsWithNames.map(
+					(stateMapping) => stateMapping.delta.eventId,
+				),
+			},
+		});
+
+		return publicRoomsWithNamesEvents
+			.map((event) => ({
+				room_id: event.event.room_id,
+				name: (event.event.content?.name as string) ?? '',
+			}))
+			.toArray();
 	}
 }

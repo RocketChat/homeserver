@@ -75,6 +75,20 @@ export const internalRoomPlugin = (app: Elysia) => {
 
 				await stateService.persistStateEvent(creatorMembershipEvent);
 
+				const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
+					roomCreateEvent.roomId,
+					username,
+					name,
+					'11',
+				);
+
+				roomNameEvent
+					.addPreviousEvent(creatorMembershipEvent)
+					.authedBy(creatorMembershipEvent)
+					.authedBy(roomCreateEvent);
+
+				await stateService.persistStateEvent(roomNameEvent);
+
 				const powerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
 					roomCreateEvent.roomId,
 					username,
@@ -545,5 +559,17 @@ export const internalRoomPlugin = (app: Elysia) => {
 					description: 'Tombstone a room',
 				},
 			},
-		);
+		)
+		.get('/internal/rooms/all', async () => {
+			const roomIds = await stateService.getAllRoomIds();
+			return {
+				roomIds,
+			};
+		})
+		.get('/internal/rooms/all/public', async () => {
+			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
+			return {
+				publicRooms,
+			};
+		});
 };
