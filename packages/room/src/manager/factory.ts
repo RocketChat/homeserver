@@ -6,7 +6,7 @@ import {
 	PduTypeRoomPowerLevels,
 	type PduCreateEventContent,
 	type PduV1,
-	PduTypeRoomName,
+	type PduTypeRoomName,
 	PduRoomNameEventContent,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
