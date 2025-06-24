@@ -60,20 +60,20 @@ export class StateService {
 
 		if (prevStateIds.length === 0) {
 			const state = new Map<StateMapKey, PersistentEventBase>();
-			for (const [stateKey, eventId] of Object.entries(lastStateDelta)) {
-				const event = await this.eventRepository.findById(eventId);
-				if (!event) {
-					throw new Error(`Event ${eventId} not found`);
-				}
-
-				state.set(
-					stateKey as StateMapKey,
-					PersistentEventFactory.createFromRawEvent(
-						event.event as any /* TODO: fix this with type unifi */,
-						roomVersion,
-					),
-				);
+			const { identifier: stateKey, eventId: lastStateEventId } =
+				lastStateDelta;
+			const event = await this.eventRepository.findById(eventId);
+			if (!event) {
+				throw new Error(`Event ${eventId} not found`);
 			}
+
+			state.set(
+				stateKey as StateMapKey,
+				PersistentEventFactory.createFromRawEvent(
+					event.event as any /* TODO: fix this with type unifi */,
+					roomVersion,
+				),
+			);
 
 			return state;
 		}
@@ -86,26 +86,24 @@ export class StateService {
 		const state = new Map<StateMapKey, PersistentEventBase>();
 
 		for await (const { delta } of stateMappings) {
-			for (const [stateKey, eventId] of Object.entries(delta)) {
-				const event = await this.eventRepository.findById(eventId);
-				if (!event) {
-					throw new Error(`Event ${eventId} not found`);
-				}
-
-				state.set(
-					stateKey as StateMapKey,
-					PersistentEventFactory.createFromRawEvent(
-						event.event as any /* TODO: fix this with type unifi */,
-						roomVersion,
-					),
-				);
+			const { identifier: stateKey, eventId } = delta;
+			const event = await this.eventRepository.findById(eventId);
+			if (!event) {
+				throw new Error(`Event ${eventId} not found`);
 			}
+
+			state.set(
+				stateKey as StateMapKey,
+				PersistentEventFactory.createFromRawEvent(
+					event.event as any /* TODO: fix this with type unifi */,
+					roomVersion,
+				),
+			);
 		}
 
 		// update the last state
-		const [lastStateKey, lastStateEventId] = Object.entries(
-			lastStateDelta,
-		)[0] as [StateMapKey, EventID];
+		const { identifier: lastStateKey, eventId: lastStateEventId } =
+			lastStateDelta;
 
 		const lastEvent = await this.eventRepository.findById(lastStateEventId);
 		if (!lastEvent) {
@@ -154,11 +152,10 @@ export class StateService {
 				throw new Error('State mapping has no delta');
 			}
 
-			const event = Object.entries(stateMapping.delta).shift();
-			if (!event) {
+			if (!stateMapping.delta) {
 				throw new Error('State mapping delta is empty');
 			}
-			const [stateKey, eventId] = event;
+			const { identifier: stateKey, eventId } = stateMapping.delta;
 
 			state.set(stateKey as StateMapKey, eventId);
 		}
