@@ -76,6 +76,8 @@ export const roomPlugin = (app: Elysia) => {
 						if (filter.room_types) {
 							// TODO:
 						}
+
+						return true;
 					})
 					.map((room) => ({
 						...defaultObj,
@@ -86,7 +88,7 @@ export const roomPlugin = (app: Elysia) => {
 		{
 			// {"filter":{"generic_search_term":"","room_types":[null]},"include_all_networks":"false","limit":50}
 			body: t.Object({
-				include_all_networks: t.Optional(t.String()), // we ignore this
+				include_all_networks: t.Optional(t.Boolean()), // we ignore this
 				limit: t.Optional(t.Number()),
 				filter: t.Object({
 					generic_search_term: t.Optional(t.String()),

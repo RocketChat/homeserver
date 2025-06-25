@@ -8,6 +8,7 @@ export interface EventBase extends CoreEventBase {
 
 export interface EventStore {
 	_id: string;
+	eventId: string;
 	event: EventBase;
 	staged?: boolean;
 	outlier?: boolean;

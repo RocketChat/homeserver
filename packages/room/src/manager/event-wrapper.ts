@@ -72,7 +72,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	}
 
 	get event() {
-		return this.rawEvent;
+		return {
+			...this.rawEvent,
+			unsigned: {}, // TODO better handling of this heh
+		};
 	}
 
 	get depth() {
@@ -151,10 +154,118 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return `${this.type}:${this.stateKey || ''}`;
 	}
 
+	redactTopLevel() {
+		const allowedKeys = [
+			'event_id',
+			'type',
+			'room_id',
+			'sender',
+			'state_key',
+			'content',
+			'hashes',
+			'signatures',
+			'depth',
+			'prev_events',
+			'auth_events',
+			'origin_server_ts',
+		];
+
+		const newEvent = {
+			unsigned: {}, // TODO: better spacing
+		} as PduV10;
+
+		for (const key of allowedKeys) {
+			if (key in this.rawEvent) {
+				// @ts-ignore TODO:
+				newEvent[key] = this.rawEvent[key];
+			}
+		}
+
+		return newEvent;
+	}
+
+	redact() {
+		const newEvent = this.redactTopLevel();
+
+		const content = this.getContent();
+
+		// m.room.member allows keys membership, join_authorised_via_users_server. Additionally, it allows the signed key of the third_party_invite key.
+		if (this.type === PduTypeRoomMember) {
+			// @ts-ignore i don't want to fight typescript right now
+			newEvent.content = {
+				// @ts-ignore i don't want to fight typescript right now (2)
+				membership: content.membership,
+			};
+
+			return newEvent;
+		}
+
+		if (this.type === PduTypeRoomCreate) {
+			// m.room.create allows all keys.
+			return newEvent;
+		}
+
+		if (this.type === PduTypeRoomJoinRules) {
+			// m.room.join_rules allows keys join_rule, allow.
+			// @ts-ignore i don't want to fight typescript right now (3)
+			newEvent.content = {
+				// @ts-ignore i don't want to fight typescript right now (4)
+				join_rule: content.join_rule,
+				// @ts-ignore i don't want to fight typescript right now (5)
+				allow: content.allow,
+			};
+
+			return newEvent;
+		}
+
+		if (this.type === PduTypeRoomPowerLevels) {
+			// m.room.power_levels allows keys ban, events, events_default, invite, kick, redact, state_default, users, users_default.
+			// @ts-ignore i don't want to fight typescript right now (6)
+			newEvent.content = {
+				// @ts-ignore i don't want to fight typescript right now (7)
+				ban: content.ban,
+				// @ts-ignore i don't want to fight typescript right now (8)
+				events: content.events,
+				// @ts-ignore i don't want to fight typescript right now (9)
+				events_default: content.events_default,
+				// @ts-ignore i don't want to fight typescript right now (10)
+				invite: content.invite,
+				// @ts-ignore i don't want to fight typescript right now (11)
+				kick: content.kick,
+				// @ts-ignore i don't want to fight typescript right now (12)
+				redact: content.redact,
+				// @ts-ignore i don't want to fight typescript right now (13)
+				state_default: content.state_default,
+				// @ts-ignore i don't want to fight typescript right now (14)
+				users: content.users,
+				// @ts-ignore i don't want to fight typescript right now (15)
+				users_default: content.users_default,
+			};
+
+			return newEvent;
+		}
+
+		return newEvent;
+
+		// TODO: rest of the events
+	}
+
 	getReferenceHash() {
 		// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-reference-hash-for-an-event
 		// 1. The signatures and unsigned properties are removed from the event, if present.
-		const { unsigned, signatures, ...toHash } = this.rawEvent;
+		const redactedEvent = this.redact();
+
+		// hash needs full event not redacted one
+		const hash = this.getContentHash();
+
+		redactedEvent.hashes = {
+			sha256: toUnpaddedBase64(hash),
+		}; // now we are ready to get the id
+
+		console.log('redactedEvent', redactedEvent);
+
+		// @ts-ignore TODO:
+		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
 		const canonicalJson = encodeCanonicalJson(toHash);
@@ -176,6 +287,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			.createHash('sha256')
 			.update(encodeCanonicalJson(toHash))
 			.digest();
+	}
+
+	getContentHashString() {
+		return toUnpaddedBase64(this.getContentHash());
 	}
 
 	// https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
