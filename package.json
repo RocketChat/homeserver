@@ -1,8 +1,6 @@
 {
 	"name": "@rocket.chat/homeserver",
-	"version": "0.0.1",
-	"module": "dist/index.js",
-	"types": "dist/index.d.ts",
+	"module": "index.ts",
 	"private": true,
 	"type": "module",
 	"devDependencies": {
