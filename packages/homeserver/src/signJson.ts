@@ -31,11 +31,7 @@ export async function signJson<
 		signatures?: Record<string, Record<string, string>>;
 		unsigned?: Record<string, any>;
 	},
->(
-	jsonObject: T,
-	signingKey: SigningKey,
-	signingName: string,
-): Promise<SignedJson<T>> {
+>(jsonObject: T, signingKey: SigningKey, signingName: string): Promise<SignedJson<T>> {
 	const keyId: ProtocolVersionKey = `${signingKey.algorithm}:${signingKey.version}`;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
 
@@ -60,9 +56,7 @@ export async function signJson<
 	};
 }
 
-export const isValidAlgorithm = (
-	algorithm: string,
-): algorithm is EncryptionValidAlgorithm => {
+export const isValidAlgorithm = (algorithm: string): algorithm is EncryptionValidAlgorithm => {
 	return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
 };
 
@@ -83,7 +77,7 @@ export async function getSignaturesFromRemote<
 		unsigned?: unknown;
 	},
 >(jsonObject: T, signingName: string) {
-	const { signatures, unsigned: _unsigned, ...__rest } = jsonObject;
+	const { signatures, unsigned: _unsigned } = jsonObject;
 
 	const remoteSignatures =
 		signatures?.[signingName] &&
@@ -100,9 +94,7 @@ export async function getSignaturesFromRemote<
 					signature,
 				};
 			})
-			.filter(({ algorithm }) =>
-				Object.values(EncryptionValidAlgorithm).includes(algorithm as any),
-			);
+			.filter(({ algorithm }) => Object.values(EncryptionValidAlgorithm).includes(algorithm as any));
 
 	if (!remoteSignatures?.length) {
 		throw new Error(`Signatures not found for ${signingName}`);
@@ -117,19 +109,13 @@ export const verifySignature = (
 	signature: Uint8Array,
 	publicKey: Uint8Array,
 	algorithm: EncryptionValidAlgorithm,
-	version: string,
+	_version: string,
 ) => {
 	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
 		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
 	}
 
-	if (
-		!nacl.sign.detached.verify(
-			new TextEncoder().encode(content),
-			signature,
-			publicKey,
-		)
-	) {
+	if (!nacl.sign.detached.verify(new TextEncoder().encode(content), signature, publicKey)) {
 		throw new Error(`Invalid signature for ${signingName}`);
 	}
 	return true;
@@ -146,14 +132,7 @@ export const verifyJsonSignature = <T extends object>(
 	const { signatures: _, unsigned: _unsigned, ...__rest } = content as any;
 	const canonicalJson = encodeCanonicalJson(__rest);
 
-	return verifySignature(
-		canonicalJson,
-		signingName,
-		signature,
-		publicKey,
-		algorithm,
-		version,
-	);
+	return verifySignature(canonicalJson, signingName, signature, publicKey, algorithm, version);
 };
 
 export async function verifySignaturesFromRemote<
@@ -161,14 +140,7 @@ export async function verifySignaturesFromRemote<
 		signatures?: Record<string, Record<ProtocolVersionKey, string>>;
 		unsigned?: unknown;
 	},
->(
-	jsonObject: T,
-	signingName: string,
-	getPublicKey: (
-		algorithm: EncryptionValidAlgorithm,
-		version: string,
-	) => Promise<Uint8Array>,
-) {
+>(jsonObject: T, signingName: string, getPublicKey: (algorithm: EncryptionValidAlgorithm, version: string) => Promise<Uint8Array>) {
 	const { signatures: _, unsigned: _unsigned, ...__rest } = jsonObject;
 
 	const canonicalJson = encodeCanonicalJson(__rest);
@@ -176,18 +148,9 @@ export async function verifySignaturesFromRemote<
 	const signatures = await getSignaturesFromRemote(jsonObject, signingName);
 
 	for await (const { algorithm, version, signature } of signatures) {
-		const publicKey = await getPublicKey(
-			algorithm as EncryptionValidAlgorithm,
-			version,
-		);
+		const publicKey = await getPublicKey(algorithm as EncryptionValidAlgorithm, version);
 
-		if (
-			!nacl.sign.detached.verify(
-				new TextEncoder().encode(canonicalJson),
-				new Uint8Array(Buffer.from(signature, 'base64')),
-				publicKey,
-			)
-		) {
+		if (!nacl.sign.detached.verify(new TextEncoder().encode(canonicalJson), new Uint8Array(Buffer.from(signature, 'base64')), publicKey)) {
 			throw new Error(`Invalid signature for ${signingName}`);
 		}
 	}
@@ -209,17 +172,11 @@ export function encodeCanonicalJson(value: unknown): string {
 
 	// Handle objects: sort keys lexicographically
 	const sortedKeys = Object.keys(value).sort();
-	const serializedEntries = sortedKeys.map(
-		(key) =>
-			`"${key}":${encodeCanonicalJson((value as Record<string, unknown>)[key])}`,
-	);
+	const serializedEntries = sortedKeys.map((key) => `"${key}":${encodeCanonicalJson((value as Record<string, unknown>)[key])}`);
 	return `{${serializedEntries.join(',')}}`;
 }
 
-export async function signText(
-	data: string | Uint8Array,
-	signingKey: Uint8Array,
-) {
+export async function signText(data: string | Uint8Array, signingKey: Uint8Array) {
 	if (typeof data === 'string') {
 		return nacl.sign.detached(toBinaryData(data), signingKey);
 	}

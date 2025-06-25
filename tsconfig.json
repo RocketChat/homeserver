@@ -1,9 +1,12 @@
 {
 	"compilerOptions": {
+		"outDir": "./dist",
 		"lib": ["ESNext", "DOM"],
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleDetection": "force",
+		"declaration": true,
+		"emitDeclarationOnly": true,
 		"allowJs": true,
 		"moduleResolution": "bundler",
 		"allowImportingTsExtensions": false,
@@ -15,8 +18,6 @@
 		"forceConsistentCasingInFileNames": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"allowSyntheticDefaultImports": true,
-		"outDir": "./dist"
-	},
-	"exclude": ["packages/**/*", "node_modules", "dist"]
+		"allowSyntheticDefaultImports": true
+	}
 }
