@@ -1,79 +1,140 @@
 import { isRoomMemberEvent } from '@hs/core';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
+	ConfigService,
 	ErrorResponseDto,
-	SendJoinEventDto,
-	SendJoinParamsDto,
 	SendJoinResponseDto,
+	StateService,
 } from '@hs/federation-sdk';
-import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import { EventEmitterService } from '@hs/federation-sdk';
+import { PersistentEventFactory } from '@hs/room';
+import { getAuthChain } from '@hs/room';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 	const configService = container.resolve(ConfigService);
-	const emitter = container.resolve(EventEmitterService);
-	return app.put(
-		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
-		async ({ params, body }) => {
-			const event = body;
-			const { roomId, stateKey } = params;
+	const stateService = container.resolve(StateService);
 
-			const records = await eventService.findEvents(
-				{ 'event.room_id': roomId },
-				{ sort: { 'event.depth': 1 } },
-			);
-			const events = records.map((event) => event.event);
-			const lastInviteEvent = records.find(
-				(record) =>
-					isRoomMemberEvent(record.event) &&
-					record.event.content.membership === 'invite',
-			);
-			const eventToSave = {
-				...event,
-				origin: event.origin || configService.getServerConfig().name,
-			};
-			const result = {
-				event: {
-					...event,
-					unsigned: lastInviteEvent
-						? {
-								replaces_state: lastInviteEvent._id,
-								prev_content: lastInviteEvent.event.content,
-								prev_sender: lastInviteEvent.event.sender,
-							}
-						: undefined,
-				},
-				state: events.map((event) => ({ ...event })),
-				auth_chain: events
-					.filter((event) => event.depth && event.depth <= 4)
-					.map((event) => ({ ...event })),
-				members_omitted: false,
-				origin: configService.getServerConfig().name,
-			};
-			let eventId = stateKey;
-			if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
-				eventId = await eventService.insertEvent(eventToSave, stateKey);
+	return app.put(
+		'/_matrix/federation/v2/send_join/:roomId/:eventId',
+		async ({ params, body, query }) => {
+			// const event = body;
+			// const { roomId, stateKey } = params;
+
+			// const records = await eventService.findEvents(
+			// 	{ 'event.room_id': roomId },
+			// 	{ sort: { 'event.depth': 1 } },
+			// );
+			// const events = records.map((event) => event.event);
+			// const lastInviteEvent = records.find(
+			// 	(record) =>
+			// 		isRoomMemberEvent(record.event) &&
+			// 		record.event.content.membership === 'invite',
+			// );
+			// const eventToSave = {
+			// 	...event,
+			// 	origin: event.origin || configService.getServerConfig().name,
+			// };
+			// const result = {
+			// 	event: {
+			// 		...event,
+			// 		unsigned: lastInviteEvent
+			// 			? {
+			// 					replaces_state: lastInviteEvent._id,
+			// 					prev_content: lastInviteEvent.event.content,
+			// 					prev_sender: lastInviteEvent.event.sender,
+			// 				}
+			// 			: undefined,
+			// 	},
+			// 	state: events.map((event) => ({ ...event })),
+			// 	auth_chain: events
+			// 		.filter((event) => event.depth && event.depth <= 4)
+			// 		.map((event) => ({ ...event })),
+			// 	members_omitted: false,
+			// 	origin: configService.getServerConfig().name,
+			// };
+			// if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
+			// 	await eventService.insertEvent(eventToSave, stateKey);
+			// }
+			// return result;
+
+			const { roomId, eventId: _eventId } = params;
+
+			const roomVersion = await stateService.getRoomVersion(roomId);
+
+			if (!roomVersion) {
+				throw new Error('Room version not found');
 			}
 
-			emitter.emit('homeserver.matrix.accept-invite', {
-				event_id: eventId,
-				room_id: roomId,
-				sender: eventToSave.sender,
-				origin_server_ts: eventToSave.origin_server_ts,
-				content: {
-					avatar_url: eventToSave.content.avatar_url || null,
-					displayname: eventToSave.content.displayname || '',
-					membership: eventToSave.content.membership || 'join',
-				},
-			});
-			return result;
+			const roomInformation = await stateService.getRoomInformation(roomId);
+
+			const joinEvent = PersistentEventFactory.newMembershipEvent(
+				roomId,
+				body.sender,
+				body.state_key,
+				body.content.membership,
+				roomInformation,
+			);
+
+			await stateService.fillAuthEvents(joinEvent);
+
+			await stateService.persistStateEvent(joinEvent);
+
+			if (joinEvent.rejected) {
+				throw new Error(joinEvent.rejectedReason);
+			}
+
+			const origin = configService.getServerConfig().name;
+
+			const state = await stateService.getFullRoomState(roomId);
+
+			const authChain = [];
+
+			for (const event of state.values()) {
+				const authEvents = await getAuthChain(
+					event,
+					stateService._getStore(roomVersion),
+				);
+				authChain.push(...authEvents);
+			}
+
+			const authChainEvents = await eventService.getEventsByIds(authChain);
+
+			const signedJoinEvent = await stateService.signEvent(joinEvent);
+
+			console.log('send join event', signedJoinEvent, joinEvent.eventId);
+
+			return {
+				origin,
+				event: {
+					...signedJoinEvent,
+					unsigned: {},
+				}, // TODO: eh
+				members_omitted: false, // less requests
+				state: Array.from(state.values()).map((event) => event.event), // values().map should have worked but editor is complaining
+				auth_chain: authChainEvents.map((event) => event.event),
+			};
 		},
 		{
-			params: SendJoinParamsDto,
-			body: SendJoinEventDto,
+			params: t.Object({
+				roomId: t.String(),
+				eventId: t.String(),
+			}),
+			query: t.Object({
+				omit_members: t.Optional(t.Boolean()), // will ignore this for now
+			}),
+			body: t.Object({
+				origin: t.String(),
+				origin_server_ts: t.Number(),
+				sender: t.String(),
+				state_key: t.String(),
+				type: t.Literal('m.room.member'),
+				content: t.Object({
+					membership: t.Literal('join'),
+				}),
+			}),
 			response: {
 				200: SendJoinResponseDto,
 				400: ErrorResponseDto,

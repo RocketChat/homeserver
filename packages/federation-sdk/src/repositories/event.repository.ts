@@ -21,14 +21,14 @@ export class EventRepository {
 
 	async findById(eventId: string): Promise<EventStore | null> {
 		const collection = await this.getCollection();
-		return collection.findOne({ _id: eventId });
+		return collection.findOne({ eventId: eventId });
 	}
 
 	async findByIds(eventIds: string[]): Promise<EventStore[]> {
 		if (!eventIds.length) return [];
 
 		const collection = await this.getCollection();
-		return collection.find({ _id: { $in: eventIds } }).toArray();
+		return collection.find({ eventId: { $in: eventIds } }).toArray();
 	}
 
 	async findByRoomId(
@@ -53,7 +53,7 @@ export class EventRepository {
 
 		const collection = await this.getCollection();
 		return collection
-			.find({ 'event.room_id': roomId, _id: { $in: eventIds } })
+			.find({ 'event.room_id': roomId, eventId: { $in: eventIds } })
 			.toArray();
 	}
 
@@ -84,7 +84,8 @@ export class EventRepository {
 
 		try {
 			await collection.insertOne({
-				_id: id,
+				// _id: id, let it auto generate
+				eventId: id,
 				event,
 				stateId,
 				createdAt: new Date(),
@@ -109,11 +110,11 @@ export class EventRepository {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
-		const existingEvent = await collection.findOne({ _id: id });
+		const existingEvent = await collection.findOne({ eventId: id });
 		if (existingEvent) return id;
 
 		await collection.insertOne({
-			_id: id,
+			eventId: id,
 			event,
 			stateId: '',
 			createdAt: new Date(),
@@ -151,7 +152,7 @@ export class EventRepository {
 		const id = event.event_id || generateId(event);
 
 		await collection.insertOne({
-			_id: id,
+			eventId: id,
 			event,
 			stateId: '',
 			staged: true,
@@ -168,7 +169,7 @@ export class EventRepository {
 		const collection = await this.getCollection();
 
 		await collection.updateOne(
-			{ _id: eventId },
+			{ eventId: eventId },
 			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
 	}
@@ -178,8 +179,8 @@ export class EventRepository {
 		const id = event.event_id || generateId(event);
 
 		await collection.updateOne(
-			{ _id: id },
-			{ $set: { _id: id, event } },
+			{ eventId: id },
+			{ $set: { eventId: id, event } },
 			{ upsert: true },
 		);
 
@@ -189,7 +190,7 @@ export class EventRepository {
 	async removeFromStaging(roomId: string, eventId: string): Promise<void> {
 		const collection = await this.getCollection();
 		await collection.updateOne(
-			{ _id: eventId, 'event.room_id': roomId },
+			{ eventId: eventId, 'event.room_id': roomId },
 			{ $unset: { staged: 1 } },
 		);
 	}
@@ -252,6 +253,6 @@ export class EventRepository {
 
 	async updateStateId(eventId: string, stateId: string): Promise<void> {
 		const collection = await this.getCollection();
-		await collection.updateOne({ _id: eventId }, { $set: { stateId } });
+		await collection.updateOne({ eventId: eventId }, { $set: { stateId } });
 	}
 }
