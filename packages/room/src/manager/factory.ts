@@ -124,10 +124,22 @@ export class PersistentEventFactory {
 			);
 		}
 
+		const displayname = userId.split(':').shift()?.slice(1);
+
+		if (!displayname) {
+			throw new Error(
+				'Displayname not found while trying to create a membership event',
+			);
+		}
+
+		// @ts-ignore
+		// TODO: those props are not mandatory
 		const membershipContent: PduMembershipEventContent = {
 			membership,
-			is_direct: roomInformation.type === 'direct',
-			join_authorised_via_users_server: '',
+			displayname,
+			avatar_url: undefined,
+			// is_direct: roomInformation.type === 'direct',
+			// join_authorised_via_users_server: '',
 		};
 
 		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {

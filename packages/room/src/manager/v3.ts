@@ -7,18 +7,6 @@ import type { PduVersionForRoomVersion } from './type';
 export class PersistentEventV3Base<
 	T extends RoomVersion3To9 | RoomVersion10And11,
 > extends PersistentEventBase<T> {
-	private _eventId: string;
-
-	constructor(rawEvent: PduVersionForRoomVersion<T>) {
-		super(rawEvent);
-
-		// SPEC: https://spec.matrix.org/v1.12/rooms/v3/#event-ids
-		const referenceHash = this.getReferenceHash();
-
-		// The event ID is the reference hash of the event encoded using Unpadded Base64, prefixed with $. A resulting event ID using this approach should look similar to $CD66HAED5npg6074c6pDtLKalHjVfYb2q4Q3LZgrW6o.
-		this._eventId = `\$${toUnpaddedBase64(referenceHash)}`;
-	}
-
 	async getAuthorizationEvents(
 		store: EventStore,
 	): Promise<PersistentEventBase[]> {
@@ -29,7 +17,11 @@ export class PersistentEventV3Base<
 		return store.getEvents(this.rawEvent.prev_events);
 	}
 	get eventId(): string {
-		return this._eventId;
+		// SPEC: https://spec.matrix.org/v1.12/rooms/v3/#event-ids
+		const referenceHash = this.getReferenceHash();
+
+		// The event ID is the reference hash of the event encoded using Unpadded Base64, prefixed with $. A resulting event ID using this approach should look similar to $CD66HAED5npg6074c6pDtLKalHjVfYb2q4Q3LZgrW6o.
+		return `\$${toUnpaddedBase64(referenceHash)}`;
 	}
 
 	// v3 needs backwards compatibility with v1
