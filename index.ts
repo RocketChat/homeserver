@@ -21,7 +21,7 @@ export { getAllServices } from './packages/homeserver/src/services';
 export type { HomeserverServices } from './packages/homeserver/src/services';
 export type { HomeserverSetupOptions } from './packages/homeserver/src/homeserver.module';
 export type { HomeserverEventSignatures } from './packages/homeserver/src/types/events';
-export type { RouteDefinition } from './packages/homeserver/src/types/route.types';
+export type { RouteDefinition, RouteContext } from './packages/homeserver/src/types/route.types';
 
 async function startElysiaServer() {
 	await setup();
