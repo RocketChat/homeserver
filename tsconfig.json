@@ -1,10 +1,12 @@
 {
 	"compilerOptions": {
-		// Enable latest features
+		"outDir": "./dist",
 		"lib": ["ESNext", "DOM"],
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleDetection": "force",
+		"declaration": true,
+		"emitDeclarationOnly": true,
 		"allowJs": true,
 
 		// Bundler mode
@@ -27,6 +29,6 @@
 		// For NestJS
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"allowSyntheticDefaultImports": true,
+		"allowSyntheticDefaultImports": true
 	}
 }
