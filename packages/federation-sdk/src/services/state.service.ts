@@ -516,7 +516,7 @@ export class StateService {
 			lastState?._id?.toString(),
 		);
 
-		const state = await this.findStateAtEvent(lastEvent._id);
+		const state = await this.findStateAtEvent(lastEvent.eventId);
 
 		this.logState('state at last event seen:', state);
 

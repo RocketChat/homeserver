@@ -645,7 +645,7 @@ export class EventService {
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
 		const events = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
+			{ eventId: { $in: eventIds } },
 			{},
 		);
 
