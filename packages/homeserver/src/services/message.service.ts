@@ -18,6 +18,7 @@ import { injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { signEvent, type SignedEvent } from '../signEvent';
 import { generateId } from '../authentication';
+import { EventEmitterService } from './event-emitter.service';
 
 @injectable()
 export class MessageService {
@@ -28,6 +29,7 @@ export class MessageService {
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly roomService: RoomService,
+		private readonly eventEmitterService: EventEmitterService,
 	) { }
 
 	async sendMessage(
@@ -95,6 +97,18 @@ export class MessageService {
 		this.logger.info(
 			`Sent message to ${targetServer} - ${eventId}`,
 		);
+
+		// Emit message sent event
+		// this.eventEmitterService.emit('homeserver.message.received', {
+		// 	roomId,
+		// 	eventId,
+		// 	sender: senderUserId,
+		// 	content: {
+		// 		body: message,
+		// 		msgtype: 'm.text',
+		// 	},
+		// 	timestamp: signedEvent.origin_server_ts,
+		// });
 
 		return { ...signedEvent, event_id: eventId };
 	}
@@ -294,6 +308,14 @@ export class MessageService {
 		}
 		await this.federationService.sendEvent<RedactionEvent>(targetServer, eventToFederate);
 		await this.eventService.processRedaction(eventToFederate);
+
+		// Emit event processed for redaction
+		// this.eventEmitterService.emit('homeserver.event.processed', {
+		// 	eventId,
+		// 	eventType: 'm.room.redaction',
+		// 	roomId,
+		// 	sender: senderUserId,
+		// });
 
 		return { ...signedEvent, event_id: eventId };
 	}

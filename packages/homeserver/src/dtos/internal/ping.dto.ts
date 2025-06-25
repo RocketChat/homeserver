@@ -1,8 +1,6 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 
-export const InternalPingResponseDto = t.String({
-	description: 'Simple ping response',
-	examples: ['PONG!'],
-}); 
+export const InternalPingResponseDto = z.string()
+	.describe('Simple ping response');
 
-export type InternalPingResponse = Static<typeof InternalPingResponseDto>;
+export type InternalPingResponse = z.infer<typeof InternalPingResponseDto>;

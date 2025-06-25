@@ -1,18 +1,20 @@
 import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
-import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import type { RouteDefinition } from '../../types/route.types';
 import { type ErrorResponse, type SendJoinResponse, ErrorResponseDto, SendJoinEventDto, SendJoinParamsDto, SendJoinResponseDto } from '../../dtos';
 import { ConfigService } from '../../services/config.service';
 import { EventService } from '../../services/event.service';
 
-export const sendJoinPlugin = (app: Elysia) => {
-	const eventService = container.resolve(EventService);
-	const configService = container.resolve(ConfigService);
-	return app.put(
-		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
-		async ({ params, body }): Promise<SendJoinResponse | ErrorResponse> => {
-			const event = body;
-			const { roomId, stateKey } = params;
+export const sendJoinRoutes: RouteDefinition[] = [
+	{
+		method: 'PUT',
+		path: '/_matrix/federation/v2/send_join/:roomId/:stateKey',
+		handler: async (ctx): Promise<SendJoinResponse | ErrorResponse> => {
+			const eventService = container.resolve(EventService);
+			const configService = container.resolve(ConfigService);
+			
+			const event = ctx.body;
+			const { roomId, stateKey } = ctx.params;
 
 			const records = await eventService.findEvents(
 				{ 'event.room_id': roomId },
@@ -51,18 +53,18 @@ export const sendJoinPlugin = (app: Elysia) => {
 			}
 			return result;
 		},
-		{
+		validation: {
 			params: SendJoinParamsDto,
 			body: SendJoinEventDto,
-			response: {
-				200: SendJoinResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Federation'],
-				summary: 'Send join',
-				description: 'Send a join event to a room'
-			}
+		},
+		responses: {
+			200: SendJoinResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Federation'],
+			summary: 'Send join',
+			description: 'Send a join event to a room'
 		}
-	);
-};
+	}
+];

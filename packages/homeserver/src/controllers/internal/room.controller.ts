@@ -1,5 +1,5 @@
-import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import type { RouteDefinition } from '../../types/route.types';
 import {
 	type ErrorResponse,
 	type InternalBanUserResponse,
@@ -31,11 +31,13 @@ import {
 } from '../../dtos';
 import { RoomService } from '../../services/room.service';
 
-export const internalRoomPlugin = (app: Elysia) => {
-	const roomService = container.resolve(RoomService);
-	return app
-		.post('/internal/rooms/rooms', async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-			const { username, sender, name, canonical_alias, alias } = body;
+export const roomRoutes: RouteDefinition[] = [
+	{
+		method: 'POST',
+		path: '/internal/rooms/rooms',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
+			const { username, sender, name, canonical_alias, alias } = ctx.body;
 			return roomService.createRoom(
 				username,
 				sender,
@@ -43,189 +45,217 @@ export const internalRoomPlugin = (app: Elysia) => {
 				canonical_alias,
 				alias,
 			);
-		}, {
+		},
+		validation: {
 			body: InternalCreateRoomBodyDto,
-			response: {
-				200: InternalCreateRoomResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Create a room',
-				description: 'Create a room'
-			}
-		})
-		.put('/internal/rooms/:roomId/name', async ({ params, body }): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
-			const { name, senderUserId, targetServer } = body;
+		},
+		responses: {
+			200: InternalCreateRoomResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Create a room',
+			description: 'Create a room'
+		}
+	},
+	{
+		method: 'PUT',
+		path: '/internal/rooms/:roomId/name',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
+			const { name, senderUserId, targetServer } = ctx.body;
 			return roomService.updateRoomName(
-				params.roomId,
+				ctx.params.roomId,
 				name,
 				senderUserId,
 				targetServer,
 			);
-		}, {
+		},
+		validation: {
 			params: InternalUpdateRoomNameParamsDto,
 			body: InternalUpdateRoomNameBodyDto,
-			response: {
-				200: InternalRoomEventResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Update a room name',
-				description: 'Update a room name'
-			}
-		})
-		.put(
-			'/internal/rooms/:roomId/permissions/:userId',
-			async ({ params, body, set }): Promise<InternalUpdateUserPowerLevelResponse | ErrorResponse> => {
-				const { senderUserId, powerLevel, targetServers } = body;
-				try {
-					const eventId = await roomService.updateUserPowerLevel(
-						params.roomId,
-						params.userId,
-						powerLevel,
-						senderUserId,
-						targetServers,
-					);
-					return { eventId };
-				} catch (error) {
-					set.status = 500;
-					return {
-						error: `Failed to update user power level: ${error instanceof Error ? error.message : String(error)}`,
-						details: {},
-					};
-				}
-			}, {
-				params: InternalUpdateUserPowerLevelParamsDto,
-				body: InternalUpdateUserPowerLevelBodyDto,
-				response: {
-					200: InternalRoomEventResponseDto,
-					400: ErrorResponseDto,
-				},
-				detail: {
-					tags: ['Internal'],
-					summary: 'Update a user power level',
-					description: 'Update a user power level'
-				}
-			}
-		)
-		.put('/internal/rooms/:roomId/leave', async ({ params, body, set }): Promise<InternalLeaveRoomResponse | ErrorResponse> => {
-			const { senderUserId, targetServers } = body;
+		},
+		responses: {
+			200: InternalRoomEventResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Update a room name',
+			description: 'Update a room name'
+		}
+	},
+	{
+		method: 'PUT',
+		path: '/internal/rooms/:roomId/permissions/:userId',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
+			const { senderUserId, powerLevel, targetServers } = ctx.body;
 			try {
-				const eventId = await roomService.leaveRoom(
-					params.roomId,
+				const eventId = await roomService.updateUserPowerLevel(
+					ctx.params.roomId,
+					ctx.params.userId,
+					powerLevel,
 					senderUserId,
 					targetServers,
 				);
 				return { eventId };
 			} catch (error) {
-				set.status = 500;
+				ctx.setStatus(500);
+				return {
+					error: `Failed to update user power level: ${error instanceof Error ? error.message : String(error)}`,
+					details: {},
+				};
+			}
+		},
+		validation: {
+			params: InternalUpdateUserPowerLevelParamsDto,
+			body: InternalUpdateUserPowerLevelBodyDto,
+		},
+		responses: {
+			200: InternalRoomEventResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Update a user power level',
+			description: 'Update a user power level'
+		}
+	},
+	{
+		method: 'PUT',
+		path: '/internal/rooms/:roomId/leave',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
+			const { senderUserId, targetServers } = ctx.body;
+			try {
+				const eventId = await roomService.leaveRoom(
+					ctx.params.roomId,
+					senderUserId,
+					targetServers,
+				);
+				return { eventId };
+			} catch (error) {
+				ctx.setStatus(500);
 				return {
 					error: `Failed to leave room: ${error instanceof Error ? error.message : String(error)}`,
 					details: {},
 				};
 			}
-		}, {
+		},
+		validation: {
 			params: InternalLeaveRoomParamsDto,
 			body: InternalLeaveRoomBodyDto,
-			response: {
-				200: InternalRoomEventResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Leave a room',
-				description: 'Leave a room'
+		},
+		responses: {
+			200: InternalRoomEventResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Leave a room',
+			description: 'Leave a room'
+		}
+	},
+	{
+		method: 'PUT',
+		path: '/internal/rooms/:roomId/kick/:memberId',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
+			const { senderUserId, reason, targetServers } = ctx.body;
+			try {
+				const eventId = await roomService.kickUser(
+					ctx.params.roomId,
+					ctx.params.memberId,
+					senderUserId,
+					reason,
+					targetServers,
+				);
+				return { eventId };
+			} catch (error) {
+				ctx.setStatus(500);
+				return {
+					error: `Failed to kick user: ${error instanceof Error ? error.message : String(error)}`,
+					details: {},
+				};
 			}
-		})
-		.put(
-			'/internal/rooms/:roomId/kick/:memberId',
-			async ({ params, body, set }): Promise<InternalKickUserResponse | ErrorResponse> => {
-				const { senderUserId, reason, targetServers } =
-					body;
-				try {
-					const eventId = await roomService.kickUser(
-						params.roomId,
-						params.memberId,
-						senderUserId,
-						reason,
-						targetServers,
-					);
-					return { eventId };
-				} catch (error) {
-					set.status = 500;
-					return {
-						error: `Failed to kick user: ${error instanceof Error ? error.message : String(error)}`,
-						details: {},
-					};
-				}
-			}, {
-				params: InternalKickUserParamsDto,
-				body: InternalKickUserBodyDto,
-				response: {
-					200: InternalRoomEventResponseDto,
-					400: ErrorResponseDto,
-				},
-				detail: {
-					tags: ['Internal'],
-					summary: 'Kick a user from a room',
-					description: 'Kick a user from a room'
-				}
+		},
+		validation: {
+			params: InternalKickUserParamsDto,
+			body: InternalKickUserBodyDto,
+		},
+		responses: {
+			200: InternalRoomEventResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Kick a user from a room',
+			description: 'Kick a user from a room'
+		}
+	},
+	{
+		method: 'PUT',
+		path: '/internal/rooms/:roomId/ban/:userIdToBan',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
+			const { senderUserId, reason, targetServers } = ctx.body;
+			try {
+				const eventId = await roomService.banUser(
+					ctx.params.roomId,
+					ctx.params.userIdToBan,
+					senderUserId,
+					reason,
+					targetServers,
+				);
+				return { eventId };
+			} catch (error) {
+				ctx.setStatus(500);
+				return {
+					error: `Failed to ban user: ${error instanceof Error ? error.message : String(error)}`,
+					details: {},
+				};
 			}
-		)
-		.put(
-			'/internal/rooms/:roomId/ban/:userIdToBan',
-			async ({ params, body, set }): Promise<InternalBanUserResponse | ErrorResponse> => {
-				const { senderUserId, reason, targetServers } = body;
-				try {
-					const eventId = await roomService.banUser(
-						params.roomId,
-						params.userIdToBan,
-						senderUserId,
-						reason,
-						targetServers,
-					);
-					return { eventId };
-				} catch (error) {
-					set.status = 500;
-					return {
-						error: `Failed to ban user: ${error instanceof Error ? error.message : String(error)}`,
-						details: {},
-					};
-				}
-			}, {
-				params: InternalBanUserParamsDto,
-				body: InternalBanUserBodyDto,
-				response: {
-					200: InternalRoomEventResponseDto,
-					400: ErrorResponseDto,
-				},
-				detail: {
-					tags: ['Internal'],
-					summary: 'Ban a user from a room',
-					description: 'Ban a user from a room'
-				}
-			}
-		)
-		.put('/internal/rooms/:roomId/tombstone', async ({ params, body }): Promise<InternalTombstoneRoomResponse | ErrorResponse> => {
+		},
+		validation: {
+			params: InternalBanUserParamsDto,
+			body: InternalBanUserBodyDto,
+		},
+		responses: {
+			200: InternalRoomEventResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Ban a user from a room',
+			description: 'Ban a user from a room'
+		}
+	},
+	{
+		method: 'PUT',
+		path: '/internal/rooms/:roomId/tombstone',
+		handler: async (ctx) => {
+			const roomService = container.resolve(RoomService);
 			return roomService.markRoomAsTombstone(
-				params.roomId,
-				body.sender,
-				body.reason,
-				body.replacementRoomId,
+				ctx.params.roomId,
+				ctx.body.sender,
+				ctx.body.reason,
+				ctx.body.replacementRoomId,
 			);
-		}, {
+		},
+		validation: {
 			params: InternalTombstoneRoomParamsDto,
 			body: InternalTombstoneRoomBodyDto,
-			response: {
-				200: InternalTombstoneRoomResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Tombstone a room',
-				description: 'Tombstone a room'
-			}
-		});
-};
+		},
+		responses: {
+			200: InternalTombstoneRoomResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Tombstone a room',
+			description: 'Tombstone a room'
+		}
+	}
+];

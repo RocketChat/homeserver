@@ -1,24 +1,19 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 import { ServerNameDto, TimestampDto } from '../common/validation.dto';
 
-export const ServerKeyResponseDto = t.Object({
-	old_verify_keys: t.Record(t.String(), t.Any(), {
-		description: 'Old verification keys'
-	}),
+export const ServerKeyResponseDto = z.object({
+	old_verify_keys: z.record(z.string(), z.any())
+		.describe('Old verification keys'),
 	server_name: ServerNameDto,
-	signatures: t.Record(t.String(), t.Any(), {
-		description: 'Server signatures'
-	}),
+	signatures: z.record(z.string(), z.any())
+		.describe('Server signatures'),
 	valid_until_ts: TimestampDto,
-	verify_keys: t.Record(
-		t.String(),
-		t.Object({
-			key: t.String({ description: 'Base64-encoded public key' })
-		}),
-		{
-			description: 'Current verification keys'
-		}
-	),
+	verify_keys: z.record(
+		z.string(),
+		z.object({
+			key: z.string().describe('Base64-encoded public key')
+		})
+	).describe('Current verification keys'),
 }); 
 
-export type ServerKeyResponse = Static<typeof ServerKeyResponseDto>;
+export type ServerKeyResponse = z.infer<typeof ServerKeyResponseDto>;

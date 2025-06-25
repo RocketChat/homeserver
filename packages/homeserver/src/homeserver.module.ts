@@ -1,24 +1,12 @@
 import 'reflect-metadata';
 
-import { swagger } from '@elysiajs/swagger';
 import {
 	type FederationModuleOptions,
 	FederationRequestService,
 } from '@hs/federation-sdk';
-import { Elysia } from 'elysia';
+import { Emitter } from '@rocket.chat/emitter';
 import { container } from 'tsyringe';
 import { toUnpaddedBase64 } from './binaryData';
-import { invitePlugin } from './controllers/federation/invite.controller';
-import { profilesPlugin } from './controllers/federation/profiles.controller';
-import { sendJoinPlugin } from './controllers/federation/send-join.controller';
-import { transactionsPlugin } from './controllers/federation/transactions.controller';
-import { versionsPlugin } from './controllers/federation/versions.controller';
-import { internalInvitePlugin } from './controllers/internal/invite.controller';
-import { internalMessagePlugin } from './controllers/internal/message.controller';
-import { pingPlugin } from './controllers/internal/ping.controller';
-import { internalRoomPlugin } from './controllers/internal/room.controller';
-import { serverKeyPlugin } from './controllers/key/server.controller';
-import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
 import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
@@ -33,6 +21,7 @@ import { EventAuthorizationService } from './services/event-authorization.servic
 import { EventFetcherService } from './services/event-fetcher.service';
 import { EventStateService } from './services/event-state.service';
 import { EventService } from './services/event.service';
+import { EventEmitterService } from './services/event-emitter.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
 import { MissingEventService } from './services/missing-event.service';
@@ -43,9 +32,13 @@ import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
+import type { HomeserverEventSignatures } from './types/events';
 
-export async function setup() {
-	// Load config and signing key
+export interface HomeserverSetupOptions {
+	emitter?: Emitter<HomeserverEventSignatures>;
+}
+
+export async function setup(options?: HomeserverSetupOptions) {
 	const config = new ConfigService();
 	const matrixConfig = config.getMatrixConfig();
 	const serverConfig = config.getServerConfig();
@@ -63,14 +56,13 @@ export async function setup() {
 	});
 
 	container.registerSingleton(FederationRequestService);
-
-	// Register services and repositories with tsyringe
 	container.registerSingleton(ConfigService);
 	container.registerSingleton(DatabaseConnectionService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
 	container.registerSingleton(EventService);
+	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
@@ -88,8 +80,8 @@ export async function setup() {
 	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaQueue);
 	container.registerSingleton(StagingAreaService);
+	container.registerSingleton(StagingAreaListener);
 	
-	// Register the lock manager service with configuration
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService({ type: 'memory' })
 		
@@ -103,7 +95,13 @@ export async function setup() {
 		// })
 	});
 
-	// Resolve the listeners to ensure they are registered and ready to use
+	const eventEmitterService = container.resolve(EventEmitterService);
+	if (options?.emitter) {
+		eventEmitterService.setEmitter(options.emitter);
+	} else {
+		eventEmitterService.initializeStandalone();
+	}
+
 	container.resolve(StagingAreaListener);
 	container.resolve(MissingEventListener);
 }

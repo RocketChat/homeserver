@@ -1,8 +1,8 @@
-import { type Static, t } from "elysia";
+import { z } from "zod";
 
-export const ErrorResponseDto = t.Object({
-	error: t.String(),
-	details: t.Any(),
+export const ErrorResponseDto = z.object({
+	error: z.string(),
+	details: z.any(),
 });
 
-export type ErrorResponse = Static<typeof ErrorResponseDto>;
+export type ErrorResponse = z.infer<typeof ErrorResponseDto>;

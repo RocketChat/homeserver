@@ -1,32 +1,22 @@
 {
 	"compilerOptions": {
-		// Enable latest features
 		"lib": ["ESNext", "DOM"],
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleDetection": "force",
 		"allowJs": true,
-
-		// Bundler mode
 		"moduleResolution": "bundler",
-		"allowImportingTsExtensions": true,
+		"allowImportingTsExtensions": false,
 		"verbatimModuleSyntax": true,
-		"noEmit": true,
-
-		// Best practices
+		"noEmit": false,
 		"strict": true,
 		"skipLibCheck": true,
 		"noFallthroughCasesInSwitch": true,
 		"forceConsistentCasingInFileNames": true,
-
-		// Some stricter flags (disabled by default)
-		"noUnusedLocals": false,
-		"noUnusedParameters": false,
-		"noPropertyAccessFromIndexSignature": false,
-
-		// For NestJS
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"allowSyntheticDefaultImports": true,
-	}
+		"outDir": "./dist"
+	},
+	"exclude": ["packages/**/*", "node_modules", "dist"]
 }

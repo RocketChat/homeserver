@@ -1,57 +1,53 @@
-import { t } from 'elysia';
+import { z } from 'zod';
 import { DepthDto, RoomIdDto, TimestampDto, UsernameDto } from './validation.dto';
 
-export const EventHashDto = t.Object({
-	sha256: t.String({ description: 'SHA256 hash of the event' }),
+export const EventHashDto = z.object({
+	sha256: z.string().describe('SHA256 hash of the event'),
 });
 
-export const EventSignatureDto = t.Record(
-	t.String(),
-	t.Record(t.String(), t.String()),
-	{ description: 'Event signatures by server and key ID' }
-);
+export const EventSignatureDto = z.record(
+	z.string(),
+	z.record(z.string(), z.string())
+).describe('Event signatures by server and key ID');
 
-export const EventBaseDto = t.Object({
-	type: t.String({ description: 'Event type' }),
-	content: t.Record(t.String(), t.Any(), { description: 'Event content' }),
+export const EventBaseDto = z.object({
+	type: z.string().describe('Event type'),
+	content: z.record(z.string(), z.any()).describe('Event content'),
 	sender: UsernameDto,
 	room_id: RoomIdDto,
 	origin_server_ts: TimestampDto,
-	depth: DepthDto,
-	prev_events: t.Array(
-		t.String(),
-		{ description: 'Previous events in the room' }
-	),
-	auth_events: t.Array(
-		t.String(),
-		{ description: 'Authorization events' }
-	),
-	origin: t.Optional(t.String({ description: 'Origin server' })),
-	hashes: t.Optional(EventHashDto),
-	signatures: t.Optional(EventSignatureDto),
-	unsigned: t.Optional(t.Record(t.String(), t.Any(), { description: 'Unsigned data' })),
+	depth: DepthDto.optional(),
+	prev_events: z.array(
+		z.string()
+	).describe('Previous events in the room'),
+	auth_events: z.array(
+		z.string()
+	).describe('Authorization events'),
+	origin: z.string().describe('Origin server').optional(),
+	hashes: EventHashDto.optional(),
+	signatures: EventSignatureDto.optional(),
+	unsigned: z.record(z.string(), z.any()).describe('Unsigned data').optional(),
 });
 
-export const MembershipEventContentDto = t.Object({
-	membership: t.Union([
-		t.Literal('join'),
-		t.Literal('leave'),
-		t.Literal('invite'),
-		t.Literal('ban'),
-		t.Literal('knock')
-	], { description: 'Membership state' }),
-	displayname: t.Optional(t.Union([t.String(), t.Null()])),
-	avatar_url: t.Optional(t.Union([t.String(), t.Null()])),
-	join_authorised_via_users_server: t.Optional(t.Union([t.String(), t.Null()])),
-	is_direct: t.Optional(t.Union([t.Boolean(), t.Null()])),
-	reason: t.Optional(t.String({ description: 'Reason for membership change' })),
+export const MembershipEventContentDto = z.object({
+	membership: z.union([
+		z.literal('join'),
+		z.literal('leave'),
+		z.literal('invite'),
+		z.literal('ban'),
+		z.literal('knock')
+	]).describe('Membership state'),
+	displayname: z.union([z.string(), z.null()]).optional(),
+	avatar_url: z.union([z.string(), z.null()]).optional(),
+	join_authorised_via_users_server: z.union([z.string(), z.null()]).optional(),
+	is_direct: z.union([z.boolean(), z.null()]).optional(),
+	reason: z.string().describe('Reason for membership change').optional(),
 });
 
-export const RoomMemberEventDto = t.Intersect([
-	EventBaseDto,
-	t.Object({
-		type: t.Literal('m.room.member'),
+export const RoomMemberEventDto = EventBaseDto.merge(
+	z.object({
+		type: z.literal('m.room.member').optional(),
 		content: MembershipEventContentDto,
 		state_key: UsernameDto,
 	})
-]);
+);

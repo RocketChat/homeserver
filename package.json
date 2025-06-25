@@ -1,6 +1,8 @@
 {
-	"name": "homeserver",
-	"module": "index.ts",
+	"name": "@rocket.chat/homeserver",
+	"version": "0.0.1",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"private": true,
 	"type": "module",
 	"devDependencies": {
@@ -21,6 +23,7 @@
 		"@bogeychan/elysia-etag": "^0.0.6",
 		"@bogeychan/elysia-logger": "^0.1.4",
 		"@elysiajs/swagger": "^1.3.0",
+		"@rocket.chat/emitter": "^0.31.25",
 		"amqp-connection-manager": "^4.1.14",
 		"amqplib": "^0.10.8",
 		"bun-bagel": "^1.1.0",
@@ -30,11 +33,13 @@
 		"elysia": "^1.1.26",
 		"node-jsonwebtoken": "^0.0.1",
 		"pino": "^9.7.0",
+		"pino-pretty": "^13.0.0",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3",
-		"zod": "^3.24.3"
+		"zod": "^3.24.3",
+		"zod-to-json-schema": "^3.24.5"
 	},
 	"husky": {
 		"hooks": {
@@ -43,7 +48,7 @@
 	},
 	"scripts": {
 		"prepare": "husky",
-		"start": "bun run index.ts --isolated-mode",
+		"start": "bun run --watch index.ts --isolated-mode",
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint",

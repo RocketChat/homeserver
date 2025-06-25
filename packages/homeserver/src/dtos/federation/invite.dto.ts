@@ -1,17 +1,17 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 import { RoomMemberEventDto } from '../common/event.dto';
 import { EventIdDto, RoomIdDto } from '../common/validation.dto';
 
-export const ProcessInviteParamsDto = t.Object({
+export const ProcessInviteParamsDto = z.object({
 	roomId: RoomIdDto,
 	eventId: EventIdDto,
 });
 
 export const ProcessInviteBodyDto = RoomMemberEventDto;
 
-export const ProcessInviteResponseDto = t.Object({
+export const ProcessInviteResponseDto = z.object({
 	event: ProcessInviteBodyDto,
 });
 
-export type ProcessInviteBody = Static<typeof ProcessInviteBodyDto>;
-export type ProcessInviteResponse = Static<typeof ProcessInviteResponseDto>;
+export type ProcessInviteBody = z.infer<typeof ProcessInviteBodyDto>;
+export type ProcessInviteResponse = z.infer<typeof ProcessInviteResponseDto>;

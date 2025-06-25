@@ -1,10 +1,8 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 
-export const WellKnownServerResponseDto = t.Object({
-	'm.server': t.String({
-		description: 'Matrix server address with port',
-		examples: ['matrix.example.com:443']
-	}),
+export const WellKnownServerResponseDto = z.object({
+	'm.server': z.string()
+		.describe('Matrix server address with port'),
 }); 
 
-export type WellKnownServerResponse = Static<typeof WellKnownServerResponseDto>;
+export type WellKnownServerResponse = z.infer<typeof WellKnownServerResponseDto>;

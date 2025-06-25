@@ -36,6 +36,7 @@ import { signEvent, type SignedEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
+import { EventEmitterService } from './event-emitter.service';
 
 const logger = createLogger('RoomService');
 
@@ -58,6 +59,7 @@ export class RoomService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -230,6 +232,14 @@ export class RoomService {
 		canonicalAlias?: string,
 		alias?: string,
 	): Promise<InternalCreateRoomResponse> {
+		console.log('[RoomService] Creating room for', sender, username, name, canonicalAlias, alias);
+		console.log('[RoomService]');
+		console.log('[RoomService]');
+		console.log('[RoomService]');
+		console.log('[RoomService]');
+		console.log('[RoomService]');
+		console.log('[RoomService]');
+		
 		logger.debug(`Creating room for ${sender} with ${username}`);
 		const config = this.configService.getServerConfig();
 		const signingKey = await this.configService.getSigningKey();
@@ -261,6 +271,15 @@ export class RoomService {
 
 		await this.roomRepository.insert(roomId, { name, canonicalAlias, alias });
 		logger.info(`Successfully saved room ${roomId} to rooms collection`);
+
+		// Emit room created event
+		// this.eventEmitterService.emit('homeserver.room.created', {
+		// 	roomId,
+		// 	creator: sender,
+		// 	name,
+		// 	topic: undefined, // This simple createRoom doesn't have topic
+		// 	federatedWith: [], // This simple createRoom doesn't federate
+		// });
 
 		return {
 			room_id: result.roomId,
@@ -369,6 +388,14 @@ export class RoomService {
 		logger.info(
 			`Successfully updated room name in repository for room ${roomId}`,
 		);
+
+		// Emit room name updated event
+		// this.eventEmitterService.emit('homeserver.event.processed', {
+		// 	eventId,
+		// 	eventType: 'm.room.name',
+		// 	roomId,
+		// 	sender: senderId,
+		// });
 
 		for (const server of [targetServer]) {
 			try {
@@ -654,6 +681,13 @@ export class RoomService {
 		logger.info(
 			`Successfully created and stored m.room.member (leave) event ${eventId} for user ${senderId} in room ${roomId}`,
 		);
+
+		// Emit room left event
+		// this.eventEmitterService.emit('homeserver.room.left', {
+		// 	roomId,
+		// 	userId: senderId,
+		// 	reason: undefined,
+		// });
 
 		return eventId;
 	}

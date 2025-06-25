@@ -1,30 +1,27 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 import { EventBaseDto } from '../common/event.dto';
 
-export const SendTransactionParamsDto = t.Object({
-	txnId: t.String({ description: 'Transaction ID' }),
+export const SendTransactionParamsDto = z.object({
+	txnId: z.string().describe('Transaction ID'),
 });
 
-export const SendTransactionBodyDto = t.Object({
-	pdus: t.Array(EventBaseDto, { 
-		description: 'Persistent data units (PDUs) to process',
-		default: []
-	}),
-	edus: t.Optional(t.Array(t.Any(), { 
-		description: 'Ephemeral data units (EDUs)',
-		default: []
-	})),
+export const SendTransactionBodyDto = z.object({
+	pdus: z.array(EventBaseDto)
+		.describe('Persistent data units (PDUs) to process')
+		.default([]),
+	edus: z.array(z.any())
+		.describe('Ephemeral data units (EDUs)')
+		.default([])
+		.optional(),
 });
 
-export const SendTransactionResponseDto = t.Object({
-	pdus: t.Record(t.String(), t.Any(), { 
-		description: 'Processing results for each PDU'
-	}),
-	edus: t.Record(t.String(), t.Any(), { 
-		description: 'Processing results for each EDU'
-	}),
+export const SendTransactionResponseDto = z.object({
+	pdus: z.record(z.string(), z.any())
+		.describe('Processing results for each PDU'),
+	edus: z.record(z.string(), z.any())
+		.describe('Processing results for each EDU'),
 }); 
 
-export type SendTransactionParams = Static<typeof SendTransactionParamsDto>;
-export type SendTransactionBody = Static<typeof SendTransactionBodyDto>;
-export type SendTransactionResponse = Static<typeof SendTransactionResponseDto>;
+export type SendTransactionParams = z.infer<typeof SendTransactionParamsDto>;
+export type SendTransactionBody = z.infer<typeof SendTransactionBodyDto>;
+export type SendTransactionResponse = z.infer<typeof SendTransactionResponseDto>;

@@ -1,130 +1,126 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 import { RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
 
-export const InternalCreateRoomBodyDto = t.Object({
-	username: t.String({ 
-		minLength: 1,
-		description: 'Username for the room creator'
-	}),
+export const InternalCreateRoomBodyDto = z.object({
+	username: z.string()
+		.min(1)
+		.describe('Username for the room creator'),
 	sender: UsernameDto,
-	name: t.String({ 
-		minLength: 1,
-		description: 'Room name'
-	}),
-	canonical_alias: t.Optional(t.String({ 
-		description: 'Canonical alias for the room'
-	})),
-	alias: t.Optional(t.String({ 
-		description: 'Room alias'
-	})),
+	name: z.string()
+		.min(1)
+		.describe('Room name'),
+	canonical_alias: z.string()
+		.describe('Canonical alias for the room')
+		.optional(),
+	alias: z.string()
+		.describe('Room alias')
+		.optional(),
 });
 
-export const InternalCreateRoomResponseDto = t.Object({
+export const InternalCreateRoomResponseDto = z.object({
 	room_id: RoomIdDto,
-	event_id: t.String({ description: 'Creation event ID' }),
+	event_id: z.string().describe('Creation event ID'),
 });
 
-export const InternalUpdateRoomNameParamsDto = t.Object({
+export const InternalUpdateRoomNameParamsDto = z.object({
 	roomId: RoomIdDto,
 });
 
-export const InternalUpdateRoomNameBodyDto = t.Object({
-	name: t.String({ 
-		minLength: 1,
-		description: 'New room name'
-	}),
+export const InternalUpdateRoomNameBodyDto = z.object({
+	name: z.string()
+		.min(1)
+		.describe('New room name'),
 	senderUserId: UsernameDto,
 	targetServer: ServerNameDto,
 });
 
-export const InternalUpdateUserPowerLevelParamsDto = t.Object({
+export const InternalUpdateUserPowerLevelParamsDto = z.object({
 	roomId: RoomIdDto,
 	userId: UsernameDto,
 });
 
-export const InternalUpdateUserPowerLevelBodyDto = t.Object({
+export const InternalUpdateUserPowerLevelBodyDto = z.object({
 	senderUserId: UsernameDto,
-	powerLevel: t.Number({ 
-		description: 'Power level (0-100)',
-		minimum: 0,
-		maximum: 100
-	}),
-	targetServers: t.Optional(t.Array(ServerNameDto)),
+	powerLevel: z.number()
+		.min(0)
+		.max(100)
+		.describe('Power level (0-100)'),
+	targetServers: z.array(ServerNameDto).optional(),
 });
 
-export const InternalLeaveRoomParamsDto = t.Object({
+export const InternalLeaveRoomParamsDto = z.object({
 	roomId: RoomIdDto,
 });
 
-export const InternalLeaveRoomBodyDto = t.Object({
+export const InternalLeaveRoomBodyDto = z.object({
 	senderUserId: UsernameDto,
-	targetServers: t.Optional(t.Array(ServerNameDto)),
+	targetServers: z.array(ServerNameDto).optional(),
 });
 
-export const InternalKickUserParamsDto = t.Object({
+export const InternalKickUserParamsDto = z.object({
 	roomId: RoomIdDto,
 	memberId: UsernameDto,
 });
 
-export const InternalKickUserBodyDto = t.Object({
+export const InternalKickUserBodyDto = z.object({
 	userIdToKick: UsernameDto,
 	senderUserId: UsernameDto,
-	reason: t.Optional(t.String({ description: 'Reason for kicking' })),
-	targetServers: t.Optional(t.Array(ServerNameDto)),
+	reason: z.string().describe('Reason for kicking').optional(),
+	targetServers: z.array(ServerNameDto).optional(),
 });
 
-export const InternalBanUserParamsDto = t.Object({
+export const InternalBanUserParamsDto = z.object({
 	roomId: RoomIdDto,
 	userIdToBan: UsernameDto,
 });
 
-export const InternalBanUserBodyDto = t.Object({
+export const InternalBanUserBodyDto = z.object({
 	userIdToBan: UsernameDto,
 	senderUserId: UsernameDto,
-	reason: t.Optional(t.String({ description: 'Reason for banning' })),
-	targetServers: t.Optional(t.Array(ServerNameDto)),
+	reason: z.string().describe('Reason for banning').optional(),
+	targetServers: z.array(ServerNameDto).optional(),
 });
 
-export const InternalTombstoneRoomParamsDto = t.Object({
+export const InternalTombstoneRoomParamsDto = z.object({
 	roomId: RoomIdDto,
 });
 
-export const InternalTombstoneRoomBodyDto = t.Object({
+export const InternalTombstoneRoomBodyDto = z.object({
 	sender: UsernameDto,
-	reason: t.Optional(t.String({ description: 'Reason for tombstoning' })),
-	replacementRoomId: t.Optional(RoomIdDto),
+	reason: z.string().describe('Reason for tombstoning').optional(),
+	replacementRoomId: RoomIdDto.optional(),
 });
 
-export const InternalRoomEventResponseDto = t.Object({
-	eventId: t.String({ description: 'Event ID of the created event' }),
+export const InternalRoomEventResponseDto = z.object({
+	eventId: z.string().describe('Event ID of the created event'),
 });
 
-export const InternalTombstoneRoomResponseDto = t.Object({
-	event_id: t.String({ description: 'Tombstone event ID' }),
-	origin_server_ts: t.Number({ description: 'Server timestamp' }),
-	content: t.Object({
-		body: t.String(),
-		replacement_room: t.Optional(RoomIdDto),
+export const InternalTombstoneRoomResponseDto = z.object({
+	event_id: z.string().describe('Tombstone event ID'),
+	origin_server_ts: z.number().describe('Server timestamp'),
+	content: z.object({
+		body: z.string(),
+		replacement_room: RoomIdDto.optional(),
 	}),
 }); 
 
-export type InternalCreateRoomBody = Static<typeof InternalCreateRoomBodyDto>;
-export type InternalCreateRoomResponse = Static<typeof InternalCreateRoomResponseDto>;
-export type InternalUpdateRoomNameParams = Static<typeof InternalUpdateRoomNameParamsDto>;
-export type InternalUpdateRoomNameBody = Static<typeof InternalUpdateRoomNameBodyDto>;
-export type InternalUpdateRoomNameResponse = Static<typeof InternalRoomEventResponseDto>;
-export type InternalUpdateUserPowerLevelParams = Static<typeof InternalUpdateUserPowerLevelParamsDto>;
-export type InternalUpdateUserPowerLevelBody = Static<typeof InternalUpdateUserPowerLevelBodyDto>;
-export type InternalUpdateUserPowerLevelResponse = Static<typeof InternalRoomEventResponseDto>;
-export type InternalLeaveRoomParams = Static<typeof InternalLeaveRoomParamsDto>;
-export type InternalLeaveRoomBody = Static<typeof InternalLeaveRoomBodyDto>;
-export type InternalLeaveRoomResponse = Static<typeof InternalRoomEventResponseDto>;
-export type InternalKickUserParams = Static<typeof InternalKickUserParamsDto>;
-export type InternalKickUserBody = Static<typeof InternalKickUserBodyDto>;
-export type InternalKickUserResponse = Static<typeof InternalRoomEventResponseDto>;
-export type InternalBanUserParams = Static<typeof InternalBanUserParamsDto>;
-export type InternalBanUserBody = Static<typeof InternalBanUserBodyDto>;
-export type InternalBanUserResponse = Static<typeof InternalRoomEventResponseDto>;
-export type InternalTombstoneRoomParams = Static<typeof InternalTombstoneRoomParamsDto>;
-export type InternalTombstoneRoomBody = Static<typeof InternalTombstoneRoomBodyDto>;
-export type InternalTombstoneRoomResponse = Static<typeof InternalTombstoneRoomResponseDto>;
+export type InternalCreateRoomBody = z.infer<typeof InternalCreateRoomBodyDto>;
+export type InternalCreateRoomResponse = z.infer<typeof InternalCreateRoomResponseDto>;
+export type InternalUpdateRoomNameParams = z.infer<typeof InternalUpdateRoomNameParamsDto>;
+export type InternalUpdateRoomNameBody = z.infer<typeof InternalUpdateRoomNameBodyDto>;
+export type InternalUpdateRoomNameResponse = z.infer<typeof InternalRoomEventResponseDto>;
+export type InternalUpdateUserPowerLevelParams = z.infer<typeof InternalUpdateUserPowerLevelParamsDto>;
+export type InternalUpdateUserPowerLevelBody = z.infer<typeof InternalUpdateUserPowerLevelBodyDto>;
+export type InternalUpdateUserPowerLevelResponse = z.infer<typeof InternalRoomEventResponseDto>;
+export type InternalLeaveRoomParams = z.infer<typeof InternalLeaveRoomParamsDto>;
+export type InternalLeaveRoomBody = z.infer<typeof InternalLeaveRoomBodyDto>;
+export type InternalLeaveRoomResponse = z.infer<typeof InternalRoomEventResponseDto>;
+export type InternalKickUserParams = z.infer<typeof InternalKickUserParamsDto>;
+export type InternalKickUserBody = z.infer<typeof InternalKickUserBodyDto>;
+export type InternalKickUserResponse = z.infer<typeof InternalRoomEventResponseDto>;
+export type InternalBanUserParams = z.infer<typeof InternalBanUserParamsDto>;
+export type InternalBanUserBody = z.infer<typeof InternalBanUserBodyDto>;
+export type InternalBanUserResponse = z.infer<typeof InternalRoomEventResponseDto>;
+export type InternalTombstoneRoomParams = z.infer<typeof InternalTombstoneRoomParamsDto>;
+export type InternalTombstoneRoomBody = z.infer<typeof InternalTombstoneRoomBodyDto>;
+export type InternalTombstoneRoomResponse = z.infer<typeof InternalTombstoneRoomResponseDto>;
