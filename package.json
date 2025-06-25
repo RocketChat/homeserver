@@ -1,5 +1,5 @@
 {
-	"name": "homeserver",
+	"name": "@rocket.chat/homeserver",
 	"module": "index.ts",
 	"private": true,
 	"type": "module",
