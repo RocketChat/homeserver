@@ -69,9 +69,18 @@ export const internalRoomPlugin = (app: Elysia) => {
 						roomCreateEvent.getContent<PduCreateEventContent>(),
 					);
 
-				creatorMembershipEvent
-					.addPreviousEvent(roomCreateEvent)
-					.authedBy(roomCreateEvent);
+				const [authEvents, prevEvents] = await Promise.all([
+					stateService.getAuthEvents(creatorMembershipEvent),
+					stateService.getPrevEvents(creatorMembershipEvent),
+				]);
+
+				for await (const authEvent of authEvents) {
+					creatorMembershipEvent.authedBy(authEvent);
+				}
+
+				for await (const prevEvent of prevEvents) {
+					creatorMembershipEvent.addPreviousEvent(prevEvent);
+				}
 
 				await stateService.persistStateEvent(creatorMembershipEvent);
 
@@ -82,10 +91,18 @@ export const internalRoomPlugin = (app: Elysia) => {
 					'11',
 				);
 
-				roomNameEvent
-					.addPreviousEvent(creatorMembershipEvent)
-					.authedBy(creatorMembershipEvent)
-					.authedBy(roomCreateEvent);
+				const [roomNameAuthEvents, roomNamePrevEvents] = await Promise.all([
+					stateService.getAuthEvents(roomNameEvent),
+					stateService.getPrevEvents(roomNameEvent),
+				]);
+
+				for await (const authEvent of roomNameAuthEvents) {
+					roomNameEvent.authedBy(authEvent);
+				}
+
+				for await (const prevEvent of roomNamePrevEvents) {
+					roomNameEvent.addPreviousEvent(prevEvent);
+				}
 
 				await stateService.persistStateEvent(roomNameEvent);
 
@@ -108,12 +125,42 @@ export const internalRoomPlugin = (app: Elysia) => {
 					'11',
 				);
 
-				powerLevelEvent
-					.addPreviousEvent(creatorMembershipEvent)
-					.authedBy(creatorMembershipEvent)
-					.authedBy(roomCreateEvent);
+				const [powerLevelAuthEvents, powerLevelPrevEvents] = await Promise.all([
+					stateService.getAuthEvents(powerLevelEvent),
+					stateService.getPrevEvents(powerLevelEvent),
+				]);
+
+				for await (const authEvent of powerLevelAuthEvents) {
+					powerLevelEvent.authedBy(authEvent);
+				}
+
+				for await (const prevEvent of powerLevelPrevEvents) {
+					powerLevelEvent.addPreviousEvent(prevEvent);
+				}
 
 				await stateService.persistStateEvent(powerLevelEvent);
+
+				const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
+					roomCreateEvent.roomId,
+					username,
+					'public',
+					'11',
+				);
+
+				const [joinRuleAuthEvents, joinRulePrevEvents] = await Promise.all([
+					stateService.getAuthEvents(joinRuleEvent),
+					stateService.getPrevEvents(joinRuleEvent),
+				]);
+
+				for await (const authEvent of joinRuleAuthEvents) {
+					joinRuleEvent.authedBy(authEvent);
+				}
+
+				for await (const prevEvent of joinRulePrevEvents) {
+					joinRuleEvent.addPreviousEvent(prevEvent);
+				}
+
+				await stateService.persistStateEvent(joinRuleEvent);
 
 				return {
 					room_id: roomCreateEvent.roomId,
@@ -479,8 +526,6 @@ export const internalRoomPlugin = (app: Elysia) => {
 				if (!createEvent) {
 					throw new Error('Room create event not found');
 				}
-
-				console.log('createEvent', createEvent);
 
 				const membershipEvent = PersistentEventFactory.newMembershipEvent(
 					roomId,

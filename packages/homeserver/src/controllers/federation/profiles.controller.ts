@@ -113,7 +113,7 @@ export const profilesPlugin = (app: Elysia) => {
 					roomInformation,
 				);
 
-				await stateService.fillAuthEvents(membershipEvent);
+				await stateService.getAuthEvents(membershipEvent);
 
 				// @ts-ignore prop exist8ing changes beghavior
 				// biome-ignore lint/performance/noDelete: <explanation>
@@ -166,8 +166,6 @@ export const profilesPlugin = (app: Elysia) => {
 			async ({ params }) => {
 				const { roomId, eventId } = params;
 
-				console.log('eventId to find authchain for', eventId);
-
 				const roomVersion = await stateService.getRoomVersion(roomId);
 
 				if (!roomVersion) {
@@ -188,8 +186,6 @@ export const profilesPlugin = (app: Elysia) => {
 				const authChain = await store.getEvents(Array.from(authChainIds));
 
 				const pdus = authChain.map((e) => e.event);
-
-				console.log('authChain', pdus);
 
 				return { auth_chain: pdus };
 			},

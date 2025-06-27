@@ -78,7 +78,16 @@ export const sendJoinPlugin = (app: Elysia) => {
 				roomInformation,
 			);
 
-			await stateService.fillAuthEvents(joinEvent);
+			for await (const prevEvent of stateService.getPrevEvents(joinEvent)) {
+				joinEvent.addPreviousEvent(prevEvent);
+			}
+
+			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
+				joinEvent.authedBy(authEvent);
+			}
+
+			// fetch state before allowing join here - TODO: don't just persist the membership like this
+			const state = await stateService.getFullRoomState(roomId);
 
 			await stateService.persistStateEvent(joinEvent);
 
@@ -87,8 +96,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 			}
 
 			const origin = configService.getServerConfig().name;
-
-			const state = await stateService.getFullRoomState(roomId);
 
 			const authChain = [];
 
@@ -104,17 +111,26 @@ export const sendJoinPlugin = (app: Elysia) => {
 
 			const signedJoinEvent = await stateService.signEvent(joinEvent);
 
-			console.log('send join event', signedJoinEvent, joinEvent.eventId);
-
 			return {
 				origin,
 				event: {
 					...signedJoinEvent,
 					unsigned: {},
+					origin: origin,
 				}, // TODO: eh
 				members_omitted: false, // less requests
-				state: Array.from(state.values()).map((event) => event.event), // values().map should have worked but editor is complaining
-				auth_chain: authChainEvents.map((event) => event.event),
+				state: Array.from(state.values()).map((event) => {
+					return {
+						...event.event,
+						unsigned: {}, // TODO: why wrapper isn't doing this
+					};
+				}), // values().map should have worked but editor is complaining
+				auth_chain: authChainEvents.map((event) => {
+					return {
+						...event.event,
+						unsigned: {},
+					};
+				}),
 			};
 		},
 		{

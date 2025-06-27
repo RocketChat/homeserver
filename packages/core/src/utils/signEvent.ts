@@ -7,15 +7,8 @@ export const signEvent = async <T extends EventBase>(
 	signature: SigningKey,
 	signingName: string,
 ): Promise<SignedEvent<T>> => {
-	// Dynamically import dependencies to avoid circular dependencies
-	const [{ computeAndMergeHash }, { pruneEventDict }] = await Promise.all([
-		import('./authentication'),
-		import('./pruneEventDict'),
-	]);
-	// Compute hash and sign
-	const eventToSign = pruneEventDict(computeAndMergeHash(event));
 	const { signJson } = await import('./signJson');
-	const signedJsonResult = await signJson(eventToSign, signature, signingName);
+	const signedJsonResult = await signJson(event, signature, signingName);
 	// For non-redaction events, restore the original content
 
 	return {

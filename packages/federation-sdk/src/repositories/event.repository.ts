@@ -4,6 +4,7 @@ import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 import { MongoError } from 'mongodb';
+import { PersistentEventBase } from '@hs/room';
 
 @injectable()
 export class EventRepository {
@@ -73,37 +74,8 @@ export class EventRepository {
 		return collection.find(query, options).toArray();
 	}
 
-	async create(
-		event: EventBaseWithOptionalId,
-		eventId?: string,
-		args?: object,
-		stateId = '',
-	): Promise<string> {
-		const collection = await this.getCollection();
-		const id = eventId || event.event_id || generateId(event);
-
-		try {
-			await collection.insertOne({
-				// _id: id, let it auto generate
-				eventId: id,
-				event,
-				stateId,
-				createdAt: new Date(),
-				...(args || {}),
-			});
-
-			return id;
-		} catch (e) {
-			if (e instanceof MongoError) {
-				if (e.code === 11000) {
-					// duplicate key error
-					// this is expected, if the same intentional event is attempted to be persisted again
-					return id;
-				}
-			}
-
-			throw e;
-		}
+	async create(event: EventBaseWithOptionalId, eventId: string, stateId = '') {
+		await this.persistEvent(event, eventId, stateId);
 	}
 
 	async createIfNotExists(event: EventBaseWithOptionalId): Promise<string> {
@@ -118,6 +90,8 @@ export class EventRepository {
 			event,
 			stateId: '',
 			createdAt: new Date(),
+			_id: '',
+			nextEventId: '',
 		});
 
 		return id;
@@ -157,6 +131,8 @@ export class EventRepository {
 			stateId: '',
 			staged: true,
 			createdAt: new Date(),
+			_id: '',
+			nextEventId: '',
 		});
 
 		return id;
@@ -254,5 +230,50 @@ export class EventRepository {
 	async updateStateId(eventId: string, stateId: string): Promise<void> {
 		const collection = await this.getCollection();
 		await collection.updateOne({ eventId: eventId }, { $set: { stateId } });
+	}
+
+	// finds events not yet referenced by other events
+	// more on the respective adr
+	async findPrevEvents(roomId: string) {
+		const collection = await this.getCollection();
+		return collection
+			.find({ nextEventId: '', 'event.room_id': roomId })
+			.toArray();
+	}
+
+	async persistEvent(
+		event: EventBaseWithOptionalId,
+		eventId: string,
+		stateId: string,
+	) {
+		const collection = await this.getCollection();
+
+		try {
+			// @ts-ignore
+			await collection.insertOne({
+				eventId: eventId,
+				event: event,
+				stateId: stateId,
+				createdAt: new Date(),
+				nextEventId: '', // new events are not expected to have forward edges
+				// _id: undefined,
+			});
+		} catch (e) {
+			if (e instanceof MongoError) {
+				if (e.code === 11000) {
+					// duplicate key error
+					// this is expected, if the same intentional event is attempted to be persisted again
+					return;
+				}
+			}
+
+			throw e;
+		}
+
+		// this must happen later to as to avoid finding 0 prev_events on a parallel request
+		await collection.updateMany(
+			{ eventId: { $in: event.prev_events as string[] } },
+			{ $set: { nextEventId: eventId } },
+		);
 	}
 }
