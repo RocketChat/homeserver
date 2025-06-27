@@ -323,4 +323,29 @@ export class PersistentEventFactory {
 
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
+
+	static newJoinRuleEvent(
+		roomId: string,
+		sender: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+		roomVersion: RoomVersion,
+	) {
+		if (roomVersion !== '11') {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+			type: PduTypeRoomJoinRules,
+			content: { join_rule: joinRule },
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return new PersistentEventV10(eventPartial as any);
+	}
 }
