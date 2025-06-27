@@ -1,7 +1,6 @@
 import { type EventStore, PersistentEventBase } from './event-wrapper';
 import type { RoomVersion3To9, RoomVersion10And11 } from './type';
 import { toUnpaddedBase64 } from '@hs/crypto';
-import type { PduVersionForRoomVersion } from './type';
 
 // v3 is where it changes first
 export class PersistentEventV3Base<
@@ -21,7 +20,7 @@ export class PersistentEventV3Base<
 		const referenceHash = this.getReferenceHash();
 
 		// The event ID is the reference hash of the event encoded using Unpadded Base64, prefixed with $. A resulting event ID using this approach should look similar to $CD66HAED5npg6074c6pDtLKalHjVfYb2q4Q3LZgrW6o.
-		return `\$${toUnpaddedBase64(referenceHash)}`;
+		return `\$${toUnpaddedBase64(referenceHash, { urlSafe: true })}`;
 	}
 
 	// v3 needs backwards compatibility with v1

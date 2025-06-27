@@ -193,13 +193,16 @@ export class StateService {
 				throw new Error('Event not found');
 			}
 
-			finalState.set(
-				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(
-					event.event as any,
-					roomVersion,
-				),
+			const pdu = PersistentEventFactory.createFromRawEvent(
+				event.event as any,
+				roomVersion,
 			);
+
+			if (pdu.eventId !== eventId) {
+				throw new Error('Event id mismatch in trying to room state');
+			}
+
+			finalState.set(stateKey as StateMapKey, pdu);
 		}
 
 		return finalState;
@@ -245,7 +248,7 @@ export class StateService {
 		};
 	}
 
-	async fillAuthEvents(event: PersistentEventBase) {
+	async *getAuthEvents(event: PersistentEventBase) {
 		const state = await this.getFullRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();
@@ -253,15 +256,31 @@ export class StateService {
 		for (const stateKey of eventsNeeded) {
 			const authEvent = state.get(stateKey);
 			if (authEvent) {
-				event.authedBy(authEvent);
+				yield authEvent;
 			}
+		}
+	}
+
+	async *getPrevEvents(event: PersistentEventBase) {
+		const roomVersion = await this.getRoomVersion(event.roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found while filling prev events');
+		}
+
+		const prevEvents = await this.eventRepository.findPrevEvents(event.roomId);
+
+		for (const prevEvent of prevEvents) {
+			yield PersistentEventFactory.createFromRawEvent(
+				prevEvent.event as any,
+				roomVersion,
+			);
 		}
 	}
 
 	public async signEvent(event: PersistentEventBase) {
 		const signingKey = await this.configService.getSigningKey();
 
-		const redactedEvent = event.redact();
+		const redactedEvent = event.redactedEvent;
 
 		const result = await signEvent(
 			redactedEvent as any,
@@ -318,7 +337,6 @@ export class StateService {
 			this.eventRepository.create(
 				signedEvent,
 				event.eventId,
-				undefined,
 				stateMappingId.toString(),
 			);
 
@@ -346,8 +364,7 @@ export class StateService {
 			this.eventRepository.create(
 				resolvedEvent.event as any /* TODO: fix this with type unifi */,
 				resolvedEvent.eventId,
-				undefined,
-				// no stateId should indicate not being part of the timeline
+				'',
 			);
 			return;
 		}
@@ -365,7 +382,6 @@ export class StateService {
 		await this.eventRepository.create(
 			signedEvent,
 			resolvedEvent.eventId,
-			undefined,
 			stateMappingId.toString(),
 		);
 	}
@@ -379,6 +395,7 @@ export class StateService {
 		if (!roomVersion) {
 			throw new Error('Room version not found');
 		}
+
 		const lastEvent =
 			await this.eventRepository.findLatestEventByRoomIdBeforeTimestamp(
 				event.roomId,
@@ -462,12 +479,7 @@ export class StateService {
 					// TODO: mark rejected, although no code yet uses it so let it go
 					const signedEvent = await this.signEvent(resolvedEvent);
 
-					this.eventRepository.create(
-						signedEvent,
-						resolvedEvent.eventId,
-						undefined,
-						undefined,
-					);
+					this.eventRepository.create(signedEvent, resolvedEvent.eventId, '');
 
 					continue;
 				}
@@ -537,12 +549,14 @@ export class StateService {
 				.toArray();
 		}
 
-		const events = eventsCollection.find({
-			eventId: { $in: eventsToFetch },
-		});
+		// TODO: i know thisd is overcomplicated
+		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
 
-		const nonPublicRooms = await events
-			.filter((event: any) => event.event.content.join_rule !== 'public')
+		const nonPublicRooms = await eventsCollection
+			.find({
+				eventId: { $in: eventsToFetch },
+				'event.content.join_rule': { $ne: 'public' },
+			})
 			.toArray();
 
 		// since no join_rule == public

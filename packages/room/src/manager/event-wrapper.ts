@@ -31,19 +31,31 @@ function extractDomain(identifier: string) {
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	private _rejectedReason?: string;
+
 	constructor(
 		protected readonly rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+		freeze = false,
 	) {
-		if (!rawEvent.hashes) {
-			rawEvent.hashes = {
-				sha256: toUnpaddedBase64(this.getContentHash()),
-			};
+		if (freeze) {
+			this.freezeEvent();
 		}
 	}
 
+	// at the point of calculating the reference hash, mark the internal reference as read only
+	// once we have accessed the id of an event, the redacted event MUST NOT CHANGE
+	// while it is allowed to change keys that are not part of the redaction algorithm, we will still freeze the full event for now.
+	protected freezeEvent() {
+		Object.freeze(this.rawEvent);
+	}
+
+	// don't recalculate the hash if it is already set
 	get sha256hash() {
-		// should be set already in the constructor
-		// constructor has the typing to allow partial event passing
+		if (!this.rawEvent.hashes) {
+			this.rawEvent.hashes = {
+				sha256: toUnpaddedBase64(this.getContentHash()),
+			};
+		}
+
 		return this.rawEvent.hashes!.sha256;
 	}
 
@@ -72,22 +84,34 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	}
 
 	get event() {
-		return {
+		// don't change hash for now to not influence reference hash change
+		// TODO: this doesn't sound right, but trying to be synapse compatible.
+		if (this.rawEvent.hashes?.sha256) {
+			// freeze any change to this event to lock in the reference hash
+			this.freezeEvent();
+
+			return {
+				...this.rawEvent,
+				unsigned: {},
+			};
+		}
+
+		const event = {
 			...this.rawEvent,
+			hashes: {
+				sha256: this.getContentHashString(),
+			},
 			unsigned: {}, // TODO better handling of this heh
 		};
+
+		// content hash has been calculated, so we can freeze the event
+		this.freezeEvent();
+
+		return event;
 	}
 
 	get depth() {
 		return this.rawEvent.depth;
-	}
-
-	sign(serverName: string) {
-		if (this.rawEvent.signatures?.[serverName]) {
-			return;
-		}
-
-		// TODO:
 	}
 
 	abstract get eventId(): string;
@@ -154,74 +178,72 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return `${this.type}:${this.stateKey || ''}`;
 	}
 
-	redactTopLevel() {
-		const allowedKeys = [
+	get redactedEvent() {
+		// it is expected to have everything in this event ready by this point
+		const topLevelAllowedKeysExceptContent = [
 			'event_id',
 			'type',
 			'room_id',
 			'sender',
 			'state_key',
-			'content',
-			'hashes',
-			'signatures',
-			'depth',
-			'prev_events',
-			'auth_events',
+			'hashes', // make sure is not recalculated to be inline wiht synapse
+			'signatures', // can change but is not part of reference hash
+			'depth', // always 0 for us
+			'prev_events', // can change but only in first creation
+			'auth_events', // same as ^
 			'origin_server_ts',
 		];
 
-		const newEvent = {
-			unsigned: {}, // TODO: better spacing
-		} as PduV10;
+		const dict = {
+			content: {},
+		};
 
-		for (const key of allowedKeys) {
-			if (key in this.rawEvent) {
+		// also freezes the event
+		const { event } = this; // fill up to date hash
+
+		for (const key of topLevelAllowedKeysExceptContent) {
+			if (key in event) {
 				// @ts-ignore TODO:
-				newEvent[key] = this.rawEvent[key];
+				dict[key] = event[key];
 			}
 		}
-
-		return newEvent;
-	}
-
-	redact() {
-		const newEvent = this.redactTopLevel();
 
 		const content = this.getContent();
 
 		// m.room.member allows keys membership, join_authorised_via_users_server. Additionally, it allows the signed key of the third_party_invite key.
 		if (this.type === PduTypeRoomMember) {
 			// @ts-ignore i don't want to fight typescript right now
-			newEvent.content = {
+			dict.content = {
 				// @ts-ignore i don't want to fight typescript right now (2)
 				membership: content.membership,
 			};
 
-			return newEvent;
+			return dict;
 		}
 
 		if (this.type === PduTypeRoomCreate) {
 			// m.room.create allows all keys.
-			return newEvent;
+			dict.content = content;
+			return dict;
 		}
 
 		if (this.type === PduTypeRoomJoinRules) {
 			// m.room.join_rules allows keys join_rule, allow.
 			// @ts-ignore i don't want to fight typescript right now (3)
-			newEvent.content = {
+			dict.content = {
 				// @ts-ignore i don't want to fight typescript right now (4)
-				join_rule: content.join_rule,
+				...(content.join_rule ? { join_rule: content.join_rule } : {}),
 				// @ts-ignore i don't want to fight typescript right now (5)
-				allow: content.allow,
+				...(content.allow ? { allow: content.allow } : {}),
 			};
 
-			return newEvent;
+			return dict;
 		}
 
 		if (this.type === PduTypeRoomPowerLevels) {
 			// m.room.power_levels allows keys ban, events, events_default, invite, kick, redact, state_default, users, users_default.
 			// @ts-ignore i don't want to fight typescript right now (6)
-			newEvent.content = {
+			dict.content = {
 				// @ts-ignore i don't want to fight typescript right now (7)
 				ban: content.ban,
 				// @ts-ignore i don't want to fight typescript right now (8)
@@ -242,27 +264,20 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 				users_default: content.users_default,
 			};
 
-			return newEvent;
+			return dict;
 		}
 
-		return newEvent;
+		dict.content = content; // not spec compliant, but can't find a way for all events
 
-		// TODO: rest of the events
+		return dict;
+
+		// TODO: rest of the event types
 	}
 
 	getReferenceHash() {
 		// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-reference-hash-for-an-event
 		// 1. The signatures and unsigned properties are removed from the event, if present.
-		const redactedEvent = this.redact();
-
-		// hash needs full event not redacted one
-		const hash = this.getContentHash();
-
-		redactedEvent.hashes = {
-			sha256: toUnpaddedBase64(hash),
-		}; // now we are ready to get the id
-
-		console.log('redactedEvent', redactedEvent);
+		const redactedEvent = this.redactedEvent;
 
 		// @ts-ignore TODO:
 		const { unsigned, signatures, ...toHash } = redactedEvent;
@@ -275,13 +290,15 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			.update(canonicalJson)
 			.digest();
 
+		this.freezeEvent();
+
 		return referenceHash;
 	}
 
 	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
 	getContentHash() {
 		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
-		const { unsigned, signatures, hashes, ...toHash } = this.rawEvent;
+		const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
 
 		return crypto
 			.createHash('sha256')
