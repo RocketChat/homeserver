@@ -149,7 +149,11 @@ export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 		domain,
 		signingName,
 	);
-	const url = new URL(`https://${address}${uri}`);
+	// const url = new URL(`https://${address}${uri}`);
+	const url = new URL(`https://${domain}${uri}`);
+	// remove any port from the headers
+	const newHostHeader = headers['Host']?.split(':')[0];
+
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -159,7 +163,8 @@ export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 		method,
 		headers: {
 			Authorization: auth,
-			...headers,
+			// ...headers,
+			Host: newHostHeader,
 			'content-type': 'application/json',
 		},
 	};

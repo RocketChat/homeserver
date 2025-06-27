@@ -10,7 +10,7 @@ import {
 	signJson,
 } from '../../../homeserver/src/signJson';
 import { FederationConfigService } from './federation-config.service';
-import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+// import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 
@@ -53,8 +53,16 @@ export class FederationRequestService {
 					nacl.sign.detached(data, keyPair.secretKey),
 			};
 
-			const [address, discoveryHeaders] =
-				await getHomeserverFinalAddress(domain);
+			// TEMPORARY FIX: Skip DNS resolution and use hostname directly
+			// const [address, discoveryHeaders] =
+			// 	await getHomeserverFinalAddress(domain);
+			
+			// Use hostname directly with HTTPS and default port 8448
+			// const port = domain.includes(':') ? '' : ':8448';
+			// const address = `https://${domain}${port}`;
+			const address = `https://${domain}`;
+			console.log('address', address);
+			const discoveryHeaders = { Host: domain };
 
 			const url = new URL(`${address}${uri}`);
 			if (queryString) {

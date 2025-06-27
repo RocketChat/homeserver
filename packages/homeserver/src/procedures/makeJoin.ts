@@ -17,12 +17,12 @@ export const makeJoinEventBuilder =
 		roomVersions: string[],
 		origin: string,
 	) => {
-		if (!roomVersions.includes('10')) {
-			throw new IncompatibleRoomVersionError(
-				'Your homeserver does not support the features required to join this room',
-				{ roomVersion: '10' },
-			);
-		}
+		// if (!roomVersions.includes('10')) {
+		// 	throw new IncompatibleRoomVersionError(
+		// 		'Your homeserver does not support the features required to join this room',
+		// 		{ roomVersion: '10' },
+		// 	);
+		// }
 		const lastEvent = await getLastEvent(roomId);
 
 		if (!lastEvent) {
