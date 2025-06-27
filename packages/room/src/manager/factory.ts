@@ -8,6 +8,8 @@ import {
 	type PduV1,
 	PduTypeRoomName,
 	type PduRoomNameEventContent,
+	PduTypeRoomJoinRules,
+	PduJoinRuleEventContent,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
 import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
@@ -63,15 +65,15 @@ export class PersistentEventFactory {
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
 		if (isV1ToV2(event, roomVersion)) {
-			return new PersistentEventV1(event);
+			return new PersistentEventV1(event, true);
 		}
 
 		if (isV3To9(event, roomVersion)) {
-			return new PersistentEventV3(event);
+			return new PersistentEventV3(event, true);
 		}
 
 		if (isV10To11(event, roomVersion)) {
-			return new PersistentEventV10(event);
+			return new PersistentEventV10(event, true);
 		}
 
 		throw new Error(`Unknown room version: ${roomVersion}`);
@@ -124,10 +126,22 @@ export class PersistentEventFactory {
 			);
 		}
 
+		const displayname = userId.split(':').shift()?.slice(1);
+
+		if (!displayname) {
+			throw new Error(
+				'Displayname not found while trying to create a membership event',
+			);
+		}
+
+		// @ts-ignore
+		// TODO: those props are not mandatory
 		const membershipContent: PduMembershipEventContent = {
 			membership,
-			is_direct: roomInformation.type === 'direct',
-			join_authorised_via_users_server: '',
+			displayname,
+			avatar_url: undefined,
+			// is_direct: roomInformation.type === 'direct',
+			// join_authorised_via_users_server: '',
 		};
 
 		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
@@ -186,6 +200,31 @@ export class PersistentEventFactory {
 			type: PduTypeRoomName,
 			// @ts-ignore not sure why this is not working
 			content: { name } as PduRoomNameEventContent,
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return new PersistentEventV10(eventPartial as any);
+	}
+
+	static newJoinRuleEvent(
+		roomId: string,
+		sender: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+		roomVersion: RoomVersion,
+	) {
+		if (roomVersion !== '11') {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+			type: PduTypeRoomJoinRules,
+			content: { join_rule: joinRule },
 			sender: sender,
 			origin_server_ts: Date.now(),
 			room_id: roomId,

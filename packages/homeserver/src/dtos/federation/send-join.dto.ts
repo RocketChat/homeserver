@@ -1,6 +1,11 @@
 import { type Static, t } from 'elysia';
 import { EventBaseDto, MembershipEventContentDto } from '../common/event.dto';
-import { EventIdDto, RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
+import {
+	EventIdDto,
+	RoomIdDto,
+	ServerNameDto,
+	UsernameDto,
+} from '../common/validation.dto';
 
 export const SendJoinParamsDto = t.Object({
 	roomId: RoomIdDto,
@@ -15,23 +20,25 @@ export const SendJoinEventDto = t.Intersect([
 			MembershipEventContentDto,
 			t.Object({
 				membership: t.Literal('join'),
-			})
+			}),
 		]),
 		state_key: UsernameDto, // Using UsernameDto since it should be a user ID
-	})
+	}),
 ]);
 
 export const SendJoinResponseDto = t.Object({
-	event: t.Record(t.String(), t.Any(), { description: 'The processed join event' }),
-	state: t.Array(
-		t.Record(t.String(), t.Any()),
-		{ description: 'Current state events in the room' }
-	),
-	auth_chain: t.Array(
-		t.Record(t.String(), t.Any()),
-		{ description: 'Authorization chain for the event' }
-	),
-	members_omitted: t.Boolean({ description: 'Whether member events were omitted' }),
+	event: t.Record(t.String(), t.Any(), {
+		description: 'The processed join event',
+	}),
+	state: t.Array(t.Record(t.String(), t.Any()), {
+		description: 'Current state events in the room',
+	}),
+	auth_chain: t.Array(t.Record(t.String(), t.Any()), {
+		description: 'Authorization chain for the event',
+	}),
+	members_omitted: t.Boolean({
+		description: 'Whether member events were omitted',
+	}),
 	origin: ServerNameDto,
 });
 

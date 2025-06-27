@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { EventID, StateMapKey } from '@hs/room/src/types/_common';
+import type { StateMapKey } from '@hs/room/src/types/_common';
 import type {
 	EventStore,
 	PersistentEventBase,
@@ -11,7 +11,8 @@ import type { RoomVersion } from '@hs/room/src/manager/type';
 import { resolveStateV2Plus } from '@hs/room/src/state_resolution/definitions/algorithm/v2';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 import { createLogger } from '../utils/logger';
-import { MongoError, ObjectId } from 'mongodb';
+import { ConfigService } from './config.service';
+import { signEvent } from '../signEvent';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -21,7 +22,31 @@ export class StateService {
 	constructor(
 		private readonly stateRepository: StateRepository,
 		private readonly eventRepository: EventRepository,
+		private readonly configService: ConfigService,
 	) {}
+
+	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const createEventMapping = await stateCollection.findOne({
+			roomId,
+			'delta.identifier': 'm.room.create:',
+		});
+
+		if (!createEventMapping) {
+			throw new Error('Create event mapping not found for room information');
+		}
+
+		const createEvent = await this.eventRepository.findById(
+			createEventMapping.delta.eventId,
+		);
+
+		if (!createEvent) {
+			throw new Error('Create event not found for room information');
+		}
+
+		return createEvent?.event.content as PduCreateEventContent;
+	}
 
 	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
 		const events = await this.eventRepository.getCollection();
@@ -31,7 +56,7 @@ export class StateService {
 			'event.room_id': roomId,
 		});
 		if (!createEvent) {
-			throw new Error('Create event not found');
+			throw new Error('Create event not found for room version');
 		}
 
 		return createEvent.event.content?.room_version as RoomVersion;
@@ -168,19 +193,22 @@ export class StateService {
 				throw new Error('Event not found');
 			}
 
-			finalState.set(
-				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(
-					event.event as any,
-					roomVersion,
-				),
+			const pdu = PersistentEventFactory.createFromRawEvent(
+				event.event as any,
+				roomVersion,
 			);
+
+			if (pdu.eventId !== eventId) {
+				throw new Error('Event id mismatch in trying to room state');
+			}
+
+			finalState.set(stateKey as StateMapKey, pdu);
 		}
 
 		return finalState;
 	}
 
-	private _getStore(roomVersion: RoomVersion): EventStore {
+	public _getStore(roomVersion: RoomVersion): EventStore {
 		const cache = new Map<string, PersistentEventBase>();
 
 		return {
@@ -220,7 +248,50 @@ export class StateService {
 		};
 	}
 
-	async _persistEventAgainstState(
+	async *getAuthEvents(event: PersistentEventBase) {
+		const state = await this.getFullRoomState(event.roomId);
+
+		const eventsNeeded = event.getAuthEventStateKeys();
+
+		for (const stateKey of eventsNeeded) {
+			const authEvent = state.get(stateKey);
+			if (authEvent) {
+				yield authEvent;
+			}
+		}
+	}
+
+	async *getPrevEvents(event: PersistentEventBase) {
+		const roomVersion = await this.getRoomVersion(event.roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found while filling prev events');
+		}
+
+		const prevEvents = await this.eventRepository.findPrevEvents(event.roomId);
+
+		for (const prevEvent of prevEvents) {
+			yield PersistentEventFactory.createFromRawEvent(
+				prevEvent.event as any,
+				roomVersion,
+			);
+		}
+	}
+
+	public async signEvent(event: PersistentEventBase) {
+		const signingKey = await this.configService.getSigningKey();
+
+		const redactedEvent = event.redactedEvent;
+
+		const result = await signEvent(
+			redactedEvent as any,
+			signingKey[0],
+			this.configService.getServerName(),
+		);
+
+		return result as ReturnType<typeof signEvent>;
+	}
+
+	private async _persistEventAgainstState(
 		event: PersistentEventBase,
 		state: State,
 	): Promise<void> {
@@ -261,10 +332,11 @@ export class StateService {
 			const { insertedId: stateMappingId } =
 				await this.stateRepository.createStateMapping(event, prevStateIds);
 
+			const signedEvent = await this.signEvent(event);
+
 			this.eventRepository.create(
-				event.event as any /* TODO: fix this with type unifi */,
+				signedEvent,
 				event.eventId,
-				undefined,
 				stateMappingId.toString(),
 			);
 
@@ -292,8 +364,7 @@ export class StateService {
 			this.eventRepository.create(
 				resolvedEvent.event as any /* TODO: fix this with type unifi */,
 				resolvedEvent.eventId,
-				undefined,
-				// no stateId should indicate not being part of the timeline
+				'',
 			);
 			return;
 		}
@@ -306,10 +377,11 @@ export class StateService {
 				prevStateIds,
 			);
 
+		const signedEvent = await this.signEvent(resolvedEvent);
+
 		await this.eventRepository.create(
-			resolvedEvent.event as any /* TODO: fix this with type unifi */,
+			signedEvent,
 			resolvedEvent.eventId,
-			undefined,
 			stateMappingId.toString(),
 		);
 	}
@@ -323,6 +395,7 @@ export class StateService {
 		if (!roomVersion) {
 			throw new Error('Room version not found');
 		}
+
 		const lastEvent =
 			await this.eventRepository.findLatestEventByRoomIdBeforeTimestamp(
 				event.roomId,
@@ -351,7 +424,7 @@ export class StateService {
 			lastState?._id?.toString(),
 		);
 
-		const state = await this.findStateAtEvent(lastEvent._id);
+		const state = await this.findStateAtEvent(lastEvent.eventId);
 
 		await this._persistEventAgainstState(event, state);
 
@@ -404,12 +477,9 @@ export class StateService {
 					// state did not change
 					// just persist the event
 					// TODO: mark rejected, although no code yet uses it so let it go
-					this.eventRepository.create(
-						resolvedEvent.event as any /* TODO: fix this with type unifi */,
-						resolvedEvent.eventId,
-						undefined,
-						undefined,
-					);
+					const signedEvent = await this.signEvent(resolvedEvent);
+
+					this.eventRepository.create(signedEvent, resolvedEvent.eventId, '');
 
 					continue;
 				}
@@ -464,7 +534,7 @@ export class StateService {
 				.toArray();
 
 			const publicRooms = eventsCollection.find({
-				_id: {
+				eventId: {
 					$in: publicRoomsWithNames.map(
 						(stateMapping) => stateMapping.delta.eventId,
 					),
@@ -479,12 +549,14 @@ export class StateService {
 				.toArray();
 		}
 
-		const events = eventsCollection.find({
-			_id: { $in: eventsToFetch },
-		});
+		// TODO: i know thisd is overcomplicated
+		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
 
-		const nonPublicRooms = await events
-			.filter((event: any) => event.event.content.join_rule !== 'public')
+		const nonPublicRooms = await eventsCollection
+			.find({
+				eventId: { $in: eventsToFetch },
+				'event.content.join_rule': { $ne: 'public' },
+			})
 			.toArray();
 
 		// since no join_rule == public
@@ -502,7 +574,7 @@ export class StateService {
 			.toArray();
 
 		const publicRoomsWithNamesEvents = eventsCollection.find({
-			_id: {
+			eventId: {
 				$in: publicRoomsWithNames.map(
 					(stateMapping) => stateMapping.delta.eventId,
 				),
