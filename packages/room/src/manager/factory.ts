@@ -1,9 +1,10 @@
 import {
 	type PduCreateEventContent,
+	PduJoinRuleEventContent,
 	type PduMembershipEventContent,
-	type PduPowerLevelsEventContent,
 	type PduRoomNameEventContent,
 	PduTypeRoomCreate,
+	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomName,
 	PduTypeRoomPowerLevels,
@@ -63,15 +64,15 @@ export class PersistentEventFactory {
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
 		if (isV1ToV2(event, roomVersion)) {
-			return new PersistentEventV1(event);
+			return new PersistentEventV1(event, true);
 		}
 
 		if (isV3To9(event, roomVersion)) {
-			return new PersistentEventV3(event);
+			return new PersistentEventV3(event, true);
 		}
 
 		if (isV10To11(event, roomVersion)) {
-			return new PersistentEventV10(event);
+			return new PersistentEventV10(event, true);
 		}
 
 		throw new Error(`Unknown room version: ${roomVersion}`);
@@ -198,6 +199,31 @@ export class PersistentEventFactory {
 			type: PduTypeRoomName,
 			// @ts-ignore not sure why this is not working
 			content: { name } as PduRoomNameEventContent,
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return new PersistentEventV10(eventPartial as any);
+	}
+
+	static newJoinRuleEvent(
+		roomId: string,
+		sender: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+		roomVersion: RoomVersion,
+	) {
+		if (roomVersion !== '11') {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+			type: PduTypeRoomJoinRules,
+			content: { join_rule: joinRule },
 			sender: sender,
 			origin_server_ts: Date.now(),
 			room_id: roomId,

@@ -15,6 +15,9 @@ export interface EventStore {
 
 	stateId: string;
 	createdAt: Date;
+
+	// for prev_events
+	nextEventId: string;
 }
 
 export interface StateEvent extends EventBaseWithOptionalId {
