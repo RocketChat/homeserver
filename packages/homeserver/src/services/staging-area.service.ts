@@ -9,7 +9,7 @@ import { createLogger } from '../utils/logger';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventStateService } from '@hs/federation-sdk';
 import { EventService, EventType } from './event.service';
-import { MissingEventService } from './missing-event.service';
+import { MissingEventService } from '@hs/federation-sdk';
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {
