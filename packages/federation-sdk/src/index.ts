@@ -22,6 +22,7 @@ export { SignatureVerificationService } from './services/signature-verification.
 export { WellKnownService } from './services/well-known.service';
 export { ConfigService } from './services/config.service';
 export type { AppConfig } from './services/config.service';
+export { DatabaseConnectionService } from './services/database-connection.service';
 
 // Utility exports
 export {
