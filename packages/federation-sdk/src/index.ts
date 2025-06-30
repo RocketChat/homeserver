@@ -25,6 +25,7 @@ export type { AppConfig } from './services/config.service';
 export { DatabaseConnectionService } from './services/database-connection.service';
 export { ServerService } from './services/server.service';
 export { EventAuthorizationService } from './services/event-authorization.service';
+export { EventStateService } from './services/event-state.service';
 
 // Utility exports
 export {
