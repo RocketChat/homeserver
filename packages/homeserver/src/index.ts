@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { appPromise } from './packages/homeserver/src/homeserver.module';
+import { appPromise } from './homeserver.module';
 import logger from '@hs/federation-sdk/src/utils/logger';
 
 appPromise.then((app) => {
