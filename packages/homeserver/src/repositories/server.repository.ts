@@ -1,6 +1,6 @@
-import { injectable } from "tsyringe";
-import { Collection } from "mongodb";
-import { DatabaseConnectionService } from "../services/database-connection.service";
+import { injectable } from 'tsyringe';
+import { Collection } from 'mongodb';
+import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/database-connection.service';
 
 type Server = {
 	name: string;

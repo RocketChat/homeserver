@@ -29,7 +29,7 @@ import { RoomRepository } from './repositories/room.repository';
 import { ServerRepository } from './repositories/server.repository';
 import { StateRepository } from './repositories/state.repository';
 import { ConfigService } from './services/config.service';
-import { DatabaseConnectionService } from './services/database-connection.service';
+import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/database-connection.service';
 import { EventAuthorizationService } from '@hs/federation-sdk/src/services/event-authorization.service';
 import { EventFetcherService } from '@hs/federation-sdk/src/services/event-fetcher.service';
 import { EventStateService } from '@hs/federation-sdk/src/services/event-state.service';

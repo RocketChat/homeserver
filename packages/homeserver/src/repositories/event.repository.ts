@@ -2,7 +2,7 @@ import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '../authentication';
 import type { EventBase, EventStore } from '../models/event.model';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/database-connection.service';
 import { MongoError } from 'mongodb';
 
 @injectable()

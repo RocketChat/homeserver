@@ -1,7 +1,7 @@
-import { injectable } from "tsyringe";
-import type { Collection, FindCursor } from "mongodb";
-import type { EventBase } from "../models/event.model";
-import { DatabaseConnectionService } from "../services/database-connection.service";
+import { injectable } from 'tsyringe';
+import type { Collection, FindCursor } from 'mongodb';
+import type { EventBase } from '../models/event.model';
+import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/database-connection.service';
 
 @injectable()
 export class StateEventRepository {
@@ -13,7 +13,7 @@ export class StateEventRepository {
 
 	private async getCollection(): Promise<Collection<EventBase>> {
 		const db = await this.dbConnection.getDb();
-		this.collection = db.collection<EventBase>("final_state_events");
+		this.collection = db.collection<EventBase>('final_state_events');
 		return this.collection;
 	}
 

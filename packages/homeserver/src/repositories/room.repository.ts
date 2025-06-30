@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
 import type { EventBase } from '../models/event.model';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/database-connection.service';
 
 type Room = {
 	_id: string;
