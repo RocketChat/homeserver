@@ -8,7 +8,7 @@ import {
 	SendJoinEventDto,
 	SendJoinParamsDto,
 	SendJoinResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk/src/dtos';
 import { ConfigService } from '@hs/federation-sdk/src/services/config.service';
 import { EventService } from '@hs/federation-sdk/src/services/event.service';
 

@@ -6,7 +6,7 @@ import {
 	SendTransactionBodyDto,
 	type SendTransactionResponse,
 	SendTransactionResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk/src/dtos';
 import { EventService } from '@hs/federation-sdk/src/services/event.service';
 
 export const transactionsPlugin = (app: Elysia) => {

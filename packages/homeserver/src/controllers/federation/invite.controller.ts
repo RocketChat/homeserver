@@ -4,7 +4,7 @@ import {
 	ProcessInviteBodyDto,
 	ProcessInviteParamsDto,
 	ProcessInviteResponseDto,
-} from '../../dtos/federation/invite.dto';
+} from '@hs/federation-sdk/src/dtos/federation/invite.dto';
 import { InviteService } from '@hs/federation-sdk/src/services/invite.service';
 
 export const invitePlugin = (app: Elysia) => {

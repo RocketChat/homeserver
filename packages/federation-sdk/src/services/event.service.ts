@@ -4,12 +4,6 @@ import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';
-import type {
-	GetMissingEventsBody,
-	GetMissingEventsParams,
-	GetMissingEventsResponse,
-	SendTransactionBody,
-} from '@hs/homeserver/src/dtos';
 import { MatrixError } from '@hs/core';
 import type {
 	EventBase,
@@ -28,6 +22,19 @@ import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
+import {
+	EventBaseDto,
+	EventIdDto,
+	RoomIdDto,
+	ServerNameDto,
+	UsernameDto,
+} from '../dtos';
+import type {
+	SendTransactionBody,
+	GetMissingEventsBody,
+	GetMissingEventsParams,
+	GetMissingEventsResponse,
+} from '../dtos';
 
 type ValidationResult = {
 	eventId: string;

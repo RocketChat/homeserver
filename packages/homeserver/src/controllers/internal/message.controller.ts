@@ -16,7 +16,7 @@ import {
 	InternalSendReactionParamsDto,
 	InternalUpdateMessageBodyDto,
 	InternalUpdateMessageParamsDto,
-} from '../../dtos';
+} from '@hs/federation-sdk/src/dtos';
 import { MessageService } from '@hs/federation-sdk/src/services/message.service';
 
 export const internalMessagePlugin = (app: Elysia) => {

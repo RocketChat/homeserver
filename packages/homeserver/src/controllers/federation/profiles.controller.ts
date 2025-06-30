@@ -18,7 +18,7 @@ import {
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
 	QueryProfileResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk/src/dtos';
 import { ProfilesService } from '@hs/federation-sdk/src/services/profiles.service';
 
 export const profilesPlugin = (app: Elysia) => {

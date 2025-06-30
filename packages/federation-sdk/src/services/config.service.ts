@@ -36,7 +36,7 @@ export interface AppConfig {
 @injectable()
 export class ConfigService {
 	private config: AppConfig;
-	private fileConfig: Partial<AppConfig> = {};
+	// private fileConfig: Partial<AppConfig> = {};
 	private logger = createLogger('ConfigService');
 
 	constructor() {
@@ -86,18 +86,18 @@ export class ConfigService {
 		}
 	}
 
-	private mergeConfigs(
-		baseConfig: AppConfig,
-		newConfig: Partial<AppConfig>,
-	): AppConfig {
-		return {
-			...baseConfig,
-			...newConfig,
-			server: { ...baseConfig.server, ...newConfig.server },
-			database: { ...baseConfig.database, ...newConfig.database },
-			matrix: { ...baseConfig.matrix, ...newConfig.matrix },
-		};
-	}
+	// private mergeConfigs(
+	// 	baseConfig: AppConfig,
+	// 	newConfig: Partial<AppConfig>,
+	// ): AppConfig {
+	// 	return {
+	// 		...baseConfig,
+	// 		...newConfig,
+	// 		server: { ...baseConfig.server, ...newConfig.server },
+	// 		database: { ...baseConfig.database, ...newConfig.database },
+	// 		matrix: { ...baseConfig.matrix, ...newConfig.matrix },
+	// 	};
+	// }
 
 	async loadSigningKey() {
 		const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;

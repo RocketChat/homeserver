@@ -1,20 +1,30 @@
-import { roomMemberEvent } from '@hs/core';
+import type { RoomMemberEvent } from '@hs/core';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import { HttpException, HttpStatus } from '@hs/core';
 import { generateId } from '@hs/core';
-import type {
-	InternalInviteUserResponse,
-	ProcessInviteBody,
-	ProcessInviteResponse,
-} from '@hs/homeserver/src/dtos';
 import { makeUnsignedRequest } from '@hs/core';
 import type { EventBase } from '@hs/core';
-import { signEvent } from '@hs/core';
+import { signEvent, roomMemberEvent } from '@hs/core';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
+import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
+import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
+import { StateRepository } from '@hs/homeserver/src/repositories/state.repository';
+import {
+	EventBaseDto,
+	EventIdDto,
+	RoomIdDto,
+	ServerNameDto,
+	UsernameDto,
+} from '../dtos';
+import type {
+	InternalInviteUserResponse,
+	ProcessInviteBody,
+	ProcessInviteResponse,
+} from '../dtos';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -36,6 +46,9 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
 		private readonly roomService: RoomService,
+		private readonly eventRepository: EventRepository,
+		private readonly roomRepository: RoomRepository,
+		private readonly stateRepository: StateRepository,
 	) {}
 
 	/**

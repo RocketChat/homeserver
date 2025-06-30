@@ -28,7 +28,7 @@ import {
 	InternalUpdateUserPowerLevelParamsDto,
 	RoomIdDto,
 	UsernameDto,
-} from '../../dtos';
+} from '@hs/federation-sdk/src/dtos';
 import { RoomService } from '@hs/federation-sdk/src/services/room.service';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import { StateService } from '@hs/federation-sdk/src/services/state.service';
@@ -41,7 +41,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		.post(
 			'/internal/rooms/rooms',
 			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-				const { username, name /*sender, canonical_alias, alias*/ } = body;
+				const { username, name /*sender , canonical_alias, alias*/ } = body;
 				// return roomService.createRoom(
 				// 	username,
 				// 	sender,

@@ -3,10 +3,7 @@ import {
 	roomMemberEvent,
 	type AuthEvents as RoomMemberAuthEvents,
 } from '@hs/core';
-import {
-	roomNameEvent,
-	type RoomNameAuthEvents,
-} from '@hs/core';
+import { roomNameEvent, type RoomNameAuthEvents } from '@hs/core';
 import {
 	isRoomPowerLevelsEvent,
 	roomPowerLevelsEvent,
@@ -24,7 +21,7 @@ import { generateId } from '@hs/core';
 import type {
 	InternalCreateRoomResponse,
 	InternalUpdateRoomNameResponse,
-} from '@hs/homeserver/src/dtos';
+} from '../dtos';
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import type { SigningKey } from '@hs/core';
 import type {

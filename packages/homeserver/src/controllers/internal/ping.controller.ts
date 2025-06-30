@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia';
-import { InternalPingResponseDto } from '../../dtos/internal/ping.dto';
+import { InternalPingResponseDto } from '@hs/federation-sdk/src/dtos/internal/ping.dto';
 
 export const pingPlugin = (app: Elysia) =>
 	app.get('/internal/ping', () => {

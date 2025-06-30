@@ -6,7 +6,7 @@ import {
 	InternalInviteUserBodyDto,
 	type InternalInviteUserResponse,
 	InternalInviteUserResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk/src/dtos';
 import { InviteService } from '@hs/federation-sdk/src/services/invite.service';
 import { StateService } from '@hs/federation-sdk/src/services/state.service';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';

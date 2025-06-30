@@ -1,8 +1,6 @@
 import { makeJoinEventBuilder } from '@hs/homeserver/src/procedures/makeJoin';
-import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { RoomService } from './room.service';
 
 import type { AuthEvents } from '@hs/core';
 import { injectable } from 'tsyringe';
@@ -20,18 +18,29 @@ import type {
 	QueryKeysBody,
 	QueryKeysResponse,
 	QueryProfileResponse,
-} from '@hs/homeserver/src/dtos/federation/profiles.dto';
+} from '../dtos/federation/profiles.dto';
 import type { EventStore } from '@hs/homeserver/src/models/event.model';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
+import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
+import { StateRepository } from '@hs/homeserver/src/repositories/state.repository';
+import { createLogger } from '../utils/logger';
+import { RoomService } from './room.service';
+import { FederationService } from './federation.service';
+import { FederationRequestService } from './federation-request.service';
+import { WellKnownService } from './well-known.service';
+import { ServerService } from './server.service';
+import { MissingEventService } from './missing-event.service';
+import { NotificationService } from './notification.service';
+import { EventStateService } from './event-state.service';
+import { EventAuthorizationService } from './event-authorization.service';
+import { EventFetcherService } from './event-fetcher.service';
 
 @injectable()
 export class ProfilesService {
-	private readonly logger = createLogger('ProfilesService');
-
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
-		private readonly roomService: RoomService,
+		// private readonly roomService: RoomService,
 		private readonly eventRepository: EventRepository,
 	) {}
 
