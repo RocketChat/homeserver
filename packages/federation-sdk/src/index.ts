@@ -31,6 +31,8 @@ export { ProfilesService } from './services/profiles.service';
 export { NotificationService } from './services/notification.service';
 export { EventFetcherService } from './services/event-fetcher.service';
 export type { FetchedEvents } from './services/event-fetcher.service';
+export { InviteService } from './services/invite.service';
+export type { ProcessInviteEvent } from './services/invite.service';
 
 // Utility exports
 export {
