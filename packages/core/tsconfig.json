@@ -7,16 +7,11 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"composite": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"noEmit": false,
+		"esModuleInterop": true,
+		"allowImportingTsExtensions": false
 	},
 	"include": ["src/**/*"],
-	"exclude": [
-		"node_modules",
-		"dist",
-		"**/*.spec.ts",
-		"**/*.test.ts",
-		"../homeserver/**/*",
-		"../crypto/**/*",
-		"../room/**/*"
-	]
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }
