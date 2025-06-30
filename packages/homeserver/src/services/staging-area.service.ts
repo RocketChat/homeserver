@@ -7,7 +7,7 @@ import {
 import { Lock } from '../utils/lock.decorator';
 import { createLogger } from '../utils/logger';
 import { EventAuthorizationService } from '@hs/federation-sdk';
-import { EventStateService } from './event-state.service';
+import { EventStateService } from '@hs/federation-sdk';
 import { EventService, EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
 

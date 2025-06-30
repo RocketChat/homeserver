@@ -32,7 +32,7 @@ import { StateRepository } from './repositories/state.repository';
 import { DatabaseConnectionService } from '@hs/federation-sdk';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
+import { EventStateService } from '@hs/federation-sdk';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
