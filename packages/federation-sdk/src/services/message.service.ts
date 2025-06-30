@@ -9,7 +9,7 @@ import {
 	type RoomMessageEvent,
 } from '@hs/core/src/events/m.room.message';
 import { FederationService } from '@hs/federation-sdk';
-import { ConfigService } from '@hs/homeserver/src/services/config.service';
+import { ConfigService } from './config.service';
 import {
 	EventService,
 	EventType,

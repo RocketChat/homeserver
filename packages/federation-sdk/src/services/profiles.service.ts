@@ -1,6 +1,6 @@
 import { makeJoinEventBuilder } from '@hs/homeserver/src/procedures/makeJoin';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
-import { ConfigService } from '@hs/homeserver/src/services/config.service';
+import { ConfigService } from './config.service';
 import { EventService } from '@hs/homeserver/src/services/event.service';
 import { RoomService } from '@hs/homeserver/src/services/room.service';
 

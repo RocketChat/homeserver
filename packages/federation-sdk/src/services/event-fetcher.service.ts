@@ -7,7 +7,7 @@ import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { generateId } from '@hs/homeserver/src/authentication';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
-import { ConfigService } from '@hs/homeserver/src/services/config.service';
+import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';
 
 export interface FetchedEvents {

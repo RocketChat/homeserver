@@ -24,7 +24,7 @@ import { RoomRepository } from '../repositories/room.repository';
 import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk/src/services/config.service';
 
 type ValidationResult = {
 	eventId: string;

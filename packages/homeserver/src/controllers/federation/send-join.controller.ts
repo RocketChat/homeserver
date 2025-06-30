@@ -1,8 +1,15 @@
 import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-import { type ErrorResponse, type SendJoinResponse, ErrorResponseDto, SendJoinEventDto, SendJoinParamsDto, SendJoinResponseDto } from '../../dtos';
-import { ConfigService } from '../../services/config.service';
+import {
+	type ErrorResponse,
+	type SendJoinResponse,
+	ErrorResponseDto,
+	SendJoinEventDto,
+	SendJoinParamsDto,
+	SendJoinResponseDto,
+} from '../../dtos';
+import { ConfigService } from '@hs/federation-sdk/src/services/config.service';
 import { EventService } from '../../services/event.service';
 
 export const sendJoinPlugin = (app: Elysia) => {
@@ -33,10 +40,10 @@ export const sendJoinPlugin = (app: Elysia) => {
 					...event,
 					unsigned: lastInviteEvent
 						? {
-							replaces_state: lastInviteEvent._id,
-							prev_content: lastInviteEvent.event.content,
-							prev_sender: lastInviteEvent.event.sender,
-						}
+								replaces_state: lastInviteEvent._id,
+								prev_content: lastInviteEvent.event.content,
+								prev_sender: lastInviteEvent.event.sender,
+							}
 						: undefined,
 				},
 				state: events.map((event) => ({ ...event })),
@@ -61,8 +68,8 @@ export const sendJoinPlugin = (app: Elysia) => {
 			detail: {
 				tags: ['Federation'],
 				summary: 'Send join',
-				description: 'Send a join event to a room'
-			}
-		}
+				description: 'Send a join event to a room',
+			},
+		},
 	);
 };

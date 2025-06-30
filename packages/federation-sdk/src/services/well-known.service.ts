@@ -1,4 +1,4 @@
-import { ConfigService } from '@hs/homeserver/src/services/config.service';
+import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';
 
 @injectable()
