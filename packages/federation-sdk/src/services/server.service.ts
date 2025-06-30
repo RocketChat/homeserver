@@ -1,4 +1,4 @@
-import { ServerRepository } from '../repositories/server.repository';
+import { ServerRepository } from '@hs/homeserver/src/repositories/server.repository';
 import { injectable } from 'tsyringe';
 
 @injectable()
