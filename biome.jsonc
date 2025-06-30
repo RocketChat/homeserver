@@ -16,6 +16,9 @@
 				"noExplicitAny": "warn",
 				"noEmptyInterface": "off"
 			},
+			"correctness": {
+				"noUnusedVariables": "error"
+			},
 			"style": {
 				"noNonNullAssertion": "warn",
 				"useImportType": "off"

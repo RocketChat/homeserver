@@ -60,7 +60,7 @@ export class StateService {
 
 		if (prevStateIds.length === 0) {
 			const state = new Map<StateMapKey, PersistentEventBase>();
-			const { identifier: stateKey, eventId: lastStateEventId } =
+			const { identifier: stateKey, eventId: _lastStateEventId } =
 				lastStateDelta;
 			const event = await this.eventRepository.findById(eventId);
 			if (!event) {
@@ -213,7 +213,7 @@ export class StateService {
 			},
 
 			getEventsByHashes: async (
-				hashes: string[],
+				_hashes: string[],
 			): Promise<PersistentEventBase[]> => {
 				throw new Error('Not implemented');
 			},

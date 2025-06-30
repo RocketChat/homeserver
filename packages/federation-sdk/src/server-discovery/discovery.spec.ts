@@ -22,7 +22,7 @@ import { getHomeserverFinalAddress } from './discovery';
 import { _URL } from './_url';
 
 const mockFetch = stubs.fetch as unknown as typeof fetch;
-const originalFetch = globalThis.fetch;
+// const originalFetch = globalThis.fetch;
 globalThis.fetch = mockFetch;
 
 // each function describes a stage of the spec to test spec conformity

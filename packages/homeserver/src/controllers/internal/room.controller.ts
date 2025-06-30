@@ -40,11 +40,8 @@ export const internalRoomPlugin = (app: Elysia) => {
 	return app
 		.post(
 			'/internal/rooms/rooms',
-			async ({
-				body,
-				set,
-			}): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-				const { username, sender, name, canonical_alias, alias } = body;
+			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
+				const { username, name /*sender, canonical_alias, alias*/ } = body;
 				// return roomService.createRoom(
 				// 	username,
 				// 	sender,
@@ -233,7 +230,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/join/:userId',
-			async ({ params, body, set }) => {
+			async ({ params, body }) => {
 				const { roomId, userId } = params;
 				const { senderUserId } = body;
 
@@ -393,7 +390,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { userIdToKick, senderUserId, reason, targetServers } =
+				const { /*userIdToKick, */ senderUserId, reason, targetServers } =
 					bodyParse.data;
 				try {
 					const eventId = await roomService.kickUser(
@@ -431,7 +428,6 @@ export const internalRoomPlugin = (app: Elysia) => {
 			async ({
 				params,
 				body,
-				set,
 			}): Promise<InternalBanUserResponse | ErrorResponse> => {
 				// const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				// const userIdParse = UsernameDto.safeParse(params.userIdToBan);
