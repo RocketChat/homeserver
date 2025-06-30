@@ -43,7 +43,7 @@ import { MissingEventService } from './services/missing-event.service';
 import { NotificationService } from './services/notification.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
-import { ServerService } from './services/server.service';
+import { ServerService } from '@hs/federation-sdk';
 import { StateService } from './services/state.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { WellKnownService } from '../../federation-sdk/src/services/well-known.service';
