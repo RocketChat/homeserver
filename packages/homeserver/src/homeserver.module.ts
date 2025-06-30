@@ -1,10 +1,7 @@
 import 'reflect-metadata';
 
 import { swagger } from '@elysiajs/swagger';
-import {
-	type FederationModuleOptions,
-	FederationRequestService,
-} from '@hs/federation-sdk';
+import { type FederationModuleOptions, FederationRequestService } from '@hs/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { toUnpaddedBase64 } from './binaryData';
@@ -43,7 +40,7 @@ import { RoomService } from './services/room.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { StagingAreaService } from './services/staging-area.service';
-import { WellKnownService } from './services/well-known.service';
+import { WellKnownService } from '../../federation-sdk/src/services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import { StateEventRepository } from './repositories/state-event.repository';
 import { roomPlugin } from './controllers/federation/rooms.controller';
@@ -126,8 +123,7 @@ async function setup() {
 					info: {
 						title: 'Matrix Homeserver API',
 						version: '1.0.0',
-						description:
-							'Matrix Protocol Implementation - Federation and Internal APIs',
+						description: 'Matrix Protocol Implementation - Federation and Internal APIs',
 					},
 				},
 			}),
