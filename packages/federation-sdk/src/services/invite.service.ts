@@ -1,20 +1,19 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
-import { FederationService } from '@hs/federation-sdk';
+import { FederationService, ConfigService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { HttpException, HttpStatus } from '../errors';
-import { generateId } from '../authentication';
+import { HttpException, HttpStatus } from '@hs/homeserver/src/errors';
+import { generateId } from '@hs/homeserver/src/authentication';
 import type {
 	InternalInviteUserResponse,
 	ProcessInviteBody,
 	ProcessInviteResponse,
-} from '../dtos';
-import { makeUnsignedRequest } from '../makeRequest';
-import type { EventBase } from '../models/event.model';
-import { signEvent } from '../signEvent';
-import { createLogger } from '../utils/logger';
-import { ConfigService } from '@hs/federation-sdk';
-import { EventService } from './event.service';
-import { RoomService } from './room.service';
+} from '@hs/homeserver/src/dtos';
+import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
+import type { EventBase } from '@hs/homeserver/src/models/event.model';
+import { signEvent } from '@hs/homeserver/src/signEvent';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { EventService } from '@hs/homeserver/src/services/event.service';
+import { RoomService } from '@hs/homeserver/src/services/room.service';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -200,14 +199,22 @@ export class InviteService {
 				responseMake.event as EventBase,
 				responseEventId,
 			);
+
+			return {
+				event_id: responseEventId,
+				room_id: finalRoomId,
+			};
 		}
 
-		return {
-			event_id: inviteEventId,
-			room_id: finalRoomId,
-		};
+		throw new HttpException(
+			'Failed to invite user to room',
+			HttpStatus.INTERNAL_SERVER_ERROR,
+		);
 	}
 
+	/**
+	 * Process an incoming invite from another server
+	 */
 	async processInvite(
 		event: ProcessInviteBody,
 		roomId: string,
@@ -255,6 +262,9 @@ export class InviteService {
 		}
 	}
 
+	/**
+	 * Accept an invite for a user
+	 */
 	async acceptInvite(roomId: string, userId: string): Promise<void> {
 		try {
 			// Check if the room is tombstoned (deleted)
@@ -295,6 +305,9 @@ export class InviteService {
 		}
 	}
 
+	/**
+	 * Handle the processing of an invite event
+	 */
 	private async handleInviteProcessing(
 		event: ProcessInviteEvent,
 	): Promise<void> {
