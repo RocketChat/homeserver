@@ -2,15 +2,15 @@ import {
 	generateId,
 	computeHash,
 	type HashedEvent,
-} from '@hs/homeserver/src/authentication';
-import { ForbiddenError, MatrixError } from '@hs/homeserver/src/errors';
-import { pruneEventDict } from '@hs/homeserver/src/pruneEventDict';
+} from '@hs/core/src/authentication';
+import { ForbiddenError, MatrixError } from '@hs/core/src/errors';
+import { pruneEventDict } from '@hs/core/src/pruneEventDict';
 import type { EventBase } from '@hs/core/src/events/eventBase';
-import type { SignedJson } from '@hs/homeserver/src/signJson';
+import type { SignedJson } from '@hs/core/src/signJson';
 import {
 	verifyJsonSignature,
 	getSignaturesFromRemote,
-} from '@hs/homeserver/src/signJson';
+} from '@hs/core/src/signJson';
 import logger from './logger';
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(

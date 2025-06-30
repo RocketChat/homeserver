@@ -1,7 +1,10 @@
 import { expect, it, describe, beforeEach, afterEach } from 'bun:test';
 import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
-import { EncryptionValidAlgorithm, encodeCanonicalJson } from '../signJson';
-import { generateKeyPairs } from '../keys';
+import {
+	EncryptionValidAlgorithm,
+	encodeCanonicalJson,
+} from '@hs/core/src/signJson';
+import { generateKeyPairs } from '@hs/core/src/keys';
 import nacl from 'tweetnacl';
 
 describe('getPublicKeyFromRemoteServer', () => {

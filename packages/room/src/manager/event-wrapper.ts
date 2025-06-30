@@ -1,4 +1,4 @@
-import { encodeCanonicalJson } from '@hs/homeserver/src/signJson';
+import { encodeCanonicalJson } from '@hs/core/src/signJson';
 import type { StateMapKey } from '../types/_common';
 import {
 	PduTypeRoomCanonicalAlias,

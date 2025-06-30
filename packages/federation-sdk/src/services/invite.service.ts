@@ -1,16 +1,16 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { HttpException, HttpStatus } from '@hs/homeserver/src/errors';
-import { generateId } from '@hs/homeserver/src/authentication';
+import { HttpException, HttpStatus } from '@hs/core/src/errors';
+import { generateId } from '@hs/core/src/authentication';
 import type {
 	InternalInviteUserResponse,
 	ProcessInviteBody,
 	ProcessInviteResponse,
 } from '@hs/homeserver/src/dtos';
-import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
-import type { EventBase } from '@hs/homeserver/src/models/event.model';
-import { signEvent } from '@hs/homeserver/src/signEvent';
+import { makeUnsignedRequest } from '@hs/core/src/makeRequest';
+import type { EventBase } from '@hs/core/src/events/eventBase';
+import { signEvent } from '@hs/core/src/signEvent';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -18,7 +18,11 @@ import { RoomService } from './room.service';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
-	event: EventBase & { origin: string; room_id: string; state_key: string };
+	event: EventBase & {
+		origin: string;
+		room_id: string;
+		state_key: string;
+	};
 	invite_room_state: unknown;
 	room_version: string;
 };

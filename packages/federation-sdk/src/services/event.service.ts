@@ -3,14 +3,14 @@ import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
-import { generateId } from '@hs/homeserver/src/authentication';
+import { generateId } from '@hs/core/src/authentication';
 import type {
 	GetMissingEventsBody,
 	GetMissingEventsParams,
 	GetMissingEventsResponse,
 	SendTransactionBody,
 } from '@hs/homeserver/src/dtos';
-import { MatrixError } from '@hs/homeserver/src/errors';
+import { MatrixError } from '@hs/core/src/errors';
 import type {
 	EventBase,
 	EventStore,
@@ -19,7 +19,7 @@ import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
 } from '@hs/homeserver/src/procedures/getPublicKeyFromServer';
-import { pruneEventDict } from '@hs/homeserver/src/pruneEventDict';
+import { pruneEventDict } from '@hs/core/src/pruneEventDict';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';

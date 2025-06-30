@@ -12,7 +12,7 @@ import { FederationService } from '@hs/federation-sdk';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 import { RoomService } from './room.service';
-import { ForbiddenError } from '@hs/homeserver/src/errors';
+import { ForbiddenError } from '@hs/core/src/errors';
 import {
 	type RedactionAuthEvents,
 	redactionEvent,
@@ -20,8 +20,8 @@ import {
 } from '@hs/core/src/events/m.room.redaction';
 import { injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
-import { signEvent, type SignedEvent } from '@hs/homeserver/src/signEvent';
-import { generateId } from '@hs/homeserver/src/authentication';
+import { signEvent, type SignedEvent } from '@hs/core/src/signEvent';
+import { generateId } from '@hs/core/src/authentication';
 
 @injectable()
 export class MessageService {

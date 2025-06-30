@@ -20,6 +20,9 @@ export type EventBase = {
 
 	content?: Record<string, unknown>;
 	unsigned?: Record<string, any> | undefined;
+
+	// TODO: THIS IS WRONG, WE SHOULD TWO DIFFERENT TYPES OF EVENTS
+	event_id?: string;
 };
 
 export interface Events {}

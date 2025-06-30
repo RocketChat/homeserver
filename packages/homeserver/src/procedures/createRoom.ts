@@ -23,7 +23,7 @@ import {
 	type RoomPowerLevelsEvent,
 } from '@hs/core/src/events/m.room.power_levels';
 import type { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
-import type { SignedEvent } from '../signEvent';
+import type { SignedEvent } from '@hs/core/src/signEvent';
 
 export type IdAndEvent<T> = {
 	event: T;

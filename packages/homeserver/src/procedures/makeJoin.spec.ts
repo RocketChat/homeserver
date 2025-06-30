@@ -1,7 +1,10 @@
 import { expect, it, describe, mock } from 'bun:test';
 import { makeJoinEventBuilder } from './makeJoin';
-import { IncompatibleRoomVersionError, NotFoundError } from '../errors';
-import type { EventStore } from '../models/event.model';
+import {
+	IncompatibleRoomVersionError,
+	NotFoundError,
+} from '@hs/core/src/errors';
+import type { EventStore } from '@hs/core/src/models/event.model';
 import type {
 	AuthEvents,
 	RoomMemberEvent,
