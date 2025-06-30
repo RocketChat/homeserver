@@ -28,7 +28,7 @@ import { checkSignAndHashes } from '@hs/homeserver/src/utils/checkSignAndHashes'
 import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { ConfigService } from './config.service';
-import { RoomService } from '@hs/homeserver/src/services/room.service';
+import { RoomService } from './room.service';
 
 type ValidationResult = {
 	eventId: string;

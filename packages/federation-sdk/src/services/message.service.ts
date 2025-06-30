@@ -11,7 +11,7 @@ import {
 import { FederationService } from '@hs/federation-sdk';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
-import { RoomService } from '@hs/homeserver/src/services/room.service';
+import { RoomService } from './room.service';
 import { ForbiddenError } from '@hs/homeserver/src/errors';
 import {
 	type RedactionAuthEvents,

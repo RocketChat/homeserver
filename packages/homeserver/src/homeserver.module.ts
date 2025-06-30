@@ -39,7 +39,7 @@ import { MessageService } from '@hs/federation-sdk/src/services/message.service'
 import { MissingEventService } from '@hs/federation-sdk/src/services/missing-event.service';
 import { NotificationService } from '@hs/federation-sdk/src/services/notification.service';
 import { ProfilesService } from '@hs/federation-sdk/src/services/profiles.service';
-import { RoomService } from './services/room.service';
+import { RoomService } from '@hs/federation-sdk/src/services/room.service';
 import { ServerService } from '@hs/federation-sdk/src/services/server.service';
 import { StateService } from './services/state.service';
 import { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
