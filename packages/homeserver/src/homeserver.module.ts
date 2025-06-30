@@ -6,6 +6,7 @@ import {
 } from '@hs/federation-sdk';
 import Elysia from 'elysia';
 import { Emitter } from '@rocket.chat/emitter';
+import { swagger } from '@elysiajs/swagger';
 import { container } from 'tsyringe';
 import { toUnpaddedBase64 } from './binaryData';
 import { invitePlugin } from './controllers/federation/invite.controller';
@@ -45,7 +46,7 @@ import { RoomService } from './services/room.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { StagingAreaService } from './services/staging-area.service';
-import { WellKnownService } from './services/well-known.service';
+import { WellKnownService } from '../../federation-sdk/src/services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import type { HomeserverEventSignatures } from './types/events';
 import { StateEventRepository } from './repositories/state-event.repository';
