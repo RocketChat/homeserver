@@ -8,7 +8,7 @@ import {
 	InternalInviteUserResponseDto,
 } from '../../dtos';
 import { InviteService } from '@hs/federation-sdk/src/services/invite.service';
-import { StateService } from '../../services/state.service';
+import { StateService } from '@hs/federation-sdk/src/services/state.service';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 
