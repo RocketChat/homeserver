@@ -28,6 +28,7 @@ export { EventAuthorizationService } from './services/event-authorization.servic
 export { EventStateService } from './services/event-state.service';
 export { MissingEventService } from './services/missing-event.service';
 export { ProfilesService } from './services/profiles.service';
+export { NotificationService } from './services/notification.service';
 
 // Utility exports
 export {
