@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '@hs/core';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -10,7 +10,7 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import type { ProtocolVersionKey } from '@hs/core/src/signJson';
+import type { ProtocolVersionKey } from '@hs/core';
 import { injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 

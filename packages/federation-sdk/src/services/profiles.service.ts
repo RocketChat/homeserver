@@ -4,7 +4,7 @@ import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
-import type { AuthEvents } from '@hs/core/src/events/m.room.member';
+import type { AuthEvents } from '@hs/core';
 import { injectable } from 'tsyringe';
 import type {
 	EventAuthParams,

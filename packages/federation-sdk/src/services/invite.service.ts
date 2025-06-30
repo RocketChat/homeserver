@@ -1,16 +1,16 @@
-import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
+import { roomMemberEvent } from '@hs/core';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { HttpException, HttpStatus } from '@hs/core/src/errors';
-import { generateId } from '@hs/core/src/authentication';
+import { HttpException, HttpStatus } from '@hs/core';
+import { generateId } from '@hs/core';
 import type {
 	InternalInviteUserResponse,
 	ProcessInviteBody,
 	ProcessInviteResponse,
 } from '@hs/homeserver/src/dtos';
-import { makeUnsignedRequest } from '@hs/core/src/makeRequest';
-import type { EventBase } from '@hs/core/src/events/eventBase';
-import { signEvent } from '@hs/core/src/signEvent';
+import { makeUnsignedRequest } from '@hs/core';
+import type { EventBase } from '@hs/core';
+import { signEvent } from '@hs/core';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';

@@ -2,9 +2,9 @@ import { FederationService } from '@hs/federation-sdk';
 import {
 	isFederationEventWithPDUs,
 	type MatrixPDU,
-} from '@hs/core/src/events/pdu';
+} from '@hs/core';
 import { createLogger } from '../utils/logger';
-import { generateId } from '@hs/core/src/authentication';
+import { generateId } from '@hs/core';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { ConfigService } from './config.service';

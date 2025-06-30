@@ -1,32 +1,32 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '@hs/core';
 import {
 	roomMemberEvent,
 	type AuthEvents as RoomMemberAuthEvents,
-} from '@hs/core/src/events/m.room.member';
+} from '@hs/core';
 import {
 	roomNameEvent,
 	type RoomNameAuthEvents,
-} from '@hs/core/src/events/m.room.name';
+} from '@hs/core';
 import {
 	isRoomPowerLevelsEvent,
 	roomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
-} from '@hs/core/src/events/m.room.power_levels';
+} from '@hs/core';
 import {
 	roomTombstoneEvent,
 	type RoomTombstoneEvent,
 	type TombstoneAuthEvents,
-} from '@hs/core/src/events/m.room.tombstone';
-import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
+} from '@hs/core';
+import { createSignedEvent } from '@hs/core';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { generateId } from '@hs/core/src/authentication';
+import { generateId } from '@hs/core';
 import type {
 	InternalCreateRoomResponse,
 	InternalUpdateRoomNameResponse,
 } from '@hs/homeserver/src/dtos';
-import { ForbiddenError, HttpException, HttpStatus } from '@hs/core/src/errors';
-import type { SigningKey } from '@hs/core/src/keys';
+import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
+import type { SigningKey } from '@hs/core';
 import type {
 	EventStore,
 	EventBase as ModelEventBase,
@@ -34,7 +34,7 @@ import type {
 import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
-import { signEvent, type SignedEvent } from '@hs/core/src/signEvent';
+import { signEvent, type SignedEvent } from '@hs/core';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';

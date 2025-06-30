@@ -11,9 +11,9 @@ import {
 import { FederationRequestService } from './federation-request.service';
 import { FederationConfigService } from './federation-config.service';
 import * as nacl from 'tweetnacl';
-import * as authentication from '@hs/core/src/authentication';
-import * as signJson from '@hs/core/src/signJson';
-import * as url from '@hs/core/src/helpers/url';
+import * as authentication from '@hs/core';
+import * as signJson from '@hs/core';
+import * as url from '@hs/core';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;

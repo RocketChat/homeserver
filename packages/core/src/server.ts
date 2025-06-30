@@ -21,36 +21,4 @@ export interface ServerKey {
 	>;
 }
 
-type Query = object;
-
-declare module './endpoints' {
-	interface Endpoints {
-		'/v2/server': {
-			GET: {
-				description: 'Gets the homeserver’s published signing keys. The homeserver may have any number of active keys and may have a number of old keys.';
-				auth: false;
-				rateLimit: false;
-				query: Query;
-				response: ServerKey;
-			};
-		};
-		'/v2/server/': {
-			GET: {
-				description: 'Gets the homeserver’s published signing keys. The homeserver may have any number of active keys and may have a number of old keys.';
-				auth: false;
-				rateLimit: false;
-				query: Query;
-				response: ServerKey;
-			};
-		};
-		'/v2/server/{keyID}': {
-			GET: {
-				description: 'Gets the homeserver’s published signing keys. The homeserver may have any number of active keys and may have a number of old keys.';
-				auth: false;
-				rateLimit: false;
-				query: Query;
-				response: ServerKey;
-			};
-		};
-	}
-}
+export type Query = object;

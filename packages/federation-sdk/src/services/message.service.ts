@@ -2,26 +2,26 @@ import {
 	reactionEvent,
 	type ReactionAuthEvents,
 	type ReactionEvent,
-} from '@hs/core/src/events/m.reaction';
+} from '@hs/core';
 import {
 	roomMessageEvent,
 	type MessageAuthEvents,
 	type RoomMessageEvent,
-} from '@hs/core/src/events/m.room.message';
+} from '@hs/core';
 import { FederationService } from '@hs/federation-sdk';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 import { RoomService } from './room.service';
-import { ForbiddenError } from '@hs/core/src/errors';
+import { ForbiddenError } from '@hs/core';
 import {
 	type RedactionAuthEvents,
 	redactionEvent,
 	type RedactionEvent,
-} from '@hs/core/src/events/m.room.redaction';
+} from '@hs/core';
 import { injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
-import { signEvent, type SignedEvent } from '@hs/core/src/signEvent';
-import { generateId } from '@hs/core/src/authentication';
+import { signEvent, type SignedEvent } from '@hs/core';
+import { generateId } from '@hs/core';
 
 @injectable()
 export class MessageService {

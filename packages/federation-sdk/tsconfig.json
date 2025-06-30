@@ -6,18 +6,9 @@
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
-		"composite": true,
+		"composite": false,
 		"skipLibCheck": true
 	},
 	"include": ["src/**/*"],
-	"exclude": [
-		"node_modules",
-		"dist",
-		"**/*.spec.ts",
-		"**/*.test.ts",
-		"../core/**/*",
-		"../homeserver/**/*",
-		"../crypto/**/*",
-		"../room/**/*"
-	]
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }
