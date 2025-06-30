@@ -70,7 +70,7 @@ export const isValidAlgorithm = (
 // To check if an entity has signed a JSON object an implementation does the following:
 
 // Checks if the signatures member of the object contains an entry with the name of the entity. If the entry is missing then the check fails.
-// Removes any signing key identifiers from the entry with algorithms it doesn’t understand. If there are no signing key identifiers left then the check fails.
+// Removes any signing key identifiers from the entry with algorithms it doesn't understand. If there are no signing key identifiers left then the check fails.
 // Looks up verification keys for the remaining signing key identifiers either from a local cache or by consulting a trusted key server. If it cannot find a verification key then the check fails.
 // Decodes the base64 encoded signature bytes. If base64 decoding fails then the check fails.
 // Removes the signatures and unsigned members of the object.

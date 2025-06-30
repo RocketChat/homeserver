@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../homeserver/src/keys';
-import { signEvent } from '../../../homeserver/src/signEvent';
+import { generateId } from '../authentication';
+import { generateKeyPairsFromString } from '../keys';
+import { signEvent } from '../signEvent';
 import { roomHistoryVisibilityEvent } from './m.room.history_visibility';
 
 const finalEventId = '$a4hYydlvVc738DgFJA4hDHaIl_umBkHSV_efweAO5PE';

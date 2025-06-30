@@ -1,8 +1,17 @@
-import { describe, it, expect, spyOn, beforeEach, afterEach } from 'bun:test';
+import {
+	expect,
+	test,
+	describe,
+	mock,
+	beforeEach,
+	afterEach,
+	spyOn,
+} from 'bun:test';
 import {
 	generateKeyPairs,
 	generateKeyPairsFromString,
 	getKeyPair,
+	type SigningKey,
 } from './keys';
 import { EncryptionValidAlgorithm } from './signJson';
 import { toUnpaddedBase64 } from './binaryData';
@@ -10,7 +19,7 @@ import nacl from 'tweetnacl';
 
 describe('keys', () => {
 	describe('generateKeyPairs', () => {
-		it('should generate key pairs with default algorithm and version', async () => {
+		test('should generate key pairs with default algorithm and version', async () => {
 			const seed = nacl.randomBytes(nacl.sign.seedLength);
 			const keyPair = await generateKeyPairs(seed);
 
@@ -20,7 +29,7 @@ describe('keys', () => {
 			expect(keyPair.publicKey).toBeInstanceOf(Uint8Array);
 		});
 
-		it('should generate key pairs with specified algorithm and version', async () => {
+		test('should generate key pairs with specified algorithm and version', async () => {
 			const seed = nacl.randomBytes(nacl.sign.seedLength);
 			const algorithm = EncryptionValidAlgorithm.ed25519;
 			const version = '1';
@@ -30,7 +39,7 @@ describe('keys', () => {
 			expect(keyPair.version).toBe(version);
 		});
 
-		it('should sign data correctly', async () => {
+		test('should sign data correctly', async () => {
 			const seed = nacl.randomBytes(nacl.sign.seedLength);
 			const keyPair = await generateKeyPairs(seed);
 			const data = new TextEncoder().encode('test data');
@@ -49,7 +58,7 @@ describe('keys', () => {
 	});
 
 	describe('generateKeyPairsFromString', () => {
-		it('should generate key pairs from a valid string', async () => {
+		test('should generate key pairs from a valid string', async () => {
 			const seed = nacl.randomBytes(nacl.sign.seedLength);
 			const seedString = Buffer.from(seed).toString('base64');
 			const content = `${EncryptionValidAlgorithm.ed25519} 1 ${seedString}`;
@@ -86,7 +95,7 @@ describe('keys', () => {
 			}
 		});
 
-		it('should generate and store new key pairs if file does not exist', async () => {
+		test('should generate and store new key pairs if file does not exist', async () => {
 			bunFileSpy.mockImplementation((_path: string) => ({
 				exists: async () => false,
 				text: async () => '',
@@ -107,7 +116,7 @@ describe('keys', () => {
 			expect(writeCallArg.startsWith('ed25519 0 ')).toBe(true);
 		});
 
-		it('should load key pairs from existing file', async () => {
+		test('should load key pairs from existing file', async () => {
 			const seed = nacl.randomBytes(nacl.sign.seedLength);
 			const seedString = toUnpaddedBase64(seed);
 			const fileContent = `${EncryptionValidAlgorithm.ed25519} 1 ${seedString}`;

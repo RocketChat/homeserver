@@ -15,6 +15,7 @@
 		"dist",
 		"**/*.spec.ts",
 		"**/*.test.ts",
+		"../core/**/*",
 		"../homeserver/**/*",
 		"../crypto/**/*",
 		"../room/**/*"

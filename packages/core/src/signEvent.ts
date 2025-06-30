@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from './events/eventBase';
 import type { SigningKey } from './keys';
 
 export type SignedEvent<T extends EventBase> = T & {
@@ -28,7 +28,7 @@ export const signEvent = async <T extends EventBase>(
 	const { signJson } = await import('./signJson');
 	const signedJsonResult = await signJson(eventToSign, signature, signingName);
 	// For non-redaction events, restore the original content
-	
+
 	return {
 		...signedJsonResult,
 		content: event.content,

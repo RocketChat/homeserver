@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from 'bun:test';
+import { expect, test, describe } from 'bun:test';
 
 import { pruneEventDict } from './pruneEventDict';
 

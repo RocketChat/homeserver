@@ -1,9 +1,22 @@
-import { describe, expect, it, test } from 'bun:test';
+import {
+	expect,
+	test,
+	describe,
+	mock,
+	beforeEach,
+	afterEach,
+	spyOn,
+} from 'bun:test';
+import {
+	encodeCanonicalJson,
+	signJson,
+	type SignedJson,
+	type ProtocolVersionKey,
+} from './signJson';
 import { generateKeyPairsFromString } from './keys';
 import { pruneEventDict } from './pruneEventDict';
 import {
 	EncryptionValidAlgorithm,
-	signJson,
 	signText,
 	verifySignaturesFromRemote,
 } from './signJson';
@@ -77,7 +90,7 @@ describe('verifySignaturesFromRemote', async () => {
 		);
 	});
 
-	it('it should throw an error if the signature is invalid for the serverName', async () => {
+	test('it should throw an error if the signature is invalid for the serverName', async () => {
 		const serverName = 'synapse';
 
 		expect(

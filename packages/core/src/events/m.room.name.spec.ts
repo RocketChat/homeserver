@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { generateId } from '../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../homeserver/src/keys';
-import type { SignedEvent } from '../../../homeserver/src/signEvent';
-import { signEvent } from '../../../homeserver/src/signEvent';
+import { generateId } from '../authentication';
+import { generateKeyPairsFromString } from '../keys';
+import type { SignedEvent } from '../signEvent';
+import { signEvent } from '../signEvent';
 import { roomCreateEvent } from './m.room.create';
 import { roomMemberEvent } from './m.room.member';
 import { roomNameEvent, type RoomNameEvent } from './m.room.name';

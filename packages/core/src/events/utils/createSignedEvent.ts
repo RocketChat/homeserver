@@ -1,5 +1,17 @@
-import type { SigningKey } from '../../../../homeserver/src/keys';
-import type { SignedEvent } from '../../../../homeserver/src/signEvent';
+import type { SigningKey } from '../../keys';
+import type { SignedEvent } from '../../signEvent';
+import { createEventBase, type EventBase } from '../eventBase';
+
+export const createEventWithIdDirect = async <T extends EventBase>(
+	event: T,
+	signature: SigningKey,
+	signingName: string,
+): Promise<SignedEvent<T>> => {
+	// Dynamically import dependencies to avoid circular dependencies
+	const [{ signEvent }] = await Promise.all([import('../../signEvent')]);
+
+	return await signEvent(event, signature, signingName);
+};
 
 export const createSignedEvent = (
 	signature: SigningKey,
@@ -11,9 +23,7 @@ export const createSignedEvent = (
 			...args: Parameters<F>
 		): Promise<SignedEvent<ReturnType<F>>> => {
 			const event = await fn(...args);
-			const { signEvent } = await import(
-				'../../../../homeserver/src/signEvent'
-			);
+			const { signEvent } = await import('../../signEvent');
 			return signEvent(event, signature, signingName) as Promise<
 				SignedEvent<ReturnType<F>>
 			>;
@@ -28,9 +38,7 @@ export const createEventWithId = <F extends (...args: any[]) => any>(fn: F) => {
 			...args: Parameters<F>
 		): Promise<{ event: SignedEvent<ReturnType<F>>; _id: string }> => {
 			const event = await sign(fn)(...args);
-			const { generateId } = await import(
-				'../../../../homeserver/src/authentication'
-			);
+			const { generateId } = await import('../../authentication');
 			const id = generateId(event);
 			return {
 				event,

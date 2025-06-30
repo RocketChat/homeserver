@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'bun:test';
-import { generateId } from '../../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../../homeserver/src/keys';
+import { generateId } from '../../authentication';
+import { generateKeyPairsFromString } from '../../keys';
 import { createSignedEvent, createEventWithId } from './createSignedEvent';
 
 describe('createEventWithId', () => {
