@@ -32,7 +32,7 @@ import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
+import { EventStateService } from '@hs/federation-sdk/src/services/event-state.service';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
