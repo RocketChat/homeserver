@@ -1,5 +1,5 @@
 import { createEventBase, type EventBase } from './eventBase';
-import { createEventWithId } from '@hs/federation-sdk/src/utils/createSignedEvent';
+import { createEventWithId } from '@hs/core/src/events/utils/createSignedEvent';
 
 declare module './eventBase' {
 	interface Events {

@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { injectable } from 'tsyringe';
 
