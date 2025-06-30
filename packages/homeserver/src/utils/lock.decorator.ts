@@ -42,7 +42,7 @@ class InMemoryLockProvider implements ILockProvider {
 		}
 
 		let releaseFn: (value?: any) => void;
-		
+
 		const lockPromise = new Promise<void>((resolve) => {
 			releaseFn = resolve;
 		});
@@ -66,7 +66,6 @@ class InMemoryLockProvider implements ILockProvider {
 type NatsConnection = any;
 type JetStreamManager = any;
 type JetStream = any;
-type Consumer = any;
 
 class NatsLockProvider implements ILockProvider {
 	private connection: NatsConnection | null = null;
@@ -136,7 +135,7 @@ class NatsLockProvider implements ILockProvider {
 
 		const lockSubject = `${this.lockPrefix}${key}`;
 		const consumerName = `lock-${key}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-		
+
 		try {
 			// Publish lock acquisition message
 			const lockPayload = JSON.stringify({
@@ -159,7 +158,7 @@ class NatsLockProvider implements ILockProvider {
 
 			// Try to consume our message
 			const messages = await consumer.consume({ max_messages: 1 });
-			
+
 			let lockAcquired = false;
 			let messageToAck: any = null;
 
@@ -189,7 +188,6 @@ class NatsLockProvider implements ILockProvider {
 				}
 				await this.cleanupConsumer(consumerName);
 			};
-
 		} catch (error) {
 			await this.cleanupConsumer(consumerName);
 			throw new Error(`Failed to acquire lock for key "${key}": ${error instanceof Error ? error.message : String(error)}`);
@@ -203,10 +201,13 @@ class NatsLockProvider implements ILockProvider {
 			}, timeoutMs);
 
 			// Simple backoff strategy - in production you might want more sophisticated monitoring
-			setTimeout(() => {
-				clearTimeout(timeout);
-				resolve();
-			}, Math.min(100, timeoutMs / 10));
+			setTimeout(
+				() => {
+					clearTimeout(timeout);
+					resolve();
+				},
+				Math.min(100, timeoutMs / 10),
+			);
 		});
 	}
 
@@ -235,10 +236,10 @@ class LockProviderFactory {
 		switch (config.type) {
 			case 'memory':
 				return InMemoryLockProvider.getInstance();
-			
+
 			case 'nats':
 				return new NatsLockProvider(config);
-			
+
 			default:
 				throw new Error(`Unsupported lock provider type: ${JSON.stringify(config)}`);
 		}
@@ -285,9 +286,9 @@ export interface LockOptions {
 
 /**
  * Locking decorator that provides mutual exclusion based on a key extracted from function parameters
- * 
+ *
  * @param options Configuration for the lock including timeout and key extraction path
- * 
+ *
  * @example
  * ```typescript
  * class UserService {
@@ -295,7 +296,7 @@ export interface LockOptions {
  *   async updateUser(userId: string, data: any) {
  *     // This method will be locked per userId
  *   }
- * 
+ *
  *   @Lock({ timeout: 10000, keyPath: 'request.roomId' })
  *   async joinRoom(request: { roomId: string, userId: string }) {
  *     // This method will be locked per roomId
@@ -304,24 +305,20 @@ export interface LockOptions {
  * ```
  */
 export function Lock(options: LockOptions) {
-	return <T extends (...args: any[]) => Promise<any>>(
-		_target: any,
-		propertyName: string,
-		descriptor: TypedPropertyDescriptor<T>
-	) => {
+	return <T extends (...args: any[]) => Promise<any>>(_target: any, propertyName: string, descriptor: TypedPropertyDescriptor<T>) => {
 		const originalMethod = descriptor.value;
-		
+
 		if (!originalMethod) {
 			throw new Error('Lock decorator can only be applied to methods');
 		}
 
 		descriptor.value = async function (this: any, ...args: any[]) {
 			const lockKey = extractLockKey(args, options.keyPath, propertyName);
-			
+
 			const lockManagerService = getLockManagerService();
-			
+
 			const releaseLock = await lockManagerService.acquireLock(lockKey, options.timeout);
-			
+
 			try {
 				return await originalMethod.apply(this, args);
 			} finally {
@@ -336,17 +333,17 @@ export function Lock(options: LockOptions) {
 function extractLockKey(args: any[], keyPath: string, methodName: string): string {
 	try {
 		const pathParts = keyPath.split('.');
-		
+
 		if (pathParts.length === 1) {
 			const paramName = pathParts[0];
-			
+
 			if (args.length > 0) {
 				if (typeof args[0] === 'string' || typeof args[0] === 'number') {
 					if (['userId', 'id', 'roomId', 'eventId', 'fileId', 'tableId'].includes(paramName)) {
 						return `${methodName}:${String(args[0])}`;
 					}
 				}
-				
+
 				if (typeof args[0] === 'object' && args[0] !== null && paramName in args[0]) {
 					const value = args[0][paramName];
 					if (value !== undefined && value !== null) {
@@ -354,10 +351,10 @@ function extractLockKey(args: any[], keyPath: string, methodName: string): strin
 					}
 				}
 			}
-			
+
 			throw new Error(`Could not find parameter '${paramName}' in method arguments`);
 		}
-		
+
 		let current = args[0];
 		for (const part of pathParts) {
 			if (current === null || current === undefined) {
@@ -368,11 +365,11 @@ function extractLockKey(args: any[], keyPath: string, methodName: string): strin
 			}
 			current = current[part];
 		}
-		
+
 		if (current === undefined || current === null) {
 			throw new Error(`Could not extract lock key from path '${keyPath}'`);
 		}
-		
+
 		return `${methodName}:${String(current)}`;
 	} catch (error) {
 		throw new Error(`Failed to extract lock key from path '${keyPath}': ${error instanceof Error ? error.message : String(error)}`);

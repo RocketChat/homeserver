@@ -1,10 +1,10 @@
 import { container } from 'tsyringe';
 import type { RouteDefinition } from '../../types/route.types';
 import {
-	type ErrorResponse,
-	type InternalMessageResponse,
-	type InternalReactionResponse,
-	type InternalRedactMessageResponse,
+	// type ErrorResponse,
+	// type InternalMessageResponse,
+	// type InternalReactionResponse,
+	// type InternalRedactMessageResponse,
 	ErrorResponseDto,
 	InternalMessageResponseDto,
 	InternalReactionResponseDto,
@@ -15,7 +15,7 @@ import {
 	InternalSendReactionBodyDto,
 	InternalSendReactionParamsDto,
 	InternalUpdateMessageBodyDto,
-	InternalUpdateMessageParamsDto
+	InternalUpdateMessageParamsDto,
 } from '../../dtos';
 import { MessageService } from '../../services/message.service';
 
@@ -27,12 +27,7 @@ export const messageRoutes: RouteDefinition[] = [
 			const messageService = container.resolve(MessageService);
 			const { roomId, message, senderUserId, targetServer } = ctx.body;
 			try {
-				return await messageService.sendMessage(
-					roomId,
-					message,
-					senderUserId,
-					targetServer,
-				);
+				return await messageService.sendMessage(roomId, message, senderUserId, targetServer);
 			} catch (error) {
 				ctx.setStatus(500);
 				return {
@@ -46,13 +41,13 @@ export const messageRoutes: RouteDefinition[] = [
 		},
 		responses: {
 			200: InternalMessageResponseDto,
-			500: ErrorResponseDto
+			500: ErrorResponseDto,
 		},
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Send a message to a room',
-			description: 'Send a text message to a Matrix room'
-		}
+			description: 'Send a text message to a Matrix room',
+		},
 	},
 	{
 		method: 'PATCH',
@@ -61,13 +56,7 @@ export const messageRoutes: RouteDefinition[] = [
 			const messageService = container.resolve(MessageService);
 			const { roomId, message, senderUserId, targetServer } = ctx.body;
 			try {
-				return await messageService.updateMessage(
-					roomId,
-					message,
-					senderUserId,
-					targetServer,
-					ctx.params.messageId,
-				);
+				return await messageService.updateMessage(roomId, message, senderUserId, targetServer, ctx.params.messageId);
 			} catch (error) {
 				ctx.setStatus(500);
 				return {
@@ -82,13 +71,13 @@ export const messageRoutes: RouteDefinition[] = [
 		},
 		responses: {
 			200: InternalMessageResponseDto,
-			500: ErrorResponseDto
+			500: ErrorResponseDto,
 		},
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Update a message',
-			description: 'Update the content of an existing message'
-		}
+			description: 'Update the content of an existing message',
+		},
 	},
 	{
 		method: 'POST',
@@ -97,13 +86,7 @@ export const messageRoutes: RouteDefinition[] = [
 			const messageService = container.resolve(MessageService);
 			const { roomId, emoji, senderUserId, targetServer } = ctx.body;
 			try {
-				return await messageService.sendReaction(
-					roomId,
-					ctx.params.messageId,
-					emoji,
-					senderUserId,
-					targetServer,
-				);
+				return await messageService.sendReaction(roomId, ctx.params.messageId, emoji, senderUserId, targetServer);
 			} catch (error) {
 				ctx.setStatus(500);
 				return {
@@ -118,13 +101,13 @@ export const messageRoutes: RouteDefinition[] = [
 		},
 		responses: {
 			200: InternalReactionResponseDto,
-			500: ErrorResponseDto
+			500: ErrorResponseDto,
 		},
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Send a reaction to a message',
-			description: 'Send a reaction to a message'
-		}
+			description: 'Send a reaction to a message',
+		},
 	},
 	{
 		method: 'DELETE',
@@ -132,13 +115,7 @@ export const messageRoutes: RouteDefinition[] = [
 		handler: async (ctx) => {
 			const messageService = container.resolve(MessageService);
 			const { roomId, reason, senderUserId, targetServer } = ctx.body;
-			return messageService.redactMessage(
-				roomId,
-				ctx.params.messageId,
-				reason,
-				senderUserId,
-				targetServer,
-			);
+			return messageService.redactMessage(roomId, ctx.params.messageId, reason, senderUserId, targetServer);
 		},
 		validation: {
 			params: InternalRedactMessageParamsDto,
@@ -146,12 +123,12 @@ export const messageRoutes: RouteDefinition[] = [
 		},
 		responses: {
 			200: InternalRedactMessageResponseDto,
-			500: ErrorResponseDto
+			500: ErrorResponseDto,
 		},
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Redact a message',
-			description: 'Redact a message'
-		}
-	}
+			description: 'Redact a message',
+		},
+	},
 ];

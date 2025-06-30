@@ -1,22 +1,8 @@
 import type { EventBase } from '@hs/core/src/events/eventBase';
-import {
-	roomMemberEvent,
-	type AuthEvents as RoomMemberAuthEvents,
-} from '@hs/core/src/events/m.room.member';
-import {
-	roomNameEvent,
-	type RoomNameAuthEvents,
-} from '@hs/core/src/events/m.room.name';
-import {
-	isRoomPowerLevelsEvent,
-	roomPowerLevelsEvent,
-	type RoomPowerLevelsEvent,
-} from '@hs/core/src/events/m.room.power_levels';
-import {
-	roomTombstoneEvent,
-	type RoomTombstoneEvent,
-	type TombstoneAuthEvents,
-} from '@hs/core/src/events/m.room.tombstone';
+import { roomMemberEvent, type AuthEvents as RoomMemberAuthEvents } from '@hs/core/src/events/m.room.member';
+import { roomNameEvent, type RoomNameAuthEvents } from '@hs/core/src/events/m.room.name';
+import { isRoomPowerLevelsEvent, roomPowerLevelsEvent, type RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
+import { roomTombstoneEvent, type RoomTombstoneEvent, type TombstoneAuthEvents } from '@hs/core/src/events/m.room.tombstone';
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from '@hs/federation-sdk';
 import { HttpException, HttpStatus } from '@nestjs/common';
@@ -25,10 +11,7 @@ import { generateId } from '../authentication';
 import type { InternalCreateRoomResponse, InternalUpdateRoomNameResponse } from '../dtos';
 import { ForbiddenError } from '../errors';
 import type { SigningKey } from '../keys';
-import type {
-	EventStore,
-	EventBase as ModelEventBase,
-} from '../models/event.model';
+import type { EventStore, EventBase as ModelEventBase } from '../models/event.model';
 import { createRoom } from '../procedures/createRoom';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
@@ -36,7 +19,6 @@ import { signEvent, type SignedEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
-import { EventEmitterService } from './event-emitter.service';
 
 const logger = createLogger('RoomService');
 
@@ -59,7 +41,6 @@ export class RoomService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
-		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -68,41 +49,29 @@ export class RoomService {
 		targetUserId: string,
 		newPowerLevel: number,
 	): void {
-		const senderPower =
-			currentPowerLevelsContent.users?.[senderId] ??
-			currentPowerLevelsContent.users_default;
+		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default;
 
 		// 1. Check if sender can modify m.room.power_levels event itself
 		const requiredLevelToModifyEvent =
-			currentPowerLevelsContent.events?.['m.room.power_levels'] ??
-			currentPowerLevelsContent.state_default ??
-			100;
+			currentPowerLevelsContent.events?.['m.room.power_levels'] ?? currentPowerLevelsContent.state_default ?? 100;
 
 		if (senderPower < requiredLevelToModifyEvent) {
 			logger.warn(
 				`Sender ${senderId} (power ${senderPower}) lacks global permission (needs ${requiredLevelToModifyEvent}) to modify power levels event.`,
 			);
-			throw new HttpException(
-				"You don't have permission to change power levels events.",
-				HttpStatus.FORBIDDEN,
-			);
+			throw new HttpException("You don't have permission to change power levels events.", HttpStatus.FORBIDDEN);
 		}
 
 		// 2. Specific checks when changing another user's power level
 		if (senderId !== targetUserId) {
-			const targetUserCurrentPower =
-				currentPowerLevelsContent.users?.[targetUserId] ??
-				currentPowerLevelsContent.users_default;
+			const targetUserCurrentPower = currentPowerLevelsContent.users?.[targetUserId] ?? currentPowerLevelsContent.users_default;
 
 			// Rule: Cannot set another user's power level higher than one's own.
 			if (newPowerLevel > senderPower) {
 				logger.warn(
 					`Sender ${senderId} (power ${senderPower}) cannot set user ${targetUserId}'s power to ${newPowerLevel} (higher than own).`,
 				);
-				throw new HttpException(
-					"You cannot set another user's power level higher than your own.",
-					HttpStatus.FORBIDDEN,
-				);
+				throw new HttpException("You cannot set another user's power level higher than your own.", HttpStatus.FORBIDDEN);
 			}
 
 			// Rule: Cannot change power level of a user whose current power is >= sender's power.
@@ -118,75 +87,39 @@ export class RoomService {
 		}
 	}
 
-	private validateKickPermission(
-		currentPowerLevelsContent: RoomPowerLevelsEvent['content'],
-		senderId: string,
-		kickedUserId: string,
-	): void {
-		const senderPower =
-			currentPowerLevelsContent.users?.[senderId] ??
-			currentPowerLevelsContent.users_default ??
-			0;
-		const kickedUserPower =
-			currentPowerLevelsContent.users?.[kickedUserId] ??
-			currentPowerLevelsContent.users_default ??
-			0;
+	private validateKickPermission(currentPowerLevelsContent: RoomPowerLevelsEvent['content'], senderId: string, kickedUserId: string): void {
+		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
+		const kickedUserPower = currentPowerLevelsContent.users?.[kickedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
 		const kickLevel = currentPowerLevelsContent.kick ?? 50; // Default kick level if not specified
 
 		if (senderPower < kickLevel) {
-			logger.warn(
-				`Sender ${senderId} (power ${senderPower}) does not meet required power level (${kickLevel}) to kick users.`,
-			);
-			throw new HttpException(
-				"You don't have permission to kick users from this room.",
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`Sender ${senderId} (power ${senderPower}) does not meet required power level (${kickLevel}) to kick users.`);
+			throw new HttpException("You don't have permission to kick users from this room.", HttpStatus.FORBIDDEN);
 		}
 
 		if (kickedUserPower >= senderPower) {
 			logger.warn(
 				`Sender ${senderId} (power ${senderPower}) cannot kick user ${kickedUserId} (power ${kickedUserPower}) who has equal or greater power.`,
 			);
-			throw new HttpException(
-				'You cannot kick a user with power greater than or equal to your own.',
-				HttpStatus.FORBIDDEN,
-			);
+			throw new HttpException('You cannot kick a user with power greater than or equal to your own.', HttpStatus.FORBIDDEN);
 		}
 	}
 
-	private validateBanPermission(
-		currentPowerLevelsContent: RoomPowerLevelsEvent['content'],
-		senderId: string,
-		bannedUserId: string,
-	): void {
-		const senderPower =
-			currentPowerLevelsContent.users?.[senderId] ??
-			currentPowerLevelsContent.users_default ??
-			0;
-		const bannedUserPower =
-			currentPowerLevelsContent.users?.[bannedUserId] ??
-			currentPowerLevelsContent.users_default ??
-			0;
+	private validateBanPermission(currentPowerLevelsContent: RoomPowerLevelsEvent['content'], senderId: string, bannedUserId: string): void {
+		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
+		const bannedUserPower = currentPowerLevelsContent.users?.[bannedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
 		const banLevel = currentPowerLevelsContent.ban ?? 50; // Default ban level if not specified
 
 		if (senderPower < banLevel) {
-			logger.warn(
-				`Sender ${senderId} (power ${senderPower}) does not meet required power level (${banLevel}) to ban users.`,
-			);
-			throw new HttpException(
-				"You don't have permission to ban users from this room.",
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`Sender ${senderId} (power ${senderPower}) does not meet required power level (${banLevel}) to ban users.`);
+			throw new HttpException("You don't have permission to ban users from this room.", HttpStatus.FORBIDDEN);
 		}
 
 		if (bannedUserPower >= senderPower) {
 			logger.warn(
 				`Sender ${senderId} (power ${senderPower}) cannot ban user ${bannedUserId} (power ${bannedUserPower}) who has equal or greater power.`,
 			);
-			throw new HttpException(
-				'You cannot ban a user with power greater than or equal to your own.',
-				HttpStatus.FORBIDDEN,
-			);
+			throw new HttpException('You cannot ban a user with power greater than or equal to your own.', HttpStatus.FORBIDDEN);
 		}
 	}
 
@@ -200,17 +133,13 @@ export class RoomService {
 		}
 
 		// Find power levels
-		const powerLevelsEvent = state.find(
-			(event) => event.type === 'm.room.power_levels',
-		);
+		const powerLevelsEvent = state.find((event) => event.type === 'm.room.power_levels');
 		if (powerLevelsEvent) {
 			logger.info(`Found power levels event for room ${roomId}`);
 		}
 
 		// Count member events
-		const memberEvents = state.filter(
-			(event) => event.type === 'm.room.member',
-		);
+		const memberEvents = state.filter((event) => event.type === 'm.room.member');
 		logger.info(`Room ${roomId} has ${memberEvents.length} member events`);
 
 		try {
@@ -239,7 +168,7 @@ export class RoomService {
 		console.log('[RoomService]');
 		console.log('[RoomService]');
 		console.log('[RoomService]');
-		
+
 		logger.debug(`Creating room for ${sender} with ${username}`);
 		const config = this.configService.getServerConfig();
 		const signingKey = await this.configService.getSigningKey();
@@ -251,18 +180,12 @@ export class RoomService {
 		const roomId = `!${createMediaId(18)}:${config.name}`;
 		const result = await createRoom(
 			[sender, username],
-			createSignedEvent(
-				Array.isArray(signingKey) ? signingKey[0] : signingKey,
-				config.name,
-			),
+			createSignedEvent(Array.isArray(signingKey) ? signingKey[0] : signingKey, config.name),
 			roomId,
 		);
 
 		if (result.events.filter(Boolean).length === 0) {
-			throw new HttpException(
-				'Error creating room',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Error creating room', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		for (const eventObj of result.events) {
@@ -287,65 +210,33 @@ export class RoomService {
 		};
 	}
 
-	async updateRoomName(
-		roomId: string,
-		name: string,
-		senderId: string,
-		targetServer: string,
-	): Promise<InternalUpdateRoomNameResponse> {
-		logger.info(
-			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
-		);
+	async updateRoomName(roomId: string, name: string, senderId: string, targetServer: string): Promise<InternalUpdateRoomNameResponse> {
+		logger.info(`Updating room name for ${roomId} to \"${name}\" by ${senderId}`);
 
-		const lastEvent: EventStore | null =
-			await this.eventService.getLastEventForRoom(roomId);
+		const lastEvent: EventStore | null = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot update name',
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new HttpException('Room has no history, cannot update name', HttpStatus.BAD_REQUEST);
 		}
 
-		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.NAME,
-			{ roomId, senderId },
-		);
-		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		)?._id;
+		const authEventIds = await this.eventService.getAuthEventIds(EventType.NAME, { roomId, senderId });
+		const powerLevelsEventId = authEventIds.find((e) => e.type === EventType.POWER_LEVELS)?._id;
 
-		const canUpdateRoomName = await this.eventService.checkUserPermission(
-			powerLevelsEventId || '',
-			senderId,
-			EventType.NAME,
-		);
+		const canUpdateRoomName = await this.eventService.checkUserPermission(powerLevelsEventId || '', senderId, EventType.NAME);
 
 		if (!canUpdateRoomName) {
-			logger.warn(
-				`User ${senderId} does not have permission to set room name in ${roomId} based on power levels.`,
-			);
-			throw new HttpException(
-				"You don't have permission to set the room name.",
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`User ${senderId} does not have permission to set room name in ${roomId} based on power levels.`);
+			throw new HttpException("You don't have permission to set the room name.", HttpStatus.FORBIDDEN);
 		}
 
 		if (authEventIds.length < 3) {
-			logger.error(
-				`Could not find all auth events for room name update. Found: ${JSON.stringify(authEventIds)}`,
-			);
-			throw new HttpException(
-				'Not authorized or missing prerequisites to set room name',
-				HttpStatus.FORBIDDEN,
-			);
+			logger.error(`Could not find all auth events for room name update. Found: ${JSON.stringify(authEventIds)}`);
+			throw new HttpException('Not authorized or missing prerequisites to set room name', HttpStatus.FORBIDDEN);
 		}
 
 		const authEvents: RoomNameAuthEvents = {
-			'm.room.create':
-				authEventIds.find((e) => e.type === EventType.CREATE)?._id || '',
+			'm.room.create': authEventIds.find((e) => e.type === EventType.CREATE)?._id || '',
 			'm.room.power_levels': powerLevelsEventId || '',
-			'm.room.member':
-				authEventIds.find((e) => e.type === EventType.MEMBER)?._id || '',
+			'm.room.member': authEventIds.find((e) => e.type === EventType.MEMBER)?._id || '',
 		};
 
 		if (!authEvents['m.room.create'] || !authEvents['m.room.member']) {
@@ -353,10 +244,7 @@ export class RoomService {
 			logger.error(
 				`Critical auth events missing (create or member). Create: ${authEvents['m.room.create']}, Member: ${authEvents['m.room.member']}`,
 			);
-			throw new HttpException(
-				'Critical auth events missing, cannot set room name',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Critical auth events missing, cannot set room name', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		const roomNameEventPayload = {
@@ -370,9 +258,7 @@ export class RoomService {
 		};
 
 		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
+		const signingKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
 		const serverName = this.configService.getServerConfig().name;
 
 		const unsignedEvent = roomNameEvent(roomNameEventPayload);
@@ -380,14 +266,10 @@ export class RoomService {
 
 		const eventId = generateId(signedEvent);
 		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.name event ${eventId} for room ${roomId}`,
-		);
+		logger.info(`Successfully created and stored m.room.name event ${eventId} for room ${roomId}`);
 
 		await this.roomRepository.updateRoomName(roomId, name);
-		logger.info(
-			`Successfully updated room name in repository for room ${roomId}`,
-		);
+		logger.info(`Successfully updated room name in repository for room ${roomId}`);
 
 		// Emit room name updated event
 		// this.eventEmitterService.emit('homeserver.event.processed', {
@@ -399,13 +281,8 @@ export class RoomService {
 
 		for (const server of [targetServer]) {
 			try {
-				await this.federationService.sendEvent(
-					server,
-					signedEvent as unknown as EventBase,
-				);
-				logger.info(
-					`Successfully sent m.room.name event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
+				await this.federationService.sendEvent(server, signedEvent as unknown as EventBase);
+				logger.info(`Successfully sent m.room.name event ${eventId} over federation to ${server} for room ${roomId}`);
 			} catch (error) {
 				logger.error(
 					`Failed to send m.room.name event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
@@ -425,43 +302,23 @@ export class RoomService {
 		senderId: string,
 		targetServers: string[] = [],
 	): Promise<string> {
-		logger.info(
-			`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`,
-		);
+		logger.info(`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`);
 
-		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
-			{ roomId, senderId },
+		const authEventIds = await this.eventService.getAuthEventIds(EventType.POWER_LEVELS, { roomId, senderId });
+		const currentPowerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(
+			authEventIds.find((e) => e.type === EventType.POWER_LEVELS)?._id || '',
 		);
-		const currentPowerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				authEventIds.find((e) => e.type === EventType.POWER_LEVELS)?._id || '',
-			);
 
 		if (!currentPowerLevelsEvent) {
 			logger.error(`No m.room.power_levels event found for room ${roomId}`);
-			throw new HttpException(
-				'Room power levels not found, cannot update.',
-				HttpStatus.NOT_FOUND,
-			);
+			throw new HttpException('Room power levels not found, cannot update.', HttpStatus.NOT_FOUND);
 		}
 
-		this.validatePowerLevelChange(
-			currentPowerLevelsEvent.content,
-			senderId,
-			userId,
-			powerLevel,
-		);
+		this.validatePowerLevelChange(currentPowerLevelsEvent.content, senderId, userId, powerLevel);
 
-		const createAuthResult = authEventIds.find(
-			(e) => e.type === EventType.CREATE,
-		);
-		const powerLevelsAuthResult = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		);
-		const memberAuthResult = authEventIds.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		);
+		const createAuthResult = authEventIds.find((e) => e.type === EventType.CREATE);
+		const powerLevelsAuthResult = authEventIds.find((e) => e.type === EventType.POWER_LEVELS);
+		const memberAuthResult = authEventIds.find((e) => e.type === EventType.MEMBER && e.state_key === senderId);
 
 		const authEventsMap = {
 			'm.room.create': createAuthResult?._id || '',
@@ -470,44 +327,29 @@ export class RoomService {
 		};
 
 		// Ensure critical auth events were found
-		if (
-			!authEventsMap['m.room.create'] ||
-			!authEventsMap['m.room.power_levels'] ||
-			!authEventsMap['m.room.member']
-		) {
+		if (!authEventsMap['m.room.create'] || !authEventsMap['m.room.power_levels'] || !authEventsMap['m.room.member']) {
 			logger.error(
 				`Critical auth events missing for power level update. Create: ${authEventsMap['m.room.create']}, PowerLevels: ${authEventsMap['m.room.power_levels']}, Member: ${authEventsMap['m.room.member']}`,
 			);
-			throw new HttpException(
-				'Internal server error: Missing auth events for power level update.',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Internal server error: Missing auth events for power level update.', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		const lastEventStore = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEventStore) {
 			logger.error(`No last event found for room ${roomId}`);
-			throw new HttpException(
-				'Room has no history, cannot update power levels',
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new HttpException('Room has no history, cannot update power levels', HttpStatus.BAD_REQUEST);
 		}
 
 		const serverName = this.configService.getServerConfig().name;
 		if (!serverName) {
 			logger.error('Server name is not configured. Cannot set event origin.');
-			throw new HttpException(
-				'Server configuration error for event origin.',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Server configuration error for event origin.', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		const eventToSign = roomPowerLevelsEvent({
 			roomId,
 			members: [senderId, userId],
-			auth_events: Object.values(authEventsMap).filter(
-				(id) => typeof id === 'string',
-			),
+			auth_events: Object.values(authEventsMap).filter((id) => typeof id === 'string'),
 			prev_events: [lastEventStore.event.event_id!],
 			depth: lastEventStore.event.depth + 1,
 			content: {
@@ -521,23 +363,15 @@ export class RoomService {
 		});
 
 		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
 
-		const signedEvent: SignedEvent<RoomPowerLevelsEvent> = await signEvent(
-			eventToSign,
-			signingKey,
-			serverName,
-		);
+		const signedEvent: SignedEvent<RoomPowerLevelsEvent> = await signEvent(eventToSign, signingKey, serverName);
 
 		const eventId = generateId(signedEvent);
 
 		// Store the event locally BEFORE attempting federation
 		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`,
-		);
+		logger.info(`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`);
 
 		for (const server of targetServers) {
 			if (server === this.configService.getServerConfig().name) {
@@ -546,9 +380,7 @@ export class RoomService {
 
 			try {
 				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.power_levels event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
+				logger.info(`Successfully sent m.room.power_levels event ${eventId} over federation to ${server} for room ${roomId}`);
 			} catch (error) {
 				logger.error(
 					`Failed to send m.room.power_levels event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
@@ -559,72 +391,37 @@ export class RoomService {
 		return eventId;
 	}
 
-	async leaveRoom(
-		roomId: string,
-		senderId: string,
-		targetServers: string[] = [],
-	): Promise<string> {
+	async leaveRoom(roomId: string, senderId: string, targetServers: string[] = []): Promise<string> {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
 
 		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot leave',
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new HttpException('Room has no history, cannot leave', HttpStatus.BAD_REQUEST);
 		}
 
-		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
-			{ roomId, senderId },
-		);
+		const authEventIds = await this.eventService.getAuthEventIds(EventType.MEMBER, { roomId, senderId });
 
 		// For a leave event, the user must have permission to send m.room.member events.
 		// This is typically covered by them being a member, but power levels might restrict it.
-		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		)?._id;
+		const powerLevelsEventId = authEventIds.find((e) => e.type === EventType.POWER_LEVELS)?._id;
 		if (!powerLevelsEventId) {
-			logger.warn(
-				`No power_levels event found for room ${roomId}, cannot verify permission to leave.`,
-			);
-			throw new HttpException(
-				'Cannot verify permission to leave room.',
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to leave.`);
+			throw new HttpException('Cannot verify permission to leave room.', HttpStatus.FORBIDDEN);
 		}
 
-		const canLeaveRoom = await this.eventService.checkUserPermission(
-			powerLevelsEventId,
-			senderId,
-			EventType.MEMBER,
-		);
+		const canLeaveRoom = await this.eventService.checkUserPermission(powerLevelsEventId, senderId, EventType.MEMBER);
 
 		if (!canLeaveRoom) {
-			logger.warn(
-				`User ${senderId} does not have permission to send m.room.member events in ${roomId} (i.e., to leave).`,
-			);
-			throw new HttpException(
-				"You don't have permission to leave this room.",
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`User ${senderId} does not have permission to send m.room.member events in ${roomId} (i.e., to leave).`);
+			throw new HttpException("You don't have permission to leave this room.", HttpStatus.FORBIDDEN);
 		}
 
-		const createEventId = authEventIds.find(
-			(e) => e.type === EventType.CREATE,
-		)?._id;
-		const memberEventId = authEventIds.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		)?._id;
+		const createEventId = authEventIds.find((e) => e.type === EventType.CREATE)?._id;
+		const memberEventId = authEventIds.find((e) => e.type === EventType.MEMBER && e.state_key === senderId)?._id;
 
 		if (!createEventId || !memberEventId) {
-			logger.error(
-				`Critical auth events missing for leave. Create: ${createEventId}, Member: ${memberEventId}`,
-			);
-			throw new HttpException(
-				'Critical auth events missing, cannot leave room',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			logger.error(`Critical auth events missing for leave. Create: ${createEventId}, Member: ${memberEventId}`);
+			throw new HttpException('Critical auth events missing, cannot leave room', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		const authEvents: RoomMemberAuthEvents = {
@@ -635,9 +432,7 @@ export class RoomService {
 
 		const serverName = this.configService.getServerConfig().name;
 		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
 
 		const unsignedEvent = roomMemberEvent({
 			roomId,
@@ -667,9 +462,7 @@ export class RoomService {
 
 			try {
 				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.member (leave) event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
+				logger.info(`Successfully sent m.room.member (leave) event ${eventId} over federation to ${server} for room ${roomId}`);
 			} catch (error) {
 				logger.error(
 					`Failed to send m.room.member (leave) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
@@ -678,9 +471,7 @@ export class RoomService {
 		}
 
 		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.member (leave) event ${eventId} for user ${senderId} in room ${roomId}`,
-		);
+		logger.info(`Successfully created and stored m.room.member (leave) event ${eventId} for user ${senderId} in room ${roomId}`);
 
 		// Emit room left event
 		// this.eventEmitterService.emit('homeserver.room.left', {
@@ -692,84 +483,41 @@ export class RoomService {
 		return eventId;
 	}
 
-	async kickUser(
-		roomId: string,
-		kickedUserId: string,
-		senderId: string,
-		reason?: string,
-		targetServers: string[] = [],
-	): Promise<string> {
-		logger.info(
-			`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
-		);
+	async kickUser(roomId: string, kickedUserId: string, senderId: string, reason?: string, targetServers: string[] = []): Promise<string> {
+		logger.info(`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`);
 
 		// TODO: Check if both sender and kicked user are members of the room
 		// This will be easier when we have a room state cache
 
 		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot kick user',
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new HttpException('Room has no history, cannot kick user', HttpStatus.BAD_REQUEST);
 		}
 
-		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
-			{ roomId, senderId },
-		);
-		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		)?._id;
+		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(EventType.POWER_LEVELS, { roomId, senderId });
+		const powerLevelsEventId = authEventIdsForPowerLevels.find((e) => e.type === EventType.POWER_LEVELS)?._id;
 
 		if (!powerLevelsEventId) {
-			logger.warn(
-				`No power_levels event found for room ${roomId}, cannot verify permission to kick.`,
-			);
-			throw new HttpException(
-				'Cannot verify permission to kick user.',
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to kick.`);
+			throw new HttpException('Cannot verify permission to kick user.', HttpStatus.FORBIDDEN);
 		}
-		const powerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				powerLevelsEventId,
-			);
+		const powerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(powerLevelsEventId);
 		if (!powerLevelsEvent) {
-			logger.error(
-				`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`,
-			);
-			throw new HttpException(
-				'Internal server error: Power levels event data missing.',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			logger.error(`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`);
+			throw new HttpException('Internal server error: Power levels event data missing.', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
-		this.validateKickPermission(
-			powerLevelsEvent.content,
-			senderId,
-			kickedUserId,
-		);
+		this.validateKickPermission(powerLevelsEvent.content, senderId, kickedUserId);
 
-		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
-			{ roomId, senderId },
-		);
-		const createEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.CREATE,
-		)?._id;
-		const senderMemberEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		)?._id;
+		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(EventType.MEMBER, { roomId, senderId });
+		const createEventId = authEventIdsForMemberEvent.find((e) => e.type === EventType.CREATE)?._id;
+		const senderMemberEventId = authEventIdsForMemberEvent.find((e) => e.type === EventType.MEMBER && e.state_key === senderId)?._id;
 
 		if (!createEventId || !senderMemberEventId || !powerLevelsEventId) {
 			logger.error(
 				`Critical auth events missing for kick. Create: ${createEventId}, Sender's Member: ${senderMemberEventId}, PowerLevels: ${powerLevelsEventId}`,
 			);
-			throw new HttpException(
-				'Critical auth events missing, cannot kick user',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Critical auth events missing, cannot kick user', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		const authEvents: RoomMemberAuthEvents = {
@@ -780,9 +528,7 @@ export class RoomService {
 
 		const serverName = this.configService.getServerConfig().name;
 		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
 
 		const unsignedEvent = roomMemberEvent({
 			roomId,
@@ -803,9 +549,7 @@ export class RoomService {
 		const eventId = generateId(signedEvent);
 
 		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.member (kick) event ${eventId} for user ${kickedUserId} in room ${roomId}`,
-		);
+		logger.info(`Successfully created and stored m.room.member (kick) event ${eventId} for user ${kickedUserId} in room ${roomId}`);
 
 		for (const server of targetServers) {
 			if (server === serverName) {
@@ -813,9 +557,7 @@ export class RoomService {
 			}
 			try {
 				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.member (kick) event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
+				logger.info(`Successfully sent m.room.member (kick) event ${eventId} over federation to ${server} for room ${roomId}`);
 			} catch (error) {
 				logger.error(
 					`Failed to send m.room.member (kick) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
@@ -825,81 +567,38 @@ export class RoomService {
 		return eventId;
 	}
 
-	async banUser(
-		roomId: string,
-		bannedUserId: string,
-		senderId: string,
-		reason?: string,
-		targetServers: string[] = [],
-	): Promise<string> {
-		logger.info(
-			`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
-		);
+	async banUser(roomId: string, bannedUserId: string, senderId: string, reason?: string, targetServers: string[] = []): Promise<string> {
+		logger.info(`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`);
 
 		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot ban user',
-				HttpStatus.BAD_REQUEST,
-			);
+			throw new HttpException('Room has no history, cannot ban user', HttpStatus.BAD_REQUEST);
 		}
 
-		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
-			{ roomId, senderId },
-		);
-		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		)?._id;
+		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(EventType.POWER_LEVELS, { roomId, senderId });
+		const powerLevelsEventId = authEventIdsForPowerLevels.find((e) => e.type === EventType.POWER_LEVELS)?._id;
 
 		if (!powerLevelsEventId) {
-			logger.warn(
-				`No power_levels event found for room ${roomId}, cannot verify permission to ban.`,
-			);
-			throw new HttpException(
-				'Cannot verify permission to ban user.',
-				HttpStatus.FORBIDDEN,
-			);
+			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to ban.`);
+			throw new HttpException('Cannot verify permission to ban user.', HttpStatus.FORBIDDEN);
 		}
-		const powerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				powerLevelsEventId,
-			);
+		const powerLevelsEvent = await this.eventService.getEventById<RoomPowerLevelsEvent>(powerLevelsEventId);
 		if (!powerLevelsEvent) {
-			logger.error(
-				`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`,
-			);
-			throw new HttpException(
-				'Internal server error: Power levels event data missing.',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			logger.error(`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`);
+			throw new HttpException('Internal server error: Power levels event data missing.', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
-		this.validateBanPermission(
-			powerLevelsEvent.content,
-			senderId,
-			bannedUserId,
-		);
+		this.validateBanPermission(powerLevelsEvent.content, senderId, bannedUserId);
 
-		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
-			{ roomId, senderId },
-		);
-		const createEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.CREATE,
-		)?._id;
-		const senderMemberEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		)?._id;
+		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(EventType.MEMBER, { roomId, senderId });
+		const createEventId = authEventIdsForMemberEvent.find((e) => e.type === EventType.CREATE)?._id;
+		const senderMemberEventId = authEventIdsForMemberEvent.find((e) => e.type === EventType.MEMBER && e.state_key === senderId)?._id;
 
 		if (!createEventId || !senderMemberEventId || !powerLevelsEventId) {
 			logger.error(
 				`Critical auth events missing for ban. Create: ${createEventId}, Sender's Member: ${senderMemberEventId}, PowerLevels: ${powerLevelsEventId}`,
 			);
-			throw new HttpException(
-				'Critical auth events missing, cannot ban user',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Critical auth events missing, cannot ban user', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		const authEvents: RoomMemberAuthEvents = {
@@ -910,9 +609,7 @@ export class RoomService {
 
 		const serverName = this.configService.getServerConfig().name;
 		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
+		const signingKey: SigningKey = Array.isArray(signingKeyConfig) ? signingKeyConfig[0] : signingKeyConfig;
 
 		const unsignedEvent = roomMemberEvent({
 			roomId,
@@ -933,9 +630,7 @@ export class RoomService {
 		const eventId = generateId(signedEvent);
 
 		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.member (ban) event ${eventId} for user ${bannedUserId} in room ${roomId}`,
-		);
+		logger.info(`Successfully created and stored m.room.member (ban) event ${eventId} for user ${bannedUserId} in room ${roomId}`);
 
 		for (const server of targetServers) {
 			if (server === serverName) {
@@ -943,9 +638,7 @@ export class RoomService {
 			}
 			try {
 				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.member (ban) event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
+				logger.info(`Successfully sent m.room.member (ban) event ${eventId} over federation to ${server} for room ${roomId}`);
 			} catch (error) {
 				logger.error(
 					`Failed to send m.room.member (ban) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
@@ -978,48 +671,29 @@ export class RoomService {
 			throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
 		}
 
-		const powerLevelsEvent =
-			await this.eventRepository.findPowerLevelsEventByRoomId(roomId);
+		const powerLevelsEvent = await this.eventRepository.findPowerLevelsEventByRoomId(roomId);
 		if (!powerLevelsEvent) {
-			throw new HttpException(
-				'Cannot delete room without power levels',
-				HttpStatus.FORBIDDEN,
-			);
+			throw new HttpException('Cannot delete room without power levels', HttpStatus.FORBIDDEN);
 		}
 
 		if (!isRoomPowerLevelsEvent(powerLevelsEvent.event)) {
-			throw new HttpException(
-				'Invalid power levels event',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+			throw new HttpException('Invalid power levels event', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 
 		this.validatePowerLevelForTombstone(powerLevelsEvent.event, sender);
 
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
-			{
-				roomId,
-				senderId: sender,
-			},
-		);
+		const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, {
+			roomId,
+			senderId: sender,
+		});
 		const latestEvent = await this.eventService.getLastEventForRoom(roomId);
 		const currentDepth = latestEvent?.event?.depth ?? 0;
 		const depth = currentDepth + 1;
 
 		const authEventsMap: TombstoneAuthEvents = {
-			'm.room.create':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.CREATE,
-				)?._id || '',
-			'm.room.power_levels':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.POWER_LEVELS,
-				)?._id || '',
-			'm.room.member':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.MEMBER,
-				)?._id || '',
+			'm.room.create': authEvents.find((event: { type: EventType }) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels': authEvents.find((event: { type: EventType }) => event.type === EventType.POWER_LEVELS)?._id || '',
+			'm.room.member': authEvents.find((event: { type: EventType }) => event.type === EventType.MEMBER)?._id || '',
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
 
@@ -1034,11 +708,7 @@ export class RoomService {
 			origin: config.name,
 		});
 
-		const signedEvent = await signEvent(
-			tombstoneEvent,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			config.name,
-		);
+		const signedEvent = await signEvent(tombstoneEvent, Array.isArray(signingKey) ? signingKey[0] : signingKey, config.name);
 
 		const eventId = await this.eventService.insertEvent(signedEvent);
 		await this.roomRepository.markRoomAsDeleted(roomId, eventId);
@@ -1053,9 +723,7 @@ export class RoomService {
 		try {
 			const room = await this.roomRepository.findOneById(roomId);
 			if (room?.room.deleted) {
-				logger.debug(
-					`Room ${roomId} is marked as deleted in the room repository`,
-				);
+				logger.debug(`Room ${roomId} is marked as deleted in the room repository`);
 				return true;
 			}
 
@@ -1075,31 +743,18 @@ export class RoomService {
 		}
 	}
 
-	private validatePowerLevelForTombstone(
-		powerLevels: RoomPowerLevelsEvent,
-		sender: string,
-	): void {
-		const userPowerLevel =
-			powerLevels.content.users?.[sender] ??
-			powerLevels.content.users_default ??
-			0;
+	private validatePowerLevelForTombstone(powerLevels: RoomPowerLevelsEvent, sender: string): void {
+		const userPowerLevel = powerLevels.content.users?.[sender] ?? powerLevels.content.users_default ?? 0;
 		const requiredPowerLevel = powerLevels.content.state_default ?? 50;
 
 		if (userPowerLevel < requiredPowerLevel) {
-			throw new HttpException(
-				'Insufficient power level to delete room',
-				HttpStatus.FORBIDDEN,
-			);
+			throw new HttpException('Insufficient power level to delete room', HttpStatus.FORBIDDEN);
 		}
 	}
 
-	private async notifyFederatedServersAboutTombstone(
-		roomId: string,
-		signedEvent: SignedEvent<RoomTombstoneEvent>,
-	): Promise<void> {
+	private async notifyFederatedServersAboutTombstone(roomId: string, signedEvent: SignedEvent<RoomTombstoneEvent>): Promise<void> {
 		const config = this.configService.getServerConfig();
-		const memberEvents =
-			await this.eventRepository.findAllJoinedMembersEventsByRoomId(roomId);
+		const memberEvents = await this.eventRepository.findAllJoinedMembersEventsByRoomId(roomId);
 		const remoteServers = new Set<string>();
 
 		for (const event of memberEvents) {
@@ -1112,15 +767,11 @@ export class RoomService {
 		}
 
 		const federationPromises = Array.from(remoteServers).map((server) => {
-			logger.debug(
-				`Sending tombstone event to server ${server} for room ${roomId}`,
-			);
+			logger.debug(`Sending tombstone event to server ${server} for room ${roomId}`);
 			return this.federationService.sendTombstone(server, signedEvent);
 		});
 
 		await Promise.all(federationPromises);
-		logger.info(
-			`Notified ${remoteServers.size} federated servers about room mark as tombstone`,
-		);
+		logger.info(`Notified ${remoteServers.size} federated servers about room mark as tombstone`);
 	}
 }

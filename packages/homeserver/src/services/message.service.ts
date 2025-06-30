@@ -1,13 +1,5 @@
-import {
-	reactionEvent,
-	type ReactionAuthEvents,
-	type ReactionEvent,
-} from '@hs/core/src/events/m.reaction';
-import {
-	roomMessageEvent,
-	type MessageAuthEvents,
-	type RoomMessageEvent,
-} from '@hs/core/src/events/m.room.message';
+import { reactionEvent, type ReactionAuthEvents, type ReactionEvent } from '@hs/core/src/events/m.reaction';
+import { roomMessageEvent, type MessageAuthEvents, type RoomMessageEvent } from '@hs/core/src/events/m.room.message';
 import { FederationService } from '@hs/federation-sdk';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
@@ -18,7 +10,6 @@ import { injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { signEvent, type SignedEvent } from '../signEvent';
 import { generateId } from '../authentication';
-import { EventEmitterService } from './event-emitter.service';
 
 @injectable()
 export class MessageService {
@@ -29,29 +20,18 @@ export class MessageService {
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly roomService: RoomService,
-		private readonly eventEmitterService: EventEmitterService,
-	) { }
+	) {}
 
-	async sendMessage(
-		roomId: string,
-		message: string,
-		senderUserId: string,
-		targetServer: string,
-	): Promise<SignedEvent<RoomMessageEvent>> {
+	async sendMessage(roomId: string, message: string, senderUserId: string, targetServer: string): Promise<SignedEvent<RoomMessageEvent>> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
-			this.logger.warn(
-				`Attempted to react to a message in a tombstoned room: ${roomId}`,
-			);
+			this.logger.warn(`Attempted to react to a message in a tombstoned room: ${roomId}`);
 			throw new ForbiddenError('Cannot send message to a tombstoned room');
 		}
 		const serverName = this.configService.getServerConfig().name;
 		const signingKey = await this.configService.getSigningKey();
 
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
-			{ roomId, senderId: senderUserId },
-		);
+		const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId, senderId: senderUserId });
 
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
@@ -60,13 +40,9 @@ export class MessageService {
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: MessageAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
+			'm.room.create': authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels': authEvents.find((event) => event.type === EventType.POWER_LEVELS)?._id || '',
+			'm.room.member': authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
 		const { state_key, ...eventForSigning } = roomMessageEvent({
@@ -76,27 +52,21 @@ export class MessageService {
 			prev_events: prevEvents,
 			depth: newDepth,
 			content: {
-				msgtype: 'm.text',
-				body: message,
+				'msgtype': 'm.text',
+				'body': message,
 				'm.mentions': {},
 			},
 			origin: serverName,
 			ts: Date.now(),
 		});
 
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
-		);
+		const signedEvent = await signEvent(eventForSigning, Array.isArray(signingKey) ? signingKey[0] : signingKey, serverName);
 
 		const eventId = generateId(signedEvent);
 		await this.federationService.sendEvent(targetServer, signedEvent);
 		await this.eventService.insertEvent(signedEvent, eventId);
 
-		this.logger.info(
-			`Sent message to ${targetServer} - ${eventId}`,
-		);
+		this.logger.info(`Sent message to ${targetServer} - ${eventId}`);
 
 		// Emit message sent event
 		// this.eventEmitterService.emit('homeserver.message.received', {
@@ -122,12 +92,8 @@ export class MessageService {
 	): Promise<SignedEvent<ReactionEvent>> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
-			this.logger.warn(
-				`Attempted to send message to a tombstoned room: ${roomId}`,
-			);
-			throw new ForbiddenError(
-				'Cannot react to a message in a tombstoned room',
-			);
+			this.logger.warn(`Attempted to send message to a tombstoned room: ${roomId}`);
+			throw new ForbiddenError('Cannot react to a message in a tombstoned room');
 		}
 
 		const serverName = this.configService.getServerConfig().name;
@@ -136,22 +102,15 @@ export class MessageService {
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
 
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.REACTION,
-			{ roomId, senderId: senderUserId },
-		);
+		const authEvents = await this.eventService.getAuthEventIds(EventType.REACTION, { roomId, senderId: senderUserId });
 
 		const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: ReactionAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
+			'm.room.create': authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels': authEvents.find((event) => event.type === EventType.POWER_LEVELS)?._id || '',
+			'm.room.member': authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
 		const { state_key, ...eventForSigning } = reactionEvent({
@@ -171,11 +130,7 @@ export class MessageService {
 			ts: Date.now(),
 		});
 
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
-		);
+		const signedEvent = await signEvent(eventForSigning, Array.isArray(signingKey) ? signingKey[0] : signingKey, serverName);
 
 		this.logger.debug(signedEvent);
 
@@ -183,9 +138,7 @@ export class MessageService {
 
 		await this.eventService.insertEvent(signedEvent, eventId);
 
-		this.logger.info(
-			`Sent reaction $emojito $targetServerfor event $eventId- $generateId(${signedEvent})`,
-		);
+		this.logger.info(`Sent reaction $emojito $targetServerfor event $eventId- $generateId(${signedEvent})`);
 
 		return signedEvent;
 	}
@@ -203,22 +156,15 @@ export class MessageService {
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
 
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
-			{ roomId, senderId: senderUserId },
-		);
+		const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId, senderId: senderUserId });
 
 		const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: MessageAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
+			'm.room.create': authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels': authEvents.find((event) => event.type === EventType.POWER_LEVELS)?._id || '',
+			'm.room.member': authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
 		// For message edits, Matrix requires:
@@ -232,8 +178,8 @@ export class MessageService {
 			prev_events: prevEvents,
 			depth: newDepth,
 			content: {
-				msgtype: 'm.text',
-				body: `* ${message}`, // Fallback for clients not supporting edits
+				'msgtype': 'm.text',
+				'body': `* ${message}`, // Fallback for clients not supporting edits
 				'm.mentions': {},
 				'm.relates_to': {
 					rel_type: 'm.replace',
@@ -248,18 +194,20 @@ export class MessageService {
 			ts: Date.now(),
 		});
 
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
-		);
+		const signedEvent = await signEvent(eventForSigning, Array.isArray(signingKey) ? signingKey[0] : signingKey, serverName);
 
 		await this.federationService.sendEvent(targetServer, signedEvent);
 
 		return signedEvent;
 	}
 
-	async redactMessage(roomId: string, eventIdToRedact: string, reason: string | undefined, senderUserId: string, targetServer: string): Promise<SignedEvent<RedactionEvent>> {
+	async redactMessage(
+		roomId: string,
+		eventIdToRedact: string,
+		reason: string | undefined,
+		senderUserId: string,
+		targetServer: string,
+	): Promise<SignedEvent<RedactionEvent>> {
 		const serverName = this.configService.getServerConfig().name;
 		const signingKey = await this.configService.getSigningKey();
 
@@ -272,13 +220,15 @@ export class MessageService {
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: RedactionAuthEvents = {
-			"m.room.create": authEvents.find((event) => event.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels": authEvents.find((event) => event.type === EventType.POWER_LEVELS)?._id || "",
-			"m.room.member": authEvents.find((event) => event.type === EventType.MEMBER)?._id || "",
+			'm.room.create': authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels': authEvents.find((event) => event.type === EventType.POWER_LEVELS)?._id || '',
+			'm.room.member': authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
-		if (!authEventsMap["m.room.create"] || !authEventsMap["m.room.power_levels"] || !authEventsMap["m.room.member"]) {
-			throw new Error("There are missing critical auth events (create, power_levels, or sender's member event) for the redaction event on the sending server.");
+		if (!authEventsMap['m.room.create'] || !authEventsMap['m.room.power_levels'] || !authEventsMap['m.room.member']) {
+			throw new Error(
+				"There are missing critical auth events (create, power_levels, or sender's member event) for the redaction event on the sending server.",
+			);
 		}
 
 		const { state_key, ...eventForSigning } = redactionEvent({
@@ -289,23 +239,19 @@ export class MessageService {
 			depth: newDepth,
 			content: {
 				redacts: eventIdToRedact,
-				...(reason && { reason })
+				...(reason && { reason }),
 			},
 			origin: serverName,
 			ts: Date.now(),
 		});
 
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName
-		);
+		const signedEvent = await signEvent(eventForSigning, Array.isArray(signingKey) ? signingKey[0] : signingKey, serverName);
 
 		const eventId = await this.eventService.insertEvent(signedEvent);
 		const eventToFederate: RedactionEvent = {
 			...signedEvent,
 			redacts: eventForSigning.redacts,
-		}
+		};
 		await this.federationService.sendEvent<RedactionEvent>(targetServer, eventToFederate);
 		await this.eventService.processRedaction(eventToFederate);
 

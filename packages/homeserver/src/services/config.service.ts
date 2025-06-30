@@ -36,7 +36,6 @@ export interface AppConfig {
 @injectable()
 export class ConfigService {
 	private config: AppConfig;
-	private fileConfig: Partial<AppConfig> = {};
 	private logger = createLogger('ConfigService');
 
 	constructor() {
@@ -86,18 +85,18 @@ export class ConfigService {
 		}
 	}
 
-	private mergeConfigs(
-		baseConfig: AppConfig,
-		newConfig: Partial<AppConfig>,
-	): AppConfig {
-		return {
-			...baseConfig,
-			...newConfig,
-			server: { ...baseConfig.server, ...newConfig.server },
-			database: { ...baseConfig.database, ...newConfig.database },
-			matrix: { ...baseConfig.matrix, ...newConfig.matrix },
-		};
-	}
+	// private mergeConfigs(
+	// 	baseConfig: AppConfig,
+	// 	newConfig: Partial<AppConfig>,
+	// ): AppConfig {
+	// 	return {
+	// 		...baseConfig,
+	// 		...newConfig,
+	// 		server: { ...baseConfig.server, ...newConfig.server },
+	// 		database: { ...baseConfig.database, ...newConfig.database },
+	// 		matrix: { ...baseConfig.matrix, ...newConfig.matrix },
+	// 	};
+	// }
 
 	async loadSigningKey() {
 		const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
@@ -105,9 +104,7 @@ export class ConfigService {
 
 		try {
 			const keys = await getKeyPair({ signingKeyPath });
-			this.logger.info(
-				`Successfully loaded signing key for server ${this.config.server.name}`,
-			);
+			this.logger.info(`Successfully loaded signing key for server ${this.config.server.name}`);
 			return keys;
 		} catch (error: any) {
 			this.logger.error(`Failed to load signing key: ${error.message}`);
@@ -116,6 +113,7 @@ export class ConfigService {
 	}
 
 	private initializeConfig(): AppConfig {
+		console.log('process.env.MONGO_URL', process.env.MONGO_URL);
 		return {
 			server: {
 				name: process.env.SERVER_NAME || 'rc1',
@@ -125,17 +123,14 @@ export class ConfigService {
 				host: process.env.SERVER_HOST || '0.0.0.0',
 			},
 			database: {
-				uri: process.env.MONGO_URL || 'mongodb://localhost:3001/meteor',
+				uri: process.env.MONGO_URL || 'mongodb://localhost:27017/rocketchat',
 				name: process.env.DATABASE_NAME || 'meteor',
 				poolSize: this.getNumberFromEnv('DATABASE_POOL_SIZE', 10),
 			},
 			matrix: {
 				serverName: process.env.MATRIX_SERVER_NAME || 'rc1',
 				domain: process.env.MATRIX_DOMAIN || 'rc1',
-				keyRefreshInterval: this.getNumberFromEnv(
-					'MATRIX_KEY_REFRESH_INTERVAL',
-					60,
-				),
+				keyRefreshInterval: this.getNumberFromEnv('MATRIX_KEY_REFRESH_INTERVAL', 60),
 			},
 		};
 	}

@@ -1,6 +1,6 @@
 import { container } from 'tsyringe';
 import type { RouteDefinition } from '../../types/route.types';
-import { type ErrorResponse, ErrorResponseDto, InternalInviteUserBodyDto, type InternalInviteUserResponse, InternalInviteUserResponseDto } from '../../dtos';
+import { ErrorResponseDto, InternalInviteUserBodyDto, InternalInviteUserResponseDto } from '../../dtos';
 import { InviteService } from '../../services/invite.service';
 
 export const internalInviteRoutes: RouteDefinition[] = [
@@ -11,12 +11,7 @@ export const internalInviteRoutes: RouteDefinition[] = [
 			const inviteService = container.resolve(InviteService);
 			const { username, roomId, sender, name } = ctx.body;
 			try {
-				return inviteService.inviteUserToRoom(
-					username,
-					roomId,
-					sender,
-					name,
-				);
+				return inviteService.inviteUserToRoom(username, roomId, sender, name);
 			} catch (error) {
 				ctx.setStatus(500);
 				return {
@@ -35,7 +30,7 @@ export const internalInviteRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Invite user to room',
-			description: 'Invite a user to a room'
-		}
-	}
+			description: 'Invite a user to a room',
+		},
+	},
 ];

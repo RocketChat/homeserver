@@ -48,6 +48,7 @@ export class DatabaseConnectionService {
 				};
 
 				this.client = new MongoClient(dbConfig.uri, options);
+				console.log('dbConfig.uri', dbConfig.uri);
 				this.logger.info(`Connecting to MongoDB database: ${dbConfig.name}`);
 				await this.client.connect();
 

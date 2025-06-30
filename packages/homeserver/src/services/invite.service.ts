@@ -43,6 +43,7 @@ export class InviteService {
 		sender?: string,
 		name?: string,
 	): Promise<InternalInviteUserResponse> {
+		console.log('inviteUserToRoom', username, roomId, sender, name);
 		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
 
 		const config = this.configService.getServerConfig();

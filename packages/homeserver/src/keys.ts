@@ -1,6 +1,7 @@
 import nacl from 'tweetnacl';
 import { toUnpaddedBase64 } from './binaryData';
 import { EncryptionValidAlgorithm, signText } from './signJson';
+import { runtime } from './runtime';
 
 export type SigningKey = {
 	algorithm: EncryptionValidAlgorithm;
@@ -50,7 +51,7 @@ async function storeKeyPairs(
 	path: string,
 ) {
 	for await (const keyPair of seeds) {
-		await Bun.write(
+		await runtime.writeFile(
 			path,
 			`${keyPair.algorithm} ${keyPair.version} ${toUnpaddedBase64(keyPair.seed)}`,
 		);
@@ -62,7 +63,7 @@ export const getKeyPair = async (config: {
 }): Promise<SigningKey[]> => {
 	const { signingKeyPath } = config;
 
-	const hasStoredKeys = await Bun.file(signingKeyPath).exists();
+	const hasStoredKeys = await runtime.fileExists(signingKeyPath);
 
 	const seeds = [];
 
@@ -78,7 +79,7 @@ export const getKeyPair = async (config: {
 
 	if (hasStoredKeys) {
 		const [algorithm, version, seed] = (
-			await Bun.file(config.signingKeyPath).text()
+			await runtime.readFile(config.signingKeyPath)
 		)
 			.trim()
 			.split(' ');

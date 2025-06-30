@@ -6,13 +6,8 @@ import { injectable } from 'tsyringe';
 export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
 
-	async authorizeEvent(
-		event: EventBase,
-		authEvents: EventBase[],
-	): Promise<boolean> {
-		this.logger.debug(
-			`Authorizing event ${event.event_id || 'unknown'} of type ${event.type}`,
-		);
+	async authorizeEvent(event: EventBase, authEvents: EventBase[]): Promise<boolean> {
+		this.logger.debug(`Authorizing event ${event.event_id || 'unknown'} of type ${event.type}`);
 
 		// Simple implementation - would need proper auth rules based on Matrix spec
 		// https://spec.matrix.org/v1.7/server-server-api/#checks-performed-on-receipt-of-a-pdu
@@ -24,9 +19,7 @@ export class EventAuthorizationService {
 		// Check sender is allowed to send this type of event
 		const senderAllowed = this.checkSenderAllowed(event, authEvents);
 		if (!senderAllowed) {
-			this.logger.warn(
-				`Sender ${event.sender} not allowed to send ${event.type}`,
-			);
+			this.logger.warn(`Sender ${event.sender} not allowed to send ${event.type}`);
 			return false;
 		}
 
@@ -60,14 +53,9 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	private checkSenderAllowed(
-		event: EventBase,
-		authEvents: EventBase[],
-	): boolean {
+	private checkSenderAllowed(event: EventBase, authEvents: EventBase[]): boolean {
 		// Find power levels
-		const powerLevelsEvent = authEvents.find(
-			(e) => e.type === 'm.room.power_levels',
-		);
+		const powerLevelsEvent = authEvents.find((e) => e.type === 'm.room.power_levels');
 		if (!powerLevelsEvent) {
 			// No power levels - only allow room creator?
 			const createEvent = authEvents.find((e) => e.type === 'm.room.create');
@@ -84,26 +72,17 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	private authorizeMemberEvent(
-		event: EventBase,
-		authEvents: EventBase[],
-	): boolean {
+	private authorizeMemberEvent(_event: EventBase, _authEvents: EventBase[]): boolean {
 		// Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
-	private authorizePowerLevelsEvent(
-		event: EventBase,
-		authEvents: EventBase[],
-	): boolean {
+	private authorizePowerLevelsEvent(_event: EventBase, _authEvents: EventBase[]): boolean {
 		// Check sender has permission to change power levels
 		return true;
 	}
 
-	private authorizeJoinRulesEvent(
-		event: EventBase,
-		authEvents: EventBase[],
-	): boolean {
+	private authorizeJoinRulesEvent(_event: EventBase, _authEvents: EventBase[]): boolean {
 		// Check sender has permission to change join rules
 		return true;
 	}

@@ -1,5 +1,3 @@
-import typia, { tags } from 'typia';
-
 // // https://spec.matrix.org/v1.9/server-server-api/#get_matrixkeyv2server
 
 export interface ServerKey {
@@ -20,8 +18,6 @@ export interface ServerKey {
 		}
 	>;
 }
-
-type Query = object;
 
 // declare module './endpoints' {
 // 	interface Endpoints {

@@ -1,0 +1,30 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist/tsc",
+		"module": "CommonJS",
+		"target": "ES2022",
+		"moduleResolution": "node",
+		"emitDeclarationOnly": false,
+		"noEmit": false,
+		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
+		"allowImportingTsExtensions": false,
+		"verbatimModuleSyntax": false,
+		"esModuleInterop": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"removeComments": false
+	},
+	"include": [
+		"index.ts",
+		"packages/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"**/*.spec.ts",
+		"**/*.test.ts"
+	]
+}

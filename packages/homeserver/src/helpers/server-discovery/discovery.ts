@@ -22,9 +22,7 @@ export const addressWithDefaultPort = (address: string): string => {
 	return `${address}:${DEFAULT_SECURE_PORT}`;
 };
 
-export const resolveWhenServerNameIsIpAddress = async (
-	serverName: string,
-): Promise<string> => {
+export const resolveWhenServerNameIsIpAddress = async (serverName: string): Promise<string> => {
 	if (ipv6Regex.test(serverName)) {
 		// Ensure IPv6 addresses are enclosed in square brackets
 		const ipv6Match = serverName.match(ipv6Regex);
@@ -39,16 +37,11 @@ export const resolveWhenServerNameIsIpAddress = async (
 	return url.port ? serverName : addressWithDefaultPort(serverName);
 };
 
-const formatIpAddressWithOptionalPort = (
-	address: string,
-	port = '',
-): string => {
+const formatIpAddressWithOptionalPort = (address: string, port = ''): string => {
 	return isIPv6(address) ? `[${address}]${port}` : `${address}${port}`;
 };
 
-export const resolveWhenServerNameIsAddressWithPort = async (
-	serverName: string,
-): Promise<string> => {
+export const resolveWhenServerNameIsAddressWithPort = async (serverName: string): Promise<string> => {
 	const [hostname, port] = serverName.split(':');
 
 	const resolver = new Resolver();
@@ -71,26 +64,18 @@ export const resolveWhenServerNameIsAddressWithPort = async (
 	return addressWithDefaultPort(hostname);
 };
 
-export const resolveUsingSRVRecordsOrFallbackToOtherRecords = async (
-	serverName: string,
-): Promise<string> => {
+export const resolveUsingSRVRecordsOrFallbackToOtherRecords = async (serverName: string): Promise<string> => {
 	const resolver = new Resolver();
-	const srvRecords = await resolver.resolveSrv(
-		`_matrix-fed._tcp.${serverName}`,
-	);
+	const srvRecords = await resolver.resolveSrv(`_matrix-fed._tcp.${serverName}`);
 
 	if (srvRecords.length > 0) {
 		for (const srv of srvRecords) {
 			const addresses = await resolver.resolveAny(srv.name);
 			for (const address of addresses) {
 				if (address.type === 'AAAA' || address.type === 'A') {
-					const ipAddress = isIPv6(address.address)
-						? `[${address.address}]`
-						: address.address;
+					const ipAddress = isIPv6(address.address) ? `[${address.address}]` : address.address;
 
-					return srv.port
-						? `${ipAddress}:${srv.port}`
-						: addressWithDefaultPort(`[${ipAddress}]`);
+					return srv.port ? `${ipAddress}:${srv.port}` : addressWithDefaultPort(`[${ipAddress}]`);
 				}
 			}
 		}
@@ -100,13 +85,8 @@ export const resolveUsingSRVRecordsOrFallbackToOtherRecords = async (
 
 	const addresses = await resolver.resolveAny(serverName);
 	for (const address of addresses) {
-		if (
-			address.type === 'CNAME' ||
-			address.type === 'AAAA' ||
-			address.type === 'A'
-		) {
-			const ipAddress =
-				address.type === 'CNAME' ? address.value : address.address;
+		if (address.type === 'CNAME' || address.type === 'AAAA' || address.type === 'A') {
+			const ipAddress = address.type === 'CNAME' ? address.value : address.address;
 			const formattedIpAddress = formatIpAddressWithOptionalPort(ipAddress);
 
 			return addressWithDefaultPort(formattedIpAddress);
@@ -116,9 +96,7 @@ export const resolveUsingSRVRecordsOrFallbackToOtherRecords = async (
 	return addressWithDefaultPort(serverName);
 };
 
-export const getAddressFromTargetWellKnownEndpoint = async (
-	serverName: string,
-): Promise<{ address: string; maxAge: number }> => {
+export const getAddressFromTargetWellKnownEndpoint = async (serverName: string): Promise<{ address: string; maxAge: number }> => {
 	let response: Response | undefined;
 	let data: { 'm.server': string } | undefined;
 	try {
@@ -144,10 +122,7 @@ export const getAddressFromTargetWellKnownEndpoint = async (
 	if (cacheControl) {
 		const match = cacheControl.match(/max-age=(\d+)/);
 		if (match) {
-			maxAge = Math.min(
-				Number.parseInt(match[1], 10),
-				MAX_CACHE_ALLOWED_IN_SECONDS,
-			);
+			maxAge = Math.min(Number.parseInt(match[1], 10), MAX_CACHE_ALLOWED_IN_SECONDS);
 		}
 	}
 
@@ -156,17 +131,11 @@ export const getAddressFromTargetWellKnownEndpoint = async (
 	return { address, maxAge };
 };
 
-const addressHasExplicitPort = (address: string): boolean =>
-	!isIpLiteral(address) && new URL(`http://${address}`).port !== '';
+const addressHasExplicitPort = (address: string): boolean => !isIpLiteral(address) && new URL(`http://${address}`).port !== '';
 
-export const wellKnownCache = new Map<
-	string,
-	{ address: string; maxAge: number; timestamp: number }
->();
+export const wellKnownCache = new Map<string, { address: string; maxAge: number; timestamp: number }>();
 
-export const getWellKnownCachedAddress = (
-	serverName: string,
-): string | null => {
+export const getWellKnownCachedAddress = (serverName: string): string | null => {
 	const cached = wellKnownCache.get(serverName);
 	if (cached && Date.now() < cached.timestamp + cached.maxAge * 1000) {
 		return cached.address;
@@ -174,34 +143,29 @@ export const getWellKnownCachedAddress = (
 	return null;
 };
 
-const resolveFollowingWellKnownRules = async (
-	serverName: string,
-): Promise<string> => {
-	try {
-		if (isIpLiteral(serverName)) {
-			return resolveWhenServerNameIsIpAddress(serverName);
-		}
+// const resolveFollowingWellKnownRules = async (serverName: string): Promise<string> => {
+// 	try {
+// 		if (isIpLiteral(serverName)) {
+// 			return resolveWhenServerNameIsIpAddress(serverName);
+// 		}
 
-		if (addressHasExplicitPort(serverName)) {
-			return resolveWhenServerNameIsAddressWithPort(serverName);
-		}
-	} catch (error) {
-		return addressWithDefaultPort(serverName);
-	}
+// 		if (addressHasExplicitPort(serverName)) {
+// 			return resolveWhenServerNameIsAddressWithPort(serverName);
+// 		}
+// 	} catch (error) {
+// 		return addressWithDefaultPort(serverName);
+// 	}
 
-	return resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName);
-};
+// 	return resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName);
+// };
 
-const getAddressFromWellKnownData = async (
-	serverName: string,
-): Promise<string> => {
+const getAddressFromWellKnownData = async (serverName: string): Promise<string> => {
 	const cachedAddress = getWellKnownCachedAddress(serverName);
 	if (cachedAddress) {
 		return cachedAddress;
 	}
 
-	const { address, maxAge } =
-		await getAddressFromTargetWellKnownEndpoint(serverName);
+	const { address, maxAge } = await getAddressFromTargetWellKnownEndpoint(serverName);
 	wellKnownCache.set(serverName, { address, maxAge, timestamp: Date.now() });
 
 	return address;
@@ -233,15 +197,13 @@ export const resolveHostAddressByServerName = async (
 		}
 
 		const rawAddress = await getAddressFromWellKnownData(serverName);
-		const address = await resolveFollowingWellKnownRules(rawAddress);
+		// const address = await resolveFollowingWellKnownRules(rawAddress);
 
 		// TODO: Check it later... only way I found to make the request work
 		return { address: rawAddress, headers: { Host: rawAddress } };
 	} catch (error) {
 		if (error instanceof Error && error.message === 'No address found') {
-			const address = await resolveUsingSRVRecordsOrFallbackToOtherRecords(
-				serverName,
-			).catch(() => addressWithDefaultPort(serverName));
+			const address = await resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName).catch(() => addressWithDefaultPort(serverName));
 
 			return { address, headers: { Host: serverName } };
 		}

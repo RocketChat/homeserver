@@ -1,31 +1,36 @@
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
-import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { RoomService } from './room.service';
 
-import type {
-	AuthEvents
-} from '@hs/core/src/events/m.room.member';
+import type { AuthEvents } from '@hs/core/src/events/m.room.member';
 import { injectable } from 'tsyringe';
-import type { EventAuthParams, EventAuthResponse, GetDevicesParams, GetDevicesResponse, GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, MakeJoinParams, MakeJoinQuery, MakeJoinResponse, QueryKeysBody, QueryKeysResponse, QueryProfileResponse } from '../dtos/federation/profiles.dto';
+import type {
+	EventAuthParams,
+	EventAuthResponse,
+	GetDevicesParams,
+	GetDevicesResponse,
+	GetMissingEventsBody,
+	GetMissingEventsParams,
+	GetMissingEventsResponse,
+	MakeJoinParams,
+	MakeJoinQuery,
+	MakeJoinResponse,
+	QueryKeysBody,
+	QueryKeysResponse,
+	QueryProfileResponse,
+} from '../dtos/federation/profiles.dto';
 import type { EventStore } from '../models/event.model';
 import { EventRepository } from '../repositories/event.repository';
 
 @injectable()
 export class ProfilesService {
-	private readonly logger = createLogger('ProfilesService');
-
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
-		private readonly roomService: RoomService,
 		private readonly eventRepository: EventRepository,
 	) {}
 
-	async queryProfile(
-		userId: string,
-	): Promise<QueryProfileResponse> {
+	async queryProfile(userId: string): Promise<QueryProfileResponse> {
 		return {
 			avatar_url: 'mxc://matrix.org/MyC00lAvatar',
 			displayname: userId,
@@ -33,10 +38,13 @@ export class ProfilesService {
 	}
 
 	async queryKeys(deviceKeys: QueryKeysBody['device_keys']): Promise<QueryKeysResponse> {
-		const keys = Object.keys(deviceKeys).reduce((v, cur) => {
-			v[cur] = 'unknown_key';
-			return v;
-		}, {} as QueryKeysResponse['device_keys']);
+		const keys = Object.keys(deviceKeys).reduce(
+			(v, cur) => {
+				v[cur] = 'unknown_key';
+				return v;
+			},
+			{} as QueryKeysResponse['device_keys'],
+		);
 
 		return {
 			device_keys: keys,
@@ -64,12 +72,10 @@ export class ProfilesService {
 		}
 
 		const getAuthEvents = async (roomId: string): Promise<AuthEvents> => {
-			const authEvents =
-				await this.eventRepository.findAuthEventsIdsByRoomId(roomId);
+			const authEvents = await this.eventRepository.findAuthEventsIdsByRoomId(roomId);
 			const eventsDict = authEvents.reduce(
 				(acc, event) => {
-					const isMemberEvent =
-						event.event.type === 'm.room.member' && event.event.state_key;
+					const isMemberEvent = event.event.type === 'm.room.member' && event.event.state_key;
 					if (isMemberEvent) {
 						acc[`m.room.member:${event.event.state_key}`] = event._id;
 					} else {
@@ -87,15 +93,13 @@ export class ProfilesService {
 				'm.room.join_rules': eventsDict['m.room.join_rules'],
 				...(eventsDict[`m.room.member:${userId}`]
 					? {
-							[`m.room.member:${userId}`]:
-								eventsDict[`m.room.member:${userId}`],
+							[`m.room.member:${userId}`]: eventsDict[`m.room.member:${userId}`],
 						}
 					: {}),
 			};
 		};
 
-		const getLastEvent = async (roomId: string): Promise<EventStore | null> =>
-			this.eventService.getLastEventForRoom(roomId);
+		const getLastEvent = async (roomId: string): Promise<EventStore | null> => this.eventService.getLastEventForRoom(roomId);
 
 		const makeJoinEvent = makeJoinEventBuilder(getLastEvent, getAuthEvents);
 		const serverName = this.configService.getServerConfig().name;
@@ -111,18 +115,10 @@ export class ProfilesService {
 		latestEvents: GetMissingEventsBody['latest_events'],
 		limit: GetMissingEventsBody['limit'],
 	): Promise<GetMissingEventsResponse> {
-		return this.eventService.getMissingEvents(
-			roomId,
-			earliestEvents,
-			latestEvents,
-			limit,
-		);
+		return this.eventService.getMissingEvents(roomId, earliestEvents, latestEvents, limit);
 	}
 
-	async eventAuth(
-		_roomId: EventAuthParams['roomId'],
-		_eventId: EventAuthParams['eventId'],
-	): Promise<EventAuthResponse> {
+	async eventAuth(_roomId: EventAuthParams['roomId'], _eventId: EventAuthParams['eventId']): Promise<EventAuthResponse> {
 		return {
 			auth_chain: [],
 		};

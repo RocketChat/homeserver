@@ -1,16 +1,12 @@
 import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
 import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
-import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
 import type { GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, SendTransactionBody } from '../dtos';
 import { MatrixError } from '../errors';
 import type { EventBase, EventStore } from '../models/event.model';
-import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
-} from '../procedures/getPublicKeyFromServer';
+import { getPublicKeyFromRemoteServer, makeGetPublicKeyFromServerProcedure } from '../procedures/getPublicKeyFromServer';
 import { pruneEventDict } from '../pruneEventDict';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventRepository } from '../repositories/event.repository';
@@ -88,21 +84,15 @@ export class EventService {
 		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		private readonly federationService: FederationService,
-	) { }
+	) {}
 
 	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
 		const event = await this.eventRepository.findById(eventId);
 		return (event?.event as T) ?? null;
 	}
 
-	async checkIfEventsExists(
-		eventIds: string[],
-	): Promise<{ missing: string[]; found: string[] }> {
-		const events: Pick<EventStore, '_id'>[] = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{ projection: { _id: 1 } },
-		);
+	async checkIfEventsExists(eventIds: string[]): Promise<{ missing: string[]; found: string[] }> {
+		const events: Pick<EventStore, '_id'>[] = await this.eventRepository.find({ _id: { $in: eventIds } }, { projection: { _id: 1 } });
 
 		return eventIds.reduce(
 			(acc: { missing: string[]; found: string[] }, id) => {
@@ -148,15 +138,11 @@ export class EventService {
 	async storeEventAsStaged(stagedEvent: StagedEvent): Promise<void> {
 		try {
 			// First check if the event already exists to avoid duplicates
-			const existingEvent = await this.eventRepository.findById(
-				stagedEvent._id,
-			);
+			const existingEvent = await this.eventRepository.findById(stagedEvent._id);
 			if (existingEvent) {
 				// If it already exists as a regular event (not staged), nothing to do
 				if (!(existingEvent as any).is_staged) {
-					this.logger.debug(
-						`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`,
-					);
+					this.logger.debug(`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`);
 					return;
 				}
 
@@ -165,9 +151,7 @@ export class EventService {
 				// Make a separate update for metadata since upsert only handles the event data
 				// We do this by using the createStaged method, which should update if exists
 				await this.eventRepository.createStaged(stagedEvent.event);
-				this.logger.debug(
-					`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
-				);
+				this.logger.debug(`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`);
 			} else {
 				// Create a new staged event
 				await this.eventRepository.createStaged(stagedEvent.event);
@@ -190,9 +174,7 @@ export class EventService {
 				);
 			}
 		} catch (error) {
-			this.logger.error(
-				`Error storing staged event ${stagedEvent._id}: ${error}`,
-			);
+			this.logger.error(`Error storing staged event ${stagedEvent._id}: ${error}`);
 			throw error;
 		}
 	}
@@ -203,10 +185,7 @@ export class EventService {
 	async findStagedEvents(): Promise<StagedEvent[]> {
 		// We need to find all events with the staged flag
 		// The explicit is_staged flag might be present, or the traditional staged flag
-		const events = await this.eventRepository.find(
-			{ $or: [{ is_staged: true }, { staged: true }] },
-			{},
-		);
+		const events = await this.eventRepository.find({ $or: [{ is_staged: true }, { staged: true }] }, {});
 		return events as unknown as StagedEvent[];
 	}
 
@@ -242,9 +221,7 @@ export class EventService {
 	/**
 	 * Remove a dependency from all staged events that reference it
 	 */
-	async removeDependencyFromStagedEvents(
-		dependencyId: string,
-	): Promise<number> {
+	async removeDependencyFromStagedEvents(dependencyId: string): Promise<number> {
 		try {
 			// We need to do this manually since there's no repository method specifically for this
 			let updatedCount = 0;
@@ -261,23 +238,16 @@ export class EventService {
 			// Update each one to remove the dependency
 			for (const event of stagedEvents) {
 				const missingDeps = event.missing_dependencies || [];
-				const updatedDeps = missingDeps.filter(
-					(dep: string) => dep !== dependencyId,
-				);
+				const updatedDeps = missingDeps.filter((dep: string) => dep !== dependencyId);
 
-				await collection.updateOne(
-					{ _id: event._id },
-					{ $set: { missing_dependencies: updatedDeps } },
-				);
+				await collection.updateOne({ _id: event._id }, { $set: { missing_dependencies: updatedDeps } });
 
 				updatedCount++;
 			}
 
 			return updatedCount;
 		} catch (error) {
-			this.logger.error(
-				`Error removing dependency ${dependencyId} from staged events: ${error}`,
-			);
+			this.logger.error(`Error removing dependency ${dependencyId} from staged events: ${error}`);
 			throw error;
 		}
 	}
@@ -307,9 +277,7 @@ export class EventService {
 
 		for (const event of validatedEvents) {
 			if (!event.valid) {
-				this.logger.warn(
-					`Validation failed for event ${event.eventId}: ${event.error?.errcode} - ${event.error?.error}`,
-				);
+				this.logger.warn(`Validation failed for event ${event.eventId}: ${event.error?.errcode} - ${event.error?.error}`);
 				continue;
 			}
 
@@ -322,10 +290,7 @@ export class EventService {
 		}
 	}
 
-	private async validateEventFormat(
-		eventId: string,
-		event: EventBase,
-	): Promise<ValidationResult> {
+	private async validateEventFormat(eventId: string, event: EventBase): Promise<ValidationResult> {
 		try {
 			const roomVersion = await this.getRoomVersion(event);
 			if (!roomVersion) {
@@ -345,9 +310,7 @@ export class EventService {
 
 			if (!validationResult.success) {
 				const formattedErrors = JSON.stringify(validationResult.error.format());
-				this.logger.error(
-					`Event ${eventId} failed schema validation: ${formattedErrors}`,
-				);
+				this.logger.error(`Event ${eventId} failed schema validation: ${formattedErrors}`);
 
 				return {
 					eventId,
@@ -362,9 +325,7 @@ export class EventService {
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			const errorMessage = error?.message || String(error);
-			this.logger.error(
-				`Error validating format for ${eventId}: ${errorMessage}`,
-			);
+			this.logger.error(`Error validating format for ${eventId}: ${errorMessage}`);
 
 			return {
 				eventId,
@@ -378,17 +339,12 @@ export class EventService {
 		}
 	}
 
-	private async validateEventTypeSpecific(
-		eventId: string,
-		event: EventBase,
-	): Promise<ValidationResult> {
+	private async validateEventTypeSpecific(eventId: string, event: EventBase): Promise<ValidationResult> {
 		try {
 			if (event.type === 'm.room.create') {
 				const errors = this.validateCreateEvent(event);
 				if (errors.length > 0) {
-					this.logger.error(
-						`Create event ${eventId} validation failed: ${errors.join(', ')}`,
-					);
+					this.logger.error(`Create event ${eventId} validation failed: ${errors.join(', ')}`);
 					return {
 						eventId,
 						event,
@@ -402,9 +358,7 @@ export class EventService {
 			} else {
 				const errors = this.validateNonCreateEvent(event);
 				if (errors.length > 0) {
-					this.logger.error(
-						`Event ${eventId} validation failed: ${errors.join(', ')}`,
-					);
+					this.logger.error(`Event ${eventId} validation failed: ${errors.join(', ')}`);
 					return {
 						eventId,
 						event,
@@ -419,9 +373,7 @@ export class EventService {
 
 			return { eventId, event, valid: true };
 		} catch (error: any) {
-			this.logger.error(
-				`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`,
-			);
+			this.logger.error(`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`);
 			return {
 				eventId,
 				event,
@@ -434,34 +386,18 @@ export class EventService {
 		}
 	}
 
-	private async validateSignaturesAndHashes(
-		eventId: string,
-		event: EventBase,
-	): Promise<ValidationResult> {
+	private async validateSignaturesAndHashes(eventId: string, event: EventBase): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-				(origin, keyId) =>
-					this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
-				(origin, key) =>
-					getPublicKeyFromRemoteServer(
-						origin,
-						this.configService.getServerConfig().name,
-						key,
-					),
-				(origin, keyId, publicKey) =>
-					this.keyRepository.storePublicKey(origin, keyId, publicKey),
+				(origin, keyId) => this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
+				(origin, key) => getPublicKeyFromRemoteServer(origin, this.configService.getServerConfig().name, key),
+				(origin, keyId, publicKey) => this.keyRepository.storePublicKey(origin, keyId, publicKey),
 			);
 
-			await checkSignAndHashes(
-				event as any,
-				event.origin,
-				getPublicKeyFromServer,
-			);
+			await checkSignAndHashes(event as any, event.origin, getPublicKeyFromServer);
 			return { eventId, event, valid: true };
 		} catch (error: any) {
-			this.logger.error(
-				`Error validating signatures for ${eventId}: ${error.message || String(error)}`,
-			);
+			this.logger.error(`Error validating signatures for ${eventId}: ${error.message || String(error)}`);
 			return {
 				eventId,
 				event,
@@ -486,9 +422,7 @@ export class EventService {
 			const senderDomain = this.extractDomain(event.sender);
 
 			if (roomDomain !== senderDomain) {
-				errors.push(
-					`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`,
-				);
+				errors.push(`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`);
 			}
 		}
 
@@ -499,19 +433,7 @@ export class EventService {
 		if (!event.content || !event.content.room_version) {
 			errors.push('Create event must specify a room_version');
 		} else {
-			const validRoomVersions = [
-				'1',
-				'2',
-				'3',
-				'4',
-				'5',
-				'6',
-				'7',
-				'8',
-				'9',
-				'10',
-				'11',
-			];
+			const validRoomVersions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
 			if (!validRoomVersions.includes(event.content.room_version)) {
 				errors.push(`Unsupported room version: ${event.content.room_version}`);
 			}
@@ -523,11 +445,7 @@ export class EventService {
 	private validateNonCreateEvent(event: any): string[] {
 		const errors: string[] = [];
 
-		if (
-			!event.prev_events ||
-			!Array.isArray(event.prev_events) ||
-			event.prev_events.length === 0
-		) {
+		if (!event.prev_events || !Array.isArray(event.prev_events) || event.prev_events.length === 0) {
 			errors.push('Event must reference previous events (prev_events)');
 		}
 
@@ -543,26 +461,18 @@ export class EventService {
 		if (event.type === 'm.room.create' && event.state_key === '') {
 			const roomVersion = event.content?.room_version;
 			if (roomVersion) {
-				this.logger.debug(
-					`Extracted room version ${roomVersion} from create event`,
-				);
+				this.logger.debug(`Extracted room version ${roomVersion} from create event`);
 				return roomVersion as string;
 			}
 		}
 
-		const cachedRoomVersion = await this.roomRepository.getRoomVersion(
-			event.room_id,
-		);
+		const cachedRoomVersion = await this.roomRepository.getRoomVersion(event.room_id);
 		if (cachedRoomVersion) {
-			this.logger.debug(
-				`Using cached room version ${cachedRoomVersion} for room ${event.room_id}`,
-			);
+			this.logger.debug(`Using cached room version ${cachedRoomVersion} for room ${event.room_id}`);
 			return cachedRoomVersion;
 		}
 
-		this.logger.warn(
-			`Could not determine room version for ${event.room_id}, using default version 10`,
-		);
+		this.logger.warn(`Could not determine room version for ${event.room_id}, using default version 10`);
 		return '10';
 	}
 
@@ -574,19 +484,13 @@ export class EventService {
 
 		const schema = versionSchemas[eventType] || versionSchemas.default;
 		if (!schema) {
-			throw new Error(
-				`No schema available for event type ${eventType} in room version ${roomVersion}`,
-			);
+			throw new Error(`No schema available for event type ${eventType} in room version ${roomVersion}`);
 		}
 
 		return schema;
 	}
 
-	async insertEvent(
-		event: EventBase,
-		eventId?: string,
-		args?: object,
-	): Promise<string> {
+	async insertEvent(event: EventBase, eventId?: string, args?: object): Promise<string> {
 		return this.eventRepository.create(event, eventId, args);
 	}
 
@@ -623,7 +527,7 @@ export class EventService {
 		const events = await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
-				_id: { $nin: [...earliestEvents, ...latestEvents] },
+				'_id': { $nin: [...earliestEvents, ...latestEvents] },
 			},
 			{ limit },
 		);
@@ -636,18 +540,13 @@ export class EventService {
 		};
 	}
 
-	async getEventsByIds(
-		eventIds: string[],
-	): Promise<{ _id: string; event: EventBase }[]> {
+	async getEventsByIds(eventIds: string[]): Promise<{ _id: string; event: EventBase }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
-		const events = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{},
-		);
+		const events = await this.eventRepository.find({ _id: { $in: eventIds } }, {});
 
 		return events.map((event) => ({
 			_id: event._id,
@@ -658,10 +557,7 @@ export class EventService {
 	/**
 	 * Find events based on a query
 	 */
-	async findEvents(
-		query: any,
-		options: any = {},
-	): Promise<{ _id: string; event: EventBase }[]> {
+	async findEvents(query: any, options: any = {}): Promise<{ _id: string; event: EventBase }[]> {
 		this.logger.debug(`Finding events with query: ${JSON.stringify(query)}`);
 		const events = await this.eventRepository.find(query, options);
 		return events;
@@ -672,10 +568,7 @@ export class EventService {
 	 */
 	async findRoomEvents(roomId: string): Promise<EventBase[]> {
 		this.logger.debug(`Finding all events for room ${roomId}`);
-		const events = await this.eventRepository.find(
-			{ 'event.room_id': roomId },
-			{ sort: { 'event.depth': 1 } },
-		);
+		const events = await this.eventRepository.find({ 'event.room_id': roomId }, { sort: { 'event.depth': 1 } });
 		return events.map((event) => event.event);
 	}
 
@@ -683,9 +576,7 @@ export class EventService {
 	 * Find an invite event for a specific user in a specific room
 	 */
 	async findInviteEvent(roomId: string, userId: string): Promise<StagedEvent> {
-		this.logger.debug(
-			`Finding invite event for user ${userId} in room ${roomId}`,
-		);
+		this.logger.debug(`Finding invite event for user ${userId} in room ${roomId}`);
 		const events = (await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
@@ -699,10 +590,7 @@ export class EventService {
 		return events[0];
 	}
 
-	async getAuthEventIds(
-		eventType: EventType,
-		params: AuthEventParams,
-	): Promise<AuthEventResult[]> {
+	async getAuthEventIds(eventType: EventType, params: AuthEventParams): Promise<AuthEventResult[]> {
 		const queries = this.getAuthEventQueries(eventType, params);
 		const authEvents: AuthEventResult[] = [];
 
@@ -710,16 +598,13 @@ export class EventService {
 			const events = await this.eventRepository.find(queryConfig.query, {
 				sort: queryConfig.sort,
 				limit: queryConfig.limit,
-				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1 },
+				projection: { '_id': 1, 'event.type': 1, 'event.state_key': 1 },
 			});
 
 			for (const storeEvent of events) {
 				const currentEventType = storeEvent.event?.type as EventType;
 				const currentStateKey = storeEvent.event?.state_key;
-				const eventTypeKey = Object.keys(EventType).find(
-					(key) =>
-						EventType[key as keyof typeof EventType] === currentEventType,
-				);
+				const eventTypeKey = Object.keys(EventType).find((key) => EventType[key as keyof typeof EventType] === currentEventType);
 
 				if (eventTypeKey && currentEventType) {
 					authEvents.push({
@@ -730,9 +615,7 @@ export class EventService {
 						}),
 					});
 				} else {
-					this.logger.warn(
-						`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,
-					);
+					this.logger.warn(`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`);
 				}
 			}
 		}
@@ -794,13 +677,9 @@ export class EventService {
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}
 
-	private getAuthEventQueries<T extends EventType>(
-		eventType: T,
-		attributes: EventAttributes[T],
-	): QueryConfig[] {
+	private getAuthEventQueries<T extends EventType>(eventType: T, attributes: EventAttributes[T]): QueryConfig[] {
 		const { roomId } = attributes;
-		const senderId =
-			'senderId' in attributes ? (attributes as any).senderId : undefined;
+		const senderId = 'senderId' in attributes ? (attributes as any).senderId : undefined;
 
 		const baseQueries = {
 			create: {
@@ -828,42 +707,22 @@ export class EventService {
 
 		switch (eventType) {
 			case EventType.NAME:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
+				return [baseQueries.create, baseQueries.powerLevels, baseQueries.membership];
 
 			case EventType.MESSAGE:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
+				return [baseQueries.create, baseQueries.powerLevels, baseQueries.membership];
 
 			case EventType.REACTION:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
+				return [baseQueries.create, baseQueries.powerLevels, baseQueries.membership];
 
 			case EventType.MEMBER:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
+				return [baseQueries.create, baseQueries.powerLevels, baseQueries.membership];
 
 			case EventType.CREATE:
 				return [baseQueries.create];
 
 			case EventType.POWER_LEVELS:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
+				return [baseQueries.create, baseQueries.powerLevels, baseQueries.membership];
 
 			case EventType.REDACTION:
 				return [baseQueries.create, baseQueries.powerLevels];
@@ -873,24 +732,15 @@ export class EventService {
 		}
 	}
 
-	async checkUserPermission(
-		powerLevelsEventId: string,
-		userId: string,
-		actionType: EventType,
-	): Promise<boolean> {
-		const powerLevelsEvent =
-			await this.eventRepository.findById(powerLevelsEventId);
+	async checkUserPermission(powerLevelsEventId: string, userId: string, actionType: EventType): Promise<boolean> {
+		const powerLevelsEvent = await this.eventRepository.findById(powerLevelsEventId);
 		if (!powerLevelsEvent) {
 			this.logger.warn(`Power levels event ${powerLevelsEventId} not found`);
 			return false;
 		}
 
-		const powerLevelsContent = powerLevelsEvent.event
-			.content as RoomPowerLevelsEvent['content'];
-		const userPowerLevel =
-			powerLevelsContent.users?.[userId] ??
-			powerLevelsContent.users_default ??
-			0;
+		const powerLevelsContent = powerLevelsEvent.event.content as RoomPowerLevelsEvent['content'];
+		const userPowerLevel = powerLevelsContent.users?.[userId] ?? powerLevelsContent.users_default ?? 0;
 
 		let requiredPowerLevel = powerLevelsContent.events?.[actionType];
 		if (requiredPowerLevel === undefined) {

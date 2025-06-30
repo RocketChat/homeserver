@@ -7,6 +7,7 @@ import {
 import { EncryptionValidAlgorithm } from './signJson';
 import { toUnpaddedBase64 } from './binaryData';
 import nacl from 'tweetnacl';
+import { runtime } from './runtime';
 
 describe('keys', () => {
 	describe('generateKeyPairs', () => {
@@ -79,8 +80,7 @@ describe('keys', () => {
 			bunFileSpy.mockRestore();
 			bunWriteSpy.mockRestore();
 			try {
-				// @ts-ignore
-				await Bun.fs.unlink(signingKeyPath);
+				await runtime.unlink(signingKeyPath);
 			} catch (e) {
 				// Ignore if file doesn't exist
 			}

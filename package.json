@@ -2,7 +2,6 @@
 	"name": "@rocket.chat/homeserver",
 	"module": "index.ts",
 	"private": true,
-	"type": "module",
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"@types/bun": "latest",
@@ -14,7 +13,9 @@
 		"tsconfig-paths": "^4.2.0",
 		"typescript": "^5.8.3"
 	},
-	"workspaces": ["packages/*"],
+	"workspaces": [
+		"packages/*"
+	],
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"dependencies": {
@@ -50,6 +51,8 @@
 		"test": "bun test",
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint",
-		"tsc": "bunx tsc"
+		"tsc": "bunx tsc",
+		"build": "node build.js",
+		"build:watch": "node build.js --watch"
 	}
 }

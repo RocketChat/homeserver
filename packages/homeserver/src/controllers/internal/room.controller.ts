@@ -1,14 +1,14 @@
 import { container } from 'tsyringe';
 import type { RouteDefinition } from '../../types/route.types';
 import {
-	type ErrorResponse,
-	type InternalBanUserResponse,
-	type InternalCreateRoomResponse,
-	type InternalKickUserResponse,
-	type InternalLeaveRoomResponse,
-	type InternalTombstoneRoomResponse,
-	type InternalUpdateRoomNameResponse,
-	type InternalUpdateUserPowerLevelResponse,
+	// type ErrorResponse,
+	// type InternalBanUserResponse,
+	// type InternalCreateRoomResponse,
+	// type InternalKickUserResponse,
+	// type InternalLeaveRoomResponse,
+	// type InternalTombstoneRoomResponse,
+	// type InternalUpdateRoomNameResponse,
+	// type InternalUpdateUserPowerLevelResponse,
 	ErrorResponseDto,
 	InternalBanUserBodyDto,
 	InternalBanUserParamsDto,
@@ -26,8 +26,6 @@ import {
 	InternalUpdateRoomNameParamsDto,
 	InternalUpdateUserPowerLevelBodyDto,
 	InternalUpdateUserPowerLevelParamsDto,
-	RoomIdDto,
-	UsernameDto
 } from '../../dtos';
 import { RoomService } from '../../services/room.service';
 
@@ -38,13 +36,7 @@ export const roomRoutes: RouteDefinition[] = [
 		handler: async (ctx) => {
 			const roomService = container.resolve(RoomService);
 			const { username, sender, name, canonical_alias, alias } = ctx.body;
-			return roomService.createRoom(
-				username,
-				sender,
-				name,
-				canonical_alias,
-				alias,
-			);
+			return roomService.createRoom(username, sender, name, canonical_alias, alias);
 		},
 		validation: {
 			body: InternalCreateRoomBodyDto,
@@ -56,8 +48,8 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Create a room',
-			description: 'Create a room'
-		}
+			description: 'Create a room',
+		},
 	},
 	{
 		method: 'PUT',
@@ -65,12 +57,7 @@ export const roomRoutes: RouteDefinition[] = [
 		handler: async (ctx) => {
 			const roomService = container.resolve(RoomService);
 			const { name, senderUserId, targetServer } = ctx.body;
-			return roomService.updateRoomName(
-				ctx.params.roomId,
-				name,
-				senderUserId,
-				targetServer,
-			);
+			return roomService.updateRoomName(ctx.params.roomId, name, senderUserId, targetServer);
 		},
 		validation: {
 			params: InternalUpdateRoomNameParamsDto,
@@ -83,8 +70,8 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Update a room name',
-			description: 'Update a room name'
-		}
+			description: 'Update a room name',
+		},
 	},
 	{
 		method: 'PUT',
@@ -120,8 +107,8 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Update a user power level',
-			description: 'Update a user power level'
-		}
+			description: 'Update a user power level',
+		},
 	},
 	{
 		method: 'PUT',
@@ -130,11 +117,7 @@ export const roomRoutes: RouteDefinition[] = [
 			const roomService = container.resolve(RoomService);
 			const { senderUserId, targetServers } = ctx.body;
 			try {
-				const eventId = await roomService.leaveRoom(
-					ctx.params.roomId,
-					senderUserId,
-					targetServers,
-				);
+				const eventId = await roomService.leaveRoom(ctx.params.roomId, senderUserId, targetServers);
 				return { eventId };
 			} catch (error) {
 				ctx.setStatus(500);
@@ -155,8 +138,8 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Leave a room',
-			description: 'Leave a room'
-		}
+			description: 'Leave a room',
+		},
 	},
 	{
 		method: 'PUT',
@@ -165,13 +148,7 @@ export const roomRoutes: RouteDefinition[] = [
 			const roomService = container.resolve(RoomService);
 			const { senderUserId, reason, targetServers } = ctx.body;
 			try {
-				const eventId = await roomService.kickUser(
-					ctx.params.roomId,
-					ctx.params.memberId,
-					senderUserId,
-					reason,
-					targetServers,
-				);
+				const eventId = await roomService.kickUser(ctx.params.roomId, ctx.params.memberId, senderUserId, reason, targetServers);
 				return { eventId };
 			} catch (error) {
 				ctx.setStatus(500);
@@ -192,8 +169,8 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Kick a user from a room',
-			description: 'Kick a user from a room'
-		}
+			description: 'Kick a user from a room',
+		},
 	},
 	{
 		method: 'PUT',
@@ -202,13 +179,7 @@ export const roomRoutes: RouteDefinition[] = [
 			const roomService = container.resolve(RoomService);
 			const { senderUserId, reason, targetServers } = ctx.body;
 			try {
-				const eventId = await roomService.banUser(
-					ctx.params.roomId,
-					ctx.params.userIdToBan,
-					senderUserId,
-					reason,
-					targetServers,
-				);
+				const eventId = await roomService.banUser(ctx.params.roomId, ctx.params.userIdToBan, senderUserId, reason, targetServers);
 				return { eventId };
 			} catch (error) {
 				ctx.setStatus(500);
@@ -229,20 +200,15 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Ban a user from a room',
-			description: 'Ban a user from a room'
-		}
+			description: 'Ban a user from a room',
+		},
 	},
 	{
 		method: 'PUT',
 		path: '/internal/rooms/:roomId/tombstone',
 		handler: async (ctx) => {
 			const roomService = container.resolve(RoomService);
-			return roomService.markRoomAsTombstone(
-				ctx.params.roomId,
-				ctx.body.sender,
-				ctx.body.reason,
-				ctx.body.replacementRoomId,
-			);
+			return roomService.markRoomAsTombstone(ctx.params.roomId, ctx.body.sender, ctx.body.reason, ctx.body.replacementRoomId);
 		},
 		validation: {
 			params: InternalTombstoneRoomParamsDto,
@@ -255,7 +221,7 @@ export const roomRoutes: RouteDefinition[] = [
 		metadata: {
 			tags: ['Internal'],
 			summary: 'Tombstone a room',
-			description: 'Tombstone a room'
-		}
-	}
+			description: 'Tombstone a room',
+		},
+	},
 ];
