@@ -1,5 +1,5 @@
 import { createEventBase, type EventBase } from './eventBase';
-import { createEventWithId } from '@hs/core/src/events/utils/createSignedEvent';
+import { createEventWithId } from './utils/createSignedEvent';
 
 type MessageType =
 	| 'm.text'

@@ -1,5 +1,5 @@
 import { createEventBase, type EventBase } from './eventBase';
-import { createEventWithId } from '@hs/core/src/events/utils/createSignedEvent';
+import { createEventWithId } from './utils/createSignedEvent';
 
 export interface RoomTombstoneEvent extends EventBase {
 	type: 'm.room.tombstone';

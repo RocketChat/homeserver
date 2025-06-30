@@ -1,6 +1,6 @@
 import { createEventBase, type EventBase } from './eventBase';
 import type { JoinRule } from './m.room.join_rules';
-import { createEventWithId } from '@hs/core/src/events/utils/createSignedEvent';
+import { createEventWithId } from './utils/createSignedEvent';
 
 type Membership = 'join' | 'invite' | 'leave' | 'knock' | 'ban';
 
