@@ -1,5 +1,5 @@
-import type { MissingEventType } from '@hs/homeserver/src/queues/missing-event.queue';
-import { MissingEventsQueue } from '@hs/homeserver/src/queues/missing-event.queue';
+import type { MissingEventType } from '../queues/missing-event.queue';
+import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 

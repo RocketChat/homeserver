@@ -3,7 +3,7 @@ import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import {
 	type StagingAreaEventType,
 	StagingAreaQueue,
-} from '@hs/homeserver/src/queues/staging-area.queue';
+} from '../queues/staging-area.queue';
 import { Lock } from '@hs/homeserver/src/utils/lock.decorator';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { EventAuthorizationService } from '@hs/federation-sdk/src/services/event-authorization.service';

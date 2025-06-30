@@ -20,7 +20,7 @@ import {
 	makeGetPublicKeyFromServerProcedure,
 } from '@hs/homeserver/src/procedures/getPublicKeyFromServer';
 import { pruneEventDict } from '@hs/homeserver/src/pruneEventDict';
-import { StagingAreaQueue } from '@hs/homeserver/src/queues/staging-area.queue';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
