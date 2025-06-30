@@ -129,7 +129,7 @@ export const getAddressFromTargetWellKnownEndpoint = async (
 		}
 
 		data = await response.json();
-	} catch (error) {
+	} catch {
 		throw new Error('No address found');
 	}
 
@@ -174,23 +174,23 @@ export const getWellKnownCachedAddress = (
 	return null;
 };
 
-const resolveFollowingWellKnownRules = async (
-	serverName: string,
-): Promise<string> => {
-	try {
-		if (isIpLiteral(serverName)) {
-			return resolveWhenServerNameIsIpAddress(serverName);
-		}
+// const resolveFollowingWellKnownRules = async (
+// 	serverName: string,
+// ): Promise<string> => {
+// 	try {
+// 		if (isIpLiteral(serverName)) {
+// 			return resolveWhenServerNameIsIpAddress(serverName);
+// 		}
 
-		if (addressHasExplicitPort(serverName)) {
-			return resolveWhenServerNameIsAddressWithPort(serverName);
-		}
-	} catch (error) {
-		return addressWithDefaultPort(serverName);
-	}
+// 		if (addressHasExplicitPort(serverName)) {
+// 			return resolveWhenServerNameIsAddressWithPort(serverName);
+// 		}
+// 	} catch {
+// 		return addressWithDefaultPort(serverName);
+// 	}
 
-	return resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName);
-};
+// 	return resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName);
+// };
 
 const getAddressFromWellKnownData = async (
 	serverName: string,
@@ -233,7 +233,8 @@ export const resolveHostAddressByServerName = async (
 		}
 
 		const rawAddress = await getAddressFromWellKnownData(serverName);
-		const address = await resolveFollowingWellKnownRules(rawAddress);
+		// TODO: check why we are not using the address from the well known data
+		// const address = await resolveFollowingWellKnownRules(rawAddress);
 
 		// TODO: Check it later... only way I found to make the request work
 		return { address: rawAddress, headers: { Host: rawAddress } };
