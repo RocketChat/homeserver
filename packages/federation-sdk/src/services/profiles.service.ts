@@ -1,16 +1,16 @@
-import { makeJoinEventBuilder } from '../procedures/makeJoin';
+import { makeJoinEventBuilder } from '@hs/homeserver/src/procedures/makeJoin';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from '@hs/federation-sdk';
-import { EventService } from './event.service';
-import { RoomService } from './room.service';
+import { ConfigService } from './config.service';
+import { EventService } from '@hs/homeserver/src/services/event.service';
+import { RoomService } from '@hs/homeserver/src/services/room.service';
 
 import type {
 	AuthEvents,
 	RoomMemberEvent,
 } from '@hs/core/src/events/m.room.member';
 import { injectable } from 'tsyringe';
-import type { EventBase, EventStore } from '../models/event.model';
-import { EventRepository } from '../repositories/event.repository';
+import type { EventStore } from '@hs/homeserver/src/models/event.model';
+import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 
 @injectable()
 export class ProfilesService {
