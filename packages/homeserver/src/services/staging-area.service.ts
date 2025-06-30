@@ -6,7 +6,7 @@ import {
 } from '../queues/staging-area.queue';
 import { Lock } from '../utils/lock.decorator';
 import { createLogger } from '../utils/logger';
-import { EventAuthorizationService } from './event-authorization.service';
+import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventStateService } from './event-state.service';
 import { EventService, EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
