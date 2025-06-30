@@ -12,7 +12,7 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 
 interface SignedRequest {
 	method: string;

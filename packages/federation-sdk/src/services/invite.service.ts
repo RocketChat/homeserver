@@ -11,7 +11,7 @@ import type {
 import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { signEvent } from '@hs/homeserver/src/signEvent';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';

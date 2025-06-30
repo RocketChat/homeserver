@@ -1,4 +1,4 @@
-import logger from '@hs/homeserver/src/utils/logger';
+import logger from '../utils/logger';
 
 export type QueueHandler<T> = (item: T) => Promise<void> | void;
 

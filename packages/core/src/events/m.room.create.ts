@@ -1,5 +1,5 @@
 import { createEventBase, type EventBase } from './eventBase';
-import { createEventWithId } from './utils/createSignedEvent';
+import { createEventWithId } from '@hs/core/src/events/utils/createSignedEvent';
 
 export interface RoomCreateEvent extends EventBase {
 	content: {

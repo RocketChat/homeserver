@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 import { injectable } from 'tsyringe';
 
 @injectable()

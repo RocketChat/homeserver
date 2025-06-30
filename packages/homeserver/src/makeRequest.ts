@@ -2,7 +2,7 @@ import { authorizationHeaders, computeAndMergeHash } from './authentication';
 import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
 import { extractURIfromURL } from './helpers/url';
 import type { SigningKey } from './keys';
-import logger from './utils/logger';
+import logger from '@hs/federation-sdk/src/utils/logger';
 
 import { signJson } from './signJson';
 

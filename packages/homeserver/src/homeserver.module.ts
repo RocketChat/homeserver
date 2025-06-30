@@ -44,7 +44,7 @@ import { ServerService } from '@hs/federation-sdk/src/services/server.service';
 import { StateService } from '@hs/federation-sdk/src/services/state.service';
 import { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
 import { WellKnownService } from '@hs/federation-sdk/src/services/well-known.service';
-import { LockManagerService } from './utils/lock.decorator';
+import { LockManagerService } from '@hs/federation-sdk/src/utils/lock.decorator';
 import { StateEventRepository } from './repositories/state-event.repository';
 import { roomPlugin } from './controllers/federation/rooms.controller';
 

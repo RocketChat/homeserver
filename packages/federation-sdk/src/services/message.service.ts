@@ -19,7 +19,7 @@ import {
 	type RedactionEvent,
 } from '@hs/core/src/events/m.room.redaction';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 import { signEvent, type SignedEvent } from '@hs/homeserver/src/signEvent';
 import { generateId } from '@hs/homeserver/src/authentication';
 

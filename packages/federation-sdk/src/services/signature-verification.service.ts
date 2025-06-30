@@ -1,5 +1,5 @@
 import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 import * as nacl from 'tweetnacl';
 
 interface KeyData {

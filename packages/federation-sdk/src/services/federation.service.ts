@@ -12,7 +12,7 @@ import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
 import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 
 @injectable()
 export class FederationService {
@@ -22,7 +22,7 @@ export class FederationService {
 		private readonly configService: FederationConfigService,
 		private readonly requestService: FederationRequestService,
 		private readonly signatureService: SignatureVerificationService,
-	) { }
+	) {}
 
 	/**
 	 * Get a make_join template for a room and user
@@ -116,7 +116,10 @@ export class FederationService {
 	/**
 	 * Send an event to a remote server
 	 */
-	async sendEvent<T extends EventBase>(domain: string, event: T): Promise<SendTransactionResponse> {
+	async sendEvent<T extends EventBase>(
+		domain: string,
+		event: T,
+	): Promise<SendTransactionResponse> {
 		try {
 			const transaction: Transaction = {
 				origin: this.configService.serverName,

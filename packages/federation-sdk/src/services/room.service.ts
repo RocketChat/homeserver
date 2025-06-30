@@ -39,7 +39,7 @@ import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
 import { signEvent, type SignedEvent } from '@hs/homeserver/src/signEvent';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 

@@ -24,9 +24,9 @@ import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
-import { checkSignAndHashes } from '@hs/homeserver/src/utils/checkSignAndHashes';
-import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { checkSignAndHashes } from '../utils/checkSignAndHashes';
+import { eventSchemas } from '../utils/event-schemas';
+import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { RoomService } from './room.service';
 
