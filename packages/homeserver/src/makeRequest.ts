@@ -1,161 +1,180 @@
-import { authorizationHeaders, computeAndMergeHash } from './authentication';
-import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
-import { extractURIfromURL } from './helpers/url';
-import type { SigningKey } from './keys';
-import logger from './utils/logger';
+import { authorizationHeaders, computeAndMergeHash } from "./authentication";
+import { resolveHostAddressByServerName } from "./helpers/server-discovery/discovery";
+import { extractURIfromURL } from "./helpers/url";
+import type { SigningKey } from "./keys";
+import logger from "./utils/logger";
 
-import { signJson } from './signJson';
+import { signJson } from "./signJson";
 
 export const makeSignedRequest = async <T = Record<string, unknown>>({
-	method,
-	domain,
-	uri,
-	body,
-	options = {},
-	signingKey,
-	signingName,
-	queryString,
+  method,
+  domain,
+  uri,
+  body,
+  options = {},
+  signingKey,
+  signingName,
+  queryString,
 }: {
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-	domain: string;
-	uri: string;
-	body?: Record<string, unknown>;
-	options?: Record<string, unknown>;
-	signingKey: SigningKey;
-	signingName: string;
-	queryString?: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  domain: string;
+  uri: string;
+  body?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  signingKey: SigningKey;
+  signingName: string;
+  queryString?: string;
 }): Promise<T> => {
-	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
-	const url = new URL(`https://${address}${uri}`);
-	if (queryString) {
-		url.search = queryString;
-	}
-	const signedBody = body && (await signJson(computeAndMergeHash({ ...body, signatures: {} }), signingKey, signingName));
+  const { address, headers } = await resolveHostAddressByServerName(
+    domain,
+    signingName
+  );
+  const url = new URL(`https://${address}${uri}`);
+  if (queryString) {
+    url.search = queryString;
+  }
+  const signedBody =
+    body &&
+    (await signJson(
+      computeAndMergeHash({ ...body, signatures: {} }),
+      signingKey,
+      signingName
+    ));
 
-	logger.debug('body ->', method, domain, url.toString(), signedBody);
+  logger.debug("body ->", method, domain, url.toString(), signedBody);
 
-	const auth = await authorizationHeaders(
-		signingName,
-		signingKey,
-		domain,
-		method,
-		extractURIfromURL(url),
-		signedBody as Record<string, unknown>,
-	);
+  const auth = await authorizationHeaders(
+    signingName,
+    signingKey,
+    domain,
+    method,
+    extractURIfromURL(url),
+    signedBody as Record<string, unknown>
+  );
 
-	logger.debug('auth ->', method, domain, uri, auth);
+  logger.debug("auth ->", method, domain, uri, auth);
 
-	const requestOptions: RequestInit = {
-		...options,
-		method,
-		headers: {
-			Authorization: auth,
-			...headers,
-		},
-	};
+  const requestOptions: RequestInit = {
+    ...options,
+    method,
+    headers: {
+      Authorization: auth,
+      ...headers,
+    },
+  };
 
-	if (body && signedBody) {
-		requestOptions.body = JSON.stringify(signedBody);
-	}
+  if (body && signedBody) {
+    requestOptions.body = JSON.stringify(signedBody);
+  }
 
-	if (queryString) {
-		url.search = queryString.startsWith('?') ? queryString : `?${queryString}`;
-	}
+  if (queryString) {
+    url.search = queryString.startsWith("?") ? queryString : `?${queryString}`;
+  }
 
-	const response = await fetch(url.toString(), requestOptions);
+  const response = await fetch(url.toString(), requestOptions);
 
-	return response.json() as Promise<T>;
+  return response.json() as Promise<T>;
 };
 
 export const makeRequest = async <T = Record<string, unknown>>({
-	method,
-	domain,
-	uri,
-	body,
-	signingName,
-	options = {},
-	queryString,
+  method,
+  domain,
+  uri,
+  body,
+  signingName,
+  options = {},
+  queryString,
 }: {
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-	domain: string;
-	uri: string;
-	body?: Record<string, unknown>;
-	signingName: string;
-	options?: Record<string, unknown>;
-	queryString?: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  domain: string;
+  uri: string;
+  body?: Record<string, unknown>;
+  signingName: string;
+  options?: Record<string, unknown>;
+  queryString?: string;
 }): Promise<T> => {
-	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
-	const url = new URL(`https://${address}${uri}`);
-	if (queryString) {
-		url.search = queryString;
-	}
+  const { address, headers } = await resolveHostAddressByServerName(
+    domain,
+    signingName
+  );
+  const url = new URL(`https://${address}${uri}`);
+  if (queryString) {
+    url.search = queryString;
+  }
 
-	const requestOptions: RequestInit = {
-		...options,
-		method,
-		headers,
-	};
+  const requestOptions: RequestInit = {
+    ...options,
+    method,
+    headers,
+  };
 
-	if (body) {
-		requestOptions.body = JSON.stringify(body);
-	}
+  if (body) {
+    requestOptions.body = JSON.stringify(body);
+  }
 
-	const response = await fetch(url.toString(), requestOptions);
+  const response = await fetch(url.toString(), requestOptions);
 
-	return response.json() as Promise<T>;
+  return response.json() as Promise<T>;
 };
 
 export const makeUnsignedRequest = async <T = Record<string, unknown>>({
-	method,
-	domain,
-	uri,
-	body,
-	options = {},
-	signingKey,
-	signingName,
-	queryString,
+  method,
+  domain,
+  uri,
+  body,
+  options = {},
+  signingKey,
+  signingName,
+  queryString,
 }: {
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-	domain: string;
-	uri: string;
-	body?: Record<string, unknown>;
-	options?: Record<string, unknown>;
-	signingKey: SigningKey;
-	signingName: string;
-	queryString?: string;
+  method: "GET" | "POST" | "PUT" | "DELETE";
+  domain: string;
+  uri: string;
+  body?: Record<string, unknown>;
+  options?: Record<string, unknown>;
+  signingKey: SigningKey;
+  signingName: string;
+  queryString?: string;
 }): Promise<T> => {
-	const auth = await authorizationHeaders<Record<string, unknown>>(signingName, signingKey, domain, method, uri, body);
+  const auth = await authorizationHeaders<Record<string, unknown>>(
+    signingName,
+    signingKey,
+    domain,
+    method,
+    uri,
+    body
+  );
 
-	const { headers } = await resolveHostAddressByServerName(domain, signingName);
-	// const url = new URL(`https://${address}${uri}`);
-	const url = new URL(`https://${domain}${uri}`);
-	// remove any port from the headers
-	const newHostHeader = headers['Host']?.split(':')[0];
+  const { headers } = await resolveHostAddressByServerName(domain, signingName);
+  // const url = new URL(`https://${address}${uri}`);
+  const url = new URL(`https://${domain}${uri}`);
+  // remove any port from the headers
+  const newHostHeader = headers.Host?.split(":")[0];
 
-	if (queryString) {
-		url.search = queryString;
-	}
+  if (queryString) {
+    url.search = queryString;
+  }
 
-	const requestOptions: RequestInit = {
-		...options,
-		method,
-		headers: {
-			'Authorization': auth,
-			// ...headers,
-			'Host': newHostHeader,
-			'content-type': 'application/json',
-		},
-	};
+  const requestOptions: RequestInit = {
+    ...options,
+    method,
+    headers: {
+      Authorization: auth,
+      // ...headers,
+      Host: newHostHeader,
+      "content-type": "application/json",
+    },
+  };
 
-	if (body) {
-		requestOptions.body = JSON.stringify(body);
-	}
+  if (body) {
+    requestOptions.body = JSON.stringify(body);
+  }
 
-	console.log('requestOptions', requestOptions);
+  console.log("requestOptions", requestOptions);
 
-	const response = await fetch(url.toString(), requestOptions);
+  const response = await fetch(url.toString(), requestOptions);
 
-	console.log('response ->', response.status, await response.json());
+  console.log("response ->", response.status, await response.json());
 
-	return response.json() as Promise<T>;
+  return response.json() as Promise<T>;
 };
