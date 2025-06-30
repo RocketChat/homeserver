@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
-import { StagingAreaService } from '../services/staging-area.service';
+import { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
 import { createLogger } from '../utils/logger';
 
 @injectable()

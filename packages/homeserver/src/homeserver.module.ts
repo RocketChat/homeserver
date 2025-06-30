@@ -42,7 +42,7 @@ import { ProfilesService } from '@hs/federation-sdk/src/services/profiles.servic
 import { RoomService } from './services/room.service';
 import { ServerService } from '@hs/federation-sdk/src/services/server.service';
 import { StateService } from './services/state.service';
-import { StagingAreaService } from './services/staging-area.service';
+import { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
 import { WellKnownService } from '@hs/federation-sdk/src/services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import { StateEventRepository } from './repositories/state-event.repository';
