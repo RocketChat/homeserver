@@ -45,7 +45,7 @@ import { ProfilesService } from '@hs/federation-sdk';
 import { RoomService } from './services/room.service';
 import { ServerService } from '@hs/federation-sdk';
 import { StateService } from './services/state.service';
-import { StagingAreaService } from './services/staging-area.service';
+import { StagingAreaService } from '@hs/federation-sdk';
 import { WellKnownService } from '../../federation-sdk/src/services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import type { HomeserverEventSignatures } from './types/events';

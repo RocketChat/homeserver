@@ -1,14 +1,17 @@
 import { injectable } from 'tsyringe';
-import type { EventBase } from '../models/event.model';
+import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import {
 	type StagingAreaEventType,
 	StagingAreaQueue,
-} from '../queues/staging-area.queue';
-import { Lock } from '../utils/lock.decorator';
-import { createLogger } from '../utils/logger';
+} from '@hs/homeserver/src/queues/staging-area.queue';
+import { Lock } from '@hs/homeserver/src/utils/lock.decorator';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventStateService } from '@hs/federation-sdk';
-import { EventService, EventType } from './event.service';
+import {
+	EventService,
+	EventType,
+} from '@hs/homeserver/src/services/event.service';
 import { MissingEventService } from '@hs/federation-sdk';
 
 // ProcessingState indicates where in the flow an event is

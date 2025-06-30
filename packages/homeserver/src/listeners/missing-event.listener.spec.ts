@@ -1,7 +1,7 @@
 import { test, expect, describe, mock, beforeEach, type Mock } from 'bun:test';
 import { MissingEventListener } from './missing-event.listener';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { StagingAreaService } from '../services/staging-area.service';
+import { StagingAreaService } from '@hs/federation-sdk';
 import { EventService } from '../services/event.service';
 import { EventFetcherService } from '@hs/federation-sdk';
 import type { EventBase } from '../models/event.model';
