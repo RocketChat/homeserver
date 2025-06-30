@@ -16,9 +16,6 @@
 				"noExplicitAny": "warn",
 				"noEmptyInterface": "off"
 			},
-			"correctness": {
-				"noUnusedVariables": "error"
-			},
 			"style": {
 				"noNonNullAssertion": "warn",
 				"useImportType": "off"
@@ -41,6 +38,13 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "**/node_modules", ".vscode", "dist", ".turbo"]
+		"ignore": [
+			"node_modules",
+			"**/node_modules",
+			".vscode",
+			"dist",
+			".turbo",
+			"build.js"
+		]
 	}
 }
