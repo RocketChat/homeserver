@@ -1,22 +1,12 @@
 import nacl from 'tweetnacl';
 import { toBinaryData, toUnpaddedBase64 } from './binaryData';
 import type { SigningKey } from './keys';
-import type { EventBase } from '@hs/core/src/events/eventBase';
-import type { IdAndEvent } from './procedures/createRoom';
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = 'ed25519',
 }
 
 export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
-
-export type SignedEvent<T extends IdAndEvent<EventBase>> = T & {
-	signatures: {
-		[key: string]: {
-			[key: string]: string;
-		};
-	};
-};
 
 export type SignedJson<T extends object> = T & {
 	signatures: {
@@ -36,7 +26,8 @@ export async function signJson<
 	signingKey: SigningKey,
 	signingName: string,
 ): Promise<SignedJson<T>> {
-	const keyId: ProtocolVersionKey = `${signingKey.algorithm}:${signingKey.version}`;
+	const keyId =
+		`${signingKey.algorithm}:${signingKey.version}` as ProtocolVersionKey;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
 
 	const data = encodeCanonicalJson(rest);
@@ -65,17 +56,6 @@ export const isValidAlgorithm = (
 ): algorithm is EncryptionValidAlgorithm => {
 	return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
 };
-
-// Checking for a Signature
-// To check if an entity has signed a JSON object an implementation does the following:
-
-// Checks if the signatures member of the object contains an entry with the name of the entity. If the entry is missing then the check fails.
-// Removes any signing key identifiers from the entry with algorithms it doesn’t understand. If there are no signing key identifiers left then the check fails.
-// Looks up verification keys for the remaining signing key identifiers either from a local cache or by consulting a trusted key server. If it cannot find a verification key then the check fails.
-// Decodes the base64 encoded signature bytes. If base64 decoding fails then the check fails.
-// Removes the signatures and unsigned members of the object.
-// Encodes the remainder of the JSON object using the Canonical JSON encoding.
-// Checks the signature bytes against the encoded object using the verification key. If this fails then the check fails. Otherwise the check succeeds.
 
 export async function getSignaturesFromRemote<
 	T extends object & {
@@ -198,31 +178,30 @@ export async function verifySignaturesFromRemote<
 export function encodeCanonicalJson(value: unknown): string {
 	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
-		return JSON.stringify(value);
+		if (typeof value === 'string') {
+			return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+		}
+		return String(value);
 	}
 
 	if (Array.isArray(value)) {
-		// Handle arrays recursively
-		const serializedArray = value.map(encodeCanonicalJson);
-		return `[${serializedArray.join(',')}]`;
+		return `[${value.map(encodeCanonicalJson).join(',')}]`;
 	}
 
-	// Handle objects: sort keys lexicographically
-	const sortedKeys = Object.keys(value).sort();
-	const serializedEntries = sortedKeys.map(
+	// Handle objects
+	const keys = Object.keys(value as Record<string, unknown>).sort();
+	const pairs = keys.map(
 		(key) =>
 			`"${key}":${encodeCanonicalJson((value as Record<string, unknown>)[key])}`,
 	);
-	return `{${serializedEntries.join(',')}}`;
+	return `{${pairs.join(',')}}`;
 }
 
 export async function signText(
 	data: string | Uint8Array,
 	signingKey: Uint8Array,
 ) {
-	if (typeof data === 'string') {
-		return nacl.sign.detached(toBinaryData(data), signingKey);
-	}
-
-	return nacl.sign.detached(data, signingKey);
+	const binaryData =
+		typeof data === 'string' ? new TextEncoder().encode(data) : data;
+	return nacl.sign.detached(binaryData, signingKey);
 }

@@ -1,17 +1,18 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import {
-	HttpException,
-	HttpStatus
-} from '../errors';
+import { HttpException, HttpStatus } from '../errors';
 import { generateId } from '../authentication';
-import type { InternalInviteUserResponse, ProcessInviteBody, ProcessInviteResponse } from '../dtos';
+import type {
+	InternalInviteUserResponse,
+	ProcessInviteBody,
+	ProcessInviteResponse,
+} from '../dtos';
 import { makeUnsignedRequest } from '../makeRequest';
 import type { EventBase } from '../models/event.model';
 import { signEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
@@ -31,7 +32,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
 		private readonly roomService: RoomService,
-	) { }
+	) {}
 
 	/**
 	 * Invite a user to an existing room, or create a new room if none is provided

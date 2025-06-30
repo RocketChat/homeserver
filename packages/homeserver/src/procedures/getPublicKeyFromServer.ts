@@ -4,7 +4,7 @@ import {
 	getSignaturesFromRemote,
 	isValidAlgorithm,
 	verifyJsonSignature,
-} from '../signJson';
+} from '@hs/federation-sdk';
 
 export const makeGetPublicKeyFromServerProcedure = (
 	getFromLocal: (origin: string, key: string) => Promise<string | undefined>,

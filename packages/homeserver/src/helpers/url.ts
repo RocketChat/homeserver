@@ -1,3 +1,1 @@
-export const extractURIfromURL = (url: URL): string => {
-	return `${url.pathname}${url.search}`;
-};
+export { extractURIfromURL } from '@hs/federation-sdk';

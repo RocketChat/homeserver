@@ -6,7 +6,7 @@ import {
 	getSignaturesFromRemote,
 	type SignedJson,
 	verifyJsonSignature,
-} from '../signJson';
+} from '@hs/federation-sdk';
 import logger from '../utils/logger';
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(

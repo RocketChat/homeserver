@@ -1,14 +1,26 @@
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
-import type {
-	AuthEvents
-} from '@hs/core/src/events/m.room.member';
+import type { AuthEvents } from '@hs/core/src/events/m.room.member';
 import { injectable } from 'tsyringe';
-import type { EventAuthParams, EventAuthResponse, GetDevicesParams, GetDevicesResponse, GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, MakeJoinParams, MakeJoinQuery, MakeJoinResponse, QueryKeysBody, QueryKeysResponse, QueryProfileResponse } from '../dtos/federation/profiles.dto';
+import type {
+	EventAuthParams,
+	EventAuthResponse,
+	GetDevicesParams,
+	GetDevicesResponse,
+	GetMissingEventsBody,
+	GetMissingEventsParams,
+	GetMissingEventsResponse,
+	MakeJoinParams,
+	MakeJoinQuery,
+	MakeJoinResponse,
+	QueryKeysBody,
+	QueryKeysResponse,
+	QueryProfileResponse,
+} from '../dtos/federation/profiles.dto';
 import type { EventStore } from '../models/event.model';
 import { EventRepository } from '../repositories/event.repository';
 
@@ -23,27 +35,32 @@ export class ProfilesService {
 		private readonly eventRepository: EventRepository,
 	) {}
 
-	async queryProfile(
-		userId: string,
-	): Promise<QueryProfileResponse> {
+	async queryProfile(userId: string): Promise<QueryProfileResponse> {
 		return {
 			avatar_url: 'mxc://matrix.org/MyC00lAvatar',
 			displayname: userId,
 		};
 	}
 
-	async queryKeys(deviceKeys: QueryKeysBody['device_keys']): Promise<QueryKeysResponse> {
-		const keys = Object.keys(deviceKeys).reduce((v, cur) => {
-			v[cur] = 'unknown_key';
-			return v;
-		}, {} as QueryKeysResponse['device_keys']);
+	async queryKeys(
+		deviceKeys: QueryKeysBody['device_keys'],
+	): Promise<QueryKeysResponse> {
+		const keys = Object.keys(deviceKeys).reduce(
+			(v, cur) => {
+				v[cur] = 'unknown_key';
+				return v;
+			},
+			{} as QueryKeysResponse['device_keys'],
+		);
 
 		return {
 			device_keys: keys,
 		};
 	}
 
-	async getDevices(userId: GetDevicesParams['userId']): Promise<GetDevicesResponse> {
+	async getDevices(
+		userId: GetDevicesParams['userId'],
+	): Promise<GetDevicesResponse> {
 		return {
 			user_id: userId,
 			stream_id: 1,
@@ -102,7 +119,12 @@ export class ProfilesService {
 
 		const versionArray = version ? version : ['1'];
 
-		return makeJoinEvent(roomId, userId, versionArray, serverName) as unknown as MakeJoinResponse;
+		return makeJoinEvent(
+			roomId,
+			userId,
+			versionArray,
+			serverName,
+		) as unknown as MakeJoinResponse;
 	}
 
 	async getMissingEvents(

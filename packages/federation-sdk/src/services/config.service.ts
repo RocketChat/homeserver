@@ -2,7 +2,7 @@ import { createLogger } from '../utils/logger';
 import * as dotenv from 'dotenv';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getKeyPair } from '../keys';
+import { getKeyPair } from '../utils/keys';
 import { injectable } from 'tsyringe';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';

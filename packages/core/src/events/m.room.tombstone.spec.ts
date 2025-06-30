@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { generateId } from '../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../homeserver/src/keys';
+import { generateKeyPairsFromString } from '@hs/federation-sdk';
 import { signEvent } from '../../../homeserver/src/signEvent';
 import {
 	createRoomTombstoneEvent,
