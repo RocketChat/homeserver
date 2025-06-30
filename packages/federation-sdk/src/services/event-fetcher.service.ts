@@ -1,13 +1,12 @@
-import { FederationService } from '@hs/federation-sdk';
+import { FederationService, ConfigService } from '@hs/federation-sdk';
 import {
 	isFederationEventWithPDUs,
 	type MatrixPDU,
 } from '@hs/core/src/events/pdu';
-import { createLogger } from '../utils/logger';
-import { generateId } from '../authentication';
-import { EventRepository } from '../repositories/event.repository';
-import type { EventBase } from '../models/event.model';
-import { ConfigService } from '@hs/federation-sdk';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { generateId } from '@hs/homeserver/src/authentication';
+import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
+import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { injectable } from 'tsyringe';
 
 export interface FetchedEvents {

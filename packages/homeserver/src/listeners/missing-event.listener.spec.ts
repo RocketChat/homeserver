@@ -3,7 +3,7 @@ import { MissingEventListener } from './missing-event.listener';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { StagingAreaService } from '../services/staging-area.service';
 import { EventService } from '../services/event.service';
-import { EventFetcherService } from '../services/event-fetcher.service';
+import { EventFetcherService } from '@hs/federation-sdk';
 import type { EventBase } from '../models/event.model';
 
 function createMockEvent(
