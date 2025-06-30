@@ -117,7 +117,7 @@ export const verifySignature = (
 	signature: Uint8Array,
 	publicKey: Uint8Array,
 	algorithm: EncryptionValidAlgorithm,
-	version: string,
+	_version: string,
 ) => {
 	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
 		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);

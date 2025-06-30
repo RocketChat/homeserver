@@ -81,13 +81,13 @@ describe('keys', () => {
 			try {
 				// @ts-ignore
 				await Bun.fs.unlink(signingKeyPath);
-			} catch (e) {
+			} catch {
 				// Ignore if file doesn't exist
 			}
 		});
 
 		it('should generate and store new key pairs if file does not exist', async () => {
-			bunFileSpy.mockImplementation((path: string) => ({
+			bunFileSpy.mockImplementation((_path: string) => ({
 				exists: async () => false,
 				text: async () => '',
 			}));

@@ -28,7 +28,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 
-	constructor(private readonly configService: FederationConfigService) { }
+	constructor(private readonly configService: FederationConfigService) {}
 
 	async makeSignedRequest<T>({
 		method,
@@ -95,7 +95,7 @@ export class FederationRequestService {
 				let errorDetail = errorText;
 				try {
 					errorDetail = JSON.stringify(JSON.parse(errorText));
-				} catch (e) {
+				} catch {
 					/* use raw text if parsing fails */
 				}
 				throw new Error(

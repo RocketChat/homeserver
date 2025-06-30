@@ -15,9 +15,7 @@
 		"turbo": "^2.5.4",
 		"typescript": "^5.8.3"
 	},
-	"workspaces": [
-		"packages/*"
-	],
+	"workspaces": ["packages/*"],
 	"dependencies": {
 		"@bogeychan/elysia-etag": "^0.0.6",
 		"@bogeychan/elysia-logger": "^0.1.4",
@@ -49,7 +47,8 @@
 		"test": "bun test",
 		"build": "turbo build",
 		"test:coverage": "bun test --coverage",
-		"lint": "bunx @biomejs/biome lint",
+		"lint": "bunx @biomejs/biome lint --diagnostic-level=error",
+		"lint:fix": "bunx @biomejs/biome lint --fix",
 		"tsc": "bunx tsc"
 	}
 }

@@ -13,14 +13,11 @@ import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 
 export const internalInvitePlugin = (app: Elysia) => {
-	const inviteService = container.resolve(InviteService);
+	const _inviteService = container.resolve(InviteService);
 	const stateService = container.resolve(StateService);
 	return app.post(
 		'/internal/invites',
-		async ({
-			body,
-			set,
-		}): Promise<InternalInviteUserResponse | ErrorResponse> => {
+		async ({ body }): Promise<InternalInviteUserResponse | ErrorResponse> => {
 			// try {
 			// 	return inviteService.inviteUserToRoom(username, roomId, sender, name);
 			// } catch (error) {

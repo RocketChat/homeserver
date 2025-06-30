@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { container } from 'tsyringe';
-import { Lock, LockManagerService, type MemoryLockConfig, type NatsLockConfig } from './lock.decorator';
+import {
+	Lock,
+	LockManagerService,
+	type MemoryLockConfig,
+	type NatsLockConfig,
+} from './lock.decorator';
 
 describe('Lock Decorator', () => {
 	beforeEach(() => {
 		// Clear the container and register the service fresh for each test
 		container.clearInstances();
 		container.register(LockManagerService, {
-			useFactory: () => new LockManagerService({ type: 'memory' })
+			useFactory: () => new LockManagerService({ type: 'memory' }),
 		});
 	});
 
@@ -16,7 +21,7 @@ describe('Lock Decorator', () => {
 			class TestService {
 				@Lock({ timeout: 1000, keyPath: 'userId' })
 				async processUser(userId: string): Promise<string> {
-					await new Promise(resolve => setTimeout(resolve, 50));
+					await new Promise((resolve) => setTimeout(resolve, 50));
 					return `processed-${userId}`;
 				}
 			}
@@ -36,14 +41,14 @@ describe('Lock Decorator', () => {
 				@Lock({ timeout: 1000, keyPath: 'userId' })
 				async processUser(userId: string): Promise<string> {
 					executionOrder.push(`start-${userId}`);
-					await new Promise(resolve => setTimeout(resolve, 100));
+					await new Promise((resolve) => setTimeout(resolve, 100));
 					executionOrder.push(`end-${userId}`);
 					return `processed-${userId}`;
 				}
 			}
 
 			const service = new TestService();
-			
+
 			const promise1 = service.processUser('user1');
 			const promise2 = service.processUser('user1');
 
@@ -53,7 +58,7 @@ describe('Lock Decorator', () => {
 				'start-user1',
 				'end-user1',
 				'start-user1',
-				'end-user1'
+				'end-user1',
 			]);
 		});
 
@@ -64,14 +69,14 @@ describe('Lock Decorator', () => {
 				@Lock({ timeout: 1000, keyPath: 'userId' })
 				async processUser(userId: string): Promise<string> {
 					executionOrder.push(`start-${userId}`);
-					await new Promise(resolve => setTimeout(resolve, 100));
+					await new Promise((resolve) => setTimeout(resolve, 100));
 					executionOrder.push(`end-${userId}`);
 					return `processed-${userId}`;
 				}
 			}
 
 			const service = new TestService();
-			
+
 			const promise1 = service.processUser('user1');
 			const promise2 = service.processUser('user2');
 
@@ -101,26 +106,36 @@ describe('Lock Decorator', () => {
 		test('should extract key from object property', async () => {
 			class TestService {
 				@Lock({ timeout: 1000, keyPath: 'userId' })
-				async processRequest(request: { userId: string; action: string }): Promise<string> {
+				async processRequest(request: {
+					userId: string;
+					action: string;
+				}): Promise<string> {
 					return `processed-${request.userId}`;
 				}
 			}
 
 			const service = new TestService();
-			const result = await service.processRequest({ userId: 'test-user', action: 'update' });
+			const result = await service.processRequest({
+				userId: 'test-user',
+				action: 'update',
+			});
 			expect(result).toBe('processed-test-user');
 		});
 
 		test('should extract key from nested object path', async () => {
 			class TestService {
 				@Lock({ timeout: 1000, keyPath: 'request.userId' })
-				async processData(data: { request: { userId: string; data: any } }): Promise<string> {
+				async processData(data: {
+					request: { userId: string; data: any };
+				}): Promise<string> {
 					return `processed-${data.request.userId}`;
 				}
 			}
 
 			const service = new TestService();
-			const result = await service.processData({ request: { userId: 'nested-user', data: {} } });
+			const result = await service.processData({
+				request: { userId: 'nested-user', data: {} },
+			});
 			expect(result).toBe('processed-nested-user');
 		});
 
@@ -133,21 +148,25 @@ describe('Lock Decorator', () => {
 			}
 
 			const service = new TestService();
-			
-			await expect(service.processUser('test-user')).rejects.toThrow('Could not find parameter');
+
+			await expect(service.processUser('test-user')).rejects.toThrow(
+				'Could not find parameter',
+			);
 		});
 
 		test('should throw error for null/undefined in path', async () => {
 			class TestService {
 				@Lock({ timeout: 1000, keyPath: 'request.userId' })
-				async processData(data: { request: null }): Promise<string> {
+				async processData(_data: { request: null }): Promise<string> {
 					return 'processed';
 				}
 			}
 
 			const service = new TestService();
-			
-			await expect(service.processData({ request: null })).rejects.toThrow('leads to null/undefined value');
+
+			await expect(service.processData({ request: null })).rejects.toThrow(
+				'leads to null/undefined value',
+			);
 		});
 	});
 
@@ -157,25 +176,34 @@ describe('Lock Decorator', () => {
 
 			class TestService {
 				@Lock({ timeout: 1000, keyPath: 'userId' })
-				async processUser(userId: string, shouldThrow = false): Promise<string> {
+				async processUser(
+					userId: string,
+					shouldThrow = false,
+				): Promise<string> {
 					executionOrder.push(`start-${userId}`);
 					if (shouldThrow) {
 						throw new Error('Test error');
 					}
-					await new Promise(resolve => setTimeout(resolve, 50));
+					await new Promise((resolve) => setTimeout(resolve, 50));
 					executionOrder.push(`end-${userId}`);
 					return `processed-${userId}`;
 				}
 			}
 
 			const service = new TestService();
-			
-			await expect(service.processUser('user1', true)).rejects.toThrow('Test error');
-			
+
+			await expect(service.processUser('user1', true)).rejects.toThrow(
+				'Test error',
+			);
+
 			const result = await service.processUser('user1', false);
-			
+
 			expect(result).toBe('processed-user1');
-			expect(executionOrder).toEqual(['start-user1', 'start-user1', 'end-user1']);
+			expect(executionOrder).toEqual([
+				'start-user1',
+				'start-user1',
+				'end-user1',
+			]);
 		});
 
 		test('should handle multiple errors correctly', async () => {
@@ -187,9 +215,13 @@ describe('Lock Decorator', () => {
 			}
 
 			const service = new TestService();
-			
-			await expect(service.processUser('user1')).rejects.toThrow('Error for user1');
-			await expect(service.processUser('user1')).rejects.toThrow('Error for user1');
+
+			await expect(service.processUser('user1')).rejects.toThrow(
+				'Error for user1',
+			);
+			await expect(service.processUser('user1')).rejects.toThrow(
+				'Error for user1',
+			);
 		});
 	});
 
@@ -200,18 +232,18 @@ describe('Lock Decorator', () => {
 			class TestService {
 				@Lock({ timeout: 100, keyPath: 'userId' })
 				async longRunningProcess(userId: string): Promise<string> {
-					await new Promise(resolve => setTimeout(resolve, 200));
+					await new Promise((resolve) => setTimeout(resolve, 200));
 					lockReleased = true;
 					return `processed-${userId}`;
 				}
 			}
 
 			const service = new TestService();
-			
+
 			const promise = service.longRunningProcess('user1');
-			
-			await new Promise(resolve => setTimeout(resolve, 150));
-			
+
+			await new Promise((resolve) => setTimeout(resolve, 150));
+
 			await promise;
 			expect(lockReleased).toBe(true);
 		}, 500);
@@ -247,12 +279,12 @@ describe('Lock Decorator', () => {
 			}
 
 			const service = new TestService();
-			
+
 			const promise1 = service.methodA('test');
 			const promise2 = service.methodB('test');
-			
+
 			const [result1, result2] = await Promise.all([promise1, promise2]);
-			
+
 			expect(result1).toBe('methodA-test');
 			expect(result2).toBe('methodB-test');
 		});
@@ -264,7 +296,7 @@ describe('Lock Decorator', () => {
 			container.clearInstances();
 			const memoryConfig: MemoryLockConfig = { type: 'memory' };
 			container.register(LockManagerService, {
-				useFactory: () => new LockManagerService(memoryConfig)
+				useFactory: () => new LockManagerService(memoryConfig),
 			});
 
 			class TestService {
@@ -277,7 +309,7 @@ describe('Lock Decorator', () => {
 			const service = new TestService();
 			const result = await service.processUser('test-user');
 			expect(result).toBe('processed-test-user');
-			
+
 			// Verify configuration
 			const lockManager = container.resolve(LockManagerService);
 			expect(lockManager.getConfig()).toEqual({ type: 'memory' });
@@ -290,10 +322,10 @@ describe('Lock Decorator', () => {
 				type: 'nats',
 				servers: ['nats://localhost:4222'],
 				timeout: 5000,
-				reconnect: true
+				reconnect: true,
 			};
 			container.register(LockManagerService, {
-				useFactory: () => new LockManagerService(natsConfig)
+				useFactory: () => new LockManagerService(natsConfig),
 			});
 
 			class TestService {
@@ -304,8 +336,10 @@ describe('Lock Decorator', () => {
 			}
 
 			const service = new TestService();
-			await expect(service.processUser('test-user')).rejects.toThrow(/NATS package not installed|CONNECTION_REFUSED|Failed to connect to NATS/);
-			
+			await expect(service.processUser('test-user')).rejects.toThrow(
+				/NATS package not installed|CONNECTION_REFUSED|Failed to connect to NATS/,
+			);
+
 			// Verify configuration is properly set
 			const lockManager = container.resolve(LockManagerService);
 			expect(lockManager.getConfig()).toEqual(natsConfig);
@@ -320,10 +354,10 @@ describe('Lock Decorator', () => {
 				reconnect: true,
 				maxReconnectAttempts: 5,
 				lockStreamName: 'CUSTOM_LOCKS',
-				lockTtlMs: 600000
+				lockTtlMs: 600000,
 			};
 			container.register(LockManagerService, {
-				useFactory: () => new LockManagerService(natsConfig)
+				useFactory: () => new LockManagerService(natsConfig),
 			});
 
 			// Verify configuration is properly set
@@ -333,9 +367,9 @@ describe('Lock Decorator', () => {
 
 		test('should support cleanup for external providers', async () => {
 			const lockManager = container.resolve(LockManagerService);
-			
+
 			// Should not throw for memory provider (no cleanup needed)
 			await expect(lockManager.cleanup()).resolves.toBeUndefined();
 		});
 	});
-}); 
+});

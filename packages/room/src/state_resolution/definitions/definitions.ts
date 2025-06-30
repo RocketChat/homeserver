@@ -432,7 +432,7 @@ export async function mainlineOrdering(
 	events: PersistentEventBase[], // TODO: or take event ids
 	// Let P = P0 be an m.room.power_levels event
 	powerLevelEvent: PersistentEventBase, // of which we will calculate the mainline
-	authEventMap: Map<StateMapKey, PersistentEventBase>,
+	_authEventMap: Map<StateMapKey, PersistentEventBase>,
 	store: EventStore,
 ): Promise<PersistentEventBase[]> {
 	const getMainline = async (event: PersistentEventBase) => {
