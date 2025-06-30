@@ -28,7 +28,6 @@ import { checkSignAndHashes } from '../utils/checkSignAndHashes';
 import { eventSchemas } from '../utils/event-schemas';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
-import { RoomService } from './room.service';
 
 type ValidationResult = {
 	eventId: string;
@@ -97,7 +96,6 @@ export class EventService {
 		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		private readonly roomService: RoomService,
 	) {}
 
 	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {

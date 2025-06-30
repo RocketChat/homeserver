@@ -2,6 +2,7 @@ import { FederationConfigService } from './services/federation-config.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { SignatureVerificationService } from './services/signature-verification.service';
+import { EventService } from './services/event.service';
 
 export type FederationModuleOptions = {
 	serverName: string;
@@ -29,6 +30,10 @@ export class FederationModule {
 					provide: 'FEDERATION_OPTIONS',
 					useFactory: options.useFactory,
 					inject: options.inject || [],
+				},
+				{
+					provide: 'EventService',
+					useClass: EventService,
 				},
 				FederationConfigService,
 				FederationService,
