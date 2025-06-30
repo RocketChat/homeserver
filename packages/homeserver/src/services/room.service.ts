@@ -37,7 +37,10 @@ import { RoomRepository } from '../repositories/room.repository';
 import { signEvent, type SignedEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from '@hs/federation-sdk/src/services/config.service';
-import { EventService, EventType } from './event.service';
+import {
+	EventService,
+	EventType,
+} from '@hs/federation-sdk/src/services/event.service';
 
 const logger = createLogger('RoomService');
 

@@ -33,7 +33,7 @@ import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/datab
 import { EventAuthorizationService } from '@hs/federation-sdk/src/services/event-authorization.service';
 import { EventFetcherService } from '@hs/federation-sdk/src/services/event-fetcher.service';
 import { EventStateService } from '@hs/federation-sdk/src/services/event-state.service';
-import { EventService } from './services/event.service';
+import { EventService } from '@hs/federation-sdk/src/services/event.service';
 import { InviteService } from '@hs/federation-sdk/src/services/invite.service';
 import { MessageService } from '@hs/federation-sdk/src/services/message.service';
 import { MissingEventService } from '@hs/federation-sdk/src/services/missing-event.service';

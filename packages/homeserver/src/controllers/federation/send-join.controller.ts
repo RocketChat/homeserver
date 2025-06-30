@@ -10,7 +10,7 @@ import {
 	SendJoinResponseDto,
 } from '../../dtos';
 import { ConfigService } from '@hs/federation-sdk/src/services/config.service';
-import { EventService } from '../../services/event.service';
+import { EventService } from '@hs/federation-sdk/src/services/event.service';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);

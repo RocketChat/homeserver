@@ -10,10 +10,7 @@ import {
 } from '@hs/core/src/events/m.room.message';
 import { FederationService } from '@hs/federation-sdk';
 import { ConfigService } from './config.service';
-import {
-	EventService,
-	EventType,
-} from '@hs/homeserver/src/services/event.service';
+import { EventService, EventType } from './event.service';
 import { RoomService } from '@hs/homeserver/src/services/room.service';
 import { ForbiddenError } from '@hs/homeserver/src/errors';
 import {

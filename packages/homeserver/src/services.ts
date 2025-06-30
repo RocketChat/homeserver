@@ -1,7 +1,7 @@
 import { container } from 'tsyringe';
 import { RoomService } from './services/room.service';
 import { MessageService } from '@hs/federation-sdk/src/services/message.service';
-import { EventService } from './services/event.service';
+import { EventService } from '@hs/federation-sdk/src/services/event.service';
 import { InviteService } from '@hs/federation-sdk/src/services/invite.service';
 import { WellKnownService } from '@hs/federation-sdk/src/services/well-known.service';
 import { ProfilesService } from '@hs/federation-sdk/src/services/profiles.service';
