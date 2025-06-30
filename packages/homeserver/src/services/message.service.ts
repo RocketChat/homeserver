@@ -9,14 +9,19 @@ import {
 	type RoomMessageEvent,
 } from '@hs/core/src/events/m.room.message';
 import { FederationService } from '@hs/federation-sdk';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { EventService, EventType } from './event.service';
 import { RoomService } from './room.service';
 import { ForbiddenError } from '../errors';
-import { type RedactionAuthEvents, redactionEvent, type RedactionEvent } from '@hs/core/src/events/m.room.redaction';
+import {
+	type RedactionAuthEvents,
+	redactionEvent,
+	type RedactionEvent,
+} from '@hs/core/src/events/m.room.redaction';
 import { injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
-import { signEvent, type SignedEvent } from '../signEvent';
+import type { SignedEvent } from '@hs/federation-sdk';
+import { signEvent } from '../signEvent';
 import { generateId } from '../authentication';
 
 @injectable()
@@ -28,7 +33,7 @@ export class MessageService {
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly roomService: RoomService,
-	) { }
+	) {}
 
 	async sendMessage(
 		roomId: string,
@@ -92,9 +97,7 @@ export class MessageService {
 		await this.federationService.sendEvent(targetServer, signedEvent);
 		await this.eventService.insertEvent(signedEvent, eventId);
 
-		this.logger.info(
-			`Sent message to ${targetServer} - ${eventId}`,
-		);
+		this.logger.info(`Sent message to ${targetServer} - ${eventId}`);
 
 		return { ...signedEvent, event_id: eventId };
 	}
@@ -245,26 +248,45 @@ export class MessageService {
 		return signedEvent;
 	}
 
-	async redactMessage(roomId: string, eventIdToRedact: string, reason: string | undefined, senderUserId: string, targetServer: string): Promise<SignedEvent<RedactionEvent>> {
+	async redactMessage(
+		roomId: string,
+		eventIdToRedact: string,
+		reason: string | undefined,
+		senderUserId: string,
+		targetServer: string,
+	): Promise<SignedEvent<RedactionEvent>> {
 		const serverName = this.configService.getServerConfig().name;
 		const signingKey = await this.configService.getSigningKey();
 
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
 		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
 
-		const authEvents = await this.eventService.getAuthEventIds(EventType.MESSAGE, { roomId, senderId: senderUserId });
+		const authEvents = await this.eventService.getAuthEventIds(
+			EventType.MESSAGE,
+			{ roomId, senderId: senderUserId },
+		);
 
 		const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
 
 		const authEventsMap: RedactionAuthEvents = {
-			"m.room.create": authEvents.find((event) => event.type === EventType.CREATE)?._id || "",
-			"m.room.power_levels": authEvents.find((event) => event.type === EventType.POWER_LEVELS)?._id || "",
-			"m.room.member": authEvents.find((event) => event.type === EventType.MEMBER)?._id || "",
+			'm.room.create':
+				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
+			'm.room.power_levels':
+				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
+					?._id || '',
+			'm.room.member':
+				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
 		};
 
-		if (!authEventsMap["m.room.create"] || !authEventsMap["m.room.power_levels"] || !authEventsMap["m.room.member"]) {
-			throw new Error("There are missing critical auth events (create, power_levels, or sender's member event) for the redaction event on the sending server.");
+		if (
+			!authEventsMap['m.room.create'] ||
+			!authEventsMap['m.room.power_levels'] ||
+			!authEventsMap['m.room.member']
+		) {
+			throw new Error(
+				"There are missing critical auth events (create, power_levels, or sender's member event) for the redaction event on the sending server.",
+			);
 		}
 
 		const { state_key, ...eventForSigning } = redactionEvent({
@@ -275,7 +297,7 @@ export class MessageService {
 			depth: newDepth,
 			content: {
 				redacts: eventIdToRedact,
-				...(reason && { reason })
+				...(reason && { reason }),
 			},
 			origin: serverName,
 			ts: Date.now(),
@@ -284,15 +306,18 @@ export class MessageService {
 		const signedEvent = await signEvent(
 			eventForSigning,
 			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName
+			serverName,
 		);
 
 		const eventId = await this.eventService.insertEvent(signedEvent);
 		const eventToFederate: RedactionEvent = {
 			...signedEvent,
 			redacts: eventForSigning.redacts,
-		}
-		await this.federationService.sendEvent<RedactionEvent>(targetServer, eventToFederate);
+		};
+		await this.federationService.sendEvent<RedactionEvent>(
+			targetServer,
+			eventToFederate,
+		);
 		await this.eventService.processRedaction(eventToFederate);
 
 		return { ...signedEvent, event_id: eventId };

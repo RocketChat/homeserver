@@ -1,17 +1,5 @@
 import type { EventBase } from '@hs/core/src/events/eventBase';
-import type { SigningKey } from './keys';
-
-export type SignedEvent<T extends EventBase> = T & {
-	event_id: string;
-	hashes: {
-		sha256: string;
-	};
-	signatures: {
-		[key: string]: {
-			[key: string]: string;
-		};
-	};
-};
+import { type SigningKey, type SignedEvent } from '@hs/federation-sdk';
 
 export const signEvent = async <T extends EventBase>(
 	event: T,
@@ -25,10 +13,10 @@ export const signEvent = async <T extends EventBase>(
 	]);
 	// Compute hash and sign
 	const eventToSign = pruneEventDict(computeAndMergeHash(event));
-	const { signJson } = await import('./signJson');
+	const { signJson } = await import('@hs/federation-sdk');
 	const signedJsonResult = await signJson(eventToSign, signature, signingName);
 	// For non-redaction events, restore the original content
-	
+
 	return {
 		...signedJsonResult,
 		content: event.content,

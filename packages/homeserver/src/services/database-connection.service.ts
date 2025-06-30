@@ -1,6 +1,6 @@
 import { createLogger } from '../utils/logger';
 import { MongoClient, type MongoClientOptions, Db } from 'mongodb';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 
 @injectable()

@@ -1,4 +1,4 @@
-import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
+import type { ProtocolVersionKey } from '../utils/signJson';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import * as nacl from 'tweetnacl';
 

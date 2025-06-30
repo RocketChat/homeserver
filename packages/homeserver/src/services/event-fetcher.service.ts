@@ -7,7 +7,7 @@ import { createLogger } from '../utils/logger';
 import { generateId } from '../authentication';
 import { EventRepository } from '../repositories/event.repository';
 import type { EventBase } from '../models/event.model';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 
 export interface FetchedEvents {

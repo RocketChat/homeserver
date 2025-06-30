@@ -1,14 +1,11 @@
-import type { SigningKey } from '@hs/homeserver/src/keys';
+import { type SigningKey } from '../utils/keys';
 import * as nacl from 'tweetnacl';
 import {
 	authorizationHeaders,
 	computeAndMergeHash,
-} from '../../../homeserver/src/authentication';
-import { extractURIfromURL } from '../../../homeserver/src/helpers/url';
-import {
-	EncryptionValidAlgorithm,
-	signJson,
-} from '../../../homeserver/src/signJson';
+} from '../utils/authentication';
+import { extractURIfromURL } from '../utils/url';
+import { EncryptionValidAlgorithm, signJson } from '../utils/signJson';
 import { FederationConfigService } from './federation-config.service';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { injectable } from 'tsyringe';

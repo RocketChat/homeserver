@@ -7,7 +7,7 @@ import { makeUnsignedRequest } from '../makeRequest';
 import type { EventBase } from '../models/event.model';
 import { signEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 

@@ -1,6 +1,6 @@
 import { makeJoinEventBuilder } from '../procedures/makeJoin';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
+import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
@@ -22,7 +22,6 @@ export class ProfilesService {
 		private readonly roomService: RoomService,
 		private readonly eventRepository: EventRepository,
 	) {}
-
 	async queryProfile(userId: string): Promise<{
 		avatar_url: string;
 		displayname: string;
@@ -41,6 +40,7 @@ export class ProfilesService {
 				v[cur] = 'unknown_key';
 				return v;
 			},
+
 			{} as Record<string, string>,
 		);
 
