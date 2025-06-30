@@ -31,7 +31,7 @@ import { KeyRepository } from './repositories/key.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { ServerRepository } from './repositories/server.repository';
 import { StateRepository } from './repositories/state.repository';
-import { DatabaseConnectionService } from './services/database-connection.service';
+import { DatabaseConnectionService } from '@hs/federation-sdk';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventFetcherService } from './services/event-fetcher.service';
 import { EventStateService } from './services/event-state.service';
