@@ -37,7 +37,7 @@ export class DatabaseConnectionService {
 			return;
 		}
 
-		this.connectionPromise = async (): Promise<void> => {
+		this.connectionPromise = (async (): Promise<void> => {
 			try {
 				const dbConfig = this.configService.getDatabaseConfig();
 
@@ -60,7 +60,7 @@ export class DatabaseConnectionService {
 				this.connectionPromise = null;
 				throw new Error('Database connection failed');
 			}
-		};
+		})();
 
 		return this.connectionPromise;
 	}
