@@ -12,6 +12,7 @@
 		"husky": "^9.1.7",
 		"sinon": "^20.0.0",
 		"tsconfig-paths": "^4.2.0",
+		"turbo": "^2.5.4",
 		"typescript": "^5.8.3"
 	},
 	"workspaces": [
@@ -41,10 +42,12 @@
 			"pre-commit": "bun test"
 		}
 	},
+	"packageManager": "bun@1.1.10",
 	"scripts": {
 		"prepare": "husky",
 		"start": "bun run index.ts",
 		"test": "bun test",
+		"build": "turbo build",
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint",
 		"tsc": "bunx tsc"
