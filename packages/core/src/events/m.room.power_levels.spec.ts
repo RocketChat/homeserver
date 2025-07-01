@@ -3,7 +3,7 @@ import { expect, test } from 'bun:test';
 import { generateId } from '../../../homeserver/src/authentication';
 import { generateKeyPairsFromString } from '@hs/federation-sdk';
 import type { SignedEvent } from '@hs/federation-sdk';
-import { signEvent } from '../../../homeserver/src/signEvent';
+import { signEvent } from '../utils/signEvent';
 import {
 	roomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,

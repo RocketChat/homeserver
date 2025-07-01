@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 
 import { generateId } from '../../../homeserver/src/authentication';
 import { generateKeyPairsFromString } from '@hs/federation-sdk';
-import { signEvent } from '../../../homeserver/src/signEvent';
+import { signEvent } from '../utils/signEvent';
 import { roomGuestAccessEvent } from './m.room.guest_access';
 
 const finalEventId = '$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas';
