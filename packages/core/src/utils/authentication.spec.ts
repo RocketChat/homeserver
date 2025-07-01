@@ -9,12 +9,9 @@ import {
 	signRequest,
 	validateAuthorizationHeader,
 } from './authentication';
-import {
-	generateKeyPairsFromString,
-	signJson,
-	signText,
-} from '@hs/federation-sdk';
-import { type SigningKey, EncryptionValidAlgorithm } from '../types';
+
+import { generateKeyPairsFromString } from './keys';
+import { signJson } from './signJson';
 
 // {
 //     "content": {

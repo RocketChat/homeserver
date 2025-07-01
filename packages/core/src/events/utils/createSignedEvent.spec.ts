@@ -3,7 +3,7 @@ import { createRoomCreateEvent, roomCreateEvent } from '../m.room.create';
 import { signEvent } from '../../utils/signEvent';
 import { generateId } from '@hs/core';
 import { createSignedEvent } from './createSignedEvent';
-import { generateKeyPairsFromString } from '@hs/federation-sdk';
+import { generateKeyPairsFromString } from '../../utils/keys';
 
 describe('makeSignedEvent', () => {
 	test('it should return the same payload, following create event > sign > generate id', async () => {
