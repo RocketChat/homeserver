@@ -1,5 +1,6 @@
 import type { EventBase } from '../events/eventBase';
-import { type SigningKey, type SignedEvent } from '@hs/federation-sdk';
+import type { SignedEvent } from '../types';
+import type { SigningKey } from '@hs/federation-sdk';
 
 export const signEvent = async <T extends EventBase>(
 	event: T,

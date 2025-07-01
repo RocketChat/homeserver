@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from './events/eventBase';
 
 export type SignedEvent<T extends EventBase> = T & {
 	event_id: string;

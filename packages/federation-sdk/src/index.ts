@@ -64,8 +64,6 @@ export {
 	type SigningKey,
 } from './utils/keys';
 
-export type { SignedEvent } from './utils/types';
-
 // Authentication utilities
 export {
 	authorizationHeaders,
