@@ -3,7 +3,9 @@ import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
 	ConfigService,
+	ErrorResponse,
 	ErrorResponseDto,
+	SendJoinResponse,
 	SendJoinResponseDto,
 	StateService,
 } from '@hs/federation-sdk';
@@ -20,47 +22,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 	return app.put(
 		'/_matrix/federation/v2/send_join/:roomId/:eventId',
 		async ({ params, body, query }) => {
-			// const event = body;
-			// const { roomId, stateKey } = params;
-
-			// const records = await eventService.findEvents(
-			// 	{ 'event.room_id': roomId },
-			// 	{ sort: { 'event.depth': 1 } },
-			// );
-			// const events = records.map((event) => event.event);
-			// const lastInviteEvent = records.find(
-			// 	(record) =>
-			// 		isRoomMemberEvent(record.event) &&
-			// 		record.event.content.membership === 'invite',
-			// );
-			// const eventToSave = {
-			// 	...event,
-			// 	origin: event.origin || configService.getServerConfig().name,
-			// };
-			// const result = {
-			// 	event: {
-			// 		...event,
-			// 		unsigned: lastInviteEvent
-			// 			? {
-			// 					replaces_state: lastInviteEvent._id,
-			// 					prev_content: lastInviteEvent.event.content,
-			// 					prev_sender: lastInviteEvent.event.sender,
-			// 				}
-			// 			: undefined,
-			// 	},
-			// 	state: events.map((event) => ({ ...event })),
-			// 	auth_chain: events
-			// 		.filter((event) => event.depth && event.depth <= 4)
-			// 		.map((event) => ({ ...event })),
-			// 	members_omitted: false,
-			// 	origin: configService.getServerConfig().name,
-			// };
-			// if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
-			// 	await eventService.insertEvent(eventToSave, stateKey);
-			// }
-			// return result;
-
-			const { roomId, eventId: _eventId } = params;
+			const { roomId, eventId } = params;
 
 			const roomVersion = await stateService.getRoomVersion(roomId);
 
@@ -68,22 +30,25 @@ export const sendJoinPlugin = (app: Elysia) => {
 				throw new Error('Room version not found');
 			}
 
-			const roomInformation = await stateService.getRoomInformation(roomId);
+			const bodyAny = body as any;
 
-			const joinEvent = PersistentEventFactory.newMembershipEvent(
-				roomId,
-				body.sender,
-				body.state_key,
-				body.content.membership,
-				roomInformation,
+			// delete existing auth events and refill them
+			bodyAny.auth_events = [];
+
+			const joinEvent = PersistentEventFactory.createFromRawEvent(
+				bodyAny,
+				roomVersion,
 			);
-
-			for await (const prevEvent of stateService.getPrevEvents(joinEvent)) {
-				joinEvent.addPreviousEvent(prevEvent);
-			}
 
 			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
 				joinEvent.authedBy(authEvent);
+			}
+
+			// now check the calculated id if it matches what is passed in param
+			if (joinEvent.eventId !== eventId) {
+				// this is important sanity check
+				// while prev_events don't matter as much as it CAN change if we try to recalculate, auth events can not
+				throw new Error('join event id did not match what was passed in param');
 			}
 
 			// fetch state before allowing join here - TODO: don't just persist the membership like this
@@ -116,7 +81,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 				event: {
 					...signedJoinEvent,
 					unsigned: {},
-					origin: origin,
 				}, // TODO: eh
 				members_omitted: false, // less requests
 				state: Array.from(state.values()).map((event) => {
@@ -141,7 +105,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 			query: t.Object({
 				omit_members: t.Optional(t.Boolean()), // will ignore this for now
 			}),
-			body: t.Object({
+			/* body: t.Object({
 				origin: t.String(),
 				origin_server_ts: t.Number(),
 				sender: t.String(),
@@ -150,7 +114,8 @@ export const sendJoinPlugin = (app: Elysia) => {
 				content: t.Object({
 					membership: t.Literal('join'),
 				}),
-			}),
+			}), */
+			body: t.Any(),
 			response: {
 				200: SendJoinResponseDto,
 				400: ErrorResponseDto,
