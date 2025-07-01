@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { DatabaseConnectionService } from '@hs/federation-sdk';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Room = {
 	_id: string;
@@ -27,7 +27,7 @@ export class RoomRepository {
 	private async getCollection(): Promise<Collection<Room>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Room>('rooms');
-		return this.collection;
+		return this.collection!;
 	}
 
 	async upsert(roomId: string, state: EventBaseWithOptionalId[]) {

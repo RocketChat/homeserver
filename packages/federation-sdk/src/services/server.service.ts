@@ -1,5 +1,5 @@
-import { ServerRepository } from '@hs/homeserver/src/repositories/server.repository';
 import { injectable } from 'tsyringe';
+import type { ServerRepository } from '../repositories/server.repository';
 
 @injectable()
 export class ServerService {

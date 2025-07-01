@@ -33,14 +33,15 @@ import type {
 	EventBaseWithOptionalId as ModelEventBase,
 } from '@hs/core';
 import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
-import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
-import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
+
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
+import type { RoomRepository } from '../repositories/room.repository';
+import type { EventRepository } from '../repositories/event.repository';
 
 // Utility function to create a random ID for room creation
 function createMediaId(length: number) {

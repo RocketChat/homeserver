@@ -6,7 +6,7 @@ import {
 	type Collection,
 	type WithId,
 } from 'mongodb';
-import { DatabaseConnectionService } from '@hs/federation-sdk';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 import type { StateMapKey } from '@hs/room/src/types/_common';
 import type { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
@@ -34,7 +34,7 @@ export class StateRepository {
 	async getCollection(): Promise<Collection<WithId<StateStore>>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<WithId<StateStore>>('states');
-		return this.collection;
+		return this.collection!;
 	}
 
 	async getStateMapping(stateId: string): Promise<WithId<StateStore> | null> {

@@ -26,11 +26,6 @@ import { MissingEventListener } from '@hs/federation-sdk';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
-import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { StateRepository } from './repositories/state.repository';
 import { DatabaseConnectionService } from '@hs/federation-sdk';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventFetcherService } from '@hs/federation-sdk';
@@ -49,7 +44,12 @@ import { StagingAreaService } from '@hs/federation-sdk';
 import { WellKnownService } from '@hs/federation-sdk';
 import { LockManagerService } from './utils/lock.decorator';
 import type { HomeserverEventSignatures } from './types/events';
-import { StateEventRepository } from './repositories/state-event.repository';
+import { StateEventRepository } from '@hs/federation-sdk';
+import { EventRepository } from '@hs/federation-sdk';
+import { KeyRepository } from '@hs/federation-sdk';
+import { RoomRepository } from '@hs/federation-sdk';
+import { ServerRepository } from '@hs/federation-sdk';
+import { StateRepository } from '@hs/federation-sdk';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {
