@@ -39,6 +39,9 @@ export { RoomService } from './services/room.service';
 export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
 
+// Repository interfaces
+export type { IEventRepository } from './repositories/event.repository';
+
 // Utility exports
 export {
 	toBinaryData,

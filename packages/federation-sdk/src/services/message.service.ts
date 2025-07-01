@@ -12,7 +12,8 @@ import { FederationService } from '@hs/federation-sdk';
 import { type SignedEvent } from '@hs/core';
 import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
-import { RoomService } from '@hs/federation-sdk';
+import { inject } from 'tsyringe';
+import type { RoomService } from './room.service';
 import { ForbiddenError } from '@hs/homeserver/src/errors';
 import {
 	type RedactionAuthEvents,
@@ -33,7 +34,7 @@ export class MessageService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
-		private readonly roomService: RoomService,
+		@inject('RoomService') private readonly roomService: RoomService,
 	) {}
 
 	async sendMessage(

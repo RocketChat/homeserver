@@ -3,7 +3,8 @@ import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { EventFetcherService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import type { StagedEvent } from '@hs/federation-sdk/src/services/event.service';
-import { StagingAreaService } from '@hs/federation-sdk';
+import { inject } from 'tsyringe';
+import type { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
 import type { EventBase } from '@hs/core/src/events/eventBase';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/core';
@@ -14,6 +15,7 @@ export class MissingEventListener {
 
 	constructor(
 		private readonly missingEventsQueue: MissingEventsQueue,
+		@inject('StagingAreaService')
 		private readonly stagingAreaService: StagingAreaService,
 		private readonly eventService: EventService,
 		private readonly eventFetcherService: EventFetcherService,

@@ -2,7 +2,6 @@ import { makeJoinEventBuilder } from '@hs/homeserver/src/procedures/makeJoin';
 import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { RoomService } from '@hs/federation-sdk';
 
 import type { AuthEvents } from '@hs/core/src/events/m.room.member';
 import { injectable } from 'tsyringe';
@@ -22,7 +21,8 @@ import type {
 	QueryProfileResponse,
 } from '@hs/homeserver/src/dtos/federation/profiles.dto';
 import type { EventStore } from '@hs/homeserver/src/models/event.model';
-import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
+import type { IEventRepository } from '@hs/federation-sdk';
+import type { RoomService } from './room.service';
 
 @injectable()
 export class ProfilesService {
@@ -31,8 +31,8 @@ export class ProfilesService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
-		private readonly roomService: RoomService,
-		private readonly eventRepository: EventRepository,
+		// private readonly roomService: RoomService,
+		private readonly eventRepository: IEventRepository,
 	) {}
 
 	async queryProfile(userId: string): Promise<QueryProfileResponse> {
