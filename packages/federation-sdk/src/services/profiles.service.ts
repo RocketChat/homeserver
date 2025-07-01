@@ -1,4 +1,4 @@
-import { makeJoinEventBuilder } from '@hs/homeserver/src/procedures/makeJoin';
+import { makeJoinEventBuilder } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';

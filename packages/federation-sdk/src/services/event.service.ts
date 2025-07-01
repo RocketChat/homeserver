@@ -9,12 +9,12 @@ import type {
 	GetMissingEventsResponse,
 	SendTransactionBody,
 } from '../dtos';
-import { MatrixError } from '@hs/homeserver/src/errors';
+import { MatrixError } from '@hs/core';
 import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
-} from '@hs/homeserver/src/procedures/getPublicKeyFromServer';
+} from '@hs/core';
 import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';

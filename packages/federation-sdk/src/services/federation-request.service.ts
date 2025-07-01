@@ -1,7 +1,7 @@
 import type { SigningKey } from '@hs/core';
 import * as nacl from 'tweetnacl';
 import { authorizationHeaders, computeAndMergeHash } from '@hs/core';
-import { extractURIfromURL } from '../utils/url';
+import { extractURIfromURL } from '@hs/core';
 import { EncryptionValidAlgorithm } from '@hs/core';
 import { signJson } from '@hs/core';
 import { FederationConfigService } from './federation-config.service';

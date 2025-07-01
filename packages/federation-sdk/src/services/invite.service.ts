@@ -2,17 +2,17 @@ import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { FederationService } from './federation.service';
 import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';
-import { HttpException, HttpStatus } from '@hs/homeserver/src/errors';
+import { HttpException, HttpStatus } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import type { InternalInviteUserResponse } from '@hs/homeserver/src/dtos';
-import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { EventService } from './event.service';
 import { inject } from 'tsyringe';
 import type { RoomService } from './room.service';
+import { makeUnsignedRequest } from '@hs/core/src/utils/makeRequest';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
