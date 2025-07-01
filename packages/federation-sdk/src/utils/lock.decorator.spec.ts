@@ -1,4 +1,7 @@
+import 'reflect-metadata';
+
 import { beforeEach, describe, expect, test } from 'bun:test';
+
 import { container } from 'tsyringe';
 import {
 	Lock,
