@@ -1,6 +1,6 @@
 import nacl from 'tweetnacl';
 import { toUnpaddedBase64 } from './binaryData';
-import { signText } from './signJson';
+import { signData } from './signJson';
 import { EncryptionValidAlgorithm } from '@hs/core';
 import type { SigningKey } from '@hs/core';
 
@@ -20,7 +20,7 @@ export async function generateKeyPairs(
 		publicKey: keyPair.publicKey,
 		algorithm,
 		sign(data: Uint8Array) {
-			return signText(data, keyPair.secretKey);
+			return signData(data, keyPair.secretKey);
 		},
 	};
 }
