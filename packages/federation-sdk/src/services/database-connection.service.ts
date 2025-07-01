@@ -1,4 +1,4 @@
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@hs/core';
 import { MongoClient, type MongoClientOptions, Db } from 'mongodb';
 import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';

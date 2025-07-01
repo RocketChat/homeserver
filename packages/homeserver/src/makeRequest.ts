@@ -3,7 +3,9 @@ import { resolveHostAddressByServerName } from './helpers/server-discovery/disco
 import { extractURIfromURL } from './helpers/url';
 import { type SigningKey } from '@hs/core';
 import { signJson } from '@hs/federation-sdk';
-import logger from './utils/logger';
+import { createLogger } from '@hs/core';
+
+const logger = createLogger('makeRequest');
 
 export const makeSignedRequest = async <T = Record<string, unknown>>({
 	method,

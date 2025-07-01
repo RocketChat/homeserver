@@ -6,7 +6,7 @@ import type { StagedEvent } from '@hs/federation-sdk/src/services/event.service'
 import { StagingAreaService } from '@hs/federation-sdk';
 import type { EventBase } from '@hs/core/src/events/eventBase';
 import { injectable } from 'tsyringe';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@hs/core';
 
 @injectable()
 export class MissingEventListener {

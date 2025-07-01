@@ -5,7 +5,7 @@ import {
 	StagingAreaQueue,
 } from '@hs/homeserver/src/queues/staging-area.queue';
 import { Lock } from '@hs/homeserver/src/utils/lock.decorator';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '@hs/core';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventStateService } from '@hs/federation-sdk';
 import { EventService, EventType } from './event.service';
