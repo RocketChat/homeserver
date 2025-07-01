@@ -9,7 +9,8 @@ import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { EventService } from './event.service';
-import { RoomService } from '@hs/federation-sdk';
+import { inject } from 'tsyringe';
+import type { RoomService } from './room.service';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -26,7 +27,7 @@ export class InviteService {
 		private readonly eventService: EventService,
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
-		private readonly roomService: RoomService,
+		@inject('RoomService') private readonly roomService: RoomService,
 	) {}
 
 	/**

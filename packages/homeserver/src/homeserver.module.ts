@@ -89,10 +89,12 @@ export async function setup(options?: HomeserverSetupOptions) {
 	container.registerSingleton(NotificationService);
 	container.registerSingleton(ProfilesService);
 	container.registerSingleton(RoomService);
+	container.registerSingleton('RoomService', RoomService);
 	container.registerSingleton(ServerService);
 	container.registerSingleton(StagingAreaService);
+	container.registerSingleton('StagingAreaService', StagingAreaService);
 	container.registerSingleton(WellKnownService);
-	container.registerSingleton(EventRepository);
+	container.registerSingleton('IEventRepository', EventRepository);
 	container.registerSingleton(KeyRepository);
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(ServerRepository);

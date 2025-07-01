@@ -2,11 +2,14 @@ import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '@hs/core';
 import type { EventBase, EventStore } from '../models/event.model';
-import { DatabaseConnectionService } from '@hs/federation-sdk';
+import {
+	DatabaseConnectionService,
+	type IEventRepository,
+} from '@hs/federation-sdk';
 import { MongoError } from 'mongodb';
 
 @injectable()
-export class EventRepository {
+export class EventRepository implements IEventRepository {
 	private collection: Collection<EventStore> | null = null;
 
 	constructor(private readonly dbConnection: DatabaseConnectionService) {
