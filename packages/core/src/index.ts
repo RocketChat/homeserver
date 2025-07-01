@@ -18,6 +18,27 @@ export {
 	type HashedEvent,
 } from './utils/authentication';
 
+// Signing utilities
+export type { ProtocolVersionKey, SignedJson } from './utils/signJson';
+export {
+	signJson,
+	isValidAlgorithm,
+	getSignaturesFromRemote,
+	verifySignature,
+	verifyJsonSignature,
+	verifySignaturesFromRemote,
+	encodeCanonicalJson,
+	signText,
+	signData,
+} from './utils/signJson';
+
+// Binary data utilities
+export {
+	toBinaryData,
+	fromBinaryData,
+	toUnpaddedBase64,
+} from './utils/binaryData';
+
 // Event types and functions
 export * from './events/eventBase';
 export * from './events/m.room.create';
@@ -37,4 +58,4 @@ export * from './events/pdu';
 // Event utilities
 export * from './events/utils/createSignedEvent';
 
-export { createLogger } from './utils/logger';
+export { createLogger, logger } from './utils/logger';
