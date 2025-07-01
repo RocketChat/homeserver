@@ -2,7 +2,7 @@ import { makeJoinEventBuilder } from '@hs/homeserver/src/procedures/makeJoin';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { RoomService } from '@hs/homeserver/src/services/room.service';
+import { RoomService } from '@hs/federation-sdk';
 
 import type {
 	AuthEvents,
