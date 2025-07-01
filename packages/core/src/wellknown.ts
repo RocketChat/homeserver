@@ -9,15 +9,13 @@ interface Response {
 
 type Query = object;
 
-declare module './endpoints' {
-	interface Endpoints {
-		'/.well-known/matrix/server': {
-			GET: {
-				auth: false;
-				rateLimit: false;
-				query: Query;
-				response: Response;
-			};
+export interface WellKnownEndpoints {
+	'/.well-known/matrix/server': {
+		GET: {
+			auth: false;
+			rateLimit: false;
+			query: Query;
+			response: Response;
 		};
-	}
+	};
 }
