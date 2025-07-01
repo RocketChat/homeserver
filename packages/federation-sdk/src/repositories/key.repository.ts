@@ -1,6 +1,6 @@
 import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
-import { DatabaseConnectionService } from '@hs/federation-sdk';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Key = {
 	origin: string;
@@ -20,7 +20,7 @@ export class KeyRepository {
 	private async getCollection(): Promise<Collection<Key>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Key>('keys');
-		return this.collection;
+		return this.collection!;
 	}
 
 	async getValidPublicKeyFromLocal(

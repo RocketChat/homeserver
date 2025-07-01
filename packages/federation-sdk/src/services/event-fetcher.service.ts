@@ -6,9 +6,9 @@ import {
 } from '@hs/core/src/events/pdu';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
-import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { injectable } from 'tsyringe';
+import { EventRepository } from '../repositories/event.repository';
 
 export interface FetchedEvents {
 	events: { eventId: string; event: EventBaseWithOptionalId }[];

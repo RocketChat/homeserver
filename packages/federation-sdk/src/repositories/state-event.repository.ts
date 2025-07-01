@@ -1,7 +1,7 @@
 import { injectable } from 'tsyringe';
 import type { Collection, FindCursor } from 'mongodb';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { DatabaseConnectionService } from '@hs/federation-sdk';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 @injectable()
 export class StateEventRepository {
@@ -15,7 +15,7 @@ export class StateEventRepository {
 		const db = await this.dbConnection.getDb();
 		this.collection =
 			db.collection<EventBaseWithOptionalId>('final_state_events');
-		return this.collection;
+		return this.collection!;
 	}
 
 	async findByRoomId(

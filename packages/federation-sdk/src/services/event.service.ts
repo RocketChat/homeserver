@@ -18,14 +18,14 @@ import {
 import { pruneEventDict } from '@hs/core';
 
 import { StagingAreaQueue } from '@hs/homeserver/src/queues/staging-area.queue';
-import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
-import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';
-import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
 import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
+import type { EventRepository } from '../repositories/event.repository';
+import type { RoomRepository } from '../repositories/room.repository';
+import type { KeyRepository } from '../repositories/key.repository';
 
 type ValidationResult = {
 	eventId: string;
