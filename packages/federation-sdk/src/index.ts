@@ -34,6 +34,7 @@ export type { FetchedEvents } from './services/event-fetcher.service';
 export { InviteService } from './services/invite.service';
 export type { ProcessInviteEvent } from './services/invite.service';
 export { MessageService } from '@hs/homeserver/src/services/message.service';
+export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
 
 // Utility exports
