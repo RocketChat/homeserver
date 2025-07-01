@@ -11,9 +11,7 @@ import {
 import { FederationRequestService } from './federation-request.service';
 import { FederationConfigService } from './federation-config.service';
 import * as nacl from 'tweetnacl';
-import * as authentication from '@hs/core';
 import * as core from '@hs/core';
-import * as url from '@hs/core/src/url';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;
@@ -71,14 +69,10 @@ describe('FederationRequestService', async () => {
 		spyOn(nacl.sign.keyPair, 'fromSecretKey').mockReturnValue(mockKeyPair);
 		spyOn(nacl.sign, 'detached').mockReturnValue(mockSignature);
 
-		spyOn(url, 'extractURIfromURL').mockReturnValue('/test/path?query=value');
-		spyOn(authentication, 'authorizationHeaders').mockResolvedValue(
-			mockAuthHeaders,
-		);
+		spyOn(core, 'extractURIfromURL').mockReturnValue('/test/path?query=value');
+		spyOn(core, 'authorizationHeaders').mockResolvedValue(mockAuthHeaders);
 		spyOn(core, 'signJson').mockResolvedValue(mockSignedJson);
-		spyOn(authentication, 'computeAndMergeHash').mockImplementation(
-			(obj: any) => obj,
-		);
+		spyOn(core, 'computeAndMergeHash').mockImplementation((obj: any) => obj);
 
 		globalThis.fetch = Object.assign(
 			async (_url: string, _options?: RequestInit) => {
@@ -162,7 +156,7 @@ describe('FederationRequestService', async () => {
 				mockServerName,
 			);
 
-			expect(authentication.authorizationHeaders).toHaveBeenCalledWith(
+			expect(core.authorizationHeaders).toHaveBeenCalledWith(
 				mockServerName,
 				expect.any(Object),
 				'target.example.com',
