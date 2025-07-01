@@ -20,23 +20,27 @@ import {
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { generateId } from '../authentication';
+import { generateId } from '@hs/homeserver/src/authentication';
 import type {
 	InternalCreateRoomResponse,
 	InternalUpdateRoomNameResponse,
-} from '../dtos';
-import { ForbiddenError, HttpException, HttpStatus } from '../errors';
+} from '@hs/homeserver/src/dtos';
+import {
+	ForbiddenError,
+	HttpException,
+	HttpStatus,
+} from '@hs/homeserver/src/errors';
 import { type SigningKey } from '@hs/federation-sdk';
 import type {
 	EventStore,
 	EventBase as ModelEventBase,
-} from '../models/event.model';
-import { createRoom } from '../procedures/createRoom';
-import { EventRepository } from '../repositories/event.repository';
-import { RoomRepository } from '../repositories/room.repository';
+} from '@hs/homeserver/src/models/event.model';
+import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
+import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
+import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
 import type { SignedEvent } from '@hs/federation-sdk';
-import { signEvent } from '../signEvent';
-import { createLogger } from '../utils/logger';
+import { signEvent } from '@hs/homeserver/src/signEvent';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import { EventType } from '@hs/federation-sdk/src/services/event.service';

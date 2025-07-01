@@ -29,7 +29,7 @@ import {
 	RoomIdDto,
 	UsernameDto,
 } from '../../dtos';
-import { RoomService } from '../../services/room.service';
+import { RoomService } from '@hs/federation-sdk';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import { StateService } from '@hs/federation-sdk';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';

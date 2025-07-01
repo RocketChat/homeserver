@@ -35,6 +35,7 @@ export { InviteService } from './services/invite.service';
 export type { ProcessInviteEvent } from './services/invite.service';
 export { MessageService } from '@hs/homeserver/src/services/message.service';
 export { EventService } from './services/event.service';
+export { RoomService } from './services/room.service';
 export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
 
