@@ -1,11 +1,8 @@
 import { authorizationHeaders, computeAndMergeHash } from '@hs/core';
 import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
-import { extractURIfromURL } from './helpers/url';
 import { type SigningKey } from '@hs/core';
-import { signJson } from '@hs/federation-sdk';
-import { createLogger } from '@hs/core';
-
-const logger = createLogger('makeRequest');
+import { extractURIfromURL, signJson } from '@hs/federation-sdk';
+import { logger } from '@hs/core';
 
 export const makeSignedRequest = async <T = Record<string, unknown>>({
 	method,
