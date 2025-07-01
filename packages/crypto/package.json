@@ -9,9 +9,7 @@
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"files": [
-		"src"
-	],
+	"files": ["src", "dist"],
 	"main": "src/index.ts",
 	"types": "src/index.ts"
 }

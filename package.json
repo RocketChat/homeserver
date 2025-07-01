@@ -41,6 +41,7 @@
 		}
 	},
 	"packageManager": "bun@1.1.10",
+	"postinstall": "bun run build",
 	"scripts": {
 		"prepare": "husky",
 		"start": "bun run index.ts",

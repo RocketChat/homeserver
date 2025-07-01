@@ -15,5 +15,5 @@
 	},
 	"main": "./src/index.ts",
 	"types": "./dist/index.d.ts",
-	"files": ["src"]
+	"files": ["src", "dist"]
 }
