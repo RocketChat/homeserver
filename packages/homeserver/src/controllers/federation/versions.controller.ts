@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-import { GetVersionsResponseDto } from '../../dtos';
+import { GetVersionsResponseDto } from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
 
 export const versionsPlugin = (app: Elysia) => {

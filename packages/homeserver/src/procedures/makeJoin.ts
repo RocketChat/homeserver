@@ -48,6 +48,6 @@ export const makeJoinEventBuilder =
 
 		return {
 			event,
-			room_version: '10',
+			room_version: '10' as const,
 		};
 	};

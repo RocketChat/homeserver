@@ -3,7 +3,6 @@ import { FederationService, ConfigService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import { HttpException, HttpStatus } from '@hs/homeserver/src/errors';
 import { generateId } from '@hs/core';
-
 import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { signEvent } from '@hs/core';

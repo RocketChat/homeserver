@@ -2,13 +2,11 @@ import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
-	type SendJoinResponse,
 	ErrorResponseDto,
 	SendJoinEventDto,
 	SendJoinParamsDto,
 	SendJoinResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
 import { EventEmitterService } from '../../services/event-emitter.service';
 import { EventService } from '@hs/federation-sdk';
@@ -19,7 +17,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 	const emitter = container.resolve(EventEmitterService);
 	return app.put(
 		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
-		async ({ params, body }): Promise<SendJoinResponse | ErrorResponse> => {
+		async ({ params, body }) => {
 			const event = body;
 			const { roomId, stateKey } = params;
 

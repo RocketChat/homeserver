@@ -4,7 +4,6 @@ import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';
-
 import { MatrixError } from '@hs/homeserver/src/errors';
 import type {
 	EventBase,

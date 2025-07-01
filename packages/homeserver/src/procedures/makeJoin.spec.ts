@@ -7,11 +7,6 @@ import type {
 	RoomMemberEvent,
 } from '@hs/core/src/events/m.room.member';
 
-interface MakeJoinResult {
-	event: RoomMemberEvent;
-	room_version: string;
-}
-
 describe('makeJoinEventBuilder', () => {
 	const mockRoomId = '!roomId:example.org';
 	const mockUserId = '@user:example.org';
@@ -121,7 +116,7 @@ describe('makeJoinEventBuilder', () => {
 				unsigned: { age_ts: mockDate },
 			},
 			room_version: '10',
-		} as MakeJoinResult);
+		} as any);
 
 		expect(mockGetLastEvent).toHaveBeenCalledWith(mockRoomId);
 		expect(mockGetAuthEvents).toHaveBeenCalledWith(mockRoomId);

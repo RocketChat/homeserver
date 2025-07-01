@@ -1,19 +1,17 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
 	ErrorResponseDto,
 	SendTransactionBodyDto,
-	type SendTransactionResponse,
 	SendTransactionResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 
 export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 	return app.put(
 		'/_matrix/federation/v1/send/:txnId',
-		async ({ body }): Promise<SendTransactionResponse | ErrorResponse> => {
+		async ({ body }) => {
 			const { pdus = [] } = body;
 			if (pdus.length === 0) {
 				return {

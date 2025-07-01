@@ -79,3 +79,6 @@ export {
 
 // URL utilities
 export { extractURIfromURL } from './utils/url';
+
+// DTOs
+export * from './dtos';

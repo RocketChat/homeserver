@@ -10,7 +10,6 @@ import type {
 import { injectable } from 'tsyringe';
 import type { EventStore } from '@hs/homeserver/src/models/event.model';
 import type { IEventRepository } from '@hs/federation-sdk';
-import type { RoomService } from './room.service';
 
 @injectable()
 export class ProfilesService {
