@@ -1,8 +1,8 @@
-import { createLogger } from '@hs/core';
+import { createLogger, getKeyPair } from '@hs/core';
 import * as dotenv from 'dotenv';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getKeyPair } from '../utils/keys';
+
 import { injectable } from 'tsyringe';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';

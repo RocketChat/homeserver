@@ -3,13 +3,11 @@ import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
-import type {
-	AuthEvents,
-	RoomMemberEvent,
-} from '@hs/core/src/events/m.room.member';
+import type { AuthEvents, RoomMemberEvent } from '@hs/core';
 import { injectable } from 'tsyringe';
 import type { EventStore } from '@hs/homeserver/src/models/event.model';
-import type { IEventRepository } from '@hs/federation-sdk';
+
+import type { IEventRepository } from '../repositories/event.repository';
 
 @injectable()
 export class ProfilesService {

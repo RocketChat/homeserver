@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import nacl from 'tweetnacl';
 import { encodeCanonicalJson, signJson } from './signJson';
 import { toUnpaddedBase64 } from './binaryData';
-import { pruneEventDict } from './pruneEventDict';
 import { type SigningKey } from '../types';
 
 /**
@@ -175,16 +174,4 @@ export function computeHash<T extends Record<string, unknown>>(
 			crypto.createHash(algorithm).update(encodeCanonicalJson(toHash)).digest(),
 		),
 	];
-}
-
-export function generateId<T extends object>(content: T): string {
-	// remove the fields that are not part of the hash
-	const { age_ts, unsigned, signatures, ...toHash } = pruneEventDict(
-		content as any,
-	);
-
-	return `\$${toUnpaddedBase64(
-		crypto.createHash('sha256').update(encodeCanonicalJson(toHash)).digest(),
-		{ urlSafe: true },
-	)}`;
 }

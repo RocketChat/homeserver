@@ -1,7 +1,11 @@
 import { describe, expect, it, test } from 'bun:test';
-import { generateKeyPairsFromString } from './keys';
-import { signJson, verifySignaturesFromRemote } from './signJson';
-import { EncryptionValidAlgorithm, pruneEventDict } from '@hs/core';
+import {
+	EncryptionValidAlgorithm,
+	generateKeyPairsFromString,
+	pruneEventDict,
+	signJson,
+	verifySignaturesFromRemote,
+} from '@hs/core';
 
 describe('verifySignaturesFromRemote', async () => {
 	test('it should verify a valid signature', async () => {

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '../utils/authentication';
+import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 import { reactionEvent } from './m.reaction';

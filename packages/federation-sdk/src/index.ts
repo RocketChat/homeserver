@@ -13,7 +13,7 @@ export { FederationModule } from './federation.module';
 export type {
 	FederationModuleAsyncOptions,
 	FederationModuleOptions,
-} from './federation.module';
+} from './types';
 
 export { FederationConfigService } from './services/federation-config.service';
 export { FederationRequestService } from './services/federation-request.service';
@@ -23,6 +23,7 @@ export { WellKnownService } from './services/well-known.service';
 export { ConfigService } from './services/config.service';
 export type { AppConfig } from './services/config.service';
 export { DatabaseConnectionService } from './services/database-connection.service';
+
 export { ServerService } from './services/server.service';
 export { EventAuthorizationService } from './services/event-authorization.service';
 export { EventStateService } from './services/event-state.service';
@@ -45,38 +46,6 @@ export { MissingEventListener } from './services/missing-event.listener';
 export type { IEventRepository } from './repositories/event.repository';
 
 // Utility exports
-export {
-	toBinaryData,
-	fromBinaryData,
-	toUnpaddedBase64,
-} from './utils/binaryData';
-export {
-	signJson,
-	signText,
-	encodeCanonicalJson,
-	verifySignature,
-	verifyJsonSignature,
-	verifySignaturesFromRemote,
-	getSignaturesFromRemote,
-	isValidAlgorithm,
-	type SignedJson,
-} from './utils/signJson';
-export {
-	generateKeyPairs,
-	generateKeyPairsFromString,
-	getKeyPair,
-} from './utils/keys';
-
-// Authentication utilities
-export {
-	authorizationHeaders,
-	computeAndMergeHash,
-	computeHash,
-	extractSignaturesFromHeader,
-	signRequest,
-	validateAuthorizationHeader,
-	type HashedEvent,
-} from './utils/authentication';
 
 // URL utilities
 export { extractURIfromURL } from './utils/url';

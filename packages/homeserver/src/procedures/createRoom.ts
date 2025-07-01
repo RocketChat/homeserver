@@ -14,16 +14,13 @@ import {
 	createRoomJoinRulesEvent,
 	type RoomJoinRulesEvent,
 } from '@hs/core/src/events/m.room.join_rules';
-import {
-	createRoomMemberEvent,
-	type RoomMemberEvent,
-} from '@hs/core/src/events/m.room.member';
+import type { RoomMemberEvent } from '@hs/core/src/events/isRoomMemberEvent';
 import {
 	createRoomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
 } from '@hs/core/src/events/m.room.power_levels';
 import type { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
-import type { SignedEvent } from '@hs/core';
+import { createRoomMemberEvent, type SignedEvent } from '@hs/core';
 
 export type IdAndEvent<T> = {
 	event: T;

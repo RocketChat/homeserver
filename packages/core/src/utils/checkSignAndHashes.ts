@@ -1,11 +1,11 @@
 import type { EventBase } from '../events/eventBase';
-import { computeHash, type HashedEvent } from '../index';
+import { computeHash, type HashedEvent } from './authentication';
 import { pruneEventDict } from './pruneEventDict';
 import {
 	getSignaturesFromRemote,
 	type SignedJson,
 	verifyJsonSignature,
-} from '@hs/federation-sdk';
+} from './signJson';
 import { logger } from './logger';
 import { MatrixError } from './errors';
 

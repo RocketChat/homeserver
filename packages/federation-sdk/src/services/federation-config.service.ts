@@ -1,5 +1,5 @@
 import { inject, injectable } from 'tsyringe';
-import type { FederationModuleOptions } from '../federation.module';
+import type { FederationModuleOptions } from '../types';
 
 @injectable()
 export class FederationConfigService {

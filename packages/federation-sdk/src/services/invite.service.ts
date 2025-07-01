@@ -1,5 +1,6 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
-import { FederationService, ConfigService } from '@hs/federation-sdk';
+import { FederationService } from './federation.service';
+import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';
 import { HttpException, HttpStatus } from '@hs/homeserver/src/errors';
 import { generateId } from '@hs/core';

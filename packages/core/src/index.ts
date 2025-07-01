@@ -6,7 +6,7 @@ export type { SignedEvent, SigningKey } from './types';
 export { signEvent } from './utils/signEvent';
 
 // Authentication utilities
-export { generateId } from './utils/authentication';
+export { generateId } from './utils/generateId';
 export { pruneEventDict } from './utils/pruneEventDict';
 export { checkSignAndHashes } from './utils/checkSignAndHashes';
 export {
@@ -58,6 +58,8 @@ export * from './events/m.room.redaction';
 export * from './events/m.room.third_party_invite';
 export * from './events/m.reaction';
 export * from './events/pdu';
+
+export type { RoomMemberEvent } from './events/isRoomMemberEvent';
 
 // Event utilities
 export * from './events/utils/createSignedEvent';

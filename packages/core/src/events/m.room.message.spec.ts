@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '@hs/core';
+import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 import { roomCreateEvent } from './m.room.create';

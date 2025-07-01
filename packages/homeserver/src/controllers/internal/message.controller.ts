@@ -16,7 +16,7 @@ import {
 	InternalUpdateMessageParamsDto,
 } from '../../dtos';
 import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
-import { MessageService } from '@hs/federation-sdk';
+import { MessageService } from '@hs/federation-sdk/src/services/message.service';
 
 export const internalMessagePlugin = (app: Elysia) => {
 	const messageService = container.resolve(MessageService);

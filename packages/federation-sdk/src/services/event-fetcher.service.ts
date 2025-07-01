@@ -1,4 +1,5 @@
-import { FederationService, ConfigService } from '@hs/federation-sdk';
+import { FederationService } from './federation.service';
+import { ConfigService } from './config.service';
 import {
 	isFederationEventWithPDUs,
 	type MatrixPDU,

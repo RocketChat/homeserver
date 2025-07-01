@@ -1,4 +1,4 @@
-import { isRoomMemberEvent } from '../events/m.room.member';
+import { isRoomMemberEvent } from '../events/isRoomMemberEvent';
 
 import type { EventBase } from '../events/eventBase';
 

@@ -12,7 +12,7 @@ import { FederationRequestService } from './federation-request.service';
 import { FederationConfigService } from './federation-config.service';
 import * as nacl from 'tweetnacl';
 import * as authentication from '@hs/core';
-import * as signJson from '../utils/signJson';
+import * as core from '@hs/core';
 import * as url from '../utils/url';
 
 describe('FederationRequestService', async () => {
@@ -75,7 +75,7 @@ describe('FederationRequestService', async () => {
 		spyOn(authentication, 'authorizationHeaders').mockResolvedValue(
 			mockAuthHeaders,
 		);
-		spyOn(signJson, 'signJson').mockResolvedValue(mockSignedJson);
+		spyOn(core, 'signJson').mockResolvedValue(mockSignedJson);
 		spyOn(authentication, 'computeAndMergeHash').mockImplementation(
 			(obj: any) => obj,
 		);
@@ -156,7 +156,7 @@ describe('FederationRequestService', async () => {
 				body: mockBody,
 			});
 
-			expect(signJson.signJson).toHaveBeenCalledWith(
+			expect(core.signJson).toHaveBeenCalledWith(
 				expect.objectContaining({ key: 'value', signatures: {} }),
 				expect.any(Object),
 				mockServerName,

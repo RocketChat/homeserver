@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-import { toUnpaddedBase64, signJson } from '@hs/federation-sdk';
+import { toUnpaddedBase64, signJson } from '@hs/core';
 import { ServerKeyResponseDto } from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
 import type { SigningKey } from '@hs/core';
