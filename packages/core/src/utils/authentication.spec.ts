@@ -5,13 +5,13 @@ import {
 	computeAndMergeHash,
 	computeHash,
 	extractSignaturesFromHeader,
-	generateId,
 	signRequest,
 	validateAuthorizationHeader,
 } from './authentication';
 
 import { generateKeyPairsFromString } from './keys';
 import { signJson } from './signJson';
+import { generateId } from './generateId';
 
 // {
 //     "content": {

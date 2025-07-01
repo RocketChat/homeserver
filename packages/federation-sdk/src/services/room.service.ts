@@ -18,7 +18,7 @@ import {
 	type TombstoneAuthEvents,
 } from '@hs/core/src/events/m.room.tombstone';
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
-import { FederationService } from '@hs/federation-sdk';
+import { FederationService } from './federation.service';
 import { injectable } from 'tsyringe';
 import { generateId } from '@hs/core';
 import type {
@@ -41,9 +41,9 @@ import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository'
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
-import { ConfigService } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk';
-import { EventType } from '@hs/federation-sdk/src/services/event.service';
+import { ConfigService } from './config.service';
+import { EventService } from './event.service';
+import { EventType } from './event.service';
 
 // Utility function to create a random ID for room creation
 function createMediaId(length: number) {

@@ -2,12 +2,12 @@ import 'reflect-metadata';
 import { describe, expect, it, beforeAll, afterAll, spyOn } from 'bun:test';
 import { checkSignAndHashes } from './checkSignAndHashes';
 import { MatrixError } from './errors';
-import { EncryptionValidAlgorithm } from '../index';
-import * as signJson from '@hs/federation-sdk';
-import type { SignedJson } from '@hs/federation-sdk';
+import { EncryptionValidAlgorithm } from '../types';
+import * as signJson from './signJson';
+import type { SignedJson } from './signJson';
 import * as authentication from '../utils/authentication';
 import type { EventBase } from '../events/eventBase';
-import type { HashedEvent } from '../index';
+import type { HashedEvent } from './authentication';
 
 describe('checkSignAndHashes', () => {
 	const originalAtob = globalThis.atob;

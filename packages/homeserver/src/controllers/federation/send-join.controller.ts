@@ -1,4 +1,4 @@
-import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
+import { isRoomMemberEvent } from '@hs/core/src/events/isRoomMemberEvent';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -8,7 +8,7 @@ import {
 	SendJoinResponseDto,
 } from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk';
+import { EventService } from '@hs/federation-sdk/src/services/event.service';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);

@@ -1,4 +1,4 @@
-import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/federation-sdk';
+import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/core';
 import type { StateMapKey } from '../types/_common';
 import {
 	PduTypeRoomCanonicalAlias,

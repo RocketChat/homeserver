@@ -1,15 +1,14 @@
+import type { EventBase } from '@hs/core/src/events/eventBase';
 import { injectable } from 'tsyringe';
-import type { EventBase } from '@hs/homeserver/src/models/event.model';
-import {
-	type StagingAreaEventType,
-	StagingAreaQueue,
-} from '@hs/homeserver/src/queues/staging-area.queue';
+import type { StagingAreaEventType } from '@hs/homeserver/src/queues/staging-area.queue';
+import { StagingAreaQueue } from '@hs/homeserver/src/queues/staging-area.queue';
 import { Lock } from '@hs/homeserver/src/utils/lock.decorator';
 import { createLogger } from '@hs/core';
-import { EventAuthorizationService } from '@hs/federation-sdk';
-import { EventStateService } from '@hs/federation-sdk';
-import { EventService, EventType } from './event.service';
-import { MissingEventService } from '@hs/federation-sdk';
+import { EventAuthorizationService } from './event-authorization.service';
+import { EventStateService } from './event-state.service';
+import { EventService } from './event.service';
+import { MissingEventService } from './missing-event.service';
+import { EventType } from './event.service';
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {

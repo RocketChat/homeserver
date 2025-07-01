@@ -2,10 +2,7 @@ import { expect, it, describe, mock } from 'bun:test';
 import { makeJoinEventBuilder } from './makeJoin';
 import { IncompatibleRoomVersionError, NotFoundError } from '../errors';
 import type { EventStore } from '../models/event.model';
-import type {
-	AuthEvents,
-	RoomMemberEvent,
-} from '@hs/core/src/events/m.room.member';
+import type { AuthEvents } from '@hs/core';
 
 describe('makeJoinEventBuilder', () => {
 	const mockRoomId = '!roomId:example.org';

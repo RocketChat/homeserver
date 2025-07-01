@@ -1,6 +1,6 @@
 import { expect, it, describe, beforeEach, afterEach } from 'bun:test';
 import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
-import { encodeCanonicalJson, generateKeyPairs } from '@hs/federation-sdk';
+import { encodeCanonicalJson, generateKeyPairs } from '@hs/core';
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '@hs/core';
 

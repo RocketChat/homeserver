@@ -1,8 +1,8 @@
 import nacl from 'tweetnacl';
 import { toUnpaddedBase64 } from './binaryData';
 import { signData } from './signJson';
-import { EncryptionValidAlgorithm } from '@hs/core';
-import type { SigningKey } from '@hs/core';
+import { EncryptionValidAlgorithm } from '../types';
+import type { SigningKey } from '../types';
 
 export async function generateKeyPairs(
 	seed: Uint8Array,
