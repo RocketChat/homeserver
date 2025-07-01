@@ -8,8 +8,8 @@ import {
 } from 'mongodb';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
-import type { StateMapKey } from '@hs/room/src/types/_common';
-import type { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
+import type { StateMapKey } from '@hs/room';
+import type { PersistentEventBase } from '@hs/room';
 
 type StateStore = {
 	delta: {
