@@ -1,5 +1,5 @@
-import type { MissingEventType } from '@hs/homeserver/src/queues/missing-event.queue';
-import { MissingEventsQueue } from '@hs/homeserver/src/queues/missing-event.queue';
+import type { MissingEventType } from '../queues/missing-event.queue';
+import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
 import type { StagedEvent } from './event.service';

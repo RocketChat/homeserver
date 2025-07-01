@@ -1,7 +1,7 @@
 import type { EventBase } from '@hs/core/src/events/eventBase';
 import { injectable } from 'tsyringe';
-import type { StagingAreaEventType } from '@hs/homeserver/src/queues/staging-area.queue';
-import { StagingAreaQueue } from '@hs/homeserver/src/queues/staging-area.queue';
+import type { StagingAreaEventType } from '../queues/staging-area.queue';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { Lock } from '@hs/homeserver/src/utils/lock.decorator';
 import { createLogger } from '@hs/core';
 import { EventAuthorizationService } from './event-authorization.service';
