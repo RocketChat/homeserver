@@ -83,8 +83,7 @@ export async function getSignaturesFromRemote<
 		unsigned?: unknown;
 	},
 >(jsonObject: T, signingName: string) {
-	const { signatures, unsigned: _unsigned, ...__rest } = jsonObject;
-
+	const { signatures, unsigned: _unsigned /*..._rest */ } = jsonObject;
 	const remoteSignatures =
 		signatures?.[signingName] &&
 		Object.entries(signatures[signingName])
