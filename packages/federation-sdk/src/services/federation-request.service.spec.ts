@@ -11,7 +11,7 @@ import {
 import { FederationRequestService } from './federation-request.service';
 import { FederationConfigService } from './federation-config.service';
 import * as nacl from 'tweetnacl';
-import * as authentication from '@hs/homeserver/src/authentication';
+import * as authentication from '@hs/core';
 import * as signJson from '../utils/signJson';
 import * as url from '@hs/homeserver/src/helpers/url';
 

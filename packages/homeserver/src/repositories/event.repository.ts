@@ -1,6 +1,6 @@
 import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
-import { generateId } from '../authentication';
+import { generateId } from '@hs/core';
 import type { EventBase, EventStore } from '../models/event.model';
 import { DatabaseConnectionService } from '@hs/federation-sdk';
 import { MongoError } from 'mongodb';

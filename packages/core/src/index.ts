@@ -5,6 +5,19 @@ export type { SignedEvent, SigningKey } from './types';
 // Event utilities
 export { signEvent } from './utils/signEvent';
 
+// Authentication utilities
+export { generateId } from './utils/authentication';
+export { pruneEventDict } from './utils/pruneEventDict';
+export {
+	authorizationHeaders,
+	computeAndMergeHash,
+	computeHash,
+	extractSignaturesFromHeader,
+	signRequest,
+	validateAuthorizationHeader,
+	type HashedEvent,
+} from './utils/authentication';
+
 // Event types and functions
 export * from './events/eventBase';
 export * from './events/m.room.create';

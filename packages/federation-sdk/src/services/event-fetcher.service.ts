@@ -4,7 +4,7 @@ import {
 	type MatrixPDU,
 } from '@hs/core/src/events/pdu';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
-import { generateId } from '@hs/homeserver/src/authentication';
+import { generateId } from '@hs/core';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { injectable } from 'tsyringe';

@@ -1,4 +1,4 @@
-import { authorizationHeaders, computeAndMergeHash } from './authentication';
+import { authorizationHeaders, computeAndMergeHash } from '@hs/core';
 import { resolveHostAddressByServerName } from './helpers/server-discovery/discovery';
 import { extractURIfromURL } from './helpers/url';
 import { type SigningKey } from '@hs/core';

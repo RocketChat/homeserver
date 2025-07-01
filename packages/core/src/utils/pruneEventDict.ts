@@ -1,6 +1,6 @@
-import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
+import { isRoomMemberEvent } from '../events/m.room.member';
 
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '../events/eventBase';
 
 interface RoomVersion {
 	updated_redaction_rules: boolean;

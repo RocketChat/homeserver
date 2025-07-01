@@ -10,7 +10,7 @@ export const signEvent = async <T extends EventBase>(
 	// Dynamically import dependencies to avoid circular dependencies
 	const [{ computeAndMergeHash }, { pruneEventDict }] = await Promise.all([
 		import('@hs/federation-sdk'),
-		import('@hs/homeserver/src/pruneEventDict'),
+		import('./pruneEventDict'),
 	]);
 	// Compute hash and sign
 	const eventToSign = pruneEventDict(computeAndMergeHash(event));

@@ -26,7 +26,7 @@ export const createEventWithId = <F extends (...args: any[]) => any>(fn: F) => {
 			...args: Parameters<F>
 		): Promise<{ event: SignedEvent<ReturnType<F>>; _id: string }> => {
 			const event = await sign(fn)(...args);
-			const { generateId } = await import('@hs/homeserver/src/authentication');
+			const { generateId } = await import('../../utils/authentication');
 			const id = generateId(event);
 			return {
 				event,

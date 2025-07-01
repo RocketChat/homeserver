@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '../../../homeserver/src/authentication';
+import { generateId } from '@hs/core';
 import { generateKeyPairsFromString } from '@hs/federation-sdk';
 import type { SignedEvent } from '../types';
 import { signEvent } from '../utils/signEvent';

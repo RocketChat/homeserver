@@ -20,7 +20,8 @@ import {
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { generateId } from '@hs/homeserver/src/authentication';
+import { generateId } from '@hs/core';
+
 import {
 	ForbiddenError,
 	HttpException,
