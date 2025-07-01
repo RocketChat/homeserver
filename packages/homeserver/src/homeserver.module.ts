@@ -35,7 +35,7 @@ import { EventFetcherService } from '@hs/federation-sdk';
 import { EventStateService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
-import { MessageService } from './services/message.service';
+import { MessageService } from '@hs/federation-sdk';
 import { MissingEventService } from '@hs/federation-sdk';
 import { NotificationService } from '@hs/federation-sdk';
 import { ProfilesService } from '@hs/federation-sdk';

@@ -33,7 +33,7 @@ export { EventFetcherService } from './services/event-fetcher.service';
 export type { FetchedEvents } from './services/event-fetcher.service';
 export { InviteService } from './services/invite.service';
 export type { ProcessInviteEvent } from './services/invite.service';
-export { MessageService } from '@hs/homeserver/src/services/message.service';
+export { MessageService } from './services/message.service';
 export { EventService } from './services/event.service';
 export { RoomService } from './services/room.service';
 export { StateService } from './services/state.service';
