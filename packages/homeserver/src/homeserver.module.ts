@@ -5,6 +5,12 @@ import {
 	type FederationModuleOptions,
 	FederationRequestService,
 	ConfigService,
+	StateRepository,
+	EventRepository,
+	KeyRepository,
+	RoomRepository,
+	ServerRepository,
+	StateEventRepository,
 } from '@hs/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
@@ -24,11 +30,6 @@ import { MissingEventListener } from '@hs/federation-sdk/src/services/missing-ev
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from '@hs/federation-sdk';
 import { StagingAreaQueue } from '@hs/federation-sdk';
-import { EventRepository } from '@hs/federation-sdk';
-import { KeyRepository } from '@hs/federation-sdk';
-import { RoomRepository } from '@hs/federation-sdk';
-import { ServerRepository } from '@hs/federation-sdk';
-import { StateRepository } from '@hs/federation-sdk';
 import { DatabaseConnectionService } from '@hs/federation-sdk/src/services/database-connection.service';
 import { EventAuthorizationService } from '@hs/federation-sdk/src/services/event-authorization.service';
 import { EventFetcherService } from '@hs/federation-sdk/src/services/event-fetcher.service';
@@ -45,7 +46,6 @@ import { StateService } from '@hs/federation-sdk/src/services/state.service';
 import { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
 import { WellKnownService } from '@hs/federation-sdk/src/services/well-known.service';
 import { LockManagerService } from '@hs/federation-sdk';
-import { StateEventRepository } from '@hs/federation-sdk';
 import { roomPlugin } from './controllers/federation/rooms.controller';
 
 let app: Elysia;

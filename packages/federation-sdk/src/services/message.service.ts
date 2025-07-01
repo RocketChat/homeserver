@@ -8,10 +8,8 @@ import {
 	type MessageAuthEvents,
 	type RoomMessageEvent,
 } from '@hs/core/src/events/m.room.message';
-import { FederationService } from '@hs/federation-sdk';
 import { type SignedEvent } from '@hs/core';
-import { ConfigService } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk';
+
 import { inject } from 'tsyringe';
 import type { RoomService } from './room.service';
 import { ForbiddenError } from '@hs/core';
@@ -20,11 +18,13 @@ import {
 	redactionEvent,
 	type RedactionEvent,
 } from '@hs/core/src/events/m.room.redaction';
+import { FederationService } from './federation.service';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import { signEvent } from '@hs/core';
-import { EventType } from '@hs/federation-sdk/src/services/event.service';
+import { EventService, EventType } from './event.service';
+import type { ConfigService } from './config.service';
 
 @injectable()
 export class MessageService {
