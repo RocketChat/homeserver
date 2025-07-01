@@ -41,7 +41,7 @@ import { NotificationService } from '@hs/federation-sdk';
 import { ProfilesService } from '@hs/federation-sdk';
 import { RoomService } from './services/room.service';
 import { ServerService } from '@hs/federation-sdk';
-import { StateService } from './services/state.service';
+import { StateService } from '@hs/federation-sdk';
 import { StagingAreaService } from '@hs/federation-sdk';
 import { WellKnownService } from '../../federation-sdk/src/services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
