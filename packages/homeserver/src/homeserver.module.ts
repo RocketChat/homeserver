@@ -4,7 +4,15 @@ import {
 	ConfigService,
 	type FederationModuleOptions,
 	FederationRequestService,
+	StateRepository,
+	EventRepository,
+	KeyRepository,
+	RoomRepository,
+	ServerRepository,
+	StateEventRepository,
+	type HomeserverEventSignatures,
 } from '@hs/federation-sdk';
+
 import Elysia from 'elysia';
 import { Emitter } from '@rocket.chat/emitter';
 import { swagger } from '@elysiajs/swagger';
@@ -41,15 +49,9 @@ import { StateService } from '@hs/federation-sdk';
 import { StagingAreaService } from '@hs/federation-sdk';
 import { WellKnownService } from '@hs/federation-sdk';
 import { LockManagerService } from '@hs/federation-sdk';
-import type { HomeserverEventSignatures } from './types/events';
-import { StateEventRepository } from '@hs/federation-sdk';
+
 import { MissingEventsQueue } from '@hs/federation-sdk';
 import { StagingAreaQueue } from '@hs/federation-sdk';
-import { EventRepository } from '@hs/federation-sdk';
-import { KeyRepository } from '@hs/federation-sdk';
-import { RoomRepository } from '@hs/federation-sdk';
-import { ServerRepository } from '@hs/federation-sdk';
-import { StateRepository } from '@hs/federation-sdk';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {

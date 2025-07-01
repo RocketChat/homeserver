@@ -1,3 +1,12 @@
+import { container } from 'tsyringe';
+import { EventService } from './services/event.service';
+import { InviteService } from './services/invite.service';
+import { MessageService } from './services/message.service';
+import { ProfilesService } from './services/profiles.service';
+import { RoomService } from './services/room.service';
+import { WellKnownService } from './services/well-known.service';
+import type { Membership } from '@hs/core';
+
 export { FederationEndpoints } from './specs/federation-api';
 export type {
 	MakeJoinResponse,
@@ -44,12 +53,6 @@ export { MissingEventListener } from './services/missing-event.listener';
 
 // Repository interfaces and implementations
 export type { IEventRepository } from './repositories/event.repository';
-export { EventRepository } from './repositories/event.repository';
-export { RoomRepository } from './repositories/room.repository';
-export { StateEventRepository } from './repositories/state-event.repository';
-export { ServerRepository } from './repositories/server.repository';
-export { KeyRepository } from './repositories/key.repository';
-export { StateRepository } from './repositories/state.repository';
 
 // Queue implementations
 export { BaseQueue, type QueueHandler } from './queues/base.queue';
@@ -84,3 +87,57 @@ export {
 
 // DTOs
 export * from './dtos';
+
+export { EventRepository } from './repositories/event.repository';
+export { RoomRepository } from './repositories/room.repository';
+export { StateEventRepository } from './repositories/state-event.repository';
+export { ServerRepository } from './repositories/server.repository';
+export { KeyRepository } from './repositories/key.repository';
+export { StateRepository } from './repositories/state.repository';
+
+export interface HomeserverServices {
+	room: RoomService;
+	message: MessageService;
+	event: EventService;
+	invite: InviteService;
+	wellKnown: WellKnownService;
+	profile: ProfilesService;
+}
+
+export type HomeserverEventSignatures = {
+	'homeserver.ping': {
+		message: string;
+	};
+	'homeserver.matrix.message': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			body: string;
+			msgtype: string;
+		};
+	};
+	'homeserver.matrix.accept-invite': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			avatar_url: string | null;
+			displayname: string;
+			membership: Membership;
+		};
+	};
+};
+
+export function getAllServices(): HomeserverServices {
+	return {
+		room: container.resolve(RoomService),
+		message: container.resolve(MessageService),
+		event: container.resolve(EventService),
+		invite: container.resolve(InviteService),
+		wellKnown: container.resolve(WellKnownService),
+		profile: container.resolve(ProfilesService),
+	};
+}
