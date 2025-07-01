@@ -20,7 +20,8 @@ import {
 	type RoomPowerLevelsEvent,
 } from '../events/m.room.power_levels';
 import type { createSignedEvent } from '../events/utils/createSignedEvent';
-import { createRoomMemberEvent, type SignedEvent } from '../index';
+import type { SignedEvent } from '../types';
+import { createRoomMemberEvent } from '../events/m.room.member';
 
 export type IdAndEvent<T> = {
 	event: T;
