@@ -5,7 +5,6 @@ import { injectable } from 'tsyringe';
 import { HttpException, HttpStatus } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
-import type { InternalInviteUserResponse } from '@hs/homeserver/src/dtos';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/core';
@@ -44,7 +43,10 @@ export class InviteService {
 		roomId?: string,
 		sender?: string,
 		name?: string,
-	): Promise<InternalInviteUserResponse> {
+	): Promise<{
+		event_id: string;
+		room_id: string;
+	}> {
 		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
 
 		const config = this.configService.getServerConfig();

@@ -21,10 +21,6 @@ import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from './federation.service';
 import { injectable } from 'tsyringe';
 import { generateId } from '@hs/core';
-import type {
-	InternalCreateRoomResponse,
-	InternalUpdateRoomNameResponse,
-} from '@hs/homeserver/src/dtos';
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
 import type {
@@ -232,7 +228,10 @@ export class RoomService {
 		name: string,
 		canonicalAlias?: string,
 		alias?: string,
-	): Promise<InternalCreateRoomResponse> {
+	): Promise<{
+		room_id: string;
+		event_id: string;
+	}> {
 		logger.debug(`Creating room for ${sender} with ${username}`);
 		const config = this.configService.getServerConfig();
 		const signingKey = await this.configService.getSigningKey();
@@ -276,7 +275,9 @@ export class RoomService {
 		name: string,
 		senderId: string,
 		targetServer: string,
-	): Promise<InternalUpdateRoomNameResponse> {
+	): Promise<{
+		eventId: string;
+	}> {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
 		);
