@@ -3,27 +3,30 @@ import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
-import { generateId } from '../authentication';
+import { generateId } from '@hs/homeserver/src/authentication';
 import type {
 	GetMissingEventsBody,
 	GetMissingEventsParams,
 	GetMissingEventsResponse,
 	SendTransactionBody,
-} from '../dtos';
-import { MatrixError } from '../errors';
-import type { EventBase, EventStore } from '../models/event.model';
+} from '@hs/homeserver/src/dtos';
+import { MatrixError } from '@hs/homeserver/src/errors';
+import type {
+	EventBase,
+	EventStore,
+} from '@hs/homeserver/src/models/event.model';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
-} from '../procedures/getPublicKeyFromServer';
-import { pruneEventDict } from '../pruneEventDict';
-import { StagingAreaQueue } from '../queues/staging-area.queue';
-import { EventRepository } from '../repositories/event.repository';
-import { KeyRepository } from '../repositories/key.repository';
-import { RoomRepository } from '../repositories/room.repository';
-import { checkSignAndHashes } from '../utils/checkSignAndHashes';
-import { eventSchemas } from '../utils/event-schemas';
-import { createLogger } from '../utils/logger';
+} from '@hs/homeserver/src/procedures/getPublicKeyFromServer';
+import { pruneEventDict } from '@hs/homeserver/src/pruneEventDict';
+import { StagingAreaQueue } from '@hs/homeserver/src/queues/staging-area.queue';
+import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
+import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';
+import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
+import { checkSignAndHashes } from '@hs/homeserver/src/utils/checkSignAndHashes';
+import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
+import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { ConfigService } from '@hs/federation-sdk';
 
 type ValidationResult = {

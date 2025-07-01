@@ -8,10 +8,7 @@ import { Lock } from '@hs/homeserver/src/utils/lock.decorator';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventStateService } from '@hs/federation-sdk';
-import {
-	EventService,
-	EventType,
-} from '@hs/homeserver/src/services/event.service';
+import { EventService, EventType } from './event.service';
 import { MissingEventService } from '@hs/federation-sdk';
 
 // ProcessingState indicates where in the flow an event is
