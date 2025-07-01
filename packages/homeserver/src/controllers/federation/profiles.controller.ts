@@ -1,8 +1,6 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
-	type MakeJoinResponse,
 	ErrorResponseDto,
 	EventAuthParamsDto,
 	EventAuthResponseDto,
@@ -18,7 +16,7 @@ import {
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
 	QueryProfileResponseDto,
-} from '../../dtos';
+} from '@hs/federation-sdk';
 import { ProfilesService } from '@hs/federation-sdk';
 
 export const profilesPlugin = (app: Elysia) => {
@@ -71,7 +69,7 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query }): Promise<MakeJoinResponse | ErrorResponse> => {
+			async ({ params, query }) => {
 				const response = await profilesService.makeJoin(
 					params.roomId,
 					params.userId,

@@ -9,7 +9,7 @@ import type {
 	GetMissingEventsParams,
 	GetMissingEventsResponse,
 	SendTransactionBody,
-} from '@hs/homeserver/src/dtos';
+} from '../dtos';
 import { MatrixError } from '@hs/homeserver/src/errors';
 import type {
 	EventBase,

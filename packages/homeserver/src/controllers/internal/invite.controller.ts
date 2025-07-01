@@ -1,12 +1,11 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
-	ErrorResponseDto,
 	InternalInviteUserBodyDto,
 	type InternalInviteUserResponse,
 	InternalInviteUserResponseDto,
 } from '../../dtos';
+import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';

@@ -19,7 +19,7 @@ import type {
 	QueryKeysBody,
 	QueryKeysResponse,
 	QueryProfileResponse,
-} from '@hs/homeserver/src/dtos/federation/profiles.dto';
+} from '../dtos';
 import type { EventStore } from '@hs/homeserver/src/models/event.model';
 import type { IEventRepository } from '@hs/federation-sdk';
 import type { RoomService } from './room.service';

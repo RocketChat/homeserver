@@ -1,11 +1,9 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
 	type InternalMessageResponse,
 	type InternalReactionResponse,
 	type InternalRedactMessageResponse,
-	ErrorResponseDto,
 	InternalMessageResponseDto,
 	InternalReactionResponseDto,
 	InternalRedactMessageBodyDto,
@@ -17,6 +15,7 @@ import {
 	InternalUpdateMessageBodyDto,
 	InternalUpdateMessageParamsDto,
 } from '../../dtos';
+import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
 import { MessageService } from '@hs/federation-sdk';
 
 export const internalMessagePlugin = (app: Elysia) => {
