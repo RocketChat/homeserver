@@ -1,6 +1,6 @@
-import { QueryEndpoints } from './query';
-import { ServerEndpoints } from './server';
-import { WellKnownEndpoints } from './wellknown';
+import type { QueryEndpoints } from './query';
+import type { ServerEndpoints } from './server';
+import type { WellKnownEndpoints } from './wellknown';
 
 export interface Endpoints
 	extends ServerEndpoints,
