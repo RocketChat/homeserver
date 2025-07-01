@@ -10,7 +10,7 @@ COPY . /temp/dev/
 RUN cd /temp/dev && HUSKY=0 bun install --frozen-lockfile
 
 # install with --production (exclude devDependencies)
-RUN bun build /temp/dev/index.ts --compile --outfile /temp/dev/bin/app
+RUN bun build /temp/dev/packages/homeserver/src/index.ts --compile --outfile /temp/dev/bin/app
 
 # copy production dependencies and source code into final image
 FROM base AS release
