@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 
 import { generateId } from '@hs/core';
-import { generateKeyPairsFromString } from '@hs/federation-sdk';
+import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 import { roomMessageEvent } from './m.room.message';
 

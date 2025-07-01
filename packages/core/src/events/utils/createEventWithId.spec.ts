@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'bun:test';
 import { generateId } from '@hs/core';
-import { generateKeyPairsFromString } from '@hs/federation-sdk';
+import { generateKeyPairsFromString } from '../../utils/keys';
 import { createSignedEvent, createEventWithId } from './createSignedEvent';
 
 describe('createEventWithId', () => {
