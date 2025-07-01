@@ -8,7 +8,7 @@ import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
 import { signEvent } from '@hs/homeserver/src/signEvent';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
-import { EventService } from '@hs/homeserver/src/services/event.service';
+import { EventService } from './event.service';
 import { RoomService } from '@hs/homeserver/src/services/room.service';
 
 // TODO: Have better (detailed/specific) event input type

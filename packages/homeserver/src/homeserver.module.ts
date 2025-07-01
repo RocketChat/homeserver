@@ -35,7 +35,7 @@ import { DatabaseConnectionService } from '@hs/federation-sdk';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventFetcherService } from '@hs/federation-sdk';
 import { EventStateService } from '@hs/federation-sdk';
-import { EventService } from './services/event.service';
+import { EventService } from '@hs/federation-sdk';
 import { EventEmitterService } from './services/event-emitter.service';
 import { InviteService } from '@hs/federation-sdk';
 import { MessageService } from './services/message.service';

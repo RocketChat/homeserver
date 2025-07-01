@@ -8,11 +8,13 @@ import {
 	type MessageAuthEvents,
 	type RoomMessageEvent,
 } from '@hs/core/src/events/m.room.message';
-import { FederationService } from '@hs/federation-sdk';
-import { ConfigService } from '@hs/federation-sdk';
-import { EventService, EventType } from './event.service';
-import { RoomService } from './room.service';
-import { ForbiddenError } from '../errors';
+import {
+	EventService,
+	EventType,
+} from '@hs/federation-sdk/src/services/event.service';
+import { FederationService, ConfigService } from '@hs/federation-sdk';
+import { RoomService } from '@hs/homeserver/src/services/room.service';
+import { ForbiddenError } from '@hs/homeserver/src/errors';
 import {
 	type RedactionAuthEvents,
 	redactionEvent,
