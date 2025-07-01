@@ -34,7 +34,7 @@ import type {
 import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
-import type { SignedEvent } from '@hs/federation-sdk';
+import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { ConfigService } from '@hs/federation-sdk';

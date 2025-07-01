@@ -8,7 +8,8 @@ import {
 	type MessageAuthEvents,
 	type RoomMessageEvent,
 } from '@hs/core/src/events/m.room.message';
-import { FederationService, type SignedEvent } from '@hs/federation-sdk';
+import { FederationService } from '@hs/federation-sdk';
+import { type SignedEvent } from '@hs/core';
 import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import { RoomService } from '@hs/federation-sdk';

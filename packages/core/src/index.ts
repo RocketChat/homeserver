@@ -1,3 +1,6 @@
+// Types
+export type { SignedEvent } from './types';
+
 // Event utilities
 export { signEvent } from './utils/signEvent';
 

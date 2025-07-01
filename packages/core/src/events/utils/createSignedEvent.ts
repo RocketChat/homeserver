@@ -1,5 +1,5 @@
 import type { SigningKey } from '@hs/federation-sdk';
-import type { SignedEvent } from '@hs/federation-sdk';
+import type { SignedEvent } from '../../types';
 
 export const createSignedEvent = (
 	signature: SigningKey,
