@@ -20,7 +20,7 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { MissingEventListener } from './listeners/missing-event.listener';
+import { MissingEventListener } from '@hs/federation-sdk';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';

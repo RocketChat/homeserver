@@ -38,6 +38,7 @@ export { EventService } from './services/event.service';
 export { RoomService } from './services/room.service';
 export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
+export { MissingEventListener } from './services/missing-event.listener';
 
 // Repository interfaces
 export type { IEventRepository } from './repositories/event.repository';

@@ -18,7 +18,9 @@ interface KeyData {
 }
 
 export class SignatureVerificationService {
-	private readonly logger = createLogger('SignatureVerificationService');
+	private get logger() {
+		return createLogger('SignatureVerificationService');
+	}
 	private cachedKeys = new Map<string, KeyData>();
 
 	/**

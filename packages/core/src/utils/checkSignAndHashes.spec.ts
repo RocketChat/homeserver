@@ -1,13 +1,13 @@
 import 'reflect-metadata';
 import { describe, expect, it, beforeAll, afterAll, spyOn } from 'bun:test';
 import { checkSignAndHashes } from './checkSignAndHashes';
-import { MatrixError } from '../errors';
-import { EncryptionValidAlgorithm } from '@hs/core';
+import { MatrixError } from './errors';
+import { EncryptionValidAlgorithm } from '../index';
 import * as signJson from '@hs/federation-sdk';
 import type { SignedJson } from '@hs/federation-sdk';
-import * as authentication from '@hs/core';
-import type { EventBase } from '@hs/core/src/events/eventBase';
-import type { HashedEvent } from '@hs/core';
+import * as authentication from '../utils/authentication';
+import type { EventBase } from '../events/eventBase';
+import type { HashedEvent } from '../index';
 
 describe('checkSignAndHashes', () => {
 	const originalAtob = globalThis.atob;
@@ -135,13 +135,12 @@ describe('checkSignAndHashes', () => {
 		} catch (e) {
 			error = e as Error;
 		}
-
-		expect(error).toBeInstanceOf(MatrixError);
-		expect(error?.message).toBe('Invalid hash');
-
 		getSignaturesSpy.mockRestore();
 		verifyJsonSpy.mockRestore();
 		computeHashSpy.mockRestore();
+
+		expect(error).toBeInstanceOf(MatrixError);
+		expect(error?.message).toBe('Invalid hash');
 	});
 
 	it('should throw error if signature verification fails', async () => {

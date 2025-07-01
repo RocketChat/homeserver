@@ -1,15 +1,13 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
-import { computeHash, type HashedEvent } from '@hs/core';
-import { MatrixError } from '../errors';
-import { pruneEventDict } from '@hs/core';
+import type { EventBase } from '../events/eventBase';
+import { computeHash, type HashedEvent } from '../index';
+import { pruneEventDict } from './pruneEventDict';
 import {
 	getSignaturesFromRemote,
 	type SignedJson,
 	verifyJsonSignature,
 } from '@hs/federation-sdk';
-import { createLogger } from '@hs/core';
-
-const logger = createLogger('checkSignAndHashes');
+import { logger } from './logger';
+import { MatrixError } from './errors';
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 	pdu: HashedEvent<T>,

@@ -8,6 +8,7 @@ export { signEvent } from './utils/signEvent';
 // Authentication utilities
 export { generateId } from './utils/authentication';
 export { pruneEventDict } from './utils/pruneEventDict';
+export { checkSignAndHashes } from './utils/checkSignAndHashes';
 export {
 	authorizationHeaders,
 	computeAndMergeHash,

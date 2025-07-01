@@ -24,7 +24,7 @@ import { StagingAreaQueue } from '@hs/homeserver/src/queues/staging-area.queue';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
 import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
-import { checkSignAndHashes } from '@hs/homeserver/src/utils/checkSignAndHashes';
+import { checkSignAndHashes } from '@hs/core';
 import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
 import { createLogger } from '@hs/core';
 import { ConfigService } from '@hs/federation-sdk';

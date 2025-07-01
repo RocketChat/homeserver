@@ -1,9 +1,12 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '@hs/core';
-import { generateKeyPairsFromString } from '../utils/keys';
-import { signEvent } from '../utils/signEvent';
-import { isRoomJoinRulesEvent, roomJoinRulesEvent } from './m.room.join_rules';
+import {
+	generateId,
+	generateKeyPairsFromString,
+	isRoomJoinRulesEvent,
+	roomJoinRulesEvent,
+	signEvent,
+} from '@hs/core';
 
 const finalEventId = '$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4';
 const finalEvent = {

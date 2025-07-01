@@ -1,10 +1,10 @@
 import { test, expect, describe, mock, beforeEach, type Mock } from 'bun:test';
 import { MissingEventListener } from './missing-event.listener';
-import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { StagingAreaService } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk';
-import { EventFetcherService } from '@hs/federation-sdk';
-import type { EventBase } from '../models/event.model';
+import { MissingEventsQueue } from '@hs/homeserver/src/queues/missing-event.queue';
+import { StagingAreaService } from './staging-area.service';
+import { EventService } from './event.service';
+import { EventFetcherService } from './event-fetcher.service';
+import type { EventBase } from '@hs/core';
 
 function createMockEvent(
 	eventId: string,

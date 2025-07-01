@@ -1,5 +1,4 @@
 import { createEventBase, type EventBase } from './eventBase';
-import type { JoinRule } from './m.room.join_rules';
 import { createEventWithId } from './utils/createSignedEvent';
 
 type Membership = 'join' | 'invite' | 'leave' | 'knock' | 'ban';
@@ -18,6 +17,13 @@ declare module './eventBase' {
 		};
 	}
 }
+
+export type JoinRule =
+	| 'invite'
+	| 'knock'
+	| 'public'
+	| 'restricted'
+	| 'knock_restricted';
 
 export type AuthEvents = {
 	'm.room.create': string;

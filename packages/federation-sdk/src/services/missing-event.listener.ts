@@ -1,11 +1,11 @@
-import type { MissingEventType } from '../queues/missing-event.queue';
-import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { EventFetcherService } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk';
-import type { StagedEvent } from '@hs/federation-sdk/src/services/event.service';
+import type { MissingEventType } from '@hs/homeserver/src/queues/missing-event.queue';
+import { MissingEventsQueue } from '@hs/homeserver/src/queues/missing-event.queue';
+import { EventFetcherService } from './event-fetcher.service';
+import { EventService } from './event.service';
+import type { StagedEvent } from './event.service';
 import { inject } from 'tsyringe';
-import type { StagingAreaService } from '@hs/federation-sdk/src/services/staging-area.service';
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { StagingAreaService } from './staging-area.service';
+import type { EventBase } from '@hs/core';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/core';
 
