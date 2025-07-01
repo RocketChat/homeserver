@@ -7,12 +7,11 @@ import {
 	signRequest,
 	validateAuthorizationHeader,
 	type HashedEvent,
-	type SigningKey,
 	toUnpaddedBase64,
 	encodeCanonicalJson,
-	signJson,
 } from '@hs/federation-sdk';
 import { pruneEventDict } from './pruneEventDict';
+import { type SigningKey } from '@hs/core';
 
 // Re-export all authentication functions from federation-sdk
 export {

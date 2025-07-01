@@ -1,5 +1,6 @@
 // Types
-export type { SignedEvent } from './types';
+export { EncryptionValidAlgorithm } from './types';
+export type { SignedEvent, SigningKey } from './types';
 
 // Event utilities
 export { signEvent } from './utils/signEvent';

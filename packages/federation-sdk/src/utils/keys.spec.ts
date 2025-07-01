@@ -4,7 +4,7 @@ import {
 	generateKeyPairsFromString,
 	getKeyPair,
 } from './keys';
-import { EncryptionValidAlgorithm } from './signJson';
+import { EncryptionValidAlgorithm } from '@hs/core';
 import { toUnpaddedBase64 } from './binaryData';
 import nacl from 'tweetnacl';
 

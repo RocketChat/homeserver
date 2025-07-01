@@ -26,7 +26,7 @@ import {
 	HttpException,
 	HttpStatus,
 } from '@hs/homeserver/src/errors';
-import { type SigningKey } from '@hs/federation-sdk';
+import { type SigningKey } from '@hs/core';
 import type {
 	EventStore,
 	EventBase as ModelEventBase,
