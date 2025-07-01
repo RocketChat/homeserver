@@ -1,0 +1,106 @@
+name: Release Packages
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-and-package:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check CI status
+        run: |
+          # Get the latest commit on main branch
+          LATEST_COMMIT=$(git rev-parse HEAD)
+          
+          # Check if CI workflow has passed for this commit
+          CI_STATUS=$(gh api repos/${{ github.repository }}/commits/$LATEST_COMMIT/status --jq '.statuses[] | select(.context == "my-workflow") | .state')
+          
+          if [ "$CI_STATUS" != "success" ]; then
+            echo "CI workflow has not passed for commit $LATEST_COMMIT"
+            echo "CI status: $CI_STATUS"
+            exit 1
+          fi
+          
+          echo "CI workflow passed successfully"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            .turbo
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build packages
+        run: bun run build
+
+      - name: Create release directory
+        run: mkdir -p release
+
+      - name: Package all packages
+        run: |
+          for package in packages/*; do
+            if [ -f "$package/package.json" ]; then
+              package_name=$(basename "$package")
+              cd "$package"
+              tar -czf "../../release/@hs-$package_name-${{ github.ref_name }}.tar.gz" src package.json tsconfig.json
+              cd ../..
+            fi
+          done
+
+      - name: Create main package
+        run: |
+          tar -czf release/homeserver-${{ github.ref_name }}.tar.gz \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='packages/*/node_modules' \
+            --exclude='.turbo' \
+            --exclude='release' \
+            .
+
+      - name: List release artifacts
+        run: ls -la release/
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages-${{ github.ref_name }}
+          path: release/
+          retention-days: 30
+
+  create-github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-and-package
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-packages-${{ github.ref_name }}
+          path: release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.tar.gz
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
