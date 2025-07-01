@@ -1,6 +1,6 @@
 import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
-import type { EventBaseWithOptionalId } from '../models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/core';
 import { DatabaseConnectionService } from '@hs/federation-sdk';
 
 type Room = {

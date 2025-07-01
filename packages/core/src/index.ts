@@ -64,4 +64,7 @@ export type { RoomMemberEvent, Membership } from './events/isRoomMemberEvent';
 // Event utilities
 export * from './events/utils/createSignedEvent';
 
+// Event models
+export * from './models/event.model';
+
 export { createLogger, logger } from './utils/logger';

@@ -4,10 +4,7 @@ import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/homeserver/src/errors';
-import type {
-	EventBaseWithOptionalId,
-	EventStore,
-} from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,

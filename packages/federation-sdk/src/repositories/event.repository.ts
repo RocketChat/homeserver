@@ -1,8 +1,5 @@
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
-import type {
-	EventBaseWithOptionalId,
-	EventStore,
-} from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
 
 export interface IEventRepository {
 	getCollection(): Promise<Collection<EventStore>>;

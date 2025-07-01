@@ -1,10 +1,7 @@
 import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '@hs/core';
-import type {
-	EventBaseWithOptionalId,
-	EventStore,
-} from '../models/event.model';
+import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
 import {
 	DatabaseConnectionService,
 	type IEventRepository,

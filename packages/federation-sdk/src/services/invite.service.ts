@@ -5,7 +5,7 @@ import { injectable } from 'tsyringe';
 import { HttpException, HttpStatus } from '@hs/homeserver/src/errors';
 import { generateId } from '@hs/core';
 import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
-import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { EventService } from './event.service';

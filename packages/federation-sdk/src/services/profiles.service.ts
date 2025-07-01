@@ -5,8 +5,7 @@ import { EventService } from './event.service';
 
 import type { AuthEvents, RoomMemberEvent } from '@hs/core';
 import { injectable } from 'tsyringe';
-import type { EventStore } from '@hs/homeserver/src/models/event.model';
-
+import type { EventStore } from '@hs/core';
 import type { IEventRepository } from '../repositories/event.repository';
 
 @injectable()
