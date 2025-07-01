@@ -24,8 +24,6 @@ import { wellKnownPlugin } from './controllers/well-known/well-known.controller'
 import { roomPlugin } from './controllers/federation/rooms.controller';
 import { MissingEventListener } from '@hs/federation-sdk';
 import { StagingAreaListener } from './listeners/staging-area.listener';
-import { MissingEventsQueue } from './queues/missing-event.queue';
-import { StagingAreaQueue } from './queues/staging-area.queue';
 import { DatabaseConnectionService } from '@hs/federation-sdk';
 import { EventAuthorizationService } from '@hs/federation-sdk';
 import { EventFetcherService } from '@hs/federation-sdk';
@@ -45,6 +43,8 @@ import { WellKnownService } from '@hs/federation-sdk';
 import { LockManagerService } from './utils/lock.decorator';
 import type { HomeserverEventSignatures } from './types/events';
 import { StateEventRepository } from '@hs/federation-sdk';
+import { MissingEventsQueue } from '@hs/federation-sdk';
+import { StagingAreaQueue } from '@hs/federation-sdk';
 import { EventRepository } from '@hs/federation-sdk';
 import { KeyRepository } from '@hs/federation-sdk';
 import { RoomRepository } from '@hs/federation-sdk';
