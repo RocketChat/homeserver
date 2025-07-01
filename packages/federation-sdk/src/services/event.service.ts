@@ -11,8 +11,6 @@ import {
 } from '@hs/homeserver/src/procedures/getPublicKeyFromServer';
 import { pruneEventDict } from '@hs/core';
 
-import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
-
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
@@ -20,6 +18,7 @@ import type { EventRepository } from '../repositories/event.repository';
 import type { RoomRepository } from '../repositories/room.repository';
 import type { KeyRepository } from '../repositories/key.repository';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
+import { eventSchemas } from '../utils/event-schemas';
 
 type ValidationResult = {
 	eventId: string;

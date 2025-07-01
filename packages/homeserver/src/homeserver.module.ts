@@ -40,7 +40,7 @@ import { ServerService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { StagingAreaService } from '@hs/federation-sdk';
 import { WellKnownService } from '@hs/federation-sdk';
-import { LockManagerService } from './utils/lock.decorator';
+import { LockManagerService } from '@hs/federation-sdk';
 import type { HomeserverEventSignatures } from './types/events';
 import { StateEventRepository } from '@hs/federation-sdk';
 import { MissingEventsQueue } from '@hs/federation-sdk';
