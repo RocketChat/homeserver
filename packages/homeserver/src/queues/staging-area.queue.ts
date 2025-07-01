@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
-import type { EventBaseWithOptionalId } from '../models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/core';
 
 export interface StagingAreaEventType {
 	eventId: string;

@@ -10,10 +10,7 @@ import type {
 	SendTransactionBody,
 } from '../dtos';
 import { MatrixError } from '@hs/homeserver/src/errors';
-import type {
-	EventBaseWithOptionalId,
-	EventStore,
-} from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,

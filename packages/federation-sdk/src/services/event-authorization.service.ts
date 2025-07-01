@@ -1,5 +1,5 @@
 import { createLogger } from '@hs/core';
-import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/core';
 import { injectable } from 'tsyringe';
 
 @injectable()

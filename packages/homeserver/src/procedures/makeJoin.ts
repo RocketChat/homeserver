@@ -1,7 +1,7 @@
 import type { AuthEvents } from '@hs/core/src/events/m.room.member';
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { IncompatibleRoomVersionError, NotFoundError } from '../errors';
-import type { EventStore } from '../models/event.model';
+import type { EventStore } from '@hs/core';
 
 // "method":"GET",
 // "url":"http://rc1:443/_matrix/federation/v1/make_join/%21kwkcWPpOXEJvlcollu%3Arc1/%40admin%3Ahs1?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11",

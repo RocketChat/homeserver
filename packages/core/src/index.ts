@@ -62,4 +62,7 @@ export * from './events/pdu';
 // Event utilities
 export * from './events/utils/createSignedEvent';
 
+// Event models
+export * from './models/event.model';
+
 export { createLogger, logger } from './utils/logger';

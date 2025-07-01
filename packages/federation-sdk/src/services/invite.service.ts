@@ -7,7 +7,7 @@ import { generateId } from '@hs/core';
 import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import type { InternalInviteUserResponse } from '@hs/homeserver/src/dtos';
 import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
-import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { EventService } from './event.service';
