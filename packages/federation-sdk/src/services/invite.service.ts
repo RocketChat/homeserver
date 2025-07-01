@@ -6,7 +6,7 @@ import { generateId } from '@hs/homeserver/src/authentication';
 
 import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
 import type { EventBase } from '@hs/homeserver/src/models/event.model';
-import { signEvent } from '@hs/homeserver/src/signEvent';
+import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { EventService } from './event.service';
 import { RoomService } from '@hs/federation-sdk';

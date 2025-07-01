@@ -21,7 +21,7 @@ import {
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
 import { generateId } from '@hs/homeserver/src/authentication';
-import { signEvent } from '@hs/homeserver/src/signEvent';
+import { signEvent } from '@hs/core';
 import { EventType } from '@hs/federation-sdk/src/services/event.service';
 
 @injectable()

@@ -11,7 +11,7 @@ export const createSignedEvent = (
 			...args: Parameters<F>
 		): Promise<SignedEvent<ReturnType<F>>> => {
 			const event = await fn(...args);
-			const { signEvent } = await import('@hs/homeserver/src/signEvent');
+			const { signEvent } = await import('../../utils/signEvent');
 			return signEvent(event, signature, signingName) as Promise<
 				SignedEvent<ReturnType<F>>
 			>;

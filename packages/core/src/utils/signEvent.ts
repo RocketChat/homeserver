@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '../events/eventBase';
 import { type SigningKey, type SignedEvent } from '@hs/federation-sdk';
 
 export const signEvent = async <T extends EventBase>(
@@ -8,8 +8,8 @@ export const signEvent = async <T extends EventBase>(
 ): Promise<SignedEvent<T>> => {
 	// Dynamically import dependencies to avoid circular dependencies
 	const [{ computeAndMergeHash }, { pruneEventDict }] = await Promise.all([
-		import('./authentication'),
-		import('./pruneEventDict'),
+		import('@hs/federation-sdk'),
+		import('@hs/homeserver/src/pruneEventDict'),
 	]);
 	// Compute hash and sign
 	const eventToSign = pruneEventDict(computeAndMergeHash(event));
