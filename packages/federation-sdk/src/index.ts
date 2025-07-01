@@ -63,6 +63,23 @@ export {
 export { QueueModule } from './queues/queue.module';
 
 // Utility exports
+export { getErrorMessage } from './utils/get-error-message';
+export { USERNAME_REGEX, ROOM_ID_REGEX } from './utils/validation-regex';
+export {
+	eventSchemas,
+	roomV10Schemas,
+	type BaseEventType,
+} from './utils/event-schemas';
+export {
+	LockManagerService,
+	Lock,
+	type LockOptions,
+	type LockConfig,
+	type MemoryLockConfig,
+	type NatsLockConfig,
+	type ExternalLockConfig,
+	type ILockProvider,
+} from './utils/lock.decorator';
 
 // URL utilities
 export { extractURIfromURL } from './utils/url';
