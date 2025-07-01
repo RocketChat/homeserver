@@ -14,7 +14,7 @@ import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import { inject } from 'tsyringe';
 import type { RoomService } from './room.service';
-import { ForbiddenError } from '@hs/homeserver/src/errors';
+import { ForbiddenError } from '@hs/core';
 import {
 	type RedactionAuthEvents,
 	redactionEvent,

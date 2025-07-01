@@ -67,4 +67,18 @@ export * from './events/utils/createSignedEvent';
 // Event models
 export * from './models/event.model';
 
+// Procedures
+export { createRoom, type IdAndEvent } from './procedures/createRoom';
+export { makeJoinEventBuilder } from './procedures/makeJoin';
+export { makeGetMissingEventsProcedure } from './procedures/getMissingEvents';
+export {
+	makeGetPublicKeyFromServerProcedure,
+	getPublicKeyFromRemoteServer,
+} from './procedures/getPublicKeyFromServer';
+
 export { createLogger, logger } from './utils/logger';
+
+export * from './errors';
+export * from './url';
+
+export { makeUnsignedRequest } from './utils/makeRequest';

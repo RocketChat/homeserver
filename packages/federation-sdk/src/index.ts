@@ -82,8 +82,5 @@ export {
 	type ILockProvider,
 } from './utils/lock.decorator';
 
-// URL utilities
-export { extractURIfromURL } from './utils/url';
-
 // DTOs
 export * from './dtos';

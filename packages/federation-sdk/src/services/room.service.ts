@@ -22,17 +22,13 @@ import { FederationService } from './federation.service';
 import { injectable } from 'tsyringe';
 import { generateId } from '@hs/core';
 
-import {
-	ForbiddenError,
-	HttpException,
-	HttpStatus,
-} from '@hs/homeserver/src/errors';
+import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
 import type {
 	EventStore,
 	EventBaseWithOptionalId as ModelEventBase,
 } from '@hs/core';
-import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
+import { createRoom } from '@hs/core';
 
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';

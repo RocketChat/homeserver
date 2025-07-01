@@ -13,7 +13,7 @@ import { FederationConfigService } from './federation-config.service';
 import * as nacl from 'tweetnacl';
 import * as authentication from '@hs/core';
 import * as core from '@hs/core';
-import * as url from '../utils/url';
+import * as url from '@hs/core/src/url';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;

@@ -1,26 +1,26 @@
 import {
 	createRoomCreateEvent,
 	type RoomCreateEvent,
-} from '@hs/core/src/events/m.room.create';
+} from '../events/m.room.create';
 import {
 	createRoomGuestAccessEvent,
 	type RoomGuestAccessEvent,
-} from '@hs/core/src/events/m.room.guest_access';
+} from '../events/m.room.guest_access';
 import {
 	createRoomHistoryVisibilityEvent,
 	type RoomHistoryVisibilityEvent,
-} from '@hs/core/src/events/m.room.history_visibility';
+} from '../events/m.room.history_visibility';
 import {
 	createRoomJoinRulesEvent,
 	type RoomJoinRulesEvent,
-} from '@hs/core/src/events/m.room.join_rules';
-import type { RoomMemberEvent } from '@hs/core/src/events/isRoomMemberEvent';
+} from '../events/m.room.join_rules';
+import type { RoomMemberEvent } from '../events/isRoomMemberEvent';
 import {
 	createRoomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
-} from '@hs/core/src/events/m.room.power_levels';
-import type { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
-import { createRoomMemberEvent, type SignedEvent } from '@hs/core';
+} from '../events/m.room.power_levels';
+import type { createSignedEvent } from '../events/utils/createSignedEvent';
+import { createRoomMemberEvent, type SignedEvent } from '../index';
 
 export type IdAndEvent<T> = {
 	event: T;
@@ -42,22 +42,15 @@ export const createRoom = async (
 		IdAndEvent<SignedEvent<RoomGuestAccessEvent>>,
 	];
 }> => {
-	// Create
-
 	const [sender, ...members] = users;
 
 	const createRoomSigned = createRoomCreateEvent(makeSignedEvent);
-
 	const createMemberRoomSigned = createRoomMemberEvent(makeSignedEvent);
-
 	const createPowerLevelsRoomSigned =
 		createRoomPowerLevelsEvent(makeSignedEvent);
-
 	const createJoinRulesRoomSigned = createRoomJoinRulesEvent(makeSignedEvent);
-
 	const createHistoryVisibilityRoomSigned =
 		createRoomHistoryVisibilityEvent(makeSignedEvent);
-
 	const createGuestAccessRoomSigned =
 		createRoomGuestAccessEvent(makeSignedEvent);
 
@@ -65,8 +58,6 @@ export const createRoom = async (
 		roomId,
 		sender,
 	});
-
-	// Member
 
 	const memberEvent = await createMemberRoomSigned({
 		roomId,
@@ -83,8 +74,6 @@ export const createRoom = async (
 		prev_events: [createEvent._id],
 	});
 
-	// PowerLevels
-
 	const powerLevelsEvent = await createPowerLevelsRoomSigned({
 		roomId,
 		members: [sender, ...members],
@@ -92,8 +81,6 @@ export const createRoom = async (
 		prev_events: [memberEvent._id],
 		depth: 3,
 	});
-
-	// Join Rules
 
 	const joinRulesEvent = await createJoinRulesRoomSigned({
 		roomId,
@@ -103,32 +90,18 @@ export const createRoom = async (
 		depth: 4,
 	});
 
-	// History Visibility
-
 	const historyVisibilityEvent = await createHistoryVisibilityRoomSigned({
 		roomId,
 		sender,
-		auth_events: [
-			createEvent._id,
-			memberEvent._id,
-			powerLevelsEvent._id,
-			// joinRulesEvent._id,
-		],
+		auth_events: [createEvent._id, memberEvent._id, powerLevelsEvent._id],
 		prev_events: [joinRulesEvent._id],
 		depth: 5,
 	});
 
-	// Guest Access
 	const guestAccessEvent = await createGuestAccessRoomSigned({
 		roomId,
 		sender,
-		auth_events: [
-			createEvent._id,
-			memberEvent._id,
-			powerLevelsEvent._id,
-			// joinRulesEvent._id,
-			// historyVisibilityEvent._id,
-		],
+		auth_events: [createEvent._id, memberEvent._id, powerLevelsEvent._id],
 		prev_events: [historyVisibilityEvent._id],
 		depth: 6,
 	});

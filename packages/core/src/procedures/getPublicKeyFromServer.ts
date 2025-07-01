@@ -1,7 +1,11 @@
-import type { ServerKey } from '@hs/core/src/server';
-import { makeRequest } from '../makeRequest';
-import { getSignaturesFromRemote } from '@hs/core';
-import { isValidAlgorithm, verifyJsonSignature } from '@hs/core';
+import type { ServerKey } from '../server';
+import { makeRequest } from '../utils/makeRequest';
+
+import {
+	isValidAlgorithm,
+	verifyJsonSignature,
+	getSignaturesFromRemote,
+} from '../utils/signJson';
 
 export const makeGetPublicKeyFromServerProcedure = (
 	getFromLocal: (origin: string, key: string) => Promise<string | undefined>,
