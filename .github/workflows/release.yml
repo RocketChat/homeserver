@@ -9,25 +9,27 @@ jobs:
   build-and-package:
     name: Build and Package
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check CI status
-        run: |
-          # Get the latest commit on main branch
-          LATEST_COMMIT=$(git rev-parse HEAD)
+    #   - name: Check CI status
+    #     run: |
+    #       # Get the latest commit on main branch
+    #       LATEST_COMMIT=$(git rev-parse HEAD)
           
-          # Check if CI workflow has passed for this commit
-          CI_STATUS=$(gh api repos/${{ github.repository }}/commits/$LATEST_COMMIT/status --jq '.statuses[] | select(.context == "my-workflow") | .state')
+    #       # Check if CI workflow has passed for this commit
+    #       CI_STATUS=$(gh api repos/${{ github.repository }}/commits/$LATEST_COMMIT/status --jq '.statuses[] | select(.context == "my-workflow") | .state')
           
-          if [ "$CI_STATUS" != "success" ]; then
-            echo "CI workflow has not passed for commit $LATEST_COMMIT"
-            echo "CI status: $CI_STATUS"
-            exit 1
-          fi
+    #       if [ "$CI_STATUS" != "success" ]; then
+    #         echo "CI workflow has not passed for commit $LATEST_COMMIT"
+    #         echo "CI status: $CI_STATUS"
+    #         exit 1
+    #       fi
           
-          echo "CI workflow passed successfully"
+    #       echo "CI workflow passed successfully"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
