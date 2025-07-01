@@ -1,7 +1,7 @@
 import type { EventBase } from '@hs/core/src/events/eventBase';
-import { computeHash, type HashedEvent } from '../authentication';
+import { computeHash, type HashedEvent } from '@hs/core';
 import { MatrixError } from '../errors';
-import { pruneEventDict } from '../pruneEventDict';
+import { pruneEventDict } from '@hs/core';
 import {
 	getSignaturesFromRemote,
 	type SignedJson,

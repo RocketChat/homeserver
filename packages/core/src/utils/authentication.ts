@@ -11,7 +11,7 @@ import {
 	encodeCanonicalJson,
 } from '@hs/federation-sdk';
 import { pruneEventDict } from './pruneEventDict';
-import { type SigningKey } from '@hs/core';
+import { type SigningKey } from '../types';
 
 // Re-export all authentication functions from federation-sdk
 export {

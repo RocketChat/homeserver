@@ -1,7 +1,7 @@
 import { expect, test, describe } from 'bun:test';
 import { createRoomCreateEvent, roomCreateEvent } from '../m.room.create';
 import { signEvent } from '../../utils/signEvent';
-import { generateId } from '../../../../homeserver/src/authentication';
+import { generateId } from '@hs/core';
 import { createSignedEvent } from './createSignedEvent';
 import { generateKeyPairsFromString } from '@hs/federation-sdk';
 

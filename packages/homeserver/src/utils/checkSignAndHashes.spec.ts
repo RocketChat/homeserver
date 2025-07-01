@@ -5,9 +5,9 @@ import { MatrixError } from '../errors';
 import { EncryptionValidAlgorithm } from '@hs/core';
 import * as signJson from '@hs/federation-sdk';
 import type { SignedJson } from '@hs/federation-sdk';
-import * as authentication from '../authentication';
+import * as authentication from '@hs/core';
 import type { EventBase } from '@hs/core/src/events/eventBase';
-import type { HashedEvent } from '../authentication';
+import type { HashedEvent } from '@hs/core';
 
 describe('checkSignAndHashes', () => {
 	const originalAtob = globalThis.atob;
