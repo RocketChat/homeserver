@@ -1,7 +1,7 @@
 import type { MissingEventType } from '@hs/homeserver/src/queues/missing-event.queue';
 import { MissingEventsQueue } from '@hs/homeserver/src/queues/missing-event.queue';
 import { injectable } from 'tsyringe';
-import { createLogger } from '../utils/logger';
+import { createLogger } from '@hs/core';
 
 const logger = createLogger('MissingEventService');
 

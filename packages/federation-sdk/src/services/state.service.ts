@@ -10,7 +10,7 @@ import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import type { RoomVersion } from '@hs/room/src/manager/type';
 import { resolveStateV2Plus } from '@hs/room/src/state_resolution/definitions/algorithm/v2';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '@hs/core';
 import { MongoError, ObjectId } from 'mongodb';
 
 type State = Map<StateMapKey, PersistentEventBase>;

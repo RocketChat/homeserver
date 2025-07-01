@@ -12,7 +12,7 @@ const logger = pino({
 			: undefined,
 });
 
-export default logger;
+export { logger };
 
 export function createLogger(name: string) {
 	return logger.child({ name });

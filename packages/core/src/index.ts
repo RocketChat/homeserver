@@ -36,3 +36,5 @@ export * from './events/pdu';
 
 // Event utilities
 export * from './events/utils/createSignedEvent';
+
+export { createLogger } from './utils/logger';

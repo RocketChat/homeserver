@@ -26,7 +26,7 @@ import { KeyRepository } from '@hs/homeserver/src/repositories/key.repository';
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
 import { checkSignAndHashes } from '@hs/homeserver/src/utils/checkSignAndHashes';
 import { eventSchemas } from '@hs/homeserver/src/utils/event-schemas';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '@hs/core';
 import { ConfigService } from '@hs/federation-sdk';
 
 type ValidationResult = {

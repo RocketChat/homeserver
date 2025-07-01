@@ -7,7 +7,9 @@ import {
 	type SignedJson,
 	verifyJsonSignature,
 } from '@hs/federation-sdk';
-import logger from '../utils/logger';
+import { createLogger } from '@hs/core';
+
+const logger = createLogger('checkSignAndHashes');
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 	pdu: HashedEvent<T>,

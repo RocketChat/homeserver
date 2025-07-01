@@ -40,7 +40,7 @@ import { EventRepository } from '@hs/homeserver/src/repositories/event.repositor
 import { RoomRepository } from '@hs/homeserver/src/repositories/room.repository';
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '@hs/core';
 import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
 import { EventType } from '@hs/federation-sdk/src/services/event.service';

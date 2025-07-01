@@ -20,7 +20,7 @@ import {
 	type RedactionEvent,
 } from '@hs/core/src/events/m.room.redaction';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { EventType } from '@hs/federation-sdk/src/services/event.service';
