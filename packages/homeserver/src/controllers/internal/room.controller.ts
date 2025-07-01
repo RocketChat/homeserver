@@ -36,6 +36,7 @@ import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
 import type { Transaction } from '@hs/federation-sdk/src/specs/federation-api';
 import { ConfigService } from '../../services/config.service';
+import { RoomVersion } from '@hs/room/src/manager/type';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
@@ -187,36 +188,69 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/name',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
-				const roomIdParse = RoomIdDto.safeParse(params.roomId);
-				const bodyParse = InternalUpdateRoomNameBodyDto.safeParse(body);
-				if (!roomIdParse.success || !bodyParse.success) {
-					set.status = 400;
-					return {
-						error: 'Invalid request',
-						details: {
-							roomId: roomIdParse.error?.flatten(),
-							body: bodyParse.error?.flatten(),
-						},
-					};
-				}
-				const { name, senderUserId, targetServer } = bodyParse.data;
-				return roomService.updateRoomName(
-					roomIdParse.data,
+			async ({ params, body, set }) => {
+				const { roomId } = params;
+				const { name, sender } = body;
+
+				const room = await stateService.getFullRoomState(roomId);
+				const roomVersion = room
+					.get('m.room.create:')
+					?.getContent<PduCreateEventContent>().room_version as RoomVersion;
+
+				const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
+					roomId,
+					sender,
 					name,
-					senderUserId,
-					targetServer,
+					roomVersion,
 				);
+
+				const statesNeeded = roomNameEvent.getAuthEventStateKeys();
+
+				for (const state of statesNeeded) {
+					const event = room.get(state);
+					if (event) {
+						roomNameEvent.authedBy(event);
+					}
+				}
+
+				for await (const prev of stateService.getPrevEvents(roomNameEvent)) {
+					roomNameEvent.addPreviousEvent(prev);
+				}
+
+				await stateService.persistStateEvent(roomNameEvent);
+
+				const members = await stateService.getMembersOfRoom(roomId);
+
+				for (const member of members) {
+					const server = member.split(':').pop();
+					if (server === configService.getServerName()) {
+						console.log('skipping self');
+					} else if (server) {
+						void federationService.sendTransaction(server, {
+							origin: configService.getServerName(),
+							origin_server_ts: Date.now(),
+							pdus: [roomNameEvent.event],
+							edus: [],
+						});
+					}
+				}
+
+				return {
+					event_id: roomNameEvent.eventId,
+				};
 			},
 			{
-				params: InternalUpdateRoomNameParamsDto,
-				body: InternalUpdateRoomNameBodyDto,
+				params: t.Object({
+					roomId: t.String(),
+				}),
+				body: t.Object({
+					name: t.String(),
+					sender: t.String(),
+				}),
 				response: {
-					200: InternalRoomEventResponseDto,
+					200: t.Object({
+						event_id: t.String(),
+					}),
 					400: ErrorResponseDto,
 				},
 				detail: {
