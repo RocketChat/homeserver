@@ -10,7 +10,8 @@
 		"skipLibCheck": true,
 		"noEmit": false,
 		"esModuleInterop": true,
-		"allowImportingTsExtensions": false
+		"allowImportingTsExtensions": false,
+		"verbatimModuleSyntax": false
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]

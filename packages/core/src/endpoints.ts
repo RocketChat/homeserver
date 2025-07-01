@@ -1,4 +1,11 @@
-export interface Endpoints {}
+import { QueryEndpoints } from './query';
+import { ServerEndpoints } from './server';
+import { WellKnownEndpoints } from './wellknown';
+
+export interface Endpoints
+	extends ServerEndpoints,
+		QueryEndpoints,
+		WellKnownEndpoints {}
 
 export interface EndpointDefinition {
 	auth: boolean;

@@ -60,7 +60,12 @@ jobs:
             if [ -f "$package/package.json" ]; then
               package_name=$(basename "$package")
               cd "$package"
-              tar -czf "../../release/@hs-$package_name-${{ github.ref_name }}.tar.gz" src package.json tsconfig.json
+              # Create tar command with only existing files
+              tar_files="src package.json"
+              if [ -f "tsconfig.json" ]; then
+                tar_files="$tar_files tsconfig.json"
+              fi
+              tar -czf "../../release/@hs-$package_name-${{ github.ref_name }}.tar.gz" $tar_files
               cd ../..
             fi
           done
