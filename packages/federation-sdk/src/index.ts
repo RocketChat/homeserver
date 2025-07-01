@@ -46,7 +46,6 @@ export {
 	toUnpaddedBase64,
 } from './utils/binaryData';
 export {
-	EncryptionValidAlgorithm,
 	signJson,
 	signText,
 	encodeCanonicalJson,
@@ -61,7 +60,6 @@ export {
 	generateKeyPairs,
 	generateKeyPairsFromString,
 	getKeyPair,
-	type SigningKey,
 } from './utils/keys';
 
 // Authentication utilities

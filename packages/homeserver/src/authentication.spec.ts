@@ -11,11 +11,10 @@ import {
 } from './authentication';
 import {
 	generateKeyPairsFromString,
-	type SigningKey,
 	signJson,
 	signText,
-	EncryptionValidAlgorithm,
 } from '@hs/federation-sdk';
+import { type SigningKey, EncryptionValidAlgorithm } from '@hs/core';
 
 // {
 //     "content": {
