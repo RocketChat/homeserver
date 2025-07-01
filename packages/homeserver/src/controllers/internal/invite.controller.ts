@@ -8,8 +8,8 @@ import {
 import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import type { PduCreateEventContent } from '@hs/room/src/types/v1';
+import { PersistentEventFactory } from '@hs/room';
+import type { PduCreateEventContent } from '@hs/room';
 
 export const internalInvitePlugin = (app: Elysia) => {
 	const _inviteService = container.resolve(InviteService);
