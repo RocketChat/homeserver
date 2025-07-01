@@ -180,7 +180,7 @@ export class EventService {
 				await this.eventRepository.createStaged(stagedEvent.event);
 
 				// Add metadata for tracking dependencies
-				const collection = await (this.eventRepository as any).getCollection();
+				const collection = await this.eventRepository.getCollection();
 				await collection.updateOne(
 					{ _id: stagedEvent._id },
 					{
@@ -816,8 +816,7 @@ export class EventService {
 		attributes: EventAttributes[T],
 	): QueryConfig[] {
 		const { roomId } = attributes;
-		const senderId =
-			'senderId' in attributes ? (attributes as any).senderId : undefined;
+		const senderId = 'senderId' in attributes ? attributes.senderId : undefined;
 
 		const baseQueries = {
 			create: {

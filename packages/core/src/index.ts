@@ -39,6 +39,9 @@ export {
 	toUnpaddedBase64,
 } from './utils/binaryData';
 
+// Keys utilities
+export * from './utils/keys';
+
 // Event types and functions
 export * from './events/eventBase';
 export * from './events/m.room.create';
