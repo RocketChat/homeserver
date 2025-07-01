@@ -7,7 +7,7 @@ import { generateId } from '@hs/core';
 import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import type { InternalInviteUserResponse } from '@hs/homeserver/src/dtos';
 import { makeUnsignedRequest } from '@hs/homeserver/src/makeRequest';
-import type { EventBase } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
 import { signEvent } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { EventService } from './event.service';
@@ -16,7 +16,11 @@ import type { RoomService } from './room.service';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
-	event: EventBase & { origin: string; room_id: string; state_key: string };
+	event: EventBaseWithOptionalId & {
+		origin: string;
+		room_id: string;
+		state_key: string;
+	};
 	invite_room_state: unknown;
 	room_version: string;
 };
@@ -193,9 +197,11 @@ export class InviteService {
 		});
 
 		if (responseMake && 'event' in responseMake) {
-			const responseEventId = generateId(responseMake.event as EventBase);
+			const responseEventId = generateId(
+				responseMake.event as EventBaseWithOptionalId,
+			);
 			await this.eventService.insertEvent(
-				responseMake.event as EventBase,
+				responseMake.event as EventBaseWithOptionalId,
 				responseEventId,
 			);
 
@@ -234,7 +240,10 @@ export class InviteService {
 
 			// TODO: Validate before inserting
 			try {
-				await this.eventService.insertEvent(event as EventBase, eventId);
+				await this.eventService.insertEvent(
+					event as EventBaseWithOptionalId,
+					eventId,
+				);
 			} catch (error: unknown) {
 				const errorMessage =
 					error instanceof Error ? error.message : String(error);
@@ -288,7 +297,7 @@ export class InviteService {
 			}
 
 			await this.handleInviteProcessing({
-				event: inviteEvent.event as EventBase & {
+				event: inviteEvent.event as EventBaseWithOptionalId & {
 					origin: string;
 					room_id: string;
 					state_key: string;

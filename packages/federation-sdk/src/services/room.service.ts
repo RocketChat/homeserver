@@ -33,7 +33,7 @@ import {
 import { type SigningKey } from '@hs/core';
 import type {
 	EventStore,
-	EventBase as ModelEventBase,
+	EventBaseWithOptionalId as ModelEventBase,
 } from '@hs/homeserver/src/models/event.model';
 import { createRoom } from '@hs/homeserver/src/procedures/createRoom';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';

@@ -1,7 +1,10 @@
 import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '@hs/core';
-import type { EventBase, EventStore } from '../models/event.model';
+import type {
+	EventBaseWithOptionalId,
+	EventStore,
+} from '../models/event.model';
 import {
 	DatabaseConnectionService,
 	type IEventRepository,
@@ -77,7 +80,7 @@ export class EventRepository implements IEventRepository {
 	}
 
 	async create(
-		event: EventBase,
+		event: EventBaseWithOptionalId,
 		eventId?: string,
 		args?: object,
 		stateId = '',
@@ -108,7 +111,7 @@ export class EventRepository implements IEventRepository {
 		}
 	}
 
-	async createIfNotExists(event: EventBase): Promise<string> {
+	async createIfNotExists(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
@@ -149,7 +152,7 @@ export class EventRepository implements IEventRepository {
 			.toArray();
 	}
 
-	async createStaged(event: EventBase): Promise<string> {
+	async createStaged(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
@@ -164,7 +167,10 @@ export class EventRepository implements IEventRepository {
 		return id;
 	}
 
-	async redactEvent(eventId: string, redactedEvent: EventBase): Promise<void> {
+	async redactEvent(
+		eventId: string,
+		redactedEvent: EventBaseWithOptionalId,
+	): Promise<void> {
 		const collection = await this.getCollection();
 
 		await collection.updateOne(
@@ -173,7 +179,7 @@ export class EventRepository implements IEventRepository {
 		);
 	}
 
-	async upsert(event: EventBase): Promise<string> {
+	async upsert(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 

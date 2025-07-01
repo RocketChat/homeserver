@@ -1,12 +1,12 @@
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
-import type { EventBase } from '../models/event.model';
+import type { EventBaseWithOptionalId } from '../models/event.model';
 
 export interface StagingAreaEventType {
 	eventId: string;
 	roomId: string;
 	origin: string;
-	event: EventBase;
+	event: EventBaseWithOptionalId;
 	metadata?: Record<string, unknown>;
 }
 

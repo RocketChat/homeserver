@@ -7,11 +7,11 @@ import {
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import { EventRepository } from '@hs/homeserver/src/repositories/event.repository';
-import type { EventBase } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
 import { injectable } from 'tsyringe';
 
 export interface FetchedEvents {
-	events: { eventId: string; event: EventBase }[];
+	events: { eventId: string; event: EventBaseWithOptionalId }[];
 	missingEventIds: string[];
 }
 
@@ -37,7 +37,8 @@ export class EventFetcherService {
 		}
 
 		// Try to get events from local database
-		const localEvents: { eventId: string; event: EventBase }[] = [];
+		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
+			[];
 		const dbEvents = await this.eventRepository.find(
 			{ _id: { $in: eventIds } },
 			{},
@@ -90,8 +91,8 @@ export class EventFetcherService {
 	public async fetchAuthEventsByTypes(
 		missingTypes: string[],
 		roomId: string,
-	): Promise<Record<string, EventBase[]>> {
-		const results: Record<string, EventBase[]> = {};
+	): Promise<Record<string, EventBaseWithOptionalId[]>> {
+		const results: Record<string, EventBaseWithOptionalId[]> = {};
 
 		try {
 			// Find auth events of the required types in the room
@@ -114,7 +115,7 @@ export class EventFetcherService {
 					}
 					return acc;
 				},
-				{} as Record<string, EventBase[]>,
+				{} as Record<string, EventBaseWithOptionalId[]>,
 			);
 		} catch (error: unknown) {
 			const errorMessage =
