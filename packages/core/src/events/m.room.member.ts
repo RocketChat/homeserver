@@ -2,7 +2,7 @@ import { createEventBase, type EventBase } from './eventBase';
 import type { JoinRule } from './m.room.join_rules';
 import { createEventWithId } from './utils/createSignedEvent';
 
-type Membership = 'join' | 'invite' | 'leave' | 'knock' | 'ban';
+export type Membership = 'join' | 'invite' | 'leave' | 'knock' | 'ban';
 
 declare module './eventBase' {
 	interface Events {
