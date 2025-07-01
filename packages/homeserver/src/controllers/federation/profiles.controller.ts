@@ -79,30 +79,6 @@ export const profilesPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
 			async ({ params, query }): Promise<MakeJoinResponse | ErrorResponse> => {
-				// const response = await profilesService.makeJoin(
-				// 	params.roomId,
-				// 	params.userId,
-				// 	query.ver,
-				// );
-				// return {
-				// 	room_version: response.room_version,
-				// 	event: {
-				// 		...response.event,
-				// 		content: {
-				// 			...response.event.content,
-				// 			membership: 'join',
-				// 			join_authorised_via_users_server:
-				// 				response.event.content.join_authorised_via_users_server,
-				// 		},
-				// 		room_id: response.event.room_id,
-				// 		sender: response.event.sender,
-				// 		state_key: response.event.state_key,
-				// 		type: 'm.room.member',
-				// 		origin_server_ts: response.event.origin_server_ts,
-				// 		origin: response.event.origin,
-				// 	},
-				// };
-
 				const { roomId, userId } = params;
 
 				const roomInformation = await stateService.getRoomInformation(roomId);
@@ -115,13 +91,22 @@ export const profilesPlugin = (app: Elysia) => {
 					roomInformation,
 				);
 
-				await stateService.getAuthEvents(membershipEvent);
+				for await (const authEvent of stateService.getAuthEvents(
+					membershipEvent,
+				)) {
+					membershipEvent.authedBy(authEvent);
+				}
+
+				for await (const prevEvent of stateService.getPrevEvents(
+					membershipEvent,
+				)) {
+					membershipEvent.addPreviousEvent(prevEvent);
+				}
 
 				// @ts-ignore prop exist8ing changes beghavior
 				// biome-ignore lint/performance/noDelete: <explanation>
 				delete membershipEvent.event.content.join_authorised_via_users_server;
 
-				// ignore ver, only 11
 				return {
 					room_version: roomInformation.room_version,
 					event: membershipEvent.event as any,
