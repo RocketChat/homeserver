@@ -7,12 +7,14 @@ import {
 import { extractURIfromURL } from '../../../homeserver/src/helpers/url';
 import {
 	EncryptionValidAlgorithm,
-	signJson,
+	signJson as oldSignJson,
+	type SignedJson,
 } from '../../../homeserver/src/signJson';
 import { FederationConfigService } from './federation-config.service';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/homeserver/src/utils/logger';
+import { signJson } from '@hs/crypto';
 
 interface SignedRequest {
 	method: string;
@@ -28,7 +30,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 
-	constructor(private readonly configService: FederationConfigService) { }
+	constructor(private readonly configService: FederationConfigService) {}
 
 	async makeSignedRequest<T>({
 		method,
@@ -38,7 +40,8 @@ export class FederationRequestService {
 		queryString,
 	}: SignedRequest): Promise<T> {
 		try {
-			const serverName = this.configService.serverName;
+			// const serverName = this.configService.serverName;
+			const serverName = 'rc1.tunnel.dev.rocket.chat';
 			const signingKeyBase64 = this.configService.signingKey;
 			const signingKeyId = this.configService.signingKeyId;
 			const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
@@ -63,13 +66,28 @@ export class FederationRequestService {
 
 			this.logger.debug(`Making ${method} request to ${url.toString()}`);
 
+			const toSign = {
+				method,
+				uri,
+				origin: serverName,
+				destination: domain,
+				content: body,
+			};
+
+			// const seed = 'zSkmr713LnEDbxlkYq2ZqIiKTQNsyMOU0T2CEeC44C4';
+			const seed = 'Co0WE8ivl2rPGY/dWzmiLPP/sDE0EfnXhaZF7/5K4Y8';
+
 			let signedBody: Record<string, unknown> | undefined;
 			if (body) {
-				signedBody = await signJson(
-					computeAndMergeHash({ ...body, signatures: {} }),
-					signingKey,
-					serverName,
-				);
+				const signature = await signJson(toSign, seed);
+				signedBody = {
+					...body,
+					signatures: {
+						[serverName]: {
+							[signingKeyId]: signature,
+						},
+					},
+				};
 			}
 
 			const auth = await authorizationHeaders(

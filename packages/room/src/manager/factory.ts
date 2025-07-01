@@ -10,6 +10,7 @@ import {
 	type PduRoomNameEventContent,
 	PduTypeRoomJoinRules,
 	PduJoinRuleEventContent,
+	PduTypeRoomMessage,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
 import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
@@ -229,6 +230,35 @@ export class PersistentEventFactory {
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return new PersistentEventV10(eventPartial as any);
+	}
+
+	static newMessageEvent(
+		roomId: string,
+		sender: string,
+		text: string,
+		roomVersion: RoomVersion,
+	) {
+		if (roomVersion !== '11') {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+			type: PduTypeRoomMessage,
+			content: {
+				// @ts-ignore payload copied from synapse, keeping as is for now
+				msgtype: 'm.text',
+				body: text,
+			},
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: undefined, // not a state event stupifd
 			prev_events: [],
 			auth_events: [],
 			depth: 0,

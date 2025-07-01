@@ -1,10 +1,15 @@
 import { Elysia, t } from 'elysia';
 import { StateService } from '../../services/state.service';
 import { container } from 'tsyringe';
+import { PersistentEventFactory } from '@hs/room/src/manager/factory';
+import type { Transaction } from '@hs/federation-sdk/src/specs/federation-api';
+import { ConfigService } from '../../services/config.service';
+import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
 
 export const roomPlugin = (app: Elysia) => {
 	const stateService = container.resolve(StateService);
-
+	const configService = container.resolve(ConfigService);
+	const federationService = container.resolve(FederationService);
 	app.get(
 		'/_matrix/federation/v1/publicRooms',
 		async ({ query }) => {
@@ -113,5 +118,79 @@ export const roomPlugin = (app: Elysia) => {
 			}),
 		},
 	);
+
+	app.post(
+		'/internal/:roomId/message',
+		async ({ params, body }) => {
+			const { roomId } = params;
+			const { text, sender } = body;
+
+			const roomVersion = await stateService.getRoomVersion(roomId);
+			if (!roomVersion) {
+				throw new Error('Room version not found');
+			}
+
+			const message = PersistentEventFactory.newMessageEvent(
+				roomId,
+				sender,
+				text,
+				roomVersion,
+			);
+
+			const state = await stateService.getFullRoomState(roomId);
+
+			const requiredAuthEvents = message.getAuthEventStateKeys();
+
+			for (const key of requiredAuthEvents) {
+				const authEvent = state.get(key);
+				if (authEvent) {
+					message.authedBy(authEvent);
+				}
+			}
+
+			for await (const prev of stateService.getPrevEvents(message)) {
+				message.addPreviousEvent(prev);
+			}
+
+			// TODO: not state event
+			await stateService.saveMessage(message);
+
+			// now to "transact" lol
+			const transaction: Transaction = {
+				origin: configService.getServerName(),
+				origin_server_ts: Date.now(),
+				pdus: [message.event],
+				edus: [],
+			};
+
+			const members = await stateService.getMembersOfRoom(roomId);
+
+			console.log('members', members);
+
+			for (const member of members) {
+				const domain = member.split(':').pop();
+				if (domain === configService.getServerName()) {
+					console.log('skipping self');
+				} else if (domain) {
+					console.log(`Sending transaction to ${domain}`);
+					void federationService.sendTransaction(domain, transaction);
+				}
+			}
+
+			return {
+				event_id: message.eventId,
+			};
+		},
+		{
+			params: t.Object({
+				roomId: t.String(),
+			}),
+			body: t.Object({
+				text: t.String(),
+				sender: t.String(),
+			}),
+		},
+	);
+
 	return app;
 };

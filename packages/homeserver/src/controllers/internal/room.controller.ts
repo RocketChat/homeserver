@@ -33,10 +33,15 @@ import { RoomService } from '../../services/room.service';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import { StateService } from '../../services/state.service';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
+import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
+import type { Transaction } from '@hs/federation-sdk/src/specs/federation-api';
+import { ConfigService } from '../../services/config.service';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
 	const stateService = container.resolve(StateService);
+	const federationService = container.resolve(FederationService);
+	const configService = container.resolve(ConfigService);
 	return app
 		.post(
 			'/internal/rooms/rooms',
@@ -615,6 +620,12 @@ export const internalRoomPlugin = (app: Elysia) => {
 			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
 			return {
 				publicRooms,
+			};
+		})
+		.get('/internal/rooms/:roomId/members', async ({ params }) => {
+			const members = await stateService.getMembersOfRoom(params.roomId);
+			return {
+				members,
 			};
 		});
 };

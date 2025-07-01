@@ -33,7 +33,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	private _rejectedReason?: string;
 
 	constructor(
-		protected readonly rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+		protected rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
 		freeze = false,
 	) {
 		if (freeze) {
@@ -96,7 +96,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			};
 		}
 
-		const event = {
+		this.rawEvent = {
 			...this.rawEvent,
 			hashes: {
 				sha256: this.getContentHashString(),
@@ -107,7 +107,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		// content hash has been calculated, so we can freeze the event
 		this.freezeEvent();
 
-		return event;
+		return this.rawEvent;
 	}
 
 	get depth() {
@@ -266,8 +266,6 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 
 			return dict;
 		}
-
-		dict.content = content; // not spec compliant, but can't find a way for all events
 
 		return dict;
 

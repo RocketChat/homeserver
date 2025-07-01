@@ -22,7 +22,7 @@ export class FederationService {
 		private readonly configService: FederationConfigService,
 		private readonly requestService: FederationRequestService,
 		private readonly signatureService: SignatureVerificationService,
-	) { }
+	) {}
 
 	/**
 	 * Get a make_join template for a room and user
@@ -96,7 +96,7 @@ export class FederationService {
 		transaction: Transaction,
 	): Promise<SendTransactionResponse> {
 		try {
-			const txnId = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+			const txnId = Date.now().toString();
 			const uri = FederationEndpoints.sendTransaction(txnId);
 
 			return await this.requestService.put<SendTransactionResponse>(
@@ -116,7 +116,10 @@ export class FederationService {
 	/**
 	 * Send an event to a remote server
 	 */
-	async sendEvent<T extends EventBase>(domain: string, event: T): Promise<SendTransactionResponse> {
+	async sendEvent<T extends EventBase>(
+		domain: string,
+		event: T,
+	): Promise<SendTransactionResponse> {
 		try {
 			const transaction: Transaction = {
 				origin: this.configService.serverName,
