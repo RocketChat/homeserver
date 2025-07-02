@@ -49,129 +49,20 @@ export const internalRoomPlugin = (app: Elysia) => {
 	return app
 		.post(
 			'/internal/rooms/rooms',
-			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-				const { username, name /*sender, canonical_alias, alias*/ } = body;
-				// return roomService.createRoom(
-				// 	username,
-				// 	sender,
-				// 	name,
-				// 	canonical_alias,
-				// 	alias,
-				// );
-
-				const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			async ({
+				body,
+				set,
+			}): Promise<InternalCreateRoomResponse | ErrorResponse> => {
+				const { username, sender, name, canonical_alias, alias } = body;
+				return roomService.createRoom(
 					username,
-					'11',
-				);
-
-				await stateService.persistStateEvent(roomCreateEvent);
-
-				const creatorMembershipEvent =
-					PersistentEventFactory.newMembershipEvent(
-						roomCreateEvent.roomId,
-						username,
-						username,
-						'join',
-						roomCreateEvent.getContent<PduCreateEventContent>(),
-					);
-
-				const [authEvents, prevEvents] = await Promise.all([
-					stateService.getAuthEvents(creatorMembershipEvent),
-					stateService.getPrevEvents(creatorMembershipEvent),
-				]);
-
-				for await (const authEvent of authEvents) {
-					creatorMembershipEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of prevEvents) {
-					creatorMembershipEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(creatorMembershipEvent);
-
-				const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
-					roomCreateEvent.roomId,
-					username,
+					sender,
 					name,
-					'11',
-				);
-
-				const [roomNameAuthEvents, roomNamePrevEvents] = await Promise.all([
-					stateService.getAuthEvents(roomNameEvent),
-					stateService.getPrevEvents(roomNameEvent),
-				]);
-
-				for await (const authEvent of roomNameAuthEvents) {
-					roomNameEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of roomNamePrevEvents) {
-					roomNameEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(roomNameEvent);
-
-				const powerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
-					roomCreateEvent.roomId,
-					username,
-					{
-						users: {
-							[username]: 100,
-						},
-						users_default: 0,
-						events: {},
-						events_default: 0,
-						state_default: 50,
-						ban: 50,
-						kick: 50,
-						redact: 50,
-						invite: 50,
-					},
-					'11',
-				);
-
-				const [powerLevelAuthEvents, powerLevelPrevEvents] = await Promise.all([
-					stateService.getAuthEvents(powerLevelEvent),
-					stateService.getPrevEvents(powerLevelEvent),
-				]);
-
-				for await (const authEvent of powerLevelAuthEvents) {
-					powerLevelEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of powerLevelPrevEvents) {
-					powerLevelEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(powerLevelEvent);
-
-				const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
-					roomCreateEvent.roomId,
-					username,
 					body.join_rule as any,
 					'11',
+					canonical_alias,
+					alias,
 				);
-
-				const [joinRuleAuthEvents, joinRulePrevEvents] = await Promise.all([
-					stateService.getAuthEvents(joinRuleEvent),
-					stateService.getPrevEvents(joinRuleEvent),
-				]);
-
-				for await (const authEvent of joinRuleAuthEvents) {
-					joinRuleEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of joinRulePrevEvents) {
-					joinRuleEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(joinRuleEvent);
-
-				return {
-					room_id: roomCreateEvent.roomId,
-					event_id: roomCreateEvent.eventId,
-				};
 			},
 			{
 				body: InternalCreateRoomBodyDto,
