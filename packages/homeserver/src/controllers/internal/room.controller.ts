@@ -28,24 +28,27 @@ import {
 import {
 	type ErrorResponse,
 	ErrorResponseDto,
+	InviteService,
 	RoomIdDto,
 	UsernameDto,
 } from '@hs/federation-sdk';
 
-import { PersistentEventFactory } from '@hs/room';
-import type { PduCreateEventContent } from '@hs/room';
 import { RoomService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
 import { FederationService } from '@hs/federation-sdk';
-import { PersistentEventBase } from '@hs/room';
-import { RoomVersion } from '@hs/room';
+import {
+	PduCreateEventContent,
+	PersistentEventBase,
+	PersistentEventFactory,
+} from '@hs/room';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
 	const stateService = container.resolve(StateService);
 	const configService = container.resolve(ConfigService);
 	const federationService = container.resolve(FederationService);
+	const inviteService = container.resolve(InviteService);
 	return app
 		.post(
 			'/internal/rooms/rooms',
@@ -601,42 +604,13 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { roomId, userId } = params;
 				const { sender } = body;
 
-				const roomInformation = await stateService.getRoomInformation(roomId);
-
-				const inviteEvent = PersistentEventFactory.newMembershipEvent(
+				const resp = await inviteService.inviteUserToRoom(
+					userId,
 					roomId,
 					sender,
-					userId,
-					'invite',
-					roomInformation,
 				);
-
-				for await (const authEvent of stateService.getAuthEvents(inviteEvent)) {
-					inviteEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of stateService.getPrevEvents(inviteEvent)) {
-					inviteEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.signEvent(inviteEvent);
-
-				const inviteResponse = await federationService.inviteUser(
-					inviteEvent,
-					roomInformation.room_version,
-				);
-
-				console.log(inviteResponse);
-
-				await stateService.persistStateEvent(
-					PersistentEventFactory.createFromRawEvent(
-						inviteResponse.event as any,
-						roomInformation.room_version as RoomVersion,
-					),
-				);
-
 				return {
-					eventId: inviteEvent.eventId,
+					eventId: resp.event_id,
 				};
 			},
 			{
