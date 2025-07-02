@@ -9,6 +9,7 @@ import { createLogger, signEvent } from '@hs/core';
 import type { StateRepository } from '../repositories/state.repository';
 import type { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
+import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -335,6 +336,11 @@ export class StateService {
 		const hasConflict = state.has(event.getUniqueStateIdentifier());
 
 		if (!hasConflict) {
+			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
+			if (event.rejected) {
+				throw new Error(event.rejectedReason);
+			}
+
 			// save the state mapping
 			const { insertedId: stateMappingId } =
 				await this.stateRepository.createStateMapping(event, prevStateIds);

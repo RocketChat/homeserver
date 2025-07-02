@@ -149,7 +149,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
 					roomCreateEvent.roomId,
 					username,
-					'public',
+					body.join_rule as any,
 					'11',
 				);
 
@@ -315,6 +315,12 @@ export const internalRoomPlugin = (app: Elysia) => {
 						if (event) {
 							membershipEvent.authedBy(event);
 						}
+					}
+
+					for await (const prevEvent of stateService.getPrevEvents(
+						membershipEvent,
+					)) {
+						membershipEvent.addPreviousEvent(prevEvent);
 					}
 
 					await stateService.persistStateEvent(membershipEvent);
