@@ -1,13 +1,22 @@
 import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-import { type ErrorResponse, type SendJoinResponse, ErrorResponseDto, SendJoinEventDto, SendJoinParamsDto, SendJoinResponseDto } from '../../dtos';
+import {
+	type ErrorResponse,
+	type SendJoinResponse,
+	ErrorResponseDto,
+	SendJoinEventDto,
+	SendJoinParamsDto,
+	SendJoinResponseDto,
+} from '../../dtos';
 import { ConfigService } from '../../services/config.service';
 import { EventService } from '../../services/event.service';
+import { EventEmitterService } from '../../services/event-emitter.service';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 	const configService = container.resolve(ConfigService);
+	const emitter = container.resolve(EventEmitterService);
 	return app.put(
 		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
 		async ({ params, body }): Promise<SendJoinResponse | ErrorResponse> => {
@@ -33,10 +42,10 @@ export const sendJoinPlugin = (app: Elysia) => {
 					...event,
 					unsigned: lastInviteEvent
 						? {
-							replaces_state: lastInviteEvent._id,
-							prev_content: lastInviteEvent.event.content,
-							prev_sender: lastInviteEvent.event.sender,
-						}
+								replaces_state: lastInviteEvent._id,
+								prev_content: lastInviteEvent.event.content,
+								prev_sender: lastInviteEvent.event.sender,
+							}
 						: undefined,
 				},
 				state: events.map((event) => ({ ...event })),
@@ -46,9 +55,22 @@ export const sendJoinPlugin = (app: Elysia) => {
 				members_omitted: false,
 				origin: configService.getServerConfig().name,
 			};
+			let eventId = stateKey;
 			if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
-				await eventService.insertEvent(eventToSave, stateKey);
+				eventId = await eventService.insertEvent(eventToSave, stateKey);
 			}
+
+			emitter.emit('homeserver.matrix.accept-invite', {
+				event_id: eventId,
+				room_id: roomId,
+				sender: eventToSave.sender,
+				origin_server_ts: eventToSave.origin_server_ts,
+				content: {
+					avatar_url: eventToSave.content.avatar_url || null,
+					displayname: eventToSave.content.displayname || '',
+					membership: eventToSave.content.membership || 'join',
+				},
+			});
 			return result;
 		},
 		{
@@ -61,8 +83,8 @@ export const sendJoinPlugin = (app: Elysia) => {
 			detail: {
 				tags: ['Federation'],
 				summary: 'Send join',
-				description: 'Send a join event to a room'
-			}
-		}
+				description: 'Send a join event to a room',
+			},
+		},
 	);
 };
