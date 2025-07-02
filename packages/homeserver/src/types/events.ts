@@ -1,3 +1,5 @@
+import type { Membership } from '@hs/core/src/events/m.room.member';
+
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
 		message: string;
@@ -11,5 +13,12 @@ export type HomeserverEventSignatures = {
 			body: string;
 			msgtype: string;
 		};
+	};
+	'homeserver.matrix.accept-invite': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: { avatar_url: string | null, displayname: string, membership: Membership };
 	};
 }
