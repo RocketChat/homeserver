@@ -27,6 +27,7 @@
 		"class-validator": "^0.14.2",
 		"dotenv": "^16.5.0",
 		"elysia": "^1.1.26",
+		"lint-staged": "^16.1.2",
 		"node-jsonwebtoken": "^0.0.1",
 		"pino": "^9.7.0",
 		"reflect-metadata": "^0.2.2",
@@ -41,6 +42,17 @@
 		}
 	},
 	"packageManager": "bun@1.1.10",
+	"lint-staged": {
+		"**.{js|ts|cjs|mjs|d.cts|d.mts|jsx|tsx|json|jsonc}": [
+			"biome check --files-ignore-unknown=true",
+			"biome check --write --no-errors-on-unmatched",
+			"biome check --write --organize-imports-enabled=false --no-errors-on-unmatched",
+			"biome check --write --unsafe --no-errors-on-unmatched",
+			"biome format --write --no-errors-on-unmatched",
+			"biome lint --write --no-errors-on-unmatched"
+		],
+		"*": ["biome check --no-errors-on-unmatched --files-ignore-unknown=true"]
+	},
 	"scripts": {
 		"prepare": "husky",
 		"start": "bun run index.ts",
