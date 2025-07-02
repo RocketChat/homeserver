@@ -1,6 +1,10 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
-import { ProcessInviteBodyDto, ProcessInviteParamsDto, ProcessInviteResponseDto } from '../../dtos/federation/invite.dto';
+import {
+	ProcessInviteBodyDto,
+	ProcessInviteParamsDto,
+	ProcessInviteResponseDto,
+} from '../../dtos/federation/invite.dto';
 import { InviteService } from '../../services/invite.service';
 
 export const invitePlugin = (app: Elysia) => {
@@ -9,7 +13,8 @@ export const invitePlugin = (app: Elysia) => {
 		'/_matrix/federation/v2/invite/:roomId/:eventId',
 		async ({ body, params: { roomId, eventId } }) => {
 			return inviteService.processInvite(body, roomId, eventId);
-		}, {
+		},
+		{
 			params: ProcessInviteParamsDto,
 			body: ProcessInviteBodyDto,
 			response: {
@@ -18,8 +23,8 @@ export const invitePlugin = (app: Elysia) => {
 			detail: {
 				tags: ['Federation'],
 				summary: 'Process room invite',
-				description: 'Process an invite event from another Matrix server'
-			}
-		}
+				description: 'Process an invite event from another Matrix server',
+			},
+		},
 	);
 };

@@ -4,12 +4,6 @@ import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '../authentication';
-import type {
-	GetMissingEventsBody,
-	GetMissingEventsParams,
-	GetMissingEventsResponse,
-	SendTransactionBody,
-} from '../dtos';
 import { MatrixError } from '../errors';
 import type { EventBase, EventStore } from '../models/event.model';
 import {
@@ -286,7 +280,7 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(pdus: SendTransactionBody['pdus']): Promise<void> {
+	async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
@@ -625,11 +619,11 @@ export class EventService {
 	}
 
 	async getMissingEvents(
-		roomId: GetMissingEventsParams['roomId'],
-		earliestEvents: GetMissingEventsBody['earliest_events'],
-		latestEvents: GetMissingEventsBody['latest_events'],
-		limit: GetMissingEventsBody['limit'],
-	): Promise<GetMissingEventsResponse> {
+		roomId: string,
+		earliestEvents: string[],
+		latestEvents: string[],
+		limit: number,
+	): Promise<{ events: { _id: string; event: EventBase }[] }> {
 		const events = await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
