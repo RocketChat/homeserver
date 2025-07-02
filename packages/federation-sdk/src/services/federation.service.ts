@@ -79,8 +79,15 @@ export class FederationService {
 
 			const residentServer = joinEvent.roomId.split(':').pop();
 
+			if (!residentServer) {
+				this.logger.debug(joinEvent.event, 'invalid room_id');
+				throw new Error(
+					`invalid room_id ${joinEvent.roomId}, no server_name part`,
+				);
+			}
+
 			return await this.requestService.put<SendJoinResponse>(
-				residentServer as string,
+				residentServer,
 				uri,
 				eventWithOrigin,
 				queryParams,

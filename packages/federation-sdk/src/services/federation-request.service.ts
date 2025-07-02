@@ -76,8 +76,6 @@ export class FederationRequestService {
 				signedBody,
 			);
 
-			console.log(signedBody, auth);
-
 			const response = await fetch(url.toString(), {
 				method,
 				...(signedBody && { body: JSON.stringify(signedBody) }),
