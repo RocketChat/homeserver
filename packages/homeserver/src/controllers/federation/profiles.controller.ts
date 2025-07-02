@@ -76,7 +76,7 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query }) => {
+			async ({ params, query: _query }) => {
 				const { roomId, userId } = params;
 
 				const roomInformation = await stateService.getRoomInformation(roomId);
@@ -101,13 +101,9 @@ export const profilesPlugin = (app: Elysia) => {
 					membershipEvent.addPreviousEvent(prevEvent);
 				}
 
-				// @ts-ignore prop exist8ing changes beghavior
-				// biome-ignore lint/performance/noDelete: <explanation>
-				delete membershipEvent.event.content.join_authorised_via_users_server;
-
 				return {
-					room_version: roomInformation.room_version as RoomVersion,
-					event: membershipEvent.event as any,
+					room_version: roomInformation.room_version,
+					event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
 				};
 			},
 			{
