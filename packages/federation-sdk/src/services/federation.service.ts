@@ -105,7 +105,7 @@ export class FederationService {
 		transaction: Transaction,
 	): Promise<SendTransactionResponse> {
 		try {
-			const txnId = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+			const txnId = Date.now().toString();
 			const uri = FederationEndpoints.sendTransaction(txnId);
 
 			return await this.requestService.put<SendTransactionResponse>(

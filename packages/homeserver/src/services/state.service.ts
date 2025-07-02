@@ -200,6 +200,8 @@ export class StateService {
 			);
 
 			if (pdu.eventId !== eventId) {
+				console.log('old pdu errored', event.event, event.eventId);
+				console.log('new pdu errored', pdu.redactedEvent, pdu.eventId);
 				throw new Error('Event id mismatch in trying to room state');
 			}
 
@@ -297,6 +299,55 @@ export class StateService {
 		event.addSignature(origin, keyId, result.signatures[origin][keyId]);
 
 		return event;
+	}
+
+	async saveMessage(event: PersistentEventBase) {
+		const room = await this.getFullRoomState(event.roomId);
+
+		const roomVersion = room
+			.get('m.room.create:')
+			?.getContent<PduCreateEventContent>().room_version as RoomVersion;
+
+		const requiredAuthEventsWeHaveSeen = new Map<string, PersistentEventBase>();
+		for (const auth of event.getAuthEventStateKeys()) {
+			const authEvent = room.get(auth);
+			if (authEvent) {
+				requiredAuthEventsWeHaveSeen.set(authEvent.eventId, authEvent);
+			}
+		}
+
+		// auth events referenced in the message
+		const store = this._getStore(roomVersion);
+		const authEventsReferencedInMessage = await store.getEvents(
+			event.event.auth_events as string[],
+		);
+		const authEventsReferenced = new Map<string, PersistentEventBase>();
+		for (const authEvent of authEventsReferencedInMessage) {
+			authEventsReferenced.set(authEvent.eventId, authEvent);
+		}
+
+		// both auth events set must match
+		if (requiredAuthEventsWeHaveSeen.size !== authEventsReferenced.size) {
+			throw new Error('Auth events referenced in message do not match');
+		}
+
+		for (const [eventId] of requiredAuthEventsWeHaveSeen) {
+			if (!authEventsReferenced.has(eventId)) {
+				throw new Error('wrong auth event in message');
+			}
+		}
+
+		// now we validate against auth rules
+		await checkEventAuthWithState(event, room, store);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		// TODO: save event still but with mark
+
+		// now we persist the event
+		const eventsCollection = await this.eventRepository.getCollection();
+		await eventsCollection.insertOne(event.event as any);
 	}
 
 	private async _persistEventAgainstState(
@@ -604,5 +655,23 @@ export class StateService {
 				name: (event.event.content?.name as string) ?? '',
 			}))
 			.toArray();
+	}
+
+	async getMembersOfRoom(roomId: string) {
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const stateMappings = await stateCollection
+			.find({ roomId, 'delta.identifier': /^m\.room\.member:/ })
+			.toArray();
+
+		const events = await this.eventRepository.findByIds(
+			stateMappings.map((stateMapping) => stateMapping.delta.eventId),
+		);
+
+		const members = events
+			.filter((event) => event.event.content?.membership === 'join')
+			.map((event) => event.event.state_key as string);
+
+		return members;
 	}
 }
