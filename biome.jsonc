@@ -41,13 +41,6 @@
 		}
 	},
 	"files": {
-		"ignore": [
-			"dist/**",
-			"node_modules",
-			"**/node_modules",
-			".vscode/**",
-			"packages/*/src/**/*.js",
-			"packages/*/src/**/*.d.ts"
-		]
+		"ignore": ["node_modules", "**/node_modules", ".vscode", "dist", ".turbo"]
 	}
 }
