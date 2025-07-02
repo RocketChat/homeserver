@@ -1,35 +1,23 @@
-import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import type { RouteDefinition } from '../../types/route.types';
 import {
-	type ErrorResponse,
 	ErrorResponseDto,
 	InternalInviteUserBodyDto,
-	type InternalInviteUserResponse,
 	InternalInviteUserResponseDto,
 } from '../../dtos';
-import { InviteService } from '../../services/invite.service';
 import { StateService } from '../../services/state.service';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 
-export const internalInvitePlugin = (app: Elysia) => {
-	const _inviteService = container.resolve(InviteService);
-	const stateService = container.resolve(StateService);
-	return app.post(
-		'/internal/invites',
-		async ({ body }): Promise<InternalInviteUserResponse | ErrorResponse> => {
-			// try {
-			// 	return inviteService.inviteUserToRoom(username, roomId, sender, name);
-			// } catch (error) {
-			// 	set.status = 500;
-			// 	return {
-			// 		error: `Failed to invite user: ${error instanceof Error ? error.message : String(error)}`,
-			// 		details: {},
-			// 	};
-			// }
-			const { roomId, username, sender } = body;
+export const internalInviteRoutes: RouteDefinition[] = [
+	{
+		method: 'POST',
+		path: '/internal/invites',
+		handler: async (ctx) => {
+			const inviteService = container.resolve(StateService);
+			const { roomId, username, sender } = ctx.body;
 
-			const room = await stateService.getFullRoomState(roomId);
+			const room = await inviteService.getFullRoomState(roomId);
 
 			const createEvent = room.get('m.room.create:');
 
@@ -54,7 +42,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 				}
 			}
 
-			await stateService.persistStateEvent(membershipEvent);
+			await inviteService.persistStateEvent(membershipEvent);
 
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectedReason);
@@ -65,17 +53,17 @@ export const internalInvitePlugin = (app: Elysia) => {
 				room_id: roomId,
 			};
 		},
-		{
+		validation: {
 			body: InternalInviteUserBodyDto,
-			response: {
-				200: InternalInviteUserResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Invite user to room',
-				description: 'Invite a user to a room',
-			},
 		},
-	);
-};
+		responses: {
+			200: InternalInviteUserResponseDto,
+			400: ErrorResponseDto,
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Invite user to room',
+			description: 'Invite a user to a room',
+		},
+	},
+];

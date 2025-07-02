@@ -1,5 +1,5 @@
-import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import type { RouteDefinition } from '../../types/route.types';
 import {
 	type ErrorResponse,
 	type InternalMessageResponse,
@@ -19,11 +19,13 @@ import {
 } from '../../dtos';
 import { MessageService } from '../../services/message.service';
 
-export const internalMessagePlugin = (app: Elysia) => {
-	const messageService = container.resolve(MessageService);
-	return app
-		.post('/internal/messages', async ({ body, set }): Promise<InternalMessageResponse | ErrorResponse> => {
-			const { roomId, message, senderUserId, targetServer } = body;
+export const messageRoutes: RouteDefinition[] = [
+	{
+		method: 'POST',
+		path: '/internal/messages',
+		handler: async (ctx) => {
+			const messageService = container.resolve(MessageService);
+			const { roomId, message, senderUserId, targetServer } = ctx.body;
 			try {
 				return await messageService.sendMessage(
 					roomId,
@@ -32,108 +34,124 @@ export const internalMessagePlugin = (app: Elysia) => {
 					targetServer,
 				);
 			} catch (error) {
-				set.status = 500;
+				ctx.setStatus(500);
 				return {
 					error: `Failed to send message: ${error instanceof Error ? error.message : String(error)}`,
 					details: {},
 				};
 			}
-		}, {
+		},
+		validation: {
 			body: InternalSendMessageBodyDto,
-			response: {
-				200: InternalMessageResponseDto,
-				500: ErrorResponseDto
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Send a message to a room',
-				description: 'Send a text message to a Matrix room'
-			}
-		})
-		.patch('/internal/messages/:messageId', async ({ params, body, set }): Promise<InternalMessageResponse | ErrorResponse> => {
-			const { roomId, message, senderUserId, targetServer } = body;
+		},
+		responses: {
+			200: InternalMessageResponseDto,
+			500: ErrorResponseDto
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Send a message to a room',
+			description: 'Send a text message to a Matrix room'
+		}
+	},
+	{
+		method: 'PATCH',
+		path: '/internal/messages/:messageId',
+		handler: async (ctx) => {
+			const messageService = container.resolve(MessageService);
+			const { roomId, message, senderUserId, targetServer } = ctx.body;
 			try {
 				return await messageService.updateMessage(
 					roomId,
 					message,
 					senderUserId,
 					targetServer,
-					params.messageId,
+					ctx.params.messageId,
 				);
 			} catch (error) {
-				set.status = 500;
+				ctx.setStatus(500);
 				return {
 					error: `Failed to update message: ${error instanceof Error ? error.message : String(error)}`,
 					details: {},
 				};
 			}
-		}, {
+		},
+		validation: {
 			params: InternalUpdateMessageParamsDto,
 			body: InternalUpdateMessageBodyDto,
-			response: {
-				200: InternalMessageResponseDto,
-				500: ErrorResponseDto
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Update a message',
-				description: 'Update the content of an existing message'
+		},
+		responses: {
+			200: InternalMessageResponseDto,
+			500: ErrorResponseDto
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Update a message',
+			description: 'Update the content of an existing message'
+		}
+	},
+	{
+		method: 'POST',
+		path: '/internal/messages/:messageId/reactions',
+		handler: async (ctx) => {
+			const messageService = container.resolve(MessageService);
+			const { roomId, emoji, senderUserId, targetServer } = ctx.body;
+			try {
+				return await messageService.sendReaction(
+					roomId,
+					ctx.params.messageId,
+					emoji,
+					senderUserId,
+					targetServer,
+				);
+			} catch (error) {
+				ctx.setStatus(500);
+				return {
+					error: `Failed to send reaction: ${error instanceof Error ? error.message : String(error)}`,
+					details: {},
+				};
 			}
-		})
-		.post(
-			'/internal/messages/:messageId/reactions',
-			async ({ params, body, set }): Promise<InternalReactionResponse | ErrorResponse> => {
-				const { roomId, emoji, senderUserId, targetServer } = body;
-				try {
-					return await messageService.sendReaction(
-						roomId,
-						params.messageId,
-						emoji,
-						senderUserId,
-						targetServer,
-					);
-				} catch (error) {
-					set.status = 500;
-					return {
-						error: `Failed to send reaction: ${error instanceof Error ? error.message : String(error)}`,
-						details: {},
-					};
-				}
-			},
-			{
-				params: InternalSendReactionParamsDto,
-				body: InternalSendReactionBodyDto,
-				response: {
-					200: InternalReactionResponseDto,
-					500: ErrorResponseDto
-				},
-				detail: {
-					tags: ['Internal'],
-					summary: 'Send a reaction to a message',
-					description: 'Send a reaction to a message'
-				}
-			}
-		)
-		.delete('/internal/messages/:messageId', async ({ params, body }): Promise<InternalRedactMessageResponse | ErrorResponse> => {
-			const { roomId, reason, senderUserId, targetServer } = body;
+		},
+		validation: {
+			params: InternalSendReactionParamsDto,
+			body: InternalSendReactionBodyDto,
+		},
+		responses: {
+			200: InternalReactionResponseDto,
+			500: ErrorResponseDto
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Send a reaction to a message',
+			description: 'Send a reaction to a message'
+		}
+	},
+	{
+		method: 'DELETE',
+		path: '/internal/messages/:messageId',
+		handler: async (ctx) => {
+			const messageService = container.resolve(MessageService);
+			const { roomId, reason, senderUserId, targetServer } = ctx.body;
 			return messageService.redactMessage(
 				roomId,
-				params.messageId,
+				ctx.params.messageId,
 				reason,
 				senderUserId,
 				targetServer,
 			);
-		}, {
+		},
+		validation: {
 			params: InternalRedactMessageParamsDto,
 			body: InternalRedactMessageBodyDto,
-			response: {
-				200: InternalRedactMessageResponseDto,
-				500: ErrorResponseDto
-			},
-			detail: {
-				tags: ['Internal'],
-				summary: 'Redact a message',
-				description: 'Redact a message'
-			}
-		});
-};
+		},
+		responses: {
+			200: InternalRedactMessageResponseDto,
+			500: ErrorResponseDto
+		},
+		metadata: {
+			tags: ['Internal'],
+			summary: 'Redact a message',
+			description: 'Redact a message'
+		}
+	}
+];

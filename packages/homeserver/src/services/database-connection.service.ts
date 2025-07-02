@@ -37,16 +37,19 @@ export class DatabaseConnectionService {
 			return;
 		}
 
-		this.connectionPromise = new Promise<void>((resolve, reject) => {
+		this.connectionPromise = new Promise<void>(async (resolve, reject) => {
 			try {
 				const dbConfig = this.configService.getDatabaseConfig();
 
 				const options: MongoClientOptions = {
 					maxPoolSize: dbConfig.poolSize,
+					connectTimeoutMS: 10000,
+					serverSelectionTimeoutMS: 10000,
 				};
 
 				this.client = new MongoClient(dbConfig.uri, options);
-				this.client.connect();
+				this.logger.info(`Connecting to MongoDB database: ${dbConfig.name}`);
+				await this.client.connect();
 
 				this.db = this.client.db(dbConfig.name);
 				this.logger.info(`Connected to MongoDB database: ${dbConfig.name}`);
