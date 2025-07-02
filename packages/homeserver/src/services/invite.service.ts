@@ -1,12 +1,8 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import {
-	HttpException,
-	HttpStatus
-} from '../errors';
+import { HttpException, HttpStatus } from '../errors';
 import { generateId } from '../authentication';
-import type { InternalInviteUserResponse, ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { makeUnsignedRequest } from '../makeRequest';
 import type { EventBase } from '../models/event.model';
 import { signEvent } from '../signEvent';
@@ -31,7 +27,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
 		private readonly roomService: RoomService,
-	) { }
+	) {}
 
 	/**
 	 * Invite a user to an existing room, or create a new room if none is provided
@@ -41,7 +37,7 @@ export class InviteService {
 		roomId?: string,
 		sender?: string,
 		name?: string,
-	): Promise<InternalInviteUserResponse> {
+	): Promise<{ event_id: string; room_id: string }> {
 		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
 
 		const config = this.configService.getServerConfig();
@@ -207,11 +203,19 @@ export class InviteService {
 		};
 	}
 
-	async processInvite(
-		event: ProcessInviteBody,
+	async processInvite<
+		T extends Omit<EventBase, 'origin'> & {
+			origin?: string | undefined;
+			room_id: string;
+			state_key: string;
+		},
+	>(
+		event: T,
 		roomId: string,
 		eventId: string,
-	): Promise<ProcessInviteResponse> {
+	): Promise<{
+		event: T;
+	}> {
 		try {
 			// Check if the room is tombstoned (deleted)
 			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);

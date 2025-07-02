@@ -5,11 +5,11 @@ import { EventService } from './event.service';
 import { RoomService } from './room.service';
 
 import type {
-	AuthEvents
+	AuthEvents,
+	RoomMemberEvent,
 } from '@hs/core/src/events/m.room.member';
 import { injectable } from 'tsyringe';
-import type { EventAuthParams, EventAuthResponse, GetDevicesParams, GetDevicesResponse, GetMissingEventsBody, GetMissingEventsParams, GetMissingEventsResponse, MakeJoinParams, MakeJoinQuery, MakeJoinResponse, QueryKeysBody, QueryKeysResponse, QueryProfileResponse } from '../dtos/federation/profiles.dto';
-import type { EventStore } from '../models/event.model';
+import type { EventBase, EventStore } from '../models/event.model';
 import { EventRepository } from '../repositories/event.repository';
 
 @injectable()
@@ -23,27 +23,41 @@ export class ProfilesService {
 		private readonly eventRepository: EventRepository,
 	) {}
 
-	async queryProfile(
-		userId: string,
-	): Promise<QueryProfileResponse> {
+	async queryProfile(userId: string): Promise<{
+		avatar_url: string;
+		displayname: string;
+	}> {
 		return {
 			avatar_url: 'mxc://matrix.org/MyC00lAvatar',
 			displayname: userId,
 		};
 	}
 
-	async queryKeys(deviceKeys: QueryKeysBody['device_keys']): Promise<QueryKeysResponse> {
-		const keys = Object.keys(deviceKeys).reduce((v, cur) => {
-			v[cur] = 'unknown_key';
-			return v;
-		}, {} as QueryKeysResponse['device_keys']);
+	async queryKeys(
+		deviceKeys: Record<string, string>,
+	): Promise<{ device_keys: Record<string, string> }> {
+		const keys = Object.keys(deviceKeys).reduce(
+			(v, cur) => {
+				v[cur] = 'unknown_key';
+				return v;
+			},
+			{} as Record<string, string>,
+		);
 
 		return {
 			device_keys: keys,
 		};
 	}
 
-	async getDevices(userId: GetDevicesParams['userId']): Promise<GetDevicesResponse> {
+	async getDevices(userId: string): Promise<{
+		user_id: string;
+		stream_id: number;
+		devices: {
+			device_id: string;
+			display_name: string;
+			last_seen_ip: string;
+		}[];
+	}> {
 		return {
 			user_id: userId,
 			stream_id: 1,
@@ -52,10 +66,13 @@ export class ProfilesService {
 	}
 
 	async makeJoin(
-		roomId: MakeJoinParams['roomId'],
-		userId: MakeJoinParams['userId'],
-		version: MakeJoinQuery['ver'],
-	): Promise<MakeJoinResponse> {
+		roomId: string,
+		userId: string,
+		version?: string[],
+	): Promise<{
+		event: RoomMemberEvent;
+		room_version: string;
+	}> {
 		if (!userId.includes(':') || !userId.includes('@')) {
 			throw new Error('Invalid sender');
 		}
@@ -102,15 +119,15 @@ export class ProfilesService {
 
 		const versionArray = version ? version : ['1'];
 
-		return makeJoinEvent(roomId, userId, versionArray, serverName) as unknown as MakeJoinResponse;
+		return makeJoinEvent(roomId, userId, versionArray, serverName);
 	}
 
 	async getMissingEvents(
-		roomId: GetMissingEventsParams['roomId'],
-		earliestEvents: GetMissingEventsBody['earliest_events'],
-		latestEvents: GetMissingEventsBody['latest_events'],
-		limit: GetMissingEventsBody['limit'],
-	): Promise<GetMissingEventsResponse> {
+		roomId: string,
+		earliestEvents: string[],
+		latestEvents: string[],
+		limit: number,
+	): Promise<{ events: { _id: string; event: EventBase }[] }> {
 		return this.eventService.getMissingEvents(
 			roomId,
 			earliestEvents,
@@ -120,9 +137,9 @@ export class ProfilesService {
 	}
 
 	async eventAuth(
-		_roomId: EventAuthParams['roomId'],
-		_eventId: EventAuthParams['eventId'],
-	): Promise<EventAuthResponse> {
+		_roomId: string,
+		_eventId: string,
+	): Promise<{ auth_chain: Record<string, string>[] }> {
 		return {
 			auth_chain: [],
 		};

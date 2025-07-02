@@ -17,15 +17,16 @@ import {
 	QueryKeysBodyDto,
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
-	QueryProfileResponseDto
+	QueryProfileResponseDto,
 } from '../../dtos';
 import { ProfilesService } from '../../services/profiles.service';
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
 	return app
-		.get('/_matrix/federation/v1/query/profile', ({ query: { user_id } }) =>
-			profilesService.queryProfile(user_id),
+		.get(
+			'/_matrix/federation/v1/query/profile',
+			({ query: { user_id } }) => profilesService.queryProfile(user_id),
 			{
 				query: QueryProfileQueryDto,
 				response: {
@@ -34,12 +35,13 @@ export const profilesPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Query profile',
-					description: 'Query a user\'s profile'
-				}
+					description: "Query a user's profile",
+				},
 			},
 		)
-		.post('/_matrix/federation/v1/user/keys/query', async ({ body }) =>
-			profilesService.queryKeys(body.device_keys),
+		.post(
+			'/_matrix/federation/v1/user/keys/query',
+			async ({ body }) => profilesService.queryKeys(body.device_keys),
 			{
 				body: QueryKeysBodyDto,
 				response: {
@@ -48,12 +50,13 @@ export const profilesPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Query keys',
-					description: 'Query a user\'s device keys'
-				}
-			}
+					description: "Query a user's device keys",
+				},
+			},
 		)
-		.get('/_matrix/federation/v1/user/devices/:userId', ({ params }) =>
-			profilesService.getDevices(params.userId),
+		.get(
+			'/_matrix/federation/v1/user/devices/:userId',
+			({ params }) => profilesService.getDevices(params.userId),
 			{
 				params: GetDevicesParamsDto,
 				response: {
@@ -62,9 +65,9 @@ export const profilesPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Get devices',
-					description: 'Get a user\'s devices'
-				}
-			}
+					description: "Get a user's devices",
+				},
+			},
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
@@ -81,12 +84,15 @@ export const profilesPlugin = (app: Elysia) => {
 						content: {
 							...response.event.content,
 							membership: 'join',
+
 							join_authorised_via_users_server:
 								response.event.content.join_authorised_via_users_server,
 						},
 						room_id: response.event.room_id,
 						sender: response.event.sender,
+
 						state_key: response.event.state_key,
+
 						type: 'm.room.member',
 						origin_server_ts: response.event.origin_server_ts,
 						origin: response.event.origin,
@@ -103,9 +109,9 @@ export const profilesPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Make join',
-					description: 'Make a join event'
-				}
-			}
+					description: 'Make a join event',
+				},
+			},
 		)
 		.post(
 			'/_matrix/federation/v1/get_missing_events/:roomId',
@@ -125,12 +131,13 @@ export const profilesPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Get missing events',
-					description: 'Get missing events for a room'
-				}
-			}
+					description: 'Get missing events for a room',
+				},
+			},
 		)
-		.get('/_matrix/federation/v1/event_auth/:roomId/:eventId', ({ params }) =>
-			profilesService.eventAuth(params.roomId, params.eventId),
+		.get(
+			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
+			({ params }) => profilesService.eventAuth(params.roomId, params.eventId),
 			{
 				params: EventAuthParamsDto,
 				response: {
@@ -139,8 +146,8 @@ export const profilesPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Event auth',
-					description: 'Get event auth for a room'
-				}
-			}
+					description: 'Get event auth for a room',
+				},
+			},
 		);
 };
