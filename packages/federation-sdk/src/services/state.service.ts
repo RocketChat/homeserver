@@ -299,8 +299,6 @@ export class StateService {
 
 		const eventsNeeded = event.getAuthEventStateKeys();
 
-		console.log(eventsNeeded);
-
 		for (const stateKey of eventsNeeded) {
 			const authEvent = state.get(stateKey);
 			if (authEvent) {
