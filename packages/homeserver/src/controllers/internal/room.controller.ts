@@ -52,19 +52,14 @@ export const internalRoomPlugin = (app: Elysia) => {
 	return app
 		.post(
 			'/internal/rooms/rooms',
-			async ({
-				body,
-				set: _set,
-			}): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-				const { username, sender, name, canonical_alias, alias } = body;
+			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
+				const { username, sender, name } = body;
 				return roomService.createRoom(
 					username,
 					sender,
 					name,
 					body.join_rule as any,
 					'11',
-					canonical_alias,
-					alias,
 				);
 			},
 			{
@@ -600,7 +595,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		})
 		.put(
 			'/internal/rooms/:roomId/invite/:userId',
-			async ({ params, body, set: _ }) => {
+			async ({ params, body }) => {
 				const { roomId, userId } = params;
 				const { sender } = body;
 

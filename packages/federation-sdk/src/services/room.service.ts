@@ -1,4 +1,4 @@
-import type { EventBase, EventStore } from '@hs/core';
+import type { EventBase, EventStore, SigningKey } from '@hs/core';
 import {
 	ForbiddenError,
 	HttpException,
@@ -21,7 +21,6 @@ import { createSignedEvent } from '@hs/core';
 import { generateId } from '@hs/core';
 import { inject, injectable } from 'tsyringe';
 
-import { type SigningKey } from '@hs/core';
 import type { EventBaseWithOptionalId as ModelEventBase } from '@hs/core';
 import { PersistentEventFactory } from '@hs/room';
 import type { PduCreateEventContent, PduJoinRuleEventContent } from '@hs/room';
@@ -36,6 +35,7 @@ import type { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
+import { FederationService } from './federation.service';
 
 // Utility function to create a random ID for room creation
 function _createMediaId(length: number) {
