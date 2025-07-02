@@ -1,6 +1,5 @@
 import {
 	type PduMembershipEventContent,
-	type PduPowerLevelsEventContent,
 	PduTypeRoomCreate,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
@@ -9,7 +8,7 @@ import {
 	PduTypeRoomName,
 	type PduRoomNameEventContent,
 	PduTypeRoomJoinRules,
-	PduJoinRuleEventContent,
+	type PduJoinRuleEventContent,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
 import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';

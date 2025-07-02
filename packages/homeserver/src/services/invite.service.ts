@@ -1,12 +1,13 @@
 import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import {
-	HttpException,
-	HttpStatus
-} from '../errors';
+import { HttpException, HttpStatus } from '../errors';
 import { generateId } from '../authentication';
-import type { InternalInviteUserResponse, ProcessInviteBody, ProcessInviteResponse } from '../dtos';
+import type {
+	InternalInviteUserResponse,
+	ProcessInviteBody,
+	ProcessInviteResponse,
+} from '../dtos';
 import { makeUnsignedRequest } from '../makeRequest';
 import type { EventBase } from '../models/event.model';
 import { signEvent } from '../signEvent';
@@ -31,7 +32,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
 		private readonly roomService: RoomService,
-	) { }
+	) {}
 
 	/**
 	 * Invite a user to an existing room, or create a new room if none is provided
@@ -297,52 +298,47 @@ export class InviteService {
 	private async handleInviteProcessing(
 		event: ProcessInviteEvent,
 	): Promise<void> {
-		try {
-			const responseMake = await this.federationService.makeJoin(
-				event.event.origin,
-				event.event.room_id,
-				event.event.state_key,
-				event.room_version,
-			);
-			const responseBody = await this.federationService.sendJoin(
-				event.event.origin,
-				event.event.room_id,
-				event.event.state_key,
-				responseMake.event,
-				false,
-			);
-
-			if (!responseBody.state || !responseBody.auth_chain) {
-				this.logger.warn(
-					`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`,
-				);
-				return;
-			}
-
-			const allEvents = [
-				...responseBody.state,
-				...responseBody.auth_chain,
-				responseBody.event,
-			];
-
-			// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
-			// await this.eventService.processIncomingPDUs(allEvents);
-
-			// TODO: Also remove the insertEvent calls :)
-			for (const event of allEvents) {
-				await this.eventService.insertEventIfNotExists(event);
-			}
-
-			this.logger.debug(
-				`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`,
-			);
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(
-				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${errorMessage}`,
-			);
-			throw error;
-		}
+		// try {
+		// 	const responseMake = await this.federationService.makeJoin(
+		// 		event.event.origin,
+		// 		event.event.room_id,
+		// 		event.event.state_key,
+		// 		event.room_version,
+		// 	);
+		// 	const responseBody = await this.federationService.sendJoin(
+		// 		event.event.origin,
+		// 		event.event.room_id,
+		// 		event.event.state_key,
+		// 		responseMake.event,
+		// 		false,
+		// 	);
+		// 	if (!responseBody.state || !responseBody.auth_chain) {
+		// 		this.logger.warn(
+		// 			`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`,
+		// 		);
+		// 		return;
+		// 	}
+		// 	const allEvents = [
+		// 		...responseBody.state,
+		// 		...responseBody.auth_chain,
+		// 		responseBody.event,
+		// 	];
+		// 	// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
+		// 	// await this.eventService.processIncomingPDUs(allEvents);
+		// 	// TODO: Also remove the insertEvent calls :)
+		// 	for (const event of allEvents) {
+		// 		await this.eventService.insertEventIfNotExists(event);
+		// 	}
+		// 	this.logger.debug(
+		// 		`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`,
+		// 	);
+		// } catch (error: unknown) {
+		// 	const errorMessage =
+		// 		error instanceof Error ? error.message : String(error);
+		// 	this.logger.error(
+		// 		`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${errorMessage}`,
+		// 	);
+		// 	throw error;
+		// }
 	}
 }

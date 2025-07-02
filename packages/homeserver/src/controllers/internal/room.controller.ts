@@ -36,8 +36,7 @@ import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 import { ConfigService } from '../../services/config.service';
 import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
 import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
-import { RoomVersion } from '@hs/room/src/manager/type';
-import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
+import type { RoomVersion } from '@hs/room/src/manager/type';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
