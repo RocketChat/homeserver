@@ -531,6 +531,7 @@ describe('[EventWrapper] Redaction', () => {
 			synapseEvent.getContentHashString() === synapseRaw.hashes.sha256,
 		);
 
+		// biome-ignore lint/performance/noDelete: <explanation>
 		delete (synapseEvent as any).rawEvent.origin;
 
 		console.log(
