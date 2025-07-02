@@ -43,20 +43,9 @@ import type {
 	PduCreateEventContent,
 	PduJoinRuleEventContent,
 } from '@hs/room/src/types/v1';
-import { RoomVersion } from '@hs/room/src/manager/type';
+import type { RoomVersion } from '@hs/room/src/manager/type';
 
 const logger = createLogger('RoomService');
-
-// Utility function to create a random ID for room creation
-function createMediaId(length: number) {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-	let result = '';
-	for (let i = 0; i < length; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters[randomIndex];
-	}
-	return result;
-}
 
 @injectable()
 export class RoomService {
@@ -238,8 +227,6 @@ export class RoomService {
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
 		roomVersion: RoomVersion,
-		canonicalAlias?: string,
-		alias?: string,
 	): Promise<InternalCreateRoomResponse> {
 		logger.debug(`Creating room for ${sender} with ${username}`);
 

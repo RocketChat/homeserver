@@ -25,7 +25,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 		async ({
 			params,
 			body,
-			query,
+			query: _query, // not destructuring this breaks the endpoint
 		}): Promise<SendJoinResponse | ErrorResponse> => {
 			const { roomId, eventId } = params;
 
@@ -50,8 +50,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
 				joinEvent.authedBy(authEvent);
 			}
-
-			console.log(joinEvent.event);
 
 			// now check the calculated id if it matches what is passed in param
 			if (joinEvent.eventId !== eventId) {
