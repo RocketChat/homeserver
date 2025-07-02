@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../homeserver/src/keys';
-import { signEvent, type SignedEvent } from '../../../homeserver/src/signEvent';
+import { generateId } from '@hs/core';
+import { generateKeyPairsFromString } from '../utils/keys';
+import type { SignedEvent } from '../types';
+import { signEvent } from '../utils/signEvent';
 import {
 	roomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,

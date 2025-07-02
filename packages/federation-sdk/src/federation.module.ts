@@ -2,22 +2,10 @@ import { FederationConfigService } from './services/federation-config.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { SignatureVerificationService } from './services/signature-verification.service';
-
-export type FederationModuleOptions = {
-	serverName: string;
-	signingKey: string; // base64 encoded private key
-	signingKeyId?: string;
-	timeout?: number;
-	baseUrl?: string;
-};
-
-export type FederationModuleAsyncOptions = {
-	useFactory: (
-		...args: any[]
-	) => Promise<FederationModuleOptions> | FederationModuleOptions;
-	inject?: any[];
-	imports?: any[];
-};
+import type {
+	FederationModuleOptions,
+	FederationModuleAsyncOptions,
+} from './types';
 
 export class FederationModule {
 	static forRootAsync(options: FederationModuleAsyncOptions) {

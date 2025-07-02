@@ -1,5 +1,5 @@
-import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
+import type { ProtocolVersionKey } from '@hs/core';
+import { createLogger } from '@hs/core';
 import * as nacl from 'tweetnacl';
 
 interface KeyData {
@@ -18,7 +18,9 @@ interface KeyData {
 }
 
 export class SignatureVerificationService {
-	private readonly logger = createLogger('SignatureVerificationService');
+	private get logger() {
+		return createLogger('SignatureVerificationService');
+	}
 	private cachedKeys = new Map<string, KeyData>();
 
 	/**

@@ -1,7 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
 	type InternalBanUserResponse,
 	type InternalCreateRoomResponse,
 	type InternalKickUserResponse,
@@ -9,7 +8,6 @@ import {
 	type InternalTombstoneRoomResponse,
 	type InternalUpdateRoomNameResponse,
 	type InternalUpdateUserPowerLevelResponse,
-	ErrorResponseDto,
 	InternalBanUserBodyDto,
 	InternalBanUserParamsDto,
 	InternalCreateRoomBodyDto,
@@ -26,13 +24,18 @@ import {
 	InternalUpdateRoomNameParamsDto,
 	InternalUpdateUserPowerLevelBodyDto,
 	InternalUpdateUserPowerLevelParamsDto,
+} from '../../dtos';
+import {
+	type ErrorResponse,
+	ErrorResponseDto,
 	RoomIdDto,
 	UsernameDto,
-} from '../../dtos';
-import { RoomService } from '../../services/room.service';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import { StateService } from '../../services/state.service';
-import type { PduCreateEventContent } from '@hs/room/src/types/v1';
+} from '@hs/federation-sdk';
+
+import { PersistentEventFactory } from '@hs/room';
+import type { PduCreateEventContent } from '@hs/room';
+import { RoomService } from '@hs/federation-sdk/src/services/room.service';
+import { StateService } from '@hs/federation-sdk/src/services/state.service';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);

@@ -1,9 +1,9 @@
 import { expect, test, describe } from 'bun:test';
 import { createRoomCreateEvent, roomCreateEvent } from '../m.room.create';
-import { signEvent } from '../../../../homeserver/src/signEvent';
-import { generateId } from '../../../../homeserver/src/authentication';
+import { signEvent } from '../../utils/signEvent';
+import { generateId } from '../../utils/generateId';
 import { createSignedEvent } from './createSignedEvent';
-import { generateKeyPairsFromString } from '../../../../homeserver/src/keys';
+import { generateKeyPairsFromString } from '../../utils/keys';
 
 describe('makeSignedEvent', () => {
 	test('it should return the same payload, following create event > sign > generate id', async () => {

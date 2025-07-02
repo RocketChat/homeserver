@@ -1,15 +1,45 @@
 import 'reflect-metadata';
 
 import {
+	ConfigService,
+	EventRepository,
 	type FederationModuleOptions,
 	FederationRequestService,
+	FederationService,
+	type HomeserverEventSignatures,
+	KeyRepository,
+	RoomRepository,
+	ServerRepository,
+	StateEventRepository,
+	StateRepository,
 } from '@hs/federation-sdk';
-import Elysia from 'elysia';
+
+import { swagger } from '@elysiajs/swagger';
+import { toUnpaddedBase64 } from '@hs/core';
+import { MissingEventListener } from '@hs/federation-sdk';
+import { DatabaseConnectionService } from '@hs/federation-sdk';
+import { EventAuthorizationService } from '@hs/federation-sdk';
+import { EventFetcherService } from '@hs/federation-sdk';
+import { EventStateService } from '@hs/federation-sdk';
+import { EventService } from '@hs/federation-sdk';
+import { EventEmitterService } from '@hs/federation-sdk';
+import { InviteService } from '@hs/federation-sdk';
+import { MessageService } from '@hs/federation-sdk';
+import { MissingEventService } from '@hs/federation-sdk';
+import { NotificationService } from '@hs/federation-sdk';
+import { ProfilesService } from '@hs/federation-sdk';
+import { RoomService } from '@hs/federation-sdk';
+import { ServerService } from '@hs/federation-sdk';
+import { StateService } from '@hs/federation-sdk';
+import { StagingAreaService } from '@hs/federation-sdk';
+import { WellKnownService } from '@hs/federation-sdk';
+import { LockManagerService } from '@hs/federation-sdk';
 import { Emitter } from '@rocket.chat/emitter';
+import Elysia from 'elysia';
 import { container } from 'tsyringe';
-import { toUnpaddedBase64 } from './binaryData';
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
+import { roomPlugin } from './controllers/federation/rooms.controller';
 import { sendJoinPlugin } from './controllers/federation/send-join.controller';
 import { transactionsPlugin } from './controllers/federation/transactions.controller';
 import { versionsPlugin } from './controllers/federation/versions.controller';
@@ -19,36 +49,10 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { roomPlugin } from './controllers/federation/rooms.controller';
-import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
-import { MissingEventsQueue } from './queues/missing-event.queue';
-import { StagingAreaQueue } from './queues/staging-area.queue';
-import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { StateRepository } from './repositories/state.repository';
-import { ConfigService } from './services/config.service';
-import { DatabaseConnectionService } from './services/database-connection.service';
-import { EventAuthorizationService } from './services/event-authorization.service';
-import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
-import { EventService } from './services/event.service';
-import { EventEmitterService } from './services/event-emitter.service';
-import { InviteService } from './services/invite.service';
-import { MessageService } from './services/message.service';
-import { MissingEventService } from './services/missing-event.service';
-import { NotificationService } from './services/notification.service';
-import { ProfilesService } from './services/profiles.service';
-import { RoomService } from './services/room.service';
-import { ServerService } from './services/server.service';
-import { StateService } from './services/state.service';
-import { StagingAreaService } from './services/staging-area.service';
-import { WellKnownService } from './services/well-known.service';
-import { LockManagerService } from './utils/lock.decorator';
-import type { HomeserverEventSignatures } from './types/events';
-import { StateEventRepository } from './repositories/state-event.repository';
+
+import { MissingEventsQueue } from '@hs/federation-sdk';
+import { StagingAreaQueue } from '@hs/federation-sdk';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {
@@ -73,14 +77,17 @@ export async function setup(options?: HomeserverSetupOptions) {
 	});
 
 	container.registerSingleton(FederationRequestService);
-	container.registerSingleton(ConfigService);
-	container.registerSingleton(DatabaseConnectionService);
-	container.registerSingleton(StateRepository);
+	container.registerSingleton('ConfigService', ConfigService);
+	container.registerSingleton(
+		'DatabaseConnectionService',
+		DatabaseConnectionService,
+	);
+	container.registerSingleton('StateRepository', StateRepository);
 	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
-	container.registerSingleton(EventService);
+	container.registerSingleton('EventService', EventService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
@@ -88,21 +95,22 @@ export async function setup(options?: HomeserverSetupOptions) {
 	container.registerSingleton(NotificationService);
 	container.registerSingleton(ProfilesService);
 	container.registerSingleton(RoomService);
+	container.registerSingleton('RoomService', RoomService);
 	container.registerSingleton(ServerService);
 	container.registerSingleton(StagingAreaService);
+	container.registerSingleton('StagingAreaService', StagingAreaService);
 	container.registerSingleton(WellKnownService);
-	container.registerSingleton(EventRepository);
-	container.registerSingleton(KeyRepository);
-	container.registerSingleton(RoomRepository);
-	container.registerSingleton(ServerRepository);
-	container.registerSingleton(MissingEventsQueue);
+	container.registerSingleton('EventRepository', EventRepository);
+	container.registerSingleton('KeyRepository', KeyRepository);
+	container.registerSingleton('RoomRepository', RoomRepository);
+	container.registerSingleton('ServerRepository', ServerRepository);
+	container.registerSingleton('StateRepository', StateRepository);
+	container.registerSingleton('StateEventRepository', StateEventRepository);
+	container.registerSingleton('MissingEventsQueue', MissingEventsQueue);
+	container.registerSingleton('StagingAreaQueue', StagingAreaQueue);
 	container.registerSingleton(MissingEventListener);
-	container.registerSingleton(StagingAreaQueue);
-	container.registerSingleton(StagingAreaService);
-	container.registerSingleton(StateEventRepository);
-
-	// Register the lock manager service with configuration
 	container.registerSingleton(StagingAreaListener);
+	container.registerSingleton('FederationService', FederationService);
 
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService({ type: 'memory' }),

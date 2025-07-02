@@ -4,8 +4,8 @@ import {
 	ProcessInviteBodyDto,
 	ProcessInviteParamsDto,
 	ProcessInviteResponseDto,
-} from '../../dtos/federation/invite.dto';
-import { InviteService } from '../../services/invite.service';
+} from '@hs/federation-sdk';
+import { InviteService } from '@hs/federation-sdk/src/services/invite.service';
 
 export const invitePlugin = (app: Elysia) => {
 	const inviteService = container.resolve(InviteService);

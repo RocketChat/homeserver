@@ -1,23 +1,19 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"composite": true,
-		"target": "ES2021",
-		"experimentalDecorators": true,
-		"emitDecoratorMetadata": true,
-		"module": "ES2022",
-		"moduleResolution": "node",
-		"types": ["bun-types"],
+		"outDir": "./dist",
+		"target": "ESNext",
+		"rootDir": "./src",
 		"declaration": true,
+		"declarationMap": true,
 		"sourceMap": true,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"strict": true,
-		"useUnknownInCatchVariables": true,
-		"noUnusedParameters": true,
-		"noImplicitReturns": false,
-		"allowUnusedLabels": false,
-		"allowUnreachableCode": false,
+		"composite": true,
 		"skipLibCheck": true,
-		"noEmit": true
-	}
+		"noEmit": false,
+		"esModuleInterop": true,
+		"allowImportingTsExtensions": false,
+		"verbatimModuleSyntax": false
+	},
+	"include": ["src/**/*"],
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }
