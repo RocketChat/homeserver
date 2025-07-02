@@ -1,5 +1,6 @@
-import type { EventBase } from '@hs/core';
+import type { EventBase, SigningKey } from '@hs/core';
 import {
+	ForbiddenError,
 	HttpException,
 	HttpStatus,
 	roomMemberEvent,

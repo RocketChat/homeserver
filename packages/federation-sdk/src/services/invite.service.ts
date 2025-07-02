@@ -1,8 +1,5 @@
-import { EventBaseWithOptionalId, roomMemberEvent, signEvent } from '@hs/core';
+import { EventBaseWithOptionalId } from '@hs/core';
 import { HttpException, HttpStatus } from '@hs/core';
-import { generateId } from '@hs/core';
-import { makeUnsignedRequest } from '@hs/core';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
@@ -10,6 +7,7 @@ import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -187,7 +185,7 @@ export class InviteService {
 	 * Handle the processing of an invite event
 	 */
 	private async handleInviteProcessing(
-		event: ProcessInviteEvent,
+		_event: ProcessInviteEvent,
 	): Promise<void> {
 		// try {
 		// 	const responseMake = await this.federationService.makeJoin(

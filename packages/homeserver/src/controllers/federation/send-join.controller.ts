@@ -21,7 +21,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 
 	return app.put(
 		'/_matrix/federation/v2/send_join/:roomId/:eventId',
-		async ({ params, body, query }) => {
+		async ({ params, body }) => {
 			const { roomId, eventId } = params;
 
 			const roomVersion = await stateService.getRoomVersion(roomId);
@@ -45,8 +45,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
 				joinEvent.authedBy(authEvent);
 			}
-
-			console.log(joinEvent.event);
 
 			// now check the calculated id if it matches what is passed in param
 			if (joinEvent.eventId !== eventId) {
