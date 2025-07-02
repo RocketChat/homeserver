@@ -1,6 +1,6 @@
 import {
 	type PduCreateEventContent,
-	PduJoinRuleEventContent,
+	type PduJoinRuleEventContent,
 	type PduMembershipEventContent,
 	type PduRoomNameEventContent,
 	PduTypeRoomCreate,

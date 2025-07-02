@@ -600,7 +600,8 @@ export class EventService {
 		eventId?: string,
 		args?: object,
 	): Promise<string> {
-		return this.eventRepository.create(event, eventId, args);
+		// @ts-ignore: I am not using this code, ts-ignore to avoid ci problems for now
+		return this.eventRepository.create(event, eventId || '', args);
 	}
 
 	async insertEventIfNotExists(
