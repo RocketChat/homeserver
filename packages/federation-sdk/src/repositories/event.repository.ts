@@ -1,6 +1,6 @@
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import type {
-	EventBase,
+	EventBaseWithOptionalId,
 	EventStore,
 } from '@hs/homeserver/src/models/event.model';
 
@@ -20,16 +20,19 @@ export interface IEventRepository {
 	findLatestInRoom(roomId: string): Promise<EventStore | null>;
 	find(query: Filter<EventStore>, options: FindOptions): Promise<EventStore[]>;
 	create(
-		event: EventBase,
+		event: EventBaseWithOptionalId,
 		eventId?: string,
 		args?: object,
 		stateId?: string,
 	): Promise<string>;
-	createIfNotExists(event: EventBase): Promise<string>;
+	createIfNotExists(event: EventBaseWithOptionalId): Promise<string>;
 	findAuthEventsIdsByRoomId(roomId: string): Promise<EventStore[]>;
-	createStaged(event: EventBase): Promise<string>;
-	redactEvent(eventId: string, redactedEvent: EventBase): Promise<void>;
-	upsert(event: EventBase): Promise<string>;
+	createStaged(event: EventBaseWithOptionalId): Promise<string>;
+	redactEvent(
+		eventId: string,
+		redactedEvent: EventBaseWithOptionalId,
+	): Promise<void>;
+	upsert(event: EventBaseWithOptionalId): Promise<string>;
 	removeFromStaging(roomId: string, eventId: string): Promise<void>;
 	findOldestStaged(roomId: string): Promise<EventStore | null>;
 	findPowerLevelsEventByRoomId(roomId: string): Promise<EventStore | null>;

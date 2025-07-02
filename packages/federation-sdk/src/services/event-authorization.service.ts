@@ -1,5 +1,5 @@
 import { createLogger } from '@hs/core';
-import type { EventBase } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
 import { injectable } from 'tsyringe';
 
 @injectable()
@@ -7,8 +7,8 @@ export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
 
 	async authorizeEvent(
-		event: EventBase,
-		authEvents: EventBase[],
+		event: EventBaseWithOptionalId,
+		authEvents: EventBaseWithOptionalId[],
 	): Promise<boolean> {
 		this.logger.debug(
 			`Authorizing event ${event.event_id || 'unknown'} of type ${event.type}`,
@@ -44,7 +44,7 @@ export class EventAuthorizationService {
 		}
 	}
 
-	private authorizeCreateEvent(event: EventBase): boolean {
+	private authorizeCreateEvent(event: EventBaseWithOptionalId): boolean {
 		// Create events must not have prev_events
 		if (event.prev_events && event.prev_events.length > 0) {
 			this.logger.warn('Create event has prev_events');
@@ -61,8 +61,8 @@ export class EventAuthorizationService {
 	}
 
 	private checkSenderAllowed(
-		event: EventBase,
-		authEvents: EventBase[],
+		event: EventBaseWithOptionalId,
+		authEvents: EventBaseWithOptionalId[],
 	): boolean {
 		// Find power levels
 		const powerLevelsEvent = authEvents.find(
@@ -85,24 +85,24 @@ export class EventAuthorizationService {
 	}
 
 	private authorizeMemberEvent(
-		_event: EventBase,
-		_authEvents: EventBase[],
+		_event: EventBaseWithOptionalId,
+		_authEvents: EventBaseWithOptionalId[],
 	): boolean {
 		// Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
 	private authorizePowerLevelsEvent(
-		_event: EventBase,
-		_authEvents: EventBase[],
+		_event: EventBaseWithOptionalId,
+		_authEvents: EventBaseWithOptionalId[],
 	): boolean {
 		// Check sender has permission to change power levels
 		return true;
 	}
 
 	private authorizeJoinRulesEvent(
-		_event: EventBase,
-		_authEvents: EventBase[],
+		_event: EventBaseWithOptionalId,
+		_authEvents: EventBaseWithOptionalId[],
 	): boolean {
 		// Check sender has permission to change join rules
 		return true;

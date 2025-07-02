@@ -1,12 +1,15 @@
 import { createLogger } from '@hs/core';
-import type { EventBase } from '@hs/homeserver/src/models/event.model';
+import type { EventBaseWithOptionalId } from '@hs/homeserver/src/models/event.model';
 import { injectable } from 'tsyringe';
 
 @injectable()
 export class NotificationService {
 	private readonly logger = createLogger('NotificationService');
 
-	async notifyClientsOfEvent(roomId: string, event: EventBase): Promise<void> {
+	async notifyClientsOfEvent(
+		roomId: string,
+		event: EventBaseWithOptionalId,
+	): Promise<void> {
 		this.logger.debug(
 			`Notifying clients about event ${event.event_id || 'unknown'} in room ${roomId}`,
 		);

@@ -5,7 +5,7 @@ import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/homeserver/src/errors';
 import type {
-	EventBase,
+	EventBaseWithOptionalId,
 	EventStore,
 } from '@hs/homeserver/src/models/event.model';
 import {
@@ -26,7 +26,7 @@ import { ConfigService } from './config.service';
 
 type ValidationResult = {
 	eventId: string;
-	event: EventBase;
+	event: EventBaseWithOptionalId;
 	valid: boolean;
 	error?: {
 		errcode: string;
@@ -36,7 +36,7 @@ type ValidationResult = {
 
 export interface StagedEvent {
 	_id: string;
-	event: EventBase;
+	event: EventBaseWithOptionalId;
 	origin: string;
 	missing_dependencies: string[];
 	staged_at: number;
@@ -93,7 +93,9 @@ export class EventService {
 		private readonly stagingAreaQueue: StagingAreaQueue,
 	) {}
 
-	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
+	async getEventById<T extends EventBaseWithOptionalId>(
+		eventId: string,
+	): Promise<T | null> {
 		const event = await this.eventRepository.findById(eventId);
 		return (event?.event as T) ?? null;
 	}
@@ -284,7 +286,7 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
+	async processIncomingPDUs(pdus: EventBaseWithOptionalId[]): Promise<void> {
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
@@ -295,18 +297,21 @@ export class EventService {
 
 		for (const { eventId, event } of eventsWithIds) {
 			// TODO: Rewrite this poor typing
-			let result = await this.validateEventFormat(eventId, event as EventBase);
+			let result = await this.validateEventFormat(
+				eventId,
+				event as EventBaseWithOptionalId,
+			);
 			if (result.valid) {
 				result = await this.validateEventTypeSpecific(
 					eventId,
-					event as EventBase,
+					event as EventBaseWithOptionalId,
 				);
 			}
 
 			if (result.valid) {
 				result = await this.validateSignaturesAndHashes(
 					eventId,
-					event as EventBase,
+					event as EventBaseWithOptionalId,
 				);
 			}
 
@@ -332,7 +337,7 @@ export class EventService {
 
 	private async validateEventFormat(
 		eventId: string,
-		event: EventBase,
+		event: EventBaseWithOptionalId,
 	): Promise<ValidationResult> {
 		try {
 			const roomVersion = await this.getRoomVersion(event);
@@ -388,7 +393,7 @@ export class EventService {
 
 	private async validateEventTypeSpecific(
 		eventId: string,
-		event: EventBase,
+		event: EventBaseWithOptionalId,
 	): Promise<ValidationResult> {
 		try {
 			if (event.type === 'm.room.create') {
@@ -444,7 +449,7 @@ export class EventService {
 
 	private async validateSignaturesAndHashes(
 		eventId: string,
-		event: EventBase,
+		event: EventBaseWithOptionalId,
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
@@ -547,7 +552,9 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: EventBase): Promise<string | null> {
+	private async getRoomVersion(
+		event: EventBaseWithOptionalId,
+	): Promise<string | null> {
 		if (event.type === 'm.room.create' && event.state_key === '') {
 			const roomVersion = event.content?.room_version;
 			if (roomVersion) {
@@ -591,14 +598,16 @@ export class EventService {
 	}
 
 	async insertEvent(
-		event: EventBase,
+		event: EventBaseWithOptionalId,
 		eventId?: string,
 		args?: object,
 	): Promise<string> {
 		return this.eventRepository.create(event, eventId, args);
 	}
 
-	async insertEventIfNotExists(event: EventBase): Promise<string> {
+	async insertEventIfNotExists(
+		event: EventBaseWithOptionalId,
+	): Promise<string> {
 		return this.eventRepository.createIfNotExists(event);
 	}
 
@@ -606,7 +615,9 @@ export class EventService {
 		return this.eventRepository.findLatestInRoom(roomId);
 	}
 
-	async getCreateEventForRoom(roomId: string): Promise<EventBase | null> {
+	async getCreateEventForRoom(
+		roomId: string,
+	): Promise<EventBaseWithOptionalId | null> {
 		const createEvents = await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
@@ -627,7 +638,7 @@ export class EventService {
 		earliestEvents: string[],
 		latestEvents: string[],
 		limit: number,
-	): Promise<{ events: { _id: string; event: EventBase }[] }> {
+	): Promise<{ events: { _id: string; event: EventBaseWithOptionalId }[] }> {
 		const events = await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
@@ -646,7 +657,7 @@ export class EventService {
 
 	async getEventsByIds(
 		eventIds: string[],
-	): Promise<{ _id: string; event: EventBase }[]> {
+	): Promise<{ _id: string; event: EventBaseWithOptionalId }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
@@ -669,7 +680,7 @@ export class EventService {
 	async findEvents(
 		query: any,
 		options: any = {},
-	): Promise<{ _id: string; event: EventBase }[]> {
+	): Promise<{ _id: string; event: EventBaseWithOptionalId }[]> {
 		this.logger.debug(`Finding events with query: ${JSON.stringify(query)}`);
 		const events = await this.eventRepository.find(query, options);
 		return events;
@@ -678,7 +689,7 @@ export class EventService {
 	/**
 	 * Find all events for a room
 	 */
-	async findRoomEvents(roomId: string): Promise<EventBase[]> {
+	async findRoomEvents(roomId: string): Promise<EventBaseWithOptionalId[]> {
 		this.logger.debug(`Finding all events for room ${roomId}`);
 		const events = await this.eventRepository.find(
 			{ 'event.room_id': roomId },
@@ -789,7 +800,7 @@ export class EventService {
 		// Store the redaction event in the redacted_because field as specified in the Matrix spec
 		redactedEventContent.unsigned.redacted_because = redactionEvent;
 
-		const finalRedactedEvent: EventBase = {
+		const finalRedactedEvent: EventBaseWithOptionalId = {
 			type: eventToRedact.event.type,
 			room_id: eventToRedact.event.room_id,
 			sender: eventToRedact.event.sender,
