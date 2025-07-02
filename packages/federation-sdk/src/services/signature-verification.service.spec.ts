@@ -145,7 +145,7 @@ describe('SignatureVerificationService', () => {
 
 		it('should exclude signatures and unsigned fields when verifying', async () => {
 			const verifyMock = spyOn(nacl.sign.detached, 'verify').mockImplementation(
-				(message, signature, publicKey) => {
+				(message, _signature, _publicKey) => {
 					const eventJson = JSON.parse(Buffer.from(message).toString());
 					expect(eventJson.signatures).toBeUndefined();
 					expect(eventJson.unsigned).toBeUndefined();

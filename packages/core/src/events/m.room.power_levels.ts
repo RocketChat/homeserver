@@ -58,7 +58,7 @@ export const roomPowerLevelsEvent = ({
 	content?: RoomPowerLevelsEvent['content'];
 	ts?: number;
 }) => {
-	const [sender, ...members] = usernames;
+	const [sender] = usernames;
 	return createEventBase('m.room.power_levels', {
 		roomId,
 		sender,

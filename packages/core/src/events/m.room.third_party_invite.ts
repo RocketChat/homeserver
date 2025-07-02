@@ -1,5 +1,4 @@
-import { createEventBase, type EventBase } from './eventBase';
-import { createEventWithId } from './utils/createSignedEvent';
+import { type EventBase } from './eventBase';
 
 declare module './eventBase' {
 	interface Events {

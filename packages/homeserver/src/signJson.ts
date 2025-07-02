@@ -83,8 +83,7 @@ export async function getSignaturesFromRemote<
 		unsigned?: unknown;
 	},
 >(jsonObject: T, signingName: string) {
-	const { signatures, unsigned: _unsigned, ...__rest } = jsonObject;
-
+	const { signatures, unsigned: _unsigned /*..._rest */ } = jsonObject;
 	const remoteSignatures =
 		signatures?.[signingName] &&
 		Object.entries(signatures[signingName])
@@ -117,7 +116,7 @@ export const verifySignature = (
 	signature: Uint8Array,
 	publicKey: Uint8Array,
 	algorithm: EncryptionValidAlgorithm,
-	version: string,
+	_version: string,
 ) => {
 	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
 		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);

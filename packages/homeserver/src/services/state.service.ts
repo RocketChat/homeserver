@@ -14,6 +14,7 @@ import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { signEvent } from '../signEvent';
 import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
+import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -86,7 +87,7 @@ export class StateService {
 
 		if (prevStateIds.length === 0) {
 			const state = new Map<StateMapKey, PersistentEventBase>();
-			const { identifier: stateKey, eventId: lastStateEventId } =
+			const { identifier: stateKey, eventId: _lastStateEventId } =
 				lastStateDelta;
 			const event = await this.eventRepository.findById(eventId);
 			if (!event) {
@@ -244,7 +245,7 @@ export class StateService {
 			},
 
 			getEventsByHashes: async (
-				hashes: string[],
+				_hashes: string[],
 			): Promise<PersistentEventBase[]> => {
 				throw new Error('Not implemented');
 			},
@@ -283,13 +284,22 @@ export class StateService {
 	public async signEvent(event: PersistentEventBase) {
 		const signingKey = await this.configService.getSigningKey();
 
+		const origin = this.configService.getServerName();
+
 		const result = await signEvent(
-			event.event as any,
+			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.
+			// ^^ is done already through redactedEvent fgetter
+			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server’s signing key (see also Retrieving server keys).
+			event.redactedEvent as any,
 			signingKey[0],
-			this.configService.getServerName(),
+			origin,
 		);
 
-		return result as ReturnType<typeof signEvent>;
+		const keyId = `${signingKey[0].algorithm}:${signingKey[0].version}`;
+
+		event.addSignature(origin, keyId, result.signatures[origin][keyId]);
+
+		return event;
 	}
 
 	async saveMessage(event: PersistentEventBase) {
@@ -341,6 +351,53 @@ export class StateService {
 		await eventsCollection.insertOne(event.event as any);
 	}
 
+	async saveMessage(event: PersistentEventBase) {
+		const room = await this.getFullRoomState(event.roomId);
+
+		const roomVersion = room
+			.get('m.room.create:')
+			?.getContent<PduCreateEventContent>().room_version as RoomVersion;
+
+		const requiredAuthEventsWeHaveSeen = new Map<string, PersistentEventBase>();
+		for (const auth of event.getAuthEventStateKeys()) {
+			const authEvent = room.get(auth);
+			if (authEvent) {
+				requiredAuthEventsWeHaveSeen.set(authEvent.eventId, authEvent);
+			}
+		}
+
+		// auth events referenced in the message
+		const store = this._getStore(roomVersion);
+		const authEventsReferencedInMessage = await store.getEvents(
+			event.event.auth_events as string[],
+		);
+		const authEventsReferenced = new Map<string, PersistentEventBase>();
+		for (const authEvent of authEventsReferencedInMessage) {
+			authEventsReferenced.set(authEvent.eventId, authEvent);
+		}
+
+		// both auth events set must match
+		if (requiredAuthEventsWeHaveSeen.size !== authEventsReferenced.size) {
+			throw new Error('Auth events referenced in message do not match');
+		}
+
+		for (const [eventId] of requiredAuthEventsWeHaveSeen) {
+			if (!authEventsReferenced.has(eventId)) {
+				throw new Error('wrong auth event in message');
+			}
+		}
+
+		// now we validate against auth rules
+		await checkEventAuthWithState(event, room, store);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		// TODO: save event still but with mark
+
+		// now we persist the event
+		const eventsCollection = await this.eventRepository.getCollection();
+		await eventsCollection.insertOne(event.event as any);
 	private async _persistEventAgainstState(
 		event: PersistentEventBase,
 		state: State,
@@ -378,6 +435,11 @@ export class StateService {
 		const hasConflict = state.has(event.getUniqueStateIdentifier());
 
 		if (!hasConflict) {
+			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
+			if (event.rejected) {
+				throw new Error(event.rejectedReason);
+			}
+
 			// save the state mapping
 			const { insertedId: stateMappingId } =
 				await this.stateRepository.createStateMapping(event, prevStateIds);
@@ -385,7 +447,7 @@ export class StateService {
 			const signedEvent = await this.signEvent(event);
 
 			this.eventRepository.create(
-				signedEvent,
+				signedEvent.event as any,
 				event.eventId,
 				stateMappingId.toString(),
 			);
@@ -430,7 +492,7 @@ export class StateService {
 		const signedEvent = await this.signEvent(resolvedEvent);
 
 		await this.eventRepository.create(
-			signedEvent,
+			signedEvent.event as any,
 			resolvedEvent.eventId,
 			stateMappingId.toString(),
 		);
@@ -529,7 +591,11 @@ export class StateService {
 					// TODO: mark rejected, although no code yet uses it so let it go
 					const signedEvent = await this.signEvent(resolvedEvent);
 
-					this.eventRepository.create(signedEvent, resolvedEvent.eventId, '');
+					this.eventRepository.create(
+						signedEvent.event as any,
+						resolvedEvent.eventId,
+						'',
+					);
 
 					continue;
 				}

@@ -14,9 +14,9 @@ type AddressString = string;
 type AddressWithPortString = `${AddressString}:${PortString | number}`;
 type IP4or6WithPortString = `${IP4or6String}:${PortString | number}`;
 
-type AddressWithPortAndProtocolString = `${
-	| 'http'
-	| 'https'}://${AddressWithPortString}`;
+// type AddressWithPortAndProtocolString = `${
+// 	| 'http'
+// 	| 'https'}://${AddressWithPortString}`;
 
 type IP4or6WithPortAndProtocolString = `${
 	| 'http'

@@ -21,33 +21,31 @@ import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
 import { generateId } from '../authentication';
-import type { InternalCreateRoomResponse, InternalUpdateRoomNameResponse } from '../dtos';
+import type {
+	InternalCreateRoomResponse,
+	InternalUpdateRoomNameResponse,
+} from '../dtos';
 import { ForbiddenError, HttpException, HttpStatus } from '../errors';
 import type { SigningKey } from '../keys';
 import type {
 	EventStore,
 	EventBase as ModelEventBase,
 } from '../models/event.model';
-import { createRoom } from '../procedures/createRoom';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { signEvent, type SignedEvent } from '../signEvent';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
+import { PersistentEventFactory } from '@hs/room/src/manager/factory';
+import { StateService } from './state.service';
+import type {
+	PduCreateEventContent,
+	PduJoinRuleEventContent,
+} from '@hs/room/src/types/v1';
+import type { RoomVersion } from '@hs/room/src/manager/type';
 
 const logger = createLogger('RoomService');
-
-// Utility function to create a random ID for room creation
-function createMediaId(length: number) {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-	let result = '';
-	for (let i = 0; i < length; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters[randomIndex];
-	}
-	return result;
-}
 
 @injectable()
 export class RoomService {
@@ -57,6 +55,7 @@ export class RoomService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
+		private readonly stateService: StateService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -226,44 +225,124 @@ export class RoomService {
 		username: string,
 		sender: string,
 		name: string,
-		canonicalAlias?: string,
-		alias?: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+		roomVersion: RoomVersion,
 	): Promise<InternalCreateRoomResponse> {
 		logger.debug(`Creating room for ${sender} with ${username}`);
-		const config = this.configService.getServerConfig();
-		const signingKey = await this.configService.getSigningKey();
 
-		if (sender.split(':').pop() !== config.name) {
-			throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
-		}
-
-		const roomId = `!${createMediaId(18)}:${config.name}`;
-		const result = await createRoom(
-			[sender, username],
-			createSignedEvent(
-				Array.isArray(signingKey) ? signingKey[0] : signingKey,
-				config.name,
-			),
-			roomId,
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			username,
+			roomVersion,
 		);
 
-		if (result.events.filter(Boolean).length === 0) {
-			throw new HttpException(
-				'Error creating room',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
+		const stateService = this.stateService;
+
+		await stateService.persistStateEvent(roomCreateEvent);
+
+		const creatorMembershipEvent = PersistentEventFactory.newMembershipEvent(
+			roomCreateEvent.roomId,
+			username,
+			username,
+			'join',
+			roomCreateEvent.getContent<PduCreateEventContent>(),
+		);
+
+		const [authEvents, prevEvents] = await Promise.all([
+			stateService.getAuthEvents(creatorMembershipEvent),
+			stateService.getPrevEvents(creatorMembershipEvent),
+		]);
+
+		for await (const authEvent of authEvents) {
+			creatorMembershipEvent.authedBy(authEvent);
 		}
 
-		for (const eventObj of result.events) {
-			await this.eventService.insertEvent(eventObj.event, eventObj._id);
+		for await (const prevEvent of prevEvents) {
+			creatorMembershipEvent.addPreviousEvent(prevEvent);
 		}
 
-		await this.roomRepository.insert(roomId, { name, canonicalAlias, alias });
-		logger.info(`Successfully saved room ${roomId} to rooms collection`);
+		await stateService.persistStateEvent(creatorMembershipEvent);
+
+		const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
+			roomCreateEvent.roomId,
+			username,
+			name,
+			roomVersion,
+		);
+
+		const [roomNameAuthEvents, roomNamePrevEvents] = await Promise.all([
+			stateService.getAuthEvents(roomNameEvent),
+			stateService.getPrevEvents(roomNameEvent),
+		]);
+
+		for await (const authEvent of roomNameAuthEvents) {
+			roomNameEvent.authedBy(authEvent);
+		}
+
+		for await (const prevEvent of roomNamePrevEvents) {
+			roomNameEvent.addPreviousEvent(prevEvent);
+		}
+
+		await stateService.persistStateEvent(roomNameEvent);
+
+		const powerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
+			roomCreateEvent.roomId,
+			username,
+			{
+				users: {
+					[username]: 100,
+				},
+				users_default: 0,
+				events: {},
+				events_default: 0,
+				state_default: 50,
+				ban: 50,
+				kick: 50,
+				redact: 50,
+				invite: 50,
+			},
+			roomVersion,
+		);
+
+		const [powerLevelAuthEvents, powerLevelPrevEvents] = await Promise.all([
+			stateService.getAuthEvents(powerLevelEvent),
+			stateService.getPrevEvents(powerLevelEvent),
+		]);
+
+		for await (const authEvent of powerLevelAuthEvents) {
+			powerLevelEvent.authedBy(authEvent);
+		}
+
+		for await (const prevEvent of powerLevelPrevEvents) {
+			powerLevelEvent.addPreviousEvent(prevEvent);
+		}
+
+		await stateService.persistStateEvent(powerLevelEvent);
+
+		const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
+			roomCreateEvent.roomId,
+			username,
+			joinRule,
+			roomVersion,
+		);
+
+		const [joinRuleAuthEvents, joinRulePrevEvents] = await Promise.all([
+			stateService.getAuthEvents(joinRuleEvent),
+			stateService.getPrevEvents(joinRuleEvent),
+		]);
+
+		for await (const authEvent of joinRuleAuthEvents) {
+			joinRuleEvent.authedBy(authEvent);
+		}
+
+		for await (const prevEvent of joinRulePrevEvents) {
+			joinRuleEvent.addPreviousEvent(prevEvent);
+		}
+
+		await stateService.persistStateEvent(joinRuleEvent);
 
 		return {
-			room_id: result.roomId,
-			event_id: result.events[0]._id,
+			room_id: roomCreateEvent.roomId,
+			event_id: roomCreateEvent.eventId,
 		};
 	}
 

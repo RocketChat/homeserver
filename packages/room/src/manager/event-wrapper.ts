@@ -28,9 +28,13 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
+export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
+
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	private _rejectedReason?: string;
+
+	private signatures: PduV10['signatures'] = {};
 
 	constructor(
 		protected rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
@@ -38,6 +42,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	) {
 		if (freeze) {
 			this.freezeEvent();
+		}
+
+		if (rawEvent.signatures) {
+			this.signatures = rawEvent.signatures;
 		}
 	}
 
@@ -92,6 +100,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 
 			return {
 				...this.rawEvent,
+				signatures: this.signatures,
 				unsigned: {},
 			};
 		}
@@ -101,6 +110,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			hashes: {
 				sha256: this.getContentHashString(),
 			},
+			signatures: this.signatures,
 			unsigned: {}, // TODO better handling of this heh
 		};
 
@@ -178,28 +188,22 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return `${this.type}:${this.stateKey || ''}`;
 	}
 
-	get redactedEvent() {
+	abstract getAllowedKeys(): string[];
+
+	abstract getAllowedContentKeys(): Record<
+		string,
+		string[] | typeof REDACT_ALLOW_ALL_KEYS
+	>;
+
+	private _getRedactedEvent(
+		event: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+	) {
 		// it is expected to have everything in this event ready by this point
-		const topLevelAllowedKeysExceptContent = [
-			'event_id',
-			'type',
-			'room_id',
-			'sender',
-			'state_key',
-			'hashes', // make sure is not recalculated to be inline wiht synapse
-			'signatures', // can change but is not part of reference hash
-			'depth', // always 0 for us
-			'prev_events', // can change but only in first creation
-			'auth_events', // same as ^
-			'origin_server_ts',
-		];
+		const topLevelAllowedKeysExceptContent = this.getAllowedKeys();
 
 		const dict = {
 			content: {},
-		};
-
-		// also freezes the event
-		const { event } = this; // fill up to date hash
+		} as typeof event;
 
 		for (const key of topLevelAllowedKeysExceptContent) {
 			if (key in event) {
@@ -211,36 +215,43 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		const content = this.getContent();
 
 		// m.room.member allows keys membership, join_authorised_via_users_server. Additionally, it allows the signed key of the third_party_invite key.
-		if (this.type === PduTypeRoomMember) {
-			// @ts-ignore i don't want to fight typescript right now
-			dict.content = {
-				// @ts-ignore i don't want to fight typescript right now (2)
-				membership: content.membership,
-			};
-
-			return dict;
+		const allowedContentKeys = this.getAllowedContentKeys()[this.type];
+		if (allowedContentKeys) {
+			if (allowedContentKeys === REDACT_ALLOW_ALL_KEYS) {
+				dict.content = content;
+			} else {
+				for (const key of allowedContentKeys) {
+					if (key in content) {
+						// @ts-ignore TODO: better typing obviously
+						dict.content[key] = content[key];
+					}
+				}
+			}
 		}
 
-		if (this.type === PduTypeRoomCreate) {
-			// m.room.create allows all keys.
-			dict.content = content;
-			return dict;
+		dict.unsigned = {};
+
+		// this is not in spec
+		if (event.unsigned) {
+			if ('age_ts' in event.unsigned) {
+				// @ts-ignore TODO:
+				dict.unsigned.age_ts = event.unsigned.age_ts;
+			}
+			if ('replaces_state' in event.unsigned) {
+				// @ts-ignore TODO:
+				dict.unsigned.replaces_state = event.unsigned.replaces_state;
+			}
 		}
 
-		if (this.type === PduTypeRoomJoinRules) {
-			// m.room.join_rules allows keys join_rule, allow.
-			// @ts-ignore i don't want to fight typescript right now (3)
-			dict.content = {
-				// @ts-ignore i don't want to fight typescript right now (4)
-				...(content.join_rule ? { join_rule: content.join_rule } : {}),
-				// @ts-ignore i don't want to fight typescript right now (5)
-				...(content.allow ? { allow: content.allow } : {}),
-			};
-
-			return dict;
+		// tests expect this to be present
+		if (!dict.signatures) {
+			dict.signatures = {};
 		}
 
-		if (this.type === PduTypeRoomPowerLevels) {
+		return dict;
+	}
+
+	if (this.type === PduTypeRoomPowerLevels) {
 			// m.room.power_levels allows keys ban, events, events_default, invite, kick, redact, state_default, users, users_default.
 			// @ts-ignore i don't want to fight typescript right now (6)
 			dict.content = {
@@ -267,120 +278,145 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			return dict;
 		}
 
-		return dict;
+	dict;
+	.
+	content = content; // not spec compliant, but can't find a way for all events
 
-		// TODO: rest of the event types
-	}
+	return;
+	dict;
 
-	getReferenceHash() {
-		// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-reference-hash-for-an-event
-		// 1. The signatures and unsigned properties are removed from the event, if present.
-		const redactedEvent = this.redactedEvent;
+	// TODO: rest of the event types
+}
 
-		// @ts-ignore TODO:
-		const { unsigned, signatures, ...toHash } = redactedEvent;
+getReferenceHash();
+{
+	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-reference-hash-for-an-event
+	// 1. The signatures and unsigned properties are removed from the event, if present.
+	const redactedEvent = this.redactedEvent;
 
-		// 2. The event is converted into Canonical JSON.
-		const canonicalJson = encodeCanonicalJson(toHash);
-		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = crypto
-			.createHash('sha256')
-			.update(canonicalJson)
-			.digest();
+	const { unsigned, signatures, ...toHash } = redactedEvent;
 
-		this.freezeEvent();
+	// 2. The event is converted into Canonical JSON.
+	const canonicalJson = encodeCanonicalJson(toHash);
+	// 3. A sha256 hash is calculated on the resulting JSON object.
+	const referenceHash = crypto
+		.createHash('sha256')
+		.update(canonicalJson)
+		.digest();
 
-		return referenceHash;
-	}
+	this.freezeEvent();
 
-	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
-	getContentHash() {
-		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
-		const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
+	return referenceHash;
+}
 
-		return crypto
+// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
+getContentHash();
+{
+	// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
+	const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
+
+	return crypto
 			.createHash('sha256')
 			.update(encodeCanonicalJson(toHash))
 			.digest();
+}
+
+getContentHashString();
+{
+	return toUnpaddedBase64(this.getContentHash());
+}
+
+// https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
+getAuthEventStateKeys();
+: StateMapKey[]
+{
+	if (this.isCreateEvent()) {
+		// The auth_events for the m.room.create event in a room is empty;
+		return [];
 	}
 
-	getContentHashString() {
-		return toUnpaddedBase64(this.getContentHash());
-	}
+	// for all others
+	const authTypes = new Set<StateMapKey>([
+		// The current m.room.power_levels event, if any.
+		getStateMapKey({ type: PduTypeRoomPowerLevels }),
 
-	// https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
-	getAuthEventStateKeys(): StateMapKey[] {
-		if (this.isCreateEvent()) {
-			// The auth_events for the m.room.create event in a room is empty;
-			return [];
+		// The sender’s current m.room.member event, if any.
+		getStateMapKey({ type: PduTypeRoomMember, state_key: this.sender }),
+
+		// The m.room.create event.
+		getStateMapKey({ type: PduTypeRoomCreate }),
+	]);
+
+	// If type is m.room.member:
+
+	if (this.isMembershipEvent()) {
+		//The target’s current m.room.member event, if any.
+		authTypes.add(
+			getStateMapKey({ type: PduTypeRoomMember, state_key: this.stateKey }),
+		);
+
+		// If membership is join or invite, the current m.room.join_rules event, if any.
+		const membership = this.getMembership();
+		if (membership === 'join' || membership === 'invite') {
+			authTypes.add(getStateMapKey({ type: PduTypeRoomJoinRules }));
 		}
 
-		// for all others
-		const authTypes = [
-			// The current m.room.power_levels event, if any.
-			getStateMapKey({ type: PduTypeRoomPowerLevels }),
-
-			// The sender’s current m.room.member event, if any.
-			getStateMapKey({ type: PduTypeRoomMember, state_key: this.sender }),
-
-			// The m.room.create event.
-			getStateMapKey({ type: PduTypeRoomCreate }),
-		];
-
-		// If type is m.room.member:
-
-		if (this.isMembershipEvent()) {
-			//The target’s current m.room.member event, if any.
-			authTypes.push(
-				getStateMapKey({ type: PduTypeRoomMember, state_key: this.stateKey }),
-			);
-
-			// If membership is join or invite, the current m.room.join_rules event, if any.
-			const membership = this.getMembership();
-			if (membership === 'join' || membership === 'invite') {
-				authTypes.push(getStateMapKey({ type: PduTypeRoomJoinRules }));
-			}
-
-			// If membership is invite and content contains a third_party_invite property, the current m.room.third_party_invite event with state_key matching content.third_party_invite.signed.token, if any.
-			if (
-				membership === 'invite' &&
-				this.getContent<PduMembershipEventContent>().third_party_invite
-			) {
-				throw new Error('third_party_invite not supported');
-			}
-
-			// If content.join_authorised_via_users_server is present, and the room version supports restricted rooms, then the m.room.member event with state_key matching content.join_authorised_via_users_server.
-			if (
-				this.getContent<PduMembershipEventContent>()
-					.join_authorised_via_users_server
-			) {
-				throw new Error('join_authorised_via_users_server not supported');
-			}
+		// If membership is invite and content contains a third_party_invite property, the current m.room.third_party_invite event with state_key matching content.third_party_invite.signed.token, if any.
+		if (
+			membership === 'invite' &&
+			this.getContent<PduMembershipEventContent>().third_party_invite
+		) {
+			throw new Error('third_party_invite not supported');
 		}
 
-		return authTypes;
+		// If content.join_authorised_via_users_server is present, and the room version supports restricted rooms, then the m.room.member event with state_key matching content.join_authorised_via_users_server.
+		if (
+			this.getContent<PduMembershipEventContent>()
+				.join_authorised_via_users_server
+		) {
+			throw new Error('join_authorised_via_users_server not supported');
+		}
 	}
 
-	get rejected() {
-		return this._rejectedReason !== undefined;
-	}
+	return Array.from(authTypes);
+}
 
-	reject(reason: string) {
-		this._rejectedReason = reason;
-	}
+get;
+rejected();
+{
+	return this._rejectedReason !== undefined;
+}
 
-	get rejectedReason() {
-		return this._rejectedReason;
-	}
+reject(reason: string)
+{
+	this._rejectedReason = reason;
+}
 
-	addPreviousEvent(event: PersistentEventBase) {
-		this.rawEvent.prev_events.push(event.eventId);
-		return this;
-	}
+get;
+rejectedReason();
+{
+	return this._rejectedReason;
+}
 
-	authedBy(event: PersistentEventBase) {
-		this.rawEvent.auth_events.push(event.eventId);
-		return this;
-	}
+addPreviousEvent(event: PersistentEventBase)
+{
+	this.rawEvent.prev_events.push(event.eventId);
+	return this;
+}
+
+authedBy(event: PersistentEventBase)
+{
+	this.rawEvent.auth_events.push(event.eventId);
+	return this;
+}
+
+addSignature(origin: string, keyId: string, signature: string)
+{
+	this.signatures[origin] = {
+		[keyId]: signature,
+	};
+
+	return this;
+}
 }
 export type { EventStore };

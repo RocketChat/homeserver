@@ -33,144 +33,30 @@ import { RoomService } from '../../services/room.service';
 import { PersistentEventFactory } from '@hs/room/src/manager/factory';
 import { StateService } from '../../services/state.service';
 import type { PduCreateEventContent } from '@hs/room/src/types/v1';
-import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
-import type { Transaction } from '@hs/federation-sdk/src/specs/federation-api';
 import { ConfigService } from '../../services/config.service';
+import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
+import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
+import type { RoomVersion } from '@hs/room/src/manager/type';
+import { InviteService } from '../../services/invite.service';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
 	const stateService = container.resolve(StateService);
-	const federationService = container.resolve(FederationService);
 	const configService = container.resolve(ConfigService);
+	const federationService = container.resolve(FederationService);
+	const inviteService = container.resolve(InviteService);
 	return app
 		.post(
 			'/internal/rooms/rooms',
-			async ({
-				body,
-				set,
-			}): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-				const { username, sender, name, canonical_alias, alias } = body;
-				// return roomService.createRoom(
-				// 	username,
-				// 	sender,
-				// 	name,
-				// 	canonical_alias,
-				// 	alias,
-				// );
-
-				const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
+				const { username, sender, name } = body;
+				return roomService.createRoom(
 					username,
-					'11',
-				);
-
-				await stateService.persistStateEvent(roomCreateEvent);
-
-				const creatorMembershipEvent =
-					PersistentEventFactory.newMembershipEvent(
-						roomCreateEvent.roomId,
-						username,
-						username,
-						'join',
-						roomCreateEvent.getContent<PduCreateEventContent>(),
-					);
-
-				const [authEvents, prevEvents] = await Promise.all([
-					stateService.getAuthEvents(creatorMembershipEvent),
-					stateService.getPrevEvents(creatorMembershipEvent),
-				]);
-
-				for await (const authEvent of authEvents) {
-					creatorMembershipEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of prevEvents) {
-					creatorMembershipEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(creatorMembershipEvent);
-
-				const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
-					roomCreateEvent.roomId,
-					username,
+					sender,
 					name,
+					body.join_rule as any,
 					'11',
 				);
-
-				const [roomNameAuthEvents, roomNamePrevEvents] = await Promise.all([
-					stateService.getAuthEvents(roomNameEvent),
-					stateService.getPrevEvents(roomNameEvent),
-				]);
-
-				for await (const authEvent of roomNameAuthEvents) {
-					roomNameEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of roomNamePrevEvents) {
-					roomNameEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(roomNameEvent);
-
-				const powerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
-					roomCreateEvent.roomId,
-					username,
-					{
-						users: {
-							[username]: 100,
-						},
-						users_default: 0,
-						events: {},
-						events_default: 0,
-						state_default: 50,
-						ban: 50,
-						kick: 50,
-						redact: 50,
-						invite: 50,
-					},
-					'11',
-				);
-
-				const [powerLevelAuthEvents, powerLevelPrevEvents] = await Promise.all([
-					stateService.getAuthEvents(powerLevelEvent),
-					stateService.getPrevEvents(powerLevelEvent),
-				]);
-
-				for await (const authEvent of powerLevelAuthEvents) {
-					powerLevelEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of powerLevelPrevEvents) {
-					powerLevelEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(powerLevelEvent);
-
-				const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
-					roomCreateEvent.roomId,
-					username,
-					'public',
-					'11',
-				);
-
-				const [joinRuleAuthEvents, joinRulePrevEvents] = await Promise.all([
-					stateService.getAuthEvents(joinRuleEvent),
-					stateService.getPrevEvents(joinRuleEvent),
-				]);
-
-				for await (const authEvent of joinRuleAuthEvents) {
-					joinRuleEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of joinRulePrevEvents) {
-					joinRuleEvent.addPreviousEvent(prevEvent);
-				}
-
-				await stateService.persistStateEvent(joinRuleEvent);
-
-				return {
-					room_id: roomCreateEvent.roomId,
-					event_id: roomCreateEvent.eventId,
-				};
 			},
 			{
 				body: InternalCreateRoomBodyDto,
@@ -285,43 +171,125 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/join/:userId',
-			async ({ params, body, set }) => {
+			async ({ params, body }) => {
 				const { roomId, userId } = params;
 				const { senderUserId } = body;
 
-				const room = await stateService.getFullRoomState(roomId);
+				const residentServer = roomId.split(':').pop();
+				if (residentServer === configService.getServerName()) {
+					const room = await stateService.getFullRoomState(roomId);
 
-				const createEvent = room.get('m.room.create:');
+					const createEvent = room.get('m.room.create:');
 
-				if (!createEvent) {
-					throw new Error('Room create event not found');
+					if (!createEvent) {
+						throw new Error('Room create event not found');
+					}
+
+					const membershipEvent = PersistentEventFactory.newMembershipEvent(
+						roomId,
+						senderUserId,
+						userId,
+						'join',
+						createEvent.getContent<PduCreateEventContent>(),
+					);
+
+					const statesNeeded = membershipEvent.getAuthEventStateKeys();
+
+					for (const state of statesNeeded) {
+						const event = room.get(state);
+						if (event) {
+							membershipEvent.authedBy(event);
+						}
+					}
+
+					for await (const prevEvent of stateService.getPrevEvents(
+						membershipEvent,
+					)) {
+						membershipEvent.addPreviousEvent(prevEvent);
+					}
+
+					await stateService.persistStateEvent(membershipEvent);
+
+					if (membershipEvent.rejected) {
+						throw new Error(membershipEvent.rejectedReason);
+					}
+
+					return {
+						eventId: membershipEvent.eventId,
+					};
 				}
 
-				const membershipEvent = PersistentEventFactory.newMembershipEvent(
+				// trying to join room from another server
+				const makeJoinResponse = await federationService.makeJoin(
+					residentServer as string,
 					roomId,
-					senderUserId,
 					userId,
-					'join',
-					createEvent.getContent<PduCreateEventContent>(),
+					'10',
 				);
 
-				const statesNeeded = membershipEvent.getAuthEventStateKeys();
+				const joinEvent = PersistentEventFactory.createFromRawEvent(
+					makeJoinResponse.event as any,
+					makeJoinResponse.room_version,
+				);
 
-				for (const state of statesNeeded) {
-					const event = room.get(state);
-					if (event) {
-						membershipEvent.authedBy(event);
+				// TODO: sign the event here
+				// currently makeSignedRequest does the signing
+				const sendJoinResponse = await federationService.sendJoin(joinEvent);
+
+				// TODO: validate hash and sig
+				// run through state res
+				// validate all auth chain events
+				const eventMap = new Map<string, PersistentEventBase>();
+
+				for (const stateEvent_ of sendJoinResponse.state) {
+					const stateEvent = PersistentEventFactory.createFromRawEvent(
+						stateEvent_ as any,
+						makeJoinResponse.room_version,
+					);
+
+					eventMap.set(stateEvent.eventId, stateEvent);
+				}
+
+				const persistEvent = async (event: PersistentEventBase) => {
+					if (event.event.auth_events.length === 0) {
+						// persist as normal
+						console.log('persisting as normal', event.eventId, event.event);
+						await stateService.persistStateEvent(event);
+						return;
 					}
+
+					for (const authEventId of event.event.auth_events) {
+						const authEvent = eventMap.get(authEventId as string);
+						if (!authEvent) {
+							for (const stateEvent of eventMap.keys()) {
+								console.log(
+									`${stateEvent} -> ${JSON.stringify(eventMap.get(stateEvent)?.event, null, 2)}`,
+								);
+							}
+							throw new Error(`Auth event ${authEventId} not found`);
+						}
+
+						await persistEvent(authEvent);
+					}
+
+					console.log('persisting as auth event', event.eventId, event.event);
+					// persist as normal
+					await stateService.persistStateEvent(event);
+				};
+
+				for (const stateEvent of eventMap.values()) {
+					await persistEvent(stateEvent);
 				}
 
-				await stateService.persistStateEvent(membershipEvent);
-
-				if (membershipEvent.rejected) {
-					throw new Error(membershipEvent.rejectedReason);
-				}
+				await stateService.persistStateEvent(
+					PersistentEventFactory.createFromRawEvent(
+						sendJoinResponse.event as any,
+						makeJoinResponse.room_version,
+					),
+				);
 
 				return {
-					eventId: membershipEvent.eventId,
+					eventId: sendJoinResponse.event_id,
 				};
 			},
 			{
@@ -445,7 +413,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { userIdToKick, senderUserId, reason, targetServers } =
+				const { /*userIdToKick, */ senderUserId, reason, targetServers } =
 					bodyParse.data;
 				try {
 					const eventId = await roomService.kickUser(
@@ -483,7 +451,6 @@ export const internalRoomPlugin = (app: Elysia) => {
 			async ({
 				params,
 				body,
-				set,
 			}): Promise<InternalBanUserResponse | ErrorResponse> => {
 				// const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				// const userIdParse = UsernameDto.safeParse(params.userIdToBan);
@@ -622,10 +589,25 @@ export const internalRoomPlugin = (app: Elysia) => {
 				publicRooms,
 			};
 		})
-		.get('/internal/rooms/:roomId/members', async ({ params }) => {
-			const members = await stateService.getMembersOfRoom(params.roomId);
-			return {
-				members,
-			};
-		});
+		.put(
+			'/internal/rooms/:roomId/invite/:userId',
+			async ({ params, body }) => {
+				const { roomId, userId } = params;
+				const { sender } = body;
+
+				const resp = await inviteService.inviteUserToRoom(
+					userId,
+					roomId,
+					sender,
+				);
+				return {
+					eventId: resp.event_id,
+				};
+			},
+			{
+				body: t.Object({
+					sender: t.String(),
+				}),
+			},
+		);
 };

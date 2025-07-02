@@ -78,8 +78,8 @@ export class EventRepository {
 		event: EventBase,
 		eventId: string,
 		stateId = '',
-	): Promise<string> {
-		await this.persistEvent(event, eventId, stateId);
+	): Promise<string | undefined> {
+		return this.persistEvent(event, eventId, stateId);
 	}
 
 	async createIfNotExists(event: EventBase): Promise<string> {
@@ -280,5 +280,7 @@ export class EventRepository {
 			{ eventId: { $in: event.prev_events as string[] } },
 			{ $set: { nextEventId: eventId } },
 		);
+
+		return eventId;
 	}
 }
