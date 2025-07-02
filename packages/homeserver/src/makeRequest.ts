@@ -168,7 +168,11 @@ export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 		requestOptions.body = JSON.stringify(body);
 	}
 
+	console.log('requestOptions', requestOptions);
+
 	const response = await fetch(url.toString(), requestOptions);
+
+	console.log('response ->', response.status, await response.json());
 
 	return response.json() as Promise<T>;
 };

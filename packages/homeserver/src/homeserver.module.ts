@@ -4,22 +4,9 @@ import {
 	type FederationModuleOptions,
 	FederationRequestService,
 } from '@hs/federation-sdk';
-import Elysia from 'elysia';
 import { Emitter } from '@rocket.chat/emitter';
 import { container } from 'tsyringe';
 import { toUnpaddedBase64 } from './binaryData';
-import { invitePlugin } from './controllers/federation/invite.controller';
-import { profilesPlugin } from './controllers/federation/profiles.controller';
-import { sendJoinPlugin } from './controllers/federation/send-join.controller';
-import { transactionsPlugin } from './controllers/federation/transactions.controller';
-import { versionsPlugin } from './controllers/federation/versions.controller';
-import { internalInvitePlugin } from './controllers/internal/invite.controller';
-import { internalMessagePlugin } from './controllers/internal/message.controller';
-import { pingPlugin } from './controllers/internal/ping.controller';
-import { internalRoomPlugin } from './controllers/internal/room.controller';
-import { serverKeyPlugin } from './controllers/key/server.controller';
-import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { roomPlugin } from './controllers/federation/rooms.controller';
 import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
@@ -126,42 +113,4 @@ export async function setup(options?: HomeserverSetupOptions) {
 
 	container.resolve(StagingAreaListener);
 	container.resolve(MissingEventListener);
-
-	const app = new Elysia();
-
-	app
-		.use(
-			// @ts-ignore - Elysia is not typed correctly
-			swagger({
-				documentation: {
-					info: {
-						title: 'Matrix Homeserver API',
-						version: '1.0.0',
-						description:
-							'Matrix Protocol Implementation - Federation and Internal APIs',
-					},
-				},
-			}),
-		)
-		.use(invitePlugin)
-		.use(profilesPlugin)
-		.use(sendJoinPlugin)
-		.use(transactionsPlugin)
-		.use(versionsPlugin)
-		.use(internalInvitePlugin)
-		.use(internalMessagePlugin)
-		.use(pingPlugin)
-		.use(internalRoomPlugin)
-		.use(serverKeyPlugin)
-		.use(wellKnownPlugin)
-		.use(roomPlugin);
-
-	return app;
 }
-
-export const appPromise = setup();
-
-// TODO: Register plugins/handlers for controllers here
-// e.g. app.use(profilesPlugin)
-
-// Export app for use in main entry point

@@ -1,5 +1,5 @@
 {
-	"name": "homeserver",
+	"name": "@rocket.chat/homeserver",
 	"module": "index.ts",
 	"private": true,
 	"type": "module",
@@ -16,6 +16,8 @@
 		"typescript": "^5.8.3"
 	},
 	"workspaces": ["packages/*"],
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"dependencies": {
 		"@bogeychan/elysia-etag": "^0.0.6",
 		"@bogeychan/elysia-logger": "^0.1.4",
@@ -55,7 +57,7 @@
 	},
 	"scripts": {
 		"prepare": "husky",
-		"start": "bun run index.ts",
+		"start": "bun run index.ts --isolated-mode",
 		"test": "bun test",
 		"build": "turbo build",
 		"test:coverage": "bun test --coverage",

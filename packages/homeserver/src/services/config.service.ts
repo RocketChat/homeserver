@@ -121,12 +121,12 @@ export class ConfigService {
 				name: process.env.SERVER_NAME || 'rc1',
 				version: process.env.SERVER_VERSION || '1.0',
 				port: this.getNumberFromEnv('SERVER_PORT', 8080),
-				baseUrl: process.env.SERVER_BASE_URL || 'http://rc1:8080',
+				baseUrl: process.env.SERVER_BASE_URL || 'http://rc1.local:8080',
 				host: process.env.SERVER_HOST || '0.0.0.0',
 			},
 			database: {
-				uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
-				name: process.env.DATABASE_NAME || 'matrix',
+				uri: process.env.MONGO_URL || 'mongodb://localhost:3001/meteor',
+				name: process.env.DATABASE_NAME || 'meteor',
 				poolSize: this.getNumberFromEnv('DATABASE_POOL_SIZE', 10),
 			},
 			matrix: {
