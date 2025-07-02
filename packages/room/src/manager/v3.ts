@@ -1,6 +1,18 @@
-import { type EventStore, PersistentEventBase } from './event-wrapper';
+import {
+	type EventStore,
+	PersistentEventBase,
+	REDACT_ALLOW_ALL_KEYS,
+} from './event-wrapper';
 import type { RoomVersion3To9, RoomVersion10And11 } from './type';
 import { toUnpaddedBase64 } from '@hs/crypto';
+import {
+	PduTypeRoomAliases,
+	PduTypeRoomCreate,
+	PduTypeRoomHistoryVisibility,
+	PduTypeRoomJoinRules,
+	PduTypeRoomMember,
+	PduTypeRoomPowerLevels,
+} from '../types/v1';
 
 // v3 is where it changes first
 export class PersistentEventV3Base<
@@ -26,6 +38,48 @@ export class PersistentEventV3Base<
 	// v3 needs backwards compatibility with v1
 	transformPowerLevelEventData(data: number | string): number {
 		return typeof data === 'number' ? data : Number.parseInt(data, 10);
+	}
+
+	getAllowedKeys(): string[] {
+		return [
+			'event_id',
+			'type',
+			'room_id',
+			'sender',
+			'state_key',
+			'hashes',
+			'signatures',
+			'depth',
+			'prev_events',
+			'auth_events',
+			'origin_server_ts',
+			'origin',
+			'prev_state',
+			'membership',
+		];
+	}
+
+	getAllowedContentKeys(): Record<
+		string,
+		string[] | typeof REDACT_ALLOW_ALL_KEYS
+	> {
+		return {
+			[PduTypeRoomCreate]: ['creator'],
+			[PduTypeRoomMember]: ['membership'],
+			[PduTypeRoomJoinRules]: ['join_rule'],
+			[PduTypeRoomPowerLevels]: [
+				'users',
+				'users_default',
+				'events',
+				'events_default',
+				'state_default',
+				'ban',
+				'kick',
+				'redact',
+			],
+			[PduTypeRoomAliases]: ['aliases'],
+			[PduTypeRoomHistoryVisibility]: ['history_visibility'],
+		};
 	}
 }
 

@@ -23,29 +23,10 @@ import type {
 	RoomVersion,
 } from './type';
 import type { PersistentEventBase } from './event-wrapper';
-
-function isV1ToV2(_event: unknown, roomVersion: RoomVersion): _event is PduV1 {
-	return roomVersion === '1' || roomVersion === '2';
-}
-
-function isV3To9(_event: unknown, roomVersion: RoomVersion): _event is PduV3 {
-	return (
-		roomVersion === '3' ||
-		roomVersion === '4' ||
-		roomVersion === '5' ||
-		roomVersion === '6' ||
-		roomVersion === '7' ||
-		roomVersion === '8' ||
-		roomVersion === '9'
-	);
-}
-
-function isV10To11(
-	_event: unknown,
-	roomVersion: RoomVersion,
-): _event is PduV10 {
-	return roomVersion === '10' || roomVersion === '11';
-}
+import { PersistentEventV6 } from './v6';
+import { PersistentEventV8 } from './v8';
+import { PersistentEventV9 } from './v9';
+import { PersistentEventV11 } from './v11';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -64,19 +45,28 @@ export class PersistentEventFactory {
 		event: PduV1 | PduV3 | PduV10,
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
-		if (isV1ToV2(event, roomVersion)) {
-			return new PersistentEventV1(event, true);
+		switch (roomVersion) {
+			case '1':
+			case '2':
+				return new PersistentEventV1(event as any, true);
+			case '3':
+			case '4':
+			case '5':
+				return new PersistentEventV3(event as any, true);
+			case '6':
+			case '7':
+				return new PersistentEventV6(event as any, true);
+			case '8':
+				return new PersistentEventV8(event as any, true);
+			case '9':
+				return new PersistentEventV9(event as any, true);
+			case '10':
+				return new PersistentEventV10(event as any, true);
+			case '11':
+				return new PersistentEventV11(event as any, true);
+			default:
+				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
-
-		if (isV3To9(event, roomVersion)) {
-			return new PersistentEventV3(event, true);
-		}
-
-		if (isV10To11(event, roomVersion)) {
-			return new PersistentEventV10(event, true);
-		}
-
-		throw new Error(`Unknown room version: ${roomVersion}`);
 	}
 
 	// create individual events
@@ -110,7 +100,7 @@ export class PersistentEventFactory {
 		};
 
 		// FIXME: typing
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial as any);
 	}
 
 	static newMembershipEvent(
@@ -158,7 +148,7 @@ export class PersistentEventFactory {
 		};
 
 		// FIXME: typing
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial as any);
 	}
 
 	static newPowerLevelEvent(
@@ -183,7 +173,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial as any);
 	}
 
 	static newRoomNameEvent(
@@ -209,7 +199,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial as any);
 	}
 
 	static newJoinRuleEvent(
@@ -234,6 +224,6 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial as any);
 	}
 }

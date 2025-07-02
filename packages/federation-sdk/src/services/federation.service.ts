@@ -13,6 +13,7 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
+import type { PersistentEventBase } from '@hs/room';
 
 @injectable()
 export class FederationService {
@@ -61,24 +62,25 @@ export class FederationService {
 	 * Send a join event to a remote server
 	 */
 	async sendJoin(
-		domain: string,
-		roomId: string,
-		userId: string,
-		joinEvent: MakeJoinResponse['event'],
+		joinEvent: PersistentEventBase,
 		omitMembers = false,
 	): Promise<SendJoinResponse> {
 		try {
 			const eventWithOrigin = {
-				...joinEvent,
+				...joinEvent.event,
 				origin: this.configService.serverName,
-				origin_server_ts: Date.now(),
 			};
 
-			const uri = FederationEndpoints.sendJoinV2(roomId, userId);
+			const uri = FederationEndpoints.sendJoinV2(
+				joinEvent.roomId,
+				joinEvent.eventId,
+			);
 			const queryParams = omitMembers ? { omit_members: 'true' } : undefined;
 
+			const residentServer = joinEvent.roomId.split(':').pop();
+
 			return await this.requestService.put<SendJoinResponse>(
-				domain,
+				residentServer as string,
 				uri,
 				eventWithOrigin,
 				queryParams,
@@ -223,5 +225,22 @@ export class FederationService {
 			this.logger.error(`sendTombstone failed: ${errorMessage}`, errorStack);
 			throw error;
 		}
+	}
+
+	// invite user from another homeserver to our homeserver
+	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
+		const uri = FederationEndpoints.inviteV2(
+			inviteEvent.roomId,
+			inviteEvent.eventId,
+		);
+
+		return await this.requestService.put<any>(
+			(inviteEvent.stateKey as any).split(':').pop() as string,
+			uri,
+			{
+				event: inviteEvent.event,
+				room_version: roomVersion,
+			},
+		);
 	}
 }

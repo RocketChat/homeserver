@@ -30,6 +30,8 @@ export const sendJoinPlugin = (app: Elysia) => {
 				throw new Error('Room version not found');
 			}
 
+			console.log(eventId, body);
+
 			const bodyAny = body as any;
 
 			// delete existing auth events and refill them
@@ -43,6 +45,8 @@ export const sendJoinPlugin = (app: Elysia) => {
 			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
 				joinEvent.authedBy(authEvent);
 			}
+
+			console.log(joinEvent.event);
 
 			// now check the calculated id if it matches what is passed in param
 			if (joinEvent.eventId !== eventId) {
@@ -79,7 +83,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 			return {
 				origin,
 				event: {
-					...signedJoinEvent,
+					...signedJoinEvent.event,
 					unsigned: {},
 				}, // TODO: eh
 				members_omitted: false, // less requests
