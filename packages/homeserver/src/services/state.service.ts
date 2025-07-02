@@ -14,7 +14,6 @@ import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { signEvent } from '../signEvent';
 import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
-import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -351,53 +350,6 @@ export class StateService {
 		await eventsCollection.insertOne(event.event as any);
 	}
 
-	async saveMessage(event: PersistentEventBase) {
-		const room = await this.getFullRoomState(event.roomId);
-
-		const roomVersion = room
-			.get('m.room.create:')
-			?.getContent<PduCreateEventContent>().room_version as RoomVersion;
-
-		const requiredAuthEventsWeHaveSeen = new Map<string, PersistentEventBase>();
-		for (const auth of event.getAuthEventStateKeys()) {
-			const authEvent = room.get(auth);
-			if (authEvent) {
-				requiredAuthEventsWeHaveSeen.set(authEvent.eventId, authEvent);
-			}
-		}
-
-		// auth events referenced in the message
-		const store = this._getStore(roomVersion);
-		const authEventsReferencedInMessage = await store.getEvents(
-			event.event.auth_events as string[],
-		);
-		const authEventsReferenced = new Map<string, PersistentEventBase>();
-		for (const authEvent of authEventsReferencedInMessage) {
-			authEventsReferenced.set(authEvent.eventId, authEvent);
-		}
-
-		// both auth events set must match
-		if (requiredAuthEventsWeHaveSeen.size !== authEventsReferenced.size) {
-			throw new Error('Auth events referenced in message do not match');
-		}
-
-		for (const [eventId] of requiredAuthEventsWeHaveSeen) {
-			if (!authEventsReferenced.has(eventId)) {
-				throw new Error('wrong auth event in message');
-			}
-		}
-
-		// now we validate against auth rules
-		await checkEventAuthWithState(event, room, store);
-		if (event.rejected) {
-			throw new Error(event.rejectedReason);
-		}
-
-		// TODO: save event still but with mark
-
-		// now we persist the event
-		const eventsCollection = await this.eventRepository.getCollection();
-		await eventsCollection.insertOne(event.event as any);
 	private async _persistEventAgainstState(
 		event: PersistentEventBase,
 		state: State,

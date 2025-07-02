@@ -251,172 +251,131 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return dict;
 	}
 
-	if (this.type === PduTypeRoomPowerLevels) {
-			// m.room.power_levels allows keys ban, events, events_default, invite, kick, redact, state_default, users, users_default.
-			// @ts-ignore i don't want to fight typescript right now (6)
-			dict.content = {
-				// @ts-ignore i don't want to fight typescript right now (7)
-				ban: content.ban,
-				// @ts-ignore i don't want to fight typescript right now (8)
-				events: content.events,
-				// @ts-ignore i don't want to fight typescript right now (9)
-				events_default: content.events_default,
-				// @ts-ignore i don't want to fight typescript right now (10)
-				invite: content.invite,
-				// @ts-ignore i don't want to fight typescript right now (11)
-				kick: content.kick,
-				// @ts-ignore i don't want to fight typescript right now (12)
-				redact: content.redact,
-				// @ts-ignore i don't want to fight typescript right now (13)
-				state_default: content.state_default,
-				// @ts-ignore i don't want to fight typescript right now (14)
-				users: content.users,
-				// @ts-ignore i don't want to fight typescript right now (15)
-				users_default: content.users_default,
-			};
+	// for tests
+	get redactedRawEvent() {
+		return this._getRedactedEvent(this.rawEvent);
+	}
 
-			return dict;
-		}
+	get redactedEvent() {
+		return this._getRedactedEvent(this.event); // content hash generated if not present already
+	}
 
-	dict;
-	.
-	content = content; // not spec compliant, but can't find a way for all events
+	getReferenceHash() {
+		// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-reference-hash-for-an-event
+		// 1. The signatures and unsigned properties are removed from the event, if present.
+		const redactedEvent = this.redactedEvent;
 
-	return;
-	dict;
+		const { unsigned, signatures, ...toHash } = redactedEvent;
 
-	// TODO: rest of the event types
-}
+		// 2. The event is converted into Canonical JSON.
+		const canonicalJson = encodeCanonicalJson(toHash);
+		// 3. A sha256 hash is calculated on the resulting JSON object.
+		const referenceHash = crypto
+			.createHash('sha256')
+			.update(canonicalJson)
+			.digest();
 
-getReferenceHash();
-{
-	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-reference-hash-for-an-event
-	// 1. The signatures and unsigned properties are removed from the event, if present.
-	const redactedEvent = this.redactedEvent;
+		this.freezeEvent();
 
-	const { unsigned, signatures, ...toHash } = redactedEvent;
+		return referenceHash;
+	}
 
-	// 2. The event is converted into Canonical JSON.
-	const canonicalJson = encodeCanonicalJson(toHash);
-	// 3. A sha256 hash is calculated on the resulting JSON object.
-	const referenceHash = crypto
-		.createHash('sha256')
-		.update(canonicalJson)
-		.digest();
+	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
+	getContentHash() {
+		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
+		const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
 
-	this.freezeEvent();
-
-	return referenceHash;
-}
-
-// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
-getContentHash();
-{
-	// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
-	const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
-
-	return crypto
+		return crypto
 			.createHash('sha256')
 			.update(encodeCanonicalJson(toHash))
 			.digest();
-}
-
-getContentHashString();
-{
-	return toUnpaddedBase64(this.getContentHash());
-}
-
-// https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
-getAuthEventStateKeys();
-: StateMapKey[]
-{
-	if (this.isCreateEvent()) {
-		// The auth_events for the m.room.create event in a room is empty;
-		return [];
 	}
 
-	// for all others
-	const authTypes = new Set<StateMapKey>([
-		// The current m.room.power_levels event, if any.
-		getStateMapKey({ type: PduTypeRoomPowerLevels }),
-
-		// The sender’s current m.room.member event, if any.
-		getStateMapKey({ type: PduTypeRoomMember, state_key: this.sender }),
-
-		// The m.room.create event.
-		getStateMapKey({ type: PduTypeRoomCreate }),
-	]);
-
-	// If type is m.room.member:
-
-	if (this.isMembershipEvent()) {
-		//The target’s current m.room.member event, if any.
-		authTypes.add(
-			getStateMapKey({ type: PduTypeRoomMember, state_key: this.stateKey }),
-		);
-
-		// If membership is join or invite, the current m.room.join_rules event, if any.
-		const membership = this.getMembership();
-		if (membership === 'join' || membership === 'invite') {
-			authTypes.add(getStateMapKey({ type: PduTypeRoomJoinRules }));
-		}
-
-		// If membership is invite and content contains a third_party_invite property, the current m.room.third_party_invite event with state_key matching content.third_party_invite.signed.token, if any.
-		if (
-			membership === 'invite' &&
-			this.getContent<PduMembershipEventContent>().third_party_invite
-		) {
-			throw new Error('third_party_invite not supported');
-		}
-
-		// If content.join_authorised_via_users_server is present, and the room version supports restricted rooms, then the m.room.member event with state_key matching content.join_authorised_via_users_server.
-		if (
-			this.getContent<PduMembershipEventContent>()
-				.join_authorised_via_users_server
-		) {
-			throw new Error('join_authorised_via_users_server not supported');
-		}
+	getContentHashString() {
+		return toUnpaddedBase64(this.getContentHash());
 	}
 
-	return Array.from(authTypes);
-}
+	// https://spec.matrix.org/v1.12/server-server-api/#auth-events-selection
+	getAuthEventStateKeys(): StateMapKey[] {
+		if (this.isCreateEvent()) {
+			// The auth_events for the m.room.create event in a room is empty;
+			return [];
+		}
 
-get;
-rejected();
-{
-	return this._rejectedReason !== undefined;
-}
+		// for all others
+		const authTypes = new Set<StateMapKey>([
+			// The current m.room.power_levels event, if any.
+			getStateMapKey({ type: PduTypeRoomPowerLevels }),
 
-reject(reason: string)
-{
-	this._rejectedReason = reason;
-}
+			// The sender’s current m.room.member event, if any.
+			getStateMapKey({ type: PduTypeRoomMember, state_key: this.sender }),
 
-get;
-rejectedReason();
-{
-	return this._rejectedReason;
-}
+			// The m.room.create event.
+			getStateMapKey({ type: PduTypeRoomCreate }),
+		]);
 
-addPreviousEvent(event: PersistentEventBase)
-{
-	this.rawEvent.prev_events.push(event.eventId);
-	return this;
-}
+		// If type is m.room.member:
 
-authedBy(event: PersistentEventBase)
-{
-	this.rawEvent.auth_events.push(event.eventId);
-	return this;
-}
+		if (this.isMembershipEvent()) {
+			//The target’s current m.room.member event, if any.
+			authTypes.add(
+				getStateMapKey({ type: PduTypeRoomMember, state_key: this.stateKey }),
+			);
 
-addSignature(origin: string, keyId: string, signature: string)
-{
-	this.signatures[origin] = {
-		[keyId]: signature,
-	};
+			// If membership is join or invite, the current m.room.join_rules event, if any.
+			const membership = this.getMembership();
+			if (membership === 'join' || membership === 'invite') {
+				authTypes.add(getStateMapKey({ type: PduTypeRoomJoinRules }));
+			}
 
-	return this;
-}
+			// If membership is invite and content contains a third_party_invite property, the current m.room.third_party_invite event with state_key matching content.third_party_invite.signed.token, if any.
+			if (
+				membership === 'invite' &&
+				this.getContent<PduMembershipEventContent>().third_party_invite
+			) {
+				throw new Error('third_party_invite not supported');
+			}
+
+			// If content.join_authorised_via_users_server is present, and the room version supports restricted rooms, then the m.room.member event with state_key matching content.join_authorised_via_users_server.
+			if (
+				this.getContent<PduMembershipEventContent>()
+					.join_authorised_via_users_server
+			) {
+				throw new Error('join_authorised_via_users_server not supported');
+			}
+		}
+
+		return Array.from(authTypes);
+	}
+
+	get rejected() {
+		return this._rejectedReason !== undefined;
+	}
+
+	reject(reason: string) {
+		this._rejectedReason = reason;
+	}
+
+	get rejectedReason() {
+		return this._rejectedReason;
+	}
+
+	addPreviousEvent(event: PersistentEventBase) {
+		this.rawEvent.prev_events.push(event.eventId);
+		return this;
+	}
+
+	authedBy(event: PersistentEventBase) {
+		this.rawEvent.auth_events.push(event.eventId);
+		return this;
+	}
+
+	addSignature(origin: string, keyId: string, signature: string) {
+		this.signatures[origin] = {
+			[keyId]: signature,
+		};
+
+		return this;
+	}
 }
 export type { EventStore };
