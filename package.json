@@ -49,6 +49,6 @@
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint --diagnostic-level=error",
 		"lint:fix": "bunx @biomejs/biome lint --fix",
-		"tsc": "bunx tsc"
+		"tsc": "bunx tsc --noEmit"
 	}
 }

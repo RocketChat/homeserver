@@ -6,9 +6,7 @@
 		"emitDecoratorMetadata": true,
 		"module": "ES2022",
 		"moduleResolution": "node",
-		"types": [
-			"bun-types"
-		],
+		"types": ["bun-types"],
 		"declaration": true,
 		"sourceMap": true,
 		"esModuleInterop": true,
@@ -19,6 +17,7 @@
 		"noImplicitReturns": false,
 		"allowUnusedLabels": false,
 		"allowUnreachableCode": false,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"noEmit": true
 	}
 }
