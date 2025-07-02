@@ -469,29 +469,29 @@ describe('[EventWrapper] Redaction', () => {
 		 * {'content': {'membership': 'join', 'displayname': 'debdut', 'avatar_url': None}, 'room_id': '!qxRocbYD:rc1.tunnel.dev.rocket.chat', 'sender': '@debdut:syn1.tunnel.dev.rocket.chat', 'state_key': '@debdut:syn1.tunnel.dev.rocket.chat', 'type': 'm.room.member', 'origin_server_ts': 1750863043963, 'depth': 0, 'prev_events': [], 'auth_events': ['$v6h4nnBjnsAcSteUbI31FwumCou1NlX6mcgTT9yEyiY', '$rWdS8WGy1yby1mKcsK349AgjJnmJP683ya2MAU0lNxU'], 'hashes': {'sha256': 'jQcZtBAHpugkT0PzZ+TH1iQUiYT21M6ngai5bwIj9sA'}, 'origin': 'syn1.tunnel.dev.rocket.chat', 'signatures': {'syn1.tunnel.dev.rocket.chat': {'ed25519:a_FAET': 'f9N1Mi3ciCjzvHIvq2Vy8IGXZSdaLuA0m6v7a45/2zq9100JIzXnYkqQLaTJvJ2PIzq/VUXNEN5D26IAFzYJCg'}}, 'unsigned': {'age_ts': 1750863044315}}
 2025-06-25 20:20:44,316 - twisted - 281 - INFO - POST-1548 - id $p6tUwIuq+Q3VFmdK6tnl2eD9h81/l8CoExpiQWEKbWE
 		*/
-		const nonmodifiedraw = {
-			content: { membership: 'join', displayname: 'debdut', avatar_url: null },
-			room_id: '!qxRocbYD:rc1.tunnel.dev.rocket.chat',
-			sender: '@debdut:syn1.tunnel.dev.rocket.chat',
-			state_key: '@debdut:syn1.tunnel.dev.rocket.chat',
-			type: 'm.room.member',
-			origin_server_ts: 1750863043963,
-			depth: 0,
-			prev_events: [],
-			auth_events: [
-				'$v6h4nnBjnsAcSteUbI31FwumCou1NlX6mcgTT9yEyiY',
-				'$rWdS8WGy1yby1mKcsK349AgjJnmJP683ya2MAU0lNxU',
-			],
-			hashes: { sha256: 'jQcZtBAHpugkT0PzZ+TH1iQUiYT21M6ngai5bwIj9sA' },
-			origin: 'syn1.tunnel.dev.rocket.chat',
-			signatures: {
-				'syn1.tunnel.dev.rocket.chat': {
-					'ed25519:a_FAET':
-						'f9N1Mi3ciCjzvHIvq2Vy8IGXZSdaLuA0m6v7a45/2zq9100JIzXnYkqQLaTJvJ2PIzq/VUXNEN5D26IAFzYJCg',
-				},
-			},
-			unsigned: { age_ts: 1750863044315 },
-		};
+		// const nonmodifiedraw = {
+		// 	content: { membership: 'join', displayname: 'debdut', avatar_url: null },
+		// 	room_id: '!qxRocbYD:rc1.tunnel.dev.rocket.chat',
+		// 	sender: '@debdut:syn1.tunnel.dev.rocket.chat',
+		// 	state_key: '@debdut:syn1.tunnel.dev.rocket.chat',
+		// 	type: 'm.room.member',
+		// 	origin_server_ts: 1750863043963,
+		// 	depth: 0,
+		// 	prev_events: [],
+		// 	auth_events: [
+		// 		'$v6h4nnBjnsAcSteUbI31FwumCou1NlX6mcgTT9yEyiY',
+		// 		'$rWdS8WGy1yby1mKcsK349AgjJnmJP683ya2MAU0lNxU',
+		// 	],
+		// 	hashes: { sha256: 'jQcZtBAHpugkT0PzZ+TH1iQUiYT21M6ngai5bwIj9sA' },
+		// 	origin: 'syn1.tunnel.dev.rocket.chat',
+		// 	signatures: {
+		// 		'syn1.tunnel.dev.rocket.chat': {
+		// 			'ed25519:a_FAET':
+		// 				'f9N1Mi3ciCjzvHIvq2Vy8IGXZSdaLuA0m6v7a45/2zq9100JIzXnYkqQLaTJvJ2PIzq/VUXNEN5D26IAFzYJCg',
+		// 		},
+		// 	},
+		// 	unsigned: { age_ts: 1750863044315 },
+		// };
 		const synapseRaw = {
 			content: { membership: 'join', displayname: 'debdut', avatar_url: null },
 			room_id: '!qxRocbYD:rc1.tunnel.dev.rocket.chat',
