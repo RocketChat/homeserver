@@ -129,7 +129,6 @@ export class PersistentEventFactory {
 		const membershipContent: PduMembershipEventContent = {
 			membership,
 			displayname,
-			avatar_url: undefined,
 			// is_direct: roomInformation.type === 'direct',
 			// join_authorised_via_users_server: '',
 		};

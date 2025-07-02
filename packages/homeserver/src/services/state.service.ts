@@ -13,6 +13,7 @@ import type { PduCreateEventContent } from '@hs/room/src/types/v1';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { signEvent } from '../signEvent';
+import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -337,6 +338,11 @@ export class StateService {
 		const hasConflict = state.has(event.getUniqueStateIdentifier());
 
 		if (!hasConflict) {
+			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
+			if (event.rejected) {
+				throw new Error(event.rejectedReason);
+			}
+
 			// save the state mapping
 			const { insertedId: stateMappingId } =
 				await this.stateRepository.createStateMapping(event, prevStateIds);

@@ -37,6 +37,7 @@ import { ConfigService } from '../../services/config.service';
 import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
 import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
 import { RoomVersion } from '@hs/room/src/manager/type';
+import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
@@ -149,7 +150,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
 					roomCreateEvent.roomId,
 					username,
-					'public',
+					body.join_rule as any,
 					'11',
 				);
 
@@ -315,6 +316,12 @@ export const internalRoomPlugin = (app: Elysia) => {
 						if (event) {
 							membershipEvent.authedBy(event);
 						}
+					}
+
+					for await (const prevEvent of stateService.getPrevEvents(
+						membershipEvent,
+					)) {
+						membershipEvent.addPreviousEvent(prevEvent);
 					}
 
 					await stateService.persistStateEvent(membershipEvent);
