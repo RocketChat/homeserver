@@ -52,7 +52,6 @@ export { EventEmitterService } from './services/event-emitter.service';
 export { MissingEventListener } from './services/missing-event.listener';
 
 // Repository interfaces and implementations
-export type { IEventRepository } from './repositories/event.repository';
 
 // Queue implementations
 export { BaseQueue, type QueueHandler } from './queues/base.queue';

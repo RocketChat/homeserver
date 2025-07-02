@@ -28,9 +28,10 @@ export class InviteService {
 	private readonly logger = createLogger('InviteService');
 
 	constructor(
-		private readonly eventService: EventService,
+		@inject('EventService') private readonly eventService: EventService,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
-		private readonly configService: ConfigService,
+		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('RoomService') private readonly roomService: RoomService,
 	) {}
 

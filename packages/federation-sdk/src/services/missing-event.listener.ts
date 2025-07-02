@@ -4,7 +4,7 @@ import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
 import type { StagedEvent } from './event.service';
 import { inject } from 'tsyringe';
-import type { StagingAreaService } from './staging-area.service';
+import { StagingAreaService } from './staging-area.service';
 import type { EventBase } from '@hs/core';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/core';
@@ -15,7 +15,6 @@ export class MissingEventListener {
 
 	constructor(
 		private readonly missingEventsQueue: MissingEventsQueue,
-		@inject('StagingAreaService')
 		private readonly stagingAreaService: StagingAreaService,
 		private readonly eventService: EventService,
 		private readonly eventFetcherService: EventFetcherService,

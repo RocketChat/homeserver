@@ -31,8 +31,9 @@ export class MessageService {
 	private readonly logger = createLogger('MessageService');
 
 	constructor(
-		private readonly eventService: EventService,
-		private readonly configService: ConfigService,
+		@inject('EventService') private readonly eventService: EventService,
+		@inject('ConfigService') private readonly configService: ConfigService,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
 		@inject('RoomService') private readonly roomService: RoomService,
 	) {}

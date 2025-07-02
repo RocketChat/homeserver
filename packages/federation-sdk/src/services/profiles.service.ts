@@ -3,20 +3,21 @@ import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
-import type { AuthEvents, RoomMemberEvent } from '@hs/core';
-import { injectable } from 'tsyringe';
+import type { AuthEvents, EventBase, RoomMemberEvent } from '@hs/core';
+import { inject, injectable } from 'tsyringe';
 import type { EventStore } from '@hs/core';
-import type { IEventRepository } from '../repositories/event.repository';
+import { EventRepository } from '../repositories/event.repository';
 
 @injectable()
 export class ProfilesService {
 	private readonly logger = createLogger('ProfilesService');
 
 	constructor(
-		private readonly configService: ConfigService,
-		private readonly eventService: EventService,
+		@inject('ConfigService') private readonly configService: ConfigService,
+		@inject('EventService') private readonly eventService: EventService,
 		// private readonly roomService: RoomService,
-		private readonly eventRepository: IEventRepository,
+		@inject('EventRepository')
+		private readonly eventRepository: EventRepository,
 	) {}
 	async queryProfile(userId: string): Promise<{
 		avatar_url: string;

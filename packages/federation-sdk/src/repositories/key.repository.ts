@@ -17,7 +17,7 @@ export class KeyRepository {
 		this.getCollection();
 	}
 
-	private async getCollection(): Promise<Collection<Key>> {
+	async getCollection(): Promise<Collection<Key>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Key>('keys');
 		return this.collection!;

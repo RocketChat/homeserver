@@ -19,7 +19,7 @@ import {
 } from '@hs/core/src/events/m.room.tombstone';
 import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
 import { FederationService } from './federation.service';
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import { generateId } from '@hs/core';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
@@ -53,10 +53,12 @@ function createMediaId(length: number) {
 @injectable()
 export class RoomService {
 	constructor(
-		private readonly roomRepository: RoomRepository,
+		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
+		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		private readonly eventService: EventService,
-		private readonly configService: ConfigService,
+		@inject('EventService') private readonly eventService: EventService,
+		@inject('ConfigService') private readonly configService: ConfigService,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
 	) {}
 

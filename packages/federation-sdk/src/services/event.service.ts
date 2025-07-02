@@ -1,6 +1,6 @@
 import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
 import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
@@ -82,10 +82,12 @@ export class EventService {
 	private readonly logger = createLogger('EventService');
 
 	constructor(
+		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		private readonly roomRepository: RoomRepository,
-		private readonly keyRepository: KeyRepository,
-		private readonly configService: ConfigService,
+		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
+		@inject('KeyRepository') private readonly keyRepository: KeyRepository,
+		@inject('ConfigService') private readonly configService: ConfigService,
+		@inject('StagingAreaQueue')
 		private readonly stagingAreaQueue: StagingAreaQueue,
 	) {}
 

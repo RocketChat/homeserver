@@ -2,6 +2,7 @@ import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { DatabaseConnectionService } from '../services/database-connection.service';
+import type { EventStore } from '@hs/core';
 
 type Room = {
 	_id: string;
@@ -24,7 +25,7 @@ export class RoomRepository {
 		this.getCollection();
 	}
 
-	private async getCollection(): Promise<Collection<Room>> {
+	async getCollection(): Promise<Collection<Room>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Room>('rooms');
 		return this.collection!;
