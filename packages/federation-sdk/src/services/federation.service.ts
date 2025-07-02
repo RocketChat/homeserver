@@ -233,13 +233,24 @@ export class FederationService {
 			inviteEvent.eventId,
 		);
 
-		return await this.requestService.put<any>(
-			(inviteEvent.stateKey as any).split(':').pop() as string,
-			uri,
-			{
-				event: inviteEvent.event,
-				room_version: roomVersion,
-			},
-		);
+		if (!inviteEvent.stateKey) {
+			this.logger.debug(inviteEvent.event, 'invalid state_key');
+			throw new Error(
+				'failed to send invite request, invite has invalid state_key',
+			);
+		}
+
+		const residentServer = inviteEvent.stateKey.split(':').pop();
+
+		if (!residentServer) {
+			throw new Error(
+				`invalid state_key ${inviteEvent.stateKey}, no domain found, failed to send invite`,
+			);
+		}
+
+		return await this.requestService.put<any>(residentServer, uri, {
+			event: inviteEvent.event,
+			room_version: roomVersion,
+		});
 	}
 }
