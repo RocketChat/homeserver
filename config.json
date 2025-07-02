@@ -1,5 +1,5 @@
 {
-	"name": "rc1",
+	"name": "rc1.tunnel.dev.rocket.chat",
 	"version": "1.0",
 	"port": 8080,
 	"key": {
