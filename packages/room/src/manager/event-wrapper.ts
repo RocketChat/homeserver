@@ -28,16 +28,24 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
+export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
+
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	private _rejectedReason?: string;
 
+	private signatures: PduV10['signatures'] = {};
+
 	constructor(
-		protected readonly rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+		protected rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
 		freeze = false,
 	) {
 		if (freeze) {
 			this.freezeEvent();
+		}
+
+		if (rawEvent.signatures) {
+			this.signatures = rawEvent.signatures;
 		}
 	}
 
@@ -92,22 +100,24 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 
 			return {
 				...this.rawEvent,
+				signatures: this.signatures,
 				unsigned: {},
 			};
 		}
 
-		const event = {
+		this.rawEvent = {
 			...this.rawEvent,
 			hashes: {
 				sha256: this.getContentHashString(),
 			},
+			signatures: this.signatures,
 			unsigned: {}, // TODO better handling of this heh
 		};
 
 		// content hash has been calculated, so we can freeze the event
 		this.freezeEvent();
 
-		return event;
+		return this.rawEvent;
 	}
 
 	get depth() {
@@ -178,28 +188,22 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return `${this.type}:${this.stateKey || ''}`;
 	}
 
-	get redactedEvent() {
+	abstract getAllowedKeys(): string[];
+
+	abstract getAllowedContentKeys(): Record<
+		string,
+		string[] | typeof REDACT_ALLOW_ALL_KEYS
+	>;
+
+	private _getRedactedEvent(
+		event: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+	) {
 		// it is expected to have everything in this event ready by this point
-		const topLevelAllowedKeysExceptContent = [
-			'event_id',
-			'type',
-			'room_id',
-			'sender',
-			'state_key',
-			'hashes', // make sure is not recalculated to be inline wiht synapse
-			'signatures', // can change but is not part of reference hash
-			'depth', // always 0 for us
-			'prev_events', // can change but only in first creation
-			'auth_events', // same as ^
-			'origin_server_ts',
-		];
+		const topLevelAllowedKeysExceptContent = this.getAllowedKeys();
 
 		const dict = {
 			content: {},
-		};
-
-		// also freezes the event
-		const { event } = this; // fill up to date hash
+		} as typeof event;
 
 		for (const key of topLevelAllowedKeysExceptContent) {
 			if (key in event) {
@@ -211,67 +215,49 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		const content = this.getContent();
 
 		// m.room.member allows keys membership, join_authorised_via_users_server. Additionally, it allows the signed key of the third_party_invite key.
-		if (this.type === PduTypeRoomMember) {
-			// @ts-ignore i don't want to fight typescript right now
-			dict.content = {
-				// @ts-ignore i don't want to fight typescript right now (2)
-				membership: content.membership,
-			};
-
-			return dict;
+		const allowedContentKeys = this.getAllowedContentKeys()[this.type];
+		if (allowedContentKeys) {
+			if (allowedContentKeys === REDACT_ALLOW_ALL_KEYS) {
+				dict.content = content;
+			} else {
+				for (const key of allowedContentKeys) {
+					if (key in content) {
+						// @ts-ignore TODO: better typing obviously
+						dict.content[key] = content[key];
+					}
+				}
+			}
 		}
 
-		if (this.type === PduTypeRoomCreate) {
-			// m.room.create allows all keys.
-			dict.content = content;
-			return dict;
+		dict.unsigned = {};
+
+		// this is not in spec
+		if (event.unsigned) {
+			if ('age_ts' in event.unsigned) {
+				// @ts-ignore TODO:
+				dict.unsigned.age_ts = event.unsigned.age_ts;
+			}
+			if ('replaces_state' in event.unsigned) {
+				// @ts-ignore TODO:
+				dict.unsigned.replaces_state = event.unsigned.replaces_state;
+			}
 		}
 
-		if (this.type === PduTypeRoomJoinRules) {
-			// m.room.join_rules allows keys join_rule, allow.
-			// @ts-ignore i don't want to fight typescript right now (3)
-			dict.content = {
-				// @ts-ignore i don't want to fight typescript right now (4)
-				...(content.join_rule ? { join_rule: content.join_rule } : {}),
-				// @ts-ignore i don't want to fight typescript right now (5)
-				...(content.allow ? { allow: content.allow } : {}),
-			};
-
-			return dict;
+		// tests expect this to be present
+		if (!dict.signatures) {
+			dict.signatures = {};
 		}
-
-		if (this.type === PduTypeRoomPowerLevels) {
-			// m.room.power_levels allows keys ban, events, events_default, invite, kick, redact, state_default, users, users_default.
-			// @ts-ignore i don't want to fight typescript right now (6)
-			dict.content = {
-				// @ts-ignore i don't want to fight typescript right now (7)
-				ban: content.ban,
-				// @ts-ignore i don't want to fight typescript right now (8)
-				events: content.events,
-				// @ts-ignore i don't want to fight typescript right now (9)
-				events_default: content.events_default,
-				// @ts-ignore i don't want to fight typescript right now (10)
-				invite: content.invite,
-				// @ts-ignore i don't want to fight typescript right now (11)
-				kick: content.kick,
-				// @ts-ignore i don't want to fight typescript right now (12)
-				redact: content.redact,
-				// @ts-ignore i don't want to fight typescript right now (13)
-				state_default: content.state_default,
-				// @ts-ignore i don't want to fight typescript right now (14)
-				users: content.users,
-				// @ts-ignore i don't want to fight typescript right now (15)
-				users_default: content.users_default,
-			};
-
-			return dict;
-		}
-
-		dict.content = content; // not spec compliant, but can't find a way for all events
 
 		return dict;
+	}
 
-		// TODO: rest of the event types
+	// for tests
+	get redactedRawEvent() {
+		return this._getRedactedEvent(this.rawEvent);
+	}
+
+	get redactedEvent() {
+		return this._getRedactedEvent(this.event); // content hash generated if not present already
 	}
 
 	getReferenceHash() {
@@ -279,7 +265,6 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		// 1. The signatures and unsigned properties are removed from the event, if present.
 		const redactedEvent = this.redactedEvent;
 
-		// @ts-ignore TODO:
 		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
@@ -318,7 +303,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		}
 
 		// for all others
-		const authTypes = [
+		const authTypes = new Set<StateMapKey>([
 			// The current m.room.power_levels event, if any.
 			getStateMapKey({ type: PduTypeRoomPowerLevels }),
 
@@ -327,20 +312,20 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 
 			// The m.room.create event.
 			getStateMapKey({ type: PduTypeRoomCreate }),
-		];
+		]);
 
 		// If type is m.room.member:
 
 		if (this.isMembershipEvent()) {
 			//The target’s current m.room.member event, if any.
-			authTypes.push(
+			authTypes.add(
 				getStateMapKey({ type: PduTypeRoomMember, state_key: this.stateKey }),
 			);
 
 			// If membership is join or invite, the current m.room.join_rules event, if any.
 			const membership = this.getMembership();
 			if (membership === 'join' || membership === 'invite') {
-				authTypes.push(getStateMapKey({ type: PduTypeRoomJoinRules }));
+				authTypes.add(getStateMapKey({ type: PduTypeRoomJoinRules }));
 			}
 
 			// If membership is invite and content contains a third_party_invite property, the current m.room.third_party_invite event with state_key matching content.third_party_invite.signed.token, if any.
@@ -360,7 +345,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			}
 		}
 
-		return authTypes;
+		return Array.from(authTypes);
 	}
 
 	get rejected() {
@@ -382,6 +367,14 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 
 	authedBy(event: PersistentEventBase) {
 		this.rawEvent.auth_events.push(event.eventId);
+		return this;
+	}
+
+	addSignature(origin: string, keyId: string, signature: string) {
+		this.signatures[origin] = {
+			[keyId]: signature,
+		};
+
 		return this;
 	}
 }

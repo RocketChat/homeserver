@@ -28,7 +28,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 
-	constructor(private readonly configService: FederationConfigService) { }
+	constructor(private readonly configService: FederationConfigService) {}
 
 	async makeSignedRequest<T>({
 		method,
@@ -80,6 +80,8 @@ export class FederationRequestService {
 				extractURIfromURL(url),
 				signedBody,
 			);
+
+			console.log(signedBody, auth);
 
 			const response = await fetch(url.toString(), {
 				method,

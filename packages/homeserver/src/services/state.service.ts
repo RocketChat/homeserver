@@ -253,6 +253,8 @@ export class StateService {
 
 		const eventsNeeded = event.getAuthEventStateKeys();
 
+		console.log(eventsNeeded);
+
 		for (const stateKey of eventsNeeded) {
 			const authEvent = state.get(stateKey);
 			if (authEvent) {
@@ -280,15 +282,22 @@ export class StateService {
 	public async signEvent(event: PersistentEventBase) {
 		const signingKey = await this.configService.getSigningKey();
 
-		const redactedEvent = event.redactedEvent;
+		const origin = this.configService.getServerName();
 
 		const result = await signEvent(
-			redactedEvent as any,
+			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.
+			// ^^ is done already through redactedEvent fgetter
+			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server’s signing key (see also Retrieving server keys).
+			event.redactedEvent as any,
 			signingKey[0],
-			this.configService.getServerName(),
+			origin,
 		);
 
-		return result as ReturnType<typeof signEvent>;
+		const keyId = `${signingKey[0].algorithm}:${signingKey[0].version}`;
+
+		event.addSignature(origin, keyId, result.signatures[origin][keyId]);
+
+		return event;
 	}
 
 	private async _persistEventAgainstState(
@@ -335,7 +344,7 @@ export class StateService {
 			const signedEvent = await this.signEvent(event);
 
 			this.eventRepository.create(
-				signedEvent,
+				signedEvent.event as any,
 				event.eventId,
 				stateMappingId.toString(),
 			);
@@ -380,7 +389,7 @@ export class StateService {
 		const signedEvent = await this.signEvent(resolvedEvent);
 
 		await this.eventRepository.create(
-			signedEvent,
+			signedEvent.event as any,
 			resolvedEvent.eventId,
 			stateMappingId.toString(),
 		);
@@ -479,7 +488,11 @@ export class StateService {
 					// TODO: mark rejected, although no code yet uses it so let it go
 					const signedEvent = await this.signEvent(resolvedEvent);
 
-					this.eventRepository.create(signedEvent, resolvedEvent.eventId, '');
+					this.eventRepository.create(
+						signedEvent.event as any,
+						resolvedEvent.eventId,
+						'',
+					);
 
 					continue;
 				}
