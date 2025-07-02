@@ -7,6 +7,7 @@
 	},
 	"dependencies": {
 		"@hs/core": "workspace:*",
+		"@rocket.chat/emitter": "^0.31.25",
 		"mongodb": "^6.16.0",
 		"nats": "^2.29.3",
 		"tsyringe": "^4.10.0"
