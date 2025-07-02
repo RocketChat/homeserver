@@ -1,4 +1,4 @@
-import type { Membership } from '@hs/core/src/events/m.room.member';
+import type { Membership } from '@hs/core';
 
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
