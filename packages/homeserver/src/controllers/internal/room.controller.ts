@@ -176,7 +176,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/join/:userId',
-			async ({ params, body, set }) => {
+			async ({ params, body }) => {
 				const { roomId, userId } = params;
 				const { senderUserId } = body;
 
@@ -418,7 +418,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { userIdToKick, senderUserId, reason, targetServers } =
+				const { /*userIdToKick, */ senderUserId, reason, targetServers } =
 					bodyParse.data;
 				try {
 					const eventId = await roomService.kickUser(
@@ -456,7 +456,6 @@ export const internalRoomPlugin = (app: Elysia) => {
 			async ({
 				params,
 				body,
-				set,
 			}): Promise<InternalBanUserResponse | ErrorResponse> => {
 				// const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				// const userIdParse = UsernameDto.safeParse(params.userIdToBan);

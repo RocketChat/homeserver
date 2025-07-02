@@ -97,7 +97,7 @@ export class FederationRequestService {
 				let errorDetail = errorText;
 				try {
 					errorDetail = JSON.stringify(JSON.parse(errorText));
-				} catch (e) {
+				} catch {
 					/* use raw text if parsing fails */
 				}
 				throw new Error(

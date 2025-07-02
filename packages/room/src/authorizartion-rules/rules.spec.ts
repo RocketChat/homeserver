@@ -398,7 +398,7 @@ describe('authorization rules', () => {
 
 	// TODO: alias rooms
 	it('07 joining rooms', async () => {
-		const { create, join, powerLevel, joinRules } = getInitialEvents({
+		const { create, join, /*powerLevel,*/ joinRules } = getInitialEvents({
 			joinRule: 'public',
 		});
 
@@ -507,7 +507,7 @@ describe('authorization rules', () => {
 	});
 
 	it('08 test joining an invite only room', async () => {
-		const { create, join, powerLevel, joinRules } = getInitialEvents({
+		const { create, join, /*powerLevel,*/ joinRules } = getInitialEvents({
 			joinRule: 'invite',
 		});
 

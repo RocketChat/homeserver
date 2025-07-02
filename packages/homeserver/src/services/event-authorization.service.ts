@@ -85,24 +85,24 @@ export class EventAuthorizationService {
 	}
 
 	private authorizeMemberEvent(
-		event: EventBase,
-		authEvents: EventBase[],
+		_event: EventBase,
+		_authEvents: EventBase[],
 	): boolean {
 		// Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
 	private authorizePowerLevelsEvent(
-		event: EventBase,
-		authEvents: EventBase[],
+		_event: EventBase,
+		_authEvents: EventBase[],
 	): boolean {
 		// Check sender has permission to change power levels
 		return true;
 	}
 
 	private authorizeJoinRulesEvent(
-		event: EventBase,
-		authEvents: EventBase[],
+		_event: EventBase,
+		_authEvents: EventBase[],
 	): boolean {
 		// Check sender has permission to change join rules
 		return true;

@@ -58,7 +58,7 @@ export const FederationEndpoints = {
 	sendTransaction: (txnId: string) => `/_matrix/federation/v1/send/${txnId}`,
 
 	// User and profile data
-	queryProfile: (userId: string) => '/_matrix/federation/v1/query/profile',
+	queryProfile: (_userId: string) => '/_matrix/federation/v1/query/profile',
 	userDevices: (userId: string) =>
 		`/_matrix/federation/v1/user/devices/${userId}`,
 
