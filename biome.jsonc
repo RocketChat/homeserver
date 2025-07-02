@@ -41,6 +41,13 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "**/node_modules", ".vscode", "dist"]
+		"ignore": [
+			"dist/**",
+			"node_modules",
+			"**/node_modules",
+			".vscode/**",
+			"packages/*/src/**/*.js",
+			"packages/*/src/**/*.d.ts"
+		]
 	}
 }
