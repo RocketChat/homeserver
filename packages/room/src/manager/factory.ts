@@ -346,6 +346,6 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial as any);
 	}
 }
