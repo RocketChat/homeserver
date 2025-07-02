@@ -74,8 +74,12 @@ export class EventRepository {
 		return collection.find(query, options).toArray();
 	}
 
-	async create(event: EventBaseWithOptionalId, eventId: string, stateId = '') {
-		await this.persistEvent(event, eventId, stateId);
+	async create(
+		event: EventBaseWithOptionalId,
+		eventId: string,
+		stateId = '',
+	): Promise<string | undefined> {
+		return this.persistEvent(event, eventId, stateId);
 	}
 
 	async createIfNotExists(event: EventBaseWithOptionalId): Promise<string> {
@@ -275,5 +279,7 @@ export class EventRepository {
 			{ eventId: { $in: event.prev_events as string[] } },
 			{ $set: { nextEventId: eventId } },
 		);
+
+		return eventId;
 	}
 }

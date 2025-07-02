@@ -5,7 +5,7 @@ import { PersistentEventFactory } from './factory';
 
 import { it, describe, expect, afterEach } from 'bun:test';
 import { PersistentEventV11 } from './v11';
-import { RoomVersion } from './type';
+import type { RoomVersion } from './type';
 
 class MockStore implements EventStore {
 	events: Map<string, PersistentEventBase> = new Map();
@@ -261,6 +261,7 @@ describe('EventManager', () => {
 			synapseEvent.getContentHashString() === synapseRaw.hashes.sha256,
 		);
 
+		// biome-ignore lint/performance/noDelete: <explanation>
 		delete (synapseEvent as any).rawEvent.origin;
 
 		console.log(
