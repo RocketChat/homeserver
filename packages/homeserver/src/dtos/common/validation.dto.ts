@@ -1,34 +1,24 @@
-import { t } from 'elysia';
+import { z } from 'zod';
 
-export const UsernameDto = t.String({
-	pattern: '^@[A-Za-z0-9_=\\/.+-]+:(.+)$',
-	description: 'Matrix user ID in format @user:server.com',
-	examples: ['@alice:example.com'],
-});
+export const UsernameDto = z.string()
+	.regex(/^@[A-Za-z0-9_=\/.+-]+:(.+)$/)
+	.describe('Matrix user ID in format @user:server.com');
 
-export const RoomIdDto = t.String({
-	pattern: '^![A-Za-z0-9_=\\/.+-]+:(.+)$',
-	description: 'Matrix room ID in format !room:server.com',
-	examples: ['!room123:example.com'],
-});
+export const RoomIdDto = z.string()
+	.regex(/^![A-Za-z0-9_=\/.+-]+:(.+)$/)
+	.describe('Matrix room ID in format !room:server.com');
 
-export const EventIdDto = t.String({
-	pattern: '^\\$[A-Za-z0-9_=\\/.+-]+(:(.+))?$',
-	description: 'Matrix event ID in format $event',
-	examples: ['$event123:example.com', '$event123'],
-});
+export const EventIdDto = z.string()
+	.regex(/^\$[A-Za-z0-9_=\/.+-]+(:(.+))?$/)
+	.describe('Matrix event ID in format $event');
 
-export const ServerNameDto = t.String({
-	description: 'Matrix server name',
-	examples: ['example.com'],
-});
+export const ServerNameDto = z.string()
+	.describe('Matrix server name');
 
-export const TimestampDto = t.Number({
-	description: 'Unix timestamp in milliseconds',
-	minimum: 0,
-});
+export const TimestampDto = z.number()
+	.min(0)
+	.describe('Unix timestamp in milliseconds');
 
-export const DepthDto = t.Number({
-	description: 'Event depth',
-	minimum: 0,
-}); 
+export const DepthDto = z.number()
+	.min(0)
+	.describe('Event depth'); 

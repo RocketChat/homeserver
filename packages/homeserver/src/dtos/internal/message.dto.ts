@@ -1,76 +1,73 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 import { RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
 
-export const InternalSendMessageBodyDto = t.Object({
+export const InternalSendMessageBodyDto = z.object({
 	roomId: RoomIdDto,
 	targetServer: ServerNameDto,
-	message: t.String({ 
-		minLength: 1,
-		description: 'Message content'
-	}),
+	message: z.string()
+		.min(1)
+		.describe('Message content'),
 	senderUserId: UsernameDto,
 });
 
-export const InternalUpdateMessageParamsDto = t.Object({
-	messageId: t.String({ description: 'Message ID to update' }),
+export const InternalUpdateMessageParamsDto = z.object({
+	messageId: z.string().describe('Message ID to update'),
 });
 
-export const InternalUpdateMessageBodyDto = t.Object({
+export const InternalUpdateMessageBodyDto = z.object({
 	roomId: RoomIdDto,
 	targetServer: ServerNameDto,
-	message: t.String({ 
-		minLength: 1,
-		description: 'Updated message content'
-	}),
+	message: z.string()
+		.min(1)
+		.describe('Updated message content'),
 	senderUserId: UsernameDto,
 });
 
-export const InternalSendReactionParamsDto = t.Object({
-	messageId: t.String({ description: 'Message ID to react to' }),
+export const InternalSendReactionParamsDto = z.object({
+	messageId: z.string().describe('Message ID to react to'),
 });
 
-export const InternalSendReactionBodyDto = t.Object({
+export const InternalSendReactionBodyDto = z.object({
 	roomId: RoomIdDto,
 	targetServer: ServerNameDto,
-	eventId: t.String({ description: 'Event ID to react to' }),
-	emoji: t.String({ 
-		minLength: 1,
-		description: 'Emoji reaction'
-	}),
+	eventId: z.string().describe('Event ID to react to'),
+	emoji: z.string()
+		.min(1)
+		.describe('Emoji reaction'),
 	senderUserId: UsernameDto,
 });
 
-export const InternalMessageResponseDto = t.Object({
-	event_id: t.String({ description: 'Created event ID' }),
-	origin_server_ts: t.Number({ description: 'Server timestamp' }),
+export const InternalMessageResponseDto = z.object({
+	event_id: z.string().describe('Created event ID'),
+	origin_server_ts: z.number().describe('Server timestamp'),
 });
 
-export const InternalReactionResponseDto = t.Object({
-	event_id: t.String({ description: 'Created reaction event ID' }),
-	origin_server_ts: t.Number({ description: 'Server timestamp' }),
+export const InternalReactionResponseDto = z.object({
+	event_id: z.string().describe('Created reaction event ID'),
+	origin_server_ts: z.number().describe('Server timestamp'),
 }); 
 
-export const InternalRedactMessageParamsDto = t.Object({
-	messageId: t.String({ description: 'Message ID to redact' }),
+export const InternalRedactMessageParamsDto = z.object({
+	messageId: z.string().describe('Message ID to redact'),
 });
 
-export const InternalRedactMessageBodyDto = t.Object({
+export const InternalRedactMessageBodyDto = z.object({
 	roomId: RoomIdDto,
 	targetServer: ServerNameDto,
-	reason: t.Optional(t.String({ description: 'Reason for redacting' })),
+	reason: z.string().describe('Reason for redacting').optional(),
 	senderUserId: UsernameDto,
 });
 
 export const InternalRedactMessageResponseDto = InternalMessageResponseDto;
 
 
-export type InternalMessageResponse = Static<typeof InternalMessageResponseDto>;
-export type InternalReactionResponse = Static<typeof InternalReactionResponseDto>;
-export type InternalSendMessageBody = Static<typeof InternalSendMessageBodyDto>;
-export type InternalUpdateMessageBody = Static<typeof InternalUpdateMessageBodyDto>;
-export type InternalUpdateMessageParams = Static<typeof InternalUpdateMessageParamsDto>;
-export type InternalSendReactionBody = Static<typeof InternalSendReactionBodyDto>;
-export type InternalSendReactionParams = Static<typeof InternalSendReactionParamsDto>;
-export type InternalRedactMessageBody = Static<typeof InternalRedactMessageBodyDto>;
-export type InternalRedactMessageParams = Static<typeof InternalRedactMessageParamsDto>;
-export type InternalRedactMessageResponse = Static<typeof InternalRedactMessageResponseDto>;
+export type InternalMessageResponse = z.infer<typeof InternalMessageResponseDto>;
+export type InternalReactionResponse = z.infer<typeof InternalReactionResponseDto>;
+export type InternalSendMessageBody = z.infer<typeof InternalSendMessageBodyDto>;
+export type InternalUpdateMessageBody = z.infer<typeof InternalUpdateMessageBodyDto>;
+export type InternalUpdateMessageParams = z.infer<typeof InternalUpdateMessageParamsDto>;
+export type InternalSendReactionBody = z.infer<typeof InternalSendReactionBodyDto>;
+export type InternalSendReactionParams = z.infer<typeof InternalSendReactionParamsDto>;
+export type InternalRedactMessageBody = z.infer<typeof InternalRedactMessageBodyDto>;
+export type InternalRedactMessageParams = z.infer<typeof InternalRedactMessageParamsDto>;
+export type InternalRedactMessageResponse = z.infer<typeof InternalRedactMessageResponseDto>;

@@ -1,123 +1,117 @@
-import { type Static, t } from 'elysia';
+import { z } from 'zod';
 import { RoomIdDto, ServerNameDto, TimestampDto, UsernameDto } from '../common/validation.dto';
 
-export const QueryProfileQueryDto = t.Object({
+export const QueryProfileQueryDto = z.object({
 	user_id: UsernameDto,
 });
 
-export const QueryProfileResponseDto = t.Object({
-	displayname: t.Optional(t.Union([t.String(), t.Null()])),
-	avatar_url: t.Optional(t.Union([t.String(), t.Null()])),
+export const QueryProfileResponseDto = z.object({
+	displayname: z.union([z.string(), z.null()]).optional(),
+	avatar_url: z.union([z.string(), z.null()]).optional(),
 });
 
 
-export const QueryKeysBodyDto = t.Object({
-	device_keys: t.Record(t.String(), t.String(), {
-		description: 'Device keys to query'
-	}),
+export const QueryKeysBodyDto = z.object({
+	device_keys: z.record(z.string(), z.string())
+		.describe('Device keys to query'),
 });
 
-export const QueryKeysResponseDto = t.Object({
-	device_keys: t.Record(t.String(), t.Any(), {
-		description: 'Device keys for the requested users'
-	}),
+export const QueryKeysResponseDto = z.object({
+	device_keys: z.record(z.string(), z.any())
+		.describe('Device keys for the requested users'),
 });
 
-export const GetDevicesParamsDto = t.Object({
+export const GetDevicesParamsDto = z.object({
 	userId: UsernameDto,
 });
 
-export const GetDevicesResponseDto = t.Object({
+export const GetDevicesResponseDto = z.object({
 	user_id: UsernameDto,
-	stream_id: t.Number({ description: 'Device list stream ID' }),
-	devices: t.Array(
-		t.Object({
-			device_id: t.String({ description: 'Device ID' }),
-			display_name: t.Optional(t.String({ description: 'Device display name' })),
-			last_seen_ip: t.Optional(t.String({ description: 'Last seen IP address' })),
-			last_seen_ts: t.Optional(TimestampDto),
-		}),
-		{ description: 'List of devices for the user' }
-	),
+	stream_id: z.number().describe('Device list stream ID'),
+	devices: z.array(
+		z.object({
+			device_id: z.string().describe('Device ID'),
+			display_name: z.string().describe('Device display name').optional(),
+			last_seen_ip: z.string().describe('Last seen IP address').optional(),
+			last_seen_ts: TimestampDto.optional(),
+		})
+	).describe('List of devices for the user'),
 });
 
-export const MakeJoinParamsDto = t.Object({
+export const MakeJoinParamsDto = z.object({
 	roomId: RoomIdDto,
 	userId: UsernameDto,
 });
 
-export const MakeJoinQueryDto = t.Object({
-	ver: t.Optional(t.Array(t.String(), { description: 'Supported room versions' })),
+export const MakeJoinQueryDto = z.object({
+	ver: z.array(z.string()).describe('Supported room versions').optional(),
 });
 
-export const MakeJoinResponseDto = t.Object({
-	room_version: t.String({ description: 'Room version' }),
-	event: t.Object({
-		content: t.Object({
-			membership: t.Literal('join'),
-			join_authorised_via_users_server: t.Optional(t.String()),
+export const MakeJoinResponseDto = z.object({
+	room_version: z.string().describe('Room version'),
+	event: z.object({
+		content: z.object({
+			membership: z.literal('join'),
+			join_authorised_via_users_server: z.string().optional(),
 		}),
 		room_id: RoomIdDto,
 		sender: UsernameDto,
 		state_key: UsernameDto,
-		type: t.Literal('m.room.member'),
+		type: z.literal('m.room.member'),
 		origin_server_ts: TimestampDto,
 		origin: ServerNameDto,
-		depth: t.Optional(t.Number({ description: 'Depth of the event in the DAG' })),
-		prev_events: t.Optional(t.Array(t.String(), { description: 'Previous events in the room' })),
-		auth_events: t.Optional(t.Array(t.String(), { description: 'Authorization events' })),
-		hashes: t.Optional(t.Object({
-			sha256: t.String({ description: 'SHA256 hash of the event' }),
-		})),
-		signatures: t.Optional(t.Record(
-			t.String(),
-			t.Record(t.String(), t.String()),
-			{ description: 'Event signatures by server and key ID' }
-		)),
-		unsigned: t.Optional(t.Record(t.String(), t.Any(), { description: 'Unsigned data' })),
+		depth: z.number().describe('Depth of the event in the DAG').optional(),
+		prev_events: z.array(z.string()).describe('Previous events in the room').optional(),
+		auth_events: z.array(z.string()).describe('Authorization events').optional(),
+		hashes: z.object({
+			sha256: z.string().describe('SHA256 hash of the event'),
+		}).optional(),
+		signatures: z.record(
+			z.string(),
+			z.record(z.string(), z.string())
+		).describe('Event signatures by server and key ID').optional(),
+		unsigned: z.record(z.string(), z.any()).describe('Unsigned data').optional(),
 	}),
 });
 
-export const GetMissingEventsParamsDto = t.Object({
+export const GetMissingEventsParamsDto = z.object({
 	roomId: RoomIdDto,
 });
 
-export const GetMissingEventsBodyDto = t.Object({
-	earliest_events: t.Array(t.String(), { description: 'Earliest events' }),
-	latest_events: t.Array(t.String(), { description: 'Latest events' }),
-	limit: t.Number({ minimum: 1, maximum: 100, description: 'Maximum number of events to return' }),
+export const GetMissingEventsBodyDto = z.object({
+	earliest_events: z.array(z.string()).describe('Earliest events'),
+	latest_events: z.array(z.string()).describe('Latest events'),
+	limit: z.number().min(1).max(100).describe('Maximum number of events to return'),
 });
 
-export const GetMissingEventsResponseDto = t.Object({
-	events: t.Array(
-		t.Record(t.String(), t.Any()),
-		{ description: 'Missing events' }
-	),
+export const GetMissingEventsResponseDto = z.object({
+	events: z.array(
+		z.record(z.string(), z.any())
+	).describe('Missing events'),
 });
 
-export const EventAuthParamsDto = t.Object({
+export const EventAuthParamsDto = z.object({
 	roomId: RoomIdDto,
-	eventId: t.String({ description: 'Event ID' }),
+	eventId: z.string().describe('Event ID'),
 });
 
-export const EventAuthResponseDto = t.Object({
-	auth_chain: t.Array(
-		t.Record(t.String(), t.Any()),
-		{ description: 'Authorization chain for the event' }
-	),
+export const EventAuthResponseDto = z.object({
+	auth_chain: z.array(
+		z.record(z.string(), z.any())
+	).describe('Authorization chain for the event'),
 });
 
-export type QueryKeysBody = Static<typeof QueryKeysBodyDto>;
-export type QueryKeysResponse = Static<typeof QueryKeysResponseDto>;
-export type GetDevicesParams = Static<typeof GetDevicesParamsDto>;
-export type GetDevicesResponse = Static<typeof GetDevicesResponseDto>;
-export type QueryProfileResponse = Static<typeof QueryProfileResponseDto>;
-export type EventAuthResponse = Static<typeof EventAuthResponseDto>;
-export type EventAuthParams = Static<typeof EventAuthParamsDto>;
-export type GetMissingEventsResponse = Static<typeof GetMissingEventsResponseDto>;
-export type GetMissingEventsBody = Static<typeof GetMissingEventsBodyDto>;
-export type GetMissingEventsParams = Static<typeof GetMissingEventsParamsDto>;
-export type MakeJoinResponse = Static<typeof MakeJoinResponseDto>;
-export type MakeJoinQuery = Static<typeof MakeJoinQueryDto>;
-export type MakeJoinParams = Static<typeof MakeJoinParamsDto>;
-export type QueryProfileQuery = Static<typeof QueryProfileQueryDto>;
+export type QueryKeysBody = z.infer<typeof QueryKeysBodyDto>;
+export type QueryKeysResponse = z.infer<typeof QueryKeysResponseDto>;
+export type GetDevicesParams = z.infer<typeof GetDevicesParamsDto>;
+export type GetDevicesResponse = z.infer<typeof GetDevicesResponseDto>;
+export type QueryProfileResponse = z.infer<typeof QueryProfileResponseDto>;
+export type EventAuthResponse = z.infer<typeof EventAuthResponseDto>;
+export type EventAuthParams = z.infer<typeof EventAuthParamsDto>;
+export type GetMissingEventsResponse = z.infer<typeof GetMissingEventsResponseDto>;
+export type GetMissingEventsBody = z.infer<typeof GetMissingEventsBodyDto>;
+export type GetMissingEventsParams = z.infer<typeof GetMissingEventsParamsDto>;
+export type MakeJoinResponse = z.infer<typeof MakeJoinResponseDto>;
+export type MakeJoinQuery = z.infer<typeof MakeJoinQueryDto>;
+export type MakeJoinParams = z.infer<typeof MakeJoinParamsDto>;
+export type QueryProfileQuery = z.infer<typeof QueryProfileQueryDto>;
