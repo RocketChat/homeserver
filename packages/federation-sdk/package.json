@@ -9,12 +9,9 @@
 		"test": "bun test"
 	},
 	"dependencies": {
-		"@nestjs/common": "^11.1.1",
 		"@hs/core": "workspace:*",
 		"@hs/room": "workspace:*",
-		"@nestjs/core": "^11.1.1",
 		"reflect-metadata": "^0.2.2",
-		"rxjs": "^7.8.2",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3",
 		"zod": "^3.22.4"
