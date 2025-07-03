@@ -1,23 +1,20 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '@hs/core';
 import {
 	roomMemberEvent,
 	type AuthEvents as RoomMemberAuthEvents,
-} from '@hs/core/src/events/m.room.member';
-import {
-	roomNameEvent,
-	type RoomNameAuthEvents,
-} from '@hs/core/src/events/m.room.name';
+} from '@hs/core';
+import { roomNameEvent, type RoomNameAuthEvents } from '@hs/core';
 import {
 	isRoomPowerLevelsEvent,
 	roomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
-} from '@hs/core/src/events/m.room.power_levels';
+} from '@hs/core';
 import {
 	roomTombstoneEvent,
 	type RoomTombstoneEvent,
 	type TombstoneAuthEvents,
-} from '@hs/core/src/events/m.room.tombstone';
-import { createSignedEvent } from '@hs/core/src/events/utils/createSignedEvent';
+} from '@hs/core';
+import { createSignedEvent } from '@hs/core';
 import { FederationService } from './federation.service';
 import { inject, injectable } from 'tsyringe';
 import { generateId } from '@hs/core';

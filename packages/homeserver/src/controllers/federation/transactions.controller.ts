@@ -5,7 +5,7 @@ import {
 	SendTransactionBodyDto,
 	SendTransactionResponseDto,
 } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk/src/services/event.service';
+import { EventService } from '@hs/federation-sdk';
 
 export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);

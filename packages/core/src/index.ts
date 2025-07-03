@@ -61,6 +61,8 @@ export * from './events/pdu';
 
 export type { RoomMemberEvent, Membership } from './events/isRoomMemberEvent';
 
+export { isRoomMemberEvent } from './events/isRoomMemberEvent';
+
 // Event utilities
 export * from './events/utils/createSignedEvent';
 

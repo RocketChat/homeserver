@@ -1,4 +1,4 @@
-import { isRoomMemberEvent } from '@hs/core/src/events/isRoomMemberEvent';
+import { isRoomMemberEvent } from '@hs/core';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
