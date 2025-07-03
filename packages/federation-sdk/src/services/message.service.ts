@@ -2,12 +2,12 @@ import {
 	reactionEvent,
 	type ReactionAuthEvents,
 	type ReactionEvent,
-} from '@hs/core/src/events/m.reaction';
+} from '@hs/core';
 import {
 	roomMessageEvent,
 	type MessageAuthEvents,
 	type RoomMessageEvent,
-} from '@hs/core/src/events/m.room.message';
+} from '@hs/core';
 import { type SignedEvent } from '@hs/core';
 
 import { inject } from 'tsyringe';
@@ -17,7 +17,7 @@ import {
 	type RedactionAuthEvents,
 	redactionEvent,
 	type RedactionEvent,
-} from '@hs/core/src/events/m.room.redaction';
+} from '@hs/core';
 import { FederationService } from './federation.service';
 import { injectable } from 'tsyringe';
 import { createLogger } from '@hs/core';

@@ -34,8 +34,8 @@ import {
 
 import { PersistentEventFactory } from '@hs/room';
 import type { PduCreateEventContent } from '@hs/room';
-import { RoomService } from '@hs/federation-sdk/src/services/room.service';
-import { StateService } from '@hs/federation-sdk/src/services/state.service';
+import { RoomService } from '@hs/federation-sdk';
+import { StateService } from '@hs/federation-sdk';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
