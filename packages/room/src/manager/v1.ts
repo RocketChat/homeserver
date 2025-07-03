@@ -1,10 +1,12 @@
 import {
+	PduType,
 	PduTypeRoomAliases,
 	PduTypeRoomCreate,
 	PduTypeRoomHistoryVisibility,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
+	PduV1,
 } from '../types/v1';
 import {
 	type EventStore,
@@ -16,11 +18,13 @@ import type { RoomVersion1And2 } from './type';
 export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 	async getAuthorizationEvents(
 		store: EventStore,
-	): Promise<PersistentEventBase[]> {
+	): Promise<PersistentEventBase<RoomVersion1And2>[]> {
 		const authEventIds: string[] = [];
 		const authEventHashes: string[] = [];
 
-		for (const id of this.rawEvent.auth_events) {
+		const event = this.rawEvent as PduV1;
+
+		for (const id of event.auth_events) {
 			if (typeof id === 'string') {
 				authEventIds.push(id);
 			} else {
@@ -28,17 +32,22 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 			}
 		}
 
+		// @ts-ignore fix EventStore typings
 		return Promise.all([
 			await store.getEvents(authEventIds),
 			await store.getEventsByHashes(authEventHashes),
 		]).then(([eventsById, eventsByHash]) => eventsById.concat(eventsByHash));
 	}
 
-	async getPreviousEvents(store: EventStore): Promise<PersistentEventBase[]> {
+	async getPreviousEvents(
+		store: EventStore,
+	): Promise<PersistentEventBase<RoomVersion1And2>[]> {
 		const prevEventIds: string[] = [];
 		const prevEventHashes: string[] = [];
 
-		for (const id of this.rawEvent.prev_events) {
+		const event = this.rawEvent as PduV1;
+
+		for (const id of event.prev_events) {
 			if (typeof id === 'string') {
 				prevEventIds.push(id);
 			} else {
@@ -46,6 +55,7 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 			}
 		}
 
+		// @ts-ignore fix EventStore typings
 		return Promise.all([
 			await store.getEvents(prevEventIds),
 			await store.getEventsByHashes(prevEventHashes),
@@ -55,20 +65,11 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 	// SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-ids
 	// $opaque_id:domain
 	// where domain is the server name of the homeserver which created the room, and opaque_id is a locally-unique string.
-	get eventId(): string {
-		return this.rawEvent.event_id!; //TODO: fix this
+	get eventId() {
+		return this.rawEvent.event_id;
 	}
 
-	// v1 has all as strings
-	transformPowerLevelEventData(data: string): number {
-		// TODO: fix test acrtual;ly
-		if (typeof data === 'number') {
-			return data;
-		}
-		return Number.parseInt(data.trim(), 10);
-	}
-
-	getAllowedKeys(): string[] {
+	getAllowedKeys() {
 		return [
 			'event_id',
 			'type',
