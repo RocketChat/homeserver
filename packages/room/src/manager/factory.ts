@@ -47,22 +47,22 @@ export class PersistentEventFactory {
 		switch (roomVersion) {
 			case '1':
 			case '2':
-				return new PersistentEventV1(event as any, true);
+				return new PersistentEventV1(event as any, false);
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event as any, true);
+				return new PersistentEventV3(event as any, false);
 			case '6':
 			case '7':
-				return new PersistentEventV6(event as any, true);
+				return new PersistentEventV6(event as any, false);
 			case '8':
-				return new PersistentEventV8(event as any, true);
+				return new PersistentEventV8(event as any, false);
 			case '9':
-				return new PersistentEventV9(event as any, true);
+				return new PersistentEventV9(event as any, false);
 			case '10':
-				return new PersistentEventV10(event as any, true);
+				return new PersistentEventV10(event as any, false);
 			case '11':
-				return new PersistentEventV11(event as any, true);
+				return new PersistentEventV11(event as any, false);
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
