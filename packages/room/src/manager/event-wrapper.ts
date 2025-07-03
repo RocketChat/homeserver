@@ -117,7 +117,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		return {
 			...this.rawEvent,
 			signatures: this.signatures,
-			unsigned: {},
+			unsigned: this.rawEvent.unsigned ?? {},
 		};
 	}
 

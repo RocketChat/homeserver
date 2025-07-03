@@ -16,7 +16,7 @@ import type { PduV3 } from '../types/v3';
 import { PersistentEventV1 } from './v1';
 import { PersistentEventV3 } from './v3';
 
-import type { RoomVersion } from './type';
+import type { PduVersionForRoomVersion, RoomVersion } from './type';
 import type { PersistentEventBase } from './event-wrapper';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
@@ -53,8 +53,11 @@ export class PersistentEventFactory {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
-	static createFromRawEvent(
-		rawEvent: PduV1 | PduV3,
+	static createFromRawEvent<T extends RoomVersion>(
+		rawEvent: Omit<PduVersionForRoomVersion<T>, 'signatures' | 'hashes'> & {
+			signatures?: PduVersionForRoomVersion<T>['signatures'];
+			hashes?: PduVersionForRoomVersion<T>['hashes'];
+		},
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
 		if (roomVersion === '1' || roomVersion === '2') {
@@ -94,7 +97,6 @@ export class PersistentEventFactory {
 		const createContent: PduCreateEventContent = {
 			room_version: roomVersion,
 			creator,
-			'm.federate': true,
 		};
 
 		const domain = creator.split(':').pop();
