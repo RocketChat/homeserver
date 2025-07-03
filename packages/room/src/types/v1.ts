@@ -162,8 +162,7 @@ export const PduCreateEventContentSchema = z.object({
 		.describe(
 			' Whether users on other servers can join this room. Defaults to true if key does not exist.',
 		)
-		.optional()
-		.default(true),
+		.optional(),
 	predecessor: z
 		.object({
 			event_id: z
