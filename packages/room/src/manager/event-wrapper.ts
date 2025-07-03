@@ -9,34 +9,44 @@ import {
 	type PduV1,
 	type PduMembershipEventContent,
 	type PduJoinRuleEventContent,
+	Signature,
+	PduV1Content,
+	PduType,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
 import crypto from 'node:crypto';
-import { type PduV10 } from '../types/v10';
 import {
 	getStateMapKey,
 	type EventStore,
 } from '../state_resolution/definitions/definitions';
-import type {
-	RoomVersion,
-	PduVersionForRoomVersionWithOnlyRequiredFields,
-} from './type';
 import { PowerLevelEvent } from './power-level-event-wrapper';
+import { PduVersionForRoomVersion, RoomVersion } from './type';
 
 function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
+type AnyPdu = PduV1 | PduV3;
+
+type AnyPduBareMinimum<T extends AnyPdu> = Omit<T, 'hashes' | 'signatures'> & {
+	// TODO: decide on whether v1 needs to be in code or not, this helps a lot with typing
+	auth_events: string[];
+	prev_events: string[];
+	// ----
+	hashes?: T['hashes'];
+	signatures?: T['signatures'];
+};
+
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
-export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
+export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 	private _rejectedReason?: string;
 
-	private signatures: PduV10['signatures'] = {};
+	private signatures: Signature = {};
 
 	constructor(
-		protected rawEvent: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+		protected rawEvent: AnyPduBareMinimum<PduVersionForRoomVersion<T>>,
 		freeze = false,
 	) {
 		if (freeze) {
@@ -52,6 +62,14 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	// once we have accessed the id of an event, the redacted event MUST NOT CHANGE
 	// while it is allowed to change keys that are not part of the redaction algorithm, we will still freeze the full event for now.
 	protected freezeEvent() {
+		// 1. signatures are out of this (see event getter) so ok to freeze
+		// 2. if everything is frozen, freezing the content hash also makes sense, but build it first
+		if (!this.rawEvent.hashes) {
+			this.rawEvent.hashes = {
+				sha256: toUnpaddedBase64(this.getContentHash()),
+			};
+		}
+
 		Object.freeze(this.rawEvent);
 	}
 
@@ -90,47 +108,28 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return this.rawEvent.origin_server_ts;
 	}
 
+	// if we are accessing the inner event, the event itself should be frozen immediately to not change the reference hash any longer, affecting the id
+	// if anywhere the code still tries to, we will throw an error, which is why "lock" isn't just a flag in the class.
 	get event() {
-		// don't change hash for now to not influence reference hash change
-		// TODO: this doesn't sound right, but trying to be synapse compatible.
-		if (this.rawEvent.hashes?.sha256) {
-			// freeze any change to this event to lock in the reference hash
-			this.freezeEvent();
-
-			return {
-				...this.rawEvent,
-				signatures: this.signatures,
-				unsigned: {},
-			};
-		}
-
-		this.rawEvent = {
-			...this.rawEvent,
-			hashes: {
-				sha256: this.getContentHashString(),
-			},
-			signatures: this.signatures,
-			unsigned: {}, // TODO better handling of this heh
-		};
-
-		// content hash has been calculated, so we can freeze the event
+		// freeze any change to this event to lock in the reference hash
 		this.freezeEvent();
 
-		return this.rawEvent;
+		return {
+			...this.rawEvent,
+			signatures: this.signatures,
+			unsigned: {},
+		};
 	}
 
 	get depth() {
 		return this.rawEvent.depth;
 	}
 
+	// v1 should have this already, others, generates it
 	abstract get eventId(): string;
 
-	getContent<T extends (PduV1 | PduV3 | PduV10)['content']>(): T {
+	getContent<T extends (PduV1 | PduV3)['content']>(): T {
 		return this.rawEvent.content as T;
-	}
-
-	setContent<T extends (PduV1 | PduV3 | PduV10)['content']>(content: T) {
-		this.rawEvent.content = content;
 	}
 
 	toPowerLevelEvent() {
@@ -144,11 +143,11 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 	// room version dependent
 	abstract getAuthorizationEvents(
 		store: EventStore,
-	): Promise<PersistentEventBase[]>;
+	): Promise<PersistentEventBase<T>[]>;
 
-	abstract getPreviousEvents(store: EventStore): Promise<PersistentEventBase[]>;
-
-	abstract transformPowerLevelEventData(data: string | number): number;
+	abstract getPreviousEvents(
+		store: EventStore,
+	): Promise<PersistentEventBase<T>[]>;
 
 	isState() {
 		// spec wise this is the right way to check if an event is a state event
@@ -187,42 +186,47 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return `${this.type}:${this.stateKey || ''}`;
 	}
 
+	// for redaction algorithm
 	abstract getAllowedKeys(): string[];
 
 	abstract getAllowedContentKeys(): Record<
-		string,
+		PduType,
 		string[] | typeof REDACT_ALLOW_ALL_KEYS
 	>;
 
 	private _getRedactedEvent(
-		event: PduVersionForRoomVersionWithOnlyRequiredFields<T>,
+		event: AnyPduBareMinimum<PduVersionForRoomVersion<T>>,
 	) {
-		// it is expected to have everything in this event ready by this point
-		const topLevelAllowedKeysExceptContent = this.getAllowedKeys();
+		type KeysExceptContent = Exclude<keyof AnyPdu, 'content'>;
 
-		const dict = {
-			content: {},
-		} as typeof event;
+		// it is expected to have everything in this event ready by this point
+		const topLevelAllowedKeysExceptContent =
+			this.getAllowedKeys() as KeysExceptContent[];
+
+		const dict = {} as Record<KeysExceptContent, AnyPdu[KeysExceptContent]>;
 
 		for (const key of topLevelAllowedKeysExceptContent) {
 			if (key in event) {
-				// @ts-ignore TODO:
 				dict[key] = event[key];
 			}
 		}
 
-		const content = this.getContent();
+		const currentContent = this.getContent();
+
+		let newContent = {} as Partial<PduV1Content>;
 
 		// m.room.member allows keys membership, join_authorised_via_users_server. Additionally, it allows the signed key of the third_party_invite key.
-		const allowedContentKeys = this.getAllowedContentKeys()[this.type];
+		const allowedContentKeys = this.getAllowedContentKeys()[this.type] as
+			| (keyof PduV1Content)[]
+			| typeof REDACT_ALLOW_ALL_KEYS;
+
 		if (allowedContentKeys) {
 			if (allowedContentKeys === REDACT_ALLOW_ALL_KEYS) {
-				dict.content = content;
+				newContent = currentContent;
 			} else {
 				for (const key of allowedContentKeys) {
-					if (key in content) {
-						// @ts-ignore TODO: better typing obviously
-						dict.content[key] = content[key];
+					if (key in currentContent) {
+						newContent[key] = currentContent[key];
 					}
 				}
 			}
@@ -233,11 +237,9 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		// this is not in spec
 		if (event.unsigned) {
 			if ('age_ts' in event.unsigned) {
-				// @ts-ignore TODO:
 				dict.unsigned.age_ts = event.unsigned.age_ts;
 			}
 			if ('replaces_state' in event.unsigned) {
-				// @ts-ignore TODO:
 				dict.unsigned.replaces_state = event.unsigned.replaces_state;
 			}
 		}
@@ -247,7 +249,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 			dict.signatures = {};
 		}
 
-		return dict;
+		return {
+			...dict,
+			content: newContent,
+		};
 	}
 
 	// for tests
@@ -359,12 +364,12 @@ export abstract class PersistentEventBase<T extends RoomVersion = RoomVersion> {
 		return this._rejectedReason;
 	}
 
-	addPreviousEvent(event: PersistentEventBase) {
+	addPreviousEvent(event: PersistentEventBase<T>) {
 		this.rawEvent.prev_events.push(event.eventId);
 		return this;
 	}
 
-	authedBy(event: PersistentEventBase) {
+	authedBy(event: PersistentEventBase<T>) {
 		this.rawEvent.auth_events.push(event.eventId);
 		return this;
 	}

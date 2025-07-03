@@ -3,7 +3,11 @@ import { PersistentEventFactory } from './factory';
 import { it, describe, expect } from 'bun:test';
 import type { RoomVersion } from './type';
 
-function runTest(event: any, expected: any, roomVersion: RoomVersion = '10') {
+function runTest(
+	event: Parameters<typeof PersistentEventFactory.createFromRawEvent>[0],
+	expected: any,
+	roomVersion: RoomVersion = '10',
+) {
 	expect(
 		PersistentEventFactory.createFromRawEvent(event, roomVersion as RoomVersion)
 			.redactedRawEvent,
@@ -14,6 +18,7 @@ describe('[EventWrapper] Redaction', () => {
 	it('minimal', () => {
 		runTest(
 			{
+				// @ts-expect-error our types are production types
 				type: 'A',
 				event_id: '$test:domain',
 			},
@@ -65,6 +70,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error our types are production types
 		runTest(a, b);
 
 		const a2 = {
@@ -74,6 +80,7 @@ describe('[EventWrapper] Redaction', () => {
 			origin: 'example.com',
 		};
 		const b2 = { type: 'A', content: {}, signatures: {}, unsigned: {} };
+		// @ts-expect-error our types are production types
 		runTest(a2, b2, '11');
 	});
 
@@ -95,6 +102,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: { age_ts: 20, replaces_state: '$test2:domain' },
 		};
 
+		// @ts-expect-error our types are production types
 		runTest(a, b);
 	});
 
@@ -112,6 +120,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error our types are production types
 		runTest(a, b);
 
 		const eventsToKeepContentKeys = [
@@ -151,6 +160,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error other_key  IS invalid and should be stripped
 		runTest(a, b);
 
 		const a2 = {
@@ -166,11 +176,12 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error not_a_real_key IS invalid but point is to test redaction
 		runTest(a2, b2, '11');
 	});
 
 	it('power levels, Power level events keep a variety of content keys.', () => {
-		const a = {
+		const a: Parameters<typeof runTest>[0] = {
 			type: 'm.room.power_levels',
 			event_id: '$test:domain',
 			content: {
@@ -183,6 +194,7 @@ describe('[EventWrapper] Redaction', () => {
 				state_default: 6,
 				users: { '@admin:domain': 100 },
 				users_default: 7,
+				// @ts-expect-error other_key IS invalid and should be stripped
 				other_key: 8,
 			},
 		};
@@ -216,6 +228,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error
 		runTest(a2, b2, '11');
 	});
 
@@ -233,6 +246,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a, b, '5' /* < 6 */);
 
 		const a2 = { type: 'm.room.aliases', content: { aliases: ['test'] } };
@@ -243,6 +257,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a2, b2, '6');
 	});
 
@@ -259,6 +274,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a, b, '6');
 
 		const a2 = {
@@ -273,6 +289,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a2, b2, '11');
 	});
 
@@ -294,8 +311,10 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a, b, '7');
 
+		// @ts-expect-error just redactions
 		runTest(a, { ...b, content: { join_rule: 'invite', allow: [] } }, '8');
 	});
 
@@ -316,6 +335,7 @@ describe('[EventWrapper] Redaction', () => {
 			signatures: {},
 			unsigned: {},
 		};
+		// @ts-expect-error just redactions
 		runTest(a, b, '1');
 		const a2 = {
 			type: 'm.room.member',
@@ -335,6 +355,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a2, b2, '9');
 		// TODO 3pid invite
 	});
@@ -358,6 +379,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
+		// @ts-expect-error just redactions
 		runTest(a, b, '10');
 
 		// rest of the tests not yet part of normal standard
