@@ -1,3 +1,4 @@
+import type { Membership } from '@hs/core';
 import { container } from 'tsyringe';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
@@ -5,7 +6,6 @@ import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { WellKnownService } from './services/well-known.service';
-import type { Membership } from '@hs/core';
 
 export { FederationEndpoints } from './specs/federation-api';
 export type {
@@ -140,3 +140,5 @@ export function getAllServices(): HomeserverServices {
 		profile: container.resolve(ProfilesService),
 	};
 }
+
+export { StagingAreaListener } from './listeners/staging-area.listener';

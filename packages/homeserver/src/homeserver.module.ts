@@ -34,6 +34,7 @@ import { StateService } from '@hs/federation-sdk';
 import { StagingAreaService } from '@hs/federation-sdk';
 import { WellKnownService } from '@hs/federation-sdk';
 import { LockManagerService } from '@hs/federation-sdk';
+import { StagingAreaListener } from '@hs/federation-sdk';
 import { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
 import { container } from 'tsyringe';
@@ -49,7 +50,6 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { StagingAreaListener } from './listeners/staging-area.listener';
 
 import { MissingEventsQueue } from '@hs/federation-sdk';
 import { StagingAreaQueue } from '@hs/federation-sdk';
