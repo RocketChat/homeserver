@@ -4,12 +4,19 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"dev": "bun run --watch src/index.ts",
-		"build": "tsc"
+		"build": "tsc --build --force"
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		}
 	},
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"files": ["src", "dist"],
-	"main": "src/index.ts",
-	"types": "src/index.ts"
+	"files": ["src", "dist"]
 }

@@ -1,0 +1,51 @@
+{
+	"compilerOptions": {
+		"incremental": true,
+		// Enable latest features
+		"lib": ["ESNext", "DOM"],
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleDetection": "force",
+		"allowJs": true,
+		"composite": true,
+
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"verbatimModuleSyntax": true,
+
+		// Best practices
+		"strict": true,
+		"skipLibCheck": true,
+		"noFallthroughCasesInSwitch": true,
+		"forceConsistentCasingInFileNames": true,
+
+		// Some stricter flags (disabled by default)
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false,
+
+		// For NestJS
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"allowSyntheticDefaultImports": true,
+
+		// Build output
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
+		"esModuleInterop": true,
+		"allowImportingTsExtensions": false,
+		"tsBuildInfoFile": ".tsbuildinfo",
+
+		// Monorepo configuration
+		"baseUrl": ".",
+		"paths": {
+			"@hs/core/*": ["packages/core/src/*"],
+			"@hs/crypto/*": ["packages/crypto/src/*"],
+			"@hs/federation-sdk/*": ["packages/federation-sdk/src/*"],
+			"@hs/homeserver/*": ["packages/homeserver/src/*"],
+			"@hs/room/*": ["packages/room/src/*"]
+		}
+	},
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+}

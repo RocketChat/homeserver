@@ -2,39 +2,41 @@ import 'reflect-metadata';
 
 import {
 	ConfigService,
+	DatabaseConnectionService,
+	EventAuthorizationService,
+	EventEmitterService,
+	EventFetcherService,
 	EventRepository,
+	EventService,
+	EventStateService,
 	type FederationModuleOptions,
 	FederationRequestService,
 	FederationService,
 	type HomeserverEventSignatures,
+	InviteService,
 	KeyRepository,
+	LockManagerService,
+	MessageService,
+	MissingEventListener,
+	MissingEventService,
+	MissingEventsQueue,
+	NotificationService,
+	ProfilesService,
 	RoomRepository,
+	RoomService,
 	ServerRepository,
+	ServerService,
+	StagingAreaListener,
+	StagingAreaQueue,
+	StagingAreaService,
 	StateEventRepository,
 	StateRepository,
+	StateService,
+	WellKnownService,
 } from '@hs/federation-sdk';
 
 import { swagger } from '@elysiajs/swagger';
 import { toUnpaddedBase64 } from '@hs/core';
-import { MissingEventListener } from '@hs/federation-sdk';
-import { DatabaseConnectionService } from '@hs/federation-sdk';
-import { EventAuthorizationService } from '@hs/federation-sdk';
-import { EventFetcherService } from '@hs/federation-sdk';
-import { EventStateService } from '@hs/federation-sdk';
-import { EventService } from '@hs/federation-sdk';
-import { EventEmitterService } from '@hs/federation-sdk';
-import { InviteService } from '@hs/federation-sdk';
-import { MessageService } from '@hs/federation-sdk';
-import { MissingEventService } from '@hs/federation-sdk';
-import { NotificationService } from '@hs/federation-sdk';
-import { ProfilesService } from '@hs/federation-sdk';
-import { RoomService } from '@hs/federation-sdk';
-import { ServerService } from '@hs/federation-sdk';
-import { StateService } from '@hs/federation-sdk';
-import { StagingAreaService } from '@hs/federation-sdk';
-import { WellKnownService } from '@hs/federation-sdk';
-import { LockManagerService } from '@hs/federation-sdk';
-import { StagingAreaListener } from '@hs/federation-sdk';
 import { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
 import { container } from 'tsyringe';
@@ -50,9 +52,6 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-
-import { MissingEventsQueue } from '@hs/federation-sdk';
-import { StagingAreaQueue } from '@hs/federation-sdk';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {

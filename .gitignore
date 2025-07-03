@@ -178,6 +178,7 @@ dist
 
 /.vscode/settings.json
 
+.tsbuildinfo
 
 .turbo
 dist
