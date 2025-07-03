@@ -7,9 +7,9 @@ import {
 	PduTypeRoomRedaction,
 } from '../types/v1';
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
-import { PersistentEventV10 } from './v10';
+import { PersistentEventV9 } from './v9';
 
-export class PersistentEventV11 extends PersistentEventV10 {
+export class PersistentEventV11 extends PersistentEventV9 {
 	getAllowedKeys(): string[] {
 		return [
 			'event_id',
