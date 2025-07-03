@@ -1,9 +1,9 @@
-import { expect, it, describe, beforeEach, afterEach } from 'bun:test';
-import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import nacl from 'tweetnacl';
-import { generateKeyPairs } from '../utils/keys';
 import { EncryptionValidAlgorithm } from '../types';
+import { generateKeyPairs } from '../utils/keys';
 import { encodeCanonicalJson } from '../utils/signJson';
+import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
 
 describe('getPublicKeyFromRemoteServer', () => {
 	let originalFetch: typeof globalThis.fetch;

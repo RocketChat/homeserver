@@ -3,7 +3,7 @@ import type { PduV1 } from '../types/v1';
 import { PersistentEventBase } from './event-wrapper';
 import { PersistentEventFactory } from './factory';
 
-import { it, describe, expect, afterEach } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
 
 class MockStore implements EventStore {
 	events: Map<string, PersistentEventBase> = new Map();

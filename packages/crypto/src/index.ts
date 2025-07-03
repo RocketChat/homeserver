@@ -1,16 +1,18 @@
-import nacl from "tweetnacl";
+import nacl from 'tweetnacl';
 
-import crypto from "node:crypto";
-
+import crypto from 'node:crypto';
 
 export function computeHash<T extends Record<string, unknown>>(
 	content: T,
-	algorithm: "sha256" = "sha256",
-): ["sha256", string] {
+	algorithm: 'sha256' = 'sha256',
+): ['sha256', string] {
 	return [
 		algorithm,
 		toUnpaddedBase64(
-			crypto.createHash(algorithm).update(encodeCanonicalJson(content)).digest(),
+			crypto
+				.createHash(algorithm)
+				.update(encodeCanonicalJson(content))
+				.digest(),
 		),
 	];
 }
@@ -18,7 +20,7 @@ export function computeHash<T extends Record<string, unknown>>(
 export function toBinaryData(
 	value: string | Uint8Array | ArrayBuffer | ArrayBufferView,
 ): Uint8Array {
-	if (typeof value === "string") {
+	if (typeof value === 'string') {
 		return new TextEncoder().encode(value);
 	}
 
@@ -36,7 +38,7 @@ export function toBinaryData(
 export function fromBinaryData(
 	value: string | Uint8Array | ArrayBuffer,
 ): string {
-	if (typeof value === "string") {
+	if (typeof value === 'string') {
 		return value;
 	}
 
@@ -49,36 +51,36 @@ export function toUnpaddedBase64(
 		urlSafe?: boolean;
 	} = { urlSafe: false },
 ): string {
-	const hash = btoa(String.fromCharCode(...value)).replace(/=+$/, "");
+	const hash = btoa(String.fromCharCode(...value)).replace(/=+$/, '');
 
 	if (!options.urlSafe) return hash;
 
-	return hash.replace(/\+/g, "-").replace(/\//g, "_");
+	return hash.replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 export enum EncryptionValidAlgorithm {
-	ed25519 = "ed25519",
+	ed25519 = 'ed25519',
 }
 
 type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
 export function getKeyPairFromSeed(seed: string) {
-	return nacl.sign.keyPair.fromSeed(Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)));
+	return nacl.sign.keyPair.fromSeed(
+		Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
+	);
 }
 
 // returns the signature as a string
-export async function signJson<
-	T extends object
->(
+export async function signJson<T extends object>(
 	jsonObject: T,
 	seed: string,
 ): Promise<string> {
 	const data = encodeCanonicalJson(jsonObject);
-	
+
 	const { secretKey } = getKeyPairFromSeed(seed);
 
 	const signed = await nacl.sign.detached(toBinaryData(data), secretKey);
-	
+
 	return toUnpaddedBase64(signed);
 }
 
@@ -89,7 +91,7 @@ export const isValidAlgorithm = (
 };
 
 export function encodeCanonicalJson(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
 		return JSON.stringify(value);
 	}
@@ -97,7 +99,7 @@ export function encodeCanonicalJson(value: unknown): string {
 	if (Array.isArray(value)) {
 		// Handle arrays recursively
 		const serializedArray = value.map(encodeCanonicalJson);
-		return `[${serializedArray.join(",")}]`;
+		return `[${serializedArray.join(',')}]`;
 	}
 
 	// Handle objects: sort keys lexicographically
@@ -106,7 +108,7 @@ export function encodeCanonicalJson(value: unknown): string {
 		(key) =>
 			`"${key}":${encodeCanonicalJson((value as Record<string, unknown>)[key])}`,
 	);
-	return `{${serializedEntries.join(",")}}`;
+	return `{${serializedEntries.join(',')}}`;
 }
 
 // Checking for a Signature
@@ -132,7 +134,7 @@ export async function getSignaturesFromRemote<
 		signatures?.[signingName] &&
 		Object.entries(signatures[signingName])
 			.map(([keyId, signature]) => {
-				const [algorithm, version] = keyId.split(":");
+				const [algorithm, version] = keyId.split(':');
 				if (!isValidAlgorithm(algorithm)) {
 					throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
 				}
@@ -162,10 +164,9 @@ export const verifySignature = (
 		algorithm,
 		signingName,
 	}: {
-		
-	algorithm: EncryptionValidAlgorithm,
-	signingName: string,
-	}
+		algorithm: EncryptionValidAlgorithm;
+		signingName: string;
+	},
 ) => {
 	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
 		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);

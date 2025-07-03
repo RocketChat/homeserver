@@ -1,4 +1,4 @@
-import { createEventBase, type EventBase } from './eventBase';
+import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
 declare module './eventBase' {
@@ -9,7 +9,7 @@ declare module './eventBase' {
 
 export interface RoomGuestAccessEvent extends EventBase {
 	content: {
-		guest_access: "can_join" | 'forbidden';
+		guest_access: 'can_join' | 'forbidden';
 	};
 	unsigned?: Record<string, unknown>;
 }

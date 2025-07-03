@@ -1,13 +1,13 @@
 import 'reflect-metadata';
-import { describe, expect, it, beforeAll, afterAll, spyOn } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
+import type { EventBase } from '../events/eventBase';
+import { EncryptionValidAlgorithm } from '../types';
+import * as authentication from '../utils/authentication';
+import type { HashedEvent } from './authentication';
 import { checkSignAndHashes } from './checkSignAndHashes';
 import { MatrixError } from './errors';
-import { EncryptionValidAlgorithm } from '../types';
 import * as signJson from './signJson';
 import type { SignedJson } from './signJson';
-import * as authentication from '../utils/authentication';
-import type { EventBase } from '../events/eventBase';
-import type { HashedEvent } from './authentication';
 
 describe('checkSignAndHashes', () => {
 	const originalAtob = globalThis.atob;

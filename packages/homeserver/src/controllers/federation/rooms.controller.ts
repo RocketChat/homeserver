@@ -1,5 +1,5 @@
-import { Elysia, t } from 'elysia';
 import { StateService } from '@hs/federation-sdk';
+import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
 export const roomPlugin = (app: Elysia) => {

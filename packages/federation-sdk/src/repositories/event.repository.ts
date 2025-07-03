@@ -1,9 +1,9 @@
-import { injectable } from 'tsyringe';
-import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { MongoError } from 'mongodb';
+import { injectable } from 'tsyringe';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 @injectable()
 export class EventRepository {

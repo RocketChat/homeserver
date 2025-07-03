@@ -1,7 +1,7 @@
 import { createLogger } from '@hs/core';
-import { MongoClient, type MongoClientOptions, Db } from 'mongodb';
-import { ConfigService } from './config.service';
+import { Db, MongoClient, type MongoClientOptions } from 'mongodb';
 import { injectable } from 'tsyringe';
+import { ConfigService } from './config.service';
 
 @injectable()
 export class DatabaseConnectionService {

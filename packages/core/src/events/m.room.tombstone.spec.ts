@@ -2,12 +2,12 @@ import { describe, expect, test } from 'bun:test';
 import { generateId } from '@hs/core';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
+import type { EventBase } from './eventBase';
 import {
 	createRoomTombstoneEvent,
 	isRoomTombstoneEvent,
 	roomTombstoneEvent,
 } from './m.room.tombstone';
-import type { EventBase } from './eventBase';
 
 describe('m.room.tombstone', () => {
 	const roomId = '!someroom:example.com';

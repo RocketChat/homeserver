@@ -1,9 +1,9 @@
+import type { SigningKey } from '../types';
 // import { resolveHostAddressByServerName } from '@hs/homeserver';
 import { extractURIfromURL } from '../url';
-import type { SigningKey } from '../types';
-import { signJson } from './signJson';
 import { authorizationHeaders, computeAndMergeHash } from './authentication';
 import { logger } from './logger';
+import { signJson } from './signJson';
 
 // Temporary function to resolve host address
 const resolveHostAddressByServerName = async (

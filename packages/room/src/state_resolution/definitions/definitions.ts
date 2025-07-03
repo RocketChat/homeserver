@@ -1,11 +1,11 @@
 import { PriorityQueue } from '@datastructures-js/priority-queue';
 import type { EventID, State, StateMapKey } from '../../types/_common';
 import {
+	type PduType,
+	PduTypeRoomCreate,
+	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-	PduTypeRoomJoinRules,
-	PduTypeRoomCreate,
-	type PduType,
 } from '../../types/v1';
 
 import assert from 'node:assert';
@@ -13,9 +13,9 @@ import {
 	checkEventAuthWithState,
 	getPowerLevelForUser,
 } from '../../authorizartion-rules/rules';
-import type { PduV3 } from '../../types/v3';
 import type { PersistentEventBase } from '../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../manager/power-level-event-wrapper';
+import type { PduV3 } from '../../types/v3';
 
 export function getStateMapKey(event: {
 	type: PduType;

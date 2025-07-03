@@ -1,21 +1,21 @@
+import { type StateMapKey } from '../../../types/_common';
 import {
 	PduTypeRoomCreate,
-	PduTypeRoomMember,
 	PduTypeRoomJoinRules,
+	PduTypeRoomMember,
 	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomTopic,
 } from '../../../types/v1';
 import {
+	type EventStore,
 	_kahnsOrder,
 	getAuthChainDifference,
-	type EventStore,
 } from '../definitions';
-import { type StateMapKey } from '../../../types/_common';
 
 import { resolveStateV2Plus } from './v2';
 
-import { it, describe, expect, afterEach } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
 import type { PersistentEventBase } from '../../../manager/event-wrapper';
 import { PersistentEventFactory } from '../../../manager/factory';
 

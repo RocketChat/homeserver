@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import nacl from 'tweetnacl';
-import { encodeCanonicalJson, signJson } from './signJson';
-import { toUnpaddedBase64 } from './binaryData';
 import { type SigningKey } from '../types';
+import { toUnpaddedBase64 } from './binaryData';
+import { encodeCanonicalJson, signJson } from './signJson';
 
 /**
  * Extracts the origin, destination, key, and signature from the authorization header.

@@ -1,5 +1,5 @@
-import { type Static, t } from 'elysia';
 import { RoomIdDto, UsernameDto } from '@hs/federation-sdk';
+import { type Static, t } from 'elysia';
 
 export const InternalInviteUserBodyDto = t.Object({
 	username: t.String({

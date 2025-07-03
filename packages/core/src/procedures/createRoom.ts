@@ -1,27 +1,27 @@
-import {
-	createRoomCreateEvent,
-	type RoomCreateEvent,
-} from '../events/m.room.create';
-import {
-	createRoomGuestAccessEvent,
-	type RoomGuestAccessEvent,
-} from '../events/m.room.guest_access';
-import {
-	createRoomHistoryVisibilityEvent,
-	type RoomHistoryVisibilityEvent,
-} from '../events/m.room.history_visibility';
-import {
-	createRoomJoinRulesEvent,
-	type RoomJoinRulesEvent,
-} from '../events/m.room.join_rules';
 import type { RoomMemberEvent } from '../events/isRoomMemberEvent';
 import {
-	createRoomPowerLevelsEvent,
+	type RoomCreateEvent,
+	createRoomCreateEvent,
+} from '../events/m.room.create';
+import {
+	type RoomGuestAccessEvent,
+	createRoomGuestAccessEvent,
+} from '../events/m.room.guest_access';
+import {
+	type RoomHistoryVisibilityEvent,
+	createRoomHistoryVisibilityEvent,
+} from '../events/m.room.history_visibility';
+import {
+	type RoomJoinRulesEvent,
+	createRoomJoinRulesEvent,
+} from '../events/m.room.join_rules';
+import { createRoomMemberEvent } from '../events/m.room.member';
+import {
 	type RoomPowerLevelsEvent,
+	createRoomPowerLevelsEvent,
 } from '../events/m.room.power_levels';
 import type { createSignedEvent } from '../events/utils/createSignedEvent';
 import type { SignedEvent } from '../types';
-import { createRoomMemberEvent } from '../events/m.room.member';
 
 export type IdAndEvent<T> = {
 	event: T;

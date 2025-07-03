@@ -58,21 +58,21 @@
 // i am too early in this to remember everything by heart.
 
 import assert from 'node:assert';
+import { PersistentEventBase } from '../../../manager/event-wrapper';
+import type { EventID, StateMapKey } from '../../../types/_common';
 import { PduTypeRoomPowerLevels } from '../../../types/v1';
 import {
 	type EventStore,
-	getStateMapKey,
-	partitionState,
 	getAuthChain,
-	reverseTopologicalPowerSort,
+	getAuthChainDifference,
+	getStateMapKey,
+	isPowerEvent,
 	iterativeAuthChecks,
 	mainlineOrdering,
-	getAuthChainDifference,
-	isPowerEvent,
+	partitionState,
+	reverseTopologicalPowerSort,
 } from '../definitions';
-import type { EventID, StateMapKey } from '../../../types/_common';
 import { isTruthy } from './v1';
-import { PersistentEventBase } from '../../../manager/event-wrapper';
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
@@ -295,7 +295,9 @@ export async function resolveStateV2Plus(
 	// since the power level event that allowed X (A) is earlier, the mainline ordering will put X before Y.
 	// mainlineSort([Y, X]) -> [X, Y] because A < B
 
-	const sanitizedRemainingEvents = remainingEvents.map((e) => eventIdToEventMap.get(e)).filter(isTruthy);
+	const sanitizedRemainingEvents = remainingEvents
+		.map((e) => eventIdToEventMap.get(e))
+		.filter(isTruthy);
 
 	const orderedRemainingEvents = await mainlineOrdering(
 		sanitizedRemainingEvents,

@@ -1,16 +1,16 @@
 // SPEC: https://spec.matrix.org/v1.12/rooms/v10/#deprecated-event-content-schemas
 // https://spec.matrix.org/v1.12/rooms/v10/#values-in-mroompower_levels-events-must-be-integers
 
-import { z } from "zod";
+import { z } from 'zod';
 import {
-	getPduPowerLevelsEventContentSchema,
 	PduCanonicalAliasEventContentSchema,
 	PduCreateEventContentSchema,
 	PduJoinRuleEventContentSchema,
 	PduMembershipEventContentSchema,
 	PduPowerLevelsEventContentSchema,
-} from "./v1";
-import { PduPowerLevelsEventV3ContentSchema, PduV3Schema } from "./v3";
+	getPduPowerLevelsEventContentSchema,
+} from './v1';
+import { PduPowerLevelsEventV3ContentSchema, PduV3Schema } from './v3';
 
 export const PduPowerLevelsEventV10ContentSchema =
 	getPduPowerLevelsEventContentSchema<ReturnType<typeof z.number>>(10);
