@@ -16,7 +16,7 @@ import {
 
 import { PersistentEventV3 } from './v3';
 
-import type { RoomVersion } from './type';
+import type { PduVersionForRoomVersion, RoomVersion } from './type';
 import type { PersistentEventBase } from './event-wrapper';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
