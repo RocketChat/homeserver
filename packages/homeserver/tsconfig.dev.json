@@ -1,0 +1,23 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"@hs/core": ["../core/src"],
+			"@hs/core/*": ["../core/src/*"],
+			"@hs/crypto": ["../crypto/src"],
+			"@hs/crypto/*": ["../crypto/src/*"],
+			"@hs/room": ["../room/src"],
+			"@hs/room/*": ["../room/src/*"],
+			"@hs/federation-sdk": ["../federation-sdk/src"],
+			"@hs/federation-sdk/*": ["../federation-sdk/src/*"]
+		}
+	},
+	"include": [
+		"src/**/*",
+		"../core/src/**/*",
+		"../crypto/src/**/*",
+		"../room/src/**/*",
+		"../federation-sdk/src/**/*"
+	]
+}

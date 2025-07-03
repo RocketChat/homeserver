@@ -1,0 +1,20 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"paths": {
+			"@hs/core": ["../core/src"],
+			"@hs/core/*": ["../core/src/*"],
+			"@hs/crypto": ["../crypto/src"],
+			"@hs/crypto/*": ["../crypto/src/*"],
+			"@hs/room": ["../room/src"],
+			"@hs/room/*": ["../room/src/*"]
+		}
+	},
+	"include": [
+		"src/**/*",
+		"../core/src/**/*",
+		"../crypto/src/**/*",
+		"../room/src/**/*"
+	]
+}

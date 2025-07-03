@@ -1,0 +1,27 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"lib": ["ESNext", "DOM"],
+		"moduleDetection": "force",
+		"noFallthroughCasesInSwitch": true,
+		"forceConsistentCasingInFileNames": true,
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false,
+		"paths": {
+			"@hs/core": ["packages/core/src"],
+			"@hs/core/*": ["packages/core/src/*"],
+			"@hs/federation-sdk": ["packages/federation-sdk/src"],
+			"@hs/federation-sdk/*": ["packages/federation-sdk/src/*"],
+			"@hs/homeserver": ["packages/homeserver/src"],
+			"@hs/homeserver/*": ["packages/homeserver/src/*"],
+			"@hs/room": ["packages/room/src"],
+			"@hs/room/*": ["packages/room/src/*"],
+			"@hs/crypto": ["packages/crypto/src"],
+			"@hs/crypto/*": ["packages/crypto/src/*"]
+		}
+	},
+	"include": ["index.ts", "test-setup.ts", "packages/**/src/**/*"],
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+}

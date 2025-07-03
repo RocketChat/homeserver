@@ -38,7 +38,7 @@
 	},
 	"husky": {
 		"hooks": {
-			"pre-commit": "bun test"
+			"pre-commit": "bun run pre-commit"
 		}
 	},
 	"packageManager": "bun@1.1.10",
@@ -54,13 +54,15 @@
 		"*": ["biome check --no-errors-on-unmatched --files-ignore-unknown=true"]
 	},
 	"scripts": {
+		"pre-commit": "bun run type-check && bun run lint:fix && bun run build && bun run test:coverage",
 		"prepare": "husky",
 		"start": "bun run index.ts",
 		"test": "bun test",
 		"build": "turbo build",
+		"type-check": "bunx tsc --noEmit -p tsconfig.dev.json",
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint --diagnostic-level=error",
 		"lint:fix": "bunx @biomejs/biome lint --fix",
-		"tsc": "bunx tsc --noEmit"
+		"tsc": "bunx tsc --noEmit -p tsconfig.dev.json"
 	}
 }

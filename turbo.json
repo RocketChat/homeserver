@@ -6,7 +6,11 @@
 			"inputs": ["src/**/*", "tsconfig.json"]
 		},
 		"dev": {
-			"cache": false
+			"cache": false,
+			"persistent": true
+		},
+		"type-check": {
+			"inputs": ["src/**/*", "tsconfig.dev.json"]
 		}
 	},
 	"globalDependencies": ["tsconfig.json"]
