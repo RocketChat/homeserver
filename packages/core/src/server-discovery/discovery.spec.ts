@@ -1,4 +1,20 @@
-import { afterEach, describe, expect, it, jest, mock } from 'bun:test';
+import {
+	afterAll,
+	afterEach,
+	describe,
+	expect,
+	it,
+	jest,
+	mock,
+} from 'bun:test';
+
+/**
+ * This is a workaround restore the original module, since bun module mock is a bit weird
+ */
+import ResolverModule from 'node:dns/promises';
+
+const { Resolver } = ResolverModule;
+
 import {
 	addressWithDefaultPort,
 	getAddressFromTargetWellKnownEndpoint,
@@ -19,6 +35,13 @@ const mockResolver = {
 mock.module('node:dns/promises', () => ({
 	Resolver: jest.fn(() => mockResolver),
 }));
+
+afterAll(() => {
+	// restore the original module
+	mock.module('node:dns/promises', () => ({
+		Resolver,
+	}));
+});
 
 describe('#isIpLiteral()', () => {
 	it('should return true for valid IPv4 addresses', () => {
