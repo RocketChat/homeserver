@@ -28,12 +28,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
       - uses: oven-sh/setup-bun@v2
-
       - run: bun install
+      - run: bun run type-check
+      - run: bun run lint:fix
       - run: bun run build
-      - run: bun lint
-      - run: bun tsc --noEmit
-      - run: bun test:coverage
+      - run: bun run test:coverage
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
