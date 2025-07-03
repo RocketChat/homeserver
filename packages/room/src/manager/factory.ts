@@ -330,11 +330,14 @@ export class PersistentEventFactory {
 		joinRule: PduJoinRuleEventContent['join_rule'],
 		roomVersion: RoomVersion,
 	) {
-		if (roomVersion !== '11') {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+		const eventPartial: Omit<
+			PduV3ForType<typeof PduTypeRoomJoinRules>,
+			'signatures' | 'hashes'
+		> = {
 			type: PduTypeRoomJoinRules,
 			content: { join_rule: joinRule },
 			sender: sender,
@@ -346,6 +349,6 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial as any);
+		return new PersistentEventV11(eventPartial);
 	}
 }

@@ -115,10 +115,6 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 			unsigned: this.rawEvent.unsigned ?? {},
 		};
 
-		// content hash has been calculated, so we can freeze the event
-		this.freezeEvent();
-
-		return this.rawEvent;
 	}
 
 	get depth() {
