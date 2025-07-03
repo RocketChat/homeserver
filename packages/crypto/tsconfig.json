@@ -2,17 +2,29 @@
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"outDir": "./dist",
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
 		"rootDir": "./src",
 		"declaration": true,
 		"declarationMap": true,
 		"sourceMap": true,
-		"composite": true,
 		"skipLibCheck": true,
 		"noEmit": false,
 		"esModuleInterop": true,
 		"allowImportingTsExtensions": false,
 		"isolatedModules": true,
-		"noResolve": false
+		"noResolve": false,
+		"strict": true,
+		"allowJs": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"allowSyntheticDefaultImports": true,
+		"lib": ["ESNext"],
+
+		// Path mapping for dependencies
+		"baseUrl": ".",
+		"paths": {}
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],

@@ -2,27 +2,23 @@ import {
 	reactionEvent,
 	type ReactionAuthEvents,
 	type ReactionEvent,
-} from '@hs/core/src/events/m.reaction';
-import {
 	roomMessageEvent,
 	type MessageAuthEvents,
 	type RoomMessageEvent,
-} from '@hs/core/src/events/m.room.message';
-import { type SignedEvent } from '@hs/core';
-
-import { inject } from 'tsyringe';
-import type { RoomService } from './room.service';
-import { ForbiddenError } from '@hs/core';
-import {
 	type RedactionAuthEvents,
 	redactionEvent,
 	type RedactionEvent,
-} from '@hs/core/src/events/m.room.redaction';
+	type SignedEvent,
+	ForbiddenError,
+	createLogger,
+	generateId,
+	signEvent,
+} from '@hs/core';
+
+import { inject } from 'tsyringe';
+import type { RoomService } from './room.service';
 import { FederationService } from './federation.service';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/core';
-import { generateId } from '@hs/core';
-import { signEvent } from '@hs/core';
 import { EventService, EventType } from './event.service';
 import type { ConfigService } from './config.service';
 

@@ -25,6 +25,29 @@
 		// For NestJS
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"allowSyntheticDefaultImports": true
-	}
+		"allowSyntheticDefaultImports": true,
+
+		// Path mapping for monorepo development
+		"baseUrl": ".",
+		"paths": {
+			"@hs/core": ["packages/core/src"],
+			"@hs/core/*": ["packages/core/src/*"],
+			"@hs/federation-sdk": ["packages/federation-sdk/src"],
+			"@hs/federation-sdk/*": ["packages/federation-sdk/src/*"],
+			"@hs/homeserver": ["packages/homeserver/src"],
+			"@hs/homeserver/*": ["packages/homeserver/src/*"],
+			"@hs/room": ["packages/room/src"],
+			"@hs/room/*": ["packages/room/src/*"],
+			"@hs/crypto": ["packages/crypto/src"],
+			"@hs/crypto/*": ["packages/crypto/src/*"]
+		}
+	},
+	"include": ["index.ts", "test-setup.ts"],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"packages/**/*",
+		"**/*.spec.ts",
+		"**/*.test.ts"
+	]
 }

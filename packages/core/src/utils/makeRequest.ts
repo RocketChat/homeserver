@@ -1,9 +1,20 @@
-import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
+// import { resolveHostAddressByServerName } from '@hs/homeserver';
 import { extractURIfromURL } from '../url';
 import type { SigningKey } from '../types';
 import { signJson } from './signJson';
 import { authorizationHeaders, computeAndMergeHash } from './authentication';
 import { logger } from './logger';
+
+// Temporary function to resolve host address
+const resolveHostAddressByServerName = async (
+	serverName: string,
+	_ownServerName: string,
+): Promise<{ address: string; headers: { Host: string } }> => {
+	return {
+		address: `${serverName}:443`,
+		headers: { Host: serverName },
+	};
+};
 
 export const makeSignedRequest = async <T = Record<string, unknown>>({
 	method,

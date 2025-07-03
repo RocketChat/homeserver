@@ -1,9 +1,6 @@
 import { FederationService } from './federation.service';
 import { ConfigService } from './config.service';
-import {
-	isFederationEventWithPDUs,
-	type MatrixPDU,
-} from '@hs/core/src/events/pdu';
+import { isFederationEventWithPDUs, type MatrixPDU } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';

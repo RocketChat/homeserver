@@ -3,7 +3,19 @@
 	"version": "1.0.50",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"dev": "bun run --watch src/index.ts"
+		"dev": "bun run --watch src/index.ts",
+		"build": "tsc"
+	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"dependencies": {
 		"@hs/core": "workspace:*",
@@ -15,7 +27,5 @@
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
-	"files": ["src", "dist"]
+	"files": ["./dist"]
 }

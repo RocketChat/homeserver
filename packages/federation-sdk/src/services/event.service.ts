@@ -1,5 +1,4 @@
-import type { RoomPowerLevelsEvent } from '@hs/core/src/events/m.room.power_levels';
-import type { RedactionEvent } from '@hs/core/src/events/m.room.redaction';
+import type { RoomPowerLevelsEvent, RedactionEvent } from '@hs/core';
 import { inject, injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';

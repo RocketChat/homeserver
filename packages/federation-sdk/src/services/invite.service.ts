@@ -1,4 +1,4 @@
-import { roomMemberEvent } from '@hs/core/src/events/m.room.member';
+import { roomMemberEvent } from '@hs/core';
 import { FederationService } from './federation.service';
 import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';

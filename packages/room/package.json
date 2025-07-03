@@ -6,6 +6,17 @@
 		"dev": "bun run --watch src/index.ts",
 		"build": "tsc"
 	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
 	"dependencies": {
 		"@datastructures-js/priority-queue": "^6.3.3",
 		"@hs/core": "workspace:*"
@@ -13,7 +24,5 @@
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"main": "./src/index.ts",
-	"types": "./dist/index.d.ts",
-	"files": ["src", "dist"]
+	"files": ["./dist"]
 }
