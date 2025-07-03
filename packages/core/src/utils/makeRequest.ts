@@ -1,9 +1,9 @@
-import { resolveHostAddressByServerName } from '@hs/homeserver/src/helpers/server-discovery/discovery';
-import { extractURIfromURL } from '../url';
+import { resolveHostAddressByServerName } from '../server-discovery/discovery';
 import type { SigningKey } from '../types';
-import { signJson } from './signJson';
+import { extractURIfromURL } from '../url';
 import { authorizationHeaders, computeAndMergeHash } from './authentication';
 import { logger } from './logger';
+import { signJson } from './signJson';
 
 export const makeSignedRequest = async <T = Record<string, unknown>>({
 	method,
