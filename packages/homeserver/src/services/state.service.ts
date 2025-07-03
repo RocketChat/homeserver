@@ -290,6 +290,7 @@ export class StateService {
 			event.redactedEvent as any,
 			signingKey[0],
 			origin,
+			false, // already passed through redactedEvent, hash is already part of this
 		);
 
 		const keyId = `${signingKey[0].algorithm}:${signingKey[0].version}`;
