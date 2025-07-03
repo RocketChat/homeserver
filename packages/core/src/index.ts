@@ -59,7 +59,12 @@ export * from './events/m.room.third_party_invite';
 export * from './events/m.reaction';
 export * from './events/pdu';
 
-export type { RoomMemberEvent, Membership } from './events/isRoomMemberEvent';
+export type {
+	RoomMemberEvent,
+	Membership,
+} from './events/isRoomMemberEvent';
+
+export { isRoomMemberEvent } from './events/isRoomMemberEvent';
 
 // Event utilities
 export * from './events/utils/createSignedEvent';
