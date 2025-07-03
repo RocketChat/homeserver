@@ -27,6 +27,9 @@
 		"experimentalDecorators": true,
 		"allowSyntheticDefaultImports": true,
 
+		// Prevent emission - root config is for development only
+		"noEmit": true,
+
 		// Path mapping for monorepo development
 		"baseUrl": ".",
 		"paths": {

@@ -1,4 +1,5 @@
 {
+	"extends": "../../tsconfig.json",
 	"compilerOptions": {
 		"outDir": "./dist",
 		"target": "ESNext",
@@ -21,18 +22,9 @@
 		"allowSyntheticDefaultImports": true,
 		"lib": ["ESNext"],
 
-		// Path mapping for dependencies
+		// Path mapping for dependencies - use src for development
 		"baseUrl": ".",
-		"paths": {
-			"@hs/core": ["../core/dist"],
-			"@hs/core/*": ["../core/dist/*"],
-			"@hs/crypto": ["../crypto/dist"],
-			"@hs/crypto/*": ["../crypto/dist/*"],
-			"@hs/room": ["../room/dist"],
-			"@hs/room/*": ["../room/dist/*"],
-			"@hs/federation-sdk": ["../federation-sdk/dist"],
-			"@hs/federation-sdk/*": ["../federation-sdk/dist/*"]
-		}
+		"paths": {}
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],

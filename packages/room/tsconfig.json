@@ -21,14 +21,9 @@
 		"allowSyntheticDefaultImports": true,
 		"lib": ["ESNext"],
 
-		// Path mapping for dependencies
+		// Path mapping for dependencies - use src for development
 		"baseUrl": ".",
-		"paths": {
-			"@hs/core": ["../core/dist"],
-			"@hs/core/*": ["../core/dist/*"],
-			"@hs/crypto": ["../crypto/dist"],
-			"@hs/crypto/*": ["../crypto/dist/*"]
-		}
+		"paths": {}
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts"]

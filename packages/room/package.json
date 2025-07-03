@@ -18,6 +18,7 @@
 		"./package.json": "./package.json"
 	},
 	"dependencies": {
+		"@hs/crypto": "workspace:*",
 		"@datastructures-js/priority-queue": "^6.3.3",
 		"@hs/core": "workspace:*"
 	},
