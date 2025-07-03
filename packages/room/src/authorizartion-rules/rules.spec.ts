@@ -113,9 +113,15 @@ const store = new MockStore();
 const roomId = '!room:example.com';
 const creator = '@creator:example.com';
 
-function getInitialEvents({
-	joinRule = 'public',
-}: { joinRule?: 'public' | 'invite' } = {}) {
+function getInitialEvents(
+	{ joinRule = 'public' }: { joinRule?: 'public' | 'invite' } = {},
+	powerLevelContent: any = {
+		state_default: 30,
+		users: {
+			[creator]: 100,
+		},
+	},
+) {
 	const create = new FakeStateEventCreator()
 		.asRoomCreate()
 		.withRoomId(roomId)
@@ -139,12 +145,7 @@ function getInitialEvents({
 		.asPowerLevel()
 		.withRoomId(roomId)
 		.withSender(creator)
-		.withContent({
-			state_default: 30,
-			users: {
-				[creator]: 100,
-			},
-		})
+		.withContent(powerLevelContent)
 		.build();
 
 	store.events.set(powerLevel.eventId, powerLevel);
@@ -341,19 +342,20 @@ describe('authorization rules', () => {
 	});
 
 	it('06 users below state_default should not be able to send any state', async () => {
-		const { create, join, powerLevel } = getInitialEvents();
-
 		const alice = '@alice:example.com';
 		const bob = '@bob:example.com';
 
-		powerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			state_default: 30,
-			users: {
-				[alice]: 29,
-				[bob]: 30,
+		const { create, join, powerLevel } = getInitialEvents(
+			{},
+			{
+				events: {},
+				state_default: 30,
+				users: {
+					[alice]: 29,
+					[bob]: 30,
+				},
 			},
-		});
+		);
 
 		const joinBob = new FakeStateEventCreator()
 			.asRoomMember()
@@ -593,29 +595,7 @@ describe('authorization rules', () => {
 	});
 
 	it('09 should not allow state event sending if power level is too low', async () => {
-		const { create, join, powerLevel, joinRules } = getInitialEvents({
-			joinRule: 'public',
-		});
-
 		const alice = '@alice:example.com';
-
-		powerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {},
-			state_default: 30,
-			events_default: 50,
-		});
-
-		const setAlicePower = (power: number) => {
-			powerLevel.setContent<PduPowerLevelsEventV10Content>({
-				events: {},
-				users: {
-					[alice]: power,
-				},
-				state_default: 30,
-				events_default: 50,
-			});
-		};
 
 		const joinAlice = new FakeStateEventCreator()
 			.asRoomMember()
@@ -625,10 +605,24 @@ describe('authorization rules', () => {
 			.withStateKey(alice)
 			.build();
 
-		const state = getStateMap([create, join, powerLevel, joinRules, joinAlice]);
+		const setAlicePower = (power: number) => {
+			const { create, join, powerLevel, joinRules } = getInitialEvents(
+				{ joinRule: 'public' },
+				{
+					events: {},
+					users: {
+						[alice]: power,
+					},
+					state_default: 30,
+					events_default: 50,
+				},
+			);
+
+			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
+		};
 
 		// alice shoould not be able to send a state event if power is lower than 30
-		setAlicePower(29);
+		const state29 = setAlicePower(29);
 
 		const randomStateEvent = new FakeStateEventCreator()
 			.asTest()
@@ -638,18 +632,18 @@ describe('authorization rules', () => {
 			.build();
 
 		expect(() =>
-			checkEventAuthWithState(randomStateEvent, state, store),
+			checkEventAuthWithState(randomStateEvent, state29, store),
 		).toThrow();
 
 		// alice should be able to send a state event if power is 30
-		setAlicePower(30);
+		const state30 = setAlicePower(30);
 
 		expect(() =>
-			checkEventAuthWithState(randomStateEvent, state, store),
+			checkEventAuthWithState(randomStateEvent, state30, store),
 		).not.toThrow();
 
 		// should not be able to send a message if power < 50
-		setAlicePower(49);
+		const state49 = setAlicePower(49);
 
 		const messageEvent = new FakeMessageEventCreator()
 			.withRoomId(roomId)
@@ -657,12 +651,14 @@ describe('authorization rules', () => {
 			.withContent({})
 			.build();
 
-		expect(() => checkEventAuthWithState(messageEvent, state, store)).toThrow();
+		expect(() =>
+			checkEventAuthWithState(messageEvent, state49, store),
+		).toThrow();
 
-		setAlicePower(51);
+		const state51 = setAlicePower(51);
 
 		expect(() =>
-			checkEventAuthWithState(messageEvent, state, store),
+			checkEventAuthWithState(messageEvent, state51, store),
 		).not.toThrow();
 
 		// setting custom power required for test events
@@ -673,33 +669,51 @@ describe('authorization rules', () => {
 			.withContent({})
 			.build();
 
-		powerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {
-				[randomStateEvent2.type]: 100,
-			},
-			users: {
-				[alice]: 51, // alice should not be able to send randomStateEvent2
-			},
+		const stateX = (() => {
+			const { create, join, powerLevel, joinRules } = getInitialEvents(
+				{
+					joinRule: 'public',
+				},
+				{
+					events: {
+						[randomStateEvent2.type]: 100,
+					},
+					users: {
+						[alice]: 51, // alice should not be able to send randomStateEvent2
+					},
 
-			state_default: 30,
-		});
+					state_default: 30,
+				},
+			);
+
+			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
+		})();
 
 		expect(() =>
-			checkEventAuthWithState(randomStateEvent2, state, store),
+			checkEventAuthWithState(randomStateEvent2, stateX, store),
 		).toThrow();
 
 		// setting custom power required for test events
-		powerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {
-				[randomStateEvent2.type]: 50,
-			},
-			users: {
-				[alice]: 51, // alice should be able to send randomStateEvent2
-			},
-		});
+		const stateY = (() => {
+			const { create, join, powerLevel, joinRules } = getInitialEvents(
+				{
+					joinRule: 'public',
+				},
+				{
+					events: {
+						[randomStateEvent2.type]: 50,
+					},
+					users: {
+						[alice]: 51, // alice should not be able to send randomStateEvent2
+					},
+				},
+			);
+
+			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
+		})();
 
 		expect(() =>
-			checkEventAuthWithState(randomStateEvent2, state, store),
+			checkEventAuthWithState(randomStateEvent2, stateY, store),
 		).not.toThrow();
 	});
 
@@ -742,38 +756,54 @@ describe('authorization rules', () => {
 			.asPowerLevel()
 			.withRoomId(roomId)
 			.withSender(alice)
-			.withContent({})
+			.withContent({
+				events: {},
+				users: {
+					[alice]: 50, // new power level
+				},
+				users_default: 60,
+			})
 			.build();
 
-		// should not be able to increase default user power level if doesn't have enough power to begin with
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {
-				[alice]: 50, // senders current power level
-			},
-			users_default: 50,
-			state_default: 50,
-			ban: 50,
-			kick: 50,
-			redact: 50,
-			invite: 50,
-		});
+		const setPowerLevel = (
+			powerLevel: PersistentEventBase,
+			state: typeof secondState,
+		) => {
+			state.set(powerLevel.getUniqueStateIdentifier(), powerLevel);
+		};
 
-		// current value
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {
-				[alice]: 50, // new power level
-			},
-			users_default: 60,
-		});
+		const createPowerLevel = (content: PduPowerLevelsEventV10Content) => {
+			return new FakeStateEventCreator()
+				.asPowerLevel()
+				.withRoomId(roomId)
+				.withSender(alice)
+				.withContent(content)
+				.build();
+		};
+
+		// should not be able to increase default user power level if doesn't have enough power to begin with
+		setPowerLevel(
+			createPowerLevel({
+				events: {},
+				users: {
+					[alice]: 50, // senders current power level
+				},
+				users_default: 50,
+				state_default: 50,
+				ban: 50,
+				kick: 50,
+				redact: 50,
+				invite: 50,
+			}),
+			secondState,
+		);
 
 		// sender is trying to increase their power level without having the required power to do it
 		expect(() =>
 			checkEventAuthWithState(newPowerLevel, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel2 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -783,13 +813,13 @@ describe('authorization rules', () => {
 
 		// reducing
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel2, secondState, store),
 		).not.toThrow();
 
 		// events_default
 
 		// should not be able to increase events_default if doesn't have enough power
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel3 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -798,10 +828,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel3, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel4 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -810,12 +840,12 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel4, secondState, store),
 		).not.toThrow();
 
 		// state_default
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel5 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -824,10 +854,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel5, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel6 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -836,10 +866,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel6, secondState, store),
 		).not.toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel7 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -848,10 +878,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel7, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel8 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -860,11 +890,11 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel8, secondState, store),
 		).not.toThrow();
 
 		// kick
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel9 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -873,10 +903,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel9, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel10 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -885,11 +915,11 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel10, secondState, store),
 		).not.toThrow();
 
 		// invite
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel11 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -898,10 +928,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel11, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel12 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -910,11 +940,11 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel12, secondState, store),
 		).not.toThrow();
 
 		// redact
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel13 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -923,10 +953,10 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel13, secondState, store),
 		).toThrow();
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel14 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -935,19 +965,22 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel14, secondState, store),
 		).not.toThrow();
 
 		// for each event type
 		// if value is added check against users power level if is higher, reject
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {
-				[alice]: 50,
-			},
-		});
+		setPowerLevel(
+			createPowerLevel({
+				events: {},
+				users: {
+					[alice]: 50,
+				},
+			}),
+			secondState,
+		);
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel15 = createPowerLevel({
 			events: {
 				test: 60,
 			},
@@ -958,11 +991,11 @@ describe('authorization rules', () => {
 
 		// 'test' is added with higher power level than alice's current power level, reject
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel15, secondState, store),
 		).toThrow();
 
 		// 'test' is added with lower power level than alice's current power level, allow
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel16 = createPowerLevel({
 			events: {
 				test: 50,
 			},
@@ -972,20 +1005,23 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel16, secondState, store),
 		).not.toThrow();
 
 		// only allow removal of an event's required power if it is lower than or equal to user's current power
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {
-				test: 50,
-			},
-			users: {
-				[alice]: 50,
-			},
-		});
+		setPowerLevel(
+			createPowerLevel({
+				events: {
+					test: 50,
+				},
+				users: {
+					[alice]: 50,
+				},
+			}),
+			secondState,
+		);
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel17 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -993,19 +1029,22 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel17, secondState, store),
 		).not.toThrow();
 
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {
-				test: 60,
-			},
-			users: {
-				[alice]: 50,
-			},
-		});
+		setPowerLevel(
+			createPowerLevel({
+				events: {
+					test: 60,
+				},
+				users: {
+					[alice]: 50,
+				},
+			}),
+			secondState,
+		);
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel18 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -1014,21 +1053,24 @@ describe('authorization rules', () => {
 
 		// 'test' is removed with higher power level than alice's current power level, reject
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel18, secondState, store),
 		).toThrow();
 
 		const bob = '@bob:example.com';
 
 		// can not increase bob's power level if alice doesn't have enough power
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {
-				[alice]: 50,
-				[bob]: 50,
-			},
-		});
+		setPowerLevel(
+			createPowerLevel({
+				events: {},
+				users: {
+					[alice]: 50,
+					[bob]: 50,
+				},
+			}),
+			secondState,
+		);
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel19 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -1037,11 +1079,11 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel19, secondState, store),
 		).toThrow();
 
 		// can reduce bob's power level if alice has enough power
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel20 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -1050,19 +1092,22 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel20, secondState, store),
 		).not.toThrow();
 
 		// can not remove bob's power level if alice doesn't have enough power
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {
-				[alice]: 50,
-				[bob]: 60,
-			},
-		});
+		setPowerLevel(
+			createPowerLevel({
+				events: {},
+				users: {
+					[alice]: 50,
+					[bob]: 60,
+				},
+			}),
+			secondState,
+		);
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel21 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 50,
@@ -1071,19 +1116,22 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel21, secondState, store),
 		).toThrow();
 
 		// can remove bob's power level if alice has enough power
-		existingPowerLevel.setContent<PduPowerLevelsEventV10Content>({
-			events: {},
-			users: {
-				[alice]: 100,
-				[bob]: 60,
-			},
-		});
+		setPowerLevel(
+			createPowerLevel({
+				events: {},
+				users: {
+					[alice]: 100,
+					[bob]: 60,
+				},
+			}),
+			secondState,
+		);
 
-		newPowerLevel.setContent<PduPowerLevelsEventV10Content>({
+		const newPowerLevel22 = createPowerLevel({
 			events: {},
 			users: {
 				[alice]: 100,
@@ -1092,7 +1140,7 @@ describe('authorization rules', () => {
 		});
 
 		expect(() =>
-			checkEventAuthWithState(newPowerLevel, secondState, store),
+			checkEventAuthWithState(newPowerLevel22, secondState, store),
 		).not.toThrow();
 	});
 	// TODO: restricted rooms
