@@ -1,6 +1,7 @@
 import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
+import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -29,7 +30,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('RoomService') private readonly roomService: RoomService,
-		private readonly stateService: StateService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	/**

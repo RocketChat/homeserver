@@ -1,53 +1,43 @@
 import {
-	createLogger,
 	EventBase,
 	ForbiddenError,
-	generateId,
 	HttpException,
 	HttpStatus,
+	RoomNameAuthEvents,
+	type RoomPowerLevelsEvent,
+	createLogger,
+	generateId,
 	isRoomPowerLevelsEvent,
 	roomMemberEvent,
-	RoomNameAuthEvents,
 	roomNameEvent,
 	roomPowerLevelsEvent,
-	type RoomPowerLevelsEvent,
 } from '@hs/core';
 import {
-	roomTombstoneEvent,
 	type RoomTombstoneEvent,
 	type TombstoneAuthEvents,
+	roomTombstoneEvent,
 } from '@hs/core';
 import { createSignedEvent } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
 import type {
 	EventStore,
 	EventBaseWithOptionalId as ModelEventBase,
+	SigningKey,
 } from '@hs/core';
-import { StateService } from './state.service';
 import type { PduCreateEventContent, PduJoinRuleEventContent } from '@hs/room';
 import { RoomVersion } from '@hs/room';
+import { inject, injectable } from 'tsyringe';
+import { StateService } from './state.service';
 
-import type { RoomRepository } from '../repositories/room.repository';
-import type { EventRepository } from '../repositories/event.repository';
-import { type EventService } from './event.service';
-import type { ConfigService } from './config.service';
-import type { FederationService } from './federation.service';
 import { PersistentEventFactory } from '@hs/room';
+import type { EventRepository } from '../repositories/event.repository';
+import type { RoomRepository } from '../repositories/room.repository';
+import type { ConfigService } from './config.service';
+import { type EventService, EventType } from './event.service';
+import type { FederationService } from './federation.service';
 
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
-
-// Utility function to create a random ID for room creation
-function createMediaId(length: number) {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-	let result = '';
-	for (let i = 0; i < length; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters[randomIndex];
-	}
-	return result;
-}
 
 @injectable()
 export class RoomService {
@@ -59,7 +49,7 @@ export class RoomService {
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('FederationService')
 		private readonly federationService: FederationService,
-		private readonly stateService: StateService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	private validatePowerLevelChange(

@@ -1,4 +1,6 @@
 import type { EventBase } from '@hs/core';
+import { type ProtocolVersionKey, createLogger } from '@hs/core';
+import { PersistentEventBase } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import {
 	FederationEndpoints,
@@ -11,17 +13,17 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import { PersistentEventBase } from '@hs/room';
-import { type ProtocolVersionKey, createLogger } from '@hs/core';
 
 @injectable()
 export class FederationService {
 	private readonly logger = createLogger('FederationService');
 
 	constructor(
+		@inject('ConfigService')
 		private readonly configService: FederationConfigService,
 		@inject('FederationRequestService')
 		private readonly requestService: FederationRequestService,
+		@inject('SignatureVerificationService')
 		private readonly signatureService: SignatureVerificationService,
 	) {}
 
