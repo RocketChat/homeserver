@@ -26,6 +26,7 @@ import {
 	RoomService,
 	ServerRepository,
 	ServerService,
+	SignatureVerificationService,
 	StagingAreaListener,
 	StagingAreaQueue,
 	StagingAreaService,
@@ -75,19 +76,27 @@ export async function setup(options?: HomeserverSetupOptions) {
 		},
 	});
 
-	container.registerSingleton(FederationRequestService);
+	container.registerSingleton(
+		'FederationRequestService',
+		FederationRequestService,
+	);
+	container.registerSingleton(
+		'SignatureVerificationService',
+		SignatureVerificationService,
+	);
 	container.registerSingleton('ConfigService', ConfigService);
 	container.registerSingleton(
 		'DatabaseConnectionService',
 		DatabaseConnectionService,
 	);
 	container.registerSingleton('StateRepository', StateRepository);
-	container.registerSingleton(StateService);
+	container.registerSingleton('StateService', StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
 	container.registerSingleton('EventService', EventService);
 	container.registerSingleton(EventEmitterService);
+	container.registerSingleton('FederationService', FederationService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
@@ -107,9 +116,8 @@ export async function setup(options?: HomeserverSetupOptions) {
 	container.registerSingleton('StateEventRepository', StateEventRepository);
 	container.registerSingleton('MissingEventsQueue', MissingEventsQueue);
 	container.registerSingleton('StagingAreaQueue', StagingAreaQueue);
-	container.registerSingleton(MissingEventListener);
-	container.registerSingleton(StagingAreaListener);
-	container.registerSingleton('FederationService', FederationService);
+	container.registerSingleton('MissingEventListener', MissingEventListener);
+	container.registerSingleton('StagingAreaListener', StagingAreaListener);
 
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService({ type: 'memory' }),
@@ -130,9 +138,6 @@ export async function setup(options?: HomeserverSetupOptions) {
 	} else {
 		eventEmitterService.initializeStandalone();
 	}
-
-	container.resolve(StagingAreaListener);
-	container.resolve(MissingEventListener);
 
 	const app = new Elysia();
 
