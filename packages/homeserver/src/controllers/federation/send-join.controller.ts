@@ -1,18 +1,18 @@
 import { isRoomMemberEvent } from '@hs/core';
-import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 import {
 	ConfigService,
 	ErrorResponse,
 	ErrorResponseDto,
+	SendJoinEventDto,
 	SendJoinResponse,
 	SendJoinResponseDto,
 	StateService,
 } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
-import { EventEmitterService } from '@hs/federation-sdk';
 import { PersistentEventFactory } from '@hs/room';
 import { getAuthChain } from '@hs/room';
+import { Elysia, t } from 'elysia';
+import { container } from 'tsyringe';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
@@ -21,7 +21,11 @@ export const sendJoinPlugin = (app: Elysia) => {
 
 	return app.put(
 		'/_matrix/federation/v2/send_join/:roomId/:eventId',
-		async ({ params, body }) => {
+		async ({
+			params,
+			body,
+			query: _query, // not destructuring this breaks the endpoint
+		}) => {
 			const { roomId, eventId } = params;
 
 			const roomVersion = await stateService.getRoomVersion(roomId);
@@ -29,8 +33,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 			if (!roomVersion) {
 				throw new Error('Room version not found');
 			}
-
-			console.log(eventId, body);
 
 			const bodyAny = body as any;
 
@@ -81,8 +83,9 @@ export const sendJoinPlugin = (app: Elysia) => {
 			return {
 				origin,
 				event: {
-					...signedJoinEvent.event,
+					...signedJoinEvent,
 					unsigned: {},
+					origin: origin,
 				}, // TODO: eh
 				members_omitted: false, // less requests
 				state: Array.from(state.values()).map((event) => {
@@ -104,20 +107,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 				roomId: t.String(),
 				eventId: t.String(),
 			}),
-			query: t.Object({
-				omit_members: t.Optional(t.Boolean()), // will ignore this for now
-			}),
-			/* body: t.Object({
-				origin: t.String(),
-				origin_server_ts: t.Number(),
-				sender: t.String(),
-				state_key: t.String(),
-				type: t.Literal('m.room.member'),
-				content: t.Object({
-					membership: t.Literal('join'),
-				}),
-			}), */
-			body: t.Any(),
+			body: SendJoinEventDto,
 			response: {
 				200: SendJoinResponseDto,
 				400: ErrorResponseDto,

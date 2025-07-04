@@ -102,7 +102,7 @@ export const profilesPlugin = (app: Elysia) => {
 				}
 
 				return {
-					room_version: roomInformation.room_version,
+					room_version: roomInformation.room_version as RoomVersion,
 					event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
 				};
 			},

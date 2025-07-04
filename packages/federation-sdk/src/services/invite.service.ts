@@ -1,5 +1,5 @@
-import { EventBaseWithOptionalId } from '@hs/core';
-import { HttpException, HttpStatus } from '@hs/core';
+import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
@@ -7,7 +7,6 @@ import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
 import { StateService } from './state.service';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -69,7 +68,7 @@ export class InviteService {
 
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
-				inviteResponse.event as any,
+				inviteResponse.event,
 				roomInformation.room_version as RoomVersion,
 			),
 		);

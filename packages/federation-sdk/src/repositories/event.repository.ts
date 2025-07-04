@@ -90,6 +90,7 @@ export class EventRepository {
 		if (existingEvent) return id;
 
 		await collection.insertOne({
+			// @ts-ignore idk why complaining
 			eventId: id,
 			event,
 			stateId: '',
@@ -130,6 +131,7 @@ export class EventRepository {
 		const id = event.event_id || generateId(event);
 
 		await collection.insertOne({
+			// @ts-ignore idk why complaining (2)
 			eventId: id,
 			event,
 			stateId: '',
@@ -253,8 +255,9 @@ export class EventRepository {
 		const collection = await this.getCollection();
 
 		try {
-			// @ts-ignore
+			// @ts-ignore ??? need to unify the typings
 			await collection.insertOne({
+				// @ts-ignore ???
 				eventId: eventId,
 				event: event,
 				stateId: stateId,

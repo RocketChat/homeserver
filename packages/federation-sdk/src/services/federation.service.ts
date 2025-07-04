@@ -1,6 +1,4 @@
 import type { EventBase } from '@hs/core';
-import type { ProtocolVersionKey } from '@hs/core';
-import { createLogger } from '@hs/core';
 import { inject, injectable } from 'tsyringe';
 import {
 	FederationEndpoints,
@@ -13,7 +11,8 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import type { PersistentEventBase } from '@hs/room';
+import { PersistentEventBase } from '@hs/room';
+import { type ProtocolVersionKey, createLogger } from '@hs/core';
 
 @injectable()
 export class FederationService {
