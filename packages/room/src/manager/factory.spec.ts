@@ -1,8 +1,7 @@
 import { expect, test } from 'bun:test';
-import { generateKeyPairsFromString } from '@hs/homeserver/src/keys';
+import { generateKeyPairsFromString } from '@hs/core';
 import { PersistentEventFactory } from './factory';
-import { signEvent } from '@hs/homeserver/src/signEvent';
-import { EventBase } from '@hs/core/src/events/eventBase';
+import { signEvent } from '@hs/core';
 
 const finalEventId = '$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4';
 const roomId = '!uTqsSSWabZzthsSCNf:hs1';
