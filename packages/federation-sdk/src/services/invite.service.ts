@@ -1,8 +1,7 @@
 import { FederationService } from '@hs/federation-sdk';
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
@@ -21,11 +20,11 @@ export class InviteService {
 	private readonly logger = createLogger('InviteService');
 
 	constructor(
-		private readonly eventService: EventService,
+		@inject('EventService') private readonly eventService: EventService,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
-		private readonly configService: ConfigService,
-		private readonly roomService: RoomService,
-		private readonly stateService: StateService,
+		@inject('RoomService') private readonly roomService: RoomService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	/**

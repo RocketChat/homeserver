@@ -18,7 +18,7 @@ import {
 	SigningKey,
 	TombstoneAuthEvents,
 } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import type { RoomRepository } from '../repositories/room.repository';
 import type { EventRepository } from '../repositories/event.repository';
 import { type EventService, EventType } from './event.service';
@@ -37,12 +37,14 @@ const logger = createLogger('RoomService');
 @injectable()
 export class RoomService {
 	constructor(
-		private readonly roomRepository: RoomRepository,
+		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
+		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		private readonly eventService: EventService,
-		private readonly configService: ConfigService,
+		@inject('EventService') private readonly eventService: EventService,
+		@inject('ConfigService') private readonly configService: ConfigService,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
-		private readonly stateService: StateService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	private validatePowerLevelChange(

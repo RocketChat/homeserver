@@ -1,4 +1,4 @@
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
 import type { StateMapKey } from '@hs/room';
@@ -18,9 +18,11 @@ type State = Map<StateMapKey, PersistentEventBase>;
 export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(
+		@inject('StateRepository')
 		private readonly stateRepository: StateRepository,
+		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		private readonly configService: ConfigService,
+		@inject('ConfigService') private readonly configService: ConfigService,
 	) {}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
