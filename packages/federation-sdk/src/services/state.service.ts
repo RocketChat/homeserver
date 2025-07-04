@@ -1,15 +1,16 @@
+import { type EventStore, createLogger, signEvent } from '@hs/core';
 import {
-	EventStore,
+	type PduCreateEventContent,
 	PersistentEventBase,
-	createLogger,
-	signEvent,
-} from '@hs/core';
-import { PersistentEventFactory, resolveStateV2Plus } from '@hs/room';
-import type { PduCreateEventContent, RoomVersion, StateMapKey } from '@hs/room';
-import { checkEventAuthWithState } from '@hs/room';
+	PersistentEventFactory,
+	type RoomVersion,
+	type StateMapKey,
+	checkEventAuthWithState,
+	resolveStateV2Plus,
+} from '@hs/room';
 import { inject, injectable } from 'tsyringe';
-import type { EventRepository } from '../repositories/event.repository';
-import type { StateRepository } from '../repositories/state.repository';
+import { EventRepository } from '../repositories/event.repository';
+import { StateRepository } from '../repositories/state.repository';
 import { ConfigService } from './config.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;
@@ -22,7 +23,7 @@ export class StateService {
 		private readonly stateRepository: StateRepository,
 		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		private readonly configService: ConfigService,
+		@inject('ConfigService') private readonly configService: ConfigService,
 	) {}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {

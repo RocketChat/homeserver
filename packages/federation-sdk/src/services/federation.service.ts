@@ -20,9 +20,11 @@ export class FederationService {
 	private readonly logger = createLogger('FederationService');
 
 	constructor(
+		@inject('ConfigService')
 		private readonly configService: FederationConfigService,
 		@inject('FederationRequestService')
 		private readonly requestService: FederationRequestService,
+		@inject('SignatureVerificationService')
 		private readonly signatureService: SignatureVerificationService,
 	) {}
 

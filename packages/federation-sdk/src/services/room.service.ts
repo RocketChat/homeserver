@@ -13,6 +13,7 @@ import {
 	generateId,
 	roomMemberEvent,
 	roomNameEvent,
+	signEvent,
 } from '@hs/core';
 import {
 	type RoomPowerLevelsEvent,
@@ -26,21 +27,19 @@ import {
 } from '@hs/core';
 import { createSignedEvent } from '@hs/core';
 
+import type { EventBaseWithOptionalId as ModelEventBase } from '@hs/core';
 import type { PduCreateEventContent, PduJoinRuleEventContent } from '@hs/room';
-import { RoomVersion } from '@hs/room';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import { StateService } from './state.service';
 
-import { PersistentEventFactory } from '@hs/room';
-import { type EventService, EventType } from './event.service';
-
 import type { SignedEvent } from '@hs/core';
-import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
-import { EventRepository } from '../repositories/event.repository';
-import { RoomRepository } from '../repositories/room.repository';
-import { ConfigService } from './config.service';
-import { FederationService } from './federation.service';
+import type { EventRepository } from '../repositories/event.repository';
+import type { RoomRepository } from '../repositories/room.repository';
+import type { ConfigService } from './config.service';
+import { type EventService, EventType } from './event.service';
+import type { FederationService } from './federation.service';
 
 // Utility function to create a random ID for room creation
 function _createMediaId(length: number) {
@@ -63,7 +62,7 @@ export class RoomService {
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('FederationService')
 		private readonly federationService: FederationService,
-		private readonly stateService: StateService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	private validatePowerLevelChange(

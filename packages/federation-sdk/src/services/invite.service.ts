@@ -30,7 +30,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('RoomService') private readonly roomService: RoomService,
-		private readonly stateService: StateService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	/**
