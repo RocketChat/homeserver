@@ -88,6 +88,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 	container.registerSingleton(EventStateService);
 	container.registerSingleton('EventService', EventService);
 	container.registerSingleton(EventEmitterService);
+	container.registerSingleton('FederationService', FederationService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
@@ -109,7 +110,6 @@ export async function setup(options?: HomeserverSetupOptions) {
 	container.registerSingleton('StagingAreaQueue', StagingAreaQueue);
 	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaListener);
-	container.registerSingleton('FederationService', FederationService);
 
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService({ type: 'memory' }),
