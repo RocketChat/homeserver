@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core/src/events/eventBase';
+import type { EventBase } from '@hs/core';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -10,10 +10,9 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import type { ProtocolVersionKey } from '@hs/homeserver/src/signJson';
+import type { ProtocolVersionKey } from '@hs/core';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/homeserver/src/utils/logger';
-import type { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
+import { createLogger } from '@hs/core';
 
 @injectable()
 export class FederationService {
