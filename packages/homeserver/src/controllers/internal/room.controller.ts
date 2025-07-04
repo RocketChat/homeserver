@@ -1,7 +1,6 @@
 import {
 	type ErrorResponse,
 	ErrorResponseDto,
-	InviteService,
 	RoomIdDto,
 	UsernameDto,
 } from '@hs/federation-sdk';
@@ -37,6 +36,7 @@ import { RoomService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
 import { FederationService } from '@hs/federation-sdk';
+import { InviteService } from '@hs/federation-sdk';
 import {
 	PduCreateEventContent,
 	PersistentEventBase,

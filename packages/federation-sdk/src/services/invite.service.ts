@@ -69,7 +69,7 @@ export class InviteService {
 
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
-				inviteResponse.event as any,
+				inviteResponse.event,
 				roomInformation.room_version as RoomVersion,
 			),
 		);

@@ -1,12 +1,19 @@
-import type { EventBase, EventStore, SigningKey } from '@hs/core';
+import type {
+	EventBase,
+	EventStore,
+	RoomNameAuthEvents,
+	SigningKey,
+} from '@hs/core';
 import {
 	ForbiddenError,
 	HttpException,
 	HttpStatus,
 	type AuthEvents as RoomMemberAuthEvents,
+	createLogger,
+	generateId,
 	roomMemberEvent,
+	roomNameEvent,
 } from '@hs/core';
-import { type RoomNameAuthEvents, roomNameEvent } from '@hs/core';
 import {
 	type RoomPowerLevelsEvent,
 	isRoomPowerLevelsEvent,
@@ -18,23 +25,21 @@ import {
 	roomTombstoneEvent,
 } from '@hs/core';
 import { createSignedEvent } from '@hs/core';
-import { generateId } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
 
-import type { EventBaseWithOptionalId as ModelEventBase } from '@hs/core';
-import { PersistentEventFactory } from '@hs/room';
 import type { PduCreateEventContent, PduJoinRuleEventContent } from '@hs/room';
 import { RoomVersion } from '@hs/room';
+import { inject, injectable } from 'tsyringe';
 import { StateService } from './state.service';
+
+import { PersistentEventFactory } from '@hs/room';
+import { type EventService, EventType } from './event.service';
 
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
-import type { EventRepository } from '../repositories/event.repository';
-import type { RoomRepository } from '../repositories/room.repository';
+import { EventRepository } from '../repositories/event.repository';
+import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
-import { EventService } from './event.service';
-import { EventType } from './event.service';
 import { FederationService } from './federation.service';
 
 // Utility function to create a random ID for room creation
@@ -189,7 +194,7 @@ export class RoomService {
 		}
 	}
 
-	async upsertRoom(roomId: string, state: ModelEventBase[]) {
+	async upsertRoom(roomId: string, state: EventBase[]) {
 		logger.info(`Upserting room ${roomId} with ${state.length} state events`);
 
 		// Find the create event to determine room version
@@ -230,9 +235,7 @@ export class RoomService {
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
 		roomVersion: RoomVersion,
-		_canonicalAlias?: string,
-		_alias?: string,
-	): Promise<{ room_id: string; event_id: string }> {
+	) {
 		logger.debug(`Creating room for ${sender} with ${username}`);
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
@@ -356,13 +359,12 @@ export class RoomService {
 		name: string,
 		senderId: string,
 		targetServer: string,
-	): Promise<{ eventId: string }> {
+	) {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
 		);
 
-		const lastEvent: EventStore | null =
-			await this.eventService.getLastEventForRoom(roomId);
+		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
 			throw new HttpException(
 				'Room has no history, cannot update name',
@@ -683,7 +685,7 @@ export class RoomService {
 			);
 		}
 
-		const authEvents: RoomMemberAuthEvents = {
+		const authEvents = {
 			'm.room.create': createEventId,
 			'm.room.power_levels': powerLevelsEventId,
 			[`m.room.member:${senderId}`]: memberEventId,
@@ -821,7 +823,7 @@ export class RoomService {
 			);
 		}
 
-		const authEvents: RoomMemberAuthEvents = {
+		const authEvents = {
 			'm.room.create': createEventId,
 			'm.room.power_levels': powerLevelsEventId,
 			[`m.room.member:${kickedUserId}`]: senderMemberEventId,
@@ -951,7 +953,7 @@ export class RoomService {
 			);
 		}
 
-		const authEvents: RoomMemberAuthEvents = {
+		const authEvents = {
 			'm.room.create': createEventId,
 			'm.room.power_levels': powerLevelsEventId,
 			[`m.room.member:${bannedUserId}`]: senderMemberEventId,
