@@ -1,5 +1,3 @@
-import typia, { tags } from 'typia';
-
 // https://spec.matrix.org/v1.10/server-server-api/#post_matrixkeyv2query
 
 export type KeyID = string;

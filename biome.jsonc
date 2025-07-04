@@ -41,6 +41,13 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "**/node_modules", ".vscode", "dist", ".turbo"]
+		"ignore": [
+			"node_modules",
+			"**/node_modules",
+			".vscode",
+			"dist",
+			".turbo",
+			"tsconfig.*.json"
+		]
 	}
 }

@@ -1,18 +1,12 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
 		"outDir": "./dist",
-		"target": "ESNext",
 		"rootDir": "./src",
-		"declaration": true,
-		"declarationMap": true,
-		"sourceMap": true,
 		"composite": true,
-		"skipLibCheck": true,
 		"noEmit": false,
-		"esModuleInterop": true,
-		"allowImportingTsExtensions": false,
-		"verbatimModuleSyntax": false
+		"verbatimModuleSyntax": false,
+		"tsBuildInfoFile": "./.tsbuildinfo"
 	},
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]

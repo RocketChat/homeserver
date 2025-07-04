@@ -4,21 +4,23 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"dev": "bun run --watch src/index.ts",
-		"prepare": "ts-patch install && typia patch",
-		"build": "tsc"
+		"build": "tsc --build --force"
 	},
-	"main": "./src/index.ts",
-	"types": "./src/index.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
+		}
+	},
 	"files": ["./src", "./dist"],
-	"dependencies": {
-		"elysia": "latest",
-		"typia": "^5.5.7"
-	},
 	"devDependencies": {
 		"bun-types": "latest",
 		"ts-node": "^10.9.2",
 		"ts-patch": "^3.1.2",
 		"typescript": "^5.8.3"
 	},
-	"module": "src/index.js"
+	"module": "./dist/index.js"
 }

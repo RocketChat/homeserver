@@ -1,20 +1,13 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
 		"outDir": "./dist",
 		"rootDir": "./src",
-		"declaration": true,
-		"declarationMap": true,
-		"sourceMap": true,
 		"composite": true,
-		"skipLibCheck": true,
 		"noEmit": false,
-		"esModuleInterop": true,
-		"allowImportingTsExtensions": false,
-		"isolatedModules": true,
-		"noResolve": false
+		"verbatimModuleSyntax": false,
+		"tsBuildInfoFile": "./.tsbuildinfo"
 	},
 	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"],
-	"references": []
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }
