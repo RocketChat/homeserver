@@ -1,16 +1,18 @@
+import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
 import { FederationService } from '@hs/federation-sdk';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
-import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { createLogger } from '../utils/logger';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
-import { EventBase, HttpException, HttpStatus } from '@hs/core';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
-
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
-	event: EventBase & { origin: string; room_id: string; state_key: string };
+	event: EventBaseWithOptionalId & {
+		origin: string;
+		room_id: string;
+		state_key: string;
+	};
 	invite_room_state: unknown;
 	room_version: string;
 };
@@ -74,11 +76,13 @@ export class InviteService {
 		};
 	}
 
-	async processInvite(
-		event: ProcessInviteBody,
-		roomId: string,
-		eventId: string,
-	): Promise<ProcessInviteResponse> {
+	async processInvite<
+		T extends Omit<EventBaseWithOptionalId, 'origin'> & {
+			origin?: string | undefined;
+			room_id: string;
+			state_key: string;
+		},
+	>(event: T, roomId: string, eventId: string): Promise<{ event: T }> {
 		try {
 			// Check if the room is tombstoned (deleted)
 			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
@@ -94,7 +98,10 @@ export class InviteService {
 
 			// TODO: Validate before inserting
 			try {
-				await this.eventService.insertEvent(event as EventBase, eventId);
+				await this.eventService.insertEvent(
+					event as EventBaseWithOptionalId,
+					eventId,
+				);
 			} catch (error: unknown) {
 				const errorMessage =
 					error instanceof Error ? error.message : String(error);
@@ -121,6 +128,9 @@ export class InviteService {
 		}
 	}
 
+	/**
+	 * Accept an invite for a user
+	 */
 	async acceptInvite(roomId: string, userId: string): Promise<void> {
 		try {
 			// Check if the room is tombstoned (deleted)
@@ -145,7 +155,7 @@ export class InviteService {
 			}
 
 			await this.handleInviteProcessing({
-				event: inviteEvent.event as EventBase & {
+				event: inviteEvent.event as EventBaseWithOptionalId & {
 					origin: string;
 					room_id: string;
 					state_key: string;
@@ -161,6 +171,9 @@ export class InviteService {
 		}
 	}
 
+	/**
+	 * Handle the processing of an invite event
+	 */
 	private async handleInviteProcessing(
 		_event: ProcessInviteEvent,
 	): Promise<void> {
