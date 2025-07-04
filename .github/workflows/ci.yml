@@ -31,7 +31,7 @@ jobs:
 
       - run: bun install
       - run: bun run build
-      - run: bun lint
+      - run: bun lint:ci
       - run: bun tsc --noEmit
       - run: bun test:coverage
 
