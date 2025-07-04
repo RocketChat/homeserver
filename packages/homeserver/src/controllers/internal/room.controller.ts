@@ -30,16 +30,14 @@ import {
 	ErrorResponseDto,
 	RoomIdDto,
 	UsernameDto,
-} from '../../dtos';
-import { RoomService } from '../../services/room.service';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import { StateService } from '../../services/state.service';
-import type { PduCreateEventContent } from '@hs/room/src/types/v1';
-import { ConfigService } from '../../services/config.service';
-import { FederationService } from '@hs/federation-sdk/src/services/federation.service';
-import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
-import type { RoomVersion } from '@hs/room/src/manager/type';
-import { InviteService } from '../../services/invite.service';
+} from '@hs/federation-sdk';
+import { RoomService } from '@hs/federation-sdk';
+import { PduCreateEventContent, PersistentEventFactory } from '@hs/room';
+import { StateService } from '@hs/federation-sdk';
+import { ConfigService } from '@hs/federation-sdk';
+import { FederationService } from '@hs/federation-sdk';
+import { PersistentEventBase } from '@hs/room';
+import { InviteService } from '@hs/federation-sdk';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);

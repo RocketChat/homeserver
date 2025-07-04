@@ -1,16 +1,14 @@
-import { isRoomMemberEvent } from '@hs/core/src/events/m.room.member';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
-	type SendJoinResponse,
 	ErrorResponseDto,
 	SendJoinEventDto,
-	SendJoinParamsDto,
 	SendJoinResponseDto,
-} from '../../dtos';
-import { ConfigService } from '../../services/config.service';
-import { EventService } from '../../services/event.service';
+	StateService,
+} from '@hs/federation-sdk';
+import { ConfigService } from '@hs/federation-sdk';
+import { EventService } from '@hs/federation-sdk';
+import { getAuthChain, PersistentEventFactory } from '@hs/room';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
@@ -23,7 +21,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 			params,
 			body,
 			query: _query, // not destructuring this breaks the endpoint
-		}): Promise<SendJoinResponse | ErrorResponse> => {
+		}) => {
 			const { roomId, eventId } = params;
 
 			const roomVersion = await stateService.getRoomVersion(roomId);
@@ -31,8 +29,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 			if (!roomVersion) {
 				throw new Error('Room version not found');
 			}
-
-			console.log(eventId, body);
 
 			const bodyAny = body as any;
 
@@ -83,29 +79,30 @@ export const sendJoinPlugin = (app: Elysia) => {
 			return {
 				origin,
 				event: {
-					...event,
-					unsigned: lastInviteEvent
-						? {
-								replaces_state: lastInviteEvent._id,
-								prev_content: lastInviteEvent.event.content,
-								prev_sender: lastInviteEvent.event.sender,
-							}
-						: undefined,
-				},
-				state: events.map((event) => ({ ...event })),
-				auth_chain: events
-					.filter((event) => event.depth && event.depth <= 4)
-					.map((event) => ({ ...event })),
-				members_omitted: false,
-				origin: configService.getServerConfig().name,
+					...signedJoinEvent,
+					unsigned: {},
+					origin: origin,
+				}, // TODO: eh
+				members_omitted: false, // less requests
+				state: Array.from(state.values()).map((event) => {
+					return {
+						...event.event,
+						unsigned: {}, // TODO: why wrapper isn't doing this
+					};
+				}), // values().map should have worked but editor is complaining
+				auth_chain: authChainEvents.map((event) => {
+					return {
+						...event.event,
+						unsigned: {},
+					};
+				}),
 			};
-			if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
-				await eventService.insertEvent(eventToSave, stateKey);
-			}
-			return result;
 		},
 		{
-			params: SendJoinParamsDto,
+			params: t.Object({
+				roomId: t.String(),
+				eventId: t.String(),
+			}),
 			body: SendJoinEventDto,
 			response: {
 				200: SendJoinResponseDto,

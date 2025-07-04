@@ -12,6 +12,7 @@ import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
 import { type ProtocolVersionKey, createLogger } from '@hs/core';
 import { injectable } from 'tsyringe';
+import { PersistentEventBase } from '@hs/room';
 
 @injectable()
 export class FederationService {

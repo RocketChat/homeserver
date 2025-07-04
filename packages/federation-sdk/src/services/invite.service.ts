@@ -1,19 +1,13 @@
 import { FederationService } from '@hs/federation-sdk';
 import { injectable } from 'tsyringe';
-import { HttpException, HttpStatus } from '../errors';
-import type {
-	InternalInviteUserResponse,
-	ProcessInviteBody,
-	ProcessInviteResponse,
-} from '../dtos';
-import type { EventBase } from '../models/event.model';
+import type { ProcessInviteBody, ProcessInviteResponse } from '../dtos';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import type { RoomVersion } from '@hs/room/src/manager/type';
+import { EventBase, HttpException, HttpStatus } from '@hs/core';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
 
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -37,11 +31,7 @@ export class InviteService {
 	/**
 	 * Invite a user to an existing room
 	 */
-	async inviteUserToRoom(
-		userId: string,
-		roomId: string,
-		sender: string,
-	): Promise<InternalInviteUserResponse> {
+	async inviteUserToRoom(userId: string, roomId: string, sender: string) {
 		this.logger.debug(`Inviting ${userId} to room ${roomId}`);
 
 		const stateService = this.stateService;
@@ -74,7 +64,7 @@ export class InviteService {
 
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
-				inviteResponse.event as any,
+				inviteResponse.event,
 				roomInformation.room_version as RoomVersion,
 			),
 		);

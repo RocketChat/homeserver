@@ -1,19 +1,16 @@
 import { injectable } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { StateMapKey } from '@hs/room/src/types/_common';
-import type {
-	EventStore,
-	PersistentEventBase,
-} from '@hs/room/src/manager/event-wrapper';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import type { RoomVersion } from '@hs/room/src/manager/type';
-import { resolveStateV2Plus } from '@hs/room/src/state_resolution/definitions/algorithm/v2';
-import type { PduCreateEventContent } from '@hs/room/src/types/v1';
+import type { StateMapKey } from '@hs/room';
+import type { EventStore, PersistentEventBase } from '@hs/room';
+import { PersistentEventFactory } from '@hs/room';
+import type { RoomVersion } from '@hs/room';
+import { resolveStateV2Plus } from '@hs/room';
+import type { PduCreateEventContent } from '@hs/room';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
-import { signEvent } from '../signEvent';
-import { checkEventAuthWithState } from '@hs/room/src/authorizartion-rules/rules';
+import { signEvent } from '@hs/core';
+import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 

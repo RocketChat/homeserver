@@ -12,12 +12,14 @@ import {
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
+	ProfilesService,
 	QueryKeysBodyDto,
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
 	QueryProfileResponseDto,
-} from '../../dtos';
-import { ProfilesService } from '../../services/profiles.service';
+	StateService,
+} from '@hs/federation-sdk';
+import { getAuthChain, PersistentEventFactory, RoomVersion } from '@hs/room';
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
@@ -72,10 +74,7 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({
-				params,
-				query: _query,
-			}): Promise<MakeJoinResponse | ErrorResponse> => {
+			async ({ params, query: _query }) => {
 				const { roomId, userId } = params;
 
 				const roomInformation = await stateService.getRoomInformation(roomId);
@@ -101,7 +100,7 @@ export const profilesPlugin = (app: Elysia) => {
 				}
 
 				return {
-					room_version: roomInformation.room_version,
+					room_version: roomInformation.room_version as RoomVersion,
 					event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
 				};
 			},
@@ -118,86 +117,67 @@ export const profilesPlugin = (app: Elysia) => {
 					description: 'Make a join event',
 				},
 			},
-					description: 'Make a join event',
-				},
-},
 		)
 		.post(
 			'/_matrix/federation/v1/get_missing_events/:roomId',
-			async (
-{
-	params, body;
-}
-) =>
+			async ({ params, body }) =>
 				profilesService.getMissingEvents(
 					params.roomId,
 					body.earliest_events,
 					body.latest_events,
 					body.limit,
 				),
-{
-	params: GetMissingEventsParamsDto, body;
-	: GetMissingEventsBodyDto,
-				response: 
-					200: GetMissingEventsResponseDto,,
-				detail: 
+			{
+				params: GetMissingEventsParamsDto,
+				body: GetMissingEventsBodyDto,
+				response: {
+					200: GetMissingEventsResponseDto,
+				},
+				detail: {
 					tags: ['Federation'],
 					summary: 'Get missing events',
-					description: 'Get missing events for a room',,
-}
-,
 					description: 'Get missing events for a room',
 				},
 			},
 		)
 		.get(
 			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
-			(
-{
-	params;
-}
-) => profilesService.eventAuth(params.roomId, params.eventId),
-		.get(
-			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
-			async (
-{
-	params;
-}
-) =>
-{
-	const { roomId, eventId } = params;
+			async ({ params }) => {
+				const { roomId, eventId } = params;
 
-	const roomVersion = await stateService.getRoomVersion(roomId);
+				const roomVersion = await stateService.getRoomVersion(roomId);
 
-	if (!roomVersion) {
-		throw new Error('Room version not found while trying to get auth chain');
-	}
+				if (!roomVersion) {
+					throw new Error(
+						'Room version not found while trying to get auth chain',
+					);
+				}
 
-	const store = stateService._getStore(roomVersion);
+				const store = stateService._getStore(roomVersion);
 
-	const [event] = await store.getEvents([eventId]);
-	if (!event) {
-		throw new Error('Event not found while trying to get auth chain');
-	}
+				const [event] = await store.getEvents([eventId]);
+				if (!event) {
+					throw new Error('Event not found while trying to get auth chain');
+				}
 
-	const authChainIds = await getAuthChain(event, store);
+				const authChainIds = await getAuthChain(event, store);
 
-	const authChain = await store.getEvents(Array.from(authChainIds));
+				const authChain = await store.getEvents(Array.from(authChainIds));
 
-	const pdus = authChain.map((e) => e.event);
+				const pdus = authChain.map((e) => e.event);
 
-	return { auth_chain: pdus };
-}
-,
-{
-	params: EventAuthParamsDto, response;
-	: 
-					200: EventAuthResponseDto,,
-				detail: 
+				return { auth_chain: pdus };
+			},
+			{
+				params: EventAuthParamsDto,
+				response: {
+					200: EventAuthResponseDto,
+				},
+				detail: {
 					tags: ['Federation'],
 					summary: 'Event auth',
-					description: 'Get event auth for a room',,
-}
-,
-		)
-}
+					description: 'Get event auth for a room',
+				},
+			},
+		);
+};

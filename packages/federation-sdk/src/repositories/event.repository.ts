@@ -1,10 +1,10 @@
 import { injectable } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
-import { generateId } from '../authentication';
-import type { EventBase, EventStore } from '../models/event.model';
+import { generateId } from '@hs/core';
+import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 import { MongoError } from 'mongodb';
-import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
+import { PersistentEventBase } from '@hs/room';
 
 @injectable()
 export class EventRepository {
@@ -82,7 +82,7 @@ export class EventRepository {
 		return this.persistEvent(event, eventId, stateId);
 	}
 
-	async createIfNotExists(event: EventBase): Promise<string> {
+	async createIfNotExists(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
@@ -90,6 +90,7 @@ export class EventRepository {
 		if (existingEvent) return id;
 
 		await collection.insertOne({
+			// @ts-ignore idk why complaining
 			eventId: id,
 			event,
 			stateId: '',
@@ -125,11 +126,12 @@ export class EventRepository {
 			.toArray();
 	}
 
-	async createStaged(event: EventBase): Promise<string> {
+	async createStaged(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
 		await collection.insertOne({
+			// @ts-ignore idk why complaining (2)
 			eventId: id,
 			event,
 			stateId: '',
@@ -151,7 +153,7 @@ export class EventRepository {
 		);
 	}
 
-	async upsert(event: EventBase): Promise<string> {
+	async upsert(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
@@ -254,8 +256,9 @@ export class EventRepository {
 		const collection = await this.getCollection();
 
 		try {
-			// @ts-ignore
+			// @ts-ignore ??? need to unify the typings
 			await collection.insertOne({
+				// @ts-ignore ???
 				eventId: eventId,
 				event: event,
 				stateId: stateId,
