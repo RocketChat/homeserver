@@ -1,6 +1,5 @@
-import type { PduType } from './v1';
 import type { PduType, PduTypeRoomCreate, PduV1 } from './v1';
-import { PduV3 } from './v3';
+import type { PduV3 } from './v3';
 
 export type EventID = string;
 
