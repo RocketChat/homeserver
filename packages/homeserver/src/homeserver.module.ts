@@ -1,15 +1,48 @@
 import 'reflect-metadata';
 
-import { swagger } from '@elysiajs/swagger';
 import {
+	ConfigService,
+	DatabaseConnectionService,
+	EventAuthorizationService,
+	EventEmitterService,
+	EventFetcherService,
+	EventRepository,
+	EventService,
+	EventStateService,
 	type FederationModuleOptions,
 	FederationRequestService,
+	FederationService,
+	type HomeserverEventSignatures,
+	InviteService,
+	KeyRepository,
+	LockManagerService,
+	MessageService,
+	MissingEventListener,
+	MissingEventService,
+	MissingEventsQueue,
+	NotificationService,
+	ProfilesService,
+	RoomRepository,
+	RoomService,
+	ServerRepository,
+	ServerService,
+	StagingAreaListener,
+	StagingAreaQueue,
+	StagingAreaService,
+	StateEventRepository,
+	StateRepository,
+	StateService,
+	WellKnownService,
 } from '@hs/federation-sdk';
-import { Elysia } from 'elysia';
+
+import { swagger } from '@elysiajs/swagger';
+import { toUnpaddedBase64 } from '@hs/core';
+import { Emitter } from '@rocket.chat/emitter';
+import Elysia from 'elysia';
 import { container } from 'tsyringe';
-import { toUnpaddedBase64 } from './binaryData';
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
+import { roomPlugin } from './controllers/federation/rooms.controller';
 import { sendJoinPlugin } from './controllers/federation/send-join.controller';
 import { transactionsPlugin } from './controllers/federation/transactions.controller';
 import { versionsPlugin } from './controllers/federation/versions.controller';
@@ -19,39 +52,13 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { MissingEventListener } from './listeners/missing-event.listener';
-import { StagingAreaListener } from './listeners/staging-area.listener';
-import { MissingEventsQueue } from './queues/missing-event.queue';
-import { StagingAreaQueue } from './queues/staging-area.queue';
-import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { StateRepository } from './repositories/state.repository';
-import { ConfigService } from './services/config.service';
-import { DatabaseConnectionService } from './services/database-connection.service';
-import { EventAuthorizationService } from './services/event-authorization.service';
-import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
-import { EventService } from './services/event.service';
-import { InviteService } from './services/invite.service';
-import { MessageService } from './services/message.service';
-import { MissingEventService } from './services/missing-event.service';
-import { NotificationService } from './services/notification.service';
-import { ProfilesService } from './services/profiles.service';
-import { RoomService } from './services/room.service';
-import { ServerService } from './services/server.service';
-import { StateService } from './services/state.service';
-import { StagingAreaService } from './services/staging-area.service';
-import { WellKnownService } from './services/well-known.service';
-import { LockManagerService } from './utils/lock.decorator';
-import { StateEventRepository } from './repositories/state-event.repository';
-import { roomPlugin } from './controllers/federation/rooms.controller';
 
-let app: Elysia;
+export type { HomeserverEventSignatures };
+export interface HomeserverSetupOptions {
+	emitter?: Emitter<HomeserverEventSignatures>;
+}
 
-async function setup() {
-	// Load config and signing key
+export async function setup(options?: HomeserverSetupOptions) {
 	const config = new ConfigService();
 	const matrixConfig = config.getMatrixConfig();
 	const serverConfig = config.getServerConfig();
@@ -69,36 +76,41 @@ async function setup() {
 	});
 
 	container.registerSingleton(FederationRequestService);
-
-	// Register services and repositories with tsyringe
-	container.registerSingleton(ConfigService);
-	container.registerSingleton(DatabaseConnectionService);
-	container.registerSingleton(StateRepository);
+	container.registerSingleton('ConfigService', ConfigService);
+	container.registerSingleton(
+		'DatabaseConnectionService',
+		DatabaseConnectionService,
+	);
+	container.registerSingleton('StateRepository', StateRepository);
 	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
-	container.registerSingleton(EventService);
+	container.registerSingleton('EventService', EventService);
+	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
 	container.registerSingleton(NotificationService);
 	container.registerSingleton(ProfilesService);
 	container.registerSingleton(RoomService);
+	container.registerSingleton('RoomService', RoomService);
 	container.registerSingleton(ServerService);
 	container.registerSingleton(StagingAreaService);
+	container.registerSingleton('StagingAreaService', StagingAreaService);
 	container.registerSingleton(WellKnownService);
-	container.registerSingleton(EventRepository);
-	container.registerSingleton(KeyRepository);
-	container.registerSingleton(RoomRepository);
-	container.registerSingleton(ServerRepository);
-	container.registerSingleton(MissingEventsQueue);
+	container.registerSingleton('EventRepository', EventRepository);
+	container.registerSingleton('KeyRepository', KeyRepository);
+	container.registerSingleton('RoomRepository', RoomRepository);
+	container.registerSingleton('ServerRepository', ServerRepository);
+	container.registerSingleton('StateRepository', StateRepository);
+	container.registerSingleton('StateEventRepository', StateEventRepository);
+	container.registerSingleton('MissingEventsQueue', MissingEventsQueue);
+	container.registerSingleton('StagingAreaQueue', StagingAreaQueue);
 	container.registerSingleton(MissingEventListener);
-	container.registerSingleton(StagingAreaQueue);
-	container.registerSingleton(StagingAreaService);
-	container.registerSingleton(StateEventRepository);
+	container.registerSingleton(StagingAreaListener);
+	container.registerSingleton('FederationService', FederationService);
 
-	// Register the lock manager service with configuration
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService({ type: 'memory' }),
 
@@ -112,11 +124,17 @@ async function setup() {
 		// })
 	});
 
-	// Resolve the listeners to ensure they are registered and ready to use
+	const eventEmitterService = container.resolve(EventEmitterService);
+	if (options?.emitter) {
+		eventEmitterService.setEmitter(options.emitter);
+	} else {
+		eventEmitterService.initializeStandalone();
+	}
+
 	container.resolve(StagingAreaListener);
 	container.resolve(MissingEventListener);
 
-	app = new Elysia();
+	const app = new Elysia();
 
 	app
 		.use(

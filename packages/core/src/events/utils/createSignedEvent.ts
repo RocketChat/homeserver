@@ -1,5 +1,5 @@
-import type { SigningKey } from '../../../../homeserver/src/keys';
-import type { SignedEvent } from '../../../../homeserver/src/signEvent';
+import type { SigningKey } from '../../types';
+import type { SignedEvent } from '../../types';
 
 export const createSignedEvent = (
 	signature: SigningKey,
@@ -11,9 +11,7 @@ export const createSignedEvent = (
 			...args: Parameters<F>
 		): Promise<SignedEvent<ReturnType<F>>> => {
 			const event = await fn(...args);
-			const { signEvent } = await import(
-				'../../../../homeserver/src/signEvent'
-			);
+			const { signEvent } = await import('../../utils/signEvent');
 			return signEvent(event, signature, signingName) as Promise<
 				SignedEvent<ReturnType<F>>
 			>;
@@ -28,9 +26,7 @@ export const createEventWithId = <F extends (...args: any[]) => any>(fn: F) => {
 			...args: Parameters<F>
 		): Promise<{ event: SignedEvent<ReturnType<F>>; _id: string }> => {
 			const event = await sign(fn)(...args);
-			const { generateId } = await import(
-				'../../../../homeserver/src/authentication'
-			);
+			const { generateId } = await import('../../utils/generateId');
 			const id = generateId(event);
 			return {
 				event,

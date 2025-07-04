@@ -1,16 +1,15 @@
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
-	ErrorResponseDto,
 	InternalInviteUserBodyDto,
 	type InternalInviteUserResponse,
 	InternalInviteUserResponseDto,
 } from '../../dtos';
-import { InviteService } from '../../services/invite.service';
-import { StateService } from '../../services/state.service';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import type { PduCreateEventContent } from '@hs/room/src/types/v1';
+import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
+import { InviteService } from '@hs/federation-sdk';
+import { StateService } from '@hs/federation-sdk';
+import { PersistentEventFactory } from '@hs/room';
+import type { PduCreateEventContent } from '@hs/room';
 
 export const internalInvitePlugin = (app: Elysia) => {
 	const _inviteService = container.resolve(InviteService);

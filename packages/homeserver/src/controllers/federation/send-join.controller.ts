@@ -11,9 +11,6 @@ import {
 } from '../../dtos';
 import { ConfigService } from '../../services/config.service';
 import { EventService } from '../../services/event.service';
-import { StateService } from '../../services/state.service';
-import { PersistentEventFactory } from '@hs/room/src/manager/factory';
-import { getAuthChain } from '@hs/room/src/state_resolution/definitions/definitions';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
@@ -86,43 +83,30 @@ export const sendJoinPlugin = (app: Elysia) => {
 			return {
 				origin,
 				event: {
-					...signedJoinEvent.event,
-					unsigned: {},
-				}, // TODO: eh
-				members_omitted: false, // less requests
-				state: Array.from(state.values()).map((event) => {
-					return {
-						...event.event,
-						unsigned: {}, // TODO: why wrapper isn't doing this
-					};
-				}), // values().map should have worked but editor is complaining
-				auth_chain: authChainEvents.map((event) => {
-					return {
-						...event.event,
-						unsigned: {},
-					};
-				}),
+					...event,
+					unsigned: lastInviteEvent
+						? {
+								replaces_state: lastInviteEvent._id,
+								prev_content: lastInviteEvent.event.content,
+								prev_sender: lastInviteEvent.event.sender,
+							}
+						: undefined,
+				},
+				state: events.map((event) => ({ ...event })),
+				auth_chain: events
+					.filter((event) => event.depth && event.depth <= 4)
+					.map((event) => ({ ...event })),
+				members_omitted: false,
+				origin: configService.getServerConfig().name,
 			};
+			if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
+				await eventService.insertEvent(eventToSave, stateKey);
+			}
+			return result;
 		},
 		{
-			params: t.Object({
-				roomId: t.String(),
-				eventId: t.String(),
-			}),
-			query: t.Object({
-				omit_members: t.Optional(t.Boolean()), // will ignore this for now
-			}),
-			/* body: t.Object({
-				origin: t.String(),
-				origin_server_ts: t.Number(),
-				sender: t.String(),
-				state_key: t.String(),
-				type: t.Literal('m.room.member'),
-				content: t.Object({
-					membership: t.Literal('join'),
-				}),
-			}), */
-			body: t.Any(),
+			params: SendJoinParamsDto,
+			body: SendJoinEventDto,
 			response: {
 				200: SendJoinResponseDto,
 				400: ErrorResponseDto,

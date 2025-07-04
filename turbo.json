@@ -4,10 +4,11 @@
 		"build": {
 			"dependsOn": ["^build"],
 			"outputs": ["dist/**"],
-			"inputs": ["src/**/*", "../../tsconfig*.json"]
+			"inputs": ["src/**/*", "tsconfig.json"]
 		},
 		"dev": {
 			"cache": false
 		}
-	}
+	},
+	"globalDependencies": ["tsconfig.json"]
 }

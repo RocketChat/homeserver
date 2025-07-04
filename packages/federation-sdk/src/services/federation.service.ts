@@ -10,9 +10,8 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import type { ProtocolVersionKey } from '@hs/core';
+import { type ProtocolVersionKey, createLogger } from '@hs/core';
 import { injectable } from 'tsyringe';
-import { createLogger } from '@hs/core';
 
 @injectable()
 export class FederationService {

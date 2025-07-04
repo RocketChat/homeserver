@@ -1,4 +1,4 @@
-import { encodeCanonicalJson } from '@hs/core';
+import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/core';
 import type { StateMapKey } from '../types/_common';
 import {
 	PduTypeRoomCanonicalAlias,
@@ -14,7 +14,6 @@ import {
 	PduType,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
-import { toUnpaddedBase64 } from '@hs/homeserver/src/binaryData';
 import crypto from 'node:crypto';
 import {
 	getStateMapKey,
@@ -312,7 +311,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 			// The current m.room.power_levels event, if any.
 			getStateMapKey({ type: PduTypeRoomPowerLevels }),
 
-			// The sender’s current m.room.member event, if any.
+			// The sender's current m.room.member event, if any.
 			getStateMapKey({ type: PduTypeRoomMember, state_key: this.sender }),
 
 			// The m.room.create event.

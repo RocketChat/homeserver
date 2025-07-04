@@ -1,7 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
-	type ErrorResponse,
 	type InternalBanUserResponse,
 	type InternalCreateRoomResponse,
 	type InternalKickUserResponse,
@@ -9,7 +8,6 @@ import {
 	type InternalTombstoneRoomResponse,
 	type InternalUpdateRoomNameResponse,
 	type InternalUpdateUserPowerLevelResponse,
-	ErrorResponseDto,
 	InternalBanUserBodyDto,
 	InternalBanUserParamsDto,
 	InternalCreateRoomBodyDto,
@@ -26,6 +24,10 @@ import {
 	InternalUpdateRoomNameParamsDto,
 	InternalUpdateUserPowerLevelBodyDto,
 	InternalUpdateUserPowerLevelParamsDto,
+} from '../../dtos';
+import {
+	type ErrorResponse,
+	ErrorResponseDto,
 	RoomIdDto,
 	UsernameDto,
 } from '../../dtos';

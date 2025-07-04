@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../homeserver/src/keys';
-import { signEvent } from '../../../homeserver/src/signEvent';
+import { generateId } from '../utils/generateId';
+import { generateKeyPairsFromString } from '../utils/keys';
 import { isRoomJoinRulesEvent, roomJoinRulesEvent } from './m.room.join_rules';
+import { signEvent } from '../utils/signEvent';
 
 const finalEventId = '$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4';
 const finalEvent = {

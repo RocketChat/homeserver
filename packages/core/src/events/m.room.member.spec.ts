@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '../../../homeserver/src/authentication';
-import { generateKeyPairsFromString } from '../../../homeserver/src/keys';
-import { signEvent } from '../../../homeserver/src/signEvent';
+import { generateId } from '../utils/generateId';
+import { generateKeyPairsFromString } from '../utils/keys';
+import { signEvent } from '../utils/signEvent';
 import { roomCreateEvent } from './m.room.create';
 import { roomMemberEvent } from './m.room.member';
 
