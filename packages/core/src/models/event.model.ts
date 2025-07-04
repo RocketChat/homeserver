@@ -8,6 +8,7 @@ export interface EventBaseWithOptionalId extends CoreEventBase {
 
 export interface EventStore {
 	_id: string;
+	eventId: string;
 	event: EventBaseWithOptionalId;
 	staged?: boolean;
 	outlier?: boolean;

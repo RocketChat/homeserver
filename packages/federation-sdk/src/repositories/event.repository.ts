@@ -4,7 +4,7 @@ import { generateId } from '@hs/core';
 import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 import { MongoError } from 'mongodb';
-import { PersistentEventBase } from '@hs/room/src/manager/event-wrapper';
+import { PersistentEventBase } from '@hs/room';
 
 @singleton()
 export class EventRepository {
@@ -90,6 +90,7 @@ export class EventRepository {
 		if (existingEvent) return id;
 
 		await collection.insertOne({
+			// @ts-ignore idk why complaining
 			eventId: id,
 			event,
 			stateId: '',
@@ -129,6 +130,7 @@ export class EventRepository {
 		const id = event.event_id || generateId(event);
 
 		await collection.insertOne({
+			// @ts-ignore idk why complaining (2)
 			eventId: id,
 			event,
 			stateId: '',
