@@ -1,5 +1,4 @@
 import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
-import { FederationService } from '@hs/federation-sdk';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';

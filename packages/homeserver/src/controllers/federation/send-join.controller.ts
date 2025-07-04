@@ -2,6 +2,7 @@ import {
 	ConfigService,
 	ErrorResponse,
 	ErrorResponseDto,
+	SendJoinEventDto,
 	SendJoinResponse,
 	SendJoinResponseDto,
 	StateService,
