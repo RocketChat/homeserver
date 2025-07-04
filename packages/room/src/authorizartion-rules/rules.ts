@@ -1,7 +1,6 @@
 import assert from 'node:assert';
 import {
 	type PduCreateEventContent,
-	type PduMembershipEvent,
 	type PduMembershipEventContent,
 	type PduPowerLevelsEventContent,
 	type PduType,
@@ -9,33 +8,18 @@ import {
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
-	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomThirdPartyInvite,
-	isCreateEvent,
-	isMembershipEvent,
-	isPowerLevelsEvent,
 } from '../types/v1';
 
-import {
-	type PduCreateEventV3,
-	type PduJoinRuleEventV3,
-	type PduMembershipEventV3,
-	type PduPowerLevelsEventV3,
-	type PduPowerLevelsEventV3Content,
-	type PduV3,
-} from '../types/v3';
-
-import { join } from 'node:path';
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 import {
 	type EventStore,
 	getStateMapKey,
-	isPowerEvent,
 } from '../state_resolution/definitions/definitions';
-import { type EventID, type State, type StateMapKey } from '../types/_common';
-import type { PduPowerLevelsEventV10Content } from '../types/v10';
+
+import { StateMapKey } from '../types/_common';
 import { StateResolverAuthorizationError } from './errors';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
@@ -788,6 +772,7 @@ export async function checkEventAuthWithState(
 	}
 
 	// If type is m.room.third_party_invite:
+	// @ts-ignore the pdu union doesn't have this type TODO: add
 	if (event.type === PduTypeRoomThirdPartyInvite) {
 		console.warn('third_party_invite not implemented');
 		throw new StateResolverAuthorizationError(
