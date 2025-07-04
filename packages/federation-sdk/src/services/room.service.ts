@@ -1,24 +1,17 @@
-import type {
-	EventBase,
-	EventStore,
-	RoomNameAuthEvents,
-	SigningKey,
-} from '@hs/core';
 import {
+	EventBase,
 	ForbiddenError,
 	HttpException,
 	HttpStatus,
-	type AuthEvents as RoomMemberAuthEvents,
+	RoomNameAuthEvents,
+	type RoomPowerLevelsEvent,
 	createLogger,
 	generateId,
+	isRoomPowerLevelsEvent,
 	roomMemberEvent,
 	roomNameEvent,
-	signEvent,
-} from '@hs/core';
-import {
-	type RoomPowerLevelsEvent,
-	isRoomPowerLevelsEvent,
 	roomPowerLevelsEvent,
+	signEvent,
 } from '@hs/core';
 import {
 	type RoomTombstoneEvent,
@@ -26,12 +19,13 @@ import {
 	roomTombstoneEvent,
 } from '@hs/core';
 import { createSignedEvent } from '@hs/core';
-
-import type { EventBaseWithOptionalId as ModelEventBase } from '@hs/core';
+import type { SigningKey } from '@hs/core';
 import type { PduCreateEventContent, PduJoinRuleEventContent } from '@hs/room';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
+import { RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import { StateService } from './state.service';
+
+import { PersistentEventFactory } from '@hs/room';
 
 import type { SignedEvent } from '@hs/core';
 import { logger } from '@hs/core';
@@ -40,17 +34,6 @@ import type { RoomRepository } from '../repositories/room.repository';
 import type { ConfigService } from './config.service';
 import { type EventService, EventType } from './event.service';
 import type { FederationService } from './federation.service';
-
-// Utility function to create a random ID for room creation
-function _createMediaId(length: number) {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-	let result = '';
-	for (let i = 0; i < length; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters[randomIndex];
-	}
-	return result;
-}
 
 @injectable()
 export class RoomService {
