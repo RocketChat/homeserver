@@ -1,15 +1,15 @@
 import { roomMemberEvent } from '@hs/core';
-import { FederationService } from './federation.service';
-import { ConfigService } from './config.service';
-import { injectable } from 'tsyringe';
 import { HttpException, HttpStatus } from '@hs/core';
 import { generateId } from '@hs/core';
 import { makeUnsignedRequest } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
-import { createLogger } from '@hs/core';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
+import { inject, injectable } from 'tsyringe';
+import { createLogger } from '../utils/logger';
+import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { inject } from 'tsyringe';
+import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
 
 // TODO: Have better (detailed/specific) event input type
