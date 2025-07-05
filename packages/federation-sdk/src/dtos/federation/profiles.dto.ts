@@ -72,7 +72,7 @@ export const MakeJoinResponseDto = t.Object({
 		state_key: UsernameDto,
 		type: t.Literal('m.room.member'),
 		origin_server_ts: TimestampDto,
-		origin: ServerNameDto,
+		// origin: ServerNameDto,
 		depth: t.Optional(
 			t.Number({ description: 'Depth of the event in the DAG' }),
 		),

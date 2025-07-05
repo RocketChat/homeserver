@@ -21,6 +21,7 @@ export const InternalCreateRoomBodyDto = t.Object({
 			description: 'Room alias',
 		}),
 	),
+	join_rule: t.String(),
 });
 
 export const InternalCreateRoomResponseDto = t.Object({
