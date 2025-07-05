@@ -1,14 +1,14 @@
-import { inject, injectable } from 'tsyringe';
+import { createLogger } from '@hs/core';
 import type { EventID, StateMapKey } from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
 import type { PduCreateEventContent } from '@hs/room';
-import { createLogger } from '@hs/core';
 import { MongoError, ObjectId } from 'mongodb';
-import type { StateRepository } from '../repositories/state.repository';
+import { inject, injectable } from 'tsyringe';
 import type { EventRepository } from '../repositories/event.repository';
+import type { StateRepository } from '../repositories/state.repository';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 

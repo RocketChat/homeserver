@@ -4,7 +4,6 @@ import { generateId } from '@hs/core';
 import { makeUnsignedRequest } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, injectable } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
