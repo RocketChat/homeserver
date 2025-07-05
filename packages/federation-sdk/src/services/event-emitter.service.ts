@@ -5,8 +5,8 @@ import {
 } from '@rocket.chat/emitter';
 import { injectable } from 'tsyringe';
 
-import logger from '../utils/logger';
 import type { HomeserverEventSignatures } from '..';
+import logger from '../utils/logger';
 
 @injectable()
 export class EventEmitterService {

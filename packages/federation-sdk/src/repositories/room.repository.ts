@@ -1,8 +1,8 @@
-import { injectable } from 'tsyringe';
-import { Collection } from 'mongodb';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { DatabaseConnectionService } from '../services/database-connection.service';
 import type { EventStore } from '@hs/core';
+import { Collection } from 'mongodb';
+import { injectable } from 'tsyringe';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Room = {
 	_id: string;

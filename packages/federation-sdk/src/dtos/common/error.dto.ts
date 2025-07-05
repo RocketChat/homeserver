@@ -1,4 +1,4 @@
-import { type Static, t } from "elysia";
+import { type Static, t } from 'elysia';
 
 export const ErrorResponseDto = t.Object({
 	error: t.String(),

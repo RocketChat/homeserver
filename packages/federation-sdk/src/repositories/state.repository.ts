@@ -1,11 +1,11 @@
-import { injectable } from 'tsyringe';
 import {
+	type Collection,
 	FindCursor,
 	type InsertOneResult,
 	ObjectId,
-	type Collection,
 	type WithId,
 } from 'mongodb';
+import { injectable } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 import type { StateMapKey } from '@hs/room';

@@ -1,9 +1,9 @@
-import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
-import { toUnpaddedBase64, signJson } from '@hs/core';
+import { signJson, toUnpaddedBase64 } from '@hs/core';
+import type { SigningKey } from '@hs/core';
 import { ServerKeyResponseDto } from '@hs/federation-sdk';
 import { ConfigService } from '@hs/federation-sdk';
-import type { SigningKey } from '@hs/core';
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
 
 export const serverKeyPlugin = (app: Elysia) => {
 	const configService = container.resolve(ConfigService);

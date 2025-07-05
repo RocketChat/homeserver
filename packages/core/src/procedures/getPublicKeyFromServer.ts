@@ -2,9 +2,9 @@ import type { ServerKey } from '../server';
 import { makeRequest } from '../utils/makeRequest';
 
 import {
+	getSignaturesFromRemote,
 	isValidAlgorithm,
 	verifyJsonSignature,
-	getSignaturesFromRemote,
 } from '../utils/signJson';
 
 export const makeGetPublicKeyFromServerProcedure = (

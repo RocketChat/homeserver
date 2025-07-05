@@ -4,8 +4,8 @@ import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
 import type { AuthEvents, EventBase, RoomMemberEvent } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
 import type { EventStore } from '@hs/core';
+import { inject, injectable } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 
 @injectable()

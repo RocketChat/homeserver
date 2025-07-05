@@ -1,8 +1,8 @@
 import { afterEach, describe, it } from 'bun:test';
-import { resolveStateV1 } from './v1';
-import { type EventStore } from '../definitions';
 import { type PersistentEventBase } from '../../../manager/event-wrapper';
 import { PersistentEventFactory } from '../../../manager/factory';
+import { type EventStore } from '../definitions';
+import { resolveStateV1 } from './v1';
 
 class MockEventStore implements EventStore {
 	public events: Array<PersistentEventBase> = [];

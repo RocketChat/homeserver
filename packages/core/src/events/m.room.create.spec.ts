@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
 
+import type { SignedEvent } from '../types';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
-import type { SignedEvent } from '../types';
 import { signEvent } from '../utils/signEvent';
 import {
 	type RoomCreateEvent,
