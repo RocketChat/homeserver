@@ -1,6 +1,6 @@
+import { toUnpaddedBase64 } from '@hs/crypto';
 import { type EventStore, PersistentEventBase } from './event-wrapper';
 import type { RoomVersion3To9, RoomVersion10And11 } from './type';
-import { toUnpaddedBase64 } from '@hs/crypto';
 import type { PduVersionForRoomVersion } from './type';
 
 // v3 is where it changes first

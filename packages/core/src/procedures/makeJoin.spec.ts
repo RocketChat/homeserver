@@ -1,12 +1,12 @@
-import { expect, it, describe, mock } from 'bun:test';
-import { makeJoinEventBuilder } from './makeJoin';
+import { describe, expect, it, mock } from 'bun:test';
 // Note: Error classes are now generic Error instances in the core package
 import {
+	type EventStore,
 	IncompatibleRoomVersionError,
 	NotFoundError,
-	type EventStore,
 } from '@hs/core';
 import type { AuthEvents } from '@hs/core';
+import { makeJoinEventBuilder } from './makeJoin';
 
 describe('makeJoinEventBuilder', () => {
 	const mockRoomId = '!roomId:example.org';

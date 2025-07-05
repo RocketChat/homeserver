@@ -1,7 +1,7 @@
 import {
-	PduTypeRoomMessage,
 	type PduPowerLevelsEventContent,
 	type PduType,
+	PduTypeRoomMessage,
 } from '../types/v1';
 import type { PduPowerLevelsEventV3Content } from '../types/v3';
 import type { PduPowerLevelsEventV10Content } from '../types/v10';

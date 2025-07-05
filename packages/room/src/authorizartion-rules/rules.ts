@@ -1,8 +1,10 @@
 import assert from 'node:assert';
 import {
-	isCreateEvent,
-	isMembershipEvent,
-	isPowerLevelsEvent,
+	type PduCreateEventContent,
+	type PduMembershipEvent,
+	type PduMembershipEventContent,
+	type PduPowerLevelsEventContent,
+	type PduType,
 	PduTypeRoomCanonicalAlias,
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
@@ -10,11 +12,9 @@ import {
 	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomThirdPartyInvite,
-	type PduCreateEventContent,
-	type PduMembershipEvent,
-	type PduMembershipEventContent,
-	type PduPowerLevelsEventContent,
-	type PduType,
+	isCreateEvent,
+	isMembershipEvent,
+	isPowerLevelsEvent,
 } from '../types/v1';
 
 import {
@@ -26,17 +26,17 @@ import {
 	type PduV3,
 } from '../types/v3';
 
+import { join } from 'node:path';
+import type { PersistentEventBase } from '../manager/event-wrapper';
+import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 import {
+	type EventStore,
 	getStateMapKey,
 	isPowerEvent,
-	type EventStore,
 } from '../state_resolution/definitions/definitions';
 import { type EventID, type State, type StateMapKey } from '../types/_common';
-import type { PersistentEventBase } from '../manager/event-wrapper';
-import { join } from 'node:path';
 import type { PduPowerLevelsEventV10Content } from '../types/v10';
 import { StateResolverAuthorizationError } from './errors';
-import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events

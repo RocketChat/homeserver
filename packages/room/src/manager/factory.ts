@@ -1,13 +1,13 @@
 import {
+	type PduCreateEventContent,
 	type PduMembershipEventContent,
 	type PduPowerLevelsEventContent,
+	type PduRoomNameEventContent,
 	PduTypeRoomCreate,
 	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
-	type PduCreateEventContent,
-	type PduV1,
 	PduTypeRoomName,
-	type PduRoomNameEventContent,
+	PduTypeRoomPowerLevels,
+	type PduV1,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
 import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
@@ -16,11 +16,11 @@ import { PersistentEventV1 } from './v1';
 import { PersistentEventV3 } from './v3';
 import { PersistentEventV10 } from './v10';
 
+import type { PersistentEventBase } from './event-wrapper';
 import type {
 	PduVersionForRoomVersionWithOnlyRequiredFields,
 	RoomVersion,
 } from './type';
-import type { PersistentEventBase } from './event-wrapper';
 
 function isV1ToV2(_event: unknown, roomVersion: RoomVersion): _event is PduV1 {
 	return roomVersion === '1' || roomVersion === '2';

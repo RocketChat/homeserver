@@ -1,27 +1,27 @@
+import crypto from 'node:crypto';
 import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/core';
+import {
+	type EventStore,
+	getStateMapKey,
+} from '../state_resolution/definitions/definitions';
 import type { StateMapKey } from '../types/_common';
 import {
+	type PduJoinRuleEventContent,
+	type PduMembershipEventContent,
 	PduTypeRoomCanonicalAlias,
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 	type PduV1,
-	type PduMembershipEventContent,
-	type PduJoinRuleEventContent,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
-import crypto from 'node:crypto';
 import { type PduV10 } from '../types/v10';
-import {
-	getStateMapKey,
-	type EventStore,
-} from '../state_resolution/definitions/definitions';
-import type {
-	RoomVersion,
-	PduVersionForRoomVersionWithOnlyRequiredFields,
-} from './type';
 import { PowerLevelEvent } from './power-level-event-wrapper';
+import type {
+	PduVersionForRoomVersionWithOnlyRequiredFields,
+	RoomVersion,
+} from './type';
 
 function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
