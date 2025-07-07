@@ -79,22 +79,15 @@ export const sendJoinPlugin = (app: Elysia) => {
 			return {
 				origin,
 				event: {
-					...signedJoinEvent,
-					unsigned: {},
+					...signedJoinEvent.event,
 					origin: origin,
-				}, // TODO: eh
+				},
 				members_omitted: false, // less requests
 				state: Array.from(state.values()).map((event) => {
-					return {
-						...event.event,
-						unsigned: {}, // TODO: why wrapper isn't doing this
-					};
+					return event.event;
 				}), // values().map should have worked but editor is complaining
 				auth_chain: authChainEvents.map((event) => {
-					return {
-						...event.event,
-						unsigned: {},
-					};
+					return event.event;
 				}),
 			};
 		},
