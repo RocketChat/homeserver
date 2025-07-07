@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
 import { generateId } from '@hs/core';
-import { generateKeyPairsFromString } from '../utils/keys';
 import type { SignedEvent } from '../types';
+import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 import { roomCreateEvent } from './m.room.create';
 import { roomMemberEvent } from './m.room.member';
-import { roomNameEvent, type RoomNameEvent } from './m.room.name';
+import { type RoomNameEvent, roomNameEvent } from './m.room.name';
 
 const finalEventId = '$JdX_s3d4CORV_BfkatJxF_lUfzJoKjzQXTP0NGtVj1E';
 const finalEventPlaceholder: SignedEvent<RoomNameEvent> = {

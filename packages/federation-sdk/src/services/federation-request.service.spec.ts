@@ -1,17 +1,17 @@
 import {
-	describe,
-	it,
-	beforeEach,
-	afterEach,
-	expect,
-	spyOn,
-	mock,
 	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	mock,
+	spyOn,
 } from 'bun:test';
-import { FederationRequestService } from './federation-request.service';
-import { FederationConfigService } from './federation-config.service';
-import * as nacl from 'tweetnacl';
 import * as core from '@hs/core';
+import * as nacl from 'tweetnacl';
+import { FederationConfigService } from './federation-config.service';
+import { FederationRequestService } from './federation-request.service';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;

@@ -1,4 +1,4 @@
-import { lookup, Resolver } from 'node:dns/promises';
+import { Resolver, lookup } from 'node:dns/promises';
 
 // no caching, depends on system
 class _Resolver extends Resolver {

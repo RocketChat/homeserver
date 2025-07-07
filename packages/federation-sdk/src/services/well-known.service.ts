@@ -1,5 +1,5 @@
-import { ConfigService } from './config.service';
 import { injectable } from 'tsyringe';
+import { ConfigService } from './config.service';
 
 @injectable()
 export class WellKnownService {

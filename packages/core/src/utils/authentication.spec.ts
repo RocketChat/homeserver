@@ -1,4 +1,4 @@
-import { describe, expect, test, it } from 'bun:test';
+import { describe, expect, it, test } from 'bun:test';
 
 import {
 	authorizationHeaders,
@@ -9,9 +9,9 @@ import {
 	validateAuthorizationHeader,
 } from './authentication';
 
+import { generateId } from './generateId';
 import { generateKeyPairsFromString } from './keys';
 import { signJson } from './signJson';
-import { generateId } from './generateId';
 
 // {
 //     "content": {

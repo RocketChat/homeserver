@@ -1,12 +1,12 @@
-import { describe, it, expect, spyOn, beforeEach, afterEach } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import nacl from 'tweetnacl';
+import { EncryptionValidAlgorithm } from '../types';
+import { toUnpaddedBase64 } from './binaryData';
 import {
 	generateKeyPairs,
 	generateKeyPairsFromString,
 	getKeyPair,
 } from './keys';
-import { EncryptionValidAlgorithm } from '../types';
-import { toUnpaddedBase64 } from './binaryData';
-import nacl from 'tweetnacl';
 
 describe('keys', () => {
 	describe('generateKeyPairs', () => {

@@ -1,5 +1,5 @@
 export class MultiError extends Error {
-	private _finalMessage = "";
+	private _finalMessage = '';
 	append(message: string, error: Error) {
 		this._finalMessage += message
 			? `\n${message}: ${error.message}`

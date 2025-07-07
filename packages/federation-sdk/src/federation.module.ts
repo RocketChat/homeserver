@@ -3,8 +3,8 @@ import { FederationRequestService } from './services/federation-request.service'
 import { FederationService } from './services/federation.service';
 import { SignatureVerificationService } from './services/signature-verification.service';
 import type {
-	FederationModuleOptions,
 	FederationModuleAsyncOptions,
+	FederationModuleOptions,
 } from './types';
 
 export class FederationModule {

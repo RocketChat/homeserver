@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createRoom } from './createRoom';
 import { createSignedEvent } from '../events/utils/createSignedEvent';
 import { generateKeyPairsFromString } from '../utils/keys';
+import { createRoom } from './createRoom';
 
 test('createRoom event details and signatures', async () => {
 	const signature = await generateKeyPairsFromString(

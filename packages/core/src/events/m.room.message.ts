@@ -1,4 +1,4 @@
-import { createEventBase, type EventBase } from './eventBase';
+import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
 type MessageType =

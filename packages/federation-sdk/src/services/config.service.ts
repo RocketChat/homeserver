@@ -1,7 +1,7 @@
-import { createLogger, getKeyPair } from '@hs/core';
-import * as dotenv from 'dotenv';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { createLogger, getKeyPair } from '@hs/core';
+import * as dotenv from 'dotenv';
 
 import { injectable } from 'tsyringe';
 

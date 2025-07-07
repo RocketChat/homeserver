@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
 
 import { generateId } from '@hs/core';
-import { generateKeyPairsFromString } from '../utils/keys';
 import type { SignedEvent } from '../types';
+import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 import {
-	roomPowerLevelsEvent,
 	type RoomPowerLevelsEvent,
+	roomPowerLevelsEvent,
 } from './m.room.power_levels';
 
 const finalEventId = '$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE';

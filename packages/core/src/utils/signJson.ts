@@ -1,7 +1,7 @@
 import nacl from 'tweetnacl';
-import { toBinaryData, toUnpaddedBase64 } from './binaryData';
 import type { SigningKey } from '../types';
 import { EncryptionValidAlgorithm } from '../types';
+import { toBinaryData, toUnpaddedBase64 } from './binaryData';
 
 export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 

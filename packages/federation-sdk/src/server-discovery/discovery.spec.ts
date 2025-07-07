@@ -18,8 +18,8 @@ await mock.module('./_resolver', () => ({
 	},
 }));
 
-import { getHomeserverFinalAddress } from './discovery';
 import { _URL } from './_url';
+import { getHomeserverFinalAddress } from './discovery';
 
 const mockFetch = stubs.fetch as unknown as typeof fetch;
 // const originalFetch = globalThis.fetch;

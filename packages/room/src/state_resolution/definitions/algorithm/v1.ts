@@ -1,19 +1,19 @@
 import assert from 'node:assert';
 import crypto from 'node:crypto';
-import {
-	getStateMapKey,
-	iterativeAuthChecks,
-	partitionState,
-	type EventStore,
-} from '../definitions';
-import { type EventID, type StateMapKey } from '../../../types/_common';
 import { PersistentEventBase } from '../../../manager/event-wrapper';
+import { type EventID, type StateMapKey } from '../../../types/_common';
 import {
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 } from '../../../types/v1';
+import {
+	type EventStore,
+	getStateMapKey,
+	iterativeAuthChecks,
+	partitionState,
+} from '../definitions';
 
 export const isTruthy = <T>(
 	value: T | null | undefined | false | 0 | '',

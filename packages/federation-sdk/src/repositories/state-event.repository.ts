@@ -1,6 +1,6 @@
-import { injectable } from 'tsyringe';
-import type { Collection, FindCursor } from 'mongodb';
 import type { EventBaseWithOptionalId } from '@hs/core';
+import type { Collection, FindCursor } from 'mongodb';
+import { injectable } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 @injectable()

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { appPromise } from './packages/homeserver/src/homeserver.module';
 import { logger } from './packages/core/src/utils/logger';
+import { appPromise } from './packages/homeserver/src/homeserver.module';
 
 appPromise.then((app) => {
 	app.listen(8080, () => {

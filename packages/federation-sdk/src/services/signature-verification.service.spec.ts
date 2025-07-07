@@ -1,14 +1,14 @@
 import {
-	describe,
-	it,
-	beforeEach,
 	afterEach,
+	beforeEach,
+	describe,
 	expect,
-	spyOn,
+	it,
 	mock,
+	spyOn,
 } from 'bun:test';
-import { SignatureVerificationService } from './signature-verification.service';
 import * as nacl from 'tweetnacl';
+import { SignatureVerificationService } from './signature-verification.service';
 
 describe('SignatureVerificationService', () => {
 	let service: SignatureVerificationService;

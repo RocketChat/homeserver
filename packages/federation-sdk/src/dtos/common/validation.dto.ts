@@ -31,4 +31,4 @@ export const TimestampDto = t.Number({
 export const DepthDto = t.Number({
 	description: 'Event depth',
 	minimum: 0,
-}); 
+});

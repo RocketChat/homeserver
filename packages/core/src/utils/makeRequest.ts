@@ -1,6 +1,6 @@
 import { resolveHostAddressByServerName } from '../server-discovery/discovery';
-import { extractURIfromURL } from '../url';
 import type { SigningKey } from '../types';
+import { extractURIfromURL } from '../url';
 import { authorizationHeaders, computeAndMergeHash } from './authentication';
 import { logger } from './logger';
 import { signJson } from './signJson';

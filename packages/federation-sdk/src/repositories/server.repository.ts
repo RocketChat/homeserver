@@ -1,5 +1,5 @@
-import { injectable } from 'tsyringe';
 import { Collection } from 'mongodb';
+import { injectable } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Server = {

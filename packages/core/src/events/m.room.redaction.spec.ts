@@ -3,8 +3,8 @@ import { expect, test } from 'bun:test';
 import { generateId } from '@hs/core';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import { isRedactionEvent, redactionEvent } from './m.room.redaction';
 import type { EventBase } from './eventBase';
+import { isRedactionEvent, redactionEvent } from './m.room.redaction';
 
 test('isRedactionEvent', () => {
 	// Test case 1: Should return true for a redaction event

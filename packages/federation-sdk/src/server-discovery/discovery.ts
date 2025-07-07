@@ -1,7 +1,7 @@
-import { resolver } from './_resolver';
 import { isIPv4, isIPv6 } from 'node:net';
-import { _URL } from './_url';
 import { MultiError } from './_multi-error';
+import { resolver } from './_resolver';
+import { _URL } from './_url';
 
 // typing below are purely to document and make sure we conform to how we are returning the address
 // ge4tting typescript to help me not return wrong stuff

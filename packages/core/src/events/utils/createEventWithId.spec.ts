@@ -1,7 +1,7 @@
-import { expect, test, describe } from 'bun:test';
+import { describe, expect, test } from 'bun:test';
 import { generateId } from '../../utils/generateId';
 import { generateKeyPairsFromString } from '../../utils/keys';
-import { createSignedEvent, createEventWithId } from './createSignedEvent';
+import { createEventWithId, createSignedEvent } from './createSignedEvent';
 
 describe('createEventWithId', () => {
 	test('it should add an ID to a signed event', async () => {

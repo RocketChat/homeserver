@@ -1,11 +1,11 @@
-import { FederationService } from './federation.service';
-import { ConfigService } from './config.service';
-import { isFederationEventWithPDUs, type MatrixPDU } from '@hs/core';
+import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { injectable } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
+import { ConfigService } from './config.service';
+import { FederationService } from './federation.service';
 
 export interface FetchedEvents {
 	events: { eventId: string; event: EventBaseWithOptionalId }[];

@@ -21,7 +21,7 @@ export class FederationService {
 	constructor(
 		@inject('ConfigService')
 		private readonly configService: FederationConfigService,
-		@inject('RequestService')
+		@inject('FederationRequestService')
 		private readonly requestService: FederationRequestService,
 		@inject('SignatureVerificationService')
 		private readonly signatureService: SignatureVerificationService,
