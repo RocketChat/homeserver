@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import fs from 'node:fs/promises';
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '../types';
 import { toUnpaddedBase64 } from './binaryData';
@@ -67,30 +68,21 @@ describe('keys', () => {
 
 	describe('getKeyPair', () => {
 		const signingKeyPath = '/tmp/test-signing.key';
-		let bunFileSpy: any;
-		let bunWriteSpy: any;
+		let readFileSpy: ReturnType<typeof spyOn>;
+		let writeFileSpy: ReturnType<typeof spyOn>;
 
 		beforeEach(() => {
-			bunFileSpy = spyOn(Bun, 'file') as any;
-			bunWriteSpy = spyOn(Bun, 'write').mockResolvedValue(0);
+			readFileSpy = spyOn(fs, 'readFile');
+			writeFileSpy = spyOn(fs, 'writeFile').mockResolvedValue(undefined);
 		});
 
 		afterEach(async () => {
-			bunFileSpy.mockRestore();
-			bunWriteSpy.mockRestore();
-			try {
-				// @ts-ignore
-				await Bun.fs.unlink(signingKeyPath);
-			} catch {
-				// Ignore if file doesn't exist
-			}
+			readFileSpy.mockRestore();
+			writeFileSpy.mockRestore();
 		});
 
 		it('should generate and store new key pairs if file does not exist', async () => {
-			bunFileSpy.mockImplementation((_path: string) => ({
-				exists: async () => false,
-				text: async () => '',
-			}));
+			readFileSpy.mockRejectedValue(new Error('File not found'));
 
 			const keyPairs = await getKeyPair({ signingKeyPath });
 
@@ -100,9 +92,9 @@ describe('keys', () => {
 
 			expect(keyPair.algorithm).toBe(EncryptionValidAlgorithm.ed25519);
 			expect(keyPair.version).toBe('0');
-			expect(bunWriteSpy).toHaveBeenCalledTimes(1);
+			expect(writeFileSpy).toHaveBeenCalledTimes(1);
 
-			const writeCallArg = bunWriteSpy.mock.calls[0][1] as string;
+			const writeCallArg = writeFileSpy.mock.calls[0][1] as string;
 
 			expect(writeCallArg.startsWith('ed25519 0 ')).toBe(true);
 		});
@@ -112,10 +104,7 @@ describe('keys', () => {
 			const seedString = toUnpaddedBase64(seed);
 			const fileContent = `${EncryptionValidAlgorithm.ed25519} 1 ${seedString}`;
 
-			bunFileSpy.mockImplementation((_: string) => ({
-				exists: async () => true,
-				text: async () => fileContent,
-			}));
+			readFileSpy.mockResolvedValue(fileContent);
 
 			const keyPairs = await getKeyPair({ signingKeyPath });
 
@@ -130,7 +119,7 @@ describe('keys', () => {
 
 			expect(keyPair.publicKey).toEqual(expectedKeyPair.publicKey);
 			expect(keyPair.privateKey).toEqual(expectedKeyPair.secretKey);
-			expect(bunWriteSpy).not.toHaveBeenCalled();
+			expect(writeFileSpy).not.toHaveBeenCalled();
 		});
 	});
 });
