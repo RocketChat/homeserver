@@ -1,5 +1,5 @@
 import type { Membership } from '@hs/core';
-import { container } from 'tsyringe';
+import type { DependencyContainer } from 'tsyringe';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
@@ -130,7 +130,9 @@ export type HomeserverEventSignatures = {
 	};
 };
 
-export function getAllServices(): HomeserverServices {
+export function getAllServices(
+	container: DependencyContainer,
+): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),
 		message: container.resolve(MessageService),
@@ -142,3 +144,10 @@ export function getAllServices(): HomeserverServices {
 }
 
 export { StagingAreaListener } from './listeners/staging-area.listener';
+
+export {
+	createFederationContainer,
+	type FederationContainerOptions,
+} from './container';
+
+export { DependencyContainer } from 'tsyringe';
