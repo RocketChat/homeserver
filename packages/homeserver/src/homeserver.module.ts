@@ -2,45 +2,15 @@ import 'reflect-metadata';
 
 import {
 	ConfigService,
-	DatabaseConnectionService,
-	EventAuthorizationService,
-	EventEmitterService,
-	EventFetcherService,
-	EventRepository,
-	EventService,
-	EventStateService,
-	type FederationModuleOptions,
-	FederationRequestService,
-	FederationService,
+	type FederationContainerOptions,
 	type HomeserverEventSignatures,
-	InviteService,
-	KeyRepository,
-	LockManagerService,
-	MessageService,
-	MissingEventListener,
-	MissingEventService,
-	MissingEventsQueue,
-	NotificationService,
-	ProfilesService,
-	RoomRepository,
-	RoomService,
-	ServerRepository,
-	ServerService,
-	SignatureVerificationService,
-	StagingAreaListener,
-	StagingAreaQueue,
-	StagingAreaService,
-	StateEventRepository,
-	StateRepository,
-	StateService,
-	WellKnownService,
+	createFederationContainer,
 } from '@hs/federation-sdk';
 
 import { swagger } from '@elysiajs/swagger';
 import { toUnpaddedBase64 } from '@hs/core';
-import { Emitter } from '@rocket.chat/emitter';
+import type { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
-import { container } from 'tsyringe';
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
 import { roomPlugin } from './controllers/federation/rooms.controller';
@@ -57,6 +27,7 @@ import { wellKnownPlugin } from './controllers/well-known/well-known.controller'
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
+	containerOptions?: FederationContainerOptions;
 }
 
 export async function setup(options?: HomeserverSetupOptions) {
@@ -66,78 +37,18 @@ export async function setup(options?: HomeserverSetupOptions) {
 	const signingKeys = await config.getSigningKey();
 	const signingKey = signingKeys[0];
 
-	container.register<FederationModuleOptions>('FEDERATION_OPTIONS', {
-		useValue: {
+	const containerOptions: FederationContainerOptions = {
+		federationOptions: {
 			serverName: matrixConfig.serverName,
 			signingKey: toUnpaddedBase64(signingKey.privateKey),
 			signingKeyId: `ed25519:${signingKey.version}`,
 			timeout: 30000,
 			baseUrl: serverConfig.baseUrl,
 		},
-	});
+		emitter: options?.emitter,
+	};
 
-	container.registerSingleton(
-		'FederationRequestService',
-		FederationRequestService,
-	);
-	container.registerSingleton(
-		'SignatureVerificationService',
-		SignatureVerificationService,
-	);
-	container.registerSingleton('ConfigService', ConfigService);
-	container.registerSingleton(
-		'DatabaseConnectionService',
-		DatabaseConnectionService,
-	);
-	container.registerSingleton('StateRepository', StateRepository);
-	container.registerSingleton('StateService', StateService);
-	container.registerSingleton(EventAuthorizationService);
-	container.registerSingleton(EventFetcherService);
-	container.registerSingleton(EventStateService);
-	container.registerSingleton('EventService', EventService);
-	container.registerSingleton(EventEmitterService);
-	container.registerSingleton('FederationService', FederationService);
-	container.registerSingleton(InviteService);
-	container.registerSingleton(MessageService);
-	container.registerSingleton(MissingEventService);
-	container.registerSingleton(NotificationService);
-	container.registerSingleton(ProfilesService);
-	container.registerSingleton(RoomService);
-	container.registerSingleton('RoomService', RoomService);
-	container.registerSingleton(ServerService);
-	container.registerSingleton(StagingAreaService);
-	container.registerSingleton('StagingAreaService', StagingAreaService);
-	container.registerSingleton(WellKnownService);
-	container.registerSingleton('EventRepository', EventRepository);
-	container.registerSingleton('KeyRepository', KeyRepository);
-	container.registerSingleton('RoomRepository', RoomRepository);
-	container.registerSingleton('ServerRepository', ServerRepository);
-	container.registerSingleton('StateRepository', StateRepository);
-	container.registerSingleton('StateEventRepository', StateEventRepository);
-	container.registerSingleton('MissingEventsQueue', MissingEventsQueue);
-	container.registerSingleton('StagingAreaQueue', StagingAreaQueue);
-	container.registerSingleton('MissingEventListener', MissingEventListener);
-	container.registerSingleton('StagingAreaListener', StagingAreaListener);
-
-	container.register(LockManagerService, {
-		useFactory: () => new LockManagerService({ type: 'memory' }),
-
-		// NATS configuration example:
-		// useFactory: () => new LockManagerService({
-		// 	type: 'nats',
-		// 	servers: ['nats://localhost:4222'],
-		// 	timeout: 5000,
-		// 	reconnect: true,
-		// 	maxReconnectAttempts: 10
-		// })
-	});
-
-	const eventEmitterService = container.resolve(EventEmitterService);
-	if (options?.emitter) {
-		eventEmitterService.setEmitter(options.emitter);
-	} else {
-		eventEmitterService.initializeStandalone();
-	}
+	const container = await createFederationContainer(containerOptions);
 
 	const app = new Elysia();
 
@@ -168,10 +79,10 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(wellKnownPlugin)
 		.use(roomPlugin);
 
-	return app;
+	return { app, container };
 }
 
-export const appPromise = setup();
+export const appPromise = setup().then(({ app }) => app);
 
 // TODO: Register plugins/handlers for controllers here
 // e.g. app.use(profilesPlugin)
