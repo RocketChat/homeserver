@@ -1,78 +1,112 @@
 import { isRoomMemberEvent } from '@hs/core';
-import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import {
+	ConfigService,
+	ErrorResponse,
 	ErrorResponseDto,
 	SendJoinEventDto,
-	SendJoinParamsDto,
+	SendJoinResponse,
 	SendJoinResponseDto,
+	StateService,
 } from '@hs/federation-sdk';
-import { ConfigService } from '@hs/federation-sdk';
 import { EventService } from '@hs/federation-sdk';
-import { EventEmitterService } from '@hs/federation-sdk';
+import { PersistentEventFactory } from '@hs/room';
+import { getAuthChain } from '@hs/room';
+import { Elysia, t } from 'elysia';
+import { container } from 'tsyringe';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 	const configService = container.resolve(ConfigService);
-	const emitter = container.resolve(EventEmitterService);
-	return app.put(
-		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
-		async ({ params, body }) => {
-			const event = body;
-			const { roomId, stateKey } = params;
+	const stateService = container.resolve(StateService);
 
-			const records = await eventService.findEvents(
-				{ 'event.room_id': roomId },
-				{ sort: { 'event.depth': 1 } },
-			);
-			const events = records.map((event) => event.event);
-			const lastInviteEvent = records.find(
-				(record) =>
-					isRoomMemberEvent(record.event) &&
-					record.event.content.membership === 'invite',
-			);
-			const eventToSave = {
-				...event,
-				origin: event.origin || configService.getServerConfig().name,
-			};
-			const result = {
-				event: {
-					...event,
-					unsigned: lastInviteEvent
-						? {
-								replaces_state: lastInviteEvent._id,
-								prev_content: lastInviteEvent.event.content,
-								prev_sender: lastInviteEvent.event.sender,
-							}
-						: undefined,
-				},
-				state: events.map((event) => ({ ...event })),
-				auth_chain: events
-					.filter((event) => event.depth && event.depth <= 4)
-					.map((event) => ({ ...event })),
-				members_omitted: false,
-				origin: configService.getServerConfig().name,
-			};
-			let eventId = stateKey;
-			if ((await eventService.findEvents({ _id: stateKey })).length === 0) {
-				eventId = await eventService.insertEvent(eventToSave, stateKey);
+	return app.put(
+		'/_matrix/federation/v2/send_join/:roomId/:eventId',
+		async ({
+			params,
+			body,
+			query: _query, // not destructuring this breaks the endpoint
+		}) => {
+			const { roomId, eventId } = params;
+
+			const roomVersion = await stateService.getRoomVersion(roomId);
+
+			if (!roomVersion) {
+				throw new Error('Room version not found');
 			}
 
-			emitter.emit('homeserver.matrix.accept-invite', {
-				event_id: eventId,
-				room_id: roomId,
-				sender: eventToSave.sender,
-				origin_server_ts: eventToSave.origin_server_ts,
-				content: {
-					avatar_url: eventToSave.content.avatar_url || null,
-					displayname: eventToSave.content.displayname || '',
-					membership: eventToSave.content.membership || 'join',
-				},
-			});
-			return result;
+			const bodyAny = body as any;
+
+			// delete existing auth events and refill them
+			bodyAny.auth_events = [];
+
+			const joinEvent = PersistentEventFactory.createFromRawEvent(
+				bodyAny,
+				roomVersion,
+			);
+
+			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
+				joinEvent.authedBy(authEvent);
+			}
+
+			// now check the calculated id if it matches what is passed in param
+			if (joinEvent.eventId !== eventId) {
+				// this is important sanity check
+				// while prev_events don't matter as much as it CAN change if we try to recalculate, auth events can not
+				throw new Error('join event id did not match what was passed in param');
+			}
+
+			// fetch state before allowing join here - TODO: don't just persist the membership like this
+			const state = await stateService.getFullRoomState(roomId);
+
+			await stateService.persistStateEvent(joinEvent);
+
+			if (joinEvent.rejected) {
+				throw new Error(joinEvent.rejectedReason);
+			}
+
+			const origin = configService.getServerConfig().name;
+
+			const authChain = [];
+
+			for (const event of state.values()) {
+				const authEvents = await getAuthChain(
+					event,
+					stateService._getStore(roomVersion),
+				);
+				authChain.push(...authEvents);
+			}
+
+			const authChainEvents = await eventService.getEventsByIds(authChain);
+
+			const signedJoinEvent = await stateService.signEvent(joinEvent);
+
+			return {
+				origin,
+				event: {
+					...signedJoinEvent,
+					unsigned: {},
+					origin: origin,
+				}, // TODO: eh
+				members_omitted: false, // less requests
+				state: Array.from(state.values()).map((event) => {
+					return {
+						...event.event,
+						unsigned: {}, // TODO: why wrapper isn't doing this
+					};
+				}), // values().map should have worked but editor is complaining
+				auth_chain: authChainEvents.map((event) => {
+					return {
+						...event.event,
+						unsigned: {},
+					};
+				}),
+			};
 		},
 		{
-			params: SendJoinParamsDto,
+			params: t.Object({
+				roomId: t.String(),
+				eventId: t.String(),
+			}),
 			body: SendJoinEventDto,
 			response: {
 				200: SendJoinResponseDto,
