@@ -1,6 +1,5 @@
 import {
 	type PduMembershipEventContent,
-	type PduPowerLevelsEventContent,
 	PduTypeRoomCreate,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
@@ -8,42 +7,22 @@ import {
 	type PduV1,
 	PduTypeRoomName,
 	type PduRoomNameEventContent,
+	PduTypeRoomJoinRules,
+	type PduJoinRuleEventContent,
+	PduPowerLevelsEventContent,
 } from '../types/v1';
 import type { PduV3 } from '../types/v3';
-import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
 
 import { PersistentEventV1 } from './v1';
 import { PersistentEventV3 } from './v3';
-import { PersistentEventV10 } from './v10';
 
-import type {
-	PduVersionForRoomVersionWithOnlyRequiredFields,
-	RoomVersion,
-} from './type';
+import type { PduVersionForRoomVersion, RoomVersion } from './type';
 import type { PersistentEventBase } from './event-wrapper';
-
-function isV1ToV2(_event: unknown, roomVersion: RoomVersion): _event is PduV1 {
-	return roomVersion === '1' || roomVersion === '2';
-}
-
-function isV3To9(_event: unknown, roomVersion: RoomVersion): _event is PduV3 {
-	return (
-		roomVersion === '3' ||
-		roomVersion === '4' ||
-		roomVersion === '5' ||
-		roomVersion === '6' ||
-		roomVersion === '7' ||
-		roomVersion === '8' ||
-		roomVersion === '9'
-	);
-}
-
-function isV10To11(
-	_event: unknown,
-	roomVersion: RoomVersion,
-): _event is PduV10 {
-	return roomVersion === '10' || roomVersion === '11';
-}
+import { PersistentEventV6 } from './v6';
+import { PersistentEventV8 } from './v8';
+import { PersistentEventV9 } from './v9';
+import { PersistentEventV11 } from './v11';
+import { PduV3ForType } from '../types/_common';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -58,44 +37,76 @@ function createRoomIdPrefix(length: number) {
 
 // The idea is to ALWAYS use this to create different events
 export class PersistentEventFactory {
-	static createFromRawEvent(
-		event: PduV1 | PduV3 | PduV10,
+	static supportedRoomVersions = [
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'10',
+		'11',
+	] as RoomVersion[];
+
+	static isSupportedRoomVersion(roomVersion: RoomVersion) {
+		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
+	}
+
+	static createFromRawEvent<T extends RoomVersion>(
+		rawEvent: Omit<PduVersionForRoomVersion<T>, 'signatures' | 'hashes'> & {
+			signatures?: PduVersionForRoomVersion<T>['signatures'];
+			hashes?: PduVersionForRoomVersion<T>['hashes'];
+		},
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
-		if (isV1ToV2(event, roomVersion)) {
-			return new PersistentEventV1(event);
+		if (roomVersion === '1' || roomVersion === '2') {
+			return new PersistentEventV1(rawEvent as any, false);
 		}
 
-		if (isV3To9(event, roomVersion)) {
-			return new PersistentEventV3(event);
-		}
+		const event = rawEvent as PduV3;
 
-		if (isV10To11(event, roomVersion)) {
-			return new PersistentEventV10(event);
+		switch (roomVersion) {
+			case '3':
+			case '4':
+			case '5':
+				return new PersistentEventV3(event, false);
+			case '6':
+			case '7':
+				return new PersistentEventV6(event, false);
+			case '8':
+				return new PersistentEventV8(event, false);
+			case '9':
+			case '10':
+				return new PersistentEventV9(event, false);
+			case '11':
+				return new PersistentEventV11(event, false);
+			default:
+				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
-
-		throw new Error(`Unknown room version: ${roomVersion}`);
 	}
 
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
 	static newCreateEvent(creator: string, roomVersion: RoomVersion) {
-		if (roomVersion !== '11') {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
 		const createContent: PduCreateEventContent = {
 			room_version: roomVersion,
 			creator,
-			'm.federate': true,
 		};
 
 		const domain = creator.split(':').pop();
 
 		const roomId = `!${createRoomIdPrefix(8)}:${domain}`;
 
-		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+		const eventPartial: Omit<
+			PduV3ForType<typeof PduTypeRoomCreate>,
+			'signatures' | 'hashes'
+		> = {
 			type: PduTypeRoomCreate,
 			state_key: '',
 			content: createContent,
@@ -107,8 +118,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		// FIXME: typing
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial);
 	}
 
 	static newMembershipEvent(
@@ -118,46 +128,61 @@ export class PersistentEventFactory {
 		membership: PduMembershipEventContent['membership'],
 		roomInformation: PduCreateEventContent,
 	) {
-		if (roomInformation.room_version !== '11') {
+		if (
+			!PersistentEventFactory.isSupportedRoomVersion(
+				roomInformation.room_version as RoomVersion,
+			)
+		) {
 			throw new Error(
 				`Room version ${roomInformation.room_version} is not supported`,
 			);
 		}
 
+		const displayname = userId.split(':').shift()?.slice(1);
+
+		if (!displayname) {
+			throw new Error(
+				'Displayname not found while trying to create a membership event',
+			);
+		}
+
 		const membershipContent: PduMembershipEventContent = {
 			membership,
-			is_direct: roomInformation.type === 'direct',
-			join_authorised_via_users_server: '',
+			displayname,
 		};
 
-		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+		const eventPartial: Omit<
+			PduV3ForType<typeof PduTypeRoomMember>,
+			'signatures' | 'hashes'
+		> = {
 			type: PduTypeRoomMember,
 			content: membershipContent,
 			sender: sender,
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: userId,
-			// fix these in the caller
 			prev_events: [],
 			auth_events: [],
 			depth: 0,
 		};
 
-		// FIXME: typing
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial);
 	}
 
 	static newPowerLevelEvent(
 		roomId: string,
 		sender: string,
-		content: PduPowerLevelsEventV10Content,
+		content: PduPowerLevelsEventContent,
 		roomVersion: RoomVersion,
 	) {
-		if (roomVersion !== '11') {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+		const eventPartial: Omit<
+			PduV3ForType<typeof PduTypeRoomPowerLevels>,
+			'signatures' | 'hashes'
+		> = {
 			type: PduTypeRoomPowerLevels,
 			content: content,
 			sender: sender,
@@ -169,7 +194,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial);
 	}
 
 	static newRoomNameEvent(
@@ -178,11 +203,14 @@ export class PersistentEventFactory {
 		name: string,
 		roomVersion: RoomVersion,
 	) {
-		if (roomVersion !== '11') {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PduVersionForRoomVersionWithOnlyRequiredFields<'11'> = {
+		const eventPartial: Omit<
+			PduV3ForType<typeof PduTypeRoomName>,
+			'signatures' | 'hashes'
+		> = {
 			type: PduTypeRoomName,
 			// @ts-ignore not sure why this is not working
 			content: { name } as PduRoomNameEventContent,
@@ -195,6 +223,34 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV10(eventPartial as any);
+		return new PersistentEventV11(eventPartial);
+	}
+
+	static newJoinRuleEvent(
+		roomId: string,
+		sender: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+		roomVersion: RoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduV3ForType<typeof PduTypeRoomJoinRules>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomJoinRules,
+			content: { join_rule: joinRule },
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return new PersistentEventV11(eventPartial);
 	}
 }

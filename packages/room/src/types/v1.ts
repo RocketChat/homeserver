@@ -91,6 +91,16 @@ export const EventHashSchema = z.object({
 
 export type EventHash = z.infer<typeof EventHashSchema>;
 
+export const SignatureSchema = z.record(
+	z.string().describe('signing server name'),
+	z.record(
+		z.string().describe('signing key id'),
+		z.string().describe('signature in unpadded base64 format'),
+	),
+);
+
+export type Signature = z.infer<typeof SignatureSchema>;
+
 // SPEC: https://spec.matrix.org/v1.12/client-server-api/#events
 // types all individual event types
 // https://spec.matrix.org/v1.12/client-server-api/#room-events
@@ -114,8 +124,9 @@ export const PduMembershipEventContentSchema = z.object({
 		.boolean()
 		.describe(
 			'Flag indicating if the room containing this event was created with the intention of being a direct chat',
-		),
-	join_authorised_via_users_server: z.string(),
+		)
+		.optional(),
+	join_authorised_via_users_server: z.string().optional(),
 	membership: PduMembershipTypeSchema,
 	reason: z.string().optional(),
 	third_party_invite: z
@@ -127,9 +138,7 @@ export const PduMembershipEventContentSchema = z.object({
 					.describe(
 						'The invited matrix user ID. Must be equal to the user_id property of the event.',
 					),
-				signatures: z
-					.record(z.string(), z.string())
-					.describe('The signatures of the event.'),
+				signatures: SignatureSchema.describe('The signatures of the event.'),
 				token: z.string(),
 			}),
 		})
@@ -153,8 +162,7 @@ export const PduCreateEventContentSchema = z.object({
 		.describe(
 			' Whether users on other servers can join this room. Defaults to true if key does not exist.',
 		)
-		.optional()
-		.default(true),
+		.optional(),
 	predecessor: z
 		.object({
 			event_id: z
@@ -194,7 +202,7 @@ export const PduJoinRuleEventContentSchema = z.object({
 				room_id: z
 					.string()
 					.describe(
-						' Required if type is m.room_membership. The room ID to check the user’s membership against. If the user is joined to this room, they satisfy the condition and thus are permitted to join the restricted room.',
+						" Required if type is m.room_membership. The room ID to check the user's membership against. If the user is joined to this room, they satisfy the condition and thus are permitted to join the restricted room.",
 					),
 				type: z
 					.enum(['m.room_membership'])
@@ -218,14 +226,16 @@ export type PduJoinRuleEventContent = z.infer<
 // https://spec.matrix.org/v1.12/rooms/v1/#mroompower_levels-events-accept-values-as-strings
 // values are strings
 
-export function getPduPowerLevelsEventContentSchema<T extends z.ZodType>(
-	version: 1 | 3 | 10,
-) {
-	const acceptedValueTypes = (version === 1
-		? z.string()
-		: version === 3
-			? z.union([z.number(), z.string()])
-			: z.number()) as unknown as T;
+export function getPduPowerLevelsEventContentSchema() {
+	// v1 takes strings,
+	// v3+ takes numbers or strings, // https://spec.matrix.org/v1.12/rooms/v3/#mroompower_levels-events-accept-values-as-strings
+
+	// v10 takes numbers
+	// we convert all to numbers at parse/validation
+	const acceptedValueTypes = z.union([
+		z.number(),
+		z.string().transform((v) => Number.parseInt(v, 10)),
+	]);
 
 	return z.object({
 		// The level required to ban a user.
@@ -292,7 +302,7 @@ export function getPduPowerLevelsEventContentSchema<T extends z.ZodType>(
 }
 
 export const PduPowerLevelsEventContentSchema =
-	getPduPowerLevelsEventContentSchema<ReturnType<typeof z.string>>(1);
+	getPduPowerLevelsEventContentSchema();
 
 export type PduPowerLevelsEventContent = z.infer<
 	typeof PduPowerLevelsEventContentSchema
@@ -325,24 +335,28 @@ export type PduRoomNameEventContent = z.infer<
 	typeof PduRoomNameEventContentSchema
 >;
 
+export const PduV1ContentSchema = z
+	.union([
+		PduMembershipEventContentSchema,
+		PduCreateEventContentSchema,
+		PduJoinRuleEventContentSchema,
+		PduPowerLevelsEventContentSchema,
+		PduCanonicalAliasEventContentSchema,
+		PduRoomNameEventContentSchema,
+	])
+	.describe(
+		'The content of the event. This is an object with arbitrary keys and values.',
+	);
+
+// this is the same for all versions
+export type PduV1Content = z.infer<typeof PduV1ContentSchema>;
+
 // SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
-export const PduV1Schema = z.object({
+export const PduV1NoContentSchema = {
 	auth_events: z
 		.array(z.string().or(EventHashSchema))
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
-		),
-	content: z
-		.union([
-			PduMembershipEventContentSchema,
-			PduCreateEventContentSchema,
-			PduJoinRuleEventContentSchema,
-			PduPowerLevelsEventContentSchema,
-			PduCanonicalAliasEventContentSchema,
-			PduRoomNameEventContentSchema,
-		])
-		.describe(
-			'The content of the event. This is an object with arbitrary keys and values.',
 		),
 	depth: z
 		.number()
@@ -383,76 +397,61 @@ export const PduV1Schema = z.object({
 		.describe(
 			'The ID of the user that sent the event. This is a unique identifier for the user.',
 		),
-	signatures: z
-		.record(
-			z.string().describe('signing server name'),
-			z.record(
-				z.string().describe('signing key id'),
-				z.string().describe('signature base64'),
-			),
-		)
-		.describe(
-			'The signatures of the event. This is an object with arbitrary keys and values.',
-		),
+	signatures: SignatureSchema.describe(
+		'The signatures of the event. This is an object with arbitrary keys and values.',
+	),
 	state_key: z
 		.string()
 		.describe('The state key of the event. This is an optional field.')
 		.optional(),
-	type: z
-		.enum(PduTypeSchema.options)
-		.describe(
-			'The type of the event. This is a unique identifier for the event.',
-		),
 	unsigned: z
-		.object({})
+		.any()
 		.describe(
 			'An object with arbitrary keys and values. This is an optional field.',
 		)
 		.optional(),
-});
+};
+
+export function generatePduSchemaForBase<T>(base: T) {
+	return z.discriminatedUnion('type', [
+		z.object({
+			type: z.literal(PduTypeRoomCreate),
+			content: PduCreateEventContentSchema,
+			...base,
+		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomMember),
+			content: PduMembershipEventContentSchema,
+		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomJoinRules),
+			content: PduJoinRuleEventContentSchema,
+		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomPowerLevels),
+			content: PduPowerLevelsEventContentSchema,
+		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomCanonicalAlias),
+			content: PduCanonicalAliasEventContentSchema,
+		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomName),
+			content: PduRoomNameEventContentSchema,
+		}),
+	]);
+}
+
+export const PduV1Schema = generatePduSchemaForBase(PduV1NoContentSchema);
 
 export type PduV1 = z.infer<typeof PduV1Schema>;
-
-export type PduMembershipEvent = PduV1 & { content: PduMembershipEventContent };
-
-export function isMembershipEvent(event: PduV1): event is PduMembershipEvent {
-	return event.type === PduTypeRoomMember;
-}
-
-export type PduCreateEvent = PduV1 & { content: PduCreateEventContent };
-
-export function isCreateEvent(event: PduV1): event is PduCreateEvent {
-	return event.type === PduTypeRoomCreate && event.state_key === '';
-}
-
-export type PduJoinRuleEvent = PduV1 & { content: PduJoinRuleEventContent };
-
-export function isJoinRuleEvent(event: PduV1): event is PduJoinRuleEvent {
-	return (
-		event.type === PduTypeRoomJoinRules &&
-		event.state_key === '' &&
-		'join_rule' in event.content
-	);
-}
-
-export type PduPowerLevelsEvent = PduV1 & {
-	content: PduPowerLevelsEventContent;
-};
-
-export function isPowerLevelsEvent(event: PduV1): event is PduPowerLevelsEvent {
-	return event.type === PduTypeRoomPowerLevels && event.state_key === '';
-}
-
-export type PduCanonicalAliasEvent = PduV1 & {
-	content: PduCanonicalAliasEventContent;
-};
-
-export function isCanonicalAliasEvent(
-	event: PduV1,
-): event is PduCanonicalAliasEvent {
-	return (
-		event.type === PduTypeRoomCanonicalAlias &&
-		event.state_key === '' &&
-		'alias' in event.content
-	);
-}

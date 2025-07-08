@@ -1,41 +1,75 @@
-import { type EventStore, PersistentEventBase } from './event-wrapper';
-import type { RoomVersion3To9, RoomVersion10And11 } from './type';
+import {
+	type EventStore,
+	PersistentEventBase,
+	REDACT_ALLOW_ALL_KEYS,
+} from './event-wrapper';
+import type { RoomVersion3To11 } from './type';
 import { toUnpaddedBase64 } from '@hs/crypto';
-import type { PduVersionForRoomVersion } from './type';
+import {
+	PduTypeRoomAliases,
+	PduTypeRoomCreate,
+	PduTypeRoomHistoryVisibility,
+	PduTypeRoomJoinRules,
+	PduTypeRoomMember,
+	PduTypeRoomPowerLevels,
+} from '../types/v1';
 
 // v3 is where it changes first
-export class PersistentEventV3Base<
-	T extends RoomVersion3To9 | RoomVersion10And11,
-> extends PersistentEventBase<T> {
-	private _eventId: string;
+export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
+	async getAuthorizationEvents(store: EventStore) {
+		return store.getEvents(this.rawEvent.auth_events);
+	}
 
-	constructor(rawEvent: PduVersionForRoomVersion<T>) {
-		super(rawEvent);
-
+	async getPreviousEvents(store: EventStore) {
+		return store.getEvents(this.rawEvent.prev_events);
+	}
+	get eventId(): string {
 		// SPEC: https://spec.matrix.org/v1.12/rooms/v3/#event-ids
 		const referenceHash = this.getReferenceHash();
 
 		// The event ID is the reference hash of the event encoded using Unpadded Base64, prefixed with $. A resulting event ID using this approach should look similar to $CD66HAED5npg6074c6pDtLKalHjVfYb2q4Q3LZgrW6o.
-		this._eventId = `\$${toUnpaddedBase64(referenceHash)}`;
+		return `\$${toUnpaddedBase64(referenceHash, { urlSafe: true })}`;
 	}
 
-	async getAuthorizationEvents(
-		store: EventStore,
-	): Promise<PersistentEventBase[]> {
-		return store.getEvents(this.rawEvent.auth_events);
+	getAllowedKeys(): string[] {
+		return [
+			'event_id',
+			'type',
+			'room_id',
+			'sender',
+			'state_key',
+			'hashes',
+			'signatures',
+			'depth',
+			'prev_events',
+			'auth_events',
+			'origin_server_ts',
+			'origin',
+			'prev_state',
+			'membership',
+		];
 	}
 
-	async getPreviousEvents(store: EventStore): Promise<PersistentEventBase[]> {
-		return store.getEvents(this.rawEvent.prev_events);
-	}
-	get eventId(): string {
-		return this._eventId;
-	}
-
-	// v3 needs backwards compatibility with v1
-	transformPowerLevelEventData(data: number | string): number {
-		return typeof data === 'number' ? data : Number.parseInt(data, 10);
+	getAllowedContentKeys(): Record<
+		string,
+		string[] | typeof REDACT_ALLOW_ALL_KEYS
+	> {
+		return {
+			[PduTypeRoomCreate]: ['creator'],
+			[PduTypeRoomMember]: ['membership'],
+			[PduTypeRoomJoinRules]: ['join_rule'],
+			[PduTypeRoomPowerLevels]: [
+				'users',
+				'users_default',
+				'events',
+				'events_default',
+				'state_default',
+				'ban',
+				'kick',
+				'redact',
+			],
+			[PduTypeRoomAliases]: ['aliases'],
+			[PduTypeRoomHistoryVisibility]: ['history_visibility'],
+		};
 	}
 }
-
-export class PersistentEventV3 extends PersistentEventV3Base<RoomVersion3To9> {}
