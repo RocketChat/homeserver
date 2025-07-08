@@ -29,6 +29,7 @@ import { MissingEventService } from './services/missing-event.service';
 import { NotificationService } from './services/notification.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
+import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { SignatureVerificationService } from './services/signature-verification.service';
 import { StagingAreaService } from './services/staging-area.service';
@@ -101,6 +102,7 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	container.registerSingleton('StagingAreaService', StagingAreaService);
 	container.registerSingleton(StagingAreaService);
 	container.registerSingleton(WellKnownService);
+	container.registerSingleton(SendJoinService);
 
 	// Register queues
 	container.registerSingleton('MissingEventsQueue', MissingEventsQueue);

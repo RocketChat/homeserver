@@ -1,9 +1,15 @@
-import { injectable } from 'tsyringe';
+import { type SigningKey, signJson, toUnpaddedBase64 } from '@hs/core';
+import { inject, injectable } from 'tsyringe';
 import type { ServerRepository } from '../repositories/server.repository';
+import type { ConfigService } from './config.service';
 
 @injectable()
 export class ServerService {
-	constructor(private readonly serverRepository: ServerRepository) {}
+	constructor(
+		@inject('ServerRepository')
+		private readonly serverRepository: ServerRepository,
+		@inject('ConfigService') private configService: ConfigService,
+	) {}
 
 	async getValidPublicKeyFromLocal(
 		origin: string,
@@ -19,5 +25,34 @@ export class ServerService {
 		validUntil: number,
 	): Promise<void> {
 		await this.serverRepository.storePublicKey(origin, key, value, validUntil);
+	}
+
+	async getSignedServerKey() {
+		const config = this.configService.getConfig();
+		const signingKeys = await this.configService.getSigningKey();
+
+		const keys = Object.fromEntries(
+			signingKeys.map((signingKey: SigningKey) => [
+				`${signingKey.algorithm}:${signingKey.version}`,
+				{
+					key: toUnpaddedBase64(signingKey.publicKey),
+				},
+			]),
+		);
+
+		const baseResponse = {
+			old_verify_keys: {},
+			server_name: config.server.name,
+			signatures: {},
+			valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
+			verify_keys: keys,
+		};
+
+		let signedResponse = baseResponse;
+		for (const key of signingKeys) {
+			signedResponse = await signJson(signedResponse, key, config.server.name);
+		}
+
+		return signedResponse;
 	}
 }
