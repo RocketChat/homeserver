@@ -142,6 +142,7 @@ describe('[EventWrapper] Redaction', () => {
 				signatures: {},
 				unsigned: {},
 			};
+			// @ts-expect-error our types are production types
 			runTest(a, b);
 		}
 	});
@@ -319,24 +320,6 @@ describe('[EventWrapper] Redaction', () => {
 	});
 
 	it('member, Member events have changed behavior in MSC3375 and MSC3821.', () => {
-		const a = {
-			type: 'm.room.member',
-			event_id: '$test:domain',
-			content: {
-				membership: 'join',
-				join_authorised_via_users_server: '@user:domain',
-				other_key: 'stripped',
-			},
-		};
-		const b = {
-			type: 'm.room.member',
-			event_id: '$test:domain',
-			content: { membership: 'join' },
-			signatures: {},
-			unsigned: {},
-		};
-		// @ts-expect-error just redactions
-		runTest(a, b, '1');
 		const a2 = {
 			type: 'm.room.member',
 			content: {

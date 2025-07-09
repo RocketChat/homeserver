@@ -335,7 +335,7 @@ export type PduRoomNameEventContent = z.infer<
 	typeof PduRoomNameEventContentSchema
 >;
 
-export const PduV1ContentSchema = z
+export const PduContentSchema = z
 	.union([
 		PduMembershipEventContentSchema,
 		PduCreateEventContentSchema,
@@ -349,12 +349,12 @@ export const PduV1ContentSchema = z
 	);
 
 // this is the same for all versions
-export type PduV1Content = z.infer<typeof PduV1ContentSchema>;
+export type PduContent = z.infer<typeof PduContentSchema>;
 
 // SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
-export const PduV1NoContentSchema = {
+export const PduNoContentSchema = {
 	auth_events: z
-		.array(z.string().or(EventHashSchema))
+		.array(z.string())
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),
@@ -362,11 +362,6 @@ export const PduV1NoContentSchema = {
 		.number()
 		.describe(
 			'The depth of the event in the DAG. This is a number that is incremented for each event in the DAG.',
-		),
-	event_id: z
-		.string()
-		.describe(
-			'The ID of the event. This is a unique identifier for the event.',
 		),
 	hashes: EventHashSchema.describe(
 		'The hashes of the event. This is an object with arbitrary keys and values.',
@@ -377,7 +372,7 @@ export const PduV1NoContentSchema = {
 			'The timestamp of the event. This is a number that is the number of milliseconds since the Unix epoch.',
 		),
 	prev_events: z
-		.array(z.string().or(EventHashSchema))
+		.array(z.string())
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),
@@ -452,6 +447,6 @@ export function generatePduSchemaForBase<T>(base: T) {
 	]);
 }
 
-export const PduV1Schema = generatePduSchemaForBase(PduV1NoContentSchema);
+export const PduSchema = generatePduSchemaForBase(PduNoContentSchema);
 
-export type PduV1 = z.infer<typeof PduV1Schema>;
+export type Pdu = z.infer<typeof PduSchema>;

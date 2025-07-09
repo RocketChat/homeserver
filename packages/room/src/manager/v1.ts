@@ -6,8 +6,8 @@ import {
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-	PduV1,
-} from '../types/v1';
+	Pdu,
+} from '../types/v3-11';
 import {
 	type EventStore,
 	PersistentEventBase,
@@ -22,7 +22,7 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 		const authEventIds: string[] = [];
 		const authEventHashes: string[] = [];
 
-		const event = this.rawEvent as PduV1;
+		const event = this.rawEvent as Pdu;
 
 		for (const id of event.auth_events) {
 			if (typeof id === 'string') {
@@ -45,7 +45,7 @@ export class PersistentEventV1 extends PersistentEventBase<RoomVersion1And2> {
 		const prevEventIds: string[] = [];
 		const prevEventHashes: string[] = [];
 
-		const event = this.rawEvent as PduV1;
+		const event = this.rawEvent as Pdu;
 
 		for (const id of event.prev_events) {
 			if (typeof id === 'string') {

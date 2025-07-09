@@ -12,7 +12,7 @@ import {
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-} from '../types/v1';
+} from '../types/v3-11';
 
 // v3 is where it changes first
 export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
