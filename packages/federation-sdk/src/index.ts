@@ -5,6 +5,9 @@ import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
+import { SendJoinService } from './services/send-join.service';
+import { ServerService } from './services/server.service';
+import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 
 export { FederationEndpoints } from './specs/federation-api';
@@ -48,6 +51,7 @@ export { EventService } from './services/event.service';
 export { RoomService } from './services/room.service';
 export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
+export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
 export { MissingEventListener } from './services/missing-event.listener';
 
@@ -101,6 +105,9 @@ export interface HomeserverServices {
 	invite: InviteService;
 	wellKnown: WellKnownService;
 	profile: ProfilesService;
+	state: StateService;
+	sendJoin: SendJoinService;
+	server: ServerService;
 }
 
 export type HomeserverEventSignatures = {
@@ -140,6 +147,9 @@ export function getAllServices(
 		invite: container.resolve(InviteService),
 		wellKnown: container.resolve(WellKnownService),
 		profile: container.resolve(ProfilesService),
+		state: container.resolve(StateService),
+		sendJoin: container.resolve(SendJoinService),
+		server: container.resolve(ServerService),
 	};
 }
 
