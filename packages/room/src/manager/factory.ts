@@ -12,7 +12,6 @@ import {
 	Pdu,
 } from '../types/v3-11';
 
-import { PersistentEventV1 } from './v1';
 import { PersistentEventV3 } from './v3';
 
 import type { RoomVersion } from './type';
