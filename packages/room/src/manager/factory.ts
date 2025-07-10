@@ -16,7 +16,7 @@ import {
 
 import { PersistentEventV3 } from './v3';
 
-import type { PduVersionForRoomVersion, RoomVersion } from './type';
+import type { RoomVersion } from './type';
 import type { PersistentEventBase } from './event-wrapper';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
@@ -335,7 +335,7 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduV3ForType<typeof PduTypeRoomJoinRules>,
+			PduForType<typeof PduTypeRoomJoinRules>,
 			'signatures' | 'hashes'
 		> = {
 			type: PduTypeRoomJoinRules,
