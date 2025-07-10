@@ -1,9 +1,3 @@
-import {
-	type EventStore,
-	PersistentEventBase,
-	REDACT_ALLOW_ALL_KEYS,
-} from './event-wrapper';
-import type { RoomVersion3To11 } from './type';
 import { toUnpaddedBase64 } from '@hs/crypto';
 import {
 	PduTypeRoomAliases,
@@ -13,6 +7,12 @@ import {
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 } from '../types/v3-11';
+import {
+	type EventStore,
+	PersistentEventBase,
+	REDACT_ALLOW_ALL_KEYS,
+} from './event-wrapper';
+import type { RoomVersion3To11 } from './type';
 
 // v3 is where it changes first
 export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {

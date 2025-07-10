@@ -1,7 +1,5 @@
 import type { RoomPowerLevelsEvent } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
-import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
 import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
@@ -10,15 +8,17 @@ import {
 	makeGetPublicKeyFromServerProcedure,
 } from '@hs/core';
 import { pruneEventDict } from '@hs/core';
+import { inject, injectable } from 'tsyringe';
+import type { z } from 'zod';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { ConfigService } from './config.service';
-import type { EventRepository } from '../repositories/event.repository';
-import type { RoomRepository } from '../repositories/room.repository';
-import type { KeyRepository } from '../repositories/key.repository';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
+import type { EventRepository } from '../repositories/event.repository';
+import type { KeyRepository } from '../repositories/key.repository';
+import type { RoomRepository } from '../repositories/room.repository';
 import { eventSchemas } from '../utils/event-schemas';
+import { ConfigService } from './config.service';
 
 type ValidationResult = {
 	eventId: string;

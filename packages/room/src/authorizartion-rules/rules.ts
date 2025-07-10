@@ -1,24 +1,24 @@
 import assert from 'node:assert';
 import {
+	type PduCreateEventContent,
+	type PduMembershipEventContent,
+	type PduPowerLevelsEventContent,
+	type PduType,
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomThirdPartyInvite,
-	type PduCreateEventContent,
-	type PduMembershipEventContent,
-	type PduPowerLevelsEventContent,
-	type PduType,
 } from '../types/v3-11';
 
+import type { PersistentEventBase } from '../manager/event-wrapper';
+import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 import {
-	getStateMapKey,
 	type EventStore,
+	getStateMapKey,
 } from '../state_resolution/definitions/definitions';
 import { type StateMapKey } from '../types/_common';
-import type { PersistentEventBase } from '../manager/event-wrapper';
 import { StateResolverAuthorizationError } from './errors';
-import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events

@@ -48,6 +48,7 @@
 		"build": "turbo build",
 		"test:coverage": "bun test --coverage",
 		"lint": "bunx @biomejs/biome lint --diagnostic-level=error",
+		"lint:ci": "bunx @biomejs/biome ci --diagnostic-level=error",
 		"lint:fix": "bunx @biomejs/biome lint --fix",
 		"tsc": "bunx tsc --noEmit"
 	}
