@@ -2,7 +2,7 @@ import {
 	PduTypeRoomMessage,
 	type PduPowerLevelsEventContent,
 	type PduType,
-} from '../types/v1';
+} from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
 
 // centralize all power level values here

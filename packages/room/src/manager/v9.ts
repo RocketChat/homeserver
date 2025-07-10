@@ -1,4 +1,4 @@
-import { PduTypeRoomMember } from '../types/v1';
+import { PduTypeRoomMember } from '../types/v3-11';
 import { PersistentEventV8 } from './v8';
 
 export class PersistentEventV9 extends PersistentEventV8 {

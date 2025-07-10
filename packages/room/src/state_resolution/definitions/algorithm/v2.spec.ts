@@ -6,7 +6,7 @@ import {
 	PduTypeRoomMessage,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomTopic,
-} from '../../../types/v1';
+} from '../../../types/v3-11';
 import {
 	type EventStore,
 	_kahnsOrder,
@@ -55,12 +55,13 @@ let ORIGIN_SERVER_TS = 0;
 
 class FakeEvent {
 	node_id: string;
-	event_id: string;
 	sender: string;
 	type: string;
 	state_key: string | null;
 	content: Record<string, any>;
 	room_id: string;
+	event_dict: any;
+	_event_id: string;
 	constructor(
 		id: string,
 		sender: string,
@@ -69,7 +70,7 @@ class FakeEvent {
 		content: Record<string, any>,
 	) {
 		this.node_id = id;
-		this.event_id = `${id}:example.com`;
+		this._event_id = `${id}:example.com`;
 		this.sender = sender;
 		this.type = type;
 		this.state_key = state_key;
@@ -77,11 +78,21 @@ class FakeEvent {
 		this.room_id = ROOM_ID;
 	}
 
-	toEvent(auth_events: string[], prev_events: string[]): PersistentEventBase {
-		const event_dict = {
+	// event_dict should be filled by toEvent
+	get event_id() {
+		if (!this.event_dict) {
+			throw new Error('event_dict is not set');
+		}
+
+		return PersistentEventFactory.createFromRawEvent(this.event_dict, '11')
+			.eventId;
+	}
+
+	toEvent(auth_events: string[], prev_events: string[]) {
+		this.event_dict = {
 			auth_events: auth_events,
 			prev_events: prev_events,
-			event_id: this.event_id,
+			// event_id: this.event_id,
 			sender: this.sender,
 			type: this.type,
 			state_key: null,
@@ -93,10 +104,10 @@ class FakeEvent {
 		ORIGIN_SERVER_TS = ORIGIN_SERVER_TS + 1;
 
 		if (this.state_key !== null) {
-			event_dict.state_key = this.state_key;
+			this.event_dict.state_key = this.state_key;
 		}
 
-		return PersistentEventFactory.createFromRawEvent(event_dict, '1');
+		return PersistentEventFactory.createFromRawEvent(this.event_dict, '11');
 	}
 }
 
@@ -194,7 +205,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 
 	const stateAtEventId = new Map<
 		string,
-		Map<StateMapKey, PersistentEventBase>
+		Map<StateMapKey, PersistentEventBase<'11'>>
 	>();
 
 	const [create, ...rest] = sorted;
@@ -266,7 +277,40 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		stateAtEventId.set(event.eventId, stateAfter as any);
 	}
 
-	return stateAtEventId.get('END:example.com');
+	const eventIdToNodeIdMap = new Map();
+
+	// only now can we make this fill, as we can gurantee the generated ids are the final ones
+	for (const event of fakeEventMap.values()) {
+		// NOTE(deb): these are not exactly node ids, but sort of a fake event id
+		// tghis is to reduce the amount of diff generated when removing v1 and v2 code
+		eventIdToNodeIdMap.set(event.event_id, event._event_id);
+	}
+
+	const stateAtEventIdCopy = new Map();
+
+	// NOTE(deb): could change inplace, but doesn't help in debugging
+	// it's just a test after all
+	for (const [eventId, state] of stateAtEventId.entries()) {
+		const nodeId = eventIdToNodeIdMap.get(eventId);
+		if (!nodeId) {
+			throw new Error('invalid eventId when trying to convert to nodeId');
+		}
+
+		const stateCopy = new Map();
+		for (const [stateKey, stateEvent] of state.entries()) {
+			const nodeId = eventIdToNodeIdMap.get(stateEvent.eventId);
+			if (!nodeId) {
+				throw new Error('invalid eventId when trying to convert to nodeId');
+			}
+
+			// NOTE(deb): to reduce diff elsewhere
+			stateCopy.set(stateKey, { eventId: nodeId });
+		}
+
+		stateAtEventIdCopy.set(nodeId, stateCopy);
+	}
+
+	return stateAtEventIdCopy.get('END:example.com');
 }
 
 describe('Definitions', () => {

@@ -1,10 +1,9 @@
 import { it, describe, expect, afterEach } from 'bun:test';
 import { PersistentEventBase } from '../manager/event-wrapper';
 import { PersistentEventFactory } from '../manager/factory';
-import { type PduJoinRuleEventContent, type PduType } from '../types/v1';
+import { Pdu, PduContent, type PduType } from '../types/v3-11';
 import { checkEventAuthWithoutState, checkEventAuthWithState } from './rules';
 import type { EventStore } from '../state_resolution/definitions/definitions';
-import type { PduPowerLevelsEventV10Content, PduV10 } from '../types/v10';
 import { type StateMapKey } from '../types/_common';
 
 function getStateMapKey(event: PersistentEventBase): StateMapKey {
@@ -28,7 +27,7 @@ class MockStore implements EventStore {
 }
 
 class FakeStateEventCreator {
-	protected _event!: PduV10;
+	protected _event!: Pdu;
 	constructor() {
 		this._event = {
 			state_key: '', // always a state
@@ -38,7 +37,7 @@ class FakeStateEventCreator {
 			prev_events: [],
 			room_id: '',
 			sender: '',
-		} as unknown as PduV10;
+		} as unknown as Pdu;
 	}
 
 	withStateKey(stateKey: string) {
@@ -47,7 +46,8 @@ class FakeStateEventCreator {
 	}
 
 	withType(type: PduType | 'test') {
-		this._event.type = type as PduType;
+		// @ts-ignore breaking due to type and content conflict, doesn't matter here
+		this._event.type = type;
 		return this;
 	}
 
@@ -772,7 +772,7 @@ describe('authorization rules', () => {
 			state.set(powerLevel.getUniqueStateIdentifier(), powerLevel);
 		};
 
-		const createPowerLevel = (content: PduPowerLevelsEventV10Content) => {
+		const createPowerLevel = (content: PduContent) => {
 			return new FakeStateEventCreator()
 				.asPowerLevel()
 				.withRoomId(roomId)

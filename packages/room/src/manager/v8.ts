@@ -1,4 +1,4 @@
-import { PduTypeRoomJoinRules } from '../types/v1';
+import { PduTypeRoomJoinRules } from '../types/v3-11';
 import { PersistentEventV6 } from './v6';
 
 export class PersistentEventV8 extends PersistentEventV6 {

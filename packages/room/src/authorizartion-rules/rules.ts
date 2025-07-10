@@ -9,7 +9,7 @@ import {
 	type PduMembershipEventContent,
 	type PduPowerLevelsEventContent,
 	type PduType,
-} from '../types/v1';
+} from '../types/v3-11';
 
 import {
 	getStateMapKey,

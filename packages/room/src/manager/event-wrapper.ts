@@ -6,35 +6,28 @@ import {
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-	type PduV1,
 	type PduMembershipEventContent,
 	type PduJoinRuleEventContent,
 	Signature,
-	PduV1Content,
 	PduType,
-} from '../types/v1';
-import type { PduV3 } from '../types/v3';
+	Pdu,
+	PduContent,
+} from '../types/v3-11';
 import crypto from 'node:crypto';
 import {
 	getStateMapKey,
 	type EventStore,
 } from '../state_resolution/definitions/definitions';
 import { PowerLevelEvent } from './power-level-event-wrapper';
-import { PduVersionForRoomVersion, RoomVersion } from './type';
+import { type RoomVersion } from './type';
 
 function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
-type AnyPdu = PduV1 | PduV3;
-
-type AnyPduBareMinimum<T extends AnyPdu> = Omit<T, 'hashes' | 'signatures'> & {
-	// TODO: decide on whether v1 needs to be in code or not, this helps a lot with typing
-	auth_events: string[];
-	prev_events: string[];
-	// ----
-	hashes?: T['hashes'];
-	signatures?: T['signatures'];
+type PduWithHashesAndSignaturesOptional = Omit<Pdu, 'hashes' | 'signatures'> & {
+	hashes?: Pdu['hashes'];
+	signatures?: Pdu['signatures'];
 };
 
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
@@ -46,7 +39,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 	private signatures: Signature = {};
 
 	constructor(
-		protected rawEvent: AnyPduBareMinimum<PduVersionForRoomVersion<T>>,
+		protected rawEvent: PduWithHashesAndSignaturesOptional,
 		freeze = false,
 	) {
 		if (freeze) {
@@ -128,7 +121,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 	// v1 should have this already, others, generates it
 	abstract get eventId(): string;
 
-	getContent<T extends (PduV1 | PduV3)['content']>(): T {
+	getContent<T extends PduContent>(): T {
 		return this.rawEvent.content as T;
 	}
 
@@ -194,16 +187,14 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		string[] | typeof REDACT_ALLOW_ALL_KEYS
 	>;
 
-	private _getRedactedEvent(
-		event: AnyPduBareMinimum<PduVersionForRoomVersion<T>>,
-	) {
-		type KeysExceptContent = Exclude<keyof AnyPdu, 'content'>;
+	private _getRedactedEvent(event: PduWithHashesAndSignaturesOptional) {
+		type KeysExceptContent = Exclude<keyof Pdu, 'content'>;
 
 		// it is expected to have everything in this event ready by this point
 		const topLevelAllowedKeysExceptContent =
 			this.getAllowedKeys() as KeysExceptContent[];
 
-		const dict = {} as Record<KeysExceptContent, AnyPdu[KeysExceptContent]>;
+		const dict = {} as Record<KeysExceptContent, Pdu[KeysExceptContent]>;
 
 		for (const key of topLevelAllowedKeysExceptContent) {
 			if (key in event) {
@@ -213,11 +204,11 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 		const currentContent = this.getContent();
 
-		let newContent = {} as Partial<PduV1Content>;
+		let newContent = {} as Partial<PduContent>;
 
 		// m.room.member allows keys membership, join_authorised_via_users_server. Additionally, it allows the signed key of the third_party_invite key.
 		const allowedContentKeys = this.getAllowedContentKeys()[this.type] as
-			| (keyof PduV1Content)[]
+			| (keyof PduContent)[]
 			| typeof REDACT_ALLOW_ALL_KEYS;
 
 		if (allowedContentKeys) {

@@ -5,7 +5,7 @@ import {
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomRedaction,
-} from '../types/v1';
+} from '../types/v3-11';
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
 import { PersistentEventV9 } from './v9';
 
