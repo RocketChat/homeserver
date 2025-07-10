@@ -4,25 +4,23 @@ import {
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
 	type PduCreateEventContent,
-	type PduV1,
 	PduTypeRoomName,
 	type PduRoomNameEventContent,
 	PduTypeRoomJoinRules,
 	type PduJoinRuleEventContent,
 	PduPowerLevelsEventContent,
-} from '../types/v1';
-import type { PduV3 } from '../types/v3';
+	Pdu,
+} from '../types/v3-11';
 
-import { PersistentEventV1 } from './v1';
 import { PersistentEventV3 } from './v3';
 
-import type { PduVersionForRoomVersion, RoomVersion } from './type';
+import type { RoomVersion } from './type';
 import type { PersistentEventBase } from './event-wrapper';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
 import { PersistentEventV11 } from './v11';
-import { PduV3ForType } from '../types/_common';
+import { PduForType } from '../types/_common';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -53,18 +51,18 @@ export class PersistentEventFactory {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
-	static createFromRawEvent<T extends RoomVersion>(
-		rawEvent: Omit<PduVersionForRoomVersion<T>, 'signatures' | 'hashes'> & {
-			signatures?: PduVersionForRoomVersion<T>['signatures'];
-			hashes?: PduVersionForRoomVersion<T>['hashes'];
+	static createFromRawEvent(
+		rawEvent: Omit<Pdu, 'signatures' | 'hashes'> & {
+			signatures?: Pdu['signatures'];
+			hashes?: Pdu['hashes'];
 		},
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
-		if (roomVersion === '1' || roomVersion === '2') {
-			return new PersistentEventV1(rawEvent as any, false);
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const event = rawEvent as PduV3;
+		const event = rawEvent as Pdu;
 
 		switch (roomVersion) {
 			case '3':
@@ -104,7 +102,7 @@ export class PersistentEventFactory {
 		const roomId = `!${createRoomIdPrefix(8)}:${domain}`;
 
 		const eventPartial: Omit<
-			PduV3ForType<typeof PduTypeRoomCreate>,
+			PduForType<typeof PduTypeRoomCreate>,
 			'signatures' | 'hashes'
 		> = {
 			type: PduTypeRoomCreate,
@@ -152,7 +150,7 @@ export class PersistentEventFactory {
 		};
 
 		const eventPartial: Omit<
-			PduV3ForType<typeof PduTypeRoomMember>,
+			PduForType<typeof PduTypeRoomMember>,
 			'signatures' | 'hashes'
 		> = {
 			type: PduTypeRoomMember,
@@ -180,7 +178,7 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduV3ForType<typeof PduTypeRoomPowerLevels>,
+			PduForType<typeof PduTypeRoomPowerLevels>,
 			'signatures' | 'hashes'
 		> = {
 			type: PduTypeRoomPowerLevels,
@@ -208,7 +206,7 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduV3ForType<typeof PduTypeRoomName>,
+			PduForType<typeof PduTypeRoomName>,
 			'signatures' | 'hashes'
 		> = {
 			type: PduTypeRoomName,
@@ -237,7 +235,7 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduV3ForType<typeof PduTypeRoomJoinRules>,
+			PduForType<typeof PduTypeRoomJoinRules>,
 			'signatures' | 'hashes'
 		> = {
 			type: PduTypeRoomJoinRules,

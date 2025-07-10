@@ -60,7 +60,7 @@
 import assert from 'node:assert';
 import { PersistentEventBase } from '../../../manager/event-wrapper';
 import type { EventID, StateMapKey } from '../../../types/_common';
-import { PduTypeRoomPowerLevels } from '../../../types/v1';
+import { PduTypeRoomPowerLevels } from '../../../types/v3-11';
 import {
 	type EventStore,
 	getAuthChain,
@@ -72,7 +72,12 @@ import {
 	partitionState,
 	reverseTopologicalPowerSort,
 } from '../definitions';
-import { isTruthy } from './v1';
+
+export const isTruthy = <T>(
+	value: T | null | undefined | false | 0 | '',
+): value is T => {
+	return Boolean(value);
+};
 
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
 export async function resolveStateV2Plus(
@@ -111,34 +116,6 @@ export async function resolveStateV2Plus(
 			}
 
 			const events = await store.getEvents(eventIdsToFind);
-
-			for (const event of events) {
-				resultEvents.push(event);
-				eventIdToEventMap.set(event.eventId, event);
-				eventHashToEventIdMap.set(event.sha256hash, event.eventId);
-			}
-
-			return resultEvents;
-		},
-
-		async getEventsByHashes(hashes) {
-			const resultEvents = [] as PersistentEventBase[];
-
-			const hashesToFind = [] as string[];
-
-			for (const hash of hashes) {
-				const eventId = eventHashToEventIdMap.get(hash);
-				if (eventId) {
-					const value = eventIdToEventMap.get(eventId);
-					if (value) {
-						resultEvents.push(value);
-					}
-				} else {
-					hashesToFind.push(hash);
-				}
-			}
-
-			const events = await store.getEventsByHashes(hashesToFind);
 
 			for (const event of events) {
 				resultEvents.push(event);

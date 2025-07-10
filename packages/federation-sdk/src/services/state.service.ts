@@ -210,12 +210,6 @@ export class StateService {
 
 				return events.concat(eventsFromStore);
 			},
-
-			getEventsByHashes: async (
-				_hashes: string[],
-			): Promise<PersistentEventBase[]> => {
-				throw new Error('Not implemented');
-			},
 		};
 	}
 
