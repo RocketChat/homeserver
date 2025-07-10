@@ -1,7 +1,7 @@
 import {
-	PduTypeRoomMessage,
 	type PduPowerLevelsEventContent,
 	type PduType,
+	PduTypeRoomMessage,
 } from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
 

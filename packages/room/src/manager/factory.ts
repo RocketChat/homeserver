@@ -1,26 +1,26 @@
 import {
-	type PduMembershipEventContent,
-	PduTypeRoomCreate,
-	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
-	type PduCreateEventContent,
-	PduTypeRoomName,
-	type PduRoomNameEventContent,
-	PduTypeRoomJoinRules,
-	type PduJoinRuleEventContent,
-	PduPowerLevelsEventContent,
 	Pdu,
+	type PduCreateEventContent,
+	type PduJoinRuleEventContent,
+	type PduMembershipEventContent,
+	PduPowerLevelsEventContent,
+	type PduRoomNameEventContent,
+	PduTypeRoomCreate,
+	PduTypeRoomJoinRules,
+	PduTypeRoomMember,
+	PduTypeRoomName,
+	PduTypeRoomPowerLevels,
 } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
 
-import type { RoomVersion } from './type';
+import { PduForType } from '../types/_common';
 import type { PersistentEventBase } from './event-wrapper';
+import type { RoomVersion } from './type';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
 import { PersistentEventV11 } from './v11';
-import { PduForType } from '../types/_common';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {

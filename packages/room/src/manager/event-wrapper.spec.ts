@@ -1,6 +1,6 @@
 import { PersistentEventFactory } from './factory';
 
-import { it, describe, expect } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import type { RoomVersion } from './type';
 
 function runTest(

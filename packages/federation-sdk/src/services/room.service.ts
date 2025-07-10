@@ -1,23 +1,23 @@
 import type { EventBase } from '@hs/core';
 import {
-	roomMemberEvent,
 	type AuthEvents as RoomMemberAuthEvents,
+	roomMemberEvent,
 } from '@hs/core';
-import { roomNameEvent, type RoomNameAuthEvents } from '@hs/core';
+import { type RoomNameAuthEvents, roomNameEvent } from '@hs/core';
 import {
+	type RoomPowerLevelsEvent,
 	isRoomPowerLevelsEvent,
 	roomPowerLevelsEvent,
-	type RoomPowerLevelsEvent,
 } from '@hs/core';
 import {
-	roomTombstoneEvent,
 	type RoomTombstoneEvent,
 	type TombstoneAuthEvents,
+	roomTombstoneEvent,
 } from '@hs/core';
 import { createSignedEvent } from '@hs/core';
-import { FederationService } from './federation.service';
-import { inject, injectable } from 'tsyringe';
 import { generateId } from '@hs/core';
+import { inject, injectable } from 'tsyringe';
+import { FederationService } from './federation.service';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
@@ -30,11 +30,11 @@ import { createRoom } from '@hs/core';
 import type { SignedEvent } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
+import type { EventRepository } from '../repositories/event.repository';
+import type { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
-import type { RoomRepository } from '../repositories/room.repository';
-import type { EventRepository } from '../repositories/event.repository';
 
 // Utility function to create a random ID for room creation
 function createMediaId(length: number) {
