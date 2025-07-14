@@ -1,4 +1,4 @@
-import { container, injectable } from 'tsyringe';
+import { container, singleton } from 'tsyringe';
 
 export type MemoryLockConfig = {
 	type: 'memory';
@@ -256,7 +256,7 @@ class LockProviderFactory {
 	}
 }
 
-@injectable()
+@singleton()
 export class LockManagerService {
 	private provider: ILockProvider;
 	private config: LockConfig;

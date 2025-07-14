@@ -16,7 +16,7 @@ import {
 } from '@hs/core';
 import { createSignedEvent } from '@hs/core';
 import { FederationService } from './federation.service';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { generateId } from '@hs/core';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
@@ -47,7 +47,7 @@ function createMediaId(length: number) {
 	return result;
 }
 
-@injectable()
+@singleton()
 export class RoomService {
 	constructor(
 		@inject('RoomRepository') private readonly roomRepository: RoomRepository,

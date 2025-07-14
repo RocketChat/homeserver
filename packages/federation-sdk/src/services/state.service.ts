@@ -1,4 +1,4 @@
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import type { EventID, StateMapKey } from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
@@ -12,7 +12,7 @@ import type { EventRepository } from '../repositories/event.repository';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
-@injectable()
+@singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(

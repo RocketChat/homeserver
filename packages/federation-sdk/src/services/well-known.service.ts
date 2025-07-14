@@ -1,7 +1,7 @@
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 
-@injectable()
+@singleton()
 export class WellKnownService {
 	constructor(private readonly configService: ConfigService) {}
 

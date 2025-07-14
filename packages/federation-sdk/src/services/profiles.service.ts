@@ -5,10 +5,10 @@ import { EventService } from './event.service';
 
 import type { AuthEvents, EventBase, RoomMemberEvent } from '@hs/core';
 import type { EventStore } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 
-@injectable()
+@singleton()
 export class ProfilesService {
 	private readonly logger = createLogger('ProfilesService');
 

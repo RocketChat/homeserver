@@ -1,7 +1,7 @@
 import { createLogger } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 
-@injectable()
+@singleton()
 export class EventStateService {
 	private readonly logger = createLogger('EventStateService');
 

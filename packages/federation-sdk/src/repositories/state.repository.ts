@@ -5,7 +5,7 @@ import {
 	ObjectId,
 	type WithId,
 } from 'mongodb';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 import type { StateMapKey } from '@hs/room';
@@ -23,7 +23,7 @@ type StateStore = {
 	prevStateIds: string[];
 };
 
-@injectable()
+@singleton()
 export class StateRepository {
 	private collection: Collection<WithId<StateStore>> | null = null;
 

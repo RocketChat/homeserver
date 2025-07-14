@@ -5,7 +5,7 @@ import { makeUnsignedRequest } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -23,7 +23,7 @@ export type ProcessInviteEvent = {
 	room_version: string;
 };
 
-@injectable()
+@singleton()
 export class InviteService {
 	private readonly logger = createLogger('InviteService');
 
