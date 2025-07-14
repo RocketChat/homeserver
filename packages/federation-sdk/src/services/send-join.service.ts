@@ -1,10 +1,10 @@
 import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import type { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import type { EventService } from './event.service';
 
-@injectable()
+@singleton()
 export class SendJoinService {
 	constructor(
 		@inject('EventService') private readonly eventService: EventService,

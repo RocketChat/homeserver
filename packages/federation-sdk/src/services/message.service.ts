@@ -20,13 +20,13 @@ import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import { signEvent } from '@hs/core';
 import { inject } from 'tsyringe';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import type { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
 
-@injectable()
+@singleton()
 export class MessageService {
 	private readonly logger = createLogger('MessageService');
 

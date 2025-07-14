@@ -4,7 +4,7 @@ import { extractURIfromURL } from '@hs/core';
 import { EncryptionValidAlgorithm } from '@hs/core';
 import { signJson } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { FederationConfigService } from './federation-config.service';
@@ -19,7 +19,7 @@ interface SignedRequest {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
-@injectable()
+@singleton()
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 

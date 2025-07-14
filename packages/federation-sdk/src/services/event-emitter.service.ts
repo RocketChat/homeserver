@@ -3,12 +3,12 @@ import {
 	type EventHandlerOf,
 	type EventOf,
 } from '@rocket.chat/emitter';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from '..';
 import logger from '../utils/logger';
 
-@injectable()
+@singleton()
 export class EventEmitterService {
 	private emitter: Emitter<HomeserverEventSignatures> =
 		new Emitter<HomeserverEventSignatures>();

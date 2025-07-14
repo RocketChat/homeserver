@@ -1,5 +1,5 @@
 import type { Membership } from '@hs/core';
-import type { DependencyContainer } from 'tsyringe';
+import { container } from 'tsyringe';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
@@ -138,7 +138,6 @@ export type HomeserverEventSignatures = {
 };
 
 export function getAllServices(
-	container: DependencyContainer,
 ): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),

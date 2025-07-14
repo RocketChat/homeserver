@@ -1,5 +1,5 @@
 import type { EventBase } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
@@ -31,7 +31,7 @@ interface ExtendedStagingEvent extends StagingAreaEventType {
 	retryCount?: number;
 }
 
-@injectable()
+@singleton()
 export class StagingAreaService {
 	private processingEvents = new Map<string, ExtendedStagingEvent>();
 	private readonly logger = createLogger('StagingAreaService');

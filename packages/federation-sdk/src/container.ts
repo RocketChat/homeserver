@@ -1,8 +1,7 @@
 import 'reflect-metadata';
 
-import { toUnpaddedBase64 } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
-import { container as diContainer } from 'tsyringe';
+import { container } from 'tsyringe';
 
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
@@ -53,8 +52,6 @@ export function createFederationContainer(options: FederationContainerOptions) {
 		federationOptions,
 		lockManagerOptions = { type: 'memory' },
 	} = options;
-
-	const container = diContainer.createChildContainer();
 
 	container.register<FederationModuleOptions>('FEDERATION_OPTIONS', {
 		useValue: federationOptions,
@@ -126,8 +123,8 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	}
 
 	// Initialize listeners
-	container.resolve('StagingAreaListener');
-	container.resolve('MissingEventListener');
+	container.resolve(StagingAreaListener);
+	container.resolve(MissingEventListener);
 
 	return container;
 }

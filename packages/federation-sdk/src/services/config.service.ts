@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { createLogger, getKeyPair } from '@hs/core';
 import * as dotenv from 'dotenv';
 
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
@@ -33,7 +33,7 @@ export interface AppConfig {
 	path?: string;
 }
 
-@injectable()
+@singleton()
 export class ConfigService {
 	private config: AppConfig;
 	private fileConfig: Partial<AppConfig> = {};

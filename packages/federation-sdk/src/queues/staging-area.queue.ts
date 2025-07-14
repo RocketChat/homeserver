@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 
 export interface StagingAreaEventType {
 	eventId: string;
@@ -12,7 +12,7 @@ export interface StagingAreaEventType {
 
 type QueueHandler = (item: StagingAreaEventType) => Promise<void>;
 
-@injectable()
+@singleton()
 export class StagingAreaQueue {
 	private queue: StagingAreaEventType[] = [];
 	private handlers: QueueHandler[] = [];

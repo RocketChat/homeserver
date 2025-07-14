@@ -1,7 +1,7 @@
 import type { EventBase } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -14,7 +14,7 @@ import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
 
-@injectable()
+@singleton()
 export class FederationService {
 	private readonly logger = createLogger('FederationService');
 

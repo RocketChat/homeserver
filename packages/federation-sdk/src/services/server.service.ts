@@ -1,9 +1,9 @@
 import { type SigningKey, signJson, toUnpaddedBase64 } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import type { ServerRepository } from '../repositories/server.repository';
 import type { ConfigService } from './config.service';
 
-@injectable()
+@singleton()
 export class ServerService {
 	constructor(
 		@inject('ServerRepository')

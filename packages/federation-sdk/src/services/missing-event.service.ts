@@ -1,11 +1,11 @@
 import { createLogger } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import type { MissingEventType } from '../queues/missing-event.queue';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
 
 const logger = createLogger('MissingEventService');
 
-@injectable()
+@singleton()
 export class MissingEventService {
 	constructor(private readonly missingEventsQueue: MissingEventsQueue) {}
 
