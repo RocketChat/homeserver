@@ -160,8 +160,7 @@ export type HomeserverEventSignatures = {
 	};
 };
 
-export function getAllServices(
-): HomeserverServices {
+export function getAllServices(): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),
 		message: container.resolve(MessageService),

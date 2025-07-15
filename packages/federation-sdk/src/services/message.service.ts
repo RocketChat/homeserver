@@ -22,10 +22,10 @@ import { signEvent } from '@hs/core';
 import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
 import type { ConfigService } from './config.service';
+import { EventEmitterService } from './event-emitter.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
-import { EventEmitterService } from './event-emitter.service';
 
 @singleton()
 export class MessageService {
@@ -37,7 +37,8 @@ export class MessageService {
 		@inject('FederationService')
 		private readonly federationService: FederationService,
 		@inject('RoomService') private readonly roomService: RoomService,
-		@inject(EventEmitterService) private readonly eventEmitterService: EventEmitterService,
+		@inject(EventEmitterService)
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	async sendMessage(
