@@ -135,6 +135,29 @@ export type HomeserverEventSignatures = {
 			membership: Membership;
 		};
 	};
+	'homeserver.matrix.reaction': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			'm.relates_to': {
+				rel_type: 'm.annotation';
+				event_id: string;
+				key: string;
+			};
+		};
+	};
+	'homeserver.matrix.redaction': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		redacts: string;
+		content: {
+			reason?: string;
+		};
+	};
 };
 
 export function getAllServices(

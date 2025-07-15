@@ -25,6 +25,7 @@ import type { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
+import { EventEmitterService } from './event-emitter.service';
 
 @singleton()
 export class MessageService {
@@ -36,6 +37,7 @@ export class MessageService {
 		@inject('FederationService')
 		private readonly federationService: FederationService,
 		@inject('RoomService') private readonly roomService: RoomService,
+		@inject(EventEmitterService) private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	async sendMessage(
@@ -173,13 +175,28 @@ export class MessageService {
 
 		await this.federationService.sendEvent(targetServer, signedEvent);
 
-		await this.eventService.insertEvent(signedEvent, eventId);
+		const reactionEventId = generateId(signedEvent);
+		await this.eventService.insertEvent(signedEvent, reactionEventId);
+
+		this.eventEmitterService.emit('homeserver.matrix.reaction', {
+			event_id: reactionEventId,
+			room_id: roomId,
+			sender: senderUserId,
+			origin_server_ts: signedEvent.origin_server_ts,
+			content: {
+				'm.relates_to': {
+					rel_type: 'm.annotation',
+					event_id: eventId,
+					key: emoji,
+				},
+			},
+		});
 
 		this.logger.info(
-			`Sent reaction $emojito $targetServerfor event $eventId- $generateId(${signedEvent})`,
+			`Sent reaction ${emoji} to ${targetServer} for event ${eventId} - ${reactionEventId}`,
 		);
 
-		return signedEvent;
+		return { ...signedEvent, event_id: reactionEventId };
 	}
 
 	async updateMessage(
@@ -322,6 +339,17 @@ export class MessageService {
 			eventToFederate,
 		);
 		await this.eventService.processRedaction(eventToFederate);
+
+		this.eventEmitterService.emit('homeserver.matrix.redaction', {
+			event_id: eventId,
+			room_id: roomId,
+			sender: senderUserId,
+			origin_server_ts: signedEvent.origin_server_ts,
+			redacts: eventIdToRedact,
+			content: {
+				reason: reason,
+			},
+		});
 
 		return { ...signedEvent, event_id: eventId };
 	}
