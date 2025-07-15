@@ -145,13 +145,14 @@ export class MessageService {
 
 		await this.federationService.sendEvent(targetServer, signedEvent);
 
-		await this.eventService.insertEvent(signedEvent, eventId);
+		const reactionEventId = generateId(signedEvent);
+		await this.eventService.insertEvent(signedEvent, reactionEventId);
 
 		this.logger.info(
-			`Sent reaction $emojito $targetServerfor event $eventId- $generateId(${signedEvent})`,
+			`Sent reaction ${emoji} to ${targetServer} for event ${eventId} - ${reactionEventId}`,
 		);
 
-		return signedEvent;
+		return { ...signedEvent, event_id: reactionEventId };
 	}
 
 	async updateMessage(

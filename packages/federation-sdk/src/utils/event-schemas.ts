@@ -98,6 +98,16 @@ const joinRulesEventSchema = baseEventSchema.extend({
 		.and(z.record(z.any())),
 });
 
+const redactionEventSchema = baseEventSchema.extend({
+	type: z.literal('m.room.redaction'),
+	redacts: z.string(),
+	content: z
+		.object({
+			reason: z.string().optional(),
+		})
+		.and(z.record(z.any())),
+});
+
 const roomV10Schemas = {
 	'm.room.create': createEventSchema,
 	'm.room.member': memberEventSchema,
@@ -105,6 +115,7 @@ const roomV10Schemas = {
 	'm.room.power_levels': powerLevelsEventSchema,
 	'm.room.join_rules': joinRulesEventSchema,
 	'm.reaction': reactionEventSchema,
+	'm.room.redaction': redactionEventSchema,
 	default: baseEventSchema,
 };
 
