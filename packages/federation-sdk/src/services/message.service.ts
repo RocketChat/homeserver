@@ -22,6 +22,7 @@ import { signEvent } from '@hs/core';
 import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
 import type { ConfigService } from './config.service';
+import { EventEmitterService } from './event-emitter.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
