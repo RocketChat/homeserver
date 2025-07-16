@@ -34,17 +34,15 @@ describe('FederationRequestService', async () => {
 		},
 	];
 
-	const { getHomeserverFinalAddress } = await import(
-		'../server-discovery/discovery'
-	);
+	const { getHomeserverFinalAddress } = await import('@hs/core');
 
-	await mock.module('../server-discovery/discovery', () => ({
+	await mock.module('@hs/core', () => ({
 		getHomeserverFinalAddress: () => mockDiscoveryResult,
 	}));
 
 	afterAll(() => {
 		mock.restore();
-		mock.module('../server-discovery/discovery', () => ({
+		mock.module('@hs/core', () => ({
 			getHomeserverFinalAddress,
 		}));
 	});
