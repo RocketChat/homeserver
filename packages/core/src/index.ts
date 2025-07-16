@@ -86,3 +86,5 @@ export * from './url';
 export { makeUnsignedRequest } from './utils/makeRequest';
 
 export { fetch } from './utils/fetch';
+
+export * from './server-discovery/discovery';
