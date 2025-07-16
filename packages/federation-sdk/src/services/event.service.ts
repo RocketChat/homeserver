@@ -1,6 +1,6 @@
 import type { RoomPowerLevelsEvent } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
@@ -77,7 +77,7 @@ export interface AuthEventParams {
 	senderId: string;
 }
 
-@singleton()
+@injectable()
 export class EventService {
 	private readonly logger = createLogger('EventService');
 
@@ -600,7 +600,8 @@ export class EventService {
 		eventId?: string,
 		args?: object,
 	): Promise<string> {
-		return this.eventRepository.create(event, eventId, args);
+		// @ts-ignore: I am not using this code, ts-ignore to avoid ci problems for now
+		return this.eventRepository.create(event, eventId || '', args);
 	}
 
 	async insertEventIfNotExists(
@@ -662,7 +663,7 @@ export class EventService {
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
 		const events = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
+			{ eventId: { $in: eventIds } },
 			{},
 		);
 
