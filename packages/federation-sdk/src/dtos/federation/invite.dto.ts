@@ -7,10 +7,14 @@ export const ProcessInviteParamsDto = t.Object({
 	eventId: EventIdDto,
 });
 
-export const ProcessInviteBodyDto = RoomMemberEventDto;
+export const ProcessInviteBodyDto = t.Object({
+	event: RoomMemberEventDto,
+	invite_room_state: t.Unknown({ description: 'Invite room state events' }),
+	room_version: t.String({ description: 'Room version' }),
+});
 
 export const ProcessInviteResponseDto = t.Object({
-	event: ProcessInviteBodyDto,
+	event: RoomMemberEventDto,
 });
 
 export type ProcessInviteBody = Static<typeof ProcessInviteBodyDto>;
