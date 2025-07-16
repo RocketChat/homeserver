@@ -1,6 +1,6 @@
 import type { RoomPowerLevelsEvent } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
@@ -77,7 +77,7 @@ export interface AuthEventParams {
 	senderId: string;
 }
 
-@injectable()
+@singleton()
 export class EventService {
 	private readonly logger = createLogger('EventService');
 
