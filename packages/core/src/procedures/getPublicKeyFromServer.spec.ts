@@ -5,6 +5,8 @@ import { generateKeyPairs } from '../utils/keys';
 import { encodeCanonicalJson } from '../utils/signJson';
 import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
 
+import { type getHomeserverFinalAddress } from '../server-discovery/discovery';
+
 describe('getPublicKeyFromRemoteServer', () => {
 	let originalFetch: typeof globalThis.fetch;
 	let mockServerKeys: {
@@ -70,7 +72,13 @@ describe('getPublicKeyFromRemoteServer', () => {
 		globalThis.fetch = mockFetch;
 
 		await mock.module('../server-discovery/discovery', () => ({
-			resolveHostname: () => Promise.resolve('127.0.0.1:443'),
+			resolveHostname: (): ReturnType<typeof getHomeserverFinalAddress> =>
+				Promise.resolve([
+					'https://127.0.0.1:443' as const,
+					{
+						Host: '127.0.0.1:443',
+					} as const,
+				]),
 		}));
 	});
 
