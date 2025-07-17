@@ -1,252 +1,307 @@
-import { Resolver } from 'node:dns/promises';
-import { isIPv6 } from 'node:net';
+import { isIPv4, isIPv6 } from 'node:net';
+import { MultiError } from './_multi-error';
+import { resolver } from './_resolver';
+import { _URL } from './_url';
 
-const ipv4Regex =
-	/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(:\d{1,5})?$/;
-const ipv6Regex = /^(\[([a-fA-F0-9:]+)\]|([a-fA-F0-9:]+))(?::(\d{1,5}))?$/;
-const DEFAULT_SECURE_PORT = 8448;
-const MAX_AGE_HOURS_IN_SECONDS = 86400; //24 hours
-const MAX_CACHE_ALLOWED_IN_SECONDS = 172800; //48 hours
+// typing below are purely to document and make sure we conform to how we are returning the address
+// ge4tting typescript to help me not return wrong stuff
 
-export const isIpLiteral = (ip: string): boolean => {
-	if (ipv4Regex.test(ip)) {
-		return true;
+type PortString = string;
+
+type IP4or6String = string | `[${string}]`;
+type AddressString = string;
+
+type AddressWithPortString = `${AddressString}:${PortString | number}`;
+type IP4or6WithPortString = `${IP4or6String}:${PortString | number}`;
+
+// type AddressWithPortAndProtocolString = `${
+// 	| 'http'
+// 	| 'https'}://${AddressWithPortString}`;
+
+type IP4or6WithPortAndProtocolString = `${
+	| 'http'
+	| 'https'}://${IP4or6WithPortString}`;
+
+type HostHeaders = {
+	Host: AddressString | AddressWithPortString | IP4or6WithPortString;
+};
+
+const DEFAULT_PORT = '8448';
+
+// should only be needed if input is from a dns server
+function fix6(addr: string): `[${string}]` {
+	return /^\[.+\]$/.test(addr) ? (addr as `[${string}]`) : `[${addr}]`;
+}
+
+export async function resolveHostname(
+	hostname: string,
+	resolveCname: boolean,
+): Promise<IP4or6String> {
+	const errors = new MultiError();
+
+	// in order as in spec
+	// CNAME, AAAA, A
+	const promises = [];
+
+	if (resolveCname) {
+		promises.push(resolver.resolveCname(hostname));
 	}
 
-	const ipv6Match = ip.match(ipv6Regex);
+	promises.push(resolver.resolve4And6(hostname));
 
-	return Boolean(ipv6Match && isIPv6(ipv6Match[2] || ipv6Match[3]));
-};
+	const results = await Promise.allSettled(promises);
 
-export const addressWithDefaultPort = (address: string): string => {
-	return `${address}:${DEFAULT_SECURE_PORT}`;
-};
-
-export const resolveWhenServerNameIsIpAddress = async (
-	serverName: string,
-): Promise<string> => {
-	if (ipv6Regex.test(serverName)) {
-		// Ensure IPv6 addresses are enclosed in square brackets
-		const ipv6Match = serverName.match(ipv6Regex);
-		const ipv6Address = ipv6Match?.[2] || ipv6Match?.[3];
-		const port = ipv6Match?.[4];
-
-		return port ? serverName : addressWithDefaultPort(`[${ipv6Address}]`);
-	}
-
-	const url = new URL(`http://${serverName}`);
-
-	return url.port ? serverName : addressWithDefaultPort(serverName);
-};
-
-const formatIpAddressWithOptionalPort = (
-	address: string,
-	port = '',
-): string => {
-	return isIPv6(address) ? `[${address}]${port}` : `${address}${port}`;
-};
-
-export const resolveWhenServerNameIsAddressWithPort = async (
-	serverName: string,
-): Promise<string> => {
-	const [hostname, port] = serverName.split(':');
-
-	const resolver = new Resolver();
-
-	const addresses = await resolver.resolveAny(hostname);
-
-	if (addresses.length === 0) {
-		return `${hostname}:${port}`;
-	}
-
-	for (const address of addresses) {
-		if (address.type === 'CNAME') {
-			return formatIpAddressWithOptionalPort(address.value, `:${port}`);
+	for (const result of results) {
+		if (result.status === 'rejected') {
+			errors.append('', result.reason);
+			continue;
 		}
-		if (address.type === 'AAAA' || address.type === 'A') {
-			return formatIpAddressWithOptionalPort(address.address, `:${port}`);
+
+		const ips = result.value; // array of ips
+
+		if (ips.length > 0) {
+			return isIPv6(ips[0]) ? fix6(ips[0]) : ips[0];
 		}
 	}
 
-	return addressWithDefaultPort(hostname);
+	throw errors;
+}
+
+// SPEC: https://spec.matrix.org/v1.12/server-server-api/#resolving-server-names
+
+/*
+ * Server names are resolved to an IP address and port to connect to, and have various conditions affecting which certificates and Host headers to send.
+ */
+
+export async function getHomeserverFinalAddress(
+	addr: AddressString,
+): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
+	const url = new _URL(addr);
+
+	const { hostname, port } = url;
+
+	/*
+	 * SPEC:
+	 * 1. If the hostname is an IP literal, then that IP address should be used, together with the given port number, or 8448 if no port is given. The target server must present a valid certificate for the IP address. The Host header in the request should be set to the server name, including the port if the server name included one.
+	 */
+
+	if (url.isIP()) {
+		const finalIp = hostname; // should already be wrapped in [] if it is ipv6
+		const finalPort = port || DEFAULT_PORT;
+		// 'Target server must present a valid certificate for the IP address', i.e. always https
+		const finalAddress = `https://${finalIp}:${finalPort}` as const;
+		const hostHeader = {
+			Host: `${hostname}${
+				/* only include port if it was included already */
+				port ? `:${port}` : ''
+			}`,
+		};
+
+		return [finalAddress, hostHeader];
+	}
+
+	/*
+	 * SPEC:
+	 * 2. If the hostname is not an IP literal, and the server name includes an explicit port, resolve the hostname to an IP address using CNAME, AAAA or A records. Requests are made to the resolved IP address and given port with a Host header of the original server name (with port). The target server must present a valid certificate for the hostname.
+	 */
+
+	// includes explicit port
+	if (port) {
+		const hostHeaders = { Host: `${hostname}:${port}` as const }; // original serverName and port
+
+		const address = await resolveHostname(hostname, true); // intentional auto-throw
+
+		return [`https://${address}:${port}` as const, hostHeaders];
+	}
+
+	/*
+	 * SPEC:
+	 * 3. wellknown delegation
+	 */
+
+	try {
+		const [addr, hostHeaders] = await fromWellKnownDelegation(hostname);
+
+		// found one -
+		return [addr, hostHeaders];
+	} catch (e: unknown) {
+		// didn't find a suitable result from wellknnown
+
+		try {
+			const [addr, hostHeaders] =
+				await fromSRVResolutionWithBasicFallback(hostname);
+
+			return [`https://${addr}` as const, hostHeaders];
+		} catch (e2: unknown) {
+			if (MultiError.isMultiError(e) && MultiError.isMultiError(e2)) {
+				throw e.concat(e2);
+			}
+
+			console.log(e, e2);
+
+			throw new Error(`failed to resolve ${hostname}`);
+		}
+	}
+}
+
+type WellKnownResponse = {
+	'm.server': string;
 };
 
-export const resolveUsingSRVRecordsOrFallbackToOtherRecords = async (
-	serverName: string,
-): Promise<string> => {
-	const resolver = new Resolver();
-	const srvRecords = await resolver.resolveSrv(
-		`_matrix-fed._tcp.${serverName}`,
-	);
+// error must be caught and handled by the caller
+async function fromWellKnownDelegation(
+	host: string,
+): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
+	const isWellKnownResponse = (
+		response: unknown,
+	): response is WellKnownResponse => {
+		return (
+			typeof response === 'object' &&
+			response !== null &&
+			'm.server' in response &&
+			typeof response['m.server'] === 'string'
+		);
+	};
 
-	if (srvRecords.length > 0) {
-		for (const srv of srvRecords) {
-			const addresses = await resolver.resolveAny(srv.name);
-			for (const address of addresses) {
-				if (address.type === 'AAAA' || address.type === 'A') {
-					const ipAddress = isIPv6(address.address)
-						? `[${address.address}]`
-						: address.address;
+	// SPEC: 3. If the hostname is not an IP literal, a regular HTTPS request is made to https://<hostname>/.well-known/matrix/server,
 
-					return srv.port
-						? `${ipAddress}:${srv.port}`
-						: addressWithDefaultPort(`[${ipAddress}]`);
-				}
+	const response = await fetch(`https://${host}/.well-known/matrix/server`, {
+		headers: {
+			Accept: 'application/json',
+		},
+		// SPEC: 30x redirects should be followed
+		redirect: 'follow',
+	});
+
+	// SPEC: Errors are recommended to be cached for up to an hour, and servers are encouraged to exponentially back off for repeated failures.
+	// TODO: ^^^
+
+	// SPEC: If the response is invalid (bad JSON, missing properties, non-200 response, etc), skip to step 4.
+	//
+	if (!response.ok) {
+		const [addr, hostHeaders] = await fromSRVResolutionWithBasicFallback(host);
+		return [`https://${addr}` as const, hostHeaders];
+	}
+
+	const data = await response.json();
+
+	if (!isWellKnownResponse(data)) {
+		const [addr, hostHeaders] = await fromSRVResolutionWithBasicFallback(host);
+		return [`https://${addr}` as const, hostHeaders];
+	}
+
+	if (!data['m.server']) {
+		// TODO: should this be like this?
+		const [addr, hostHeaders] = await fromSRVResolutionWithBasicFallback(host);
+		return [`https://${addr}` as const, hostHeaders];
+	}
+
+	const url = new _URL(data['m.server']);
+
+	const { hostname: delegatedHostname, port: delegatedPort } = url;
+
+	// SPEC: 3.1. If <delegated_hostname> is an IP literal, then that IP address should be used together with the <delegated_port> or 8448 if no port is provided. The target server must present a valid TLS certificate for the IP address.
+
+	if (url.isIP()) {
+		// compiler should take care of this redundant reassignment
+		const delegatedIp = delegatedHostname;
+		const finalAddress = `https://${delegatedIp}:${
+			delegatedPort || DEFAULT_PORT
+		}` as const;
+		return [
+			finalAddress,
+			{
+				/* SPEC: Requests must be made with a Host header containing the IP address, including the port if one was provided. */
+				Host: `${delegatedIp}${delegatedPort ? `:${delegatedPort}` : ''}`,
+			},
+		];
+	}
+
+	// SPEC: 3.2. If <delegated_hostname> is not an IP literal, and <delegated_port> is present, an IP address is discovered by looking up CNAME, AAAA or A records for <delegated_hostname>. The resulting IP address is used, alongside the <delegated_port>.
+
+	if (delegatedPort) {
+		const addr = await resolveHostname(delegatedHostname, true);
+
+		return [
+			`https://${addr}:${delegatedPort}`,
+			// SPEC: Requests must be made with a Host header of <delegated_hostname>:<delegated_port>. The target server must present a valid certificate for <delegated_hostname>.
+			{ Host: `${delegatedHostname}:${delegatedPort}` },
+		];
+	}
+
+	// SPEC: 3.3. If <delegated_hostname> is not an IP literal and no <delegated_port> is present, an SRV record is looked up for _matrix-fed._tcp.<delegated_hostname>. This may result in another hostname (to be resolved using AAAA or A records) and port. Requests should be made to the resolved IP address and port with a Host header containing the <delegated_hostname>. The target server must present a valid certificate for <delegated_hostname>.
+	const [addr, hostHeaders] =
+		await fromSRVResolutionWithBasicFallback(delegatedHostname);
+	return [`https://${addr}` as const, hostHeaders];
+}
+
+// SPEC: If the /.well-known request resulted in an error response, a server is found by resolving an SRV record for _matrix-fed._tcp.<hostname>. This may result in a hostname (to be resolved using AAAA or A records) and port. Requests are made to the resolved IP address and port, with a Host header of <hostname>. The target server must present a valid certificate for <hostname>.
+async function fromSRVDelegation(
+	hostname: string,
+): Promise<[IP4or6WithPortString, HostHeaders]> {
+	const _do = async (
+		name: string,
+	): Promise<Awaited<ReturnType<typeof fromSRVDelegation>> | undefined> => {
+		const srvs = await resolver.resolveSrv(name);
+
+		for (const srv of srvs) {
+			const _is4 = isIPv4(srv.name);
+			const _is6 = isIPv6(srv.name);
+
+			if (_is4 || _is6) {
+				// use as is
+				const finalAddress = `${_is6 ? fix6(srv.name) : srv.name}:${
+					srv.port
+				}` as const;
+
+				return [finalAddress, { Host: hostname }];
+			}
+
+			try {
+				const _addr = await resolveHostname(srv.name, false);
+				const addr = isIPv6(_addr) ? fix6(_addr) : _addr;
+				return [`${addr}:${srv.port}` as const, { Host: hostname }];
+			} catch (_e) {
+				// noop
 			}
 		}
+	};
 
-		return addressWithDefaultPort(serverName);
+	const result = await _do(`_matrix-fed._tcp.${hostname}`);
+	if (result) {
+		return result;
 	}
 
-	const addresses = await resolver.resolveAny(serverName);
-	for (const address of addresses) {
-		if (
-			address.type === 'CNAME' ||
-			address.type === 'AAAA' ||
-			address.type === 'A'
-		) {
-			const ipAddress =
-				address.type === 'CNAME' ? address.value : address.address;
-			const formattedIpAddress = formatIpAddressWithOptionalPort(ipAddress);
+	// SPEC: If <delegated_hostname> is not an IP literal, no <delegated_port> is present, and a _matrix-fed._tcp.<delegated_hostname> SRV record was not found, an SRV record is looked up for _matrix._tcp.<delegated_hostname>. This may result in another hostname (to be resolved using AAAA or A records) and port. Requests should be made to the resolved IP address and port with a Host header containing the <delegated_hostname>. The target server must present a valid certificate for <delegated_hostname>.
+	// ^^^ IS DEPRECATED, but implementing anyway for now
 
-			return addressWithDefaultPort(formattedIpAddress);
-		}
+	const result2 = await _do(`_matrix._tcp.${hostname}`);
+	if (result2) {
+		return result2;
 	}
 
-	return addressWithDefaultPort(serverName);
-};
+	throw new Error(`no srv address found for ${hostname}`);
+}
 
-export const getAddressFromTargetWellKnownEndpoint = async (
-	serverName: string,
-): Promise<{ address: string; maxAge: number }> => {
-	let response: Response | undefined;
-	let data: { 'm.server': string } | undefined;
+async function fromSRVResolutionWithBasicFallback(
+	hostname: AddressString,
+): Promise<[IP4or6WithPortString, HostHeaders]> {
+	// SPEC: 6. If the /.well-known request returned an error response, and no SRV records were found, an IP address is resolved using CNAME, AAAA and A records. Requests are made to the resolved IP address using port 8448 and a Host header containing the <hostname>. The target server must present a valid certificate for <hostname>.
 	try {
-		response = await fetch(`https://${serverName}/.well-known/matrix/server`);
+		return await fromSRVDelegation(hostname);
+	} catch (e: unknown) {
+		try {
+			const resolved = await resolveHostname(hostname, true);
 
-		if (!response.ok) {
-			throw new Error();
-		}
+			return [`${resolved}:${DEFAULT_PORT}` as const, { Host: hostname }];
+		} catch (e2: unknown) {
+			if (MultiError.isMultiError(e) && MultiError.isMultiError(e2)) {
+				throw e.concat(e2);
+			}
 
-		data = await response.json();
-	} catch {
-		throw new Error('No address found');
-	}
+			console.log(e, e2);
 
-	if (!data?.['m.server']) {
-		throw new Error('No address found');
-	}
-
-	// Cache control headers
-	const cacheControl = response.headers.get('cache-control');
-	let maxAge = MAX_AGE_HOURS_IN_SECONDS;
-
-	if (cacheControl) {
-		const match = cacheControl.match(/max-age=(\d+)/);
-		if (match) {
-			maxAge = Math.min(
-				Number.parseInt(match[1], 10),
-				MAX_CACHE_ALLOWED_IN_SECONDS,
-			);
+			throw new Error(`failed to resolve ${hostname}`);
 		}
 	}
-
-	const address = data['m.server'];
-
-	return { address, maxAge };
-};
-
-const addressHasExplicitPort = (address: string): boolean =>
-	!isIpLiteral(address) && new URL(`http://${address}`).port !== '';
-
-export const wellKnownCache = new Map<
-	string,
-	{ address: string; maxAge: number; timestamp: number }
->();
-
-export const getWellKnownCachedAddress = (
-	serverName: string,
-): string | null => {
-	const cached = wellKnownCache.get(serverName);
-	if (cached && Date.now() < cached.timestamp + cached.maxAge * 1000) {
-		return cached.address;
-	}
-	return null;
-};
-
-// const resolveFollowingWellKnownRules = async (
-// 	serverName: string,
-// ): Promise<string> => {
-// 	try {
-// 		if (isIpLiteral(serverName)) {
-// 			return resolveWhenServerNameIsIpAddress(serverName);
-// 		}
-
-// 		if (addressHasExplicitPort(serverName)) {
-// 			return resolveWhenServerNameIsAddressWithPort(serverName);
-// 		}
-// 	} catch {
-// 		return addressWithDefaultPort(serverName);
-// 	}
-
-// 	return resolveUsingSRVRecordsOrFallbackToOtherRecords(serverName);
-// };
-
-const getAddressFromWellKnownData = async (
-	serverName: string,
-): Promise<string> => {
-	const cachedAddress = getWellKnownCachedAddress(serverName);
-	if (cachedAddress) {
-		return cachedAddress;
-	}
-
-	const { address, maxAge } =
-		await getAddressFromTargetWellKnownEndpoint(serverName);
-	wellKnownCache.set(serverName, { address, maxAge, timestamp: Date.now() });
-
-	return address;
-};
-
-const defaultOwnServerAddress = (ownServerName: string): string => {
-	return `${ownServerName}:443`;
-};
-
-export const resolveHostAddressByServerName = async (
-	serverName: string,
-	ownServerName: string,
-): Promise<{ address: string; headers: { Host: string } }> => {
-	try {
-		if (isIpLiteral(serverName)) {
-			const address = await resolveWhenServerNameIsIpAddress(serverName);
-			return {
-				address,
-				headers: { Host: defaultOwnServerAddress(ownServerName) },
-			};
-		}
-
-		if (addressHasExplicitPort(serverName)) {
-			const address = await resolveWhenServerNameIsAddressWithPort(serverName);
-			return {
-				address,
-				headers: { Host: defaultOwnServerAddress(ownServerName) },
-			};
-		}
-
-		const rawAddress = await getAddressFromWellKnownData(serverName);
-		// const address = await resolveFollowingWellKnownRules(rawAddress);
-
-		// TODO: Check it later... only way I found to make the request work
-		return { address: rawAddress, headers: { Host: rawAddress } };
-	} catch (error) {
-		if (error instanceof Error && error.message === 'No address found') {
-			const address = await resolveUsingSRVRecordsOrFallbackToOtherRecords(
-				serverName,
-			).catch(() => addressWithDefaultPort(serverName));
-
-			return { address, headers: { Host: serverName } };
-		}
-		const address = await addressWithDefaultPort(serverName);
-
-		return { address, headers: { Host: address } };
-	}
-};
+}
