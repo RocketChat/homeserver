@@ -445,6 +445,12 @@ export function generatePduSchemaForBase<T>(base: T) {
 			type: z.literal(PduTypeRoomName),
 			content: PduRoomNameEventContentSchema,
 		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomAliases),
+			content: PduCanonicalAliasEventContentSchema,
+		}),
 	]);
 }
 

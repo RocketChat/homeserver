@@ -747,7 +747,7 @@ export async function checkEventAuthWithState(
 		);
 	}
 
-	if (event.isCanonicalAliasEvent()) {
+	if (event.isAliasEvent()) {
 		return isRoomAliasAllowed(event);
 	}
 

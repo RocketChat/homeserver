@@ -1030,10 +1030,27 @@ export class RoomService {
 			eventMap.set(stateEvent.eventId, stateEvent);
 		}
 
-		const persistEvent = async (event: PersistentEventBase) => {
-			if (event.event.auth_events.length === 0) {
-				// persist as normal
-				await stateService.persistStateEvent(event);
+		const persisted = new Set<string>();
+
+		const persistEvent = async (event: Readonly<PersistentEventBase>) => {
+			if (
+				!persisted.has(event.eventId) &&
+				event.event.auth_events.length === 0
+			) {
+				// persist as normal, m.room.create :)
+				logger.info(
+					`Persisting create event ${event.eventId}, ${JSON.stringify(
+						event.event,
+						null,
+						2,
+					)}`,
+				);
+				const eventToPersist = PersistentEventFactory.createFromRawEvent(
+					structuredClone(event.event),
+					'10' /* find it from the room_version */,
+				);
+				await stateService.persistStateEvent(eventToPersist);
+				persisted.add(event.eventId);
 				return;
 			}
 
@@ -1048,20 +1065,79 @@ export class RoomService {
 					throw new Error(`Auth event ${authEventId} not found`);
 				}
 
-				await persistEvent(authEvent);
+				if (!persisted.has(authEventId as string)) {
+					// persist all the auth events of this authEvent
+					logger.info(
+						`Persisting auth event ${authEventId} because not persisted already, ${JSON.stringify(
+							authEvent.event,
+							null,
+							2,
+						)}`,
+					);
+					await persistEvent(authEvent); // pl
+				}
+
+				// persist the authEvent itself
+				logger.info(
+					`Persisting auth event ${authEventId} itself, ${JSON.stringify(
+						authEvent.event,
+						null,
+						2,
+					)}`,
+				);
+				await stateService.persistStateEvent(authEvent);
+				persisted.add(authEvent.eventId);
 			}
 
 			// persist as normal
-			await stateService.persistStateEvent(event);
+			logger.info(
+				`Persisting state event after auth events have been persisted, ${event.eventId}, ${JSON.stringify(
+					event.event,
+					null,
+					2,
+				)}`,
+			);
+
+			const eventToPersist = PersistentEventFactory.createFromRawEvent(
+				structuredClone(event.event),
+				'10' /* find it from the room_version */,
+			);
+
+			await stateService.persistStateEvent(eventToPersist);
+			persisted.add(event.eventId);
 		};
 
 		for (const stateEvent of eventMap.values()) {
+			if (persisted.has(stateEvent.eventId)) {
+				continue;
+			}
+
+			logger.info(
+				`Persisting state event ${stateEvent.eventId}, ${JSON.stringify(
+					stateEvent.event,
+					null,
+					2,
+				)}`,
+			);
 			await persistEvent(stateEvent);
 		}
 
 		const joinEventFinal = PersistentEventFactory.createFromRawEvent(
 			sendJoinResponse.event as any,
 			makeJoinResponse.room_version,
+		);
+
+		const state = await stateService.getFullRoomState(roomId);
+
+		logger.info(
+			`State before join event has been persisted, ${JSON.stringify(
+				state.entries().reduce((acc, [key, value]) => {
+					acc[key] = value.event;
+					return acc;
+				}, {} as any),
+				null,
+				2,
+			)}`,
 		);
 
 		// try to persist the join event now, should succeed with state in place

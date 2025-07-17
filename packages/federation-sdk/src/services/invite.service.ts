@@ -1,5 +1,5 @@
 import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
-import { FederationService } from '@hs/federation-sdk';
+import { ConfigService, FederationService } from '@hs/federation-sdk';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
@@ -27,6 +27,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		@inject('RoomService') private readonly roomService: RoomService,
 		@inject('StateService') private readonly stateService: StateService,
+		@inject('ConfigService') private readonly configService: ConfigService,
 	) {}
 
 	/**
@@ -37,6 +38,12 @@ export class InviteService {
 
 		const stateService = this.stateService;
 		const federationService = this.federationService;
+
+		const residentServer = roomId.split(':').pop();
+
+		if (!residentServer) {
+			throw new Error(`invalid room_id ${roomId}, no server_name part`);
+		}
 
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
@@ -54,11 +61,31 @@ export class InviteService {
 
 		await stateService.signEvent(inviteEvent);
 
+		// room is on our server
+		// we can resolve state by ourselves
+		if (residentServer === this.configService.getServerName()) {
+			await stateService.persistStateEvent(inviteEvent);
+
+			if (inviteEvent.rejected) {
+				throw new Error(inviteEvent.rejectedReason);
+			}
+
+			return {
+				event_id: inviteEvent.eventId,
+				room_id: roomId,
+			};
+		}
+
+		// remote room, send the invite event to the original room
+		// if accepted it will become part of the state
+		// further attempt to join the room should be allowed then.
+
 		const inviteResponse = await federationService.inviteUser(
 			inviteEvent,
 			roomInformation.room_version,
 		);
 
+		// can only invite if already part of the room
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
 				inviteResponse.event,
