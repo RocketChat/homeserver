@@ -4,12 +4,6 @@ import {
 	REDACT_ALLOW_ALL_KEYS,
 } from './event-wrapper';
 import type { RoomVersion3To11 } from './type';
-import {
-	type EventStore,
-	PersistentEventBase,
-	REDACT_ALLOW_ALL_KEYS,
-} from './event-wrapper';
-import type { RoomVersion3To11 } from './type';
 import { toUnpaddedBase64 } from '@hs/crypto';
 import {
 	PduTypeRoomAliases,
