@@ -1,4 +1,4 @@
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
 import type { StateMapKey } from '@hs/room';
@@ -14,7 +14,7 @@ import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
-@injectable()
+@singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(
@@ -238,12 +238,6 @@ export class StateService {
 				});
 
 				return events.concat(eventsFromStore);
-			},
-
-			getEventsByHashes: async (
-				_hashes: string[],
-			): Promise<PersistentEventBase[]> => {
-				throw new Error('Not implemented');
 			},
 		};
 	}

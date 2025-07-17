@@ -33,6 +33,8 @@ describe('makeJoinEventBuilder', () => {
 				nextEventId: 'nextEventId',
 				eventId: 'eventId',
 				createdAt: new Date(mockDate),
+				nextEventId: 'nextEventId',
+				eventId: 'eventId',
 			});
 		},
 	);

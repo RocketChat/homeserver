@@ -1,10 +1,10 @@
 import { createLogger } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import type { StagingAreaService } from '../services/staging-area.service';
 
-@injectable()
+@singleton()
 export class StagingAreaListener {
 	private readonly logger = createLogger('StagingAreaListener');
 

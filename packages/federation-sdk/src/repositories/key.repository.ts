@@ -1,5 +1,5 @@
 import { Collection } from 'mongodb';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Key = {
@@ -9,7 +9,7 @@ type Key = {
 	valid_until: Date;
 };
 
-@injectable()
+@singleton()
 export class KeyRepository {
 	private collection: Collection<Key> | null = null;
 

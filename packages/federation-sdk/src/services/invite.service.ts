@@ -1,7 +1,7 @@
 import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
 import { FederationService } from '@hs/federation-sdk';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
@@ -17,7 +17,7 @@ export type ProcessInviteEvent = {
 	room_version: string;
 };
 
-@injectable()
+@singleton()
 export class InviteService {
 	private readonly logger = createLogger('InviteService');
 

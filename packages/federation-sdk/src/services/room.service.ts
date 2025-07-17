@@ -1,10 +1,6 @@
 import {
-	createLogger,
 	EventBase,
-	ForbiddenError,
 	generateId,
-	HttpException,
-	HttpStatus,
 	isRoomPowerLevelsEvent,
 	roomMemberEvent,
 	RoomNameAuthEvents,
@@ -15,26 +11,28 @@ import {
 	RoomTombstoneEvent,
 	SignedEvent,
 	signEvent,
-	SigningKey,
 	TombstoneAuthEvents,
 } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
+import { FederationService } from './federation.service';
+import { inject, singleton } from 'tsyringe';
+
+import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
+import { type SigningKey } from '@hs/core';
+import { logger } from '@hs/core';
+import { ConfigService } from './config.service';
+import { EventService } from './event.service';
+import { EventType } from './event.service';
 import type { RoomRepository } from '../repositories/room.repository';
-import type { EventRepository } from '../repositories/event.repository';
-import { type EventService, EventType } from './event.service';
-import type { ConfigService } from './config.service';
-import type { FederationService } from './federation.service';
-import type { StateService } from './state.service';
+import { StateService } from './state.service';
+import { EventRepository } from '../repositories/event.repository';
 import {
-	type PduCreateEventContent,
-	type PduJoinRuleEventContent,
+	PduCreateEventContent,
+	PduJoinRuleEventContent,
 	PersistentEventFactory,
-	type RoomVersion,
+	RoomVersion,
 } from '@hs/room';
 
-const logger = createLogger('RoomService');
-
-@injectable()
+@singleton()
 export class RoomService {
 	constructor(
 		@inject('RoomRepository') private readonly roomRepository: RoomRepository,

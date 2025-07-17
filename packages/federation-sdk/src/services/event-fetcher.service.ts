@@ -2,7 +2,7 @@ import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
@@ -12,7 +12,7 @@ export interface FetchedEvents {
 	missingEventIds: string[];
 }
 
-@injectable()
+@singleton()
 export class EventFetcherService {
 	private readonly logger = createLogger('EventFetcherService');
 

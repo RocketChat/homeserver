@@ -1,7 +1,7 @@
-import { inject, injectable } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import type { FederationModuleOptions } from '../types';
 
-@injectable()
+@singleton()
 export class FederationConfigService {
 	constructor(
 		@inject('FEDERATION_OPTIONS')

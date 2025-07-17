@@ -1,4 +1,4 @@
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '@hs/core';
 import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
@@ -6,7 +6,7 @@ import { DatabaseConnectionService } from '../services/database-connection.servi
 import { MongoError } from 'mongodb';
 import { PersistentEventBase } from '@hs/room';
 
-@injectable()
+@singleton()
 export class EventRepository {
 	private collection: Collection<EventStore> | null = null;
 

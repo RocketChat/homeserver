@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '../types';
 import type { SigningKey } from '../types';
@@ -44,7 +45,7 @@ async function storeKeyPairs(
 	path: string,
 ) {
 	for await (const keyPair of seeds) {
-		await Bun.write(
+		await fs.writeFile(
 			path,
 			`${keyPair.algorithm} ${keyPair.version} ${toUnpaddedBase64(keyPair.seed)}`,
 		);
@@ -56,11 +57,20 @@ export const getKeyPair = async (config: {
 }): Promise<SigningKey[]> => {
 	const { signingKeyPath } = config;
 
-	const hasStoredKeys = await Bun.file(signingKeyPath).exists();
-
 	const seeds = [];
 
-	if (!hasStoredKeys) {
+	const existingKeyContent = await fs
+		.readFile(signingKeyPath, 'utf8')
+		.catch(() => null);
+
+	if (existingKeyContent) {
+		const [algorithm, version, seed] = existingKeyContent.trim().split(' ');
+		seeds.push({
+			algorithm: algorithm as EncryptionValidAlgorithm,
+			version,
+			seed: Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
+		});
+	} else {
 		seeds.push({
 			algorithm: 'ed25519' as EncryptionValidAlgorithm,
 			version: '0',
@@ -68,19 +78,6 @@ export const getKeyPair = async (config: {
 		});
 
 		await storeKeyPairs(seeds, signingKeyPath);
-	}
-
-	if (hasStoredKeys) {
-		const [algorithm, version, seed] = (
-			await Bun.file(config.signingKeyPath).text()
-		)
-			.trim()
-			.split(' ');
-		seeds.push({
-			algorithm: algorithm as EncryptionValidAlgorithm,
-			version,
-			seed: Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
-		});
 	}
 
 	return Promise.all(

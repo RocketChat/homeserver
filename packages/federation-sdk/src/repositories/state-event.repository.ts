@@ -1,9 +1,9 @@
 import type { EventBaseWithOptionalId } from '@hs/core';
 import type { Collection, FindCursor } from 'mongodb';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
-@injectable()
+@singleton()
 export class StateEventRepository {
 	private collection: Collection<EventBaseWithOptionalId> | null = null;
 

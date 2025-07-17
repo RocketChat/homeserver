@@ -1,5 +1,5 @@
 import { Collection } from 'mongodb';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Server = {
@@ -12,7 +12,7 @@ type Server = {
 	};
 };
 
-@injectable()
+@singleton()
 export class ServerRepository {
 	private collection: Collection<Server> | null = null;
 

@@ -1,7 +1,7 @@
 import type { EventBaseWithOptionalId } from '@hs/core';
 import type { EventStore } from '@hs/core';
 import { Collection } from 'mongodb';
-import { injectable } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 
 type Room = {
@@ -17,7 +17,7 @@ type Room = {
 	};
 };
 
-@injectable()
+@singleton()
 export class RoomRepository {
 	private collection: Collection<Room> | null = null;
 

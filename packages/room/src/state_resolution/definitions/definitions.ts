@@ -6,16 +6,12 @@ import {
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-} from '../../types/v1';
+} from '../../types/v3-11';
 
 import assert from 'node:assert';
-import {
-	checkEventAuthWithState,
-	getPowerLevelForUser,
-} from '../../authorizartion-rules/rules';
+import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
 import type { PersistentEventBase } from '../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../manager/power-level-event-wrapper';
-import type { PduV3 } from '../../types/v3';
 
 export function getStateMapKey(event: {
 	type: PduType;
@@ -93,12 +89,6 @@ export function partitionState(
 
 export interface EventStore {
 	getEvents(eventIds: string[]): Promise<PersistentEventBase[]>;
-	// for
-	getEventsByHashes(hashes: string[]): Promise<PersistentEventBase[]>;
-}
-
-export interface EventStoreRemote {
-	getEvent(eventId: string): Promise<PersistentEventBase | null>;
 }
 
 /*

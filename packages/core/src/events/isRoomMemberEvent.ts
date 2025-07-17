@@ -27,6 +27,8 @@ export interface RoomMemberEvent extends EventBase {
 			};
 		};
 		reason?: string;
+		avatar_url?: string;
+		displayname?: string;
 	};
 	state_key: string;
 	unsigned: {

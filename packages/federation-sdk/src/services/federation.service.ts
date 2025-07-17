@@ -1,4 +1,7 @@
 import type { EventBase } from '@hs/core';
+import type { ProtocolVersionKey } from '@hs/core';
+import { createLogger } from '@hs/core';
+import { inject, singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -14,7 +17,7 @@ import { type ProtocolVersionKey, createLogger } from '@hs/core';
 import { inject, injectable } from 'tsyringe';
 import { PersistentEventBase } from '@hs/room';
 
-@injectable()
+@singleton()
 export class FederationService {
 	private readonly logger = createLogger('FederationService');
 

@@ -4,6 +4,12 @@ import {
 	REDACT_ALLOW_ALL_KEYS,
 } from './event-wrapper';
 import type { RoomVersion3To11 } from './type';
+import {
+	type EventStore,
+	PersistentEventBase,
+	REDACT_ALLOW_ALL_KEYS,
+} from './event-wrapper';
+import type { RoomVersion3To11 } from './type';
 import { toUnpaddedBase64 } from '@hs/crypto';
 import {
 	PduTypeRoomAliases,
@@ -12,7 +18,7 @@ import {
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomPowerLevels,
-} from '../types/v1';
+} from '../types/v3-11';
 
 // v3 is where it changes first
 export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
