@@ -28,6 +28,7 @@ import { EventRepository } from '../repositories/event.repository';
 import {
 	PduCreateEventContent,
 	PduJoinRuleEventContent,
+	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
 } from '@hs/room';
@@ -947,6 +948,129 @@ export class RoomService {
 			}
 		}
 		return eventId;
+	}
+
+	// if local room, add the user to the room if allowed.
+	// if remote room, run through the join process
+	async joinUser(roomId: string, userId: string) {
+		const configService = this.configService;
+		const stateService = this.stateService;
+		const federationService = this.federationService;
+
+		// where the room is hosted at
+		const residentServer = roomId.split(':').pop();
+
+		// our own room, we can validate the join event by ourselves
+		// once done, emit the event to all participating servers TODO:
+		if (residentServer === configService.getServerName()) {
+			const room = await stateService.getFullRoomState(roomId);
+
+			const createEvent = room.get('m.room.create:');
+
+			if (!createEvent) {
+				throw new Error(
+					'Room create event not found when trying to join a room',
+				);
+			}
+
+			const membershipEvent = PersistentEventFactory.newMembershipEvent(
+				roomId,
+				userId, // sender and state_key are the same for join events
+				userId,
+				'join',
+				createEvent.getContent(),
+			);
+
+			await stateService.addAuthEvents(membershipEvent);
+
+			await stateService.addPrevEvents(membershipEvent);
+
+			await stateService.persistStateEvent(membershipEvent);
+
+			if (membershipEvent.rejected) {
+				throw new Error(membershipEvent.rejectedReason);
+			}
+
+			return membershipEvent.eventId;
+		}
+
+		// trying to join room from another server
+		const makeJoinResponse = await federationService.makeJoin(
+			residentServer as string,
+			roomId,
+			userId,
+		);
+
+		// ^ have the template for the join event now
+
+		const joinEvent = PersistentEventFactory.createFromRawEvent(
+			makeJoinResponse.event as any, // TODO: using room package types will take care of this
+			makeJoinResponse.room_version,
+		);
+
+		// const signedJoinEvent = await stateService.signEvent(joinEvent);
+
+		// TODO: sign the event here vvv
+		// currently makeSignedRequest does the signing
+		const sendJoinResponse = await federationService.sendJoin(joinEvent);
+
+		// TODO: validate hash and sig (item 2)
+
+		// run through state res
+		// validate all auth chain events
+		const eventMap = new Map<string, PersistentEventBase>();
+
+		for (const stateEvent_ of sendJoinResponse.state) {
+			const stateEvent = PersistentEventFactory.createFromRawEvent(
+				stateEvent_ as any,
+				makeJoinResponse.room_version,
+			);
+
+			eventMap.set(stateEvent.eventId, stateEvent);
+		}
+
+		const persistEvent = async (event: PersistentEventBase) => {
+			if (event.event.auth_events.length === 0) {
+				// persist as normal
+				await stateService.persistStateEvent(event);
+				return;
+			}
+
+			for (const authEventId of event.event.auth_events) {
+				const authEvent = eventMap.get(authEventId as string);
+				if (!authEvent) {
+					for (const stateEvent of eventMap.keys()) {
+						console.log(
+							`${stateEvent} -> ${JSON.stringify(eventMap.get(stateEvent)?.event, null, 2)}`,
+						);
+					}
+					throw new Error(`Auth event ${authEventId} not found`);
+				}
+
+				await persistEvent(authEvent);
+			}
+
+			// persist as normal
+			await stateService.persistStateEvent(event);
+		};
+
+		for (const stateEvent of eventMap.values()) {
+			await persistEvent(stateEvent);
+		}
+
+		const joinEventFinal = PersistentEventFactory.createFromRawEvent(
+			sendJoinResponse.event as any,
+			makeJoinResponse.room_version,
+		);
+
+		// try to persist the join event now, should succeed with state in place
+		await stateService.persistStateEvent(joinEventFinal);
+
+		if (joinEventFinal.rejected) {
+			throw new Error(joinEventFinal.rejectedReason);
+		}
+
+		return joinEventFinal.eventId;
 	}
 
 	async markRoomAsTombstone(

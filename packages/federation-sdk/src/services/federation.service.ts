@@ -44,7 +44,8 @@ export class FederationService {
 			if (version) {
 				queryParams.ver = version;
 			} else {
-				for (let ver = 1; ver <= 11; ver++) {
+				// 3-11 is what we support now
+				for (let ver = 3; ver <= 11; ver++) {
 					queryParams[`ver${ver === 1 ? '' : ver}`] = ver.toString();
 				}
 			}

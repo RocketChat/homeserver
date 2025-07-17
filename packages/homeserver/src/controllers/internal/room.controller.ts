@@ -34,16 +34,11 @@ import {
 import { RoomService } from '@hs/federation-sdk';
 import { PduCreateEventContent, PersistentEventFactory } from '@hs/room';
 import { StateService } from '@hs/federation-sdk';
-import { ConfigService } from '@hs/federation-sdk';
-import { FederationService } from '@hs/federation-sdk';
-import { PersistentEventBase } from '@hs/room';
 import { InviteService } from '@hs/federation-sdk';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
 	const stateService = container.resolve(StateService);
-	const configService = container.resolve(ConfigService);
-	const federationService = container.resolve(FederationService);
 	const inviteService = container.resolve(InviteService);
 	return app
 		.post(
@@ -171,121 +166,17 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/join/:userId',
-			async ({ params, body }) => {
+			async ({ params }) => {
 				const { roomId, userId } = params;
-				const { senderUserId } = body;
 
-				const residentServer = roomId.split(':').pop();
-				if (residentServer === configService.getServerName()) {
-					const room = await stateService.getFullRoomState(roomId);
-
-					const createEvent = room.get('m.room.create:');
-
-					if (!createEvent) {
-						throw new Error('Room create event not found');
-					}
-
-					const membershipEvent = PersistentEventFactory.newMembershipEvent(
-						roomId,
-						senderUserId,
-						userId,
-						'join',
-						createEvent.getContent<PduCreateEventContent>(),
-					);
-
-					await stateService.addAuthEvents(membershipEvent);
-
-					await stateService.addPrevEvents(membershipEvent);
-
-					await stateService.persistStateEvent(membershipEvent);
-
-					if (membershipEvent.rejected) {
-						throw new Error(membershipEvent.rejectedReason);
-					}
-
-					return {
-						eventId: membershipEvent.eventId,
-					};
-				}
-
-				// trying to join room from another server
-				const makeJoinResponse = await federationService.makeJoin(
-					residentServer as string,
-					roomId,
-					userId,
-					'10',
-				);
-
-				const joinEvent = PersistentEventFactory.createFromRawEvent(
-					makeJoinResponse.event as any,
-					makeJoinResponse.room_version,
-				);
-
-				// TODO: sign the event here
-				// currently makeSignedRequest does the signing
-				const sendJoinResponse = await federationService.sendJoin(joinEvent);
-
-				// TODO: validate hash and sig
-				// run through state res
-				// validate all auth chain events
-				const eventMap = new Map<string, PersistentEventBase>();
-
-				for (const stateEvent_ of sendJoinResponse.state) {
-					const stateEvent = PersistentEventFactory.createFromRawEvent(
-						stateEvent_ as any,
-						makeJoinResponse.room_version,
-					);
-
-					eventMap.set(stateEvent.eventId, stateEvent);
-				}
-
-				const persistEvent = async (event: PersistentEventBase) => {
-					if (event.event.auth_events.length === 0) {
-						// persist as normal
-						console.log('persisting as normal', event.eventId, event.event);
-						await stateService.persistStateEvent(event);
-						return;
-					}
-
-					for (const authEventId of event.event.auth_events) {
-						const authEvent = eventMap.get(authEventId as string);
-						if (!authEvent) {
-							for (const stateEvent of eventMap.keys()) {
-								console.log(
-									`${stateEvent} -> ${JSON.stringify(eventMap.get(stateEvent)?.event, null, 2)}`,
-								);
-							}
-							throw new Error(`Auth event ${authEventId} not found`);
-						}
-
-						await persistEvent(authEvent);
-					}
-
-					console.log('persisting as auth event', event.eventId, event.event);
-					// persist as normal
-					await stateService.persistStateEvent(event);
-				};
-
-				for (const stateEvent of eventMap.values()) {
-					await persistEvent(stateEvent);
-				}
-
-				await stateService.persistStateEvent(
-					PersistentEventFactory.createFromRawEvent(
-						sendJoinResponse.event as any,
-						makeJoinResponse.room_version,
-					),
-				);
+				const eventId = await roomService.joinUser(roomId, userId);
 
 				return {
-					eventId: sendJoinResponse.event_id,
+					eventId,
 				};
 			},
 			{
 				// params: InternalJoinRoomParamsDto,
-				body: t.Object({
-					senderUserId: t.String(),
-				}),
 				// response: {
 				// 	200: InternalRoomEventResponseDto,
 				// 	400: ErrorResponseDto,
