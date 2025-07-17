@@ -366,6 +366,7 @@ export const PduNoContentSchema = {
 	hashes: EventHashSchema.describe(
 		'The hashes of the event. This is an object with arbitrary keys and values.',
 	),
+	origin: z.string().describe('The origin of the event.').optional(),
 	origin_server_ts: z
 		.number()
 		.describe(
