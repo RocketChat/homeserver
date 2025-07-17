@@ -48,13 +48,9 @@ export class InviteService {
 			roomInformation,
 		);
 
-		for await (const authEvent of stateService.getAuthEvents(inviteEvent)) {
-			inviteEvent.authedBy(authEvent);
-		}
+		await stateService.addAuthEvents(inviteEvent);
 
-		for await (const prevEvent of stateService.getPrevEvents(inviteEvent)) {
-			inviteEvent.addPreviousEvent(prevEvent);
-		}
+		await stateService.addPrevEvents(inviteEvent);
 
 		await stateService.signEvent(inviteEvent);
 

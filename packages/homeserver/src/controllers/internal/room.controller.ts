@@ -193,20 +193,9 @@ export const internalRoomPlugin = (app: Elysia) => {
 						createEvent.getContent<PduCreateEventContent>(),
 					);
 
-					const statesNeeded = membershipEvent.getAuthEventStateKeys();
+					await stateService.addAuthEvents(membershipEvent);
 
-					for (const state of statesNeeded) {
-						const event = room.get(state);
-						if (event) {
-							membershipEvent.authedBy(event);
-						}
-					}
-
-					for await (const prevEvent of stateService.getPrevEvents(
-						membershipEvent,
-					)) {
-						membershipEvent.addPreviousEvent(prevEvent);
-					}
+					await stateService.addPrevEvents(membershipEvent);
 
 					await stateService.persistStateEvent(membershipEvent);
 

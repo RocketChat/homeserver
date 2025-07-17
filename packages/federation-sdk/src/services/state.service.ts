@@ -242,7 +242,7 @@ export class StateService {
 		};
 	}
 
-	async *getAuthEvents(event: PersistentEventBase) {
+	async addAuthEvents(event: PersistentEventBase) {
 		const state = await this.getFullRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();
@@ -250,12 +250,12 @@ export class StateService {
 		for (const stateKey of eventsNeeded) {
 			const authEvent = state.get(stateKey);
 			if (authEvent) {
-				yield authEvent;
+				event.authedBy(authEvent);
 			}
 		}
 	}
 
-	async *getPrevEvents(event: PersistentEventBase) {
+	async addPrevEvents(event: PersistentEventBase) {
 		const roomVersion = await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while filling prev events');
@@ -264,10 +264,11 @@ export class StateService {
 		const prevEvents = await this.eventRepository.findPrevEvents(event.roomId);
 
 		for (const prevEvent of prevEvents) {
-			yield PersistentEventFactory.createFromRawEvent(
+			const e = PersistentEventFactory.createFromRawEvent(
 				prevEvent.event as any,
 				roomVersion,
 			);
+			event.addPreviousEvent(e);
 		}
 	}
 

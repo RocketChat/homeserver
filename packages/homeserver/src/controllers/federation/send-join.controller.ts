@@ -40,9 +40,9 @@ export const sendJoinPlugin = (app: Elysia) => {
 				roomVersion,
 			);
 
-			for await (const authEvent of stateService.getAuthEvents(joinEvent)) {
-				joinEvent.authedBy(authEvent);
-			}
+			await stateService.addAuthEvents(joinEvent);
+
+			await stateService.addPrevEvents(joinEvent);
 
 			// now check the calculated id if it matches what is passed in param
 			if (joinEvent.eventId !== eventId) {

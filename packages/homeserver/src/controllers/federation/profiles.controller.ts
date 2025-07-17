@@ -87,17 +87,8 @@ export const profilesPlugin = (app: Elysia) => {
 					roomInformation,
 				);
 
-				for await (const authEvent of stateService.getAuthEvents(
-					membershipEvent,
-				)) {
-					membershipEvent.authedBy(authEvent);
-				}
-
-				for await (const prevEvent of stateService.getPrevEvents(
-					membershipEvent,
-				)) {
-					membershipEvent.addPreviousEvent(prevEvent);
-				}
+				await stateService.addAuthEvents(membershipEvent);
+				await stateService.addPrevEvents(membershipEvent);
 
 				return {
 					room_version: roomInformation.room_version as RoomVersion,

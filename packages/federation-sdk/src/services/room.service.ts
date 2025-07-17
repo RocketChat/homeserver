@@ -234,18 +234,9 @@ export class RoomService {
 			roomCreateEvent.getContent<PduCreateEventContent>(),
 		);
 
-		const [authEvents, prevEvents] = await Promise.all([
-			stateService.getAuthEvents(creatorMembershipEvent),
-			stateService.getPrevEvents(creatorMembershipEvent),
-		]);
+		await stateService.addAuthEvents(creatorMembershipEvent);
 
-		for await (const authEvent of authEvents) {
-			creatorMembershipEvent.authedBy(authEvent);
-		}
-
-		for await (const prevEvent of prevEvents) {
-			creatorMembershipEvent.addPreviousEvent(prevEvent);
-		}
+		await stateService.addPrevEvents(creatorMembershipEvent);
 
 		await stateService.persistStateEvent(creatorMembershipEvent);
 
@@ -256,18 +247,9 @@ export class RoomService {
 			roomVersion,
 		);
 
-		const [roomNameAuthEvents, roomNamePrevEvents] = await Promise.all([
-			stateService.getAuthEvents(roomNameEvent),
-			stateService.getPrevEvents(roomNameEvent),
-		]);
+		await stateService.addAuthEvents(roomNameEvent);
 
-		for await (const authEvent of roomNameAuthEvents) {
-			roomNameEvent.authedBy(authEvent);
-		}
-
-		for await (const prevEvent of roomNamePrevEvents) {
-			roomNameEvent.addPreviousEvent(prevEvent);
-		}
+		await stateService.addPrevEvents(roomNameEvent);
 
 		await stateService.persistStateEvent(roomNameEvent);
 
@@ -290,18 +272,9 @@ export class RoomService {
 			roomVersion,
 		);
 
-		const [powerLevelAuthEvents, powerLevelPrevEvents] = await Promise.all([
-			stateService.getAuthEvents(powerLevelEvent),
-			stateService.getPrevEvents(powerLevelEvent),
-		]);
+		await stateService.addAuthEvents(powerLevelEvent);
 
-		for await (const authEvent of powerLevelAuthEvents) {
-			powerLevelEvent.authedBy(authEvent);
-		}
-
-		for await (const prevEvent of powerLevelPrevEvents) {
-			powerLevelEvent.addPreviousEvent(prevEvent);
-		}
+		await stateService.addPrevEvents(powerLevelEvent);
 
 		await stateService.persistStateEvent(powerLevelEvent);
 
@@ -312,18 +285,9 @@ export class RoomService {
 			roomVersion,
 		);
 
-		const [joinRuleAuthEvents, joinRulePrevEvents] = await Promise.all([
-			stateService.getAuthEvents(joinRuleEvent),
-			stateService.getPrevEvents(joinRuleEvent),
-		]);
+		await stateService.addAuthEvents(joinRuleEvent);
 
-		for await (const authEvent of joinRuleAuthEvents) {
-			joinRuleEvent.authedBy(authEvent);
-		}
-
-		for await (const prevEvent of joinRulePrevEvents) {
-			joinRuleEvent.addPreviousEvent(prevEvent);
-		}
+		await stateService.addPrevEvents(joinRuleEvent);
 
 		await stateService.persistStateEvent(joinRuleEvent);
 
