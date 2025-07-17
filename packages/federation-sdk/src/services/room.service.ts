@@ -24,7 +24,10 @@ import type {
 } from '@hs/core';
 
 import { logger } from '@hs/core';
+import type { EventRepository } from '../repositories/event.repository';
+import type { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
+import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
 import type { RoomRepository } from '../repositories/room.repository';
@@ -528,7 +531,9 @@ export class RoomService {
 			auth_events: Object.values(authEventsMap).filter(
 				(id) => typeof id === 'string',
 			),
-			prev_events: [lastEventStore.event.event_id!],
+			prev_events: lastEventStore.event.event_id
+				? [lastEventStore.event.event_id]
+				: [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
 				...currentPowerLevelsEvent.content,
@@ -702,6 +707,19 @@ export class RoomService {
 			`Successfully created and stored m.room.member (leave) event ${eventId} for user ${senderId} in room ${roomId}`,
 		);
 
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: eventId,
+			room_id: roomId,
+			sender: senderId,
+			state_key: senderId,
+			origin_server_ts: signedEvent.origin_server_ts,
+			content: {
+				membership: 'leave',
+				displayname: signedEvent.content.displayname,
+				avatar_url: signedEvent.content.avatar_url,
+			},
+		});
+
 		return eventId;
 	}
 
@@ -819,6 +837,20 @@ export class RoomService {
 		logger.info(
 			`Successfully created and stored m.room.member (kick) event ${eventId} for user ${kickedUserId} in room ${roomId}`,
 		);
+
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: eventId,
+			room_id: roomId,
+			sender: senderId,
+			state_key: kickedUserId,
+			origin_server_ts: signedEvent.origin_server_ts,
+			content: {
+				membership: 'leave',
+				displayname: signedEvent.content.displayname,
+				avatar_url: signedEvent.content.avatar_url,
+				reason: reason,
+			},
+		});
 
 		for (const server of targetServers) {
 			if (server === serverName) {
