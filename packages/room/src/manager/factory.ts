@@ -110,13 +110,14 @@ export class PersistentEventFactory {
 			content: createContent,
 			sender: creator,
 			origin_server_ts: Date.now(),
+			origin: domain,
 			room_id: roomId,
 			prev_events: [],
 			auth_events: [],
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial);
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
 
 	static newMembershipEvent(
@@ -156,6 +157,7 @@ export class PersistentEventFactory {
 			type: PduTypeRoomMember,
 			content: membershipContent,
 			sender: sender,
+			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: userId,
@@ -164,7 +166,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial);
+		return PersistentEventFactory.createFromRawEvent(
+			eventPartial,
+			roomInformation.room_version as RoomVersion,
+		);
 	}
 
 	static newPowerLevelEvent(
@@ -185,6 +190,7 @@ export class PersistentEventFactory {
 			content: content,
 			sender: sender,
 			origin_server_ts: Date.now(),
+			origin: sender.split(':').pop(),
 			room_id: roomId,
 			state_key: '',
 			prev_events: [],
@@ -192,7 +198,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial);
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
 
 	static newRoomNameEvent(
@@ -213,6 +219,7 @@ export class PersistentEventFactory {
 			// @ts-ignore not sure why this is not working
 			content: { name } as PduRoomNameEventContent,
 			sender: sender,
+			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -221,7 +228,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial);
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
 
 	static newJoinRuleEvent(
@@ -241,6 +248,7 @@ export class PersistentEventFactory {
 			type: PduTypeRoomJoinRules,
 			content: { join_rule: joinRule },
 			sender: sender,
+			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -249,6 +257,6 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial);
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
 }
