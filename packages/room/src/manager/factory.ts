@@ -341,6 +341,7 @@ export class PersistentEventFactory {
 			type: PduTypeRoomJoinRules,
 			content: { join_rule: joinRule },
 			sender: sender,
+			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -349,6 +350,6 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return new PersistentEventV11(eventPartial);
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
 }
