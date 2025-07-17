@@ -12,15 +12,20 @@ import {
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
+	ProfilesService,
 	QueryKeysBodyDto,
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
 	QueryProfileResponseDto,
+	StateService,
 } from '@hs/federation-sdk';
-import { ProfilesService } from '@hs/federation-sdk';
+import { getAuthChain, PersistentEventFactory, RoomVersion } from '@hs/room';
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
+
+	const stateService = container.resolve(StateService);
+
 	return app
 		.get(
 			'/_matrix/federation/v1/query/profile',
@@ -69,32 +74,25 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query }) => {
-				const response = await profilesService.makeJoin(
-					params.roomId,
-					params.userId,
-					query.ver,
+			async ({ params, query: _query }) => {
+				const { roomId, userId } = params;
+
+				const roomInformation = await stateService.getRoomInformation(roomId);
+
+				const membershipEvent = PersistentEventFactory.newMembershipEvent(
+					roomId,
+					userId,
+					userId,
+					'join',
+					roomInformation,
 				);
+
+				await stateService.addAuthEvents(membershipEvent);
+				await stateService.addPrevEvents(membershipEvent);
+
 				return {
-					room_version: response.room_version,
-					event: {
-						...response.event,
-						content: {
-							...response.event.content,
-							membership: 'join',
-
-							join_authorised_via_users_server:
-								response.event.content.join_authorised_via_users_server,
-						},
-						room_id: response.event.room_id,
-						sender: response.event.sender,
-
-						state_key: response.event.state_key,
-
-						type: 'm.room.member',
-						origin_server_ts: response.event.origin_server_ts,
-						origin: response.event.origin,
-					},
+					room_version: roomInformation.room_version as RoomVersion,
+					event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
 				};
 			},
 			{
@@ -135,7 +133,32 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
-			({ params }) => profilesService.eventAuth(params.roomId, params.eventId),
+			async ({ params }) => {
+				const { roomId, eventId } = params;
+
+				const roomVersion = await stateService.getRoomVersion(roomId);
+
+				if (!roomVersion) {
+					throw new Error(
+						'Room version not found while trying to get auth chain',
+					);
+				}
+
+				const store = stateService._getStore(roomVersion);
+
+				const [event] = await store.getEvents([eventId]);
+				if (!event) {
+					throw new Error('Event not found while trying to get auth chain');
+				}
+
+				const authChainIds = await getAuthChain(event, store);
+
+				const authChain = await store.getEvents(Array.from(authChainIds));
+
+				const pdus = authChain.map((e) => e.event);
+
+				return { auth_chain: pdus };
+			},
 			{
 				params: EventAuthParamsDto,
 				response: {

@@ -13,15 +13,18 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
+import { PersistentEventBase } from '@hs/room';
 
 @singleton()
 export class FederationService {
 	private readonly logger = createLogger('FederationService');
 
 	constructor(
+		@inject('ConfigService')
 		private readonly configService: FederationConfigService,
 		@inject('FederationRequestService')
 		private readonly requestService: FederationRequestService,
+		@inject('SignatureVerificationService')
 		private readonly signatureService: SignatureVerificationService,
 	) {}
 
@@ -41,7 +44,9 @@ export class FederationService {
 			if (version) {
 				queryParams.ver = version;
 			} else {
-				for (let ver = 1; ver <= 11; ver++) {
+				// 3-11 is what we support now
+				// FIXME: this is wrong, for now just passing 10 to check if supported, we need ver=1&ver=2 and so on.
+				for (let ver = 3; ver <= 11; ver++) {
 					queryParams[`ver${ver === 1 ? '' : ver}`] = ver.toString();
 				}
 			}
@@ -61,26 +66,31 @@ export class FederationService {
 	 * Send a join event to a remote server
 	 */
 	async sendJoin(
-		domain: string,
-		roomId: string,
-		userId: string,
-		joinEvent: MakeJoinResponse['event'],
+		joinEvent: PersistentEventBase,
 		omitMembers = false,
 	): Promise<SendJoinResponse> {
 		try {
-			const eventWithOrigin = {
-				...joinEvent,
-				origin: this.configService.serverName,
-				origin_server_ts: Date.now(),
-			};
+			const event = joinEvent.event;
 
-			const uri = FederationEndpoints.sendJoinV2(roomId, userId);
+			const uri = FederationEndpoints.sendJoinV2(
+				joinEvent.roomId,
+				joinEvent.eventId,
+			);
 			const queryParams = omitMembers ? { omit_members: 'true' } : undefined;
 
+			const residentServer = joinEvent.roomId.split(':').pop();
+
+			if (!residentServer) {
+				this.logger.debug(joinEvent.event, 'invalid room_id');
+				throw new Error(
+					`invalid room_id ${joinEvent.roomId}, no server_name part`,
+				);
+			}
+
 			return await this.requestService.put<SendJoinResponse>(
-				domain,
+				residentServer,
 				uri,
-				eventWithOrigin,
+				event,
 				queryParams,
 			);
 		} catch (error: any) {
@@ -223,5 +233,33 @@ export class FederationService {
 			this.logger.error(`sendTombstone failed: ${errorMessage}`, errorStack);
 			throw error;
 		}
+	}
+
+	// invite user from another homeserver to our homeserver
+	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
+		const uri = FederationEndpoints.inviteV2(
+			inviteEvent.roomId,
+			inviteEvent.eventId,
+		);
+
+		if (!inviteEvent.stateKey) {
+			this.logger.debug(inviteEvent.event, 'invalid state_key');
+			throw new Error(
+				'failed to send invite request, invite has invalid state_key',
+			);
+		}
+
+		const residentServer = inviteEvent.stateKey.split(':').pop();
+
+		if (!residentServer) {
+			throw new Error(
+				`invalid state_key ${inviteEvent.stateKey}, no domain found, failed to send invite`,
+			);
+		}
+
+		return await this.requestService.put<any>(residentServer, uri, {
+			event: inviteEvent.event,
+			room_version: roomVersion,
+		});
 	}
 }
