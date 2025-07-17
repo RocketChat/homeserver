@@ -39,6 +39,12 @@ export class InviteService {
 		const stateService = this.stateService;
 		const federationService = this.federationService;
 
+		const residentServer = roomId.split(':').pop();
+
+		if (!residentServer) {
+			throw new Error(`invalid room_id ${roomId}, no server_name part`);
+		}
+
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
 		const inviteEvent = PersistentEventFactory.newMembershipEvent(
