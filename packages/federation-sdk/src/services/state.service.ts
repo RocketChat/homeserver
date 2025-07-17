@@ -257,7 +257,6 @@ export class StateService {
 			this.eventRepository.create(
 				event.event as any /* TODO: fix this with type unifi */,
 				event.eventId,
-				undefined,
 				stateMappingId.toString(),
 			);
 
@@ -302,7 +301,6 @@ export class StateService {
 		await this.eventRepository.create(
 			resolvedEvent.event as any /* TODO: fix this with type unifi */,
 			resolvedEvent.eventId,
-			undefined,
 			stateMappingId.toString(),
 		);
 	}
@@ -400,7 +398,6 @@ export class StateService {
 					this.eventRepository.create(
 						resolvedEvent.event as any /* TODO: fix this with type unifi */,
 						resolvedEvent.eventId,
-						undefined,
 						undefined,
 					);
 
