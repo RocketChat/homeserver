@@ -89,8 +89,8 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		return this.rawEvent.sender;
 	}
 
-	get domain() {
-		return extractDomain(this.rawEvent.sender);
+	get origin() {
+		return this.rawEvent.origin || extractDomain(this.rawEvent.sender);
 	}
 
 	get stateKey() {
@@ -109,6 +109,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 		return {
 			...this.rawEvent,
+			origin: this.origin, // in case <11, they care, for 11+ redaction removes this anyway
 			signatures: this.signatures,
 			unsigned: this.rawEvent.unsigned ?? {},
 		};

@@ -114,7 +114,7 @@ function isRoomAliasAllowed(roomAliasEvent: PersistentEventBase): void {
 	}
 
 	// If sender’s domain doesn’t matches state_key, reject.
-	if (roomAliasEvent.domain !== roomAliasEvent.stateKey) {
+	if (roomAliasEvent.origin !== roomAliasEvent.stateKey) {
 		throw new StateResolverAuthorizationError(
 			'm.room.canonical_alias event sender domain does not match state_key',
 			{
@@ -736,7 +736,7 @@ export async function checkEventAuthWithState(
 	if (
 		roomCreateEvent.getContent<PduCreateEventContent>()['m.federate'] ===
 			false &&
-		event.domain !== roomCreateEvent.domain
+		event.origin !== roomCreateEvent.origin
 	) {
 		throw new StateResolverAuthorizationError(
 			'm.federate is false and sender domain does not match',
