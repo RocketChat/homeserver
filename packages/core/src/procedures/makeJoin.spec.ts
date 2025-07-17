@@ -31,6 +31,8 @@ describe('makeJoinEventBuilder', () => {
 				},
 				stateId: 'stateId',
 				createdAt: new Date(mockDate),
+				nextEventId: 'nextEventId',
+				eventId: 'eventId',
 			});
 		},
 	);
