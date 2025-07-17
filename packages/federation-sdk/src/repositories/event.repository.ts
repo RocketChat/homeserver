@@ -4,7 +4,6 @@ import { generateId } from '@hs/core';
 import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
 import { DatabaseConnectionService } from '../services/database-connection.service';
 import { MongoError } from 'mongodb';
-import { PersistentEventBase } from '@hs/room';
 
 @singleton()
 export class EventRepository {

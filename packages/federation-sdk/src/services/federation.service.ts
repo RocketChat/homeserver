@@ -13,8 +13,6 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import { type ProtocolVersionKey, createLogger } from '@hs/core';
-import { inject, injectable } from 'tsyringe';
 import { PersistentEventBase } from '@hs/room';
 
 @singleton()

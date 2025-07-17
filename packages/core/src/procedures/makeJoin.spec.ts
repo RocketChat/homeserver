@@ -30,8 +30,6 @@ describe('makeJoinEventBuilder', () => {
 					auth_events: [],
 				},
 				stateId: 'stateId',
-				nextEventId: 'nextEventId',
-				eventId: 'eventId',
 				createdAt: new Date(mockDate),
 				nextEventId: 'nextEventId',
 				eventId: 'eventId',
