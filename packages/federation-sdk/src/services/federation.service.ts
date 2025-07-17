@@ -45,6 +45,7 @@ export class FederationService {
 				queryParams.ver = version;
 			} else {
 				// 3-11 is what we support now
+				// FIXME: this is wrong, for now just passing 10 to check if supported, we need ver=1&ver=2 and so on.
 				for (let ver = 3; ver <= 11; ver++) {
 					queryParams[`ver${ver === 1 ? '' : ver}`] = ver.toString();
 				}
@@ -69,10 +70,7 @@ export class FederationService {
 		omitMembers = false,
 	): Promise<SendJoinResponse> {
 		try {
-			const eventWithOrigin = {
-				...joinEvent.event,
-				origin: this.configService.serverName,
-			};
+			const event = joinEvent.event;
 
 			const uri = FederationEndpoints.sendJoinV2(
 				joinEvent.roomId,
@@ -92,7 +90,7 @@ export class FederationService {
 			return await this.requestService.put<SendJoinResponse>(
 				residentServer,
 				uri,
-				eventWithOrigin,
+				event,
 				queryParams,
 			);
 		} catch (error: any) {

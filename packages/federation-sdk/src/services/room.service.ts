@@ -999,6 +999,7 @@ export class RoomService {
 			residentServer as string,
 			roomId,
 			userId,
+			'10', // NOTE: check the comment in the called method
 		);
 
 		// ^ have the template for the join event now
