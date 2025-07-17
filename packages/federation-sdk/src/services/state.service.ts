@@ -302,7 +302,7 @@ export class StateService {
 		for (const stateKey of eventsNeeded) {
 			const authEvent = state.get(stateKey);
 			if (authEvent) {
-				yield authEvent;
+				event.authedBy(authEvent);
 			}
 		}
 	}
