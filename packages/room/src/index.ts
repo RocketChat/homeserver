@@ -2,10 +2,6 @@ export {
 	checkEventAuthWithState,
 	checkEventAuthWithoutState,
 } from './authorizartion-rules/rules';
-export {
-	checkEventAuthWithState,
-	checkEventAuthWithoutState,
-} from './authorizartion-rules/rules';
 export { resolveStateV2Plus } from './state_resolution/definitions/algorithm/v2';
 export * from './manager/factory';
 export * from './manager/event-wrapper';
