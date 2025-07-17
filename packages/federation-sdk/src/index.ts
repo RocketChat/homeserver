@@ -2,6 +2,7 @@ import type { Membership } from '@hs/core';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EventService } from './services/event.service';
+import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
@@ -93,8 +94,6 @@ export { StateEventRepository } from './repositories/state-event.repository';
 export { ServerRepository } from './repositories/server.repository';
 export { KeyRepository } from './repositories/key.repository';
 export { StateRepository } from './repositories/state.repository';
-
-import { InviteService } from './services/invite.service';
 
 export interface HomeserverServices {
 	room: RoomService;
