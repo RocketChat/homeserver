@@ -184,6 +184,10 @@ export class InviteService {
 
 		// TODO: Move it to the federation-sdk service
 		const targetDomain = username.split(':').pop() as string;
+		if (targetDomain === this.configService.getServerConfig().name) {
+			await this.handleLocalInvite(payload, finalRoomId, inviteEventId);
+			return { event_id: inviteEventId, room_id: finalRoomId };
+		}
 
 		const responseMake = await makeUnsignedRequest({
 			method: 'PUT',
@@ -223,7 +227,7 @@ export class InviteService {
 			state_key: string;
 		},
 	>(
-		event: T,
+		payload: { event: T; invite_room_state: unknown; room_version: string },
 		roomId: string,
 		eventId: string,
 	): Promise<{
@@ -245,7 +249,7 @@ export class InviteService {
 			// TODO: Validate before inserting
 			try {
 				await this.eventService.insertEvent(
-					event as EventBaseWithOptionalId,
+					payload.event as EventBaseWithOptionalId,
 					eventId,
 				);
 			} catch (error: unknown) {
@@ -258,16 +262,16 @@ export class InviteService {
 			this.logger.debug('Received invite event', {
 				room_id: roomId,
 				event_id: eventId,
-				user_id: event.state_key,
-				origin: event.origin,
+				user_id: payload.event.state_key,
+				origin: payload.event.origin,
 			});
 
 			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
 			void new Promise((resolve) => setTimeout(resolve, 5000)).then(() =>
-				this.acceptInvite(roomId, event.state_key),
+				this.acceptInvite(roomId, payload.event.state_key),
 			);
 
-			return { event: event };
+			return { event: payload.event };
 		} catch (error: any) {
 			this.logger.error(`Failed to process invite: ${error.message}`);
 			throw error;
@@ -368,6 +372,127 @@ export class InviteService {
 			this.logger.error(
 				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${errorMessage}`,
 			);
+			throw error;
+		}
+	}
+
+	private async handleLocalInvite(
+		payload: {
+			event: EventBaseWithOptionalId;
+			invite_room_state: unknown;
+			room_version: string;
+		},
+		roomId: string,
+		eventId: string,
+	): Promise<{ event: EventBaseWithOptionalId }> {
+		try {
+			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
+			if (isTombstoned) {
+				this.logger.warn(
+					`Received local invite for deleted room ${roomId}, rejecting`,
+				);
+				throw new HttpException(
+					'Cannot process invite for a deleted room',
+					HttpStatus.FORBIDDEN,
+				);
+			}
+
+			await this.eventService.insertEvent(payload.event, eventId);
+
+			this.logger.debug('Processed local invite event', {
+				room_id: roomId,
+				event_id: eventId,
+				user_id: payload.event.state_key,
+			});
+
+			await this.acceptLocalInvite(roomId, payload.event.state_key as string);
+
+			return { event: payload.event };
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			this.logger.error(`Failed to process local invite: ${errorMessage}`);
+			throw error;
+		}
+	}
+
+	private async acceptLocalInvite(
+		roomId: string,
+		userId: string,
+	): Promise<void> {
+		try {
+			const config = this.configService.getServerConfig();
+			const signingKey = await this.configService.getSigningKey();
+
+			const roomEvents = await this.eventService.findEvents(
+				{ 'event.room_id': roomId },
+				{ sort: { 'event.depth': 1 } },
+			);
+
+			if (roomEvents.length === 0) {
+				throw new Error(`No events found for room ${roomId}`);
+			}
+
+			const lastEvent = roomEvents[roomEvents.length - 1];
+			const lastEventId = lastEvent._id;
+			const currentTimestamp = Date.now();
+
+			const createEvent =
+				roomEvents.find((e) => e.event.type === 'm.room.create')?._id || '';
+			const powerLevelsEvent =
+				roomEvents.find((e) => e.event.type === 'm.room.power_levels')?._id ||
+				'';
+			const joinRulesEvent =
+				roomEvents.find((e) => e.event.type === 'm.room.join_rules')?._id || '';
+			const historyVisibilityEvent =
+				roomEvents.find((e) => e.event.type === 'm.room.history_visibility')
+					?._id || '';
+			const inviteEvent =
+				roomEvents.find(
+					(e) =>
+						e.event.type === 'm.room.member' &&
+						e.event.state_key === userId &&
+						e.event.content?.membership === 'invite',
+				)?._id || '';
+
+			const joinEvent = await signEvent(
+				roomMemberEvent({
+					auth_events: {
+						'm.room.create': createEvent,
+						'm.room.power_levels': powerLevelsEvent,
+						'm.room.join_rules': joinRulesEvent,
+						'm.room.history_visibility': historyVisibilityEvent,
+						...(inviteEvent && { 'm.room.member': inviteEvent }),
+					},
+					membership: 'join',
+					depth: (lastEvent.event.depth || 0) + 1,
+					content: {
+						membership: 'join',
+						displayname: userId.split(':')[0].substring(1),
+					},
+					roomId: roomId,
+					ts: currentTimestamp,
+					prev_events: [lastEventId],
+					sender: userId,
+					state_key: userId,
+				}),
+				Array.isArray(signingKey) ? signingKey[0] : signingKey,
+				config.name,
+			);
+
+			const joinEventId = generateId(joinEvent);
+
+			await this.eventService.insertEvent(joinEvent, joinEventId);
+
+			// TODO: even if this is a local invite, we still need to send the events to the parties involved
+
+			this.logger.debug(
+				`User ${userId} automatically joined room ${roomId} after local invite`,
+			);
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
+			this.logger.error(`Failed to accept local invite: ${errorMessage}`);
 			throw error;
 		}
 	}
