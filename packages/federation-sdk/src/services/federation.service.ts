@@ -13,6 +13,7 @@ import {
 import { FederationConfigService } from './federation-config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
+import { StateService } from './state.service';
 import { PersistentEventBase } from '@hs/room';
 
 @singleton()
@@ -26,6 +27,7 @@ export class FederationService {
 		private readonly requestService: FederationRequestService,
 		@inject('SignatureVerificationService')
 		private readonly signatureService: SignatureVerificationService,
+		private readonly stateService: StateService,
 	) {}
 
 	/**
@@ -107,7 +109,7 @@ export class FederationService {
 		transaction: Transaction,
 	): Promise<SendTransactionResponse> {
 		try {
-			const txnId = `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+			const txnId = Date.now().toString();
 			const uri = FederationEndpoints.sendTransaction(txnId);
 
 			return await this.requestService.put<SendTransactionResponse>(
@@ -261,5 +263,34 @@ export class FederationService {
 			event: inviteEvent.event,
 			room_version: roomVersion,
 		});
+	}
+
+	async sendEventToAllServersInRoom(event: PersistentEventBase) {
+		const servers = await this.stateService.getServersInRoom(event.roomId);
+
+		for (const server of servers) {
+			if (server === event.origin) {
+				this.logger.info(
+					`Skipping transaction to event origin: ${event.origin}`,
+				);
+				continue;
+			}
+
+			if (server === this.configService.serverName) {
+				this.logger.info(`Skipping transaction to local server: ${server}`);
+				continue;
+			}
+
+			const txn: Transaction = {
+				origin: this.configService.serverName,
+				origin_server_ts: Date.now(),
+				pdus: [event],
+				edus: [],
+			};
+
+			this.logger.info(`Sending event ${event.eventId} to server: ${server}`);
+
+			void this.sendTransaction(server, txn);
+		}
 	}
 }
