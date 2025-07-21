@@ -282,7 +282,7 @@ export class FederationService {
 			}
 
 			const txn: Transaction = {
-				origin: 'rc1.tunnel.dev.rocket.chat',
+				origin: this.configService.serverName,
 				origin_server_ts: Date.now(),
 				pdus: [event.event],
 				edus: [],
