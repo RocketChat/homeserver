@@ -19,6 +19,7 @@ import { EventEmitterService } from './services/event-emitter.service';
 import { EventFetcherService } from './services/event-fetcher.service';
 import { EventStateService } from './services/event-state.service';
 import { EventService } from './services/event.service';
+import { FederationConfigService } from './services/federation-config.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
@@ -58,6 +59,10 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	});
 
 	// Register core services
+	container.registerSingleton(
+		'FederationConfigService',
+		FederationConfigService,
+	);
 	container.registerSingleton('ConfigService', ConfigService);
 	container.registerSingleton(
 		'DatabaseConnectionService',
