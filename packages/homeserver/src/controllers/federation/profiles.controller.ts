@@ -133,32 +133,7 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
-			async ({ params }) => {
-				const { roomId, eventId } = params;
-
-				const roomVersion = await stateService.getRoomVersion(roomId);
-
-				if (!roomVersion) {
-					throw new Error(
-						'Room version not found while trying to get auth chain',
-					);
-				}
-
-				const store = stateService._getStore(roomVersion);
-
-				const [event] = await store.getEvents([eventId]);
-				if (!event) {
-					throw new Error('Event not found while trying to get auth chain');
-				}
-
-				const authChainIds = await getAuthChain(event, store);
-
-				const authChain = await store.getEvents(Array.from(authChainIds));
-
-				const pdus = authChain.map((e) => e.event);
-
-				return { auth_chain: pdus };
-			},
+			({ params }) => profilesService.eventAuth(params.roomId, params.eventId),
 			{
 				params: EventAuthParamsDto,
 				response: {
