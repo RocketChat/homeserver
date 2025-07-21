@@ -516,6 +516,15 @@ export class RoomService {
 			`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`,
 		);
 
+		this.eventEmitterService.emit('homeserver.matrix.power_levels', {
+			event_id: eventId,
+			room_id: roomId,
+			sender: senderId,
+			origin_server_ts: signedEvent.origin_server_ts,
+			content: signedEvent.content,
+			prev_content: currentPowerLevelsEvent.content,
+		});
+
 		for (const server of targetServers) {
 			if (server === this.configService.getServerConfig().name) {
 				continue;

@@ -171,6 +171,34 @@ export type HomeserverEventSignatures = {
 			reason?: string;
 		};
 	};
+	'homeserver.matrix.power_levels': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			users?: Record<string, number>;
+			users_default?: number;
+			events?: Record<string, number>;
+			events_default?: number;
+			state_default?: number;
+			ban?: number;
+			kick?: number;
+			redact?: number;
+			invite?: number;
+		};
+		prev_content?: {
+			users?: Record<string, number>;
+			users_default?: number;
+			events?: Record<string, number>;
+			events_default?: number;
+			state_default?: number;
+			ban?: number;
+			kick?: number;
+			redact?: number;
+			invite?: number;
+		};
+	};
 };
 
 export function getAllServices(): HomeserverServices {
