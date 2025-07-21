@@ -996,12 +996,14 @@ export class RoomService {
 			return membershipEvent.eventId;
 		}
 
+		const roomVersion = '10' as const;
+
 		// trying to join room from another server
 		const makeJoinResponse = await federationService.makeJoin(
 			residentServer as string,
 			roomId,
 			userId,
-			'10', // NOTE: check the comment in the called method
+			roomVersion, // NOTE: check the comment in the called method
 		);
 
 		// ^ have the template for the join event now
@@ -1045,7 +1047,7 @@ export class RoomService {
 		const copyEvent = (event: Readonly<PersistentEventBase>) => {
 			return PersistentEventFactory.createFromRawEvent(
 				structuredClone(event.event),
-				'10' /* find it from the room_version */,
+				roomVersion,
 			);
 		};
 
