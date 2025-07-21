@@ -236,7 +236,7 @@ export class FederationService {
 			throw error;
 		}
 	}
-  
+
 	// invite user from another homeserver to our homeserver
 	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
 		const uri = FederationEndpoints.inviteV2(
@@ -282,7 +282,7 @@ export class FederationService {
 			}
 
 			const txn: Transaction = {
-				origin: this.configService.serverName,
+				origin: 'rc1.tunnel.dev.rocket.chat',
 				origin_server_ts: Date.now(),
 				pdus: [event.event],
 				edus: [],

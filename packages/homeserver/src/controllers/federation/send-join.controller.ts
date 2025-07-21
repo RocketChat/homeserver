@@ -42,8 +42,6 @@ export const sendJoinPlugin = (app: Elysia) => {
 
 			await stateService.addAuthEvents(joinEvent);
 
-			await stateService.addPrevEvents(joinEvent);
-
 			// now check the calculated id if it matches what is passed in param
 			if (joinEvent.eventId !== eventId) {
 				// this is important sanity check

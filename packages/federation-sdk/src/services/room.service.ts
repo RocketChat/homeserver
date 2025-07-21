@@ -961,7 +961,7 @@ export class RoomService {
 		const residentServer = roomId.split(':').pop();
 
 		// our own room, we can validate the join event by ourselves
-		// once done, emit the event to all participating servers TODO:
+		// once done, emit the event to all participating servers
 		if (residentServer === configService.getServerName()) {
 			const room = await stateService.getFullRoomState(roomId);
 
@@ -990,6 +990,8 @@ export class RoomService {
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectedReason);
 			}
+
+			void federationService.sendEventToAllServersInRoom(membershipEvent);
 
 			return membershipEvent.eventId;
 		}

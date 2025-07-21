@@ -39,12 +39,6 @@ export class InviteService {
 		const stateService = this.stateService;
 		const federationService = this.federationService;
 
-		const residentServer = roomId.split(':').pop();
-
-		if (!residentServer) {
-			throw new Error(`invalid room_id ${roomId}, no server_name part`);
-		}
-
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
 		const inviteEvent = PersistentEventFactory.newMembershipEvent(
@@ -61,14 +55,26 @@ export class InviteService {
 
 		await stateService.signEvent(inviteEvent);
 
-		// room is on our server
-		// we can resolve state by ourselves
-		if (residentServer === this.configService.getServerName()) {
+		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
+
+		const invitedServer = inviteEvent.stateKey?.split(':').pop();
+		if (!invitedServer) {
+			throw new Error(
+				`invalid state_key ${inviteEvent.stateKey}, no server_name part`,
+			);
+		}
+
+		// if user invited belongs to our server
+		if (invitedServer === this.configService.getServerName()) {
 			await stateService.persistStateEvent(inviteEvent);
 
 			if (inviteEvent.rejected) {
 				throw new Error(inviteEvent.rejectedReason);
 			}
+
+			// let all servers know of this state change
+			// without it join events will not be processed if /event/{eventId} causes problems
+			void federationService.sendEventToAllServersInRoom(inviteEvent);
 
 			return {
 				event_id: inviteEvent.eventId,
@@ -76,15 +82,15 @@ export class InviteService {
 			};
 		}
 
-		// remote room, send the invite event to the original room
-		// if accepted it will become part of the state
-		// further attempt to join the room should be allowed then.
+		// invited user from another room
+		// get signed invite event
 
 		const inviteResponse = await federationService.inviteUser(
 			inviteEvent,
 			roomInformation.room_version,
 		);
 
+		// try to save
 		// can only invite if already part of the room
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
@@ -92,6 +98,9 @@ export class InviteService {
 				roomInformation.room_version as RoomVersion,
 			),
 		);
+
+		// let everyone know
+		void federationService.sendEventToAllServersInRoom(inviteEvent);
 
 		return {
 			event_id: inviteEvent.eventId,
