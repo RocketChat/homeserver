@@ -1032,13 +1032,30 @@ export class RoomService {
 			eventMap.set(stateEvent.eventId, stateEvent);
 		}
 
+		for (const authEvent_ of sendJoinResponse.auth_chain) {
+			const authEvent = PersistentEventFactory.createFromRawEvent(
+				authEvent_ as any,
+				makeJoinResponse.room_version,
+			);
+			eventMap.set(authEvent.eventId, authEvent);
+		}
+
+		// TODO: 1 room version handling, related to request type
+		// TODO: 2 have state service do this or not modify our event
+		const copyEvent = (event: Readonly<PersistentEventBase>) => {
+			return PersistentEventFactory.createFromRawEvent(
+				structuredClone(event.event),
+				'10' /* find it from the room_version */,
+			);
+		};
+
 		const persisted = new Set<string>();
 
+		// persistEvent walks auth_events, and recursively calls itself with each auth event
+		// persists until it reaches the first event it was called with.
+		// makes sure all auth events are persisted before the state event
 		const persistEvent = async (event: Readonly<PersistentEventBase>) => {
-			if (
-				!persisted.has(event.eventId) &&
-				event.event.auth_events.length === 0
-			) {
+			if (!persisted.has(event.eventId) && event.isCreateEvent()) {
 				// persist as normal, m.room.create :)
 				logger.info(
 					`Persisting create event ${event.eventId}, ${JSON.stringify(
@@ -1047,12 +1064,13 @@ export class RoomService {
 						2,
 					)}`,
 				);
-				const eventToPersist = PersistentEventFactory.createFromRawEvent(
-					structuredClone(event.event),
-					'10' /* find it from the room_version */,
-				);
+
+				const eventToPersist = copyEvent(event);
+
 				await stateService.persistStateEvent(eventToPersist);
+
 				persisted.add(event.eventId);
+
 				return;
 			}
 
@@ -1076,20 +1094,15 @@ export class RoomService {
 							2,
 						)}`,
 					);
-					await persistEvent(authEvent); // pl
-				}
 
-				// persist the authEvent itself
-				logger.info(
-					`Persisting auth event ${authEventId} itself, ${JSON.stringify(
-						authEvent.event,
-						null,
-						2,
-					)}`,
-				);
-				await stateService.persistStateEvent(authEvent);
-				persisted.add(authEvent.eventId);
+					// recursively persist this and all it's auth events
+					await persistEvent(authEvent); // pl
+
+					persisted.add(authEvent.eventId);
+				}
 			}
+
+			// ^^ all auth events of this event have been persisted
 
 			// persist as normal
 			logger.info(
@@ -1100,12 +1113,10 @@ export class RoomService {
 				)}`,
 			);
 
-			const eventToPersist = PersistentEventFactory.createFromRawEvent(
-				structuredClone(event.event),
-				'10' /* find it from the room_version */,
-			);
+			const eventToPersist = copyEvent(event);
 
 			await stateService.persistStateEvent(eventToPersist);
+
 			persisted.add(event.eventId);
 		};
 
@@ -1129,17 +1140,18 @@ export class RoomService {
 			makeJoinResponse.room_version,
 		);
 
-		const state = await stateService.getFullRoomState(roomId);
-
 		logger.info(
-			`State before join event has been persisted, ${JSON.stringify(
-				state.entries().reduce((acc, [key, value]) => {
-					acc[key] = value.event;
-					return acc;
-				}, {} as any),
+			`Persisting join event ${joinEventFinal.eventId}, ${JSON.stringify(
+				joinEventFinal.event,
 				null,
 				2,
 			)}`,
+		);
+
+		const state = await stateService.getFullRoomState(roomId);
+
+		logger.info(
+			`State before join event has been persisted, ${state.keys().toArray().join(', ')}`,
 		);
 
 		// try to persist the join event now, should succeed with state in place
