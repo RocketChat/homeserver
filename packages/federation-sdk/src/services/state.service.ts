@@ -396,6 +396,11 @@ export class StateService {
 
 	// checks for conflicts, saves the event along with the new state
 	async persistStateEvent(event: PersistentEventBase): Promise<void> {
+		const exists = await this.eventRepository.findById(event.eventId);
+		if (exists) {
+			return;
+		}
+
 		const roomVersion = event.isCreateEvent()
 			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
 			: await this.getRoomVersion(event.roomId);

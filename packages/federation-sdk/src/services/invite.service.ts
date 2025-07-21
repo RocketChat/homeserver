@@ -114,142 +114,64 @@ export class InviteService {
 			room_id: string;
 			state_key: string;
 		},
-	>(event: T, roomId: string, eventId: string): Promise<{ event: T }> {
-		try {
-			// Check if the room is tombstoned (deleted)
-			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
-			if (isTombstoned) {
-				this.logger.warn(
-					`Received invite for deleted room ${roomId}, rejecting`,
-				);
-				throw new HttpException(
-					'Cannot process invite for a deleted room',
-					HttpStatus.FORBIDDEN,
-				);
-			}
+	>(event: T, roomId: string, eventId: string, roomVersion: string) {
+		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 
-			// TODO: Validate before inserting
-			try {
-				await this.eventService.insertEvent(
-					event as EventBaseWithOptionalId,
-					eventId,
-				);
-			} catch (error: unknown) {
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
-				this.logger.error(`Event already exists: ${errorMessage}`);
-				throw error;
-			}
-
-			this.logger.debug('Received invite event', {
-				room_id: roomId,
-				event_id: eventId,
-				user_id: event.state_key,
-				origin: event.origin,
-			});
-
-			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
-			void new Promise((resolve) => setTimeout(resolve, 5000)).then(() =>
-				this.acceptInvite(roomId, event.state_key),
-			);
-
-			return { event: event };
-		} catch (error: any) {
-			this.logger.error(`Failed to process invite: ${error.message}`);
-			throw error;
+		const residentServer = roomId.split(':').pop();
+		if (!residentServer) {
+			throw new Error(`Invalid roomId ${roomId}`);
 		}
-	}
 
-	/**
-	 * Accept an invite for a user
-	 */
-	async acceptInvite(roomId: string, userId: string): Promise<void> {
-		try {
-			// Check if the room is tombstoned (deleted)
-			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
-			if (isTombstoned) {
-				this.logger.warn(
-					`Attempt to accept invite for deleted room ${roomId}, rejecting`,
-				);
-				throw new HttpException(
-					`Cannot accept invite for deleted room ${roomId}`,
-					HttpStatus.FORBIDDEN,
-				);
-			}
+		const inviteEvent = PersistentEventFactory.createFromRawEvent(
+			event as any,
+			roomVersion as RoomVersion,
+		);
 
-			const inviteEvent = await this.eventService.findInviteEvent(
-				roomId,
-				userId,
-			);
-
-			if (!inviteEvent) {
-				throw new Error(`No invite found for user ${userId} in room ${roomId}`);
-			}
-
-			await this.handleInviteProcessing({
-				event: inviteEvent.event as EventBaseWithOptionalId & {
-					origin: string;
-					room_id: string;
-					state_key: string;
-				},
-				invite_room_state: inviteEvent.invite_room_state,
-				room_version: inviteEvent.room_version || '10',
-			});
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(`Failed to accept invite: ${errorMessage}`);
-			throw error;
+		if (inviteEvent.eventId !== eventId) {
+			throw new Error(`Invalid eventId ${eventId}`);
 		}
-	}
 
-	/**
-	 * Handle the processing of an invite event
-	 */
-	private async handleInviteProcessing(
-		_event: ProcessInviteEvent,
-	): Promise<void> {
-		// try {
-		// 	const responseMake = await this.federationService.makeJoin(
-		// 		event.event.origin,
-		// 		event.event.room_id,
-		// 		event.event.state_key,
-		// 		event.room_version,
-		// 	);
-		// 	const responseBody = await this.federationService.sendJoin(
-		// 		event.event.origin,
-		// 		event.event.room_id,
-		// 		event.event.state_key,
-		// 		responseMake.event,
-		// 		false,
-		// 	);
-		// 	if (!responseBody.state || !responseBody.auth_chain) {
-		// 		this.logger.warn(
-		// 			`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`,
-		// 		);
-		// 		return;
-		// 	}
-		// 	const allEvents = [
-		// 		...responseBody.state,
-		// 		...responseBody.auth_chain,
-		// 		responseBody.event,
-		// 	];
-		// 	// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
-		// 	// await this.eventService.processIncomingPDUs(allEvents);
-		// 	// TODO: Also remove the insertEvent calls :)
-		// 	for (const event of allEvents) {
-		// 		await this.eventService.insertEventIfNotExists(event);
-		// 	}
-		// 	this.logger.debug(
-		// 		`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`,
-		// 	);
-		// } catch (error: unknown) {
-		// 	const errorMessage =
-		// 		error instanceof Error ? error.message : String(error);
-		// 	this.logger.error(
-		// 		`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${errorMessage}`,
-		// 	);
-		// 	throw error;
-		// }
+		await this.stateService.signEvent(inviteEvent);
+
+		if (residentServer === this.configService.getServerName()) {
+			// we are the host of the server
+
+			// attempt to persist the invite event as we already have the state
+
+			await this.stateService.persistStateEvent(inviteEvent);
+			if (inviteEvent.rejected) {
+				throw new Error(inviteEvent.rejectedReason);
+			}
+
+			// we do not send transaction here
+			// the asking server will handle the transactions
+
+			// return the signed invite event
+			return {
+				event: inviteEvent.event,
+			};
+		}
+
+		// are we already in the room?
+		try {
+			await this.stateService.getRoomInformation(roomId);
+
+			// if we have the state we try to persist the invite event
+			await this.stateService.persistStateEvent(inviteEvent);
+			if (inviteEvent.rejected) {
+				throw new Error(inviteEvent.rejectedReason);
+			}
+		} catch (e) {
+			// don't have state copy yet
+			console.error(e);
+
+			// typical noop, we sign and return the event, nothing to do
+		}
+
+		// we are not the host of the server
+		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
+		return {
+			event: inviteEvent.event,
+		};
 	}
 }
