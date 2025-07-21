@@ -1,4 +1,4 @@
-import { resolveHostAddressByServerName } from '../server-discovery/discovery';
+import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import type { SigningKey } from '../types';
 import { extractURIfromURL } from '../url';
 import { authorizationHeaders, computeAndMergeHash } from './authentication';
@@ -24,11 +24,8 @@ export const makeSignedRequest = async <T = Record<string, unknown>>({
 	signingName: string;
 	queryString?: string;
 }): Promise<T> => {
-	const { address, headers } = await resolveHostAddressByServerName(
-		domain,
-		signingName,
-	);
-	const url = new URL(`https://${address}${uri}`);
+	const [address, headers] = await getHomeserverFinalAddress(domain);
+	const url = new URL(`${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -80,7 +77,6 @@ export const makeRequest = async <T = Record<string, unknown>>({
 	domain,
 	uri,
 	body,
-	signingName,
 	options = {},
 	queryString,
 }: {
@@ -92,11 +88,8 @@ export const makeRequest = async <T = Record<string, unknown>>({
 	options?: Record<string, unknown>;
 	queryString?: string;
 }): Promise<T> => {
-	const { address, headers } = await resolveHostAddressByServerName(
-		domain,
-		signingName,
-	);
-	const url = new URL(`https://${address}${uri}`);
+	const [address, headers] = await getHomeserverFinalAddress(domain);
+	const url = new URL(`${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
@@ -144,11 +137,8 @@ export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 		body,
 	);
 
-	const { address, headers } = await resolveHostAddressByServerName(
-		domain,
-		signingName,
-	);
-	const url = new URL(`https://${address}${uri}`);
+	const [address, headers] = await getHomeserverFinalAddress(domain);
+	const url = new URL(`${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
 	}
