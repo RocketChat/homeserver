@@ -284,7 +284,7 @@ export class FederationService {
 			const txn: Transaction = {
 				origin: this.configService.serverName,
 				origin_server_ts: Date.now(),
-				pdus: [event],
+				pdus: [event.event],
 				edus: [],
 			};
 
