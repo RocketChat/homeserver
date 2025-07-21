@@ -236,7 +236,7 @@ export class FederationService {
 			throw error;
 		}
 	}
-
+  
 	// invite user from another homeserver to our homeserver
 	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
 		const uri = FederationEndpoints.inviteV2(
