@@ -506,4 +506,28 @@ export class StateService {
 			}))
 			.toArray();
 	}
+
+	async getMembersOfRoom(roomId: string) {
+		const stateCollection = await this.stateRepository.getCollection();
+
+		const stateMappings = await stateCollection
+			.find({ roomId, 'delta.identifier': /^m\.room\.member:/ })
+			.toArray();
+
+		const events = await this.eventRepository.findByIds(
+			stateMappings.map((stateMapping) => stateMapping.delta.eventId),
+		);
+
+		const members = events
+			.filter((event) => event.event.content?.membership === 'join')
+			.map((event) => event.event.state_key as string);
+
+		return members;
+	}
+
+	async getServersInRoom(roomId: string) {
+		return this.getMembersOfRoom(roomId).then((members) =>
+			members.filter((member) => member.split(':').pop()!),
+		);
+	}
 }
