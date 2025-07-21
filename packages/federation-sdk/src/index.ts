@@ -135,10 +135,73 @@ export type HomeserverEventSignatures = {
 			membership: Membership;
 		};
 	};
+	'homeserver.matrix.reaction': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			'm.relates_to': {
+				rel_type: 'm.annotation';
+				event_id: string;
+				key: string;
+			};
+		};
+	};
+	'homeserver.matrix.redaction': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		redacts: string;
+		content: {
+			reason?: string;
+		};
+	};
+	'homeserver.matrix.membership': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		state_key: string;
+		origin_server_ts: number;
+		content: {
+			membership: Membership;
+			displayname?: string;
+			avatar_url?: string;
+			reason?: string;
+		};
+	};
+	'homeserver.matrix.power_levels': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			users?: Record<string, number>;
+			users_default?: number;
+			events?: Record<string, number>;
+			events_default?: number;
+			state_default?: number;
+			ban?: number;
+			kick?: number;
+			redact?: number;
+			invite?: number;
+		};
+		prev_content?: {
+			users?: Record<string, number>;
+			users_default?: number;
+			events?: Record<string, number>;
+			events_default?: number;
+			state_default?: number;
+			ban?: number;
+			kick?: number;
+			redact?: number;
+			invite?: number;
+		};
+	};
 };
 
-export function getAllServices(
-): HomeserverServices {
+export function getAllServices(): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),
 		message: container.resolve(MessageService),
