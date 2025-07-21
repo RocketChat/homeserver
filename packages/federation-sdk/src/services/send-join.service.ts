@@ -1,68 +1,110 @@
 import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
 import { inject, singleton } from 'tsyringe';
-import type { ConfigService } from './config.service';
+import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import type { EventService } from './event.service';
+import { StateService } from './state.service';
+import {
+	getAuthChain,
+	PduMembershipEventContent,
+	PersistentEventFactory,
+} from '@hs/room';
 
 @singleton()
 export class SendJoinService {
 	constructor(
 		@inject('EventService') private readonly eventService: EventService,
-		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject(EventEmitterService)
 		private readonly emitterService: EventEmitterService,
+		@inject(StateService) private readonly stateService: StateService,
+		@inject(ConfigService) private readonly configService: ConfigService,
 	) {}
 
-	async sendJoin(roomId: string, stateKey: string, event: RoomMemberEvent) {
-		const records = await this.eventService.findEvents(
-			{ 'event.room_id': roomId },
-			{ sort: { 'event.depth': 1 } },
-		);
-		const events = records.map((event) => event.event);
-		const lastInviteEvent = records.find(
-			(record) =>
-				isRoomMemberEvent(record.event) &&
-				record.event.content.membership === 'invite',
-		);
-		const eventToSave = {
-			...event,
-			origin: event.origin || this.configService.getServerConfig().name,
-		};
-		const result = {
-			event: {
-				...event,
-				unsigned: lastInviteEvent
-					? {
-							replaces_state: lastInviteEvent._id,
-							prev_content: lastInviteEvent.event.content,
-							prev_sender: lastInviteEvent.event.sender,
-						}
-					: undefined,
-			},
-			state: events.map((event) => ({ ...event })),
-			auth_chain: events
-				.filter((event) => event.depth && event.depth <= 4)
-				.map((event) => ({ ...event })),
-			members_omitted: false,
-			origin: this.configService.getServerConfig().name,
-		};
-		let eventId = stateKey;
-		if ((await this.eventService.findEvents({ _id: stateKey })).length === 0) {
-			eventId = await this.eventService.insertEvent(eventToSave, stateKey);
+	async sendJoin(roomId: string, eventId: string, event: RoomMemberEvent) {
+		const stateService = this.stateService;
+
+		const roomVersion = await stateService.getRoomVersion(roomId);
+
+		if (!roomVersion) {
+			throw new Error('Room version not found');
 		}
+
+		const eventAny = event as any;
+
+		// delete existing auth events and refill them
+		eventAny.auth_events = [];
+
+		const joinEvent = PersistentEventFactory.createFromRawEvent(
+			eventAny,
+			roomVersion,
+		);
+
+		await stateService.addAuthEvents(joinEvent);
+
+		// now check the calculated id if it matches what is passed in param
+		if (joinEvent.eventId !== eventId) {
+			// this is important sanity check
+			// while prev_events don't matter as much as it CAN change if we try to recalculate, auth events can not
+			throw new Error('join event id did not match what was passed in param');
+		}
+
+		// fetch state before allowing join here - TODO: don't just persist the membership like this
+		const state = await stateService.getFullRoomState(roomId);
+
+		await stateService.persistStateEvent(joinEvent);
+
+		if (joinEvent.rejected) {
+			throw new Error(joinEvent.rejectedReason);
+		}
+
+		const configService = this.configService;
+
+		const origin = configService.getServerConfig().name;
+
+		const authChain = [];
+
+		for (const event of state.values()) {
+			const authEvents = await getAuthChain(
+				event,
+				stateService._getStore(roomVersion),
+			);
+			authChain.push(...authEvents);
+		}
+
+		const authChainEvents = await this.eventService.getEventsByIds(authChain);
+
+		const signedJoinEvent = await stateService.signEvent(joinEvent);
 
 		this.emitterService.emit('homeserver.matrix.accept-invite', {
 			event_id: eventId,
 			room_id: roomId,
-			sender: eventToSave.sender,
-			origin_server_ts: eventToSave.origin_server_ts,
+			sender: signedJoinEvent.sender,
+			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
-				avatar_url: eventToSave.content.avatar_url || null,
-				displayname: eventToSave.content.displayname || '',
-				membership: eventToSave.content.membership || 'join',
+				avatar_url:
+					signedJoinEvent.getContent<PduMembershipEventContent>().avatar_url ||
+					null,
+				displayname:
+					signedJoinEvent.getContent<PduMembershipEventContent>().displayname ||
+					'',
+				membership:
+					signedJoinEvent.getContent<PduMembershipEventContent>().membership,
 			},
 		});
 
-		return result;
+		return {
+			origin,
+			event: {
+				...signedJoinEvent.event,
+				origin: origin,
+			},
+			members_omitted: false, // less requests
+			state: Array.from(state.values()).map((event) => {
+				return event.event;
+			}), // values().map should have worked but editor is complaining
+			auth_chain: authChainEvents.map((event) => {
+				return event.event;
+			}),
+		};
 	}
 }
