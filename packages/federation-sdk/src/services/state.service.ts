@@ -527,7 +527,7 @@ export class StateService {
 
 	async getServersInRoom(roomId: string) {
 		return this.getMembersOfRoom(roomId).then((members) =>
-			members.filter((member) => member.split(':').pop()!),
+			members.map((member) => member.split(':').pop()!),
 		);
 	}
 }
