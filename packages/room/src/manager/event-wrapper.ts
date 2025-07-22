@@ -12,6 +12,7 @@ import {
 	PduType,
 	Pdu,
 	PduContent,
+	PduTypeRoomAliases,
 } from '../types/v3-11';
 import crypto from 'node:crypto';
 import {
@@ -166,6 +167,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 	isCanonicalAliasEvent() {
 		return this.isState() && this.type === PduTypeRoomCanonicalAlias;
+	}
+
+	isAliasEvent() {
+		return this.isState() && this.type === PduTypeRoomAliases;
 	}
 
 	getMembership() {
