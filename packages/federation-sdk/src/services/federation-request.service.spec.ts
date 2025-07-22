@@ -16,7 +16,6 @@ import { FederationRequestService } from './federation-request.service';
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;
 	let configService: FederationConfigService;
-	let originalFetch: typeof globalThis.fetch;
 
 	const mockServerName = 'example.com';
 	const mockSigningKey = 'aGVsbG93b3JsZA==';
@@ -38,14 +37,30 @@ describe('FederationRequestService', async () => {
 		'../server-discovery/discovery'
 	);
 
+	const { fetch: originalFetch } = await import('@hs/core');
+
 	await mock.module('../server-discovery/discovery', () => ({
 		getHomeserverFinalAddress: () => mockDiscoveryResult,
+	}));
+
+	await mock.module('@hs/core', () => ({
+		fetch: async (_url: string, _options?: RequestInit) => {
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ result: 'success' }),
+				text: async () => '{"result":"success"}',
+			} as Response;
+		},
 	}));
 
 	afterAll(() => {
 		mock.restore();
 		mock.module('../server-discovery/discovery', () => ({
 			getHomeserverFinalAddress,
+		}));
+		mock.module('@hs/core', () => ({
+			fetch: originalFetch,
 		}));
 	});
 
@@ -64,8 +79,6 @@ describe('FederationRequestService', async () => {
 		'X-Matrix origin="example.com",destination="target.example.com",key="ed25519:1",sig="xyz123"';
 
 	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-
 		spyOn(nacl.sign.keyPair, 'fromSecretKey').mockReturnValue(mockKeyPair);
 		spyOn(nacl.sign, 'detached').mockReturnValue(mockSignature);
 
@@ -73,18 +86,6 @@ describe('FederationRequestService', async () => {
 		spyOn(core, 'authorizationHeaders').mockResolvedValue(mockAuthHeaders);
 		spyOn(core, 'signJson').mockResolvedValue(mockSignedJson);
 		spyOn(core, 'computeAndMergeHash').mockImplementation((obj: any) => obj);
-
-		globalThis.fetch = Object.assign(
-			async (_url: string, _options?: RequestInit) => {
-				return {
-					ok: true,
-					status: 200,
-					json: async () => ({ result: 'success' }),
-					text: async () => '{"result":"success"}',
-				} as Response;
-			},
-			{ preconnect: () => {} },
-		) as typeof fetch;
 
 		configService = {
 			serverName: mockServerName,
@@ -101,13 +102,12 @@ describe('FederationRequestService', async () => {
 	});
 
 	afterEach(() => {
-		globalThis.fetch = originalFetch;
 		mock.restore();
 	});
 
 	describe('makeSignedRequest', () => {
 		it('should make a successful signed request without body', async () => {
-			const fetchSpy = spyOn(globalThis, 'fetch');
+			const fetchSpy = spyOn(core, 'fetch');
 
 			const result = await service.makeSignedRequest({
 				method: 'GET',
@@ -125,7 +125,7 @@ describe('FederationRequestService', async () => {
 			expect(nacl.sign.keyPair.fromSecretKey).toHaveBeenCalled();
 
 			expect(fetchSpy).toHaveBeenCalledWith(
-				'https://target.example.com/test/path',
+				new URL('https://target.example.com/test/path'),
 				expect.objectContaining({
 					method: 'GET',
 					headers: expect.objectContaining({
@@ -139,7 +139,7 @@ describe('FederationRequestService', async () => {
 		});
 
 		it('should make a successful signed request with body', async () => {
-			const fetchSpy = spyOn(globalThis, 'fetch');
+			const fetchSpy = spyOn(core, 'fetch');
 
 			const mockBody = { key: 'value' };
 
@@ -166,7 +166,7 @@ describe('FederationRequestService', async () => {
 			);
 
 			expect(fetchSpy).toHaveBeenCalledWith(
-				'https://target.example.com/test/path',
+				new URL('https://target.example.com/test/path'),
 				expect.objectContaining({
 					method: 'POST',
 					body: JSON.stringify(mockSignedJson),
@@ -177,7 +177,7 @@ describe('FederationRequestService', async () => {
 		});
 
 		it('should make a signed request with query parameters', async () => {
-			const fetchSpy = spyOn(globalThis, 'fetch');
+			const fetchSpy = spyOn(core, 'fetch');
 
 			const result = await service.makeSignedRequest({
 				method: 'GET',
@@ -187,7 +187,9 @@ describe('FederationRequestService', async () => {
 			});
 
 			expect(fetchSpy).toHaveBeenCalledWith(
-				'https://target.example.com/test/path?param1=value1&param2=value2',
+				new URL(
+					'https://target.example.com/test/path?param1=value1&param2=value2',
+				),
 				expect.any(Object),
 			);
 
