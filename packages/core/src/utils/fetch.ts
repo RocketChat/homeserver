@@ -37,7 +37,7 @@ export async function fetch(url: URL, options: RequestInit) {
 					reject(err);
 				});
 
-				request.end(options.body ? JSON.stringify(options.body) : undefined);
+				request.end(options.body);
 			});
 
 		return {
