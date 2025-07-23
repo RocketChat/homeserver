@@ -9,9 +9,12 @@ export const signEvent = async <T extends EventBase>(
 	event: T,
 	signature: SigningKey,
 	signingName: string,
+	prune = true,
 ): Promise<SignedEvent<T>> => {
 	// Compute hash and sign
-	const eventToSign = pruneEventDict(computeAndMergeHash(event));
+	const eventToSign = prune
+		? pruneEventDict(computeAndMergeHash(event))
+		: event;
 	const signedJsonResult = await signJson(eventToSign, signature, signingName);
 	// For non-redaction events, restore the original content
 

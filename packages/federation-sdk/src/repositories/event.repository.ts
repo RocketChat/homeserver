@@ -212,11 +212,11 @@ export class EventRepository {
 		return collection.findOne(
 			{
 				'event.room_id': roomId,
-				'event.origin_server_ts': { $lt: timestamp },
+				'event.origin_server_ts': { $lt: timestamp }, // events before passed timestamp
 			},
 			{
 				sort: {
-					'event.origin_server_ts': -1,
+					createdAt: -1, // but fetch latest one that was persisted
 				},
 			},
 		);

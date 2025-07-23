@@ -676,10 +676,7 @@ export class EventService {
 	/**
 	 * Find events based on a query
 	 */
-	async findEvents(
-		query: any,
-		options: any = {},
-	): Promise<{ _id: string; event: EventBaseWithOptionalId }[]> {
+	async findEvents(query: any, options: any = {}): Promise<EventStore[]> {
 		this.logger.debug(`Finding events with query: ${JSON.stringify(query)}`);
 		const events = await this.eventRepository.find(query, options);
 		return events;

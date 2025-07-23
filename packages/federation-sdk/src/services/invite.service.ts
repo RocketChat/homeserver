@@ -100,19 +100,21 @@ export class InviteService {
 		}
 
 		const lastEvent = roomEvents[roomEvents.length - 1];
-		const lastEventId = lastEvent._id;
+		const lastEventId = lastEvent.eventId;
 		const currentTimestamp = Date.now();
 
 		// Find auth events
 		const createEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.create')?._id || '';
+			roomEvents.find((e) => e.event.type === 'm.room.create')?.eventId || '';
 		const powerLevelsEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.power_levels')?._id || '';
+			roomEvents.find((e) => e.event.type === 'm.room.power_levels')?.eventId ||
+			'';
 		const joinRulesEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.join_rules')?._id || '';
+			roomEvents.find((e) => e.event.type === 'm.room.join_rules')?.eventId ||
+			'';
 		const historyVisibilityEvent =
 			roomEvents.find((e) => e.event.type === 'm.room.history_visibility')
-				?._id || '';
+				?.eventId || '';
 
 		// Create invite event
 		const inviteEvent = await signEvent(
