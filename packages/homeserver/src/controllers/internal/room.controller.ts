@@ -44,17 +44,15 @@ export const internalRoomPlugin = (app: Elysia) => {
 		.post(
 			'/internal/rooms/rooms',
 			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
-				const { username, sender, name } = body;
-				return roomService.createRoom(
-					username,
-					sender,
-					name,
-					body.join_rule as any,
-					'11',
-				);
+				const { creator, join_rule, name } = body;
+				return roomService.createRoom(creator, creator, name, join_rule);
 			},
 			{
-				body: InternalCreateRoomBodyDto,
+				body: t.Object({
+					creator: t.String(),
+					name: t.String(),
+					join_rule: t.Union([t.Literal('public'), t.Literal('invite')]),
+				}),
 				response: {
 					200: InternalCreateRoomResponseDto,
 					400: ErrorResponseDto,

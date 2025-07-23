@@ -47,6 +47,8 @@ export class PersistentEventFactory {
 		'11',
 	] as RoomVersion[];
 
+	static defaultRoomVersion = '10' as const; // same as synapse
+
 	static isSupportedRoomVersion(roomVersion: RoomVersion) {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
