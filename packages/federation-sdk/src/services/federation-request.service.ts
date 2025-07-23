@@ -6,7 +6,7 @@ import { signJson } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
-import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+import { getHomeserverFinalAddress } from '@hs/core';
 import { FederationConfigService } from './federation-config.service';
 import { fetch } from '@hs/core';
 
