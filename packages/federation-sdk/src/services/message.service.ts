@@ -60,7 +60,7 @@ export class MessageService {
 		);
 
 		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
-		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
+		const prevEvents = latestEventDoc ? [latestEventDoc.eventId] : [];
 
 		const currentDepth = latestEventDoc?.event?.depth ?? 0;
 		const newDepth = currentDepth + 1;
