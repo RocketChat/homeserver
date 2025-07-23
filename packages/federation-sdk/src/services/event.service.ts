@@ -707,7 +707,7 @@ export class EventService {
 			const events = await this.eventRepository.find(queryConfig.query, {
 				sort: queryConfig.sort,
 				limit: queryConfig.limit,
-				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1 },
+				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1, eventId: 1 },
 			});
 
 			for (const storeEvent of events) {
@@ -720,7 +720,7 @@ export class EventService {
 
 				if (eventTypeKey && currentEventType) {
 					authEvents.push({
-						_id: storeEvent._id,
+						_id: storeEvent.eventId,
 						type: currentEventType,
 						...(currentStateKey !== undefined && {
 							state_key: currentStateKey,
