@@ -1,7 +1,7 @@
 import { inject, singleton } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { StateMapKey } from '@hs/room';
+import type { PduContent, PduType, StateMapKey } from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
@@ -13,6 +13,13 @@ import { signEvent } from '@hs/core';
 import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
+
+type StrippedRoomState = {
+	content: PduContent,
+	sender: string,
+	state_key: string,
+	type: PduType
+};
 
 @singleton()
 export class StateService {
@@ -206,6 +213,24 @@ export class StateService {
 		}
 
 		return finalState;
+	}
+	
+	
+	public async getStrippedRoomState(roomId: string): Promise<StrippedRoomState[]> {
+		const state = await this.getFullRoomState(roomId);
+
+		const strippedState: StrippedRoomState[] = [];
+
+		for (const event of state.values()) {
+			strippedState.push({
+				content: event.getContent(),
+				sender: event.sender,
+				state_key: event.stateKey as string, // state event
+				type: event.type,
+			});
+		}
+
+		return strippedState;
 	}
 
 	public _getStore(roomVersion: RoomVersion): EventStore {

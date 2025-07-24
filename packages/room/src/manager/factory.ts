@@ -10,6 +10,7 @@ import {
 	type PduJoinRuleEventContent,
 	PduPowerLevelsEventContent,
 	Pdu,
+	PduTypeRoomCanonicalAlias,
 } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
@@ -257,6 +258,35 @@ export class PersistentEventFactory {
 			prev_events: [],
 			auth_events: [],
 			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
+
+	static newCanonicalAliasEvent(
+		roomId: string,
+		sender: string,
+		alias: string,
+		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomCanonicalAlias>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomCanonicalAlias,
+			content: { alias, alt_aliases: [] },
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
 		};
 
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);

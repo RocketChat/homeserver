@@ -219,7 +219,9 @@ export class RoomService {
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
 	) {
-		logger.debug(`Creating room for ${username} with ${name} join_rule: ${joinRule}`);
+		logger.debug(
+			`Creating room for ${username} with ${name} join_rule: ${joinRule}`,
+		);
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
 			username,
@@ -294,6 +296,19 @@ export class RoomService {
 		await stateService.addPrevEvents(joinRuleEvent);
 
 		await stateService.persistStateEvent(joinRuleEvent);
+
+		const canonicalAliasEvent = PersistentEventFactory.newCanonicalAliasEvent(
+			roomCreateEvent.roomId,
+			username,
+			`#${name}:${this.configService.getServerConfig().name}`,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(canonicalAliasEvent);
+
+		await stateService.addPrevEvents(canonicalAliasEvent);
+
+		await stateService.persistStateEvent(canonicalAliasEvent);
 
 		return {
 			room_id: roomCreateEvent.roomId,

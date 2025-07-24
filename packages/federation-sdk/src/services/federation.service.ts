@@ -262,6 +262,7 @@ export class FederationService {
 		return await this.requestService.put<any>(residentServer, uri, {
 			event: inviteEvent.event,
 			room_version: roomVersion,
+			invite_room_state: await this.stateService.getStrippedRoomState(inviteEvent.roomId),
 		});
 	}
 
