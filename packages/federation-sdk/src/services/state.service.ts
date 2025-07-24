@@ -240,6 +240,24 @@ export class StateService {
 
 		return finalState;
 	}
+	
+	
+	public async getStrippedRoomState(roomId: string): Promise<StrippedRoomState[]> {
+		const state = await this.getFullRoomState(roomId);
+
+		const strippedState: StrippedRoomState[] = [];
+
+		for (const event of state.values()) {
+			strippedState.push({
+				content: event.getContent(),
+				sender: event.sender,
+				state_key: event.stateKey as string, // state event
+				type: event.type,
+			});
+		}
+
+		return strippedState;
+	}
 
 	public async getStrippedRoomState(
 		roomId: string,
