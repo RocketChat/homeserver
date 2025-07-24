@@ -17,14 +17,11 @@ import {
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
 	QueryProfileResponseDto,
-	StateService,
 } from '@hs/federation-sdk';
-import { getAuthChain, PersistentEventFactory, RoomVersion } from '@hs/room';
+import { type RoomVersion } from '@hs/room';
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
-
-	const stateService = container.resolve(StateService);
 
 	return app
 		.get(
