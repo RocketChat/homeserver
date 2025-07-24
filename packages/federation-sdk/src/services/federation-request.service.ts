@@ -8,6 +8,7 @@ import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { FederationConfigService } from './federation-config.service';
+import { fetch } from '@hs/core';
 
 interface SignedRequest {
 	method: string;
@@ -76,7 +77,7 @@ export class FederationRequestService {
 				signedBody,
 			);
 
-			const response = await fetch(url.toString(), {
+			const response = await fetch(url, {
 				method,
 				...(signedBody && { body: JSON.stringify(signedBody) }),
 				headers: {

@@ -84,3 +84,5 @@ export * from './errors';
 export * from './url';
 
 export { makeUnsignedRequest } from './utils/makeRequest';
+
+export { fetch } from './utils/fetch';
