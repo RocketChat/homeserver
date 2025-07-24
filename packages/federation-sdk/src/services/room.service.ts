@@ -258,7 +258,7 @@ export class RoomService {
 			await this.eventService.insertEvent(eventObj.event, eventObj._id);
 		}
 
-		await this.roomRepository.insert(roomId, { name, canonicalAlias, alias });
+		await this.roomRepository.insert(roomId, { joinRules: 'public', roomVersion: '10', name, canonicalAlias, alias }); // TODO: revisit fixed values
 		logger.info(`Successfully saved room ${roomId} to rooms collection`);
 
 		return {

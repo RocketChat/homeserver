@@ -85,9 +85,9 @@ export class ProfilesService {
 					const isMemberEvent =
 						event.event.type === 'm.room.member' && event.event.state_key;
 					if (isMemberEvent) {
-						acc[`m.room.member:${event.event.state_key}`] = event._id;
+						acc[`m.room.member:${event.event.state_key}`] = event.eventId;
 					} else {
-						acc[event.event.type] = event._id;
+						acc[event.event.type] = event.eventId;
 					}
 
 					return acc;

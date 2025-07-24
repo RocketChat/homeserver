@@ -1,8 +1,9 @@
-import type { EventBaseWithOptionalId } from '@hs/core';
+import type { EventBaseWithOptionalId, JoinRule } from '@hs/core';
 import type { EventStore } from '@hs/core';
 import { Collection } from 'mongodb';
 import { singleton } from 'tsyringe';
 import { DatabaseConnectionService } from '../services/database-connection.service';
+import { RoomVersion } from '@hs/room';
 
 type Room = {
 	_id: string;
@@ -47,15 +48,15 @@ export class RoomRepository {
 
 	async insert(
 		roomId: string,
-		props: { name?: string; canonicalAlias?: string; alias?: string },
+		props: { joinRules: JoinRule; roomVersion: RoomVersion; name?: string; canonicalAlias?: string; alias?: string },
 	): Promise<void> {
 		const collection = await this.getCollection();
 		await collection.insertOne({
 			_id: roomId,
 			room: {
 				name: props.name || '',
-				join_rules: 'public',
-				version: '1',
+				join_rules: props.joinRules || 'public',
+				version: props.roomVersion || '10',
 				alias: props.alias || '',
 				canonical_alias: props.canonicalAlias || '',
 			},
@@ -66,7 +67,7 @@ export class RoomRepository {
 		const collection = await this.getCollection();
 		const room = await collection.findOne(
 			{ _id: roomId },
-			{ projection: { version: 1 } },
+			{ projection: { 'room.version': 1 } },
 		);
 		return room?.room.version || null;
 	}
