@@ -74,26 +74,16 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query: _query }) => {
+			async ({ params, query }) => {
 				const { roomId, userId } = params;
 
-				const roomInformation = await stateService.getRoomInformation(roomId);
+				const { ver } = query;
 
-				const membershipEvent = PersistentEventFactory.newMembershipEvent(
+				return profilesService.makeJoin(
 					roomId,
 					userId,
-					userId,
-					'join',
-					roomInformation,
-				);
-
-				await stateService.addAuthEvents(membershipEvent);
-				await stateService.addPrevEvents(membershipEvent);
-
-				return {
-					room_version: roomInformation.room_version as RoomVersion,
-					event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
-				};
+					(ver as RoomVersion[]) ?? ['1'],
+				) as any;
 			},
 			{
 				params: MakeJoinParamsDto,

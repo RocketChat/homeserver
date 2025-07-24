@@ -216,11 +216,10 @@ export class RoomService {
 	 */
 	async createRoom(
 		username: string,
-		sender: string,
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
 	) {
-		logger.debug(`Creating room for ${sender} with ${username}`);
+		logger.debug(`Creating room for ${username} with ${name} join_rule: ${joinRule}`);
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
 			username,

@@ -6,7 +6,7 @@ import type { EventService } from './event.service';
 import { StateService } from './state.service';
 import {
 	getAuthChain,
-	PduMembershipEventContent,
+	type PduMembershipEventContent,
 	PersistentEventFactory,
 } from '@hs/room';
 
@@ -21,6 +21,7 @@ export class SendJoinService {
 	) {}
 
 	async sendJoin(roomId: string, eventId: string, event: RoomMemberEvent) {
+		console.log('sendJoin', roomId, eventId, event);
 		const stateService = this.stateService;
 
 		const roomVersion = await stateService.getRoomVersion(roomId);
@@ -91,13 +92,10 @@ export class SendJoinService {
 					signedJoinEvent.getContent<PduMembershipEventContent>().membership,
 			},
 		});
-
+		
 		return {
 			origin,
-			event: {
-				...signedJoinEvent.event,
-				origin: origin,
-			},
+			event: signedJoinEvent.event,
 			members_omitted: false, // less requests
 			state: Array.from(state.values()).map((event) => {
 				return event.event;

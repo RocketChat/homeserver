@@ -32,7 +32,7 @@ import {
 	UsernameDto,
 } from '@hs/federation-sdk';
 import { RoomService } from '@hs/federation-sdk';
-import { PduCreateEventContent, PersistentEventFactory } from '@hs/room';
+import { type PduCreateEventContent, PersistentEventFactory } from '@hs/room';
 import { StateService } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 
@@ -45,7 +45,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 			'/internal/rooms/rooms',
 			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
 				const { creator, join_rule, name } = body;
-				return roomService.createRoom(creator, creator, name, join_rule);
+				return roomService.createRoom(creator, name, join_rule);
 			},
 			{
 				body: t.Object({
