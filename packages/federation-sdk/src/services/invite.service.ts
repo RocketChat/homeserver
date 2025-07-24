@@ -1,17 +1,11 @@
-import { roomMemberEvent } from '@hs/core';
-import { HttpException, HttpStatus } from '@hs/core';
-import { generateId } from '@hs/core';
-import { makeUnsignedRequest } from '@hs/core';
-import type { EventBaseWithOptionalId } from '@hs/core';
-import { signEvent } from '@hs/core';
+import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
+import { ConfigService, FederationService } from '@hs/federation-sdk';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
-import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { FederationService } from './federation.service';
-import type { RoomService } from './room.service';
-
+import { RoomService } from './room.service';
+import { StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
 	event: EventBaseWithOptionalId & {
@@ -31,191 +25,87 @@ export class InviteService {
 		@inject('EventService') private readonly eventService: EventService,
 		@inject('FederationService')
 		private readonly federationService: FederationService,
-		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('RoomService') private readonly roomService: RoomService,
+		@inject('StateService') private readonly stateService: StateService,
+		@inject('ConfigService') private readonly configService: ConfigService,
 	) {}
 
 	/**
-	 * Invite a user to an existing room, or create a new room if none is provided
+	 * Invite a user to an existing room
 	 */
-	async inviteUserToRoom(
-		username: string,
-		roomId?: string,
-		sender?: string,
-		name?: string,
-	): Promise<{ event_id: string; room_id: string }> {
-		this.logger.debug(`Inviting ${username} to room ${roomId || 'new room'}`);
+	async inviteUserToRoom(userId: string, roomId: string, sender: string) {
+		this.logger.debug(`Inviting ${userId} to room ${roomId}`);
 
-		const config = this.configService.getServerConfig();
-		const signingKey = await this.configService.getSigningKey();
-		let finalRoomId = roomId;
+		const stateService = this.stateService;
+		const federationService = this.federationService;
 
-		if (!username.includes(':') || !username.includes('@')) {
-			throw new HttpException('Invalid username', HttpStatus.BAD_REQUEST);
-		}
+		const roomInformation = await stateService.getRoomInformation(roomId);
 
-		if (!finalRoomId && !name) {
-			throw new HttpException(
-				'Either roomId or name must be provided',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
-
-		// Check if the room exists and is not tombstoned
-		if (finalRoomId) {
-			const isTombstoned = await this.roomService.isRoomTombstoned(finalRoomId);
-			if (isTombstoned) {
-				throw new HttpException(
-					'Cannot invite to a deleted room',
-					HttpStatus.FORBIDDEN,
-				);
-			}
-		}
-
-		// Create room if no roomId was provided
-		if (sender && !finalRoomId && name) {
-			if (sender.split(':').pop() !== config.name) {
-				throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
-			}
-
-			const { room_id: createdRoomId } = await this.roomService.createRoom(
-				username,
-				sender,
-				name,
-			);
-			finalRoomId = createdRoomId;
-		}
-
-		if (!finalRoomId) {
-			throw new HttpException('Invalid room_id', HttpStatus.BAD_REQUEST);
-		}
-
-		const roomEvents = await this.eventService.findEvents(
-			{ 'event.room_id': finalRoomId },
-			{ sort: { 'event.depth': 1 } },
+		const inviteEvent = PersistentEventFactory.newMembershipEvent(
+			roomId,
+			sender,
+			userId,
+			'invite',
+			roomInformation,
 		);
 
-		if (roomEvents.length === 0) {
-			throw new HttpException('No events found', HttpStatus.BAD_REQUEST);
+		await stateService.addAuthEvents(inviteEvent);
+
+		await stateService.addPrevEvents(inviteEvent);
+
+		await stateService.signEvent(inviteEvent);
+
+		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
+
+		const invitedServer = inviteEvent.stateKey?.split(':').pop();
+		if (!invitedServer) {
+			throw new Error(
+				`invalid state_key ${inviteEvent.stateKey}, no server_name part`,
+			);
 		}
 
-		const lastEvent = roomEvents[roomEvents.length - 1];
-		const lastEventId = lastEvent.eventId;
-		const currentTimestamp = Date.now();
+		// if user invited belongs to our server
+		if (invitedServer === this.configService.getServerName()) {
+			await stateService.persistStateEvent(inviteEvent);
 
-		// Find auth events
-		const createEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.create')?.eventId || '';
-		const powerLevelsEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.power_levels')?.eventId ||
-			'';
-		const joinRulesEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.join_rules')?.eventId ||
-			'';
-		const historyVisibilityEvent =
-			roomEvents.find((e) => e.event.type === 'm.room.history_visibility')
-				?.eventId || '';
+			if (inviteEvent.rejected) {
+				throw new Error(inviteEvent.rejectedReason);
+			}
 
-		// Create invite event
-		const inviteEvent = await signEvent(
-			roomMemberEvent({
-				auth_events: {
-					'm.room.create': createEvent,
-					'm.room.power_levels': powerLevelsEvent,
-					'm.room.join_rules': joinRulesEvent,
-					'm.room.history_visibility': historyVisibilityEvent,
-				},
-				membership: 'invite',
-				depth: (lastEvent.event.depth || 0) + 1,
-				content: {
-					is_direct: true,
-				},
-				roomId: finalRoomId,
-				ts: currentTimestamp,
-				prev_events: [lastEventId],
-				sender: roomEvents[0].event.sender,
-				state_key: username,
-				unsigned: {
-					age: 4,
-					age_ts: currentTimestamp,
-					invite_room_state: [
-						{
-							content: { join_rule: 'invite' },
-							sender: roomEvents[0].event.sender,
-							state_key: '',
-							type: 'm.room.join_rules',
-						},
-						{
-							content: {
-								room_version: '10',
-								creator: roomEvents[0].event.sender,
-							},
-							sender: roomEvents[0].event.sender,
-							state_key: '',
-							type: 'm.room.create',
-						},
-						{
-							content: {
-								membership: 'join',
-								displayname: 'admin',
-							},
-							sender: roomEvents[0].event.sender,
-							state_key: roomEvents[0].event.sender,
-							type: 'm.room.member',
-						},
-						{
-							type: 'm.room.name' as const,
-							content: { name: name || 'New Room' }, // TODO: Revisit this since the room creation must not be here
-							sender: roomEvents[0].event.sender,
-							state_key: '',
-						},
-					],
-				},
-			}),
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			config.name,
-		);
-
-		const inviteEventId = generateId(inviteEvent);
-
-		const payload = {
-			event: inviteEvent,
-			invite_room_state: inviteEvent.unsigned.invite_room_state,
-			room_version: '10',
-		};
-
-		// TODO: Move it to the federation-sdk service
-		const targetDomain = username.split(':').pop() as string;
-
-		const responseMake = await makeUnsignedRequest({
-			method: 'PUT',
-			domain: targetDomain,
-			uri: `/_matrix/federation/v2/invite/${finalRoomId}/${inviteEventId}`,
-			body: payload,
-			options: {},
-			signingKey: Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			signingName: config.name,
-		});
-
-		if (responseMake && 'event' in responseMake) {
-			const responseEventId = generateId(
-				responseMake.event as EventBaseWithOptionalId,
-			);
-			await this.eventService.insertEvent(
-				responseMake.event as EventBaseWithOptionalId,
-				responseEventId,
-			);
+			// let all servers know of this state change
+			// without it join events will not be processed if /event/{eventId} causes problems
+			void federationService.sendEventToAllServersInRoom(inviteEvent);
 
 			return {
-				event_id: responseEventId,
-				room_id: finalRoomId,
+				event_id: inviteEvent.eventId,
+				room_id: roomId,
 			};
 		}
 
-		throw new HttpException(
-			'Failed to invite user to room',
-			HttpStatus.INTERNAL_SERVER_ERROR,
+		// invited user from another room
+		// get signed invite event
+
+		const inviteResponse = await federationService.inviteUser(
+			inviteEvent,
+			roomInformation.room_version,
 		);
+
+		// try to save
+		// can only invite if already part of the room
+		await stateService.persistStateEvent(
+			PersistentEventFactory.createFromRawEvent(
+				inviteResponse.event,
+				roomInformation.room_version as RoomVersion,
+			),
+		);
+
+		// let everyone know
+		void federationService.sendEventToAllServersInRoom(inviteEvent);
+
+		return {
+			event_id: inviteEvent.eventId,
+			room_id: roomId,
+		};
 	}
 
 	async processInvite<
@@ -224,153 +114,64 @@ export class InviteService {
 			room_id: string;
 			state_key: string;
 		},
-	>(
-		event: T,
-		roomId: string,
-		eventId: string,
-	): Promise<{
-		event: T;
-	}> {
-		try {
-			// Check if the room is tombstoned (deleted)
-			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
-			if (isTombstoned) {
-				this.logger.warn(
-					`Received invite for deleted room ${roomId}, rejecting`,
-				);
-				throw new HttpException(
-					'Cannot process invite for a deleted room',
-					HttpStatus.FORBIDDEN,
-				);
-			}
+	>(event: T, roomId: string, eventId: string, roomVersion: string) {
+		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 
-			// TODO: Validate before inserting
-			try {
-				await this.eventService.insertEvent(
-					event as EventBaseWithOptionalId,
-					eventId,
-				);
-			} catch (error: unknown) {
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
-				this.logger.error(`Event already exists: ${errorMessage}`);
-				throw error;
-			}
-
-			this.logger.debug('Received invite event', {
-				room_id: roomId,
-				event_id: eventId,
-				user_id: event.state_key,
-				origin: event.origin,
-			});
-
-			// TODO: Remove this - Waits 5 seconds before accepting invite just for testing purposes
-			void new Promise((resolve) => setTimeout(resolve, 5000)).then(() =>
-				this.acceptInvite(roomId, event.state_key),
-			);
-
-			return { event: event };
-		} catch (error: any) {
-			this.logger.error(`Failed to process invite: ${error.message}`);
-			throw error;
+		const residentServer = roomId.split(':').pop();
+		if (!residentServer) {
+			throw new Error(`Invalid roomId ${roomId}`);
 		}
-	}
 
-	/**
-	 * Accept an invite for a user
-	 */
-	async acceptInvite(roomId: string, userId: string): Promise<void> {
-		try {
-			// Check if the room is tombstoned (deleted)
-			const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
-			if (isTombstoned) {
-				this.logger.warn(
-					`Attempt to accept invite for deleted room ${roomId}, rejecting`,
-				);
-				throw new HttpException(
-					`Cannot accept invite for deleted room ${roomId}`,
-					HttpStatus.FORBIDDEN,
-				);
-			}
+		const inviteEvent = PersistentEventFactory.createFromRawEvent(
+			event as any,
+			roomVersion as RoomVersion,
+		);
 
-			const inviteEvent = await this.eventService.findInviteEvent(
-				roomId,
-				userId,
-			);
-
-			if (!inviteEvent) {
-				throw new Error(`No invite found for user ${userId} in room ${roomId}`);
-			}
-
-			await this.handleInviteProcessing({
-				event: inviteEvent.event as EventBaseWithOptionalId & {
-					origin: string;
-					room_id: string;
-					state_key: string;
-				},
-				invite_room_state: inviteEvent.invite_room_state,
-				room_version: inviteEvent.room_version || '10',
-			});
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(`Failed to accept invite: ${errorMessage}`);
-			throw error;
+		if (inviteEvent.eventId !== eventId) {
+			throw new Error(`Invalid eventId ${eventId}`);
 		}
-	}
 
-	/**
-	 * Handle the processing of an invite event
-	 */
-	private async handleInviteProcessing(
-		event: ProcessInviteEvent,
-	): Promise<void> {
-		try {
-			const responseMake = await this.federationService.makeJoin(
-				event.event.origin,
-				event.event.room_id,
-				event.event.state_key,
-				event.room_version,
-			);
-			const responseBody = await this.federationService.sendJoin(
-				event.event.origin,
-				event.event.room_id,
-				event.event.state_key,
-				responseMake.event,
-				false,
-			);
+		await this.stateService.signEvent(inviteEvent);
 
-			if (!responseBody.state || !responseBody.auth_chain) {
-				this.logger.warn(
-					`Invalid response: missing state or auth_chain arrays from event ${event.event.event_id}`,
-				);
-				return;
+		if (residentServer === this.configService.getServerName()) {
+			// we are the host of the server
+
+			// attempt to persist the invite event as we already have the state
+
+			await this.stateService.persistStateEvent(inviteEvent);
+			if (inviteEvent.rejected) {
+				throw new Error(inviteEvent.rejectedReason);
 			}
 
-			const allEvents = [
-				...responseBody.state,
-				...responseBody.auth_chain,
-				responseBody.event,
-			];
+			// we do not send transaction here
+			// the asking server will handle the transactions
 
-			// TODO: Bring it back the validation pipeline for production - commented out for testing purposes
-			// await this.eventService.processIncomingPDUs(allEvents);
-
-			// TODO: Also remove the insertEvent calls :)
-			for (const event of allEvents) {
-				await this.eventService.insertEventIfNotExists(event);
-			}
-
-			this.logger.debug(
-				`Inserted ${allEvents.length} events for room ${event.event.room_id} right after the invite was accepted`,
-			);
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(
-				`Error processing invite for ${event.event.state_key} in room ${event.event.room_id}: ${errorMessage}`,
-			);
-			throw error;
+			// return the signed invite event
+			return {
+				event: inviteEvent.event,
+			};
 		}
+
+		// are we already in the room?
+		try {
+			await this.stateService.getRoomInformation(roomId);
+
+			// if we have the state we try to persist the invite event
+			await this.stateService.persistStateEvent(inviteEvent);
+			if (inviteEvent.rejected) {
+				throw new Error(inviteEvent.rejectedReason);
+			}
+		} catch (e) {
+			// don't have state copy yet
+			console.error(e);
+
+			// typical noop, we sign and return the event, nothing to do
+		}
+
+		// we are not the host of the server
+		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
+		return {
+			event: inviteEvent.event,
+		};
 	}
 }

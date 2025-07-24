@@ -4,7 +4,7 @@ import {
 	ProcessInviteResponseDto,
 } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
 export const invitePlugin = (app: Elysia) => {
@@ -12,14 +12,20 @@ export const invitePlugin = (app: Elysia) => {
 	return app.put(
 		'/_matrix/federation/v2/invite/:roomId/:eventId',
 		async ({ body, params: { roomId, eventId } }) => {
-			return inviteService.processInvite(body, roomId, eventId);
+			return inviteService.processInvite(
+				body.event,
+				roomId,
+				eventId,
+				body.room_version,
+			);
 		},
 		{
 			params: ProcessInviteParamsDto,
-			body: ProcessInviteBodyDto,
-			response: {
-				200: ProcessInviteResponseDto,
-			},
+			body: t.Object({
+				event: t.Any(),
+				room_version: t.String(),
+				invite_room_state: t.Any(),
+			}),
 			detail: {
 				tags: ['Federation'],
 				summary: 'Process room invite',

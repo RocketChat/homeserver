@@ -1,23 +1,20 @@
-import type { EventBase } from '@hs/core';
 import {
-	roomMemberEvent,
-	type AuthEvents as RoomMemberAuthEvents,
-} from '@hs/core';
-import { roomNameEvent, type RoomNameAuthEvents } from '@hs/core';
-import {
+	EventBase,
+	generateId,
 	isRoomPowerLevelsEvent,
+	roomMemberEvent,
+	RoomNameAuthEvents,
+	roomNameEvent,
 	roomPowerLevelsEvent,
-	type RoomPowerLevelsEvent,
-} from '@hs/core';
-import {
+	RoomPowerLevelsEvent,
 	roomTombstoneEvent,
-	type RoomTombstoneEvent,
-	type TombstoneAuthEvents,
+	RoomTombstoneEvent,
+	SignedEvent,
+	signEvent,
+	TombstoneAuthEvents,
 } from '@hs/core';
-import { createSignedEvent } from '@hs/core';
 import { FederationService } from './federation.service';
 import { inject, singleton } from 'tsyringe';
-import { generateId } from '@hs/core';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
@@ -25,27 +22,21 @@ import type {
 	EventStore,
 	EventBaseWithOptionalId as ModelEventBase,
 } from '@hs/core';
-import { createRoom } from '@hs/core';
 
-import type { SignedEvent } from '@hs/core';
-import { signEvent } from '@hs/core';
 import { logger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
 import type { RoomRepository } from '../repositories/room.repository';
-import type { EventRepository } from '../repositories/event.repository';
-
-// Utility function to create a random ID for room creation
-function createMediaId(length: number) {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-	let result = '';
-	for (let i = 0; i < length; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters[randomIndex];
-	}
-	return result;
-}
+import { StateService } from './state.service';
+import { EventRepository } from '../repositories/event.repository';
+import {
+	PduCreateEventContent,
+	PduJoinRuleEventContent,
+	PersistentEventBase,
+	PersistentEventFactory,
+	RoomVersion,
+} from '@hs/room';
 
 @singleton()
 export class RoomService {
@@ -57,6 +48,7 @@ export class RoomService {
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('FederationService')
 		private readonly federationService: FederationService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -187,7 +179,7 @@ export class RoomService {
 		}
 	}
 
-	async upsertRoom(roomId: string, state: ModelEventBase[]) {
+	async upsertRoom(roomId: string, state: EventBase[]) {
 		logger.info(`Upserting room ${roomId} with ${state.length} state events`);
 
 		// Find the create event to determine room version
@@ -224,46 +216,103 @@ export class RoomService {
 	 */
 	async createRoom(
 		username: string,
-		sender: string,
 		name: string,
-		canonicalAlias?: string,
-		alias?: string,
-	): Promise<{ room_id: string; event_id: string }> {
-		logger.debug(`Creating room for ${sender} with ${username}`);
-		const config = this.configService.getServerConfig();
-		const signingKey = await this.configService.getSigningKey();
-
-		if (sender.split(':').pop() !== config.name) {
-			throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
-		}
-
-		const roomId = `!${createMediaId(18)}:${config.name}`;
-		const result = await createRoom(
-			[sender, username],
-			createSignedEvent(
-				Array.isArray(signingKey) ? signingKey[0] : signingKey,
-				config.name,
-			),
-			roomId,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+	) {
+		logger.debug(
+			`Creating room for ${username} with ${name} join_rule: ${joinRule}`,
 		);
 
-		if (result.events.filter(Boolean).length === 0) {
-			throw new HttpException(
-				'Error creating room',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			username,
+			PersistentEventFactory.defaultRoomVersion,
+		);
 
-		for (const eventObj of result.events) {
-			await this.eventService.insertEvent(eventObj.event, eventObj._id);
-		}
+		const stateService = this.stateService;
 
-		await this.roomRepository.insert(roomId, { name, canonicalAlias, alias });
-		logger.info(`Successfully saved room ${roomId} to rooms collection`);
+		await stateService.persistStateEvent(roomCreateEvent);
+
+		const creatorMembershipEvent = PersistentEventFactory.newMembershipEvent(
+			roomCreateEvent.roomId,
+			username,
+			username,
+			'join',
+			roomCreateEvent.getContent<PduCreateEventContent>(),
+		);
+
+		await stateService.addAuthEvents(creatorMembershipEvent);
+
+		await stateService.addPrevEvents(creatorMembershipEvent);
+
+		await stateService.persistStateEvent(creatorMembershipEvent);
+
+		const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
+			roomCreateEvent.roomId,
+			username,
+			name,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(roomNameEvent);
+
+		await stateService.addPrevEvents(roomNameEvent);
+
+		await stateService.persistStateEvent(roomNameEvent);
+
+		const powerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
+			roomCreateEvent.roomId,
+			username,
+			{
+				users: {
+					[username]: 100,
+				},
+				users_default: 0,
+				events: {},
+				events_default: 0,
+				state_default: 50,
+				ban: 50,
+				kick: 50,
+				redact: 50,
+				invite: 50,
+			},
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(powerLevelEvent);
+
+		await stateService.addPrevEvents(powerLevelEvent);
+
+		await stateService.persistStateEvent(powerLevelEvent);
+
+		const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
+			roomCreateEvent.roomId,
+			username,
+			joinRule,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(joinRuleEvent);
+
+		await stateService.addPrevEvents(joinRuleEvent);
+
+		await stateService.persistStateEvent(joinRuleEvent);
+
+		const canonicalAliasEvent = PersistentEventFactory.newCanonicalAliasEvent(
+			roomCreateEvent.roomId,
+			username,
+			`#${name}:${this.configService.getServerConfig().name}`,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(canonicalAliasEvent);
+
+		await stateService.addPrevEvents(canonicalAliasEvent);
+
+		await stateService.persistStateEvent(canonicalAliasEvent);
 
 		return {
-			room_id: result.roomId,
-			event_id: result.events[0]._id,
+			room_id: roomCreateEvent.roomId,
+			event_id: roomCreateEvent.eventId,
 		};
 	}
 
@@ -272,13 +321,12 @@ export class RoomService {
 		name: string,
 		senderId: string,
 		targetServer: string,
-	): Promise<{ eventId: string }> {
+	) {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
 		);
 
-		const lastEvent: EventStore | null =
-			await this.eventService.getLastEventForRoom(roomId);
+		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEvent) {
 			throw new HttpException(
 				'Room has no history, cannot update name',
@@ -599,7 +647,7 @@ export class RoomService {
 			);
 		}
 
-		const authEvents: RoomMemberAuthEvents = {
+		const authEvents = {
 			'm.room.create': createEventId,
 			'm.room.power_levels': powerLevelsEventId,
 			[`m.room.member:${senderId}`]: memberEventId,
@@ -737,7 +785,7 @@ export class RoomService {
 			);
 		}
 
-		const authEvents: RoomMemberAuthEvents = {
+		const authEvents = {
 			'm.room.create': createEventId,
 			'm.room.power_levels': powerLevelsEventId,
 			[`m.room.member:${kickedUserId}`]: senderMemberEventId,
@@ -867,7 +915,7 @@ export class RoomService {
 			);
 		}
 
-		const authEvents: RoomMemberAuthEvents = {
+		const authEvents = {
 			'm.room.create': createEventId,
 			'm.room.power_levels': powerLevelsEventId,
 			[`m.room.member:${bannedUserId}`]: senderMemberEventId,
@@ -918,6 +966,222 @@ export class RoomService {
 			}
 		}
 		return eventId;
+	}
+
+	// if local room, add the user to the room if allowed.
+	// if remote room, run through the join process
+	async joinUser(roomId: string, userId: string) {
+		const configService = this.configService;
+		const stateService = this.stateService;
+		const federationService = this.federationService;
+
+		// where the room is hosted at
+		const residentServer = roomId.split(':').pop();
+
+		// our own room, we can validate the join event by ourselves
+		// once done, emit the event to all participating servers
+		if (residentServer === configService.getServerName()) {
+			const room = await stateService.getFullRoomState(roomId);
+
+			const createEvent = room.get('m.room.create:');
+
+			if (!createEvent) {
+				throw new Error(
+					'Room create event not found when trying to join a room',
+				);
+			}
+
+			const membershipEvent = PersistentEventFactory.newMembershipEvent(
+				roomId,
+				userId, // sender and state_key are the same for join events
+				userId,
+				'join',
+				createEvent.getContent(),
+			);
+
+			await stateService.addAuthEvents(membershipEvent);
+
+			await stateService.addPrevEvents(membershipEvent);
+
+			await stateService.persistStateEvent(membershipEvent);
+
+			if (membershipEvent.rejected) {
+				throw new Error(membershipEvent.rejectedReason);
+			}
+
+			void federationService.sendEventToAllServersInRoom(membershipEvent);
+
+			return membershipEvent.eventId;
+		}
+
+		const roomVersion = '10' as const;
+
+		// trying to join room from another server
+		const makeJoinResponse = await federationService.makeJoin(
+			residentServer as string,
+			roomId,
+			userId,
+			roomVersion, // NOTE: check the comment in the called method
+		);
+
+		// ^ have the template for the join event now
+
+		const joinEvent = PersistentEventFactory.createFromRawEvent(
+			makeJoinResponse.event as any, // TODO: using room package types will take care of this
+			makeJoinResponse.room_version,
+		);
+
+		// const signedJoinEvent = await stateService.signEvent(joinEvent);
+
+		// TODO: sign the event here vvv
+		// currently makeSignedRequest does the signing
+		const sendJoinResponse = await federationService.sendJoin(joinEvent);
+
+		// TODO: validate hash and sig (item 2)
+
+		// run through state res
+		// validate all auth chain events
+		const eventMap = new Map<string, PersistentEventBase>();
+
+		for (const stateEvent_ of sendJoinResponse.state) {
+			const stateEvent = PersistentEventFactory.createFromRawEvent(
+				stateEvent_ as any,
+				makeJoinResponse.room_version,
+			);
+
+			eventMap.set(stateEvent.eventId, stateEvent);
+		}
+
+		for (const authEvent_ of sendJoinResponse.auth_chain) {
+			const authEvent = PersistentEventFactory.createFromRawEvent(
+				authEvent_ as any,
+				makeJoinResponse.room_version,
+			);
+			eventMap.set(authEvent.eventId, authEvent);
+		}
+
+		// TODO: 1 room version handling, related to request type
+		// TODO: 2 have state service do this or not modify our event
+		const copyEvent = (event: Readonly<PersistentEventBase>) => {
+			return PersistentEventFactory.createFromRawEvent(
+				structuredClone(event.event),
+				roomVersion,
+			);
+		};
+
+		const persisted = new Set<string>();
+
+		// persistEvent walks auth_events, and recursively calls itself with each auth event
+		// persists until it reaches the first event it was called with.
+		// makes sure all auth events are persisted before the state event
+		const persistEvent = async (event: Readonly<PersistentEventBase>) => {
+			if (!persisted.has(event.eventId) && event.isCreateEvent()) {
+				// persist as normal, m.room.create :)
+				logger.info(
+					`Persisting create event ${event.eventId}, ${JSON.stringify(
+						event.event,
+						null,
+						2,
+					)}`,
+				);
+
+				const eventToPersist = copyEvent(event);
+
+				await stateService.persistStateEvent(eventToPersist);
+
+				persisted.add(event.eventId);
+
+				return;
+			}
+
+			for (const authEventId of event.event.auth_events) {
+				const authEvent = eventMap.get(authEventId as string);
+				if (!authEvent) {
+					for (const stateEvent of eventMap.keys()) {
+						console.log(
+							`${stateEvent} -> ${JSON.stringify(eventMap.get(stateEvent)?.event, null, 2)}`,
+						);
+					}
+					throw new Error(`Auth event ${authEventId} not found`);
+				}
+
+				if (!persisted.has(authEventId as string)) {
+					// persist all the auth events of this authEvent
+					logger.info(
+						`Persisting auth event ${authEventId} because not persisted already, ${JSON.stringify(
+							authEvent.event,
+							null,
+							2,
+						)}`,
+					);
+
+					// recursively persist this and all it's auth events
+					await persistEvent(authEvent); // pl
+
+					persisted.add(authEvent.eventId);
+				}
+			}
+
+			// ^^ all auth events of this event have been persisted
+
+			// persist as normal
+			logger.info(
+				`Persisting state event after auth events have been persisted, ${event.eventId}, ${JSON.stringify(
+					event.event,
+					null,
+					2,
+				)}`,
+			);
+
+			const eventToPersist = copyEvent(event);
+
+			await stateService.persistStateEvent(eventToPersist);
+
+			persisted.add(event.eventId);
+		};
+
+		for (const stateEvent of eventMap.values()) {
+			if (persisted.has(stateEvent.eventId)) {
+				continue;
+			}
+
+			logger.info(
+				`Persisting state event ${stateEvent.eventId}, ${JSON.stringify(
+					stateEvent.event,
+					null,
+					2,
+				)}`,
+			);
+			await persistEvent(stateEvent);
+		}
+
+		const joinEventFinal = PersistentEventFactory.createFromRawEvent(
+			sendJoinResponse.event as any,
+			makeJoinResponse.room_version,
+		);
+
+		logger.info(
+			`Persisting join event ${joinEventFinal.eventId}, ${JSON.stringify(
+				joinEventFinal.event,
+				null,
+				2,
+			)}`,
+		);
+
+		const state = await stateService.getFullRoomState(roomId);
+
+		logger.info(
+			`State before join event has been persisted, ${state.keys().toArray().join(', ')}`,
+		);
+
+		// try to persist the join event now, should succeed with state in place
+		await stateService.persistStateEvent(joinEventFinal);
+
+		if (joinEventFinal.rejected) {
+			throw new Error(joinEventFinal.rejectedReason);
+		}
+
+		return joinEventFinal.eventId;
 	}
 
 	async markRoomAsTombstone(

@@ -12,15 +12,17 @@ import {
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
+	ProfilesService,
 	QueryKeysBodyDto,
 	QueryKeysResponseDto,
 	QueryProfileQueryDto,
 	QueryProfileResponseDto,
 } from '@hs/federation-sdk';
-import { ProfilesService } from '@hs/federation-sdk';
+import { type RoomVersion } from '@hs/room';
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
+
 	return app
 		.get(
 			'/_matrix/federation/v1/query/profile',
@@ -70,32 +72,15 @@ export const profilesPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
 			async ({ params, query }) => {
-				const response = await profilesService.makeJoin(
-					params.roomId,
-					params.userId,
-					query.ver,
-				);
-				return {
-					room_version: response.room_version,
-					event: {
-						...response.event,
-						content: {
-							...response.event.content,
-							membership: 'join',
+				const { roomId, userId } = params;
 
-							join_authorised_via_users_server:
-								response.event.content.join_authorised_via_users_server,
-						},
-						room_id: response.event.room_id,
-						sender: response.event.sender,
+				const { ver } = query;
 
-						state_key: response.event.state_key,
-
-						type: 'm.room.member',
-						origin_server_ts: response.event.origin_server_ts,
-						origin: response.event.origin,
-					},
-				};
+				return profilesService.makeJoin(
+					roomId,
+					userId,
+					(ver as RoomVersion[]) ?? ['1'],
+				) as any;
 			},
 			{
 				params: MakeJoinParamsDto,

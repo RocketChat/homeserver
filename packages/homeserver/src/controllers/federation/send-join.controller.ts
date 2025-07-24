@@ -1,30 +1,31 @@
-import { isRoomMemberEvent } from '@hs/core';
+import { Elysia, t } from 'elysia';
+import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
 	SendJoinEventDto,
-	SendJoinParamsDto,
 	SendJoinResponseDto,
+	SendJoinService,
 } from '@hs/federation-sdk';
-import { SendJoinService } from '@hs/federation-sdk';
-import type { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const sendJoinService = container.resolve(SendJoinService);
+
 	return app.put(
-		'/_matrix/federation/v2/send_join/:roomId/:stateKey',
-		async ({ params, body }) => {
-			const event = body;
-			const { roomId, stateKey } = params;
+		'/_matrix/federation/v2/send_join/:roomId/:eventId',
+		async ({
+			params,
+			body,
+			query: _query, // not destructuring this breaks the endpoint
+		}) => {
+			const { roomId, eventId } = params;
 
-			if (!isRoomMemberEvent(event)) {
-				throw new Error('Invalid event type. Expected a room member event.');
-			}
-
-			return sendJoinService.sendJoin(roomId, stateKey, event);
+			return sendJoinService.sendJoin(roomId, eventId, body as any);
 		},
 		{
-			params: SendJoinParamsDto,
+			params: t.Object({
+				roomId: t.String(),
+				eventId: t.String(),
+			}),
 			body: SendJoinEventDto,
 			response: {
 				200: SendJoinResponseDto,
