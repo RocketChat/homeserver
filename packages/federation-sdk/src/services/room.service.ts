@@ -18,6 +18,11 @@ import { inject, singleton } from 'tsyringe';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
+import type {
+	EventStore,
+	EventBaseWithOptionalId as ModelEventBase,
+} from '@hs/core';
+
 import { logger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -214,13 +219,12 @@ export class RoomService {
 		sender: string,
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
-		roomVersion: RoomVersion,
 	) {
 		logger.debug(`Creating room for ${sender} with ${username}`);
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
 			username,
-			roomVersion,
+			PersistentEventFactory.defaultRoomVersion,
 		);
 
 		const stateService = this.stateService;
@@ -245,7 +249,7 @@ export class RoomService {
 			roomCreateEvent.roomId,
 			username,
 			name,
-			roomVersion,
+			PersistentEventFactory.defaultRoomVersion,
 		);
 
 		await stateService.addAuthEvents(roomNameEvent);
@@ -270,7 +274,7 @@ export class RoomService {
 				redact: 50,
 				invite: 50,
 			},
-			roomVersion,
+			PersistentEventFactory.defaultRoomVersion,
 		);
 
 		await stateService.addAuthEvents(powerLevelEvent);
@@ -283,7 +287,7 @@ export class RoomService {
 			roomCreateEvent.roomId,
 			username,
 			joinRule,
-			roomVersion,
+			PersistentEventFactory.defaultRoomVersion,
 		);
 
 		await stateService.addAuthEvents(joinRuleEvent);

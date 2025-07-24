@@ -342,7 +342,7 @@ export class StateService {
 
 			const signedEvent = await this.signEvent(event);
 
-			this.eventRepository.create(
+			await this.eventRepository.create(
 				signedEvent.event as any,
 				event.eventId,
 				stateMappingId.toString(),
@@ -369,7 +369,7 @@ export class StateService {
 			// state did not change
 			// just persist the event
 			// TODO: mark rejected, although no code yet uses it so let it go
-			this.eventRepository.create(
+			await this.eventRepository.create(
 				resolvedEvent.event as any /* TODO: fix this with type unifi */,
 				resolvedEvent.eventId,
 				'',
@@ -492,7 +492,7 @@ export class StateService {
 					// TODO: mark rejected, although no code yet uses it so let it go
 					const signedEvent = await this.signEvent(resolvedEvent);
 
-					this.eventRepository.create(
+					await this.eventRepository.create(
 						signedEvent.event as any,
 						resolvedEvent.eventId,
 						'',
