@@ -25,6 +25,8 @@ import type { ConfigService } from './config.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
+import { StateService } from './state.service';
+import { PersistentEventBase, PersistentEventFactory } from '@hs/room';
 
 @singleton()
 export class MessageService {
@@ -36,73 +38,40 @@ export class MessageService {
 		@inject('FederationService')
 		private readonly federationService: FederationService,
 		@inject('RoomService') private readonly roomService: RoomService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	async sendMessage(
 		roomId: string,
 		message: string,
 		senderUserId: string,
-		targetServer: string,
-	): Promise<SignedEvent<RoomMessageEvent>> {
-		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
-		if (isTombstoned) {
-			this.logger.warn(
-				`Attempted to react to a message in a tombstoned room: ${roomId}`,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} white trying to send message`,
 			);
-			throw new ForbiddenError('Cannot send message to a tombstoned room');
 		}
-		const serverName = this.configService.getServerConfig().name;
-		const signingKey = await this.configService.getSigningKey();
 
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
-			{ roomId, senderId: senderUserId },
-		);
-
-		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
-		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
-
-		const currentDepth = latestEventDoc?.event?.depth ?? 0;
-		const newDepth = currentDepth + 1;
-
-		const authEventsMap: MessageAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
-		};
-
-		const { state_key, ...eventForSigning } = roomMessageEvent({
+		const event = PersistentEventFactory.newMessageEvent(
 			roomId,
-			sender: senderUserId,
-			auth_events: authEventsMap,
-			prev_events: prevEvents,
-			depth: newDepth,
-			content: {
-				msgtype: 'm.text',
-				body: message,
-				'm.mentions': {},
-			},
-			origin: serverName,
-			ts: Date.now(),
-		});
-
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
+			senderUserId,
+			message,
+			roomVersion,
 		);
 
-		const eventId = generateId(signedEvent);
-		await this.federationService.sendEvent(targetServer, signedEvent);
-		await this.eventService.insertEvent(signedEvent, eventId);
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
 
-		this.logger.info(`Sent message to ${targetServer} - ${eventId}`);
+		await this.stateService.signEvent(event);
 
-		return { ...signedEvent, event_id: eventId };
+		await this.stateService.saveMessage(event);
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
 	}
 
 	async sendReaction(

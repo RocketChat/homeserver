@@ -15,10 +15,10 @@ import { checkEventAuthWithState } from '@hs/room';
 type State = Map<StateMapKey, PersistentEventBase>;
 
 type StrippedRoomState = {
-	content: PduContent,
-	sender: string,
-	state_key: string,
-	type: PduType
+	content: PduContent;
+	sender: string;
+	state_key: string;
+	type: PduType;
 };
 
 @singleton()
@@ -214,9 +214,10 @@ export class StateService {
 
 		return finalState;
 	}
-	
-	
-	public async getStrippedRoomState(roomId: string): Promise<StrippedRoomState[]> {
+
+	public async getStrippedRoomState(
+		roomId: string,
+	): Promise<StrippedRoomState[]> {
 		const state = await this.getFullRoomState(roomId);
 
 		const strippedState: StrippedRoomState[] = [];
@@ -549,6 +550,57 @@ export class StateService {
 		});
 
 		return stateMappings.map((stateMapping) => stateMapping.roomId).toArray();
+	}
+
+	async saveMessage(event: PersistentEventBase) {
+		const room = await this.getFullRoomState(event.roomId);
+
+		const roomVersion = room
+			.get('m.room.create:')
+			?.getContent<PduCreateEventContent>().room_version as RoomVersion;
+
+		const requiredAuthEventsWeHaveSeen = new Map<string, PersistentEventBase>();
+		for (const auth of event.getAuthEventStateKeys()) {
+			const authEvent = room.get(auth);
+			if (authEvent) {
+				requiredAuthEventsWeHaveSeen.set(authEvent.eventId, authEvent);
+			}
+		}
+
+		// auth events referenced in the message
+		const store = this._getStore(roomVersion);
+		const authEventsReferencedInMessage = await store.getEvents(
+			event.event.auth_events as string[],
+		);
+		const authEventsReferenced = new Map<string, PersistentEventBase>();
+		for (const authEvent of authEventsReferencedInMessage) {
+			authEventsReferenced.set(authEvent.eventId, authEvent);
+		}
+
+		// both auth events set must match
+		if (requiredAuthEventsWeHaveSeen.size !== authEventsReferenced.size) {
+			throw new Error('Auth events referenced in message do not match');
+		}
+
+		for (const [eventId] of requiredAuthEventsWeHaveSeen) {
+			if (!authEventsReferenced.has(eventId)) {
+				throw new Error('wrong auth event in message');
+			}
+		}
+
+		// now we validate against auth rules
+		await checkEventAuthWithState(event, room, store);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		// TODO: save event still but with mark
+
+		// now we persist the event
+		const eventsCollection = await this.eventRepository.getCollection();
+		await eventsCollection.insertOne(event.event as any);
+
+		// transactions not handled here, since we can use this method as part of a "transaction receive"
 	}
 
 	async getAllPublicRoomIdsAndNames() {

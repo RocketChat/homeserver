@@ -21,41 +21,6 @@ import {
 export const internalMessagePlugin = (app: Elysia) => {
 	const messageService = container.resolve(MessageService);
 	return app
-		.post(
-			'/internal/messages',
-			async ({
-				body,
-				set,
-			}): Promise<InternalMessageResponse | ErrorResponse> => {
-				const { roomId, message, senderUserId, targetServer } = body;
-				try {
-					return await messageService.sendMessage(
-						roomId,
-						message,
-						senderUserId,
-						targetServer,
-					);
-				} catch (error) {
-					set.status = 500;
-					return {
-						error: `Failed to send message: ${error instanceof Error ? error.message : String(error)}`,
-						details: {},
-					};
-				}
-			},
-			{
-				body: InternalSendMessageBodyDto,
-				response: {
-					200: InternalMessageResponseDto,
-					500: ErrorResponseDto,
-				},
-				detail: {
-					tags: ['Internal'],
-					summary: 'Send a message to a room',
-					description: 'Send a text message to a Matrix room',
-				},
-			},
-		)
 		.patch(
 			'/internal/messages/:messageId',
 			async ({
