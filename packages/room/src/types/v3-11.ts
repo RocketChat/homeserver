@@ -335,6 +335,16 @@ export type PduRoomNameEventContent = z.infer<
 	typeof PduRoomNameEventContentSchema
 >;
 
+export const PduMessageEventContentSchema = z.object({
+	body: z.string().describe('The body of the message.'),
+	// TODO: add more types
+	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
+});
+
+export type PduMessageEventContent = z.infer<
+	typeof PduMessageEventContentSchema
+>;
+
 export const PduContentSchema = z
 	.union([
 		PduMembershipEventContentSchema,
@@ -343,6 +353,7 @@ export const PduContentSchema = z
 		PduPowerLevelsEventContentSchema,
 		PduCanonicalAliasEventContentSchema,
 		PduRoomNameEventContentSchema,
+		PduMessageEventContentSchema,
 	])
 	.describe(
 		'The content of the event. This is an object with arbitrary keys and values.',
@@ -450,6 +461,12 @@ export function generatePduSchemaForBase<T>(base: T) {
 			...base,
 			type: z.literal(PduTypeRoomAliases),
 			content: PduCanonicalAliasEventContentSchema,
+		}),
+
+		z.object({
+			...base,
+			type: z.literal(PduTypeRoomMessage),
+			content: PduMessageEventContentSchema,
 		}),
 	]);
 }
