@@ -463,7 +463,7 @@ export class StateService {
 			lastState?._id?.toString(),
 		);
 
-		const state = await this.findStateAtEvent(lastEvent.eventId);
+		const state = await this.findStateAtEvent(lastEvent._id);
 
 		await this._persistEventAgainstState(event, state);
 
@@ -552,18 +552,25 @@ export class StateService {
 		return stateMappings.map((stateMapping) => stateMapping.roomId).toArray();
 	}
 
-	async saveMessage(event: PersistentEventBase) {
+	async persistTimelineEvent(event: PersistentEventBase) {
+		const exists = await this.eventRepository.findById(event.eventId);
+		if (exists) {
+			return;
+		}
+		
+		const roomVersion = event.isCreateEvent() ? (event.getContent<PduCreateEventContent>().room_version as RoomVersion) : await this.getRoomVersion(event.roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found when trying to persist a timeline event');
+		}
+		
 		const room = await this.getFullRoomState(event.roomId);
-
-		const roomVersion = room
-			.get('m.room.create:')
-			?.getContent<PduCreateEventContent>().room_version as RoomVersion;
-
-		const requiredAuthEventsWeHaveSeen = new Map<string, PersistentEventBase>();
+		
+		// we need the auth events required to validate this event from our state
+		const requiredAuthEventsWeHaveSeenMap = new Map<string, PersistentEventBase>();
 		for (const auth of event.getAuthEventStateKeys()) {
 			const authEvent = room.get(auth);
 			if (authEvent) {
-				requiredAuthEventsWeHaveSeen.set(authEvent.eventId, authEvent);
+				requiredAuthEventsWeHaveSeenMap.set(authEvent.eventId, authEvent);
 			}
 		}
 
@@ -572,19 +579,25 @@ export class StateService {
 		const authEventsReferencedInMessage = await store.getEvents(
 			event.event.auth_events as string[],
 		);
-		const authEventsReferenced = new Map<string, PersistentEventBase>();
+		const authEventsReferencedMap = new Map<string, PersistentEventBase>();
 		for (const authEvent of authEventsReferencedInMessage) {
-			authEventsReferenced.set(authEvent.eventId, authEvent);
+			authEventsReferencedMap.set(authEvent.eventId, authEvent);
 		}
+		
+		// While auth_events in this timeline event may not be wrong and ones we have seen, they can still point to old state events, and validating against them will fail.
+		// by doing this precheck we allow the method to exit quicker.
 
 		// both auth events set must match
-		if (requiredAuthEventsWeHaveSeen.size !== authEventsReferenced.size) {
-			throw new Error('Auth events referenced in message do not match');
+		if (requiredAuthEventsWeHaveSeenMap.size !== authEventsReferencedMap.size) {
+			// incorrect length may mean either redacted event still referenced or event in state that wasn't referenced, both cases, reject the event
+			event.reject(`Auth events referenced in message do not match, expected ${requiredAuthEventsWeHaveSeenMap.size} but got ${authEventsReferencedMap.size}`);
+			throw new Error(event.rejectedReason);
 		}
 
-		for (const [eventId] of requiredAuthEventsWeHaveSeen) {
-			if (!authEventsReferenced.has(eventId)) {
-				throw new Error('wrong auth event in message');
+		for (const [eventId] of requiredAuthEventsWeHaveSeenMap) {
+			if (!authEventsReferencedMap.has(eventId)) {
+				event.reject(`wrong auth event in message, expected ${eventId} but not found in event`);
+				throw new Error(event.rejectedReason);
 			}
 		}
 
@@ -597,8 +610,7 @@ export class StateService {
 		// TODO: save event still but with mark
 
 		// now we persist the event
-		const eventsCollection = await this.eventRepository.getCollection();
-		await eventsCollection.insertOne(event.event as any);
+		await this.eventRepository.create(event.event as any, event.eventId, '' /* no state id for you */);
 
 		// transactions not handled here, since we can use this method as part of a "transaction receive"
 	}

@@ -19,6 +19,8 @@ import type { RoomRepository } from '../repositories/room.repository';
 import type { KeyRepository } from '../repositories/key.repository';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
 import { eventSchemas } from '../utils/event-schemas';
+import { StateService } from './state.service';
+import { PersistentEventFactory } from '@hs/room';
 
 type ValidationResult = {
 	eventId: string;
@@ -89,6 +91,7 @@ export class EventService {
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('StagingAreaQueue')
 		private readonly stagingAreaQueue: StagingAreaQueue,
+		private readonly stateService: StateService,
 	) {}
 
 	async getEventById<T extends EventBaseWithOptionalId>(
@@ -551,33 +554,11 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(
-		event: EventBaseWithOptionalId,
-	): Promise<string | null> {
-		if (event.type === 'm.room.create' && event.state_key === '') {
-			const roomVersion = event.content?.room_version;
-			if (roomVersion) {
-				this.logger.debug(
-					`Extracted room version ${roomVersion} from create event`,
-				);
-				return roomVersion as string;
-			}
-		}
-
-		const cachedRoomVersion = await this.roomRepository.getRoomVersion(
-			event.room_id,
+	private async getRoomVersion(event: EventBaseWithOptionalId) {
+		return (
+			this.stateService.getRoomVersion(event.room_id) ||
+			PersistentEventFactory.defaultRoomVersion
 		);
-		if (cachedRoomVersion) {
-			this.logger.debug(
-				`Using cached room version ${cachedRoomVersion} for room ${event.room_id}`,
-			);
-			return cachedRoomVersion;
-		}
-
-		this.logger.warn(
-			`Could not determine room version for ${event.room_id}, using default version 10`,
-		);
-		return '10';
 	}
 
 	private getEventSchema(roomVersion: string, eventType: string): z.ZodSchema {
@@ -664,7 +645,7 @@ export class EventService {
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
 		const events = await this.eventRepository.find(
-			{ eventId: { $in: eventIds } },
+			{ _id: { $in: eventIds } },
 			{},
 		);
 

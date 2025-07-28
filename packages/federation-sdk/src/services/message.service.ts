@@ -67,7 +67,10 @@ export class MessageService {
 
 		await this.stateService.signEvent(event);
 
-		await this.stateService.saveMessage(event);
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
 
