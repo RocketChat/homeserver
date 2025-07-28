@@ -262,7 +262,9 @@ export class FederationService {
 		return await this.requestService.put<any>(residentServer, uri, {
 			event: inviteEvent.event,
 			room_version: roomVersion,
-			invite_room_state: await this.stateService.getStrippedRoomState(inviteEvent.roomId),
+			invite_room_state: await this.stateService.getStrippedRoomState(
+				inviteEvent.roomId,
+			),
 		});
 	}
 
@@ -283,7 +285,7 @@ export class FederationService {
 			}
 
 			const txn: Transaction = {
-				origin: this.configService.serverName,
+				origin: 'rc1.tunnel.dev.rocket.chat', //this.configService.serverName,
 				origin_server_ts: Date.now(),
 				pdus: [event.event],
 				edus: [],

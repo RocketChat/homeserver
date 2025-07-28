@@ -285,6 +285,7 @@ export class EventService {
 	}
 
 	async processIncomingPDUs(pdus: EventBaseWithOptionalId[]): Promise<void> {
+		console.log('processIncomingPDUs', pdus);
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
