@@ -368,27 +368,29 @@ export class PersistentEventFactory {
 		);
 	}
 
-	static newJoinRuleEvent(
+	static newMessageEvent(
 		roomId: string,
 		sender: string,
-		joinRule: PduJoinRuleEventContent['join_rule'],
-		roomVersion: RoomVersion,
+		text: string,
+		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
 	) {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
 		const eventPartial: Omit<
-			PduForType<typeof PduTypeRoomJoinRules>,
+			PduForType<typeof PduTypeRoomMessage>,
 			'signatures' | 'hashes'
 		> = {
-			type: PduTypeRoomJoinRules,
-			content: { join_rule: joinRule },
+			type: PduTypeRoomMessage,
+			content: {
+				msgtype: 'm.text' as const,
+				body: text,
+			},
 			sender: sender,
 			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
-			state_key: '',
 			prev_events: [],
 			auth_events: [],
 			depth: 0,

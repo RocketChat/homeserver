@@ -260,25 +260,6 @@ export class StateService {
 		return strippedState;
 	}
 
-	public async getStrippedRoomState(
-		roomId: string,
-	): Promise<StrippedRoomState[]> {
-		const state = await this.getFullRoomState(roomId);
-
-		const strippedState: StrippedRoomState[] = [];
-
-		for (const event of state.values()) {
-			strippedState.push({
-				content: event.getContent(),
-				sender: event.sender,
-				state_key: event.stateKey as string, // state event
-				type: event.type,
-			});
-		}
-
-		return strippedState;
-	}
-
 	public _getStore(roomVersion: RoomVersion): EventStore {
 		const cache = new Map<string, PersistentEventBase>();
 
@@ -535,7 +516,7 @@ export class StateService {
 			lastState?._id?.toString(),
 		);
 
-		const state = await this.findStateAtEvent(lastEvent.eventId);
+		const state = await this.findStateAtEvent(lastEvent._id);
 
 		this.logState('state at last event seen:', state);
 
@@ -828,34 +809,6 @@ export class StateService {
 	async getServersInRoom(roomId: string) {
 		return this.getMembersOfRoom(roomId).then((members) =>
 			members.map((member) => member.split(':').pop()!),
-		);
-	}
-
-	async persistTimelineEvent(event: PersistentEventBase): Promise<void> {
-		const exists = await this.eventRepository.findById(event.eventId);
-		if (exists) {
-			return;
-		}
-
-		const roomVersion = await this.getRoomVersion(event.roomId);
-		if (!roomVersion) {
-			throw new Error('Room version not found');
-		}
-
-		const state = await this.getFullRoomState(event.roomId);
-
-		await checkEventAuthWithState(event, state, this._getStore(roomVersion));
-
-		if (event.rejected) {
-			throw new Error(event.rejectedReason);
-		}
-
-		const signedEvent = await this.signEvent(event);
-
-		await this.eventRepository.create(
-			signedEvent.event,
-			event.eventId,
-			'', // Empty stateId for timeline events
 		);
 	}
 }

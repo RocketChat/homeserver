@@ -694,13 +694,6 @@ describe('[EventWrapper] Redaction', () => {
 	});
 });
 
-function runTest(event: any, expected: any, roomVersion: RoomVersion = '10') {
-	expect(
-		PersistentEventFactory.createFromRawEvent(event, roomVersion as RoomVersion)
-			.redactedRawEvent,
-	).toEqual(expected);
-}
-
 describe('[EventWrapper] Redaction', () => {
 	it('minimal', () => {
 		runTest(

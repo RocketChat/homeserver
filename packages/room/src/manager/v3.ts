@@ -72,46 +72,4 @@ export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
 			[PduTypeRoomHistoryVisibility]: ['history_visibility'],
 		};
 	}
-
-	getAllowedKeys(): string[] {
-		return [
-			'event_id',
-			'type',
-			'room_id',
-			'sender',
-			'state_key',
-			'hashes',
-			'signatures',
-			'depth',
-			'prev_events',
-			'auth_events',
-			'origin_server_ts',
-			'origin',
-			'prev_state',
-			'membership',
-		];
-	}
-
-	getAllowedContentKeys(): Record<
-		string,
-		string[] | typeof REDACT_ALLOW_ALL_KEYS
-	> {
-		return {
-			[PduTypeRoomCreate]: ['creator'],
-			[PduTypeRoomMember]: ['membership'],
-			[PduTypeRoomJoinRules]: ['join_rule'],
-			[PduTypeRoomPowerLevels]: [
-				'users',
-				'users_default',
-				'events',
-				'events_default',
-				'state_default',
-				'ban',
-				'kick',
-				'redact',
-			],
-			[PduTypeRoomAliases]: ['aliases'],
-			[PduTypeRoomHistoryVisibility]: ['history_visibility'],
-		};
-	}
 }

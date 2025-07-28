@@ -40,7 +40,7 @@ export const makeJoinEventBuilder =
 			sender: userId,
 			state_key: userId,
 			auth_events: authEvents,
-			prev_events: [lastEvent.eventId],
+			prev_events: [lastEvent._id],
 			depth: lastEvent.event.depth + 1,
 			origin,
 			ts: Date.now(),

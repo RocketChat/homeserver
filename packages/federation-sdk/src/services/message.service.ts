@@ -143,7 +143,7 @@ export class MessageService {
 		const redactionEvent = PersistentEventFactory.newRedactionEvent(
 			roomId,
 			senderUserId,
-			reactionToRedact.eventId,
+			reactionToRedact._id,
 			'Unsetting reaction',
 			roomInfo.room_version as RoomVersion,
 		);

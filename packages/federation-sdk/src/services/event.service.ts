@@ -720,7 +720,7 @@ export class EventService {
 
 				if (eventTypeKey && currentEventType) {
 					authEvents.push({
-						_id: storeEvent.eventId,
+						_id: storeEvent._id,
 						type: currentEventType,
 						...(currentStateKey !== undefined && {
 							state_key: currentStateKey,
