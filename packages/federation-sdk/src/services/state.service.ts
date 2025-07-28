@@ -240,9 +240,10 @@ export class StateService {
 
 		return finalState;
 	}
-	
-	
-	public async getStrippedRoomState(roomId: string): Promise<StrippedRoomState[]> {
+
+	public async getStrippedRoomState(
+		roomId: string,
+	): Promise<StrippedRoomState[]> {
 		const state = await this.getFullRoomState(roomId);
 
 		const strippedState: StrippedRoomState[] = [];
