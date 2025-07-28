@@ -66,6 +66,7 @@ export function createFederationContainer(
 	container.registerSingleton('ConfigService', ConfigService);
 
 	// Register core services
+	container.registerSingleton('ConfigService', ConfigService);
 	container.registerSingleton(
 		'FederationConfigService',
 		FederationConfigService,
