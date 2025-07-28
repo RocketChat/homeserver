@@ -10,6 +10,7 @@ import {
 	PduTypeRoomCreate,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
+	PduTypeRoomMessage,
 	PduTypeRoomName,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomRedaction,
@@ -305,8 +306,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
+		// Note: event_id will be filled by the event wrapper on first access
 		const eventPartial = {
-			event_id: '', // Will be filled by the event wrapper on first access
 			type: PduTypeReaction,
 			content: {
 				'm.relates_to': {
@@ -316,7 +317,7 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
+			origin: sender.split(':').pop() ?? '',
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			// NO state_key - this is a timeline event
@@ -327,7 +328,7 @@ export class PersistentEventFactory {
 		};
 
 		return PersistentEventFactory.createFromRawEvent(
-			eventPartial as any,
+			eventPartial as unknown as Omit<Pdu, 'signatures' | 'hashes'>,
 			roomVersion,
 		);
 	}
@@ -343,15 +344,15 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
+		// Note: event_id will be filled by the event wrapper on first access
 		const eventPartial = {
-			event_id: '', // Will be filled by the event wrapper on first access
 			type: PduTypeRoomRedaction,
 			content: {
 				redacts: eventIdToRedact,
 				...(reason && { reason }),
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
+			origin: sender.split(':').pop() ?? '',
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			// NO state_key - this is a timeline event
@@ -362,7 +363,7 @@ export class PersistentEventFactory {
 		};
 
 		return PersistentEventFactory.createFromRawEvent(
-			eventPartial as any,
+			eventPartial as unknown as Omit<Pdu, 'signatures' | 'hashes'>,
 			roomVersion,
 		);
 	}

@@ -12,14 +12,16 @@ import {
 	redactionEvent,
 } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { generateId } from '@hs/core';
 import { signEvent } from '@hs/core';
-import { PersistentEventFactory, type RoomVersion } from '@hs/room';
+import {
+	type PersistentEventBase,
+	PersistentEventFactory,
+	type RoomVersion,
+} from '@hs/room';
 import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
 import type { EventRepository } from '../repositories/event.repository';
 import type { ConfigService } from './config.service';
-import { EventEmitterService } from './event-emitter.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
@@ -38,8 +40,6 @@ export class MessageService {
 		@inject('StateService') private readonly stateService: StateService,
 		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		@inject(EventEmitterService)
-		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	async sendMessage(
