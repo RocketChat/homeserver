@@ -1,3 +1,8 @@
+import {
+	createLogger,
+	generateKeyPairsFromString,
+	toUnpaddedBase64,
+} from '@hs/core';
 import { inject, singleton } from 'tsyringe';
 import type { FederationModuleOptions } from '../types';
 
@@ -12,12 +17,18 @@ export class FederationConfigService {
 		return this.options.serverName;
 	}
 
-	get signingKey(): string {
-		return this.options.signingKey;
+	async getSigningKey(): Promise<string> {
+		const signingKey = await generateKeyPairsFromString(
+			this.options.signingKey,
+		);
+		return toUnpaddedBase64(signingKey.privateKey);
 	}
 
-	get signingKeyId(): string {
-		return this.options.signingKeyId || 'ed25519:1';
+	async getSigningKeyId(): Promise<string> {
+		const signingKey = await generateKeyPairsFromString(
+			this.options.signingKey,
+		);
+		return `${signingKey.algorithm}:${signingKey.version}` || 'ed25519:1';
 	}
 
 	get timeout(): number {

@@ -1,9 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createLogger, getKeyPair } from '@hs/core';
+import { createLogger, generateKeyPairsFromString, getKeyPair } from '@hs/core';
 import * as dotenv from 'dotenv';
 
-import { singleton } from 'tsyringe';
+import { container, singleton } from 'tsyringe';
+import { FederationModuleOptions } from '../types';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
@@ -28,7 +29,7 @@ export interface AppConfig {
 		keyRefreshInterval: number;
 	};
 
-	signingKey?: any;
+	signingKey?: unknown;
 	signingKeyPath?: string;
 	path?: string;
 }
@@ -62,6 +63,21 @@ export class ConfigService {
 
 	async getSigningKey() {
 		return this.loadSigningKey();
+	}
+
+	async reconstructSigningKey(keyData: string) {
+		this.logger.info('Reconstructing signing key from settings data');
+
+		try {
+			const signingKey = await generateKeyPairsFromString(keyData);
+			this.logger.info('Successfully reconstructed signing key from settings');
+			return signingKey;
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'Unknown error';
+			this.logger.error(`Failed to reconstruct signing key: ${errorMessage}`);
+			throw error;
+		}
 	}
 
 	private loadEnvFiles(): void {
@@ -100,17 +116,24 @@ export class ConfigService {
 	}
 
 	async loadSigningKey() {
-		const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
-		this.logger.info(`Loading signing key from ${signingKeyPath}`);
+		const federationOptions =
+			container.resolve<FederationModuleOptions>('FEDERATION_OPTIONS');
+		if (federationOptions?.signingKey) {
+			return [await this.reconstructSigningKey(federationOptions.signingKey)];
+		}
 
 		try {
+			const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
+			this.logger.info(`Loading signing key from ${signingKeyPath}`);
 			const keys = await getKeyPair({ signingKeyPath });
 			this.logger.info(
 				`Successfully loaded signing key for server ${this.config.server.name}`,
 			);
 			return keys;
-		} catch (error: any) {
-			this.logger.error(`Failed to load signing key: ${error.message}`);
+		} catch (error: unknown) {
+			const errorMessage =
+				error instanceof Error ? error.message : 'Unknown error';
+			this.logger.error(`Failed to load signing key: ${errorMessage}`);
 			throw error;
 		}
 	}
@@ -141,7 +164,8 @@ export class ConfigService {
 	}
 
 	private getNumberFromEnv(key: string, defaultValue: number): number {
-		return process.env[key] ? Number.parseInt(process.env[key]!) : defaultValue;
+		const envValue = process.env[key];
+		return envValue ? Number.parseInt(envValue) : defaultValue;
 	}
 
 	getServerName(): string {
