@@ -70,7 +70,6 @@ export * from './events/utils/createSignedEvent';
 export * from './models/event.model';
 
 // Procedures
-export { createRoom, type IdAndEvent } from './procedures/createRoom';
 export { makeJoinEventBuilder } from './procedures/makeJoin';
 export { makeGetMissingEventsProcedure } from './procedures/getMissingEvents';
 export {

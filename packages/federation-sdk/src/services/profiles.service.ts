@@ -7,6 +7,8 @@ import type { AuthEvents, EventBase, RoomMemberEvent } from '@hs/core';
 import type { EventStore } from '@hs/core';
 import { inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
+import { StateService } from './state.service';
 
 @singleton()
 export class ProfilesService {
@@ -18,6 +20,7 @@ export class ProfilesService {
 		// private readonly roomService: RoomService,
 		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 	async queryProfile(userId: string): Promise<{
 		avatar_url: string;
@@ -65,58 +68,35 @@ export class ProfilesService {
 	async makeJoin(
 		roomId: string,
 		userId: string,
-		version?: string[],
+		versions: RoomVersion[], // asking server supports these
 	): Promise<{
 		event: RoomMemberEvent;
 		room_version: string;
 	}> {
-		if (!userId.includes(':') || !userId.includes('@')) {
-			throw new Error('Invalid sender');
+		const stateService = this.stateService;
+		const roomInformation = await stateService.getRoomInformation(roomId);
+
+		const roomVersion = roomInformation.room_version as RoomVersion;
+
+		if (!versions.includes(roomVersion)) {
+			throw new Error(`Unsupported room version: ${roomVersion}`);
 		}
-		if (!roomId.includes(':') || !roomId.includes('!')) {
-			throw new Error('Invalid room Id');
-		}
 
-		const getAuthEvents = async (roomId: string): Promise<AuthEvents> => {
-			const authEvents =
-				await this.eventRepository.findAuthEventsIdsByRoomId(roomId);
-			const eventsDict = authEvents.reduce(
-				(acc, event) => {
-					const isMemberEvent =
-						event.event.type === 'm.room.member' && event.event.state_key;
-					if (isMemberEvent) {
-						acc[`m.room.member:${event.event.state_key}`] = event._id;
-					} else {
-						acc[event.event.type] = event._id;
-					}
+		const membershipEvent = PersistentEventFactory.newMembershipEvent(
+			roomId,
+			userId,
+			userId,
+			'join',
+			roomInformation,
+		);
 
-					return acc;
-				},
-				{} as Record<string, string>,
-			);
+		await stateService.addAuthEvents(membershipEvent);
+		await stateService.addPrevEvents(membershipEvent);
 
-			return {
-				'm.room.create': eventsDict['m.room.create'],
-				'm.room.power_levels': eventsDict['m.room.power_levels'],
-				'm.room.join_rules': eventsDict['m.room.join_rules'],
-				...(eventsDict[`m.room.member:${userId}`]
-					? {
-							[`m.room.member:${userId}`]:
-								eventsDict[`m.room.member:${userId}`],
-						}
-					: {}),
-			};
+		return {
+			room_version: roomVersion,
+			event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
 		};
-
-		const getLastEvent = async (roomId: string): Promise<EventStore | null> =>
-			this.eventService.getLastEventForRoom(roomId);
-
-		const makeJoinEvent = makeJoinEventBuilder(getLastEvent, getAuthEvents);
-		const serverName = this.configService.getServerConfig().name;
-
-		const versionArray = version ? version : ['1'];
-
-		return makeJoinEvent(roomId, userId, versionArray, serverName);
 	}
 
 	async getMissingEvents(

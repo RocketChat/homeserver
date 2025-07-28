@@ -10,6 +10,9 @@ import { EventStateService } from './event-state.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
+import { EventEmitterService } from './event-emitter.service';
+import { Pdu, PersistentEventFactory } from '@hs/room';
+import { StateService } from './state.service';
 
 // ProcessingState indicates where in the flow an event is
 enum ProcessingState {
@@ -42,6 +45,8 @@ export class StagingAreaService {
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly eventAuthService: EventAuthorizationService,
 		private readonly eventStateService: EventStateService,
+		private readonly eventEmitterService: EventEmitterService,
+		private readonly stateService: StateService,
 	) {
 		this.processQueue();
 	}
@@ -240,10 +245,26 @@ export class StagingAreaService {
 
 		try {
 			this.logger.debug(`Resolving state for event ${eventId}`);
-			const isStateEvent = event.event.state_key !== undefined;
+			const roomVersion = await this.stateService.getRoomVersion(event.roomId);
+			if (!roomVersion) {
+				throw new Error('processStateResolutionStage: Room version not found');
+			}
 
-			if (isStateEvent) {
-				await this.eventStateService.resolveState(event.roomId, event.eventId);
+			const pdu = PersistentEventFactory.createFromRawEvent(
+				event.event as Pdu,
+				roomVersion,
+			);
+
+			if (pdu.isState()) {
+				await this.stateService.persistStateEvent(pdu);
+				if (pdu.rejected) {
+					throw new Error(pdu.rejectedReason);
+				}
+			} else {
+				await this.stateService.persistTimelineEvent(pdu);
+				if (pdu.rejected) {
+					throw new Error(pdu.rejectedReason);
+				}
 			}
 
 			trackedEvent.state = ProcessingState.PENDING_PERSISTENCE;
@@ -268,7 +289,8 @@ export class StagingAreaService {
 
 		try {
 			this.logger.debug(`Persisting event ${eventId}`);
-			await this.eventService.insertEvent(event.event as any);
+			// await this.eventService.insertEvent(event.event as any);
+			console.log('Skipping persistence stage, persisted in previous stage'); // TODO: revisit
 
 			trackedEvent.state = ProcessingState.PENDING_FEDERATION;
 			this.processingEvents.set(eventId, trackedEvent);
@@ -330,7 +352,25 @@ export class StagingAreaService {
 		try {
 			this.logger.debug(`Notifying clients about event ${eventId}`);
 
-			// await this.notificationService.notifyClientsOfEvent(event.roomId, event.event);
+			switch (event.event.type) {
+				case EventType.MESSAGE:
+					this.eventEmitterService.emit('homeserver.matrix.message', {
+						event_id: event.eventId,
+						room_id: event.roomId,
+						sender: event.event.sender,
+						origin_server_ts: event.event.origin_server_ts,
+						content: {
+							body: event.event.content?.body as string,
+							msgtype: event.event.content?.msgtype as string,
+						},
+					});
+					break;
+				default:
+					this.logger.warn(
+						`Unknown event type: ${event.event.type} for emitterService for now`,
+					);
+					break;
+			}
 
 			trackedEvent.state = ProcessingState.COMPLETED;
 		} catch (error: unknown) {

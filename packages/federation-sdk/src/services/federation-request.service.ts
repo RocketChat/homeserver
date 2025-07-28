@@ -62,7 +62,7 @@ export class FederationRequestService {
 			let signedBody: Record<string, unknown> | undefined;
 			if (body) {
 				signedBody = await signJson(
-					computeAndMergeHash({ ...body, signatures: {} }),
+					body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
 					signingKey,
 					serverName,
 				);

@@ -101,8 +101,6 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	container.registerSingleton('RoomService', RoomService);
 	container.registerSingleton(RoomService);
 	container.registerSingleton(ServerService);
-	container.registerSingleton('StagingAreaService', StagingAreaService);
-	container.registerSingleton(StagingAreaService);
 	container.registerSingleton(WellKnownService);
 	container.registerSingleton(SendJoinService);
 
@@ -113,6 +111,9 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	// Register listeners
 	container.registerSingleton('MissingEventListener', MissingEventListener);
 	container.registerSingleton('StagingAreaListener', StagingAreaListener);
+
+	container.registerSingleton('StagingAreaService', StagingAreaService);
+	container.registerSingleton(StagingAreaService);
 
 	// Register lock manager with configuration
 	container.register(LockManagerService, {
@@ -128,8 +129,15 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	}
 
 	// Initialize listeners
-	container.resolve(StagingAreaListener);
-	container.resolve(MissingEventListener);
+	const y = container.resolve(StagingAreaListener);
+	const x = container.resolve(MissingEventListener);
+	
+	// @ts-ignore
+	x.stagingAreaService.missingEventsService.missingEventsQueue = x.missingEventsQueue;
+	// @ts-ignore
+	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
+	
+	console.log(x, y);
 
 	return container;
 }

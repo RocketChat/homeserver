@@ -21,14 +21,14 @@ export class EventRepository {
 
 	async findById(eventId: string): Promise<EventStore | null> {
 		const collection = await this.getCollection();
-		return collection.findOne({ eventId: eventId });
+		return collection.findOne({ _id: eventId });
 	}
 
 	async findByIds(eventIds: string[]): Promise<EventStore[]> {
 		if (!eventIds.length) return [];
 
 		const collection = await this.getCollection();
-		return collection.find({ eventId: { $in: eventIds } }).toArray();
+		return collection.find({ _id: { $in: eventIds } }).toArray();
 	}
 
 	async findByRoomId(
@@ -53,7 +53,7 @@ export class EventRepository {
 
 		const collection = await this.getCollection();
 		return collection
-			.find({ 'event.room_id': roomId, eventId: { $in: eventIds } })
+			.find({ 'event.room_id': roomId, _id: { $in: eventIds } })
 			.toArray();
 	}
 
@@ -85,16 +85,14 @@ export class EventRepository {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
-		const existingEvent = await collection.findOne({ eventId: id });
+		const existingEvent = await collection.findOne({ _id: id });
 		if (existingEvent) return id;
 
 		await collection.insertOne({
-			// @ts-ignore idk why complaining
-			eventId: id,
+			_id: id,
 			event,
 			stateId: '',
 			createdAt: new Date(),
-			_id: '',
 			nextEventId: '',
 		});
 
@@ -130,13 +128,11 @@ export class EventRepository {
 		const id = event.event_id || generateId(event);
 
 		await collection.insertOne({
-			// @ts-ignore idk why complaining (2)
-			eventId: id,
+			_id: id,
 			event,
 			stateId: '',
 			staged: true,
 			createdAt: new Date(),
-			_id: '',
 			nextEventId: '',
 		});
 
@@ -147,7 +143,7 @@ export class EventRepository {
 		const collection = await this.getCollection();
 
 		await collection.updateOne(
-			{ eventId: eventId },
+			{ _id: eventId },
 			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
 	}
@@ -157,8 +153,8 @@ export class EventRepository {
 		const id = event.event_id || generateId(event);
 
 		await collection.updateOne(
-			{ eventId: id },
-			{ $set: { eventId: id, event } },
+			{ _id: id },
+			{ $set: { _id: id, event } },
 			{ upsert: true },
 		);
 
@@ -168,7 +164,7 @@ export class EventRepository {
 	async removeFromStaging(roomId: string, eventId: string): Promise<void> {
 		const collection = await this.getCollection();
 		await collection.updateOne(
-			{ eventId: eventId, 'event.room_id': roomId },
+			{ _id: eventId, 'event.room_id': roomId },
 			{ $unset: { staged: 1 } },
 		);
 	}
@@ -239,7 +235,7 @@ export class EventRepository {
 
 	async updateStateId(eventId: string, stateId: string): Promise<void> {
 		const collection = await this.getCollection();
-		await collection.updateOne({ eventId: eventId }, { $set: { stateId } });
+		await collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 
 	// finds events not yet referenced by other events
@@ -247,7 +243,7 @@ export class EventRepository {
 	async findPrevEvents(roomId: string) {
 		const collection = await this.getCollection();
 		return collection
-			.find({ nextEventId: '', 'event.room_id': roomId })
+			.find({ nextEventId: '', 'event.room_id': roomId, _id: { $ne: '' } })
 			.toArray();
 	}
 
@@ -255,15 +251,12 @@ export class EventRepository {
 		const collection = await this.getCollection();
 
 		try {
-			// @ts-ignore ??? need to unify the typings
 			await collection.insertOne({
-				// @ts-ignore ???
-				eventId: eventId,
+				_id: eventId,
 				event: event,
 				stateId: stateId,
 				createdAt: new Date(),
 				nextEventId: '', // new events are not expected to have forward edges
-				// _id: undefined,
 			});
 		} catch (e) {
 			if (e instanceof MongoError) {
@@ -279,7 +272,7 @@ export class EventRepository {
 
 		// this must happen later to as to avoid finding 0 prev_events on a parallel request
 		await collection.updateMany(
-			{ eventId: { $in: event.prev_events as string[] } },
+			{ _id: { $in: event.prev_events as string[] } },
 			{ $set: { nextEventId: eventId } },
 		);
 

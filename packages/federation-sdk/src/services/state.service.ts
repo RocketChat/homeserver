@@ -1,7 +1,7 @@
 import { inject, singleton } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { StateMapKey } from '@hs/room';
+import type { PduContent, PduType, StateMapKey } from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
@@ -13,6 +13,13 @@ import { signEvent } from '@hs/core';
 import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
+
+type StrippedRoomState = {
+	content: PduContent;
+	sender: string;
+	state_key: string;
+	type: PduType;
+};
 
 @singleton()
 export class StateService {
@@ -208,6 +215,25 @@ export class StateService {
 		return finalState;
 	}
 
+	public async getStrippedRoomState(
+		roomId: string,
+	): Promise<StrippedRoomState[]> {
+		const state = await this.getFullRoomState(roomId);
+
+		const strippedState: StrippedRoomState[] = [];
+
+		for (const event of state.values()) {
+			strippedState.push({
+				content: event.getContent(),
+				sender: event.sender,
+				state_key: event.stateKey as string, // state event
+				type: event.type,
+			});
+		}
+
+		return strippedState;
+	}
+
 	public _getStore(roomVersion: RoomVersion): EventStore {
 		const cache = new Map<string, PersistentEventBase>();
 
@@ -342,7 +368,7 @@ export class StateService {
 
 			const signedEvent = await this.signEvent(event);
 
-			this.eventRepository.create(
+			await this.eventRepository.create(
 				signedEvent.event as any,
 				event.eventId,
 				stateMappingId.toString(),
@@ -369,7 +395,7 @@ export class StateService {
 			// state did not change
 			// just persist the event
 			// TODO: mark rejected, although no code yet uses it so let it go
-			this.eventRepository.create(
+			await this.eventRepository.create(
 				resolvedEvent.event as any /* TODO: fix this with type unifi */,
 				resolvedEvent.eventId,
 				'',
@@ -437,7 +463,7 @@ export class StateService {
 			lastState?._id?.toString(),
 		);
 
-		const state = await this.findStateAtEvent(lastEvent.eventId);
+		const state = await this.findStateAtEvent(lastEvent._id);
 
 		await this._persistEventAgainstState(event, state);
 
@@ -492,7 +518,7 @@ export class StateService {
 					// TODO: mark rejected, although no code yet uses it so let it go
 					const signedEvent = await this.signEvent(resolvedEvent);
 
-					this.eventRepository.create(
+					await this.eventRepository.create(
 						signedEvent.event as any,
 						resolvedEvent.eventId,
 						'',
@@ -524,6 +550,69 @@ export class StateService {
 		});
 
 		return stateMappings.map((stateMapping) => stateMapping.roomId).toArray();
+	}
+
+	async persistTimelineEvent(event: PersistentEventBase) {
+		const exists = await this.eventRepository.findById(event.eventId);
+		if (exists) {
+			return;
+		}
+		
+		const roomVersion = event.isCreateEvent() ? (event.getContent<PduCreateEventContent>().room_version as RoomVersion) : await this.getRoomVersion(event.roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found when trying to persist a timeline event');
+		}
+		
+		const room = await this.getFullRoomState(event.roomId);
+		
+		// we need the auth events required to validate this event from our state
+		const requiredAuthEventsWeHaveSeenMap = new Map<string, PersistentEventBase>();
+		for (const auth of event.getAuthEventStateKeys()) {
+			const authEvent = room.get(auth);
+			if (authEvent) {
+				requiredAuthEventsWeHaveSeenMap.set(authEvent.eventId, authEvent);
+			}
+		}
+
+		// auth events referenced in the message
+		const store = this._getStore(roomVersion);
+		const authEventsReferencedInMessage = await store.getEvents(
+			event.event.auth_events as string[],
+		);
+		const authEventsReferencedMap = new Map<string, PersistentEventBase>();
+		for (const authEvent of authEventsReferencedInMessage) {
+			authEventsReferencedMap.set(authEvent.eventId, authEvent);
+		}
+		
+		// While auth_events in this timeline event may not be wrong and ones we have seen, they can still point to old state events, and validating against them will fail.
+		// by doing this precheck we allow the method to exit quicker.
+
+		// both auth events set must match
+		if (requiredAuthEventsWeHaveSeenMap.size !== authEventsReferencedMap.size) {
+			// incorrect length may mean either redacted event still referenced or event in state that wasn't referenced, both cases, reject the event
+			event.reject(`Auth events referenced in message do not match, expected ${requiredAuthEventsWeHaveSeenMap.size} but got ${authEventsReferencedMap.size}`);
+			throw new Error(event.rejectedReason);
+		}
+
+		for (const [eventId] of requiredAuthEventsWeHaveSeenMap) {
+			if (!authEventsReferencedMap.has(eventId)) {
+				event.reject(`wrong auth event in message, expected ${eventId} but not found in event`);
+				throw new Error(event.rejectedReason);
+			}
+		}
+
+		// now we validate against auth rules
+		await checkEventAuthWithState(event, room, store);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		// TODO: save event still but with mark
+
+		// now we persist the event
+		await this.eventRepository.create(event.event as any, event.eventId, '' /* no state id for you */);
+
+		// transactions not handled here, since we can use this method as part of a "transaction receive"
 	}
 
 	async getAllPublicRoomIdsAndNames() {

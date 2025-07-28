@@ -1,10 +1,9 @@
 import { type Static, t } from 'elysia';
+import { EventBaseDto, MembershipEventContentDto } from '../common/event.dto';
 import {
-	DepthDto,
 	EventIdDto,
 	RoomIdDto,
 	ServerNameDto,
-	TimestampDto,
 	UsernameDto,
 } from '../common/validation.dto';
 
@@ -13,55 +12,19 @@ export const SendJoinParamsDto = t.Object({
 	stateKey: EventIdDto,
 });
 
-export const SendJoinEventDto = t.Object({
-	type: t.Literal('m.room.member'),
-	sender: UsernameDto,
-	room_id: RoomIdDto,
-	origin_server_ts: TimestampDto,
-	depth: DepthDto,
-	prev_events: t.Array(t.String()),
-	auth_events: t.Array(t.String()),
-	origin: t.String(),
-	hashes: t.Optional(
-		t.Object({
-			sha256: t.String(),
-		}),
-	),
-	signatures: t.Optional(
-		t.Record(t.String(), t.Record(t.String(), t.String())),
-	),
-	unsigned: t.Optional(
-		t.Object({
-			age: t.Number(),
-			age_ts: t.Number(),
-			invite_room_state: t.Optional(t.Array(t.Record(t.String(), t.Any()))),
-		}),
-	),
-	content: t.Object({
-		membership: t.Literal('join'),
-		join_rule: t.Union([
-			t.Literal('invite'),
-			t.Literal('knock'),
-			t.Literal('public'),
-			t.Literal('restricted'),
-			t.Literal('knock_restricted'),
-		]),
-		join_authorised_via_users_server: t.Optional(t.String()),
-		third_party_invite: t.Optional(
+export const SendJoinEventDto = t.Intersect([
+	EventBaseDto,
+	t.Object({
+		type: t.Literal('m.room.member'),
+		content: t.Intersect([
+			MembershipEventContentDto,
 			t.Object({
-				signed: t.Object({
-					mxid: t.String(),
-					token: t.String(),
-					signatures: t.Record(t.String(), t.Record(t.String(), t.String())),
-				}),
+				membership: t.Literal('join'),
 			}),
-		),
-		reason: t.Optional(t.String()),
-		avatar_url: t.Optional(t.Union([t.String(), t.Null()])),
-		displayname: t.Optional(t.Union([t.String(), t.Null()])),
+		]),
+		state_key: UsernameDto, // Using UsernameDto since it should be a user ID
 	}),
-	state_key: UsernameDto,
-});
+]);
 
 export const SendJoinResponseDto = t.Object({
 	event: t.Record(t.String(), t.Any(), {
