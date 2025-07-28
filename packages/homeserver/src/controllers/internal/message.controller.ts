@@ -66,15 +66,18 @@ export const internalMessagePlugin = (app: Elysia) => {
 				body,
 				set,
 			}): Promise<InternalReactionResponse | ErrorResponse> => {
-				const { roomId, emoji, senderUserId, targetServer } = body;
+				const { roomId, emoji, senderUserId } = body;
 				try {
-					return await messageService.sendReaction(
+					const eventId = await messageService.sendReaction(
 						roomId,
 						params.messageId,
 						emoji,
 						senderUserId,
-						targetServer,
 					);
+					return {
+						event_id: eventId,
+						origin_server_ts: Date.now(),
+					};
 				} catch (error) {
 					set.status = 500;
 					return {
@@ -94,6 +97,47 @@ export const internalMessagePlugin = (app: Elysia) => {
 					tags: ['Internal'],
 					summary: 'Send a reaction to a message',
 					description: 'Send a reaction to a message',
+				},
+			},
+		)
+		.delete(
+			'/internal/messages/:messageId/reactions',
+			async ({
+				params,
+				body,
+				set,
+			}): Promise<InternalReactionResponse | ErrorResponse> => {
+				const { roomId, emoji, senderUserId } = body;
+				try {
+					const eventId = await messageService.unsetReaction(
+						roomId,
+						params.messageId,
+						emoji,
+						senderUserId,
+					);
+					return {
+						event_id: eventId,
+						origin_server_ts: Date.now(),
+					};
+				} catch (error) {
+					set.status = 500;
+					return {
+						error: `Failed to unset reaction: ${error instanceof Error ? error.message : String(error)}`,
+						details: {},
+					};
+				}
+			},
+			{
+				params: InternalSendReactionParamsDto,
+				body: InternalSendReactionBodyDto,
+				response: {
+					200: InternalReactionResponseDto,
+					500: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Internal'],
+					summary: 'Unset a reaction from a message',
+					description: 'Remove a reaction from a message',
 				},
 			},
 		)

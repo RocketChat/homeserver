@@ -1,9 +1,4 @@
 import {
-	type ReactionAuthEvents,
-	type ReactionEvent,
-	reactionEvent,
-} from '@hs/core';
-import {
 	type MessageAuthEvents,
 	type RoomMessageEvent,
 	roomMessageEvent,
@@ -19,15 +14,16 @@ import {
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import { signEvent } from '@hs/core';
+import { PersistentEventFactory, type RoomVersion } from '@hs/room';
 import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
+import type { EventRepository } from '../repositories/event.repository';
 import type { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService, EventType } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
-import { StateService } from './state.service';
-import { PersistentEventBase, PersistentEventFactory } from '@hs/room';
+import type { StateService } from './state.service';
 
 @singleton()
 export class MessageService {
@@ -40,6 +36,10 @@ export class MessageService {
 		private readonly federationService: FederationService,
 		@inject('RoomService') private readonly roomService: RoomService,
 		@inject('StateService') private readonly stateService: StateService,
+		@inject('EventRepository')
+		private readonly eventRepository: EventRepository,
+		@inject(EventEmitterService)
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	async sendMessage(
@@ -83,77 +83,80 @@ export class MessageService {
 		eventId: string,
 		emoji: string,
 		senderUserId: string,
-		targetServer: string,
-	): Promise<SignedEvent<ReactionEvent>> {
+	): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
 			this.logger.warn(
-				`Attempted to send message to a tombstoned room: ${roomId}`,
+				`Attempted to react to a message in a tombstoned room: ${roomId}`,
 			);
 			throw new ForbiddenError(
 				'Cannot react to a message in a tombstoned room',
 			);
 		}
 
-		const serverName = this.configService.getServerConfig().name;
-		const signingKey = await this.configService.getSigningKey();
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
-		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
-
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.REACTION,
-			{ roomId, senderId: senderUserId },
-		);
-
-		const currentDepth = latestEventDoc?.event?.depth ?? 0;
-		const newDepth = currentDepth + 1;
-
-		const authEventsMap: ReactionAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
-		};
-
-		const { state_key, ...eventForSigning } = reactionEvent({
+		const reactionEvent = PersistentEventFactory.newReactionEvent(
 			roomId,
-			sender: senderUserId,
-			auth_events: authEventsMap,
-			prev_events: prevEvents,
-			depth: newDepth,
-			content: {
-				'm.relates_to': {
-					rel_type: 'm.annotation',
-					event_id: eventId,
-					key: emoji,
-				},
+			senderUserId,
+			eventId,
+			emoji,
+			roomInfo.room_version as RoomVersion,
+		);
+
+		await this.stateService.addAuthEvents(reactionEvent);
+
+		await this.stateService.addPrevEvents(reactionEvent);
+
+		await this.stateService.persistTimelineEvent(reactionEvent);
+
+		await this.federationService.sendEventToAllServersInRoom(reactionEvent);
+
+		return reactionEvent.eventId;
+	}
+
+	async unsetReaction(
+		roomId: string,
+		eventIdReactedTo: string,
+		emoji: string,
+		senderUserId: string,
+	): Promise<string> {
+		const reactionEvents = await this.eventRepository.find(
+			{
+				'event.room_id': roomId,
+				'event.sender': senderUserId,
+				'event.type': 'm.reaction',
+				'event.content.m.relates_to.event_id': eventIdReactedTo,
+				'event.content.m.relates_to.key': emoji,
 			},
-			origin: serverName,
-			ts: Date.now(),
-		});
-
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
+			{},
 		);
 
-		this.logger.debug(signedEvent);
+		if (!reactionEvents.length) {
+			throw new Error('Reaction not found to unset');
+		}
 
-		await this.federationService.sendEvent(targetServer, signedEvent);
+		const reactionToRedact = reactionEvents[0];
 
-		const reactionEventId = generateId(signedEvent);
-		await this.eventService.insertEvent(signedEvent, reactionEventId);
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		this.logger.info(
-			`Sent reaction ${emoji} to ${targetServer} for event ${eventId} - ${reactionEventId}`,
+		const redactionEvent = PersistentEventFactory.newRedactionEvent(
+			roomId,
+			senderUserId,
+			reactionToRedact.eventId,
+			'Unsetting reaction',
+			roomInfo.room_version as RoomVersion,
 		);
 
-		return { ...signedEvent, event_id: reactionEventId };
+		await this.stateService.addAuthEvents(redactionEvent);
+
+		await this.stateService.addPrevEvents(redactionEvent);
+
+		await this.stateService.persistTimelineEvent(redactionEvent);
+
+		await this.federationService.sendEventToAllServersInRoom(redactionEvent);
+
+		return redactionEvent.eventId;
 	}
 
 	async updateMessage(

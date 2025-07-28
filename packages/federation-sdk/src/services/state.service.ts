@@ -1,16 +1,16 @@
-import { inject, singleton } from 'tsyringe';
-import { StateRepository } from '../repositories/state.repository';
-import { EventRepository } from '../repositories/event.repository';
+import { signEvent } from '@hs/core';
 import type { PduContent, PduType, StateMapKey } from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
 import type { PduCreateEventContent } from '@hs/room';
+import { checkEventAuthWithState } from '@hs/room';
+import { inject, singleton } from 'tsyringe';
+import { EventRepository } from '../repositories/event.repository';
+import { StateRepository } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
-import { signEvent } from '@hs/core';
-import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -828,6 +828,34 @@ export class StateService {
 	async getServersInRoom(roomId: string) {
 		return this.getMembersOfRoom(roomId).then((members) =>
 			members.map((member) => member.split(':').pop()!),
+		);
+	}
+
+	async persistTimelineEvent(event: PersistentEventBase): Promise<void> {
+		const exists = await this.eventRepository.findById(event.eventId);
+		if (exists) {
+			return;
+		}
+
+		const roomVersion = await this.getRoomVersion(event.roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found');
+		}
+
+		const state = await this.getFullRoomState(event.roomId);
+
+		await checkEventAuthWithState(event, state, this._getStore(roomVersion));
+
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		const signedEvent = await this.signEvent(event);
+
+		await this.eventRepository.create(
+			signedEvent.event,
+			event.eventId,
+			'', // Empty stateId for timeline events
 		);
 	}
 }
