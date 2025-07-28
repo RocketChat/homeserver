@@ -1,16 +1,16 @@
-import { signEvent } from '@hs/core';
+import { inject, singleton } from 'tsyringe';
+import { StateRepository } from '../repositories/state.repository';
+import { EventRepository } from '../repositories/event.repository';
 import type { PduContent, PduType, StateMapKey } from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
 import type { PduCreateEventContent } from '@hs/room';
-import { checkEventAuthWithState } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
-import { EventRepository } from '../repositories/event.repository';
-import { StateRepository } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
+import { signEvent } from '@hs/core';
+import { checkEventAuthWithState } from '@hs/room';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
