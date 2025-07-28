@@ -645,7 +645,7 @@ export class EventService {
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
 		const events = await this.eventRepository.find(
-			{ eventId: { $in: eventIds } },
+			{ _id: { $in: eventIds } },
 			{},
 		);
 
@@ -707,7 +707,7 @@ export class EventService {
 			const events = await this.eventRepository.find(queryConfig.query, {
 				sort: queryConfig.sort,
 				limit: queryConfig.limit,
-				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1, eventId: 1 },
+				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1 },
 			});
 
 			for (const storeEvent of events) {
