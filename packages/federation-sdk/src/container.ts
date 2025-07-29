@@ -12,7 +12,7 @@ import { RoomRepository } from './repositories/room.repository';
 import { ServerRepository } from './repositories/server.repository';
 import { StateEventRepository } from './repositories/state-event.repository';
 import { StateRepository } from './repositories/state.repository';
-import { ConfigService } from './services/config.service';
+import { type AppConfig, ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
@@ -47,7 +47,10 @@ export interface FederationContainerOptions {
 	lockManagerOptions?: LockConfig;
 }
 
-export function createFederationContainer(options: FederationContainerOptions) {
+export function createFederationContainer(
+	options: FederationContainerOptions,
+	configInstance: ConfigService,
+) {
 	const {
 		emitter,
 		federationOptions,
@@ -57,13 +60,16 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	container.register<FederationModuleOptions>('FEDERATION_OPTIONS', {
 		useValue: federationOptions,
 	});
+	container.register<AppConfig>('APP_CONFIG', {
+		useValue: configInstance.getConfig(),
+	});
+	container.registerSingleton('ConfigService', ConfigService);
 
 	// Register core services
 	container.registerSingleton(
 		'FederationConfigService',
 		FederationConfigService,
 	);
-	container.registerSingleton('ConfigService', ConfigService);
 	container.registerSingleton(
 		'DatabaseConnectionService',
 		DatabaseConnectionService,
@@ -131,12 +137,13 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	// Initialize listeners
 	const y = container.resolve(StagingAreaListener);
 	const x = container.resolve(MissingEventListener);
-	
+
 	// @ts-ignore
-	x.stagingAreaService.missingEventsService.missingEventsQueue = x.missingEventsQueue;
+	x.stagingAreaService.missingEventsService.missingEventsQueue =
+		x.missingEventsQueue;
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
-	
+
 	console.log(x, y);
 
 	return container;
