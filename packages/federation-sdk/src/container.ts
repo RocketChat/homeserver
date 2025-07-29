@@ -59,11 +59,11 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	});
 
 	// Register core services
+	container.registerSingleton('ConfigService', ConfigService);
 	container.registerSingleton(
 		'FederationConfigService',
 		FederationConfigService,
 	);
-	container.registerSingleton('ConfigService', ConfigService);
 	container.registerSingleton(
 		'DatabaseConnectionService',
 		DatabaseConnectionService,

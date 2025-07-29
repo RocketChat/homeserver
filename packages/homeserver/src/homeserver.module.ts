@@ -8,7 +8,7 @@ import {
 } from '@hs/federation-sdk';
 
 import { swagger } from '@elysiajs/swagger';
-import { toUnpaddedBase64 } from '@hs/core';
+import { convertSigningKeyToBase64 } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
 import { invitePlugin } from './controllers/federation/invite.controller';
@@ -40,8 +40,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 	const containerOptions: FederationContainerOptions = {
 		federationOptions: {
 			serverName: matrixConfig.serverName,
-			signingKey: toUnpaddedBase64(signingKey.privateKey),
-			signingKeyId: `ed25519:${signingKey.version}`,
+			signingKey: convertSigningKeyToBase64(signingKey),
 			timeout: 30000,
 			baseUrl: serverConfig.baseUrl,
 		},
