@@ -1,12 +1,6 @@
 import { PriorityQueue } from '@datastructures-js/priority-queue';
 import type { EventID, State, StateMapKey } from '../../types/_common';
-import {
-	type PduType,
-	PduTypeRoomCreate,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
-} from '../../types/v3-11';
+import { type PduType, PduTypeRoomCreate } from '../../types/v3-11';
 
 import assert from 'node:assert';
 import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
@@ -560,7 +554,7 @@ export async function iterativeAuthChecks(
 	for (const event of events) {
 		const authEventStateMap = new Map<StateMapKey, PersistentEventBase>();
 		for (const authEvent of await event.getAuthorizationEvents(store)) {
-			authEventStateMap.set(getStateMapKey(authEvent), authEvent);
+			authEventStateMap.set(authEvent.getUniqueStateIdentifier(), authEvent);
 		}
 
 		const authEventTypesNeeded = event.getAuthEventStateKeys();
@@ -585,27 +579,4 @@ export async function iterativeAuthChecks(
 	}
 
 	return newState;
-}
-
-export function getStateTypesForEventAuth(
-	event: PersistentEventBase,
-): StateMapKey[] {
-	if (event.isCreateEvent()) {
-		return [];
-	}
-
-	const authTypes = [
-		getStateMapKey({ type: PduTypeRoomPowerLevels }),
-		getStateMapKey({ type: PduTypeRoomMember, state_key: event.stateKey }),
-		getStateMapKey({ type: PduTypeRoomCreate }),
-	];
-
-	if (
-		event.isMembershipEvent() &&
-		['join', 'knock', 'invite'].includes(event.getMembership())
-	) {
-		authTypes.push(getStateMapKey({ type: PduTypeRoomJoinRules }));
-	}
-
-	return authTypes;
 }

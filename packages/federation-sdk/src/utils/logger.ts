@@ -2,7 +2,10 @@ import pino from 'pino';
 
 const logger = pino({
 	name: 'federation-sdk',
-	level: process.env.LOG_LEVEL || 'info',
+	level:
+		process.env.NODE_ENV === 'development'
+			? 'debug'
+			: process.env.LOG_LEVEL || 'info',
 	transport:
 		process.env.NODE_ENV === 'development'
 			? {

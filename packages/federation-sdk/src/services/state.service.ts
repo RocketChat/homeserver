@@ -69,24 +69,51 @@ export class StateService {
 		return createEvent.event.content?.room_version as RoomVersion;
 	}
 
+	private logState(label: string, state: State) {
+		const printableState = Array.from(state.entries()).map(([key, value]) => {
+			return {
+				internalStateKey: key,
+				strippedEvent: {
+					state_key: value.stateKey,
+					sender: value.sender,
+					origin: value.origin,
+					content: value.getContent(),
+				},
+			};
+		});
+
+		this.logger.debug({ state: printableState }, label);
+	}
+
 	async findStateAtEvent(eventId: string): Promise<State> {
+		this.logger.debug({ eventId }, 'finding state at event');
 		const event = await this.eventRepository.findById(eventId);
 
 		if (!event) {
+			this.logger.error({ eventId }, 'event not found');
 			throw new Error(`Event ${eventId} not found`);
 		}
 
 		const roomVersion = await this.getRoomVersion(event.event.room_id);
 		if (!roomVersion) {
+			this.logger.error({ eventId }, 'room version not found');
 			throw new Error('Room version not found');
 		}
 
 		const { stateId } = event;
 
+		if (!stateId) {
+			this.logger.error({ eventId }, 'state id not found');
+			throw new Error('State id not found');
+		}
+
 		const { delta: lastStateDelta, prevStateIds = [] } =
 			(await this.stateRepository.getStateMapping(stateId)) ?? {};
 
+		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
+
 		if (!lastStateDelta) {
+			this.logger.error(eventId, 'last state delta not found');
 			throw new Error(`State at event ${eventId} not found`);
 		}
 
@@ -110,10 +137,9 @@ export class StateService {
 			return state;
 		}
 
-		const stateMappings =
-			await this.stateRepository.getStateMappingsByStateIdsOrdered(
-				prevStateIds,
-			);
+		const stateMappings = await (
+			await this.stateRepository.getStateMappingsByStateIdsOrdered(prevStateIds)
+		).toArray();
 
 		const state = new Map<StateMapKey, PersistentEventBase>();
 
@@ -350,6 +376,14 @@ export class StateService {
 			},
 		);
 
+		this.logger.debug(
+			{
+				stateMappingId: lastState?._id.toString(),
+				eventId: lastState?.delta?.eventId,
+			},
+			'last state mapping',
+		);
+
 		const prevStateIds = lastState?.prevStateIds?.concat(
 			lastState?._id?.toString(),
 		);
@@ -380,6 +414,8 @@ export class StateService {
 		const conflictedState = new Map(state.entries());
 		conflictedState.set(event.getUniqueStateIdentifier(), event);
 
+		this.logState('conflicted state', conflictedState);
+
 		const resolvedState = await resolveStateV2Plus(
 			[state, conflictedState],
 			this._getStore(roomVersion),
@@ -388,11 +424,19 @@ export class StateService {
 		const resolvedEvent = resolvedState.get(event.getUniqueStateIdentifier());
 
 		if (!resolvedEvent) {
+			this.logger.error({ msg: 'resolved event not found' });
 			throw new Error('Resolved event not found, something is wrong');
 		}
 
+		this.logger.debug(
+			{
+				resolvedEvent: resolvedEvent?.event,
+			},
+			'resolved event',
+		);
+
 		if (resolvedEvent.eventId !== event.eventId) {
-			// state did not change
+			// state did not change, resolvedEvent is an older event
 			// just persist the event
 			// TODO: mark rejected, although no code yet uses it so let it go
 			await this.eventRepository.create(
@@ -424,6 +468,7 @@ export class StateService {
 	async persistStateEvent(event: PersistentEventBase): Promise<void> {
 		const exists = await this.eventRepository.findById(event.eventId);
 		if (exists) {
+			this.logger.debug({ eventId: event.eventId }, 'event already exists');
 			return;
 		}
 
@@ -436,10 +481,18 @@ export class StateService {
 		}
 
 		const lastEvent =
-			await this.eventRepository.findLatestEventByRoomIdBeforeTimestamp(
+			await this.eventRepository.findLatestEventByRoomIdBeforeTimestampWithAssociatedState(
 				event.roomId,
 				event.originServerTs,
 			);
+
+		this.logger.debug(
+			{
+				eventId: lastEvent?._id,
+				event: lastEvent?.event,
+			},
+			'last event seen before current event',
+		);
 
 		if (!lastEvent) {
 			// create
@@ -465,18 +518,34 @@ export class StateService {
 
 		const state = await this.findStateAtEvent(lastEvent._id);
 
+		this.logState('state at last event seen:', state);
+
 		await this._persistEventAgainstState(event, state);
 
 		// if event was not rejected, update local copy
 		if (!event.rejected) {
+			this.logger.debug(
+				event.eventId,
+				'event was accepted against the state at the time of the event creation',
+			);
 			state.set(event.getUniqueStateIdentifier(), event);
 		}
 
-		const restOfTheEvents =
+		this.logState('new state', state);
+
+		const restOfTheEvents = await (
 			await this.eventRepository.findEventsByRoomIdAfterTimestamp(
 				event.roomId,
 				event.originServerTs,
-			);
+			)
+		).toArray();
+
+		this.logger.debug(
+			{
+				events: restOfTheEvents,
+			},
+			'events seen after passed event',
+		);
 
 		const conflictedStates = [];
 
@@ -496,6 +565,8 @@ export class StateService {
 			}
 		}
 
+		this.logger.debug({ conflicts }, 'conflicts');
+
 		// if we have any conflicts now, resolve all at once
 		if (conflictedStates.length > 0) {
 			const resolvedState = await resolveStateV2Plus(
@@ -505,6 +576,13 @@ export class StateService {
 
 			for (const stateKey of conflicts) {
 				const resolvedEvent = resolvedState.get(stateKey as StateMapKey);
+
+				this.logger.debug(
+					{
+						resolvedEvent: resolvedEvent?.event,
+					},
+					'resolved event',
+				);
 
 				if (!resolvedEvent) {
 					throw new Error('Resolved event not found, something is wrong');
@@ -557,16 +635,23 @@ export class StateService {
 		if (exists) {
 			return;
 		}
-		
-		const roomVersion = event.isCreateEvent() ? (event.getContent<PduCreateEventContent>().room_version as RoomVersion) : await this.getRoomVersion(event.roomId);
+
+		const roomVersion = event.isCreateEvent()
+			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
+			: await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
-			throw new Error('Room version not found when trying to persist a timeline event');
+			throw new Error(
+				'Room version not found when trying to persist a timeline event',
+			);
 		}
-		
+
 		const room = await this.getFullRoomState(event.roomId);
-		
+
 		// we need the auth events required to validate this event from our state
-		const requiredAuthEventsWeHaveSeenMap = new Map<string, PersistentEventBase>();
+		const requiredAuthEventsWeHaveSeenMap = new Map<
+			string,
+			PersistentEventBase
+		>();
 		for (const auth of event.getAuthEventStateKeys()) {
 			const authEvent = room.get(auth);
 			if (authEvent) {
@@ -583,20 +668,24 @@ export class StateService {
 		for (const authEvent of authEventsReferencedInMessage) {
 			authEventsReferencedMap.set(authEvent.eventId, authEvent);
 		}
-		
+
 		// While auth_events in this timeline event may not be wrong and ones we have seen, they can still point to old state events, and validating against them will fail.
 		// by doing this precheck we allow the method to exit quicker.
 
 		// both auth events set must match
 		if (requiredAuthEventsWeHaveSeenMap.size !== authEventsReferencedMap.size) {
 			// incorrect length may mean either redacted event still referenced or event in state that wasn't referenced, both cases, reject the event
-			event.reject(`Auth events referenced in message do not match, expected ${requiredAuthEventsWeHaveSeenMap.size} but got ${authEventsReferencedMap.size}`);
+			event.reject(
+				`Auth events referenced in message do not match, expected ${requiredAuthEventsWeHaveSeenMap.size} but got ${authEventsReferencedMap.size}`,
+			);
 			throw new Error(event.rejectedReason);
 		}
 
 		for (const [eventId] of requiredAuthEventsWeHaveSeenMap) {
 			if (!authEventsReferencedMap.has(eventId)) {
-				event.reject(`wrong auth event in message, expected ${eventId} but not found in event`);
+				event.reject(
+					`wrong auth event in message, expected ${eventId} but not found in event`,
+				);
 				throw new Error(event.rejectedReason);
 			}
 		}
@@ -610,7 +699,11 @@ export class StateService {
 		// TODO: save event still but with mark
 
 		// now we persist the event
-		await this.eventRepository.create(event.event as any, event.eventId, '' /* no state id for you */);
+		await this.eventRepository.create(
+			event.event as any,
+			event.eventId,
+			'' /* no state id for you */,
+		);
 
 		// transactions not handled here, since we can use this method as part of a "transaction receive"
 	}
