@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { createLogger, generateKeyPairsFromString, getKeyPair } from '@hs/core';
 import * as dotenv from 'dotenv';
 
-import { container, singleton } from 'tsyringe';
+import { container, inject, singleton } from 'tsyringe';
+import { z } from 'zod';
 import { FederationModuleOptions } from '../types';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
