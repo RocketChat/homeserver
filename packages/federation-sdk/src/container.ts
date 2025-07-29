@@ -139,8 +139,7 @@ export function createFederationContainer(
 	const x = container.resolve(MissingEventListener);
 
 	// @ts-ignore
-	x.stagingAreaService.missingEventsService.missingEventsQueue =
-		x.missingEventsQueue;
+	x.stagingAreaService.missingEventsService.missingEventsQueue = x.missingEventsQueue;
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
 
