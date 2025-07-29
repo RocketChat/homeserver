@@ -4,14 +4,14 @@ import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
 import { createLogger } from '@hs/core';
+import { Pdu, PersistentEventFactory } from '@hs/room';
 import { Lock } from '../utils/lock.decorator';
 import { EventAuthorizationService } from './event-authorization.service';
+import { EventEmitterService } from './event-emitter.service';
 import { EventStateService } from './event-state.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
-import { EventEmitterService } from './event-emitter.service';
-import { Pdu, PersistentEventFactory } from '@hs/room';
 import { StateService } from './state.service';
 
 // ProcessingState indicates where in the flow an event is
@@ -347,7 +347,9 @@ export class StagingAreaService {
 	private async processNotificationStage(event: StagingAreaEventType) {
 		const eventId = event.eventId;
 		const trackedEvent = this.processingEvents.get(eventId);
-		if (!trackedEvent) return;
+		if (!trackedEvent) {
+			return;
+		}
 
 		try {
 			this.logger.debug(`Notifying clients about event ${eventId}`);
@@ -365,6 +367,63 @@ export class StagingAreaService {
 						},
 					});
 					break;
+				case EventType.REACTION: {
+					const relatesTo = event.event.content?.['m.relates_to'] as {
+						rel_type?: string;
+						event_id?: string;
+						key?: string;
+					};
+
+					if (
+						relatesTo &&
+						relatesTo.rel_type === 'm.annotation' &&
+						relatesTo.event_id &&
+						relatesTo.key
+					) {
+						this.eventEmitterService.emit('homeserver.matrix.reaction', {
+							event_id: event.eventId,
+							room_id: event.roomId,
+							sender: event.event.sender,
+							origin_server_ts: event.event.origin_server_ts,
+							content: {
+								'm.relates_to': {
+									rel_type: 'm.annotation',
+									event_id: relatesTo.event_id,
+									key: relatesTo.key,
+								},
+							},
+						});
+					} else {
+						this.logger.warn(
+							`Reaction event ${event.eventId} missing or invalid m.relates_to content`,
+						);
+					}
+					break;
+				}
+				case EventType.REDACTION: {
+					const redacts =
+						(event.event as any).redacts || event.event.content?.redacts;
+					if (redacts) {
+						this.logger.debug(
+							`Processing redaction event ${event.eventId} that redacts ${redacts}`,
+						);
+						this.eventEmitterService.emit('homeserver.matrix.redaction', {
+							event_id: event.eventId,
+							room_id: event.roomId,
+							sender: event.event.sender,
+							origin_server_ts: event.event.origin_server_ts,
+							redacts: redacts,
+							content: {
+								reason: event.event.content?.reason as string | undefined,
+							},
+						});
+					} else {
+						this.logger.warn(
+							`Redaction event ${event.eventId} missing redacts field`,
+						);
+					}
+					break;
+				}
 				default:
 					this.logger.warn(
 						`Unknown event type: ${event.event.type} for emitterService for now`,

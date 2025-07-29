@@ -108,6 +108,8 @@ export class MessageService {
 
 		await this.stateService.addPrevEvents(reactionEvent);
 
+		await this.stateService.signEvent(reactionEvent);
+
 		await this.stateService.persistTimelineEvent(reactionEvent);
 
 		await this.federationService.sendEventToAllServersInRoom(reactionEvent);
@@ -121,19 +123,30 @@ export class MessageService {
 		emoji: string,
 		senderUserId: string,
 	): Promise<string> {
-		const reactionEvents = await this.eventRepository.find(
+		const allReactions = await this.eventRepository.find(
 			{
 				'event.room_id': roomId,
 				'event.sender': senderUserId,
 				'event.type': 'm.reaction',
-				'event.content.m.relates_to.event_id': eventIdReactedTo,
-				'event.content.m.relates_to.key': emoji,
 			},
 			{},
 		);
 
+		// TODO: allReactions.length will fail - have to get the exact reaction from user
+
+		const reactionEvents = allReactions.filter((reaction) => {
+			const content = reaction.event.content as any;
+			const relatesTo = content?.['m.relates_to'];
+			return (
+				relatesTo?.event_id === eventIdReactedTo && relatesTo?.key === emoji
+			);
+		});
+
 		if (!reactionEvents.length) {
-			throw new Error('Reaction not found to unset');
+			this.logger.warn(
+				`Reaction not found to unset: ${roomId} ${eventIdReactedTo} ${emoji} ${senderUserId}`,
+			);
+			return '';
 		}
 
 		const reactionToRedact = reactionEvents[0];
@@ -151,6 +164,8 @@ export class MessageService {
 		await this.stateService.addAuthEvents(redactionEvent);
 
 		await this.stateService.addPrevEvents(redactionEvent);
+
+		await this.stateService.signEvent(redactionEvent);
 
 		await this.stateService.persistTimelineEvent(redactionEvent);
 
