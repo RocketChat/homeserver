@@ -287,17 +287,6 @@ export class MessageService {
 		);
 		await this.eventService.processRedaction(eventToFederate);
 
-		this.eventEmitterService.emit('homeserver.matrix.redaction', {
-			event_id: eventId,
-			room_id: roomId,
-			sender: senderUserId,
-			origin_server_ts: signedEvent.origin_server_ts,
-			redacts: eventIdToRedact,
-			content: {
-				reason: reason,
-			},
-		});
-
 		return { ...signedEvent, event_id: eventId };
 	}
 }
