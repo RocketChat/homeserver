@@ -12,7 +12,7 @@ import { RoomRepository } from './repositories/room.repository';
 import { ServerRepository } from './repositories/server.repository';
 import { StateEventRepository } from './repositories/state-event.repository';
 import { StateRepository } from './repositories/state.repository';
-import { type AppConfig, ConfigService } from './services/config.service';
+import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';

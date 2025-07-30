@@ -10,7 +10,6 @@ import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { ConfigService } from './services/config.service';
 
 export { FederationEndpoints } from './specs/federation-api';
 export type {
