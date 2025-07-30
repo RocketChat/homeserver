@@ -8,7 +8,7 @@ import { fetch } from '@hs/core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
-import { FederationConfigService } from './federation-config.service';
+import { ConfigService } from './config.service';
 
 interface SignedRequest {
 	method: string;
@@ -24,7 +24,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 
-	constructor(private readonly configService: FederationConfigService) {}
+	constructor(private readonly configService: ConfigService) {}
 
 	async makeSignedRequest<T>({
 		method,
@@ -35,7 +35,7 @@ export class FederationRequestService {
 	}: SignedRequest): Promise<T> {
 		try {
 			const serverName = this.configService.serverName;
-			const signingKeyBase64 = await this.configService.getSigningKey();
+			const signingKeyBase64 = await this.configService.getSigningKeyBase64();
 			const signingKeyId = await this.configService.getSigningKeyId();
 			const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
 			const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);

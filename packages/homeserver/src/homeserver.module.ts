@@ -1,14 +1,16 @@
 import 'reflect-metadata';
 
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
 	ConfigService,
 	type FederationContainerOptions,
 	type HomeserverEventSignatures,
 	createFederationContainer,
 } from '@hs/federation-sdk';
+import * as dotenv from 'dotenv';
 
 import { swagger } from '@elysiajs/swagger';
-import { convertSigningKeyToBase64 } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
 import { invitePlugin } from './controllers/federation/invite.controller';
@@ -31,23 +33,32 @@ export interface HomeserverSetupOptions {
 }
 
 export async function setup(options?: HomeserverSetupOptions) {
-	const config = new ConfigService();
-	const matrixConfig = config.getMatrixConfig();
-	const serverConfig = config.getServerConfig();
-	const signingKeys = await config.getSigningKey();
-	const signingKey = signingKeys[0];
+	const envPath = path.resolve(process.cwd(), '.env');
+	if (fs.existsSync(envPath)) {
+		dotenv.config({ path: envPath });
+	}
+
+	const config = new ConfigService({
+		serverName: process.env.SERVER_NAME || 'rc1',
+		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
+		database: {
+			uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
+			name: process.env.DATABASE_NAME || 'matrix',
+			poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+		},
+		matrixDomain: process.env.MATRIX_DOMAIN || 'rc1',
+		keyRefreshInterval: Number.parseInt(
+			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
+			10,
+		),
+		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
+	});
 
 	const containerOptions: FederationContainerOptions = {
-		federationOptions: {
-			serverName: matrixConfig.serverName,
-			signingKey: convertSigningKeyToBase64(signingKey),
-			timeout: 30000,
-			baseUrl: serverConfig.baseUrl,
-		},
 		emitter: options?.emitter,
 	};
 
-	const container = await createFederationContainer(containerOptions);
+	const container = createFederationContainer(containerOptions, config);
 
 	const app = new Elysia();
 

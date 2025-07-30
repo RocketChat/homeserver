@@ -10,12 +10,12 @@ import {
 } from 'bun:test';
 import * as core from '@hs/core';
 import * as nacl from 'tweetnacl';
-import { FederationConfigService } from './federation-config.service';
+import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;
-	let configService: FederationConfigService;
+	let configService: ConfigService;
 
 	const mockServerName = 'example.com';
 	const mockSigningKey = 'aGVsbG93b3JsZA==';
@@ -89,9 +89,9 @@ describe('FederationRequestService', async () => {
 
 		configService = {
 			serverName: mockServerName,
-			getSigningKey: async () => mockSigningKey,
+			getSigningKeyBase64: async () => mockSigningKey,
 			getSigningKeyId: async () => mockSigningKeyId,
-		} as FederationConfigService;
+		} as ConfigService;
 
 		service = new FederationRequestService(configService);
 	});
@@ -111,10 +111,10 @@ describe('FederationRequestService', async () => {
 			});
 
 			expect(configService.serverName).toBe(mockServerName);
-			expect(await configService.getSigningKey()).toBe(mockSigningKey);
+			expect(await configService.getSigningKeyBase64()).toBe(mockSigningKey);
 			expect(await configService.getSigningKeyId()).toBe(mockSigningKeyId);
 			expect(configService.serverName).toBe(mockServerName);
-			expect(await configService.getSigningKey()).toBe(mockSigningKey);
+			expect(await configService.getSigningKeyBase64()).toBe(mockSigningKey);
 			expect(await configService.getSigningKeyId()).toBe(mockSigningKeyId);
 
 			expect(nacl.sign.keyPair.fromSecretKey).toHaveBeenCalled();
