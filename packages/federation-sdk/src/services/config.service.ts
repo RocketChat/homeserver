@@ -1,68 +1,133 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createLogger, generateKeyPairsFromString, getKeyPair } from '@hs/core';
+import {
+	createLogger,
+	generateKeyPairsFromString,
+	getKeyPair,
+	toUnpaddedBase64,
+} from '@hs/core';
 import * as dotenv from 'dotenv';
 
-import { container, singleton } from 'tsyringe';
-import { FederationModuleOptions } from '../types';
+import { z } from 'zod';
 
 const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
 export interface AppConfig {
-	server: {
-		name: string;
-		version: string;
-		port: number;
-		baseUrl: string;
-		host: string;
-	};
-
+	serverName: string;
+	port: number;
+	version: string;
+	matrixDomain: string;
+	keyRefreshInterval: number;
+	signingKey?: string;
+	timeout?: number;
+	signingKeyPath?: string;
+	path?: string;
 	database: {
 		uri: string;
 		name: string;
 		poolSize: number;
 	};
-
-	matrix: {
-		serverName: string;
-		domain: string;
-		keyRefreshInterval: number;
-	};
-
-	signingKey?: unknown;
-	signingKeyPath?: string;
-	path?: string;
 }
 
-@singleton()
+export const AppConfigSchema = z.object({
+	serverName: z.string().min(1, 'Server name is required'),
+	port: z.number().int().min(1).max(65535, 'Port must be between 1 and 65535'),
+	version: z.string().min(1, 'Server version is required'),
+	matrixDomain: z.string().min(1, 'Matrix domain is required'),
+	keyRefreshInterval: z
+		.number()
+		.int()
+		.min(1, 'Key refresh interval must be at least 1'),
+	signingKey: z.string().optional(),
+	timeout: z.number().optional(),
+	signingKeyPath: z.string(),
+	database: z.object({
+		uri: z.string().min(1, 'Database URI is required'),
+		name: z.string().min(1, 'Database name is required'),
+		poolSize: z.number().int().min(1, 'Pool size must be at least 1'),
+	}),
+});
+
 export class ConfigService {
 	private config: AppConfig;
 	private fileConfig: Partial<AppConfig> = {};
 	private logger = createLogger('ConfigService');
 
-	constructor() {
-		this.loadEnvFiles();
-		this.config = this.initializeConfig();
+	constructor(values?: Partial<AppConfig>) {
+		// Load config from environment if not provided
+		const configValues = values || this.initializeConfig();
+
+		try {
+			const validatedConfig = AppConfigSchema.parse(configValues);
+			this.config = validatedConfig;
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				this.logger.error('Configuration validation failed:', error.errors);
+				throw new Error(
+					`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
+				);
+			}
+			throw error;
+		}
 	}
 
 	getConfig(): AppConfig {
 		return this.config;
 	}
 
-	getServerConfig(): AppConfig['server'] {
-		return this.config.server;
+	getServerConfig(): { name: string; port: number; version: string } {
+		return {
+			name: this.config.serverName,
+			port: this.config.port,
+			version: this.config.version,
+		};
 	}
 
 	getDatabaseConfig(): AppConfig['database'] {
 		return this.config.database;
 	}
 
-	getMatrixConfig(): AppConfig['matrix'] {
-		return this.config.matrix;
+	getMatrixConfig(): {
+		serverName: string;
+		domain: string;
+		keyRefreshInterval: number;
+	} {
+		return {
+			serverName: this.config.serverName,
+			domain: this.config.matrixDomain,
+			keyRefreshInterval: this.config.keyRefreshInterval,
+		};
+	}
+
+	get serverName(): string {
+		return this.config.serverName;
+	}
+
+	get timeout(): number {
+		return this.config.timeout || 30000;
 	}
 
 	async getSigningKey() {
+		// If config contains a signing key, use it
+		if (this.config.signingKey) {
+			const signingKey = await generateKeyPairsFromString(
+				this.config.signingKey,
+			);
+			return [signingKey];
+		}
+		// Otherwise load from file
 		return this.loadSigningKey();
+	}
+
+	async getSigningKeyId(): Promise<string> {
+		const signingKeys = await this.getSigningKey();
+		const signingKey = signingKeys[0];
+		return `${signingKey.algorithm}:${signingKey.version}` || 'ed25519:1';
+	}
+
+	async getSigningKeyBase64(): Promise<string> {
+		const signingKeys = await this.getSigningKey();
+		return toUnpaddedBase64(signingKeys[0].privateKey);
 	}
 
 	async reconstructSigningKey(keyData: string) {
@@ -109,25 +174,17 @@ export class ConfigService {
 		return {
 			...baseConfig,
 			...newConfig,
-			server: { ...baseConfig.server, ...newConfig.server },
 			database: { ...baseConfig.database, ...newConfig.database },
-			matrix: { ...baseConfig.matrix, ...newConfig.matrix },
 		};
 	}
 
 	async loadSigningKey() {
-		const federationOptions =
-			container.resolve<FederationModuleOptions>('FEDERATION_OPTIONS');
-		if (federationOptions?.signingKey) {
-			return [await this.reconstructSigningKey(federationOptions.signingKey)];
-		}
-
 		try {
-			const signingKeyPath = `${CONFIG_FOLDER}/${this.config.server.name}.signing.key`;
+			const signingKeyPath = `${CONFIG_FOLDER}/${this.config.serverName}.signing.key`;
 			this.logger.info(`Loading signing key from ${signingKeyPath}`);
 			const keys = await getKeyPair({ signingKeyPath });
 			this.logger.info(
-				`Successfully loaded signing key for server ${this.config.server.name}`,
+				`Successfully loaded signing key for server ${this.config.serverName}`,
 			);
 			return keys;
 		} catch (error: unknown) {
@@ -140,26 +197,20 @@ export class ConfigService {
 
 	private initializeConfig(): AppConfig {
 		return {
-			server: {
-				name: process.env.SERVER_NAME || 'rc1',
-				version: process.env.SERVER_VERSION || '1.0',
-				port: this.getNumberFromEnv('SERVER_PORT', 8080),
-				baseUrl: process.env.SERVER_BASE_URL || 'http://rc1:8080',
-				host: process.env.SERVER_HOST || '0.0.0.0',
-			},
+			serverName: process.env.SERVER_NAME || 'rc1',
+			port: this.getNumberFromEnv('SERVER_PORT', 8080),
+			version: process.env.SERVER_VERSION || '1.0',
 			database: {
 				uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
 				name: process.env.DATABASE_NAME || 'matrix',
 				poolSize: this.getNumberFromEnv('DATABASE_POOL_SIZE', 10),
 			},
-			matrix: {
-				serverName: process.env.MATRIX_SERVER_NAME || 'rc1',
-				domain: process.env.MATRIX_DOMAIN || 'rc1',
-				keyRefreshInterval: this.getNumberFromEnv(
-					'MATRIX_KEY_REFRESH_INTERVAL',
-					60,
-				),
-			},
+			matrixDomain: process.env.MATRIX_DOMAIN || 'rc1',
+			keyRefreshInterval: this.getNumberFromEnv(
+				'MATRIX_KEY_REFRESH_INTERVAL',
+				60,
+			),
+			signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		};
 	}
 
@@ -169,7 +220,7 @@ export class ConfigService {
 	}
 
 	getServerName(): string {
-		return this.config.server.name;
+		return this.config.serverName;
 	}
 
 	isDebugEnabled(): boolean {

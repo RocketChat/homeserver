@@ -1,6 +1,7 @@
 import type { EventBase } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
+import { PersistentEventBase } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
@@ -10,19 +11,17 @@ import {
 	type Transaction,
 	type Version,
 } from '../specs/federation-api';
-import { FederationConfigService } from './federation-config.service';
+import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 import { SignatureVerificationService } from './signature-verification.service';
 import { StateService } from './state.service';
-import { PersistentEventBase } from '@hs/room';
 
 @singleton()
 export class FederationService {
 	private readonly logger = createLogger('FederationService');
 
 	constructor(
-		@inject('ConfigService')
-		private readonly configService: FederationConfigService,
+		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('FederationRequestService')
 		private readonly requestService: FederationRequestService,
 		@inject('SignatureVerificationService')

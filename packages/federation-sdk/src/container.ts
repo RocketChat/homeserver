@@ -19,7 +19,6 @@ import { EventEmitterService } from './services/event-emitter.service';
 import { EventFetcherService } from './services/event-fetcher.service';
 import { EventStateService } from './services/event-state.service';
 import { EventService } from './services/event.service';
-import { FederationConfigService } from './services/federation-config.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
@@ -38,32 +37,26 @@ import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 
 import type { HomeserverEventSignatures } from './index';
-import type { FederationModuleOptions } from './types';
 import type { LockConfig } from './utils/lock.decorator';
 
 export interface FederationContainerOptions {
-	federationOptions: FederationModuleOptions;
 	emitter?: Emitter<HomeserverEventSignatures>;
 	lockManagerOptions?: LockConfig;
 }
 
-export function createFederationContainer(options: FederationContainerOptions) {
-	const {
-		emitter,
-		federationOptions,
-		lockManagerOptions = { type: 'memory' },
-	} = options;
+export function createFederationContainer(
+	options: FederationContainerOptions,
+	configInstance: ConfigService,
+) {
+	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
 
-	container.register<FederationModuleOptions>('FEDERATION_OPTIONS', {
-		useValue: federationOptions,
+	// Register ConfigService with both string and class tokens
+	container.register<ConfigService>('ConfigService', {
+		useValue: configInstance,
 	});
-
-	// Register core services
-	container.registerSingleton('ConfigService', ConfigService);
-	container.registerSingleton(
-		'FederationConfigService',
-		FederationConfigService,
-	);
+	container.register<ConfigService>(ConfigService, {
+		useValue: configInstance,
+	});
 	container.registerSingleton(
 		'DatabaseConnectionService',
 		DatabaseConnectionService,
@@ -131,12 +124,14 @@ export function createFederationContainer(options: FederationContainerOptions) {
 	// Initialize listeners
 	const y = container.resolve(StagingAreaListener);
 	const x = container.resolve(MissingEventListener);
-	
+
 	// @ts-ignore
-	x.stagingAreaService.missingEventsService.missingEventsQueue = x.missingEventsQueue;
+	x.stagingAreaService.missingEventsService.missingEventsQueue =
+		// @ts-ignore
+		x.missingEventsQueue;
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
-	
+
 	console.log(x, y);
 
 	return container;

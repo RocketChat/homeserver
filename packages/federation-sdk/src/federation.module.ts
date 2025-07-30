@@ -1,24 +1,15 @@
-import { FederationConfigService } from './services/federation-config.service';
+import { ConfigService } from './services/config.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { SignatureVerificationService } from './services/signature-verification.service';
-import type {
-	FederationModuleAsyncOptions,
-	FederationModuleOptions,
-} from './types';
 
 export class FederationModule {
-	static forRootAsync(options: FederationModuleAsyncOptions) {
+	static forRootAsync(options: any) {
 		return {
 			module: FederationModule,
 			imports: options.imports || [],
 			providers: [
-				{
-					provide: 'FEDERATION_OPTIONS',
-					useFactory: options.useFactory,
-					inject: options.inject || [],
-				},
-				FederationConfigService,
+				ConfigService,
 				FederationService,
 				SignatureVerificationService,
 				FederationRequestService,
@@ -27,7 +18,7 @@ export class FederationModule {
 				FederationService,
 				SignatureVerificationService,
 				FederationRequestService,
-				FederationConfigService,
+				ConfigService,
 			],
 		};
 	}

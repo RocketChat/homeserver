@@ -1,5 +1,6 @@
 import type { Membership } from '@hs/core';
 import { container } from 'tsyringe';
+import { ConfigService } from './services/config.service';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
@@ -22,12 +23,7 @@ export type {
 } from './specs/federation-api';
 
 export { FederationModule } from './federation.module';
-export type {
-	FederationModuleAsyncOptions,
-	FederationModuleOptions,
-} from './types';
 
-export { FederationConfigService } from './services/federation-config.service';
 export { FederationRequestService } from './services/federation-request.service';
 export { FederationService } from './services/federation.service';
 export { SignatureVerificationService } from './services/signature-verification.service';
@@ -137,8 +133,7 @@ export type HomeserverEventSignatures = {
 	};
 };
 
-export function getAllServices(
-): HomeserverServices {
+export function getAllServices(): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),
 		message: container.resolve(MessageService),
