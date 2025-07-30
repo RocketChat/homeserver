@@ -89,13 +89,8 @@ describe('FederationRequestService', async () => {
 
 		configService = {
 			serverName: mockServerName,
-			signingKey: mockSigningKey,
-			signingKeyId: mockSigningKeyId,
-		} as FederationConfigService;
-		configService = {
-			serverName: mockServerName,
-			signingKey: mockSigningKey,
-			signingKeyId: mockSigningKeyId,
+			getSigningKey: async () => mockSigningKey,
+			getSigningKeyId: async () => mockSigningKeyId,
 		} as FederationConfigService;
 
 		service = new FederationRequestService(configService);
@@ -116,11 +111,11 @@ describe('FederationRequestService', async () => {
 			});
 
 			expect(configService.serverName).toBe(mockServerName);
-			expect(configService.signingKey).toBe(mockSigningKey);
-			expect(configService.signingKeyId).toBe(mockSigningKeyId);
+			expect(await configService.getSigningKey()).toBe(mockSigningKey);
+			expect(await configService.getSigningKeyId()).toBe(mockSigningKeyId);
 			expect(configService.serverName).toBe(mockServerName);
-			expect(configService.signingKey).toBe(mockSigningKey);
-			expect(configService.signingKeyId).toBe(mockSigningKeyId);
+			expect(await configService.getSigningKey()).toBe(mockSigningKey);
+			expect(await configService.getSigningKeyId()).toBe(mockSigningKeyId);
 
 			expect(nacl.sign.keyPair.fromSecretKey).toHaveBeenCalled();
 

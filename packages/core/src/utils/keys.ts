@@ -87,3 +87,6 @@ export const getKeyPair = async (config: {
 		),
 	);
 };
+
+export const convertSigningKeyToBase64 = (signingKey: SigningKey): string =>
+	`${signingKey.algorithm} ${signingKey.version} ${Buffer.from(signingKey.privateKey.slice(0, 32)).toString('base64')}`;

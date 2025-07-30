@@ -4,11 +4,11 @@ import { extractURIfromURL } from '@hs/core';
 import { EncryptionValidAlgorithm } from '@hs/core';
 import { signJson } from '@hs/core';
 import { createLogger } from '@hs/core';
+import { fetch } from '@hs/core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { FederationConfigService } from './federation-config.service';
-import { fetch } from '@hs/core';
 
 interface SignedRequest {
 	method: string;
@@ -35,8 +35,8 @@ export class FederationRequestService {
 	}: SignedRequest): Promise<T> {
 		try {
 			const serverName = this.configService.serverName;
-			const signingKeyBase64 = this.configService.signingKey;
-			const signingKeyId = this.configService.signingKeyId;
+			const signingKeyBase64 = await this.configService.getSigningKey();
+			const signingKeyId = await this.configService.getSigningKeyId();
 			const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
 			const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
 
