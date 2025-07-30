@@ -1,11 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '../types';
 import { generateKeyPairs } from '../utils/keys';
 import { encodeCanonicalJson } from '../utils/signJson';
 import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
-
-import { type getHomeserverFinalAddress } from '../server-discovery/discovery';
 
 describe('getPublicKeyFromRemoteServer', () => {
 	let originalFetch: typeof globalThis.fetch;
@@ -70,16 +68,6 @@ describe('getPublicKeyFromRemoteServer', () => {
 		};
 		mockFetch.preconnect = async () => undefined;
 		globalThis.fetch = mockFetch;
-
-		await mock.module('../server-discovery/discovery', () => ({
-			resolveHostname: (): ReturnType<typeof getHomeserverFinalAddress> =>
-				Promise.resolve([
-					'https://127.0.0.1:443' as const,
-					{
-						Host: '127.0.0.1:443',
-					} as const,
-				]),
-		}));
 	});
 
 	afterEach(() => {
