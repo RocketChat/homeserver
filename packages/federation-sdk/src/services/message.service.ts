@@ -120,43 +120,15 @@ export class MessageService {
 	async unsetReaction(
 		roomId: string,
 		eventIdReactedTo: string,
-		emoji: string,
+		_emoji: string,
 		senderUserId: string,
 	): Promise<string> {
-		const allReactions = await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				'event.sender': senderUserId,
-				'event.type': 'm.reaction',
-			},
-			{},
-		);
-
-		// TODO: allReactions.length will fail - have to get the exact reaction from user
-
-		const reactionEvents = allReactions.filter((reaction) => {
-			const content = reaction.event.content as any;
-			const relatesTo = content?.['m.relates_to'];
-			return (
-				relatesTo?.event_id === eventIdReactedTo && relatesTo?.key === emoji
-			);
-		});
-
-		if (!reactionEvents.length) {
-			this.logger.warn(
-				`Reaction not found to unset: ${roomId} ${eventIdReactedTo} ${emoji} ${senderUserId}`,
-			);
-			return '';
-		}
-
-		const reactionToRedact = reactionEvents[0];
-
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const redactionEvent = PersistentEventFactory.newRedactionEvent(
 			roomId,
 			senderUserId,
-			reactionToRedact._id,
+			eventIdReactedTo,
 			'Unsetting reaction',
 			roomInfo.room_version as RoomVersion,
 		);

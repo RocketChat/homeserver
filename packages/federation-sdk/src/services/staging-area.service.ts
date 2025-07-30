@@ -368,60 +368,32 @@ export class StagingAreaService {
 					});
 					break;
 				case EventType.REACTION: {
-					const relatesTo = event.event.content?.['m.relates_to'] as {
-						rel_type?: string;
-						event_id?: string;
-						key?: string;
-					};
-
-					if (
-						relatesTo &&
-						relatesTo.rel_type === 'm.annotation' &&
-						relatesTo.event_id &&
-						relatesTo.key
-					) {
-						this.eventEmitterService.emit('homeserver.matrix.reaction', {
-							event_id: event.eventId,
-							room_id: event.roomId,
-							sender: event.event.sender,
-							origin_server_ts: event.event.origin_server_ts,
-							content: {
-								'm.relates_to': {
-									rel_type: 'm.annotation',
-									event_id: relatesTo.event_id,
-									key: relatesTo.key,
-								},
-							},
-						});
-					} else {
-						this.logger.warn(
-							`Reaction event ${event.eventId} missing or invalid m.relates_to content`,
-						);
-					}
+					this.eventEmitterService.emit('homeserver.matrix.reaction', {
+						event_id: event.eventId,
+						room_id: event.roomId,
+						sender: event.event.sender,
+						origin_server_ts: event.event.origin_server_ts,
+						content: event.event.content as {
+							'm.relates_to': {
+								rel_type: 'm.annotation';
+								event_id: string;
+								key: string;
+							};
+						},
+					});
 					break;
 				}
 				case EventType.REDACTION: {
-					const redacts =
-						(event.event as any).redacts || event.event.content?.redacts;
-					if (redacts) {
-						this.logger.debug(
-							`Processing redaction event ${event.eventId} that redacts ${redacts}`,
-						);
-						this.eventEmitterService.emit('homeserver.matrix.redaction', {
-							event_id: event.eventId,
-							room_id: event.roomId,
-							sender: event.event.sender,
-							origin_server_ts: event.event.origin_server_ts,
-							redacts: redacts,
-							content: {
-								reason: event.event.content?.reason as string | undefined,
-							},
-						});
-					} else {
-						this.logger.warn(
-							`Redaction event ${event.eventId} missing redacts field`,
-						);
-					}
+					this.eventEmitterService.emit('homeserver.matrix.redaction', {
+						event_id: event.eventId,
+						room_id: event.roomId,
+						sender: event.event.sender,
+						origin_server_ts: event.event.origin_server_ts,
+						redacts: (event.event as any).redacts,
+						content: {
+							reason: event.event.content?.reason as string | undefined,
+						},
+					});
 					break;
 				}
 				default:

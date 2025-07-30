@@ -347,6 +347,7 @@ export class PersistentEventFactory {
 		// Note: event_id will be filled by the event wrapper on first access
 		const eventPartial = {
 			type: PduTypeRoomRedaction,
+			redacts: eventIdToRedact,
 			content: {
 				redacts: eventIdToRedact,
 				...(reason && { reason }),
