@@ -66,11 +66,11 @@ class PowerLevelEvent {
 			return 0;
 		}
 
-		if (this._content.users?.[userId]) {
+		if (typeof this._content.users?.[userId] === 'number') {
 			return this._content.users[userId];
 		}
 
-		if (this._content.users_default) {
+		if (typeof this._content.users_default === 'number') {
 			return this._content.users_default;
 		}
 
@@ -86,7 +86,7 @@ class PowerLevelEvent {
 			return 50;
 		}
 
-		if (this._content.events?.[type]) {
+		if (typeof this._content.events?.[type] === 'number') {
 			return this._content.events[type];
 		}
 

@@ -62,7 +62,7 @@ export class StateRepository {
 		const collection = await this.getCollection();
 		return collection
 			.find({ _id: { $in: stateIds.map((id) => new ObjectId(id)) } })
-			.sort({ createdAt: -1 });
+			.sort({ createdAt: 1 /* order as is saved */ });
 	}
 
 	async createStateMapping(

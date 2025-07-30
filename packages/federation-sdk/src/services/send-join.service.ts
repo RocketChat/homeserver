@@ -21,7 +21,6 @@ export class SendJoinService {
 	) {}
 
 	async sendJoin(roomId: string, eventId: string, event: RoomMemberEvent) {
-		console.log('sendJoin', roomId, eventId, event);
 		const stateService = this.stateService;
 
 		const roomVersion = await stateService.getRoomVersion(roomId);
@@ -92,7 +91,7 @@ export class SendJoinService {
 					signedJoinEvent.getContent<PduMembershipEventContent>().membership,
 			},
 		});
-		
+
 		return {
 			origin,
 			event: signedJoinEvent.event,

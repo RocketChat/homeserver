@@ -200,7 +200,7 @@ export class EventRepository {
 			.toArray();
 	}
 
-	async findLatestEventByRoomIdBeforeTimestamp(
+	async findLatestEventByRoomIdBeforeTimestampWithAssociatedState(
 		roomId: string,
 		timestamp: number,
 	): Promise<EventStore | null> {
@@ -209,6 +209,7 @@ export class EventRepository {
 			{
 				'event.room_id': roomId,
 				'event.origin_server_ts': { $lt: timestamp }, // events before passed timestamp
+				stateId: { $ne: '' },
 			},
 			{
 				sort: {
