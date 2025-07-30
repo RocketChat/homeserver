@@ -1,5 +1,5 @@
-import { type Static, t } from 'elysia';
 import { RoomIdDto, ServerNameDto, UsernameDto } from '@hs/federation-sdk';
+import { type Static, t } from 'elysia';
 
 export const InternalCreateRoomBodyDto = t.Object({
 	username: t.String({
@@ -63,7 +63,6 @@ export const InternalLeaveRoomParamsDto = t.Object({
 
 export const InternalLeaveRoomBodyDto = t.Object({
 	senderUserId: UsernameDto,
-	targetServers: t.Optional(t.Array(ServerNameDto)),
 });
 
 export const InternalKickUserParamsDto = t.Object({
@@ -75,7 +74,6 @@ export const InternalKickUserBodyDto = t.Object({
 	userIdToKick: UsernameDto,
 	senderUserId: UsernameDto,
 	reason: t.Optional(t.String({ description: 'Reason for kicking' })),
-	targetServers: t.Optional(t.Array(ServerNameDto)),
 });
 
 export const InternalBanUserParamsDto = t.Object({

@@ -155,6 +155,20 @@ export type HomeserverEventSignatures = {
 			reason?: string;
 		};
 	};
+	'homeserver.matrix.leave': {
+		event_id: string;
+		room_id: string;
+		user_id: string;
+		origin_server_ts: number;
+	};
+	'homeserver.matrix.kick': {
+		event_id: string;
+		room_id: string;
+		kicked_user_id: string;
+		kicked_by: string;
+		reason?: string;
+		origin_server_ts: number;
+	};
 };
 
 export function getAllServices(): HomeserverServices {

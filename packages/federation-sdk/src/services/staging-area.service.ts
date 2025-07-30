@@ -396,6 +396,35 @@ export class StagingAreaService {
 					});
 					break;
 				}
+				case EventType.MEMBER: {
+					const membership = event.event.content?.membership as string;
+					const stateKey = (event.event as any).state_key;
+					const sender = event.event.sender;
+
+					if (membership === 'leave') {
+						if (sender === stateKey) {
+							// User left voluntarily
+							this.eventEmitterService.emit('homeserver.matrix.leave', {
+								event_id: event.eventId,
+								room_id: event.roomId,
+								user_id: stateKey,
+								origin_server_ts: event.event.origin_server_ts,
+							});
+						} else {
+							// User was kicked
+							this.eventEmitterService.emit('homeserver.matrix.kick', {
+								event_id: event.eventId,
+								room_id: event.roomId,
+								kicked_user_id: stateKey,
+								kicked_by: sender,
+								reason: event.event.content?.reason as string | undefined,
+								origin_server_ts: event.event.origin_server_ts,
+							});
+						}
+					}
+					// Note: We can handle 'join', 'invite', 'ban' etc. here in the future
+					break;
+				}
 				default:
 					this.logger.warn(
 						`Unknown event type: ${event.event.type} for emitterService for now`,
