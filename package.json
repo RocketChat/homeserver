@@ -20,6 +20,7 @@
 	"dependencies": {
 		"dotenv": "^16.5.0",
 		"pino": "^9.7.0",
+		"pino-pretty": "^13.0.0",
 		"reflect-metadata": "^0.2.2",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3"
