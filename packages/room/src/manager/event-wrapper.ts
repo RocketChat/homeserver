@@ -63,6 +63,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 		if (rawEvent.signatures) {
 			this.signatures = rawEvent.signatures;
+			rawEvent.signatures = undefined; // to avoid this from freezing
+			// signature should not "change" if is already there, but they can be "re" set.
+			// hashes, on the other hand should be freezed, as that affects eventId.
+			// if hash was passed, don't change it or eventid will change and can break cross system state.
 		}
 	}
 
