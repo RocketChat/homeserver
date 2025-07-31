@@ -110,9 +110,9 @@ export class MessageService {
 
 		await this.stateService.signEvent(reactionEvent);
 
-		await this.stateService.persistTimelineEvent(reactionEvent);
+		void this.stateService.persistTimelineEvent(reactionEvent);
 
-		await this.federationService.sendEventToAllServersInRoom(reactionEvent);
+		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
 
 		return reactionEvent.eventId;
 	}
@@ -139,9 +139,9 @@ export class MessageService {
 
 		await this.stateService.signEvent(redactionEvent);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		void this.stateService.persistTimelineEvent(redactionEvent);
 
-		await this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
