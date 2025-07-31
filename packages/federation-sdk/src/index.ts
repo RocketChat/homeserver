@@ -104,6 +104,7 @@ export interface HomeserverServices {
 	state: StateService;
 	sendJoin: SendJoinService;
 	server: ServerService;
+	config: ConfigService;
 }
 
 export type HomeserverEventSignatures = {
