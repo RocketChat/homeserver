@@ -47,9 +47,7 @@ export class StagingAreaService {
 		private readonly eventStateService: EventStateService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly stateService: StateService,
-	) {
-		this.processQueue();
-	}
+	) {}
 
 	addEventToQueue(event: StagingAreaEventType) {
 		const extendedEvent: ExtendedStagingEvent = {
@@ -70,22 +68,13 @@ export class StagingAreaService {
 		this.logger.debug(`Added event ${event.eventId} to processing queue`);
 	}
 
-	private async processQueue() {
-		setInterval(async () => {
-			const event = this.stagingAreaQueue.dequeue();
-			if (event) {
-				await this.processEvent(event);
-			}
-		}, 100);
-	}
-
 	extractEventsFromIncomingPDU(pdu: StagingAreaEventType) {
 		const authEvents = pdu.event.auth_events || [];
 		const prevEvents = pdu.event.prev_events || [];
 		return [...authEvents, ...prevEvents];
 	}
 
-	@Lock({ timeout: 10000, keyPath: 'event.room_id' })
+	// @Lock({ timeout: 10000, keyPath: 'event.room_id' })
 	async processEvent(event: StagingAreaEventType & { metadata?: any }) {
 		const eventId = event.eventId;
 		const trackedEvent = this.processingEvents.get(eventId);
