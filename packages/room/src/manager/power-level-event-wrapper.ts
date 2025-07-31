@@ -1,7 +1,7 @@
 import {
-	PduTypeRoomMessage,
 	type PduPowerLevelsEventContent,
 	type PduType,
+	isTimelineEventType,
 } from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
 
@@ -79,7 +79,7 @@ class PowerLevelEvent {
 
 	getRequiredPowerLevelForEvent(type: PduType) {
 		if (!this._content) {
-			if (type === PduTypeRoomMessage) {
+			if (isTimelineEventType(type)) {
 				return 0;
 			}
 
@@ -90,7 +90,7 @@ class PowerLevelEvent {
 			return this._content.events[type];
 		}
 
-		if (type === PduTypeRoomMessage) {
+		if (isTimelineEventType(type)) {
 			return this._content.events_default ?? 0;
 		}
 
