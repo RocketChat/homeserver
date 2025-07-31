@@ -31,6 +31,20 @@ type PduWithHashesAndSignaturesOptional = Omit<Pdu, 'hashes' | 'signatures'> & {
 	signatures?: Pdu['signatures'];
 };
 
+export function deepFreeze(object: unknown) {
+	if (typeof object !== 'object' || object === null) {
+		return;
+	}
+
+	Object.freeze(object);
+
+	for (const value of Object.values(object)) {
+		if (!Object.isFrozen(value)) {
+			deepFreeze(value);
+		}
+	}
+}
+
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
@@ -64,7 +78,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 			};
 		}
 
-		Object.freeze(this.rawEvent);
+		deepFreeze(this.rawEvent);
 	}
 
 	// don't recalculate the hash if it is already set
