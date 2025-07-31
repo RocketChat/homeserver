@@ -49,7 +49,6 @@ export const AppConfigSchema = z.object({
 
 export class ConfigService {
 	private config: AppConfig;
-	private fileConfig: Partial<AppConfig> = {};
 	private logger = createLogger('ConfigService');
 
 	constructor(values: AppConfig) {

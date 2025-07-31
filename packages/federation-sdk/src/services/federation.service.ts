@@ -284,7 +284,7 @@ export class FederationService {
 			}
 
 			const txn: Transaction = {
-				origin: 'rc1.tunnel.dev.rocket.chat', //this.configService.serverName,
+				origin: this.configService.serverName,
 				origin_server_ts: Date.now(),
 				pdus: [event.event],
 				edus: [],
@@ -292,7 +292,14 @@ export class FederationService {
 
 			this.logger.info(`Sending event ${event.eventId} to server: ${server}`);
 
-			void this.sendTransaction(server, txn);
+			try {
+				await this.sendTransaction(server, txn);
+			} catch (error) {
+				this.logger.error(
+					`Failed to send event ${event.eventId} to server: ${server}`,
+					error,
+				);
+			}
 		}
 	}
 }
