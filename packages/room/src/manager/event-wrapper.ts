@@ -270,7 +270,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 		// tests expect this to be present
 		if (!dict.signatures) {
-			dict.signatures = {};
+			dict.signatures = this.signatures ?? {};
 		}
 
 		return {
