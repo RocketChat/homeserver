@@ -104,6 +104,7 @@ export interface HomeserverServices {
 	state: StateService;
 	sendJoin: SendJoinService;
 	server: ServerService;
+	config: ConfigService;
 }
 
 export type HomeserverEventSignatures = {
@@ -144,6 +145,7 @@ export function getAllServices(): HomeserverServices {
 		state: container.resolve(StateService),
 		sendJoin: container.resolve(SendJoinService),
 		server: container.resolve(ServerService),
+		config: container.resolve(ConfigService),
 	};
 }
 
