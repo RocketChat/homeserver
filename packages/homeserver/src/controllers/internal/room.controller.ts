@@ -1,30 +1,3 @@
-import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
-import {
-	type InternalBanUserResponse,
-	type InternalCreateRoomResponse,
-	type InternalKickUserResponse,
-	type InternalLeaveRoomResponse,
-	type InternalTombstoneRoomResponse,
-	type InternalUpdateRoomNameResponse,
-	type InternalUpdateUserPowerLevelResponse,
-	InternalBanUserBodyDto,
-	InternalBanUserParamsDto,
-	InternalCreateRoomBodyDto,
-	InternalCreateRoomResponseDto,
-	InternalKickUserBodyDto,
-	InternalKickUserParamsDto,
-	InternalLeaveRoomBodyDto,
-	InternalLeaveRoomParamsDto,
-	InternalRoomEventResponseDto,
-	InternalTombstoneRoomBodyDto,
-	InternalTombstoneRoomParamsDto,
-	InternalTombstoneRoomResponseDto,
-	InternalUpdateRoomNameBodyDto,
-	InternalUpdateRoomNameParamsDto,
-	InternalUpdateUserPowerLevelBodyDto,
-	InternalUpdateUserPowerLevelParamsDto,
-} from '../../dtos';
 import {
 	type ErrorResponse,
 	ErrorResponseDto,
@@ -32,9 +5,36 @@ import {
 	UsernameDto,
 } from '@hs/federation-sdk';
 import { RoomService } from '@hs/federation-sdk';
-import { type PduCreateEventContent, PersistentEventFactory } from '@hs/room';
 import { StateService } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
+import { type PduCreateEventContent, PersistentEventFactory } from '@hs/room';
+import { Elysia, t } from 'elysia';
+import { container } from 'tsyringe';
+import {
+	InternalBanUserBodyDto,
+	InternalBanUserParamsDto,
+	type InternalBanUserResponse,
+	InternalCreateRoomBodyDto,
+	type InternalCreateRoomResponse,
+	InternalCreateRoomResponseDto,
+	InternalKickUserBodyDto,
+	InternalKickUserParamsDto,
+	type InternalKickUserResponse,
+	InternalLeaveRoomBodyDto,
+	InternalLeaveRoomParamsDto,
+	type InternalLeaveRoomResponse,
+	InternalRoomEventResponseDto,
+	InternalTombstoneRoomBodyDto,
+	InternalTombstoneRoomParamsDto,
+	type InternalTombstoneRoomResponse,
+	InternalTombstoneRoomResponseDto,
+	InternalUpdateRoomNameBodyDto,
+	InternalUpdateRoomNameParamsDto,
+	type InternalUpdateRoomNameResponse,
+	InternalUpdateUserPowerLevelBodyDto,
+	InternalUpdateUserPowerLevelParamsDto,
+	type InternalUpdateUserPowerLevelResponse,
+} from '../../dtos';
 
 export const internalRoomPlugin = (app: Elysia) => {
 	const roomService = container.resolve(RoomService);
@@ -236,12 +236,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { senderUserId, targetServers } = bodyParse.data;
+				const { senderUserId } = bodyParse.data;
 				try {
 					const eventId = await roomService.leaveRoom(
 						roomIdParse.data,
 						senderUserId,
-						targetServers,
 					);
 					return { eventId };
 				} catch (error) {
@@ -291,15 +290,13 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { /*userIdToKick, */ senderUserId, reason, targetServers } =
-					bodyParse.data;
+				const { /*userIdToKick, */ senderUserId, reason } = bodyParse.data;
 				try {
 					const eventId = await roomService.kickUser(
 						params.roomId,
 						params.memberId,
 						senderUserId,
 						reason,
-						targetServers,
 					);
 					return { eventId };
 				} catch (error) {
