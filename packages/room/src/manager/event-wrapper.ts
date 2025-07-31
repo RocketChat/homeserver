@@ -94,8 +94,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		return this.rawEvent.origin || extractDomain(this.rawEvent.sender);
 	}
 
-	get stateKey() {
-		return this.rawEvent.state_key;
+	get stateKey(): string | undefined {
+		return 'state_key' in this.rawEvent
+			? (this.rawEvent.state_key as string)
+			: undefined;
 	}
 
 	get originServerTs() {
@@ -146,7 +148,14 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 	isState() {
 		// spec wise this is the right way to check if an event is a state event
-		return typeof this.rawEvent.state_key === 'string';
+		return (
+			'state_key' in this.rawEvent &&
+			typeof this.rawEvent.state_key === 'string'
+		);
+	}
+
+	isTimelineEvent() {
+		return !this.isState();
 	}
 
 	isPowerLevelEvent() {
