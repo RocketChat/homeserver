@@ -144,6 +144,7 @@ export function getAllServices(): HomeserverServices {
 		state: container.resolve(StateService),
 		sendJoin: container.resolve(SendJoinService),
 		server: container.resolve(ServerService),
+		config: container.resolve(ConfigService),
 	};
 }
 
