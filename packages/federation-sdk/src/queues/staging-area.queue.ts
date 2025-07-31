@@ -15,11 +15,20 @@ type QueueHandler = (item: StagingAreaEventType) => Promise<void>;
 @singleton()
 export class StagingAreaQueue {
 	private queue: StagingAreaEventType[] = [];
+	private priorityQueue: StagingAreaEventType[] = [];
 	private handlers: QueueHandler[] = [];
 	private processing = false;
 
 	enqueue(item: StagingAreaEventType): void {
-		this.queue.push(item);
+		// If this is a continuation of processing (has metadata.state), add to priority queue
+		if (
+			item.metadata?.state &&
+			item.metadata.state !== 'pending_dependencies'
+		) {
+			this.priorityQueue.push(item);
+		} else {
+			this.queue.push(item);
+		}
 		this.processQueue();
 	}
 
@@ -32,15 +41,16 @@ export class StagingAreaQueue {
 	}
 
 	private async processQueue(): Promise<void> {
-		if (this.processing || this.queue.length === 0) {
+		if (this.processing) {
 			return;
 		}
 
 		this.processing = true;
 
 		try {
-			while (this.queue.length > 0) {
-				const item = this.queue.shift();
+			while (this.priorityQueue.length > 0 || this.queue.length > 0) {
+				// Process priority queue first (events in mid-processing)
+				const item = this.priorityQueue.shift() || this.queue.shift();
 				if (!item) continue;
 
 				for (const handler of this.handlers) {
@@ -49,6 +59,11 @@ export class StagingAreaQueue {
 			}
 		} finally {
 			this.processing = false;
+
+			// Check if new items were added while processing
+			if (this.priorityQueue.length > 0 || this.queue.length > 0) {
+				this.processQueue();
+			}
 		}
 	}
 }

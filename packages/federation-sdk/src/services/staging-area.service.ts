@@ -4,14 +4,14 @@ import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
 import { createLogger } from '@hs/core';
+import { Pdu, PersistentEventFactory } from '@hs/room';
 import { Lock } from '../utils/lock.decorator';
 import { EventAuthorizationService } from './event-authorization.service';
+import { EventEmitterService } from './event-emitter.service';
 import { EventStateService } from './event-state.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
 import { MissingEventService } from './missing-event.service';
-import { EventEmitterService } from './event-emitter.service';
-import { Pdu, PersistentEventFactory } from '@hs/room';
 import { StateService } from './state.service';
 
 // ProcessingState indicates where in the flow an event is
@@ -47,9 +47,7 @@ export class StagingAreaService {
 		private readonly eventStateService: EventStateService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly stateService: StateService,
-	) {
-		this.processQueue();
-	}
+	) {}
 
 	addEventToQueue(event: StagingAreaEventType) {
 		const extendedEvent: ExtendedStagingEvent = {
@@ -70,22 +68,13 @@ export class StagingAreaService {
 		this.logger.debug(`Added event ${event.eventId} to processing queue`);
 	}
 
-	private async processQueue() {
-		setInterval(async () => {
-			const event = this.stagingAreaQueue.dequeue();
-			if (event) {
-				await this.processEvent(event);
-			}
-		}, 100);
-	}
-
 	extractEventsFromIncomingPDU(pdu: StagingAreaEventType) {
 		const authEvents = pdu.event.auth_events || [];
 		const prevEvents = pdu.event.prev_events || [];
 		return [...authEvents, ...prevEvents];
 	}
 
-	@Lock({ timeout: 10000, keyPath: 'event.room_id' })
+	// @Lock({ timeout: 10000, keyPath: 'event.room_id' })
 	async processEvent(event: StagingAreaEventType & { metadata?: any }) {
 		const eventId = event.eventId;
 		const trackedEvent = this.processingEvents.get(eventId);
@@ -347,7 +336,9 @@ export class StagingAreaService {
 	private async processNotificationStage(event: StagingAreaEventType) {
 		const eventId = event.eventId;
 		const trackedEvent = this.processingEvents.get(eventId);
-		if (!trackedEvent) return;
+		if (!trackedEvent) {
+			return;
+		}
 
 		try {
 			this.logger.debug(`Notifying clients about event ${eventId}`);
@@ -365,6 +356,35 @@ export class StagingAreaService {
 						},
 					});
 					break;
+				case EventType.REACTION: {
+					this.eventEmitterService.emit('homeserver.matrix.reaction', {
+						event_id: event.eventId,
+						room_id: event.roomId,
+						sender: event.event.sender,
+						origin_server_ts: event.event.origin_server_ts,
+						content: event.event.content as {
+							'm.relates_to': {
+								rel_type: 'm.annotation';
+								event_id: string;
+								key: string;
+							};
+						},
+					});
+					break;
+				}
+				case EventType.REDACTION: {
+					this.eventEmitterService.emit('homeserver.matrix.redaction', {
+						event_id: event.eventId,
+						room_id: event.roomId,
+						sender: event.event.sender,
+						origin_server_ts: event.event.origin_server_ts,
+						redacts: (event.event as any).redacts,
+						content: {
+							reason: event.event.content?.reason as string | undefined,
+						},
+					});
+					break;
+				}
 				default:
 					this.logger.warn(
 						`Unknown event type: ${event.event.type} for emitterService for now`,
