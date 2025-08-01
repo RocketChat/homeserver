@@ -142,7 +142,6 @@ describe('[EventWrapper] Redaction', () => {
 				signatures: {},
 				unsigned: {},
 			};
-			// @ts-expect-error our types are production types
 			runTest(a, b);
 		}
 	});
