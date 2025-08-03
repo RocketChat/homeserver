@@ -697,11 +697,8 @@ export class RoomService {
 			kickedUserId,
 			'leave',
 			roomInfo,
+			reason,
 		);
-
-		if (reason) {
-			(kickEvent.event.content as any).reason = reason;
-		}
 
 		await this.stateService.addAuthEvents(kickEvent);
 
@@ -773,11 +770,8 @@ export class RoomService {
 			bannedUserId,
 			'ban',
 			roomInfo,
+			reason,
 		);
-
-		if (reason) {
-			(banEvent.event.content as any).reason = reason;
-		}
 
 		await this.stateService.addAuthEvents(banEvent);
 
