@@ -345,6 +345,21 @@ export type PduMessageEventContent = z.infer<
 	typeof PduMessageEventContentSchema
 >;
 
+export const PduMessageReactionEventContentSchema = z.object({
+	'm.relates_to': z.object({
+		// TODO: add more types
+		rel_type: z.enum(['m.annotation']).describe('The type of the relation.'),
+		event_id: z
+			.string()
+			.describe('The ID of the event that is being annotated.'),
+		key: z.string(),
+	}),
+});
+
+export type PduMessageReactionEventContent = z.infer<
+	typeof PduMessageReactionEventContentSchema
+>;
+
 export const PduContentSchema = z
 	.union([
 		PduMembershipEventContentSchema,
@@ -363,7 +378,7 @@ export const PduContentSchema = z
 export type PduContent = z.infer<typeof PduContentSchema>;
 
 // SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
-export const PduNoContentSchema = {
+export const PduNoContentTimelineEventSchema = {
 	auth_events: z
 		.array(z.string())
 		.describe(
@@ -407,10 +422,6 @@ export const PduNoContentSchema = {
 	signatures: SignatureSchema.describe(
 		'The signatures of the event. This is an object with arbitrary keys and values.',
 	),
-	state_key: z
-		.string()
-		.describe('The state key of the event. This is an optional field.')
-		.optional(),
 	unsigned: z
 		.any()
 		.describe(
@@ -419,58 +430,82 @@ export const PduNoContentSchema = {
 		.optional(),
 };
 
-export function generatePduSchemaForBase<T>(base: T) {
+export const PduNoContentStateEventSchema = {
+	...PduNoContentTimelineEventSchema,
+	state_key: z
+		.string()
+		.describe('The state key of the event. This is an optional field.'),
+};
+
+export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 	return z.discriminatedUnion('type', [
 		z.object({
 			type: z.literal(PduTypeRoomCreate),
 			content: PduCreateEventContentSchema,
-			...base,
+			...stateBase,
 		}),
 
 		z.object({
-			...base,
+			...stateBase,
 			type: z.literal(PduTypeRoomMember),
 			content: PduMembershipEventContentSchema,
 		}),
 
 		z.object({
-			...base,
+			...stateBase,
 			type: z.literal(PduTypeRoomJoinRules),
 			content: PduJoinRuleEventContentSchema,
 		}),
 
 		z.object({
-			...base,
+			...stateBase,
 			type: z.literal(PduTypeRoomPowerLevels),
 			content: PduPowerLevelsEventContentSchema,
 		}),
 
 		z.object({
-			...base,
+			...stateBase,
 			type: z.literal(PduTypeRoomCanonicalAlias),
 			content: PduCanonicalAliasEventContentSchema,
 		}),
 
 		z.object({
-			...base,
+			...stateBase,
 			type: z.literal(PduTypeRoomName),
 			content: PduRoomNameEventContentSchema,
 		}),
 
 		z.object({
-			...base,
+			...stateBase,
 			type: z.literal(PduTypeRoomAliases),
 			content: PduCanonicalAliasEventContentSchema,
 		}),
 
 		z.object({
-			...base,
+			...timelineBase,
 			type: z.literal(PduTypeRoomMessage),
 			content: PduMessageEventContentSchema,
+		}),
+
+		z.object({
+			...timelineBase,
+			type: z.literal(PduTypeReaction),
+			content: PduMessageReactionEventContentSchema,
 		}),
 	]);
 }
 
-export const PduSchema = generatePduSchemaForBase(PduNoContentSchema);
+export const PduSchema = generatePduSchemaForBase(
+	PduNoContentStateEventSchema,
+	PduNoContentTimelineEventSchema,
+);
 
 export type Pdu = z.infer<typeof PduSchema>;
+
+export function isTimelineEventType(type: PduType) {
+	return (
+		type === PduTypeRoomMessage ||
+		type === PduTypeReaction ||
+		type === PduTypeRoomRedaction
+	);
+}

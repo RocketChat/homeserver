@@ -21,7 +21,6 @@ export interface AppConfig {
 	signingKey?: string;
 	timeout?: number;
 	signingKeyPath?: string;
-	path?: string;
 	database: {
 		uri: string;
 		name: string;
@@ -52,7 +51,7 @@ export class ConfigService {
 	private config: AppConfig;
 	private logger = createLogger('ConfigService');
 
-	constructor(values?: Partial<AppConfig>) {
+	constructor(values: AppConfig) {
 		// Load config from environment if not provided
 		const configValues = values || this.initializeConfig();
 

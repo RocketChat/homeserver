@@ -52,6 +52,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 			10,
 		),
 		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
+		version: process.env.SERVER_VERSION || '1.0',
 	});
 
 	const containerOptions: FederationContainerOptions = {
