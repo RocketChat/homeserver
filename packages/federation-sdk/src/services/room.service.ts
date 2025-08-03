@@ -1,20 +1,19 @@
 import {
 	EventBase,
-	generateId,
-	isRoomPowerLevelsEvent,
-	roomMemberEvent,
 	RoomNameAuthEvents,
-	roomNameEvent,
-	roomPowerLevelsEvent,
 	RoomPowerLevelsEvent,
-	roomTombstoneEvent,
 	RoomTombstoneEvent,
 	SignedEvent,
-	signEvent,
 	TombstoneAuthEvents,
+	generateId,
+	isRoomPowerLevelsEvent,
+	roomNameEvent,
+	roomPowerLevelsEvent,
+	roomTombstoneEvent,
+	signEvent,
 } from '@hs/core';
-import { FederationService } from './federation.service';
 import { inject, singleton } from 'tsyringe';
+import { FederationService } from './federation.service';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
@@ -24,12 +23,6 @@ import type {
 } from '@hs/core';
 
 import { logger } from '@hs/core';
-import { ConfigService } from './config.service';
-import { EventService } from './event.service';
-import { EventType } from './event.service';
-import type { RoomRepository } from '../repositories/room.repository';
-import { StateService } from './state.service';
-import { EventRepository } from '../repositories/event.repository';
 import {
 	PduCreateEventContent,
 	PduJoinRuleEventContent,
@@ -37,6 +30,12 @@ import {
 	PersistentEventFactory,
 	RoomVersion,
 } from '@hs/room';
+import { EventRepository } from '../repositories/event.repository';
+import type { RoomRepository } from '../repositories/room.repository';
+import { ConfigService } from './config.service';
+import { EventService } from './event.service';
+import { EventType } from './event.service';
+import { StateService } from './state.service';
 
 @singleton()
 export class RoomService {
@@ -579,20 +578,10 @@ export class RoomService {
 		return eventId;
 	}
 
-	async leaveRoom(
-		roomId: string,
-		senderId: string,
-		targetServers: string[] = [],
-	): Promise<string> {
+	async leaveRoom(roomId: string, senderId: string): Promise<string> {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
 
-		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
-		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot leave',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIds = await this.eventService.getAuthEventIds(
 			EventType.MEMBER,
@@ -630,79 +619,27 @@ export class RoomService {
 			);
 		}
 
-		const createEventId = authEventIds.find(
-			(e) => e.type === EventType.CREATE,
-		)?._id;
-		const memberEventId = authEventIds.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		)?._id;
-
-		if (!createEventId || !memberEventId) {
-			logger.error(
-				`Critical auth events missing for leave. Create: ${createEventId}, Member: ${memberEventId}`,
-			);
-			throw new HttpException(
-				'Critical auth events missing, cannot leave room',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-
-		const authEvents = {
-			'm.room.create': createEventId,
-			'm.room.power_levels': powerLevelsEventId,
-			[`m.room.member:${senderId}`]: memberEventId,
-		};
-
-		const serverName = this.configService.getServerConfig().name;
-		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
-
-		const unsignedEvent = roomMemberEvent({
+		const leaveEvent = PersistentEventFactory.newMembershipEvent(
 			roomId,
-			sender: senderId,
-			state_key: senderId,
-			auth_events: authEvents,
-			prev_events: [lastEvent._id],
-			depth: lastEvent.event.depth + 1,
-			membership: 'leave',
-			origin: serverName,
-			content: {
-				membership: 'leave',
-			},
-		});
-
-		const signedEvent = await signEvent(unsignedEvent, signingKey, serverName);
-		const eventId = generateId(signedEvent);
-
-		// After leaving, update local room membership state if necessary (e.g., remove from active members list)
-		// This might be handled by whatever consumes these events, or could be an explicit step here.
-		// For now, we assume event persistence is the primary concern of this service method.
-
-		for (const server of targetServers) {
-			if (server === serverName) {
-				continue;
-			}
-
-			try {
-				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.member (leave) event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
-			} catch (error) {
-				logger.error(
-					`Failed to send m.room.member (leave) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-
-		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.member (leave) event ${eventId} for user ${senderId} in room ${roomId}`,
+			senderId,
+			senderId, // For leave events, sender and state_key are the same
+			'leave',
+			roomInfo,
 		);
 
-		return eventId;
+		await this.stateService.addAuthEvents(leaveEvent);
+
+		await this.stateService.addPrevEvents(leaveEvent);
+
+		await this.stateService.persistStateEvent(leaveEvent);
+
+		logger.info(
+			`Successfully created and stored m.room.member (leave) event ${leaveEvent.eventId} for user ${senderId} in room ${roomId}`,
+		);
+
+		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
+
+		return leaveEvent.eventId;
 	}
 
 	async kickUser(
@@ -710,22 +647,12 @@ export class RoomService {
 		kickedUserId: string,
 		senderId: string,
 		reason?: string,
-		targetServers: string[] = [],
 	): Promise<string> {
 		logger.info(
 			`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
 		);
 
-		// TODO: Check if both sender and kicked user are members of the room
-		// This will be easier when we have a room state cache
-
-		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
-		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot kick user',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
 			EventType.POWER_LEVELS,
@@ -764,78 +691,28 @@ export class RoomService {
 			kickedUserId,
 		);
 
-		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
-			{ roomId, senderId },
-		);
-		const createEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.CREATE,
-		)?._id;
-		const senderMemberEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		)?._id;
-
-		if (!createEventId || !senderMemberEventId || !powerLevelsEventId) {
-			logger.error(
-				`Critical auth events missing for kick. Create: ${createEventId}, Sender's Member: ${senderMemberEventId}, PowerLevels: ${powerLevelsEventId}`,
-			);
-			throw new HttpException(
-				'Critical auth events missing, cannot kick user',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-
-		const authEvents = {
-			'm.room.create': createEventId,
-			'm.room.power_levels': powerLevelsEventId,
-			[`m.room.member:${kickedUserId}`]: senderMemberEventId,
-		};
-
-		const serverName = this.configService.getServerConfig().name;
-		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
-
-		const unsignedEvent = roomMemberEvent({
+		const kickEvent = PersistentEventFactory.newMembershipEvent(
 			roomId,
-			sender: senderId,
-			state_key: kickedUserId,
-			auth_events: authEvents,
-			prev_events: [lastEvent._id],
-			depth: lastEvent.event.depth + 1,
-			membership: 'leave',
-			origin: serverName,
-			content: {
-				membership: 'leave',
-				...(reason ? { reason } : {}),
-			},
-		});
-
-		const signedEvent = await signEvent(unsignedEvent, signingKey, serverName);
-		const eventId = generateId(signedEvent);
-
-		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.member (kick) event ${eventId} for user ${kickedUserId} in room ${roomId}`,
+			senderId,
+			kickedUserId,
+			'leave',
+			roomInfo,
+			reason,
 		);
 
-		for (const server of targetServers) {
-			if (server === serverName) {
-				continue;
-			}
-			try {
-				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.member (kick) event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
-			} catch (error) {
-				logger.error(
-					`Failed to send m.room.member (kick) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-		return eventId;
+		await this.stateService.addAuthEvents(kickEvent);
+
+		await this.stateService.addPrevEvents(kickEvent);
+
+		await this.stateService.persistStateEvent(kickEvent);
+
+		logger.info(
+			`Successfully created and stored m.room.member (kick) event ${kickEvent.eventId} for user ${kickedUserId} in room ${roomId}`,
+		);
+
+		void this.federationService.sendEventToAllServersInRoom(kickEvent);
+
+		return kickEvent.eventId;
 	}
 
 	async banUser(
@@ -843,19 +720,12 @@ export class RoomService {
 		bannedUserId: string,
 		senderId: string,
 		reason?: string,
-		targetServers: string[] = [],
 	): Promise<string> {
 		logger.info(
 			`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
 		);
 
-		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
-		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot ban user',
-				HttpStatus.BAD_REQUEST,
-			);
-		}
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
 			EventType.POWER_LEVELS,
@@ -894,78 +764,28 @@ export class RoomService {
 			bannedUserId,
 		);
 
-		const authEventIdsForMemberEvent = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
-			{ roomId, senderId },
-		);
-		const createEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.CREATE,
-		)?._id;
-		const senderMemberEventId = authEventIdsForMemberEvent.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		)?._id;
-
-		if (!createEventId || !senderMemberEventId || !powerLevelsEventId) {
-			logger.error(
-				`Critical auth events missing for ban. Create: ${createEventId}, Sender's Member: ${senderMemberEventId}, PowerLevels: ${powerLevelsEventId}`,
-			);
-			throw new HttpException(
-				'Critical auth events missing, cannot ban user',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-
-		const authEvents = {
-			'm.room.create': createEventId,
-			'm.room.power_levels': powerLevelsEventId,
-			[`m.room.member:${bannedUserId}`]: senderMemberEventId,
-		};
-
-		const serverName = this.configService.getServerConfig().name;
-		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
-
-		const unsignedEvent = roomMemberEvent({
+		const banEvent = PersistentEventFactory.newMembershipEvent(
 			roomId,
-			sender: senderId,
-			state_key: bannedUserId,
-			auth_events: authEvents,
-			prev_events: [lastEvent._id],
-			depth: lastEvent.event.depth + 1,
-			membership: 'ban',
-			origin: serverName,
-			content: {
-				membership: 'ban',
-				...(reason ? { reason } : {}),
-			},
-		});
-
-		const signedEvent = await signEvent(unsignedEvent, signingKey, serverName);
-		const eventId = generateId(signedEvent);
-
-		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.member (ban) event ${eventId} for user ${bannedUserId} in room ${roomId}`,
+			senderId,
+			bannedUserId,
+			'ban',
+			roomInfo,
+			reason,
 		);
 
-		for (const server of targetServers) {
-			if (server === serverName) {
-				continue;
-			}
-			try {
-				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.member (ban) event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
-			} catch (error) {
-				logger.error(
-					`Failed to send m.room.member (ban) event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-		return eventId;
+		await this.stateService.addAuthEvents(banEvent);
+
+		await this.stateService.addPrevEvents(banEvent);
+
+		await this.stateService.persistStateEvent(banEvent);
+
+		logger.info(
+			`Successfully created and stored m.room.member (ban) event ${banEvent.eventId} for user ${bannedUserId} in room ${roomId}`,
+		);
+
+		void this.federationService.sendEventToAllServersInRoom(banEvent);
+
+		return banEvent.eventId;
 	}
 
 	// if local room, add the user to the room if allowed.

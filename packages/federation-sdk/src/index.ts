@@ -155,6 +155,19 @@ export type HomeserverEventSignatures = {
 			reason?: string;
 		};
 	};
+	'homeserver.matrix.membership': {
+		event_id: string;
+		room_id: string;
+		sender: string;
+		state_key: string;
+		origin_server_ts: number;
+		content: {
+			membership: Membership;
+			displayname?: string;
+			avatar_url?: string;
+			reason?: string;
+		};
+	};
 };
 
 export function getAllServices(): HomeserverServices {

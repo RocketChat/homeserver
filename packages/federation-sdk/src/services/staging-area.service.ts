@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core';
+import type { EventBase, Membership } from '@hs/core';
 import { singleton } from 'tsyringe';
 import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
@@ -381,6 +381,22 @@ export class StagingAreaService {
 						redacts: (event.event as any).redacts,
 						content: {
 							reason: event.event.content?.reason as string | undefined,
+						},
+					});
+					break;
+				}
+				case EventType.MEMBER: {
+					this.eventEmitterService.emit('homeserver.matrix.membership', {
+						event_id: event.eventId,
+						room_id: event.roomId,
+						sender: event.event.sender,
+						state_key: event.event.state_key as string,
+						origin_server_ts: event.event.origin_server_ts,
+						content: event.event.content as {
+							membership: Membership;
+							displayname?: string;
+							avatar_url?: string;
+							reason?: string;
 						},
 					});
 					break;

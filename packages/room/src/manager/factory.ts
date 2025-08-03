@@ -132,6 +132,7 @@ export class PersistentEventFactory {
 		userId: string,
 		membership: PduMembershipEventContent['membership'],
 		roomInformation: PduCreateEventContent,
+		reason?: string,
 	) {
 		if (
 			!PersistentEventFactory.isSupportedRoomVersion(
@@ -154,6 +155,7 @@ export class PersistentEventFactory {
 		const membershipContent: PduMembershipEventContent = {
 			membership,
 			displayname,
+			...(reason && { reason }),
 		};
 
 		const eventPartial: Omit<
