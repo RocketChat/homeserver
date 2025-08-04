@@ -1,4 +1,5 @@
 import type { EventBase } from '@hs/core';
+import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { PersistentEventBase } from '@hs/room';
@@ -299,6 +300,35 @@ export class FederationService {
 					`Failed to send event ${event.eventId} to server: ${server}`,
 					error,
 				);
+			}
+		}
+	}
+
+	async sendEDUToAllServersInRoom(
+		edus: BaseEDU[],
+		roomId: string,
+	): Promise<void> {
+		const servers = await this.stateService.getServersInRoom(roomId);
+
+		for (const server of servers) {
+			if (server === this.configService.serverName) {
+				this.logger.info(`Skipping EDU to local server: ${server}`);
+				continue;
+			}
+
+			const txn: Transaction = {
+				origin: this.configService.serverName,
+				origin_server_ts: Date.now(),
+				pdus: [],
+				edus,
+			};
+
+			this.logger.info(`Sending EDUs to server: ${server}`);
+
+			try {
+				await this.sendTransaction(server, txn);
+			} catch (error) {
+				this.logger.error(`Failed to send EDUs to server: ${server}`, error);
 			}
 		}
 	}
