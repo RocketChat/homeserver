@@ -111,6 +111,17 @@ export type HomeserverEventSignatures = {
 	'homeserver.ping': {
 		message: string;
 	};
+	'homeserver.matrix.typing': {
+		room_id: string;
+		user_ids: string[];
+		origin?: string;
+	};
+	'homeserver.matrix.presence': {
+		user_id: string;
+		presence: 'online' | 'offline' | 'unavailable';
+		last_active_ago?: number;
+		origin?: string;
+	};
 	'homeserver.matrix.message': {
 		event_id: string;
 		room_id: string;

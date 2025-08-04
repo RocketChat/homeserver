@@ -59,6 +59,8 @@ export * from './events/m.room.third_party_invite';
 export * from './events/m.reaction';
 export * from './events/pdu';
 
+export * from './events/edu';
+
 export type { RoomMemberEvent, Membership } from './events/isRoomMemberEvent';
 
 export { isRoomMemberEvent } from './events/isRoomMemberEvent';
