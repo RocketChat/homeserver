@@ -350,9 +350,17 @@ export class StagingAreaService {
 						room_id: event.roomId,
 						sender: event.event.sender,
 						origin_server_ts: event.event.origin_server_ts,
-						content: {
-							body: event.event.content?.body as string,
-							msgtype: event.event.content?.msgtype as string,
+						content: event.event.content as {
+							body: string;
+							msgtype: string;
+							'm.relates_to'?: {
+								rel_type: string;
+								event_id: string;
+								is_falling_back?: boolean;
+								'm.in_reply_to'?: {
+									event_id: string;
+								};
+							};
 						},
 					});
 					break;
