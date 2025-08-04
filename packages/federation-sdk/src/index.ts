@@ -119,6 +119,15 @@ export type HomeserverEventSignatures = {
 		content: {
 			body: string;
 			msgtype: string;
+			'm.relates_to'?: {
+				rel_type: 'm.replace' | 'm.annotation';
+				event_id: string;
+			};
+			'm.new_content'?: {
+				body: string;
+				msgtype: string;
+				'm.mentions'?: Record<string, string>;
+			};
 		};
 	};
 	'homeserver.matrix.accept-invite': {

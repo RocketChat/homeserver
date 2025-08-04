@@ -339,6 +339,28 @@ export const PduMessageEventContentSchema = z.object({
 	body: z.string().describe('The body of the message.'),
 	// TODO: add more types
 	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
+	// Optional fields for message edits and relations
+	'm.relates_to': z
+		.object({
+			rel_type: z
+				.enum(['m.replace', 'm.annotation'])
+				.describe('The type of the relation.'),
+			event_id: z
+				.string()
+				.describe('The ID of the event that is being related to.'),
+			key: z.string().optional().describe('The key for reactions (emoji).'),
+		})
+		.optional()
+		.describe('Relation information for edits, replies, reactions, etc.'),
+	'm.new_content': z
+		.object({
+			body: z.string().describe('The new body of the message for edits.'),
+			msgtype: z
+				.enum(['m.text', 'm.image'])
+				.describe('The type of the new message content.'),
+		})
+		.optional()
+		.describe('The new content for message edits.'),
 });
 
 export type PduMessageEventContent = z.infer<

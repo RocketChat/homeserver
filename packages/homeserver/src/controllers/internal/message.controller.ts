@@ -28,15 +28,18 @@ export const internalMessagePlugin = (app: Elysia) => {
 				body,
 				set,
 			}): Promise<InternalMessageResponse | ErrorResponse> => {
-				const { roomId, message, senderUserId, targetServer } = body;
+				const { roomId, message, senderUserId } = body;
 				try {
-					return await messageService.updateMessage(
+					const eventId = await messageService.updateMessage(
 						roomId,
 						message,
 						senderUserId,
-						targetServer,
 						params.messageId,
 					);
+					return {
+						event_id: eventId,
+						origin_server_ts: Date.now(),
+					};
 				} catch (error) {
 					set.status = 500;
 					return {
