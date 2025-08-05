@@ -1,6 +1,7 @@
 import type { Membership } from '@hs/core';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
+import { EduService } from './services/edu.service';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
@@ -31,6 +32,7 @@ export { WellKnownService } from './services/well-known.service';
 export { ConfigService } from './services/config.service';
 export type { AppConfig } from './services/config.service';
 export { DatabaseConnectionService } from './services/database-connection.service';
+export { EduService } from './services/edu.service';
 
 export { ServerService } from './services/server.service';
 export { EventAuthorizationService } from './services/event-authorization.service';
@@ -105,11 +107,24 @@ export interface HomeserverServices {
 	sendJoin: SendJoinService;
 	server: ServerService;
 	config: ConfigService;
+	edu: EduService;
 }
 
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
 		message: string;
+	};
+	'homeserver.matrix.typing': {
+		room_id: string;
+		user_id: string;
+		typing: boolean;
+		origin?: string;
+	};
+	'homeserver.matrix.presence': {
+		user_id: string;
+		presence: 'online' | 'offline' | 'unavailable';
+		last_active_ago?: number;
+		origin?: string;
 	};
 	'homeserver.matrix.message': {
 		event_id: string;
@@ -182,6 +197,7 @@ export function getAllServices(): HomeserverServices {
 		sendJoin: container.resolve(SendJoinService),
 		server: container.resolve(ServerService),
 		config: container.resolve(ConfigService),
+		edu: container.resolve(EduService),
 	};
 }
 

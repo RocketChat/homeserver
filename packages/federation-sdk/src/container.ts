@@ -36,7 +36,7 @@ import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 
-import type { HomeserverEventSignatures } from './index';
+import { EduService, type HomeserverEventSignatures } from './index';
 import type { LockConfig } from './utils/lock.decorator';
 
 export interface FederationContainerOptions {
@@ -104,6 +104,7 @@ export function createFederationContainer(
 	// Register listeners
 	container.registerSingleton('MissingEventListener', MissingEventListener);
 	container.registerSingleton('StagingAreaListener', StagingAreaListener);
+	container.registerSingleton('EduService', EduService);
 
 	container.registerSingleton('StagingAreaService', StagingAreaService);
 	container.registerSingleton(StagingAreaService);
