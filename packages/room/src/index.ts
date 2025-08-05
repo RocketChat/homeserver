@@ -10,3 +10,5 @@ export * from './state_resolution/definitions/definitions';
 
 export * from './types/v3-11';
 export * from './types/_common';
+
+export * from './manager/room-state';

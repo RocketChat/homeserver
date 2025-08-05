@@ -290,7 +290,10 @@ export class FederationService {
 				edus: [],
 			};
 
-			this.logger.info(`Sending event ${event.eventId} to server: ${server}`);
+			this.logger.info(
+				{ txn },
+				`Sending event ${event.eventId} to server: ${server}`,
+			);
 
 			try {
 				await this.sendTransaction(server, txn);

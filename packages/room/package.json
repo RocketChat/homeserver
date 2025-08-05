@@ -23,5 +23,8 @@
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"files": ["src", "dist"]
+	"files": [
+		"src",
+		"dist"
+	]
 }

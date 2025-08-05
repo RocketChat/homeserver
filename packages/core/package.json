@@ -15,7 +15,10 @@
 			"require": "./dist/index.js"
 		}
 	},
-	"files": ["./src", "./dist"],
+	"files": [
+		"./src",
+		"./dist"
+	],
 	"devDependencies": {
 		"bun-types": "latest",
 		"ts-node": "^10.9.2",

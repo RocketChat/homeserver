@@ -1,4 +1,4 @@
-import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
+import { type RoomMemberEvent, createLogger } from '@hs/core';
 import { inject, singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -12,6 +12,8 @@ import {
 
 @singleton()
 export class SendJoinService {
+	private readonly logger = createLogger('SendJoinService');
+
 	constructor(
 		@inject('EventService') private readonly eventService: EventService,
 		@inject(EventEmitterService)
@@ -20,7 +22,10 @@ export class SendJoinService {
 		@inject(ConfigService) private readonly configService: ConfigService,
 	) {}
 
+	// sendJoin handler send_join endpoint request, just handles OTHERS joining our rooms
 	async sendJoin(roomId: string, eventId: string, event: RoomMemberEvent) {
+		this.logger.debug('handling room join request', { roomId, eventId, event });
+
 		const stateService = this.stateService;
 
 		const roomVersion = await stateService.getRoomVersion(roomId);
@@ -28,6 +33,8 @@ export class SendJoinService {
 		if (!roomVersion) {
 			throw new Error('Room version not found');
 		}
+
+		this.logger.debug('joining room version', { roomVersion });
 
 		const eventAny = event as any;
 

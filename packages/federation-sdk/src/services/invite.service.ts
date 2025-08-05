@@ -55,6 +55,8 @@ export class InviteService {
 
 		await stateService.signEvent(inviteEvent);
 
+		this.logger.info({ inviteEvent: inviteEvent.event }, 'invite event signed');
+
 		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
 
 		const invitedServer = inviteEvent.stateKey?.split(':').pop();
@@ -66,6 +68,8 @@ export class InviteService {
 
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.getServerName()) {
+			this.logger.info('trying to save invite ourselves as we are the host');
+
 			await stateService.persistStateEvent(inviteEvent);
 
 			if (inviteEvent.rejected) {
@@ -84,6 +88,8 @@ export class InviteService {
 
 		// invited user from another room
 		// get signed invite event
+
+		this.logger.info('inviting user to another server');
 
 		const inviteResponse = await federationService.inviteUser(
 			inviteEvent,
@@ -108,6 +114,7 @@ export class InviteService {
 		};
 	}
 
+	// processInvite handled /invite/ endpoint request, WE were invited
 	async processInvite<
 		T extends Omit<EventBaseWithOptionalId, 'origin'> & {
 			origin?: string | undefined;
@@ -119,8 +126,11 @@ export class InviteService {
 
 		const residentServer = roomId.split(':').pop();
 		if (!residentServer) {
+			this.logger.error({ roomId }, 'Invalid roomId');
 			throw new Error(`Invalid roomId ${roomId}`);
 		}
+
+		this.logger.debug({ roomId, eventId, roomVersion }, 'processing invite');
 
 		const inviteEvent = PersistentEventFactory.createFromRawEvent(
 			event as any,
@@ -133,28 +143,45 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
+		this.logger.debug(
+			{ inviteEvent: inviteEvent.event },
+			'invite event signed',
+		);
+
 		if (residentServer === this.configService.getServerName()) {
-			// we are the host of the server
+			this.logger.debug(
+				'we are the host of the server, attempting to make invite event part of our state',
+			);
 
 			// attempt to persist the invite event as we already have the state
 
 			await this.stateService.persistStateEvent(inviteEvent);
 			if (inviteEvent.rejected) {
+				this.logger.error(
+					{ inviteEvent: inviteEvent.event },
+					'invite event rejected',
+				);
 				throw new Error(inviteEvent.rejectedReason);
 			}
+
+			this.logger.debug('invite event persisted');
 
 			// we do not send transaction here
 			// the asking server will handle the transactions
 
 			// return the signed invite event
-			return {
-				event: inviteEvent.event,
-			};
+			return inviteEvent;
 		}
 
 		// are we already in the room?
 		try {
+			this.logger.debug('checking if we are already in the room');
+
 			await this.stateService.getRoomInformation(roomId);
+
+			this.logger.debug(
+				'we have the state, attempting to persist the invite event',
+			);
 
 			// if we have the state we try to persist the invite event
 			await this.stateService.persistStateEvent(inviteEvent);
@@ -163,15 +190,18 @@ export class InviteService {
 			}
 		} catch (e) {
 			// don't have state copy yet
-			console.error(e);
+			this.logger.error(
+				{ error: e },
+				'error checking if we are already in the room',
+			);
 
 			// typical noop, we sign and return the event, nothing to do
 		}
 
+		this.logger.debug('responding with signed invite event previously logged');
+
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
-		return {
-			event: inviteEvent.event,
-		};
+		return inviteEvent;
 	}
 }

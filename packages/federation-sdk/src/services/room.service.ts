@@ -315,126 +315,34 @@ export class RoomService {
 		};
 	}
 
-	async updateRoomName(
-		roomId: string,
-		name: string,
-		senderId: string,
-		targetServer: string,
-	) {
+	async updateRoomName(roomId: string, name: string, senderId: string) {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
 		);
 
-		const lastEvent = await this.eventService.getLastEventForRoom(roomId);
-		if (!lastEvent) {
-			throw new HttpException(
-				'Room has no history, cannot update name',
-				HttpStatus.BAD_REQUEST,
-			);
+		const roomversion = await this.stateService.getRoomVersion(roomId);
+		if (!roomversion) {
+			throw new Error('Room version not found');
 		}
 
-		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.NAME,
-			{ roomId, senderId },
-		);
-		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		)?._id;
-
-		const canUpdateRoomName = await this.eventService.checkUserPermission(
-			powerLevelsEventId || '',
-			senderId,
-			EventType.NAME,
-		);
-
-		if (!canUpdateRoomName) {
-			logger.warn(
-				`User ${senderId} does not have permission to set room name in ${roomId} based on power levels.`,
-			);
-			throw new HttpException(
-				"You don't have permission to set the room name.",
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
-		if (authEventIds.length < 3) {
-			logger.error(
-				`Could not find all auth events for room name update. Found: ${JSON.stringify(authEventIds)}`,
-			);
-			throw new HttpException(
-				'Not authorized or missing prerequisites to set room name',
-				HttpStatus.FORBIDDEN,
-			);
-		}
-
-		const authEvents: RoomNameAuthEvents = {
-			'm.room.create':
-				authEventIds.find((e) => e.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels': powerLevelsEventId || '',
-			'm.room.member':
-				authEventIds.find((e) => e.type === EventType.MEMBER)?._id || '',
-		};
-
-		if (!authEvents['m.room.create'] || !authEvents['m.room.member']) {
-			// power_levels already checked
-			logger.error(
-				`Critical auth events missing (create or member). Create: ${authEvents['m.room.create']}, Member: ${authEvents['m.room.member']}`,
-			);
-			throw new HttpException(
-				'Critical auth events missing, cannot set room name',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-
-		const roomNameEventPayload = {
+		const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
 			roomId,
-			sender: senderId,
-			auth_events: authEvents,
-			prev_events: [lastEvent._id],
-			depth: lastEvent.event.depth + 1,
-			content: { name },
-			origin: this.configService.getServerConfig().name,
-		};
-
-		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
-		const serverName = this.configService.getServerConfig().name;
-
-		const unsignedEvent = roomNameEvent(roomNameEventPayload);
-		const signedEvent = await signEvent(unsignedEvent, signingKey, serverName);
-
-		const eventId = generateId(signedEvent);
-		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.name event ${eventId} for room ${roomId}`,
+			senderId,
+			name,
+			roomversion,
 		);
 
-		await this.roomRepository.updateRoomName(roomId, name);
-		logger.info(
-			`Successfully updated room name in repository for room ${roomId}`,
-		);
+		const stateService = this.stateService;
 
-		for (const server of [targetServer]) {
-			try {
-				await this.federationService.sendEvent(
-					server,
-					signedEvent as unknown as EventBase,
-				);
-				logger.info(
-					`Successfully sent m.room.name event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
-			} catch (error) {
-				logger.error(
-					`Failed to send m.room.name event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
+		await stateService.addAuthEvents(roomNameEvent);
 
-		return {
-			eventId: eventId,
-		};
+		await stateService.addPrevEvents(roomNameEvent);
+
+		await stateService.persistStateEvent(roomNameEvent);
+
+		void this.federationService.sendEventToAllServersInRoom(roomNameEvent);
+
+		return roomNameEvent;
 	}
 
 	async updateUserPowerLevel(
@@ -1171,5 +1079,80 @@ export class RoomService {
 		logger.info(
 			`Notified ${remoteServers.size} federated servers about room mark as tombstone`,
 		);
+	}
+
+	private async setRoomJoinRules(
+		roomId: string,
+		sender: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+	) {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found while join rule changing');
+		}
+
+		const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
+			roomId,
+			sender,
+			joinRule,
+			roomVersion,
+		);
+
+		await this.stateService.addAuthEvents(joinRuleEvent);
+
+		await this.stateService.addPrevEvents(joinRuleEvent);
+
+		await this.stateService.signEvent(joinRuleEvent);
+
+		await this.stateService.persistStateEvent(joinRuleEvent);
+
+		void this.federationService.sendEventToAllServersInRoom(joinRuleEvent);
+	}
+
+	async setRoomPublic(roomId: string, sender: string) {
+		await this.setRoomJoinRules(roomId, sender, 'public');
+	}
+
+	async setRoomInviteOnly(roomId: string, sender: string) {
+		await this.setRoomJoinRules(roomId, sender, 'invite');
+	}
+
+	async setPowerLevelForUser(
+		roomId: string,
+		sender: string,
+		userId: string,
+		powerLevel: number,
+	) {
+		const state = await this.stateService.getFullRoomState2(roomId);
+
+		const existing = state.powerLevels;
+
+		if (!existing) {
+			// TODO we should have one always for ours
+			throw new Error(
+				'Power levels event not found while setting power level for user',
+			);
+		}
+
+		if (!existing?.users) {
+			existing.users = {};
+		}
+
+		existing.users[userId] = powerLevel;
+
+		const event = PersistentEventFactory.newPowerLevelEvent(
+			roomId,
+			sender,
+			existing,
+			state.version,
+		);
+
+		await this.stateService.addAuthEvents(event);
+		await this.stateService.addPrevEvents(event);
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistStateEvent(event);
+
+		void this.federationService.sendEventToAllServersInRoom(event);
 	}
 }

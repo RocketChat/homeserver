@@ -73,6 +73,8 @@ export class MessageService {
 			throw new Error(event.rejectedReason);
 		}
 
+		this.logger.info({ event: event.event }, 'sending message to federation');
+
 		void this.federationService.sendEventToAllServersInRoom(event);
 
 		return event;

@@ -66,6 +66,8 @@ export class FederationRequestService {
 					signingKey,
 					serverName,
 				);
+
+				this.logger.debug({ signedBody }, 'signed body');
 			}
 
 			const auth = await authorizationHeaders(
@@ -125,6 +127,17 @@ export class FederationRequestService {
 			}
 			queryString = params.toString();
 		}
+
+		this.logger.info(
+			{
+				body,
+				method,
+				uri: endpoint,
+				domain: targetServer,
+				queryString,
+			},
+			'making request',
+		);
 
 		return this.makeSignedRequest<T>({
 			method,

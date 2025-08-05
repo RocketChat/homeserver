@@ -10,13 +10,15 @@
 		"@types/node": "^22.15.18",
 		"@types/sinon": "^17.0.4",
 		"husky": "^9.1.7",
+		"lint-staged": "^16.1.2",
 		"sinon": "^20.0.0",
 		"tsconfig-paths": "^4.2.0",
 		"turbo": "^2.5.4",
-		"lint-staged": "^16.1.2",
 		"typescript": "^5.8.3"
 	},
-	"workspaces": ["packages/*"],
+	"workspaces": [
+		"packages/*"
+	],
 	"dependencies": {
 		"dotenv": "^16.5.0",
 		"pino": "^9.7.0",
@@ -40,7 +42,9 @@
 			"biome format --write --no-errors-on-unmatched",
 			"biome lint --write --no-errors-on-unmatched"
 		],
-		"*": ["biome check --no-errors-on-unmatched --files-ignore-unknown=true"]
+		"*": [
+			"biome check --no-errors-on-unmatched --files-ignore-unknown=true"
+		]
 	},
 	"scripts": {
 		"prepare": "husky",
