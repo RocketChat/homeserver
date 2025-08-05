@@ -339,6 +339,24 @@ export const PduMessageEventContentSchema = z.object({
 	body: z.string().describe('The body of the message.'),
 	// TODO: add more types
 	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
+	// Optional thread relation for thread messages
+	'm.relates_to': z
+		.object({
+			rel_type: z.literal('m.thread').describe('Thread relation type'),
+			event_id: z.string().describe('The ID of the thread root event'),
+			is_falling_back: z
+				.boolean()
+				.optional()
+				.describe('Whether this is a fallback for older clients'),
+			'm.in_reply_to': z
+				.object({
+					event_id: z
+						.string()
+						.describe('The ID of the latest event in the thread for fallback'),
+				})
+				.optional(),
+		})
+		.optional(),
 });
 
 export type PduMessageEventContent = z.infer<
