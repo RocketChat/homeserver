@@ -5,6 +5,7 @@ import { inject, singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { FederationService } from './federation.service';
+import { StateService } from './state.service';
 
 @singleton()
 export class EduService {
@@ -14,23 +15,29 @@ export class EduService {
 		@inject('ConfigService') private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly eventEmitterService: EventEmitterService,
+		@inject('StateService') private readonly stateService: StateService,
 	) {}
 
 	async sendTypingNotification(
 		roomId: string,
-		userIds: string[],
+		userId: string,
+		typing: boolean,
 	): Promise<void> {
 		try {
 			const origin = this.configService.getServerName();
-			const typingEDU = createTypingEDU(roomId, userIds, origin);
+			const typingEDU = createTypingEDU(roomId, userId, typing, origin);
 
 			this.logger.debug(
-				`Sending typing notification for room ${roomId}: ${userIds.join(', ')} to all servers in room`,
+				`Sending typing notification for room ${roomId}: ${userId} (typing: ${typing}) to all servers in room`,
 			);
 
-			await this.federationService.sendEDUToAllServersInRoom(
-				[typingEDU],
-				roomId,
+			const servers = await this.stateService.getServersInRoom(roomId);
+			const uniqueServers = servers.filter((server) => server !== origin);
+
+			await this.federationService.sendEDUToServers([typingEDU], uniqueServers);
+
+			this.logger.debug(
+				`Sent typing notification to ${uniqueServers.length} unique servers for room ${roomId}`,
 			);
 		} catch (error) {
 			this.logger.error(
@@ -51,22 +58,30 @@ export class EduService {
 			this.logger.debug(
 				`Sending presence updates for ${presenceUpdates.length} users to all servers in rooms: ${roomIds.join(', ')}`,
 			);
+			const uniqueServers = new Set<string>();
 
 			for (const roomId of roomIds) {
-				void this.federationService.sendEDUToAllServersInRoom(
-					[presenceEDU],
-					roomId,
-				);
+				const servers = await this.stateService.getServersInRoom(roomId);
+				for (const server of servers) {
+					if (server !== origin) {
+						uniqueServers.add(server);
+					}
+				}
 			}
+
+			await this.federationService.sendEDUToServers(
+				[presenceEDU],
+				Array.from(uniqueServers),
+			);
+
+			this.logger.debug(
+				`Sent presence updates to ${uniqueServers.size} unique servers for ${roomIds.length} rooms`,
+			);
 		} catch (error) {
 			this.logger.error(
 				`Failed to send presence update to rooms: ${error instanceof Error ? error.message : String(error)}`,
 			);
 			throw error;
 		}
-	}
-
-	async sendStopTyping(roomId: string): Promise<void> {
-		await this.sendTypingNotification(roomId, []);
 	}
 }

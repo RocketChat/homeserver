@@ -379,22 +379,23 @@ export class EventService {
 		typingEDU: TypingEDU,
 		origin?: string,
 	): Promise<void> {
-		const { room_id, user_ids } = typingEDU.content;
+		const { room_id, user_id, typing } = typingEDU.content;
 
-		if (!room_id || !Array.isArray(user_ids)) {
+		if (!room_id || !user_id || typeof typing !== 'boolean') {
 			this.logger.warn(
-				'Invalid typing EDU content, missing room_id or user_ids',
+				'Invalid typing EDU content, missing room_id, user_id, or typing',
 			);
 			return;
 		}
 
 		this.logger.debug(
-			`Processing typing notification for room ${room_id}: ${user_ids.join(', ')}`,
+			`Processing typing notification for room ${room_id}: ${user_id} (typing: ${typing})`,
 		);
 
 		this.eventEmitterService.emit('homeserver.matrix.typing', {
 			room_id,
-			user_ids,
+			user_id,
+			typing,
 			origin,
 		});
 	}

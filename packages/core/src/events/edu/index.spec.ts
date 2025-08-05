@@ -9,16 +9,16 @@ import { createTypingEDU, isTypingEDU } from './m.typing';
 describe('EDU Index', () => {
 	describe('MatrixEDUTypes union type', () => {
 		test('accepts TypingEDU', () => {
-			const typingEDU = createTypingEDU('!room:example.com', [
+			const typingEDU = createTypingEDU(
+				'!room:example.com',
 				'@user:example.com',
-			]);
+				true,
+			);
 
-			// This should compile without TypeScript errors
 			const eduUnion: MatrixEDUTypes = typingEDU;
 
 			expect(eduUnion.edu_type).toBe('m.typing');
 		});
-
 		test('accepts PresenceEDU', () => {
 			const presenceEDU = createPresenceEDU([
 				{
@@ -27,7 +27,6 @@ describe('EDU Index', () => {
 				},
 			]);
 
-			// This should compile without TypeScript errors
 			const eduUnion: MatrixEDUTypes = presenceEDU;
 
 			expect(eduUnion.edu_type).toBe('m.presence');
@@ -39,16 +38,17 @@ describe('EDU Index', () => {
 				content: { test: 'data' },
 			};
 
-			// This should compile without TypeScript errors
 			const eduUnion: MatrixEDUTypes = baseEDU;
 
 			expect(eduUnion.edu_type).toBe('m.custom');
 		});
 
 		test('union type preserves specific EDU properties', () => {
-			const typingEDU = createTypingEDU('!room:example.com', [
+			const typingEDU = createTypingEDU(
+				'!room:example.com',
 				'@user:example.com',
-			]);
+				true,
+			);
 			const presenceEDU = createPresenceEDU([
 				{
 					user_id: '@user:example.com',
@@ -65,7 +65,7 @@ describe('EDU Index', () => {
 
 		test('can be used in discriminated union patterns', () => {
 			const edus: MatrixEDUTypes[] = [
-				createTypingEDU('!room:example.com', ['@user:example.com']),
+				createTypingEDU('!room:example.com', '@user:example.com', true),
 				createPresenceEDU([
 					{ user_id: '@user:example.com', presence: 'online' },
 				]),
@@ -74,31 +74,17 @@ describe('EDU Index', () => {
 			for (const edu of edus) {
 				switch (edu.edu_type) {
 					case 'm.typing':
-						// TypeScript should know this is a TypingEDU
 						expect(edu.content).toHaveProperty('room_id');
-						expect(edu.content).toHaveProperty('user_ids');
+						expect(edu.content).toHaveProperty('user_id');
+						expect(edu.content).toHaveProperty('typing');
 						break;
 					case 'm.presence':
-						// TypeScript should know this is a PresenceEDU
 						expect(edu.content).toHaveProperty('push');
 						break;
 					default:
-						// Generic BaseEDU case
 						expect(edu.content).toBeDefined();
 				}
 			}
-		});
-	});
-
-	describe('Module exports', () => {
-		test('exports all required types and functions', () => {
-			// Test that all functions are available via imports
-			expect(typeof createTypingEDU).toBe('function');
-			expect(typeof isTypingEDU).toBe('function');
-			expect(typeof createPresenceEDU).toBe('function');
-			expect(typeof isPresenceEDU).toBe('function');
-			expect(typeof isMatrixEDU).toBe('function');
-			expect(typeof isFederationEDUResponse).toBe('function');
 		});
 	});
 });

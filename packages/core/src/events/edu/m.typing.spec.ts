@@ -7,50 +7,57 @@ describe('TypingEDU', () => {
 	describe('createTypingEDU', () => {
 		test('creates a valid typing EDU with required fields', () => {
 			const roomId = '!testroom:example.com';
-			const userIds = ['@user1:example.com', '@user2:example.com'];
+			const userId = '@user1:example.com';
+			const typing = true;
 
-			const edu = createTypingEDU(roomId, userIds);
+			const edu = createTypingEDU(roomId, userId, typing);
 
 			expect(edu.edu_type).toBe('m.typing');
 			expect(edu.content.room_id).toBe(roomId);
-			expect(edu.content.user_ids).toEqual(userIds);
+			expect(edu.content.user_id).toBe(userId);
+			expect(edu.content.typing).toBe(typing);
 			expect(edu.origin).toBeUndefined();
 		});
 
 		test('creates a typing EDU with origin when provided', () => {
 			const roomId = '!testroom:example.com';
-			const userIds = ['@user1:example.com'];
+			const userId = '@user1:example.com';
+			const typing = false;
 			const origin = 'example.com';
 
-			const edu = createTypingEDU(roomId, userIds, origin);
+			const edu = createTypingEDU(roomId, userId, typing, origin);
 
 			expect(edu.edu_type).toBe('m.typing');
 			expect(edu.content.room_id).toBe(roomId);
-			expect(edu.content.user_ids).toEqual(userIds);
+			expect(edu.content.user_id).toBe(userId);
+			expect(edu.content.typing).toBe(typing);
 			expect(edu.origin).toBe(origin);
 		});
 
-		test('creates a typing EDU with empty user list', () => {
+		test('creates a typing EDU for user starting to type', () => {
 			const roomId = '!testroom:example.com';
-			const userIds: string[] = [];
+			const userId = '@user1:example.com';
+			const typing = true;
 
-			const edu = createTypingEDU(roomId, userIds);
+			const edu = createTypingEDU(roomId, userId, typing);
 
 			expect(edu.edu_type).toBe('m.typing');
 			expect(edu.content.room_id).toBe(roomId);
-			expect(edu.content.user_ids).toEqual([]);
+			expect(edu.content.user_id).toBe(userId);
+			expect(edu.content.typing).toBe(true);
 		});
 
-		test('creates a typing EDU with single user', () => {
+		test('creates a typing EDU for user stopping typing', () => {
 			const roomId = '!testroom:example.com';
-			const userIds = ['@user1:example.com'];
+			const userId = '@user1:example.com';
+			const typing = false;
 
-			const edu = createTypingEDU(roomId, userIds);
+			const edu = createTypingEDU(roomId, userId, typing);
 
 			expect(edu.edu_type).toBe('m.typing');
 			expect(edu.content.room_id).toBe(roomId);
-			expect(edu.content.user_ids).toEqual(userIds);
-			expect(edu.content.user_ids).toHaveLength(1);
+			expect(edu.content.user_id).toBe(userId);
+			expect(edu.content.typing).toBe(false);
 		});
 	});
 
@@ -60,7 +67,8 @@ describe('TypingEDU', () => {
 				edu_type: 'm.typing',
 				content: {
 					room_id: '!testroom:example.com',
-					user_ids: ['@user1:example.com'],
+					user_id: '@user1:example.com',
+					typing: true,
 				},
 			};
 
@@ -88,13 +96,16 @@ describe('TypingEDU', () => {
 		});
 
 		test('type guard correctly narrows type', () => {
-			const edu: BaseEDU = createTypingEDU('!room:example.com', [
+			const edu: BaseEDU = createTypingEDU(
+				'!room:example.com',
 				'@user:example.com',
-			]);
+				true,
+			);
 
 			if (isTypingEDU(edu)) {
 				expect(edu.content.room_id).toBe('!room:example.com');
-				expect(edu.content.user_ids).toEqual(['@user:example.com']);
+				expect(edu.content.user_id).toBe('@user:example.com');
+				expect(edu.content.typing).toBe(true);
 			} else {
 				throw new Error('Type guard should have returned true');
 			}
@@ -105,19 +116,22 @@ describe('TypingEDU', () => {
 		test('typing EDU has correct structure', () => {
 			const edu = createTypingEDU(
 				'!room:example.com',
-				['@user:example.com'],
+				'@user:example.com',
+				true,
 				'example.com',
 			);
 
 			expect(edu).toHaveProperty('edu_type', 'm.typing');
 			expect(edu).toHaveProperty('content');
 			expect(edu.content).toHaveProperty('room_id');
-			expect(edu.content).toHaveProperty('user_ids');
+			expect(edu.content).toHaveProperty('user_id');
+			expect(edu.content).toHaveProperty('typing');
 			expect(edu).toHaveProperty('origin');
 
 			expect(typeof edu.edu_type).toBe('string');
 			expect(typeof edu.content.room_id).toBe('string');
-			expect(Array.isArray(edu.content.user_ids)).toBe(true);
+			expect(typeof edu.content.user_id).toBe('string');
+			expect(typeof edu.content.typing).toBe('boolean');
 			expect(typeof edu.origin).toBe('string');
 		});
 	});

@@ -1,6 +1,7 @@
 import type { Membership } from '@hs/core';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
+import { EduService } from './services/edu.service';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MessageService } from './services/message.service';
@@ -106,6 +107,7 @@ export interface HomeserverServices {
 	sendJoin: SendJoinService;
 	server: ServerService;
 	config: ConfigService;
+	edu: EduService;
 }
 
 export type HomeserverEventSignatures = {
@@ -114,7 +116,8 @@ export type HomeserverEventSignatures = {
 	};
 	'homeserver.matrix.typing': {
 		room_id: string;
-		user_ids: string[];
+		user_id: string;
+		typing: boolean;
 		origin?: string;
 	};
 	'homeserver.matrix.presence': {
@@ -194,6 +197,7 @@ export function getAllServices(): HomeserverServices {
 		sendJoin: container.resolve(SendJoinService),
 		server: container.resolve(ServerService),
 		config: container.resolve(ConfigService),
+		edu: container.resolve(EduService),
 	};
 }
 

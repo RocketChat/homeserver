@@ -304,31 +304,38 @@ export class FederationService {
 		}
 	}
 
-	async sendEDUToAllServersInRoom(
-		edus: BaseEDU[],
-		roomId: string,
-	): Promise<void> {
-		const servers = await this.stateService.getServersInRoom(roomId);
-
+	async sendEDUToServers(edus: BaseEDU[], servers: string[]): Promise<void> {
+		// Process servers sequentially to avoid concurrent transactions per Matrix spec
 		for (const server of servers) {
 			if (server === this.configService.serverName) {
 				this.logger.info(`Skipping EDU to local server: ${server}`);
 				continue;
 			}
 
-			const txn: Transaction = {
-				origin: this.configService.serverName,
-				origin_server_ts: Date.now(),
-				pdus: [],
-				edus,
-			};
+			// Respect Matrix spec transaction limits: max 100 EDUs per transaction
+			const maxEDUsPerTransaction = 100;
+			const batches = [];
 
-			this.logger.info(`Sending EDUs to server: ${server}`);
+			for (let i = 0; i < edus.length; i += maxEDUsPerTransaction) {
+				batches.push(edus.slice(i, i + maxEDUsPerTransaction));
+			}
 
-			try {
-				await this.sendTransaction(server, txn);
-			} catch (error) {
-				this.logger.error(`Failed to send EDUs to server: ${server}`, error);
+			for (const batch of batches) {
+				const txn: Transaction = {
+					origin: this.configService.serverName,
+					origin_server_ts: Date.now(),
+					pdus: [],
+					edus: batch,
+				};
+
+				this.logger.info(`Sending ${batch.length} EDUs to server: ${server}`);
+
+				try {
+					await this.sendTransaction(server, txn);
+				} catch (error) {
+					this.logger.error(`Failed to send EDUs to server: ${server}`, error);
+					// Continue with next batch/server even if one fails
+				}
 			}
 		}
 	}
