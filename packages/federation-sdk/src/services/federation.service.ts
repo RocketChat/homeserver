@@ -282,6 +282,8 @@ export class FederationService {
 				this.logger.info(`Skipping transaction to local server: ${server}`);
 				continue;
 			}
+			
+			await this.stateService.signEvent(event);
 
 			const txn: Transaction = {
 				origin: this.configService.serverName,

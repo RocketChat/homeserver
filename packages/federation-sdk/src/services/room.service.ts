@@ -337,7 +337,7 @@ export class RoomService {
 		await stateService.addAuthEvents(roomNameEvent);
 
 		await stateService.addPrevEvents(roomNameEvent);
-
+		
 		await stateService.persistStateEvent(roomNameEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(roomNameEvent);
@@ -1133,20 +1133,22 @@ export class RoomService {
 				'Power levels event not found while setting power level for user',
 			);
 		}
+		
+		const clone = structuredClone(existing)
 
-		if (!existing?.users) {
-			existing.users = {};
+		if (!clone?.users) {
+			clone.users = {};
 		}
 
-		existing.users[userId] = powerLevel;
+		clone.users[userId] = powerLevel;
 
 		const event = PersistentEventFactory.newPowerLevelEvent(
 			roomId,
 			sender,
-			existing,
+			clone,
 			state.version,
 		);
-
+		
 		await this.stateService.addAuthEvents(event);
 		await this.stateService.addPrevEvents(event);
 		await this.stateService.signEvent(event);
