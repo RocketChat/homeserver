@@ -168,6 +168,23 @@ export type HomeserverEventSignatures = {
 			reason?: string;
 		};
 	};
+	'homeserver.matrix.room.name': {
+		room_id: string;
+		user_id: string;
+		name: string;
+	},
+	'homeserver.matrix.room.topic': {
+		room_id: string;
+		user_id: string;
+		topic: string;
+	},
+	'homeserver.matrix.user.role': {
+		sender: string;
+		room_id: string;
+		powers: {
+			[userId: string]: number;
+		},
+	},
 };
 
 export function getAllServices(): HomeserverServices {

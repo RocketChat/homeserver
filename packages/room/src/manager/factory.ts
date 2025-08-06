@@ -14,6 +14,7 @@ import {
 	PduTypeRoomName,
 	PduTypeRoomPowerLevels,
 	PduTypeRoomRedaction,
+	PduTypeRoomTopic,
 } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
@@ -199,6 +200,35 @@ export class PersistentEventFactory {
 			sender: sender,
 			origin_server_ts: Date.now(),
 			origin: sender.split(':').pop(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
+
+	static newRoomTopicEvent(
+		roomId: string,
+		sender: string,
+		topic: string,
+		roomVersion: RoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomTopic>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomTopic,
+			content: { topic },
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
 			prev_events: [],

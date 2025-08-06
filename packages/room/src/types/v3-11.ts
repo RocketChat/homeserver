@@ -221,6 +221,14 @@ export type PduJoinRuleEventContent = z.infer<
 	typeof PduJoinRuleEventContentSchema
 >;
 
+export const PduRoomTopicEventContentSchema = z.object({
+	topic: z.string().describe('The topic of the room.'),
+});
+
+export type PduRoomTopicEventContent = z.infer<
+	typeof PduRoomTopicEventContentSchema
+>;
+
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
 
 // https://spec.matrix.org/v1.12/rooms/v1/#mroompower_levels-events-accept-values-as-strings
@@ -479,6 +487,12 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 			...stateBase,
 			type: z.literal(PduTypeRoomAliases),
 			content: PduCanonicalAliasEventContentSchema,
+		}),
+
+		z.object({
+			...stateBase,
+			type: z.literal(PduTypeRoomTopic),
+			content: PduRoomTopicEventContentSchema,
 		}),
 
 		z.object({

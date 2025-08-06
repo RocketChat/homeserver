@@ -4,7 +4,7 @@ import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
 import { createLogger } from '@hs/core';
-import { Pdu, PduTypeRoomJoinRules, PersistentEventFactory } from '@hs/room';
+import { Pdu, PduTypeRoomJoinRules, PduTypeRoomPowerLevels, PersistentEventFactory } from '@hs/room';
 import { Lock } from '../utils/lock.decorator';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -388,9 +388,10 @@ export class StagingAreaService {
 				case 'm.room.name': {
 					this.eventEmitterService.emit('homeserver.matrix.room.name', {
 						room_id: event.roomId,
-						sender: event.event.sender,
+						user_id: event.event.sender,
 						name: event.event.content?.name as string,
 					});
+					break;
 				}
 				case EventType.MEMBER: {
 					this.eventEmitterService.emit('homeserver.matrix.membership', {
@@ -408,11 +409,21 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case PduTypeRoomJoinRules: {
-					this.eventEmitterService.emit('homeserver.matrix.room.privacy', {
-						room_id: event.roomId,
+				// case PduTypeRoomJoinRules: {
+				// 	this.eventEmitterService.emit('homeserver.matrix.room.privacy', {
+				// 		room_id: event.roomId,
+				// 		sender: event.event.sender,
+				// 		privacy: event.event.content?.join_rule as string,
+				// 	});
+				// 	break;
+				// }
+				case PduTypeRoomPowerLevels: {
+					this.eventEmitterService.emit('homeserver.matrix.user.role', {
 						sender: event.event.sender,
-						privacy: event.event.content?.join_rule as string,
+						room_id: event.roomId,
+						powers: event.event.content?.users as {
+							[userId: string]: number;
+						},
 					});
 					break;
 				}

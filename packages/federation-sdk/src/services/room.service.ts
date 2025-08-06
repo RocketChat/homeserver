@@ -1155,4 +1155,21 @@ export class RoomService {
 
 		void this.federationService.sendEventToAllServersInRoom(event);
 	}
+	
+	async setRoomTopic(roomId: string, sender: string, topic: string) {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found while setting room topic');
+		}
+
+		const topicEvent = PersistentEventFactory.newRoomTopicEvent(roomId, sender, topic, roomVersion);
+
+		await this.stateService.addAuthEvents(topicEvent);
+		await this.stateService.addPrevEvents(topicEvent);
+		await this.stateService.signEvent(topicEvent);
+
+		await this.stateService.persistStateEvent(topicEvent);
+
+		void this.federationService.sendEventToAllServersInRoom(topicEvent);
+	}
 }

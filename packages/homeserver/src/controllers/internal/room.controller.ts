@@ -83,12 +83,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { name, senderUserId, targetServer } = bodyParse.data;
+				const { name, senderUserId } = bodyParse.data;
 				return roomService.updateRoomName(
 					roomIdParse.data,
 					name,
 					senderUserId,
-					targetServer,
 				);
 			},
 			{
