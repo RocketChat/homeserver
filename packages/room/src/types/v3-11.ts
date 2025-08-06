@@ -339,12 +339,16 @@ export const PduMessageEventContentSchema = z.object({
 	body: z.string().describe('The body of the message.'),
 	// TODO: add more types
 	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
-	// Optional thread relation for thread messages
+	// Optional fields for message edits and relations aka threads
 	'm.relates_to': z
 		.object({
-			rel_type: z.literal('m.thread').describe('Thread relation type'),
-			event_id: z.string().describe('The ID of the thread root event'),
-			is_falling_back: z
+			rel_type: z
+				.enum(['m.replace', 'm.annotation', 'm.thread'])
+				.describe('The type of the relation.'),
+			event_id: z
+				.string()
+				.describe('The ID of the event that is being related to.'),
+      is_falling_back: z
 				.boolean()
 				.optional()
 				.describe('Whether this is a fallback for older clients'),
@@ -355,8 +359,19 @@ export const PduMessageEventContentSchema = z.object({
 						.describe('The ID of the latest event in the thread for fallback'),
 				})
 				.optional(),
+			key: z.string().optional().describe('The key for reactions (emoji).'),
 		})
-		.optional(),
+		.optional()
+		.describe('Relation information for edits, replies, reactions, etc.'),
+	'm.new_content': z
+		.object({
+			body: z.string().describe('The new body of the message for edits.'),
+			msgtype: z
+				.enum(['m.text', 'm.image'])
+				.describe('The type of the new message content.'),
+		})
+		.optional()
+		.describe('The new content for message edits.'),
 });
 
 export type PduMessageEventContent = z.infer<

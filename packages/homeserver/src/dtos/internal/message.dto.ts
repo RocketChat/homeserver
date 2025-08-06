@@ -17,7 +17,6 @@ export const InternalUpdateMessageParamsDto = t.Object({
 
 export const InternalUpdateMessageBodyDto = t.Object({
 	roomId: RoomIdDto,
-	targetServer: ServerNameDto,
 	message: t.String({
 		minLength: 1,
 		description: 'Updated message content',
