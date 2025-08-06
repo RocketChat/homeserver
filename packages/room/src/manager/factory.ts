@@ -441,4 +441,46 @@ export class PersistentEventFactory {
 
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
+  	static newThreadMessageEvent(
+		roomId: string,
+		sender: string,
+		text: string,
+		threadRootEventId: string,
+		latestThreadEventId?: string,
+    		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion
+        ) {
+        if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomMessage>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomMessage,
+			content: {
+				msgtype: 'm.text' as const,
+        body: text,
+				'm.relates_to': {
+					rel_type: 'm.thread' as const,
+					event_id: threadRootEventId,
+					is_falling_back: true,
+					...(latestThreadEventId && {
+						'm.in_reply_to': {
+							event_id: latestThreadEventId,
+						},
+					}),
+				},
+			},
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
 }

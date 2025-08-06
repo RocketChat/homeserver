@@ -1,7 +1,11 @@
-import type { RoomPowerLevelsEvent } from '@hs/core';
+import type {
+	BaseEDU,
+	PresenceEDU,
+	RoomPowerLevelsEvent,
+	TypingEDU,
+} from '@hs/core';
+import { isPresenceEDU, isTypingEDU } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
-import type { z } from 'zod';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
 import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
@@ -13,14 +17,17 @@ import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { ConfigService } from './config.service';
-import type { EventRepository } from '../repositories/event.repository';
-import type { RoomRepository } from '../repositories/room.repository';
-import type { KeyRepository } from '../repositories/key.repository';
-import type { StagingAreaQueue } from '../queues/staging-area.queue';
-import { eventSchemas } from '../utils/event-schemas';
-import { StateService } from './state.service';
 import { PersistentEventFactory } from '@hs/room';
+import { inject, singleton } from 'tsyringe';
+import type { z } from 'zod';
+import type { StagingAreaQueue } from '../queues/staging-area.queue';
+import type { EventRepository } from '../repositories/event.repository';
+import type { KeyRepository } from '../repositories/key.repository';
+import type { RoomRepository } from '../repositories/room.repository';
+import { eventSchemas } from '../utils/event-schemas';
+import type { ConfigService } from './config.service';
+import { EventEmitterService } from './event-emitter.service';
+import type { StateService } from './state.service';
 
 type ValidationResult = {
 	eventId: string;
@@ -91,7 +98,9 @@ export class EventService {
 		@inject('ConfigService') private readonly configService: ConfigService,
 		@inject('StagingAreaQueue')
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		private readonly stateService: StateService,
+		@inject('StateService') private readonly stateService: StateService,
+		@inject(EventEmitterService)
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	async getEventById<T extends EventBaseWithOptionalId>(
@@ -333,6 +342,96 @@ export class EventService {
 				roomId: event.event.room_id,
 				origin: event.event.origin,
 				event: event.event,
+			});
+		}
+	}
+
+	async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
+		this.logger.debug(`Processing ${edus.length} incoming EDUs`);
+
+		for (const edu of edus) {
+			try {
+				await this.processEDU(edu);
+			} catch (error) {
+				this.logger.error(
+					`Error processing EDU of type ${edu.edu_type}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				// Continue processing other EDUs even if one fails
+			}
+		}
+	}
+
+	private async processEDU(edu: BaseEDU): Promise<void> {
+		const { origin } = edu;
+
+		if (isTypingEDU(edu)) {
+			await this.processTypingEDU(edu, origin);
+			return;
+		}
+		if (isPresenceEDU(edu)) {
+			await this.processPresenceEDU(edu, origin);
+			return;
+		}
+		return;
+	}
+
+	private async processTypingEDU(
+		typingEDU: TypingEDU,
+		origin?: string,
+	): Promise<void> {
+		const { room_id, user_id, typing } = typingEDU.content;
+
+		if (!room_id || !user_id || typeof typing !== 'boolean') {
+			this.logger.warn(
+				'Invalid typing EDU content, missing room_id, user_id, or typing',
+			);
+			return;
+		}
+
+		this.logger.debug(
+			`Processing typing notification for room ${room_id}: ${user_id} (typing: ${typing})`,
+		);
+
+		this.eventEmitterService.emit('homeserver.matrix.typing', {
+			room_id,
+			user_id,
+			typing,
+			origin,
+		});
+	}
+
+	private async processPresenceEDU(
+		presenceEDU: PresenceEDU,
+		origin?: string,
+	): Promise<void> {
+		const { push } = presenceEDU.content;
+
+		if (!push || !Array.isArray(push)) {
+			this.logger.warn('Invalid presence EDU content, missing push array');
+			return;
+		}
+
+		for (const presenceUpdate of push) {
+			if (!presenceUpdate.user_id || !presenceUpdate.presence) {
+				this.logger.warn(
+					'Invalid presence update, missing user_id or presence',
+				);
+				continue;
+			}
+
+			this.logger.debug(
+				`Processing presence update for ${presenceUpdate.user_id}: ${presenceUpdate.presence}${
+					presenceUpdate.last_active_ago !== undefined
+						? ` (${presenceUpdate.last_active_ago}ms ago)`
+						: ''
+				}`,
+			);
+
+			this.eventEmitterService.emit('homeserver.matrix.presence', {
+				user_id: presenceUpdate.user_id,
+				presence: presenceUpdate.presence,
+				last_active_ago: presenceUpdate.last_active_ago,
+				origin,
 			});
 		}
 	}

@@ -1,4 +1,5 @@
 import type { EventBase } from '@hs/core';
+import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { PersistentEventBase } from '@hs/room';
@@ -299,6 +300,42 @@ export class FederationService {
 					`Failed to send event ${event.eventId} to server: ${server}`,
 					error,
 				);
+			}
+		}
+	}
+
+	async sendEDUToServers(edus: BaseEDU[], servers: string[]): Promise<void> {
+		// Process servers sequentially to avoid concurrent transactions per Matrix spec
+		for (const server of servers) {
+			if (server === this.configService.serverName) {
+				this.logger.info(`Skipping EDU to local server: ${server}`);
+				continue;
+			}
+
+			// Respect Matrix spec transaction limits: max 100 EDUs per transaction
+			const maxEDUsPerTransaction = 100;
+			const batches = [];
+
+			for (let i = 0; i < edus.length; i += maxEDUsPerTransaction) {
+				batches.push(edus.slice(i, i + maxEDUsPerTransaction));
+			}
+
+			for (const batch of batches) {
+				const txn: Transaction = {
+					origin: this.configService.serverName,
+					origin_server_ts: Date.now(),
+					pdus: [],
+					edus: batch,
+				};
+
+				this.logger.info(`Sending ${batch.length} EDUs to server: ${server}`);
+
+				try {
+					await this.sendTransaction(server, txn);
+				} catch (error) {
+					this.logger.error(`Failed to send EDUs to server: ${server}`, error);
+					// Continue with next batch/server even if one fails
+				}
 			}
 		}
 	}

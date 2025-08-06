@@ -339,15 +339,26 @@ export const PduMessageEventContentSchema = z.object({
 	body: z.string().describe('The body of the message.'),
 	// TODO: add more types
 	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
-	// Optional fields for message edits and relations
+	// Optional fields for message edits and relations aka threads
 	'm.relates_to': z
 		.object({
 			rel_type: z
-				.enum(['m.replace', 'm.annotation'])
+				.enum(['m.replace', 'm.annotation', 'm.thread'])
 				.describe('The type of the relation.'),
 			event_id: z
 				.string()
 				.describe('The ID of the event that is being related to.'),
+      is_falling_back: z
+				.boolean()
+				.optional()
+				.describe('Whether this is a fallback for older clients'),
+			'm.in_reply_to': z
+				.object({
+					event_id: z
+						.string()
+						.describe('The ID of the latest event in the thread for fallback'),
+				})
+				.optional(),
 			key: z.string().optional().describe('The key for reactions (emoji).'),
 		})
 		.optional()

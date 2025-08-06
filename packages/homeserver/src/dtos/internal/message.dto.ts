@@ -55,8 +55,6 @@ export const InternalRedactMessageParamsDto = t.Object({
 
 export const InternalRedactMessageBodyDto = t.Object({
 	roomId: RoomIdDto,
-	targetServer: ServerNameDto,
-	reason: t.Optional(t.String({ description: 'Reason for redacting' })),
 	senderUserId: UsernameDto,
 });
 

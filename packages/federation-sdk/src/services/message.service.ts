@@ -78,6 +78,46 @@ export class MessageService {
 		return event;
 	}
 
+	async sendThreadMessage(
+		roomId: string,
+		message: string,
+		senderUserId: string,
+		threadRootEventId: string,
+		latestThreadEventId?: string,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} while trying to send thread message`,
+			);
+		}
+
+		const event = PersistentEventFactory.newThreadMessageEvent(
+			roomId,
+			senderUserId,
+			message,
+			threadRootEventId,
+			latestThreadEventId,
+			roomVersion,
+		);
+
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
+
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
+	}
+
 	async sendReaction(
 		roomId: string,
 		eventId: string,
@@ -178,75 +218,36 @@ export class MessageService {
 	async redactMessage(
 		roomId: string,
 		eventIdToRedact: string,
-		reason: string | undefined,
 		senderUserId: string,
-		targetServer: string,
-	): Promise<SignedEvent<RedactionEvent>> {
-		const serverName = this.configService.getServerConfig().name;
-		const signingKey = await this.configService.getSigningKey();
-
-		const latestEventDoc = await this.eventService.getLastEventForRoom(roomId);
-		const prevEvents = latestEventDoc ? [latestEventDoc._id] : [];
-
-		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
-			{ roomId, senderId: senderUserId },
-		);
-
-		const currentDepth = latestEventDoc?.event?.depth ?? 0;
-		const newDepth = currentDepth + 1;
-
-		const authEventsMap: RedactionAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.type === EventType.CREATE)?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === EventType.POWER_LEVELS)
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.type === EventType.MEMBER)?._id || '',
-		};
-
-		if (
-			!authEventsMap['m.room.create'] ||
-			!authEventsMap['m.room.power_levels'] ||
-			!authEventsMap['m.room.member']
-		) {
-			throw new Error(
-				"There are missing critical auth events (create, power_levels, or sender's member event) for the redaction event on the sending server.",
+	): Promise<string> {
+		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
+		if (isTombstoned) {
+			this.logger.warn(
+				`Attempted to delete a message in a tombstoned room: ${roomId}`,
 			);
+			throw new ForbiddenError('Cannot delete a message in a tombstoned room');
 		}
 
-		const { state_key, ...eventForSigning } = redactionEvent({
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
+
+		const redactionEvent = PersistentEventFactory.newRedactionEvent(
 			roomId,
-			sender: senderUserId,
-			auth_events: authEventsMap,
-			prev_events: prevEvents,
-			depth: newDepth,
-			content: {
-				redacts: eventIdToRedact,
-				...(reason && { reason }),
-			},
-			origin: serverName,
-			ts: Date.now(),
-		});
-
-		const signedEvent = await signEvent(
-			eventForSigning,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
+			senderUserId,
+			eventIdToRedact,
+			`Deleting message: ${eventIdToRedact}`,
+			roomInfo.room_version as RoomVersion,
 		);
 
-		const eventId = await this.eventService.insertEvent(signedEvent);
-		const eventToFederate: RedactionEvent = {
-			...signedEvent,
-			redacts: eventForSigning.redacts,
-		};
-		await this.federationService.sendEvent<RedactionEvent>(
-			targetServer,
-			eventToFederate,
-		);
-		await this.eventService.processRedaction(eventToFederate);
+		await this.stateService.addAuthEvents(redactionEvent);
 
-		return { ...signedEvent, event_id: eventId };
+		await this.stateService.addPrevEvents(redactionEvent);
+
+		await this.stateService.signEvent(redactionEvent);
+
+		await this.stateService.persistTimelineEvent(redactionEvent);
+
+		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+
+		return redactionEvent.eventId;
 	}
 }
