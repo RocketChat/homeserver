@@ -393,6 +393,13 @@ export type PduMessageReactionEventContent = z.infer<
 	typeof PduMessageReactionEventContentSchema
 >;
 
+export const PduRoomRedactionEventSchema = z.object({
+	redacts: z.string().describe('event id to redact, post v11 is a must').optional(),
+	reason: z.string().describe('why').optional(),
+});
+
+export type PduRoomRedactionEventContent = z.infer<typeof PduRoomRedactionEventSchema>;
+
 export const PduContentSchema = z
 	.union([
 		PduMembershipEventContentSchema,
@@ -524,6 +531,13 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 			...timelineBase,
 			type: z.literal(PduTypeReaction),
 			content: PduMessageReactionEventContentSchema,
+		}),
+
+		z.object({
+			...timelineBase,
+			type: z.literal(PduTypeRoomRedaction),
+			content: PduRoomRedactionEventSchema,
+			redacts: z.string().describe('for older events to contain the id to redact').optional(),
 		}),
 	]);
 }
