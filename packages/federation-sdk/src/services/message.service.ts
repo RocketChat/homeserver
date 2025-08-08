@@ -44,7 +44,8 @@ export class MessageService {
 
 	async sendMessage(
 		roomId: string,
-		message: string,
+		rawMessage: string,
+		formattedMessage: string,
 		senderUserId: string,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
@@ -54,10 +55,11 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newMessageEvent(
+		const event = PersistentEventFactory.newRichTextMessageEvent(
 			roomId,
 			senderUserId,
-			message,
+			rawMessage,
+			formattedMessage,
 			roomVersion,
 		);
 
@@ -80,7 +82,8 @@ export class MessageService {
 
 	async sendThreadMessage(
 		roomId: string,
-		message: string,
+		rawMessage: string,
+		formattedMessage: string,
 		senderUserId: string,
 		threadRootEventId: string,
 		latestThreadEventId?: string,
@@ -92,10 +95,11 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newThreadMessageEvent(
+		const event = PersistentEventFactory.newRichTextThreadMessageEvent(
 			roomId,
 			senderUserId,
-			message,
+			rawMessage,
+			formattedMessage,
 			threadRootEventId,
 			latestThreadEventId,
 			roomVersion,
@@ -188,16 +192,18 @@ export class MessageService {
 
 	async updateMessage(
 		roomId: string,
-		message: string,
+		rawMessage: string,
+		formattedMessage: string,
 		senderUserId: string,
 		eventIdToReplace: string,
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = PersistentEventFactory.newMessageUpdateEvent(
+		const redactionEvent = PersistentEventFactory.newRichTextMessageUpdateEvent(
 			roomId,
 			senderUserId,
-			message,
+			rawMessage,
+			formattedMessage,
 			eventIdToReplace,
 			roomInfo.room_version as RoomVersion,
 		);

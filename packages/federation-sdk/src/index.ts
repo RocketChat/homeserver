@@ -143,6 +143,7 @@ export type HomeserverEventSignatures = {
 				msgtype: string;
 				'm.mentions'?: Record<string, string>;
 			};
+			formatted_body?: string;
 		};
 	};
 	'homeserver.matrix.accept-invite': {
