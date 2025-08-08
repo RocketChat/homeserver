@@ -157,20 +157,10 @@ export function computeHash<T extends Record<string, unknown>>(
 	algorithm: 'sha256' = 'sha256',
 ): ['sha256', string] {
 	// remove the fields that are not part of the hash
-	const {
-		age_ts,
-		unsigned,
-		signatures,
-		hashes,
-		outlier,
-		destinations,
-		...toHash
-	} = content;
-
 	return [
 		algorithm,
 		PersistentEventFactory.createFromRawEvent(
-			toHash as unknown as Pdu,
+			content as unknown as Pdu,
 			PersistentEventFactory.defaultRoomVersion, // content hash doesn't care about room version or event version, it is ok to pass anything.
 		).getContentHashString(),
 	];
