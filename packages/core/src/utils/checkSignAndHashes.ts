@@ -8,7 +8,6 @@ import {
 	getSignaturesFromRemote,
 	verifyJsonSignature,
 } from './signJson';
-import { type Pdu, PersistentEventFactory } from '@hs/room';
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 	pdu: HashedEvent<T>,

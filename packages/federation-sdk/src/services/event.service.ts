@@ -17,7 +17,7 @@ import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { PersistentEventFactory, type RoomVersion } from '@hs/room';
+import { PersistentEventFactory } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
