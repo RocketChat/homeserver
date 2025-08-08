@@ -17,7 +17,7 @@ import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { PersistentEventFactory } from '@hs/room';
+import { PersistentEventFactory, type RoomVersion } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
@@ -306,6 +306,22 @@ export class EventService {
 
 		const validatedEvents: ValidationResult[] = [];
 
+		const roomIdToRoomVersionMap = new Map<string, RoomVersion>();
+
+		const getRoomVersion = async (event: EventBaseWithOptionalId) => {
+			const roomId = event.room_id;
+			if (roomIdToRoomVersionMap.has(roomId)) {
+				return roomIdToRoomVersionMap.get(roomId);
+			}
+
+			const roomVersion = await this.getRoomVersion(event);
+			if (roomVersion) {
+				roomIdToRoomVersionMap.set(roomId, roomVersion);
+			}
+
+			return roomVersion;
+		};
+
 		for (const { eventId, event } of eventsWithIds) {
 			// TODO: Rewrite this poor typing
 			let result = await this.validateEventFormat(
@@ -320,9 +336,19 @@ export class EventService {
 			}
 
 			if (result.valid) {
+				const roomVersion = await getRoomVersion(event);
+				if (!roomVersion) {
+					result.valid = false;
+					result.error = {
+						errcode: 'M_UNKNOWN_ROOM_VERSION',
+						error: 'Could not determine room version for event',
+					};
+					continue;
+				}
 				result = await this.validateSignaturesAndHashes(
 					eventId,
 					event as EventBaseWithOptionalId,
+					roomVersion,
 				);
 			}
 
@@ -551,6 +577,7 @@ export class EventService {
 	private async validateSignaturesAndHashes(
 		eventId: string,
 		event: EventBaseWithOptionalId,
+		roomVersion: RoomVersion,
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
@@ -570,6 +597,7 @@ export class EventService {
 				event as any,
 				event.origin,
 				getPublicKeyFromServer,
+				roomVersion,
 			);
 			return { eventId, event, valid: true };
 		} catch (error: any) {

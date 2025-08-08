@@ -1,5 +1,5 @@
 import type { EventBase } from '../events/eventBase';
-import { type HashedEvent, computeHash } from './authentication';
+import { type HashedEvent } from './authentication';
 import { MatrixError } from './errors';
 import { logger } from './logger';
 import { pruneEventDict } from './pruneEventDict';
@@ -8,11 +8,13 @@ import {
 	getSignaturesFromRemote,
 	verifyJsonSignature,
 } from './signJson';
+import { type Pdu, PersistentEventFactory, type RoomVersion } from '@hs/room';
 
 export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 	pdu: HashedEvent<T>,
 	origin: string,
 	getPublicKeyFromServer: (origin: string, key: string) => Promise<string>,
+	roomVersion: RoomVersion,
 ) {
 	const [signature] = await getSignaturesFromRemote(pdu, origin);
 	const publicKey = await getPublicKeyFromServer(
@@ -33,9 +35,14 @@ export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 		throw new MatrixError('400', 'Invalid signature');
 	}
 
-	const [algorithm, hash] = computeHash(pdu);
+	const {
+		hashes: { sha256: expectedHash },
+	} = pdu;
 
-	const expectedHash = pdu.hashes[algorithm];
+	const hash = PersistentEventFactory.createFromRawEvent(
+		pdu as unknown as Pdu, // FIXME
+		roomVersion,
+	).getContentHashString();
 
 	if (hash !== expectedHash) {
 		logger.error('Invalid hash', hash, expectedHash);

@@ -1,4 +1,4 @@
-import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/core';
+import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/crypto';
 import type { StateMapKey } from '../types/_common';
 import {
 	PduTypeRoomCanonicalAlias,
