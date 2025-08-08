@@ -306,22 +306,6 @@ export class EventService {
 
 		const validatedEvents: ValidationResult[] = [];
 
-		const roomIdToRoomVersionMap = new Map<string, RoomVersion>();
-
-		const getRoomVersion = async (event: EventBaseWithOptionalId) => {
-			const roomId = event.room_id;
-			if (roomIdToRoomVersionMap.has(roomId)) {
-				return roomIdToRoomVersionMap.get(roomId);
-			}
-
-			const roomVersion = await this.getRoomVersion(event);
-			if (roomVersion) {
-				roomIdToRoomVersionMap.set(roomId, roomVersion);
-			}
-
-			return roomVersion;
-		};
-
 		for (const { eventId, event } of eventsWithIds) {
 			// TODO: Rewrite this poor typing
 			let result = await this.validateEventFormat(
@@ -336,23 +320,10 @@ export class EventService {
 			}
 
 			if (result.valid) {
-				const roomVersion = await getRoomVersion(event);
-				if (!roomVersion) {
-					result = {
-						...result,
-						valid: false,
-						error: {
-							errcode: 'M_UNKNOWN_ROOM_VERSION',
-							error: 'Could not determine room version for event',
-						},
-					};
-				} else {
-					result = await this.validateSignaturesAndHashes(
-						eventId,
-						event as EventBaseWithOptionalId,
-						roomVersion,
-					);
-				}
+				result = await this.validateSignaturesAndHashes(
+					eventId,
+					event as EventBaseWithOptionalId,
+				);
 			}
 
 			validatedEvents.push(result);
@@ -580,7 +551,6 @@ export class EventService {
 	private async validateSignaturesAndHashes(
 		eventId: string,
 		event: EventBaseWithOptionalId,
-		roomVersion: RoomVersion,
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
@@ -600,7 +570,6 @@ export class EventService {
 				event as any,
 				event.origin,
 				getPublicKeyFromServer,
-				roomVersion,
 			);
 			return { eventId, event, valid: true };
 		} catch (error: any) {

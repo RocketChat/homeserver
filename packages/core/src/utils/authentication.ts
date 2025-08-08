@@ -1,8 +1,7 @@
-import crypto from 'node:crypto';
 import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
-import { toUnpaddedBase64 } from './binaryData';
 import { encodeCanonicalJson, signJson } from './signJson';
+import { PersistentEventFactory, type Pdu } from '@hs/room';
 
 /**
  * Extracts the origin, destination, key, and signature from the authorization header.
@@ -170,8 +169,9 @@ export function computeHash<T extends Record<string, unknown>>(
 
 	return [
 		algorithm,
-		toUnpaddedBase64(
-			crypto.createHash(algorithm).update(encodeCanonicalJson(toHash)).digest(),
-		),
+		PersistentEventFactory.createFromRawEvent(
+			toHash as unknown as Pdu,
+			PersistentEventFactory.defaultRoomVersion, // content hash doesn't care about room version or event version, it is ok to pass anything.
+		).getContentHashString(),
 	];
 }
