@@ -361,6 +361,7 @@ export class StagingAreaService {
 								body: string;
 								msgtype: string;
 							},
+							formatted_body: (event.event.content?.formatted_body || '') as string,
 						},
 					});
 					break;
