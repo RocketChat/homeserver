@@ -338,18 +338,21 @@ export class EventService {
 			if (result.valid) {
 				const roomVersion = await getRoomVersion(event);
 				if (!roomVersion) {
-					result.valid = false;
-					result.error = {
-						errcode: 'M_UNKNOWN_ROOM_VERSION',
-						error: 'Could not determine room version for event',
+					result = {
+						...result,
+						valid: false,
+						error: {
+							errcode: 'M_UNKNOWN_ROOM_VERSION',
+							error: 'Could not determine room version for event',
+						},
 					};
-					continue;
+				} else {
+					result = await this.validateSignaturesAndHashes(
+						eventId,
+						event as EventBaseWithOptionalId,
+						roomVersion,
+					);
 				}
-				result = await this.validateSignaturesAndHashes(
-					eventId,
-					event as EventBaseWithOptionalId,
-					roomVersion,
-				);
 			}
 
 			validatedEvents.push(result);
