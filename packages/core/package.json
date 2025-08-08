@@ -15,7 +15,13 @@
 			"require": "./dist/index.js"
 		}
 	},
-	"files": ["./src", "./dist"],
+	"files": [
+		"./src",
+		"./dist"
+	],
+	"dependencies": {
+		"@hs/room": "workspace:*"
+	},
 	"devDependencies": {
 		"bun-types": "latest",
 		"ts-node": "^10.9.2",
