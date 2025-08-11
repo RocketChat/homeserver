@@ -135,8 +135,14 @@ export type HomeserverEventSignatures = {
 			body: string;
 			msgtype: string;
 			'm.relates_to'?: {
-				rel_type: 'm.replace' | 'm.annotation';
+				rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
 				event_id: string;
+				'm.in_reply_to'?: {
+					event_id: string;
+					room_id: string;
+					sender: string;
+					origin_server_ts: number;
+				};
 			};
 			'm.new_content'?: {
 				body: string;

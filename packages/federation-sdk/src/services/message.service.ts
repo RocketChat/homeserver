@@ -80,6 +80,46 @@ export class MessageService {
 		return event;
 	}
 
+	async sendReplyToMessage(
+		roomId: string,
+		rawMessage: string,
+		formattedMessage: string,
+		eventToReplyTo: string,
+		senderUserId: string,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} white trying to send message`,
+			);
+		}
+
+		const event = PersistentEventFactory.newReplyToRichTextMessageEvent(
+			roomId,
+			senderUserId,
+			rawMessage,
+			formattedMessage,
+			eventToReplyTo,
+			roomVersion,
+		);
+
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
+
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
+	}
+
 	async sendThreadMessage(
 		roomId: string,
 		rawMessage: string,
@@ -102,6 +142,48 @@ export class MessageService {
 			formattedMessage,
 			threadRootEventId,
 			latestThreadEventId,
+			roomVersion,
+		);
+
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
+
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
+	}
+
+	async sendReplyToInsideThreadMessage(
+		roomId: string,
+		rawMessage: string,
+		formattedMessage: string,
+		senderUserId: string,
+		threadRootEventId: string,
+		eventToReplyTo: string,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} while trying to send thread message`,
+			);
+		}
+
+		const event = PersistentEventFactory.newReplyToRichTextThreadMessageEvent(
+			roomId,
+			senderUserId,
+			rawMessage,
+			formattedMessage,
+			threadRootEventId,
+			eventToReplyTo,
 			roomVersion,
 		);
 
