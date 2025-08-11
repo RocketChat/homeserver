@@ -17,11 +17,13 @@
 	},
 	"dependencies": {
 		"@datastructures-js/priority-queue": "^6.3.3",
-		"@hs/core": "workspace:*",
 		"@hs/crypto": "workspace:*"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"files": ["src", "dist"]
+	"files": [
+		"src",
+		"dist"
+	]
 }

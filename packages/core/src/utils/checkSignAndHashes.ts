@@ -1,5 +1,5 @@
 import type { EventBase } from '../events/eventBase';
-import { type HashedEvent, computeHash } from './authentication';
+import { computeHash, type HashedEvent } from './authentication';
 import { MatrixError } from './errors';
 import { logger } from './logger';
 import { pruneEventDict } from './pruneEventDict';
@@ -33,9 +33,11 @@ export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
 		throw new MatrixError('400', 'Invalid signature');
 	}
 
-	const [algorithm, hash] = computeHash(pdu);
+	const {
+		hashes: { sha256: expectedHash },
+	} = pdu;
 
-	const expectedHash = pdu.hashes[algorithm];
+	const [, hash] = computeHash(pdu);
 
 	if (hash !== expectedHash) {
 		logger.error('Invalid hash', hash, expectedHash);
