@@ -2,6 +2,7 @@ import nacl from 'tweetnacl';
 import type { SigningKey } from '../types';
 import { EncryptionValidAlgorithm } from '../types';
 import { toBinaryData, toUnpaddedBase64 } from './binaryData';
+import { encodeCanonicalJson as encodeCanonicalJsonCrypto } from '@hs/crypto';
 
 export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 
@@ -27,7 +28,7 @@ export async function signJson<
 		`${signingKey.algorithm}:${signingKey.version}` as ProtocolVersionKey;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
 
-	const data = encodeCanonicalJson(rest);
+	const data = encodeCanonicalJsonCrypto(rest);
 
 	const signed = await signingKey.sign(toBinaryData(data));
 
