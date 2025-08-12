@@ -33,6 +33,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 					const eventId = await messageService.updateMessage(
 						roomId,
 						message,
+						message,
 						senderUserId,
 						params.messageId,
 					);
