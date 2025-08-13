@@ -147,9 +147,7 @@ export class InviteService {
 			// the asking server will handle the transactions
 
 			// return the signed invite event
-			return {
-				event: inviteEvent.event,
-			};
+			return inviteEvent;
 		}
 
 		// are we already in the room?
