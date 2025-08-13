@@ -1,7 +1,12 @@
 import { inject, singleton } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { PduContent, PduType, StateMapKey } from '@hs/room';
+import {
+	type PduContent,
+	type PduType,
+	RoomState,
+	type StateMapKey,
+} from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
@@ -239,6 +244,11 @@ export class StateService {
 		}
 
 		return finalState;
+	}
+
+	async getFullRoomState2(roomId: string): Promise<RoomState> {
+		const state = await this.getFullRoomState(roomId);
+		return new RoomState(state);
 	}
 
 	public async getStrippedRoomState(
@@ -636,9 +646,11 @@ export class StateService {
 			return;
 		}
 
-		const roomVersion = event.isCreateEvent()
-			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
-			: await this.getRoomVersion(event.roomId);
+		if (event.isState()) {
+			throw new Error('State events are not persisted with this method');
+		}
+
+		const roomVersion = await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
 			throw new Error(
 				'Room version not found when trying to persist a timeline event',
@@ -646,6 +658,8 @@ export class StateService {
 		}
 
 		const room = await this.getFullRoomState(event.roomId);
+
+		this.logState('state at saving message', room);
 
 		// we need the auth events required to validate this event from our state
 		const requiredAuthEventsWeHaveSeenMap = new Map<
