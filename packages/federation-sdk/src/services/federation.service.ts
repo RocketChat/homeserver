@@ -284,6 +284,10 @@ export class FederationService {
 				continue;
 			}
 
+			// TODO: signing should happen here over local persisting
+			// should be handled in transaction queue implementation
+			await this.stateService.signEvent(event);
+
 			const txn: Transaction = {
 				origin: this.configService.serverName,
 				origin_server_ts: Date.now(),
@@ -291,7 +295,10 @@ export class FederationService {
 				edus: [],
 			};
 
-			this.logger.info(`Sending event ${event.eventId} to server: ${server}`);
+			this.logger.info(
+				{ transaction: txn },
+				`Sending event ${event.eventId} to server: ${server}`,
+			);
 
 			try {
 				await this.sendTransaction(server, txn);

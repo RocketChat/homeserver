@@ -199,6 +199,16 @@ export type HomeserverEventSignatures = {
 			reason?: string;
 		};
 	};
+	'homeserver.matrix.room.name': {
+		room_id: string; // name of the room being changed
+		user_id: string; // user who changed the name
+		name: string; // new name of the room
+	};
+	'homeserver.matrix.room.topic': {
+		room_id: string; // topic of the room being changed
+		user_id: string; // user who changed the topic
+		topic: string; // new topic of the room
+	};
 };
 
 export function getAllServices(): HomeserverServices {
