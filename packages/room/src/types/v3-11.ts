@@ -282,9 +282,18 @@ export const PduMessageEventContentSchema = z.object({
 	// Optional fields for message edits and relations aka threads
 	'm.relates_to': z
 		.object({
-			'rel_type': z.enum(['m.replace', 'm.annotation', 'm.thread']).describe('The type of the relation.'),
-			'event_id': z.string().describe('The ID of the event that is being related to.'),
-			'is_falling_back': z.boolean().optional().describe('Whether this is a fallback for older clients'),
+			rel_type: z
+				.enum(['m.replace', 'm.annotation', 'm.thread'])
+				.describe('The type of the relation.')
+				.optional(),
+			event_id: z
+				.string()
+				.optional()
+				.describe('The ID of the event that is being related to.'),
+			is_falling_back: z
+				.boolean()
+				.optional()
+				.describe('Whether this is a fallback for older clients'),
 			'm.in_reply_to': z
 				.object({
 					event_id: z.string().describe('The ID of the latest event in the thread for fallback'),
@@ -297,10 +306,28 @@ export const PduMessageEventContentSchema = z.object({
 	'm.new_content': z
 		.object({
 			body: z.string().describe('The new body of the message for edits.'),
-			msgtype: z.enum(['m.text', 'm.image']).describe('The type of the new message content.'),
+			msgtype: z
+				.enum(['m.text', 'm.image'])
+				.describe('The type of the new message content.'),
+			format: z
+				.enum(['org.matrix.custom.html'])
+				.describe('The format of the message content.')
+				.optional(),
+			formatted_body: z
+				.string()
+				.describe('The formatted body of the message.')
+				.optional(),
 		})
 		.optional()
 		.describe('The new content for message edits.'),
+	format: z
+		.enum(['org.matrix.custom.html'])
+		.describe('The format of the message content.')
+		.optional(),
+	formatted_body: z
+		.string()
+		.describe('The formatted body of the message.')
+		.optional(),
 });
 
 export type PduMessageEventContent = z.infer<typeof PduMessageEventContentSchema>;

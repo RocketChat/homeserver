@@ -354,13 +354,15 @@ export class StagingAreaService {
 							body: event.event.content?.body as string,
 							msgtype: event.event.content?.msgtype as string,
 							'm.relates_to': event.event.content?.['m.relates_to'] as {
-								rel_type: 'm.replace' | 'm.annotation';
+								rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
 								event_id: string;
 							},
 							'm.new_content': event.event.content?.['m.new_content'] as {
 								body: string;
 								msgtype: string;
 							},
+							formatted_body: (event.event.content?.formatted_body ||
+								'') as string,
 						},
 					});
 					break;

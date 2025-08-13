@@ -44,7 +44,8 @@ export class MessageService {
 
 	async sendMessage(
 		roomId: string,
-		message: string,
+		rawMessage: string,
+		formattedMessage: string,
 		senderUserId: string,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
@@ -54,10 +55,51 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newMessageEvent(
+		const event = PersistentEventFactory.newRichTextMessageEvent(
 			roomId,
 			senderUserId,
-			message,
+			rawMessage,
+			formattedMessage,
+			roomVersion,
+		);
+
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
+
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
+	}
+
+	async sendReplyToMessage(
+		roomId: string,
+		rawMessage: string,
+		formattedMessage: string,
+		eventToReplyTo: string,
+		senderUserId: string,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} white trying to send message`,
+			);
+		}
+
+		const event = PersistentEventFactory.newReplyToRichTextMessageEvent(
+			roomId,
+			senderUserId,
+			rawMessage,
+			formattedMessage,
+			eventToReplyTo,
 			roomVersion,
 		);
 
@@ -80,7 +122,8 @@ export class MessageService {
 
 	async sendThreadMessage(
 		roomId: string,
-		message: string,
+		rawMessage: string,
+		formattedMessage: string,
 		senderUserId: string,
 		threadRootEventId: string,
 		latestThreadEventId?: string,
@@ -92,12 +135,55 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newThreadMessageEvent(
+		const event = PersistentEventFactory.newRichTextThreadMessageEvent(
 			roomId,
 			senderUserId,
-			message,
+			rawMessage,
+			formattedMessage,
 			threadRootEventId,
 			latestThreadEventId,
+			roomVersion,
+		);
+
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
+
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
+	}
+
+	async sendReplyToInsideThreadMessage(
+		roomId: string,
+		rawMessage: string,
+		formattedMessage: string,
+		senderUserId: string,
+		threadRootEventId: string,
+		eventToReplyTo: string,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} while trying to send thread message`,
+			);
+		}
+
+		const event = PersistentEventFactory.newReplyToRichTextThreadMessageEvent(
+			roomId,
+			senderUserId,
+			rawMessage,
+			formattedMessage,
+			threadRootEventId,
+			eventToReplyTo,
 			roomVersion,
 		);
 
@@ -188,16 +274,18 @@ export class MessageService {
 
 	async updateMessage(
 		roomId: string,
-		message: string,
+		rawMessage: string,
+		formattedMessage: string,
 		senderUserId: string,
 		eventIdToReplace: string,
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = PersistentEventFactory.newMessageUpdateEvent(
+		const redactionEvent = PersistentEventFactory.newRichTextMessageUpdateEvent(
 			roomId,
 			senderUserId,
-			message,
+			rawMessage,
+			formattedMessage,
 			eventIdToReplace,
 			roomInfo.room_version as RoomVersion,
 		);
