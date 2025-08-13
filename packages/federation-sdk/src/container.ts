@@ -22,6 +22,7 @@ import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
+import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { MissingEventListener } from './services/missing-event.listener';
 import { MissingEventService } from './services/missing-event.service';
@@ -85,8 +86,9 @@ export function createFederationContainer(
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
 	container.registerSingleton('EventService', EventService);
-	container.registerSingleton(EventEmitterService);
+	container.registerSingleton('EventEmitterService', EventEmitterService);
 	container.registerSingleton(InviteService);
+	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
 	container.registerSingleton(NotificationService);
@@ -132,8 +134,6 @@ export function createFederationContainer(
 		x.missingEventsQueue;
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
-
-	console.log(x, y);
 
 	return container;
 }
