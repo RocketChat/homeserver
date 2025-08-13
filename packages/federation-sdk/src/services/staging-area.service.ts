@@ -4,7 +4,12 @@ import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
 import { createLogger } from '@hs/core';
-import { Pdu, PersistentEventFactory } from '@hs/room';
+import {
+	Pdu,
+	PduTypeRoomName,
+	PduTypeRoomTopic,
+	PersistentEventFactory,
+} from '@hs/room';
 import { Lock } from '../utils/lock.decorator';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -408,6 +413,22 @@ export class StagingAreaService {
 							avatar_url?: string;
 							reason?: string;
 						},
+					});
+					break;
+				}
+				case PduTypeRoomName: {
+					this.eventEmitterService.emit('homeserver.matrix.room.name', {
+						room_id: event.roomId,
+						user_id: event.event.sender,
+						name: event.event.content?.name as string,
+					});
+					break;
+				}
+				case PduTypeRoomTopic: {
+					this.eventEmitterService.emit('homeserver.matrix.room.topic', {
+						room_id: event.roomId,
+						user_id: event.event.sender,
+						topic: event.event.content?.topic as string,
 					});
 					break;
 				}
