@@ -437,6 +437,52 @@ export class PersistentEventFactory {
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
 
+	static newFileMessageEvent(
+		roomId: string,
+		sender: string,
+		content: {
+			body: string;
+			msgtype: 'm.image' | 'm.file' | 'm.video' | 'm.audio';
+			url: string;
+			info?: {
+				size?: number;
+				mimetype?: string;
+				w?: number;
+				h?: number;
+				duration?: number;
+				thumbnail_url?: string;
+				thumbnail_info?: {
+					w?: number;
+					h?: number;
+					mimetype?: string;
+					size?: number;
+				};
+			};
+		},
+		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomMessage>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomMessage,
+			content: content as PduForType<typeof PduTypeRoomMessage>['content'],
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
+
 	static newReplyToRichTextMessageEvent(
 		roomId: string,
 		sender: string,

@@ -120,6 +120,60 @@ export class MessageService {
 		return event;
 	}
 
+	async sendFileMessage(
+		roomId: string,
+		content: {
+			body: string;
+			msgtype: 'm.image' | 'm.file' | 'm.video' | 'm.audio';
+			url: string;
+			info?: {
+				size?: number;
+				mimetype?: string;
+				w?: number;
+				h?: number;
+				duration?: number;
+				thumbnail_url?: string;
+				thumbnail_info?: {
+					w?: number;
+					h?: number;
+					mimetype?: string;
+					size?: number;
+				};
+			};
+		},
+		senderUserId: string,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} while trying to send file message`,
+			);
+		}
+
+		const event = PersistentEventFactory.newFileMessageEvent(
+			roomId,
+			senderUserId,
+			content,
+			roomVersion,
+		);
+
+		await Promise.all([
+			this.stateService.addAuthEvents(event),
+			this.stateService.addPrevEvents(event),
+		]);
+
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistTimelineEvent(event);
+		if (event.rejected) {
+			throw new Error(event.rejectedReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
+	}
+
 	async sendThreadMessage(
 		roomId: string,
 		rawMessage: string,

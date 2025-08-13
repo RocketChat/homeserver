@@ -4,6 +4,7 @@ import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
+import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
@@ -52,6 +53,7 @@ export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
 export { MissingEventListener } from './services/missing-event.listener';
+export { MediaService } from './services/media.service';
 
 // Repository interfaces and implementations
 
@@ -108,6 +110,7 @@ export interface HomeserverServices {
 	server: ServerService;
 	config: ConfigService;
 	edu: EduService;
+	media: MediaService;
 }
 
 export type HomeserverEventSignatures = {
@@ -230,6 +233,7 @@ export function getAllServices(): HomeserverServices {
 		server: container.resolve(ServerService),
 		config: container.resolve(ConfigService),
 		edu: container.resolve(EduService),
+		media: container.resolve(MediaService),
 	};
 }
 
