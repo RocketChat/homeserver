@@ -14,7 +14,10 @@ export async function fetch(url: URL, options: RequestInit) {
 		port: url.port,
 		method: options.method,
 		path: url.pathname + url.search,
-		headers: options.headers as OutgoingHttpHeaders,
+		headers: {
+			...(options.headers as OutgoingHttpHeaders),
+			'content-type': 'application/json',
+		},
 		servername: serverName,
 	};
 
