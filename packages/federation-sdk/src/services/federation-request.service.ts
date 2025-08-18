@@ -77,13 +77,25 @@ export class FederationRequestService {
 				signedBody,
 			);
 
+			const headers = {
+				Authorization: auth,
+				...discoveryHeaders,
+			};
+
+			this.logger.debug(
+				{
+					method,
+					body: signedBody,
+					headers,
+					url: url.toString(),
+				},
+				'making http request',
+			);
+
 			const response = await fetch(url, {
 				method,
 				...(signedBody && { body: JSON.stringify(signedBody) }),
-				headers: {
-					Authorization: auth,
-					...discoveryHeaders,
-				},
+				headers,
 			});
 
 			if (!response.ok) {
