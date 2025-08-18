@@ -1102,4 +1102,45 @@ export class RoomService {
 			`Notified ${remoteServers.size} federated servers about room mark as tombstone`,
 		);
 	}
+
+	async setPowerLevelForUser(
+		roomId: string,
+		sender: string,
+		userId: string,
+		powerLevel: number,
+	) {
+		const state = await this.stateService.getFullRoomState2(roomId);
+
+		const existing = state.powerLevels;
+
+		if (!existing) {
+			// TODO we should have one always for ours
+			throw new Error(
+				'Power levels event not found while setting power level for user',
+			);
+		}
+
+		const clone = structuredClone(existing);
+
+		if (!clone?.users) {
+			clone.users = {};
+		}
+
+		clone.users[userId] = powerLevel;
+
+		const event = PersistentEventFactory.newPowerLevelEvent(
+			roomId,
+			sender,
+			clone,
+			state.version,
+		);
+
+		await this.stateService.addAuthEvents(event);
+		await this.stateService.addPrevEvents(event);
+		await this.stateService.signEvent(event);
+
+		await this.stateService.persistStateEvent(event);
+
+		void this.federationService.sendEventToAllServersInRoom(event);
+	}
 }

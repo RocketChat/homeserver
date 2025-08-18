@@ -209,6 +209,12 @@ export type HomeserverEventSignatures = {
 		user_id: string; // user who changed the topic
 		topic: string; // new topic of the room
 	};
+	'homeserver.matrix.room.role': {
+		sender_id: string; // who changed
+		user_id: string; // whose changed
+		room_id: string; // room where the change happened
+		role: 'moderator' | 'owner' | 'user'; // 50, 100, 0
+	};
 };
 
 export function getAllServices(): HomeserverServices {

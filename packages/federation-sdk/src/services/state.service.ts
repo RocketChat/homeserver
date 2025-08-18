@@ -92,6 +92,21 @@ export class StateService {
 
 	async findStateAtEvent(eventId: string): Promise<State> {
 		this.logger.debug({ eventId }, 'finding state at event');
+
+		const state = await this.findStateAroundEvent(eventId, true);
+
+		return state;
+	}
+
+	async findStateBeforeEvent(eventId: string): Promise<State> {
+		return this.findStateAroundEvent(eventId, false);
+	}
+
+	private async findStateAroundEvent(
+		eventId: string,
+		includeEvent = false,
+	): Promise<State> {
+		this.logger.debug({ eventId }, 'finding state before event');
 		const event = await this.eventRepository.findById(eventId);
 
 		if (!event) {
@@ -163,6 +178,12 @@ export class StateService {
 				),
 			);
 		}
+
+		if (!includeEvent) {
+			return state;
+		}
+
+		this.logger.debug({ eventId }, 'including event in state');
 
 		// update the last state
 		const { identifier: lastStateKey, eventId: lastStateEventId } =
@@ -248,6 +269,11 @@ export class StateService {
 
 	async getFullRoomState2(roomId: string): Promise<RoomState> {
 		const state = await this.getFullRoomState(roomId);
+		return new RoomState(state);
+	}
+
+	async getFullRoomStateBeforeEvent2(eventId: string): Promise<RoomState> {
+		const state = await this.findStateBeforeEvent(eventId);
 		return new RoomState(state);
 	}
 
