@@ -4,7 +4,6 @@ import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { EventService } from './event.service';
-import { RoomService } from './room.service';
 import { StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -25,7 +24,6 @@ export class InviteService {
 		@inject('EventService') private readonly eventService: EventService,
 		@inject('FederationService')
 		private readonly federationService: FederationService,
-		@inject('RoomService') private readonly roomService: RoomService,
 		@inject('StateService') private readonly stateService: StateService,
 		@inject('ConfigService') private readonly configService: ConfigService,
 	) {}
@@ -33,7 +31,12 @@ export class InviteService {
 	/**
 	 * Invite a user to an existing room
 	 */
-	async inviteUserToRoom(userId: string, roomId: string, sender: string) {
+	async inviteUserToRoom(
+		userId: string,
+		roomId: string,
+		sender: string,
+		isDirectMessage = false,
+	) {
 		this.logger.debug(`Inviting ${userId} to room ${roomId}`);
 
 		const stateService = this.stateService;
@@ -41,13 +44,21 @@ export class InviteService {
 
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
-		const inviteEvent = PersistentEventFactory.newMembershipEvent(
-			roomId,
-			sender,
-			userId,
-			'invite',
-			roomInformation,
-		);
+		const inviteEvent = isDirectMessage
+			? PersistentEventFactory.newDirectMessageMembershipEvent(
+					roomId,
+					sender,
+					userId,
+					'invite',
+					roomInformation,
+				)
+			: PersistentEventFactory.newMembershipEvent(
+					roomId,
+					sender,
+					userId,
+					'invite',
+					roomInformation,
+				);
 
 		await stateService.addAuthEvents(inviteEvent);
 
@@ -123,7 +134,9 @@ export class InviteService {
 		}
 
 		const inviteEvent = PersistentEventFactory.createFromRawEvent(
-			event as any,
+			event as unknown as Parameters<
+				typeof PersistentEventFactory.createFromRawEvent
+			>[0],
 			roomVersion as RoomVersion,
 		);
 
