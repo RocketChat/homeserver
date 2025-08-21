@@ -1,6 +1,6 @@
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
-FROM oven/bun:1-debian as base
+FROM oven/bun:1-debian AS base
 
 # install dependencies into temp directory
 # this will cache them and speed up future builds
