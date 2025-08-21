@@ -15,10 +15,7 @@
 			"require": "./dist/index.js"
 		}
 	},
-	"files": [
-		"./src",
-		"./dist"
-	],
+	"files": ["./src", "./dist"],
 	"dependencies": {
 		"@hs/room": "workspace:*"
 	},
