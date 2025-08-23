@@ -9,7 +9,8 @@ export const PduTypeRoomPowerLevels = 'm.room.power_levels' as const;
 export const PduTypeRoomAliases = 'm.room.aliases' as const;
 export const PduTypeRoomRedaction = 'm.room.redaction' as const;
 export const PduTypeRoomThirdPartyInvite = 'm.room.third_party_invite' as const;
-export const PduTypeRoomHistoryVisibility = 'm.room.history_visibility' as const;
+export const PduTypeRoomHistoryVisibility =
+	'm.room.history_visibility' as const;
 export const PduTypeRoomCanonicalAlias = 'm.room.canonical_alias' as const;
 export const PduTypeRoomEncrypted = 'm.room.encrypted' as const;
 export const PduTypeRoomAvatar = 'm.room.avatar' as const;
@@ -34,7 +35,8 @@ export const EduTypeTyping = 'm.typing' as const;
 export const EduTypeReceipt = 'm.receipt' as const;
 export const EduTypeDeviceListUpdate = 'm.device_list_update' as const;
 export const EduTypeSigningKeyUpdate = 'm.signing' as const;
-export const EduTypeUnstableSigningKeyUpdate = 'org.matrix.signing_key_update' as const;
+export const EduTypeUnstableSigningKeyUpdate =
+	'org.matrix.signing_key_update' as const;
 export const EduTypeDirectToDevice = 'm.direct_to_device' as const;
 
 export const PduTypeSchema = z.enum([
@@ -82,14 +84,19 @@ export type EduType = z.infer<typeof EduTypeSchema>;
 export type EventType = PduType | EduType;
 
 export const EventHashSchema = z.object({
-	sha256: z.string().describe('The hash of the event, encoded as a base64 string.'),
+	sha256: z
+		.string()
+		.describe('The hash of the event, encoded as a base64 string.'),
 });
 
 export type EventHash = z.infer<typeof EventHashSchema>;
 
 export const SignatureSchema = z.record(
 	z.string().describe('signing server name'),
-	z.record(z.string().describe('signing key id'), z.string().describe('signature in unpadded base64 format')),
+	z.record(
+		z.string().describe('signing key id'),
+		z.string().describe('signature in unpadded base64 format'),
+	),
 );
 
 export type Signature = z.infer<typeof SignatureSchema>;
@@ -102,14 +109,22 @@ export type Signature = z.infer<typeof SignatureSchema>;
 
 // https://spec.matrix.org/v1.12/client-server-api/#mroommember
 
-export const PduMembershipTypeSchema = z.enum(['join', 'leave', 'invite', 'ban', 'knock']);
+export const PduMembershipTypeSchema = z.enum([
+	'join',
+	'leave',
+	'invite',
+	'ban',
+	'knock',
+]);
 
 export const PduMembershipEventContentSchema = z.object({
 	avatar_url: z.string().url().optional(),
 	displayname: z.string().optional(),
 	is_direct: z
 		.boolean()
-		.describe('Flag indicating if the room containing this event was created with the intention of being a direct chat')
+		.describe(
+			'Flag indicating if the room containing this event was created with the intention of being a direct chat',
+		)
 		.optional(),
 	join_authorised_via_users_server: z.string().optional(),
 	membership: PduMembershipTypeSchema,
@@ -118,7 +133,11 @@ export const PduMembershipEventContentSchema = z.object({
 		.object({
 			display_name: z.string().optional(),
 			signed: z.object({
-				mxid: z.string().describe('The invited matrix user ID. Must be equal to the user_id property of the event.'),
+				mxid: z
+					.string()
+					.describe(
+						'The invited matrix user ID. Must be equal to the user_id property of the event.',
+					),
 				signatures: SignatureSchema.describe('The signatures of the event.'),
 				token: z.string(),
 			}),
@@ -126,28 +145,40 @@ export const PduMembershipEventContentSchema = z.object({
 		.optional(),
 });
 
-export type PduMembershipEventContent = z.infer<typeof PduMembershipEventContentSchema>;
+export type PduMembershipEventContent = z.infer<
+	typeof PduMembershipEventContentSchema
+>;
 
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcreate
 
 export const PduCreateEventContentSchema = z.object({
-	'creator': z
+	creator: z
 		.string()
 		.describe(
 			' The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.',
 		),
 	'm.federate': z
 		.boolean()
-		.describe(' Whether users on other servers can join this room. Defaults to true if key does not exist.')
+		.describe(
+			' Whether users on other servers can join this room. Defaults to true if key does not exist.',
+		)
 		.optional(),
-	'predecessor': z
+	predecessor: z
 		.object({
-			event_id: z.string().describe('The event ID of the last known event in the old room.'),
+			event_id: z
+				.string()
+				.describe('The event ID of the last known event in the old room.'),
 			room_id: z.string().describe('The ID of the old room.'),
 		})
 		.optional(),
-	'room_version': z.string().describe(" The version of the room. Defaults to '1' if the key does not exist.").optional().default('1'),
-	'type': z.string().describe('The type of the event.').optional(),
+	room_version: z
+		.string()
+		.describe(
+			" The version of the room. Defaults to '1' if the key does not exist.",
+		)
+		.optional()
+		.default('1'),
+	type: z.string().describe('The type of the event.').optional(),
 });
 
 export type PduCreateEventContent = z.infer<typeof PduCreateEventContentSchema>;
@@ -156,7 +187,14 @@ export type PduCreateEventContent = z.infer<typeof PduCreateEventContentSchema>;
 
 export const PduJoinRuleEventContentSchema = z.object({
 	join_rule: z
-		.enum(['public', 'invite', 'knock', 'private', 'restricted', 'knock_restricted'])
+		.enum([
+			'public',
+			'invite',
+			'knock',
+			'private',
+			'restricted',
+			'knock_restricted',
+		])
 		.describe('The type of rules used for users wishing to join this room.'),
 	allow: z
 		.array(
@@ -179,20 +217,46 @@ export const PduJoinRuleEventContentSchema = z.object({
 		.optional(),
 });
 
-export type PduJoinRuleEventContent = z.infer<typeof PduJoinRuleEventContentSchema>;
+export type PduJoinRuleEventContent = z.infer<
+	typeof PduJoinRuleEventContentSchema
+>;
 
 export const PduRoomTopicEventContentSchema = z.object({
 	topic: z.string().describe('The topic of the room.'),
 });
 
-export type PduRoomTopicEventContent = z.infer<typeof PduRoomTopicEventContentSchema>;
+export type PduRoomTopicEventContent = z.infer<
+	typeof PduRoomTopicEventContentSchema
+>;
 
 export const PduRoomRedactionContentSchema = z.object({
 	reason: z.string(),
 	redacts: z.string().describe('event id'),
 });
 
-export type PduRoomRedactionContent = z.infer<typeof PduRoomRedactionContentSchema>;
+export type PduRoomRedactionContent = z.infer<
+	typeof PduRoomRedactionContentSchema
+>;
+
+export const PduHistoryVisibilityEventContentSchema = z.object({
+	history_visibility: z
+		.enum(['invited', 'joined', 'shared', 'world_readable'])
+		.describe('Who can read the room history'),
+});
+
+export type PduHistoryVisibilityEventContent = z.infer<
+	typeof PduHistoryVisibilityEventContentSchema
+>;
+
+export const PduGuestAccessEventContentSchema = z.object({
+	guest_access: z
+		.enum(['can_join', 'forbidden'])
+		.describe('Whether guest users can join the room'),
+});
+
+export type PduGuestAccessEventContent = z.infer<
+	typeof PduGuestAccessEventContentSchema
+>;
 
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
 
@@ -205,52 +269,81 @@ export function getPduPowerLevelsEventContentSchema() {
 
 	// v10 takes numbers
 	// we convert all to numbers at parse/validation
-	const acceptedValueTypes = z.union([z.number(), z.string().transform((v) => Number.parseInt(v, 10))]);
+	const acceptedValueTypes = z.union([
+		z.number(),
+		z.string().transform((v) => Number.parseInt(v, 10)),
+	]);
 
 	return z.object({
 		// The level required to ban a user.
-		ban: acceptedValueTypes.describe('The level required to ban a user.').optional(),
+		ban: acceptedValueTypes
+			.describe('The level required to ban a user.')
+			.optional(),
 		// The level required to send specific event types. This is a mapping from event type to power level required.
 		events: z
 			.record(z.string(), acceptedValueTypes)
-			.describe('The level required to send specific event types. This is a mapping from event type to power level required.'),
+			.describe(
+				'The level required to send specific event types. This is a mapping from event type to power level required.',
+			),
 		//  The default level required to send message events. Can be overridden by the events key.
 		events_default: acceptedValueTypes
-			.describe('The default level required to send message events. Can be overridden by the events key.')
+			.describe(
+				'The default level required to send message events. Can be overridden by the events key.',
+			)
 			.optional(),
 		//  The level required to invite a user. Defaults to 0 if unspecified.
-		invite: acceptedValueTypes.describe('The level required to invite a user.').optional(),
+		invite: acceptedValueTypes
+			.describe('The level required to invite a user.')
+			.optional(),
 		//  The level required to kick a user. Defaults to 50 if unspecified.
-		kick: acceptedValueTypes.describe('The level required to kick a user.').optional(),
+		kick: acceptedValueTypes
+			.describe('The level required to kick a user.')
+			.optional(),
 		//  The power level requirements for specific notification types. This is a mapping from key to power level for that notifications key.
 		notifications: z.union([
 			z.object({
 				//  The level required to trigger an @room notification. Defaults to 50 if unspecified.
-				room: acceptedValueTypes.describe('The level required to trigger an @room notification.').optional(),
+				room: acceptedValueTypes
+					.describe('The level required to trigger an @room notification.')
+					.optional(),
 			}),
 			// others as said in spec
-			z.record(z.string(), acceptedValueTypes).describe('The level required to trigger an @room notification.').optional(),
+			z
+				.record(z.string(), acceptedValueTypes)
+				.describe('The level required to trigger an @room notification.')
+				.optional(),
 		]),
 		//  The level required to redact an event sent by another user. Defaults to 50 if unspecified.
-		redact: acceptedValueTypes.describe('The level required to redact an event sent by another user.').optional(),
+		redact: acceptedValueTypes
+			.describe('The level required to redact an event sent by another user.')
+			.optional(),
 		//  The default level required to send state events. Can be overridden by the events key. Defaults to 50 if unspecified.
 		state_default: acceptedValueTypes
-			.describe('The default level required to send state events. Can be overridden by the events key.')
+			.describe(
+				'The default level required to send state events. Can be overridden by the events key.',
+			)
 			.optional(),
 		//  The power levels for specific users. This is a mapping from user_id to power level for that user.
 		users: z
 			.record(z.string(), acceptedValueTypes)
-			.describe('The power levels for specific users. This is a mapping from user_id to power level for that user.'),
+			.describe(
+				'The power levels for specific users. This is a mapping from user_id to power level for that user.',
+			),
 		//  The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.
 		users_default: acceptedValueTypes
-			.describe('The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.')
+			.describe(
+				'The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.',
+			)
 			.optional(),
 	});
 }
 
-export const PduPowerLevelsEventContentSchema = getPduPowerLevelsEventContentSchema();
+export const PduPowerLevelsEventContentSchema =
+	getPduPowerLevelsEventContentSchema();
 
-export type PduPowerLevelsEventContent = z.infer<typeof PduPowerLevelsEventContentSchema>;
+export type PduPowerLevelsEventContent = z.infer<
+	typeof PduPowerLevelsEventContentSchema
+>;
 
 // https://spec.matrix.org/v1.12/client-server-api/#mroomcanonical_alias
 
@@ -267,18 +360,22 @@ export const PduCanonicalAliasEventContentSchema = z.object({
 		),
 });
 
-export type PduCanonicalAliasEventContent = z.infer<typeof PduCanonicalAliasEventContentSchema>;
+export type PduCanonicalAliasEventContent = z.infer<
+	typeof PduCanonicalAliasEventContentSchema
+>;
 
 export const PduRoomNameEventContentSchema = z.object({
 	name: z.string().describe('The name of the room.'),
 });
 
-export type PduRoomNameEventContent = z.infer<typeof PduRoomNameEventContentSchema>;
+export type PduRoomNameEventContent = z.infer<
+	typeof PduRoomNameEventContentSchema
+>;
 
 export const PduMessageEventContentSchema = z.object({
-	'body': z.string().describe('The body of the message.'),
+	body: z.string().describe('The body of the message.'),
 	// TODO: add more types
-	'msgtype': z.enum(['m.text', 'm.image']).describe('The type of the message.'),
+	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
 	// Optional fields for message edits and relations aka threads
 	'm.relates_to': z
 		.object({
@@ -296,10 +393,12 @@ export const PduMessageEventContentSchema = z.object({
 				.describe('Whether this is a fallback for older clients'),
 			'm.in_reply_to': z
 				.object({
-					event_id: z.string().describe('The ID of the latest event in the thread for fallback'),
+					event_id: z
+						.string()
+						.describe('The ID of the latest event in the thread for fallback'),
 				})
 				.optional(),
-			'key': z.string().optional().describe('The key for reactions (emoji).'),
+			key: z.string().optional().describe('The key for reactions (emoji).'),
 		})
 		.optional()
 		.describe('Relation information for edits, replies, reactions, etc.'),
@@ -330,18 +429,24 @@ export const PduMessageEventContentSchema = z.object({
 		.optional(),
 });
 
-export type PduMessageEventContent = z.infer<typeof PduMessageEventContentSchema>;
+export type PduMessageEventContent = z.infer<
+	typeof PduMessageEventContentSchema
+>;
 
 export const PduMessageReactionEventContentSchema = z.object({
 	'm.relates_to': z.object({
 		// TODO: add more types
 		rel_type: z.enum(['m.annotation']).describe('The type of the relation.'),
-		event_id: z.string().describe('The ID of the event that is being annotated.'),
+		event_id: z
+			.string()
+			.describe('The ID of the event that is being annotated.'),
 		key: z.string(),
 	}),
 });
 
-export type PduMessageReactionEventContent = z.infer<typeof PduMessageReactionEventContentSchema>;
+export type PduMessageReactionEventContent = z.infer<
+	typeof PduMessageReactionEventContentSchema
+>;
 
 // SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
 export const PduNoContentTimelineEventSchema = {
@@ -350,27 +455,57 @@ export const PduNoContentTimelineEventSchema = {
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),
-	depth: z.number().describe('The depth of the event in the DAG. This is a number that is incremented for each event in the DAG.'),
-	hashes: EventHashSchema.describe('The hashes of the event. This is an object with arbitrary keys and values.'),
+	depth: z
+		.number()
+		.describe(
+			'The depth of the event in the DAG. This is a number that is incremented for each event in the DAG.',
+		),
+	hashes: EventHashSchema.describe(
+		'The hashes of the event. This is an object with arbitrary keys and values.',
+	),
 	origin: z.string().describe('The origin of the event.').optional(),
 	origin_server_ts: z
 		.number()
-		.describe('The timestamp of the event. This is a number that is the number of milliseconds since the Unix epoch.'),
+		.describe(
+			'The timestamp of the event. This is a number that is the number of milliseconds since the Unix epoch.',
+		),
 	prev_events: z
 		.array(z.string())
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),
-	redacts: z.string().describe('The ID of the event that this event redacts. This is an optional field.').optional(),
-	room_id: z.string().describe('The ID of the room that the event is in. This is a unique identifier for the room.'),
-	sender: z.string().describe('The ID of the user that sent the event. This is a unique identifier for the user.'),
-	signatures: SignatureSchema.describe('The signatures of the event. This is an object with arbitrary keys and values.'),
-	unsigned: z.any().describe('An object with arbitrary keys and values. This is an optional field.').optional(),
+	redacts: z
+		.string()
+		.describe(
+			'The ID of the event that this event redacts. This is an optional field.',
+		)
+		.optional(),
+	room_id: z
+		.string()
+		.describe(
+			'The ID of the room that the event is in. This is a unique identifier for the room.',
+		),
+	sender: z
+		.string()
+		.describe(
+			'The ID of the user that sent the event. This is a unique identifier for the user.',
+		),
+	signatures: SignatureSchema.describe(
+		'The signatures of the event. This is an object with arbitrary keys and values.',
+	),
+	unsigned: z
+		.any()
+		.describe(
+			'An object with arbitrary keys and values. This is an optional field.',
+		)
+		.optional(),
 };
 
 export const PduNoContentStateEventSchema = {
 	...PduNoContentTimelineEventSchema,
-	state_key: z.string().describe('The state key of the event. This is an optional field.'),
+	state_key: z
+		.string()
+		.describe('The state key of the event. This is an optional field.'),
 };
 
 export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
@@ -424,6 +559,18 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 		}),
 
 		z.object({
+			...stateBase,
+			type: z.literal(PduTypeRoomHistoryVisibility),
+			content: PduHistoryVisibilityEventContentSchema,
+		}),
+
+		z.object({
+			...stateBase,
+			type: z.literal(PduTypeRoomGuestAccess),
+			content: PduGuestAccessEventContentSchema,
+		}),
+
+		z.object({
 			...timelineBase,
 			type: z.literal(PduTypeRoomMessage),
 			content: PduMessageEventContentSchema,
@@ -443,12 +590,19 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 	]);
 }
 
-export const PduSchema = generatePduSchemaForBase(PduNoContentStateEventSchema, PduNoContentTimelineEventSchema);
+export const PduSchema = generatePduSchemaForBase(
+	PduNoContentStateEventSchema,
+	PduNoContentTimelineEventSchema,
+);
 
 export type Pdu = z.infer<typeof PduSchema>;
 
 export type PduContent = Pick<Pdu, 'content'>['content'];
 
 export function isTimelineEventType(type: PduType) {
-	return type === PduTypeRoomMessage || type === PduTypeReaction || type === PduTypeRoomRedaction;
+	return (
+		type === PduTypeRoomMessage ||
+		type === PduTypeReaction ||
+		type === PduTypeRoomRedaction
+	);
 }

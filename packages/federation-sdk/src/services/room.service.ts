@@ -1,5 +1,6 @@
 import {
 	EventBase,
+	EventBaseWithOptionalId,
 	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
 	RoomTombstoneEvent,
@@ -26,6 +27,7 @@ import { logger } from '@hs/core';
 import {
 	PduCreateEventContent,
 	PduJoinRuleEventContent,
+	PduMembershipEventContent,
 	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
@@ -35,6 +37,7 @@ import type { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { EventType } from './event.service';
+import { InviteService } from './invite.service';
 import { StateService } from './state.service';
 
 @singleton()
@@ -48,6 +51,7 @@ export class RoomService {
 		@inject('FederationService')
 		private readonly federationService: FederationService,
 		@inject('StateService') private readonly stateService: StateService,
+		private readonly inviteService: InviteService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -457,7 +461,9 @@ export class RoomService {
 			auth_events: Object.values(authEventsMap).filter(
 				(id) => typeof id === 'string',
 			),
-			prev_events: [lastEventStore.event.event_id!],
+			prev_events: lastEventStore.event.event_id
+				? [lastEventStore.event.event_id]
+				: [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
 				...currentPowerLevelsEvent.content,
@@ -777,7 +783,9 @@ export class RoomService {
 		// ^ have the template for the join event now
 
 		const joinEvent = PersistentEventFactory.createFromRawEvent(
-			makeJoinResponse.event as any, // TODO: using room package types will take care of this
+			makeJoinResponse.event as unknown as Parameters<
+				typeof PersistentEventFactory.createFromRawEvent
+			>[0], // TODO: using room package types will take care of this
 			makeJoinResponse.room_version,
 		);
 
@@ -795,7 +803,9 @@ export class RoomService {
 
 		for (const stateEvent_ of sendJoinResponse.state) {
 			const stateEvent = PersistentEventFactory.createFromRawEvent(
-				stateEvent_ as any,
+				stateEvent_ as unknown as Parameters<
+					typeof PersistentEventFactory.createFromRawEvent
+				>[0],
 				makeJoinResponse.room_version,
 			);
 
@@ -804,7 +814,9 @@ export class RoomService {
 
 		for (const authEvent_ of sendJoinResponse.auth_chain) {
 			const authEvent = PersistentEventFactory.createFromRawEvent(
-				authEvent_ as any,
+				authEvent_ as unknown as Parameters<
+					typeof PersistentEventFactory.createFromRawEvent
+				>[0],
 				makeJoinResponse.room_version,
 			);
 			eventMap.set(authEvent.eventId, authEvent);
@@ -906,7 +918,9 @@ export class RoomService {
 		}
 
 		const joinEventFinal = PersistentEventFactory.createFromRawEvent(
-			sendJoinResponse.event as any,
+			sendJoinResponse.event as unknown as Parameters<
+				typeof PersistentEventFactory.createFromRawEvent
+			>[0],
 			makeJoinResponse.room_version,
 		);
 
@@ -1142,5 +1156,196 @@ export class RoomService {
 		await this.stateService.persistStateEvent(event);
 
 		void this.federationService.sendEventToAllServersInRoom(event);
+	}
+
+	async createDirectMessageRoom(
+		creatorUserId: string,
+		targetUserId: string,
+	): Promise<string> {
+		logger.debug(
+			`Creating direct message room between ${creatorUserId} and ${targetUserId}`,
+		);
+
+		const existingRoomId = await this.findExistingDirectMessageRoom(
+			creatorUserId,
+			targetUserId,
+		);
+		if (existingRoomId) {
+			logger.debug(`Found existing DM room ${existingRoomId} between users`);
+			return existingRoomId;
+		}
+
+		const targetServerName = targetUserId.split(':')[1];
+		const localServerName = this.configService.serverName;
+		const isExternalUser = targetServerName !== localServerName;
+
+		const stateService = this.stateService;
+
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			creatorUserId,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.persistStateEvent(roomCreateEvent);
+
+		const creatorMembershipEvent =
+			PersistentEventFactory.newDirectMessageMembershipEvent(
+				roomCreateEvent.roomId,
+				creatorUserId,
+				creatorUserId,
+				'join',
+				roomCreateEvent.getContent<PduCreateEventContent>(),
+			);
+
+		await stateService.addAuthEvents(creatorMembershipEvent);
+		await stateService.addPrevEvents(creatorMembershipEvent);
+		await stateService.persistStateEvent(creatorMembershipEvent);
+
+		const powerLevelsEvent = PersistentEventFactory.newPowerLevelEvent(
+			roomCreateEvent.roomId,
+			creatorUserId,
+			{
+				users: {
+					[creatorUserId]: 50,
+					[targetUserId]: 50,
+				},
+				users_default: 0,
+				events: {},
+				events_default: 0,
+				state_default: 50,
+				ban: 50,
+				kick: 50,
+				redact: 50,
+				invite: 50,
+			},
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(powerLevelsEvent);
+		await stateService.addPrevEvents(powerLevelsEvent);
+		await stateService.persistStateEvent(powerLevelsEvent);
+
+		const joinRulesEvent = PersistentEventFactory.newJoinRuleEvent(
+			roomCreateEvent.roomId,
+			creatorUserId,
+			'invite',
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(joinRulesEvent);
+		await stateService.addPrevEvents(joinRulesEvent);
+		await stateService.persistStateEvent(joinRulesEvent);
+
+		const historyVisibilityEvent =
+			PersistentEventFactory.newHistoryVisibilityEvent(
+				roomCreateEvent.roomId,
+				creatorUserId,
+				'shared',
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+		await stateService.addAuthEvents(historyVisibilityEvent);
+		await stateService.addPrevEvents(historyVisibilityEvent);
+		await stateService.persistStateEvent(historyVisibilityEvent);
+
+		const guestAccessEvent = PersistentEventFactory.newGuestAccessEvent(
+			roomCreateEvent.roomId,
+			creatorUserId,
+			'forbidden',
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await stateService.addAuthEvents(guestAccessEvent);
+		await stateService.addPrevEvents(guestAccessEvent);
+		await stateService.persistStateEvent(guestAccessEvent);
+
+		if (isExternalUser) {
+			await this.inviteService.inviteUserToRoom(
+				targetUserId,
+				roomCreateEvent.roomId,
+				creatorUserId,
+				true, // isDirectMessage
+			);
+		} else {
+			const targetMembershipEvent =
+				PersistentEventFactory.newDirectMessageMembershipEvent(
+					roomCreateEvent.roomId,
+					creatorUserId,
+					targetUserId,
+					'join',
+					roomCreateEvent.getContent<PduCreateEventContent>(),
+				);
+
+			await stateService.addAuthEvents(targetMembershipEvent);
+			await stateService.addPrevEvents(targetMembershipEvent);
+			await stateService.persistStateEvent(targetMembershipEvent);
+		}
+
+		return roomCreateEvent.roomId;
+	}
+
+	private async findExistingDirectMessageRoom(
+		userId1: string,
+		userId2: string,
+	): Promise<string | null> {
+		try {
+			const membershipEvents = await this.eventRepository.find(
+				{
+					'event.type': 'm.room.member',
+					'event.state_key': { $in: [userId1, userId2] },
+					'event.content.membership': { $in: ['join', 'invite'] },
+					'event.content.is_direct': true,
+				},
+				{},
+			);
+
+			const roomMemberCounts = new Map<string, Set<string>>();
+
+			for (const event of membershipEvents) {
+				const roomId = event.event.room_id;
+				const stateKey = event.event.state_key;
+
+				if (!stateKey) continue;
+
+				if (!roomMemberCounts.has(roomId)) {
+					roomMemberCounts.set(roomId, new Set());
+				}
+				const roomMembers = roomMemberCounts.get(roomId);
+				if (roomMembers) {
+					roomMembers.add(stateKey);
+				}
+			}
+
+			for (const [roomId, members] of roomMemberCounts) {
+				if (
+					members.size === 2 &&
+					members.has(userId1) &&
+					members.has(userId2)
+				) {
+					const currentMembers =
+						await this.eventRepository.findAllJoinedMembersEventsByRoomId(
+							roomId,
+						);
+					const currentUserIds = currentMembers
+						.map((m) => m.event.state_key)
+						.filter(Boolean);
+
+					if (
+						currentUserIds.length === 2 &&
+						currentUserIds.includes(userId1) &&
+						currentUserIds.includes(userId2)
+					) {
+						return roomId;
+					}
+				}
+			}
+
+			return null;
+		} catch (error) {
+			logger.error(
+				`Error finding existing DM room between ${userId1} and ${userId2}: ${error}`,
+			);
+			return null;
+		}
 	}
 }

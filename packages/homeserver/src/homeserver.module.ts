@@ -19,6 +19,7 @@ import { roomPlugin } from './controllers/federation/rooms.controller';
 import { sendJoinPlugin } from './controllers/federation/send-join.controller';
 import { transactionsPlugin } from './controllers/federation/transactions.controller';
 import { versionsPlugin } from './controllers/federation/versions.controller';
+import { internalDirectMessagePlugin } from './controllers/internal/direct-message.controller';
 import { internalInvitePlugin } from './controllers/internal/invite.controller';
 import { internalMessagePlugin } from './controllers/internal/message.controller';
 import { pingPlugin } from './controllers/internal/ping.controller';
@@ -82,6 +83,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(sendJoinPlugin)
 		.use(transactionsPlugin)
 		.use(versionsPlugin)
+		.use(internalDirectMessagePlugin)
 		.use(internalInvitePlugin)
 		.use(internalMessagePlugin)
 		.use(pingPlugin)
