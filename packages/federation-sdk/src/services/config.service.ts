@@ -26,6 +26,15 @@ export interface AppConfig {
 		name: string;
 		poolSize: number;
 	};
+	media?: {
+		maxFileSize: number;
+		allowedMimeTypes: string[];
+		enableThumbnails: boolean;
+		rateLimits: {
+			uploadPerMinute: number;
+			downloadPerMinute: number;
+		};
+	};
 }
 
 export const AppConfigSchema = z.object({
@@ -45,6 +54,26 @@ export const AppConfigSchema = z.object({
 		name: z.string().min(1, 'Database name is required'),
 		poolSize: z.number().int().min(1, 'Pool size must be at least 1'),
 	}),
+	media: z
+		.object({
+			maxFileSize: z
+				.number()
+				.int()
+				.min(1, 'Max file size must be at least 1 byte'),
+			allowedMimeTypes: z.array(z.string()),
+			enableThumbnails: z.boolean(),
+			rateLimits: z.object({
+				uploadPerMinute: z
+					.number()
+					.int()
+					.min(1, 'Upload rate limit must be at least 1'),
+				downloadPerMinute: z
+					.number()
+					.int()
+					.min(1, 'Download rate limit must be at least 1'),
+			}),
+		})
+		.optional(),
 });
 
 export class ConfigService {
@@ -95,6 +124,18 @@ export class ConfigService {
 			domain: this.config.matrixDomain,
 			keyRefreshInterval: this.config.keyRefreshInterval,
 		};
+	}
+
+	getMediaConfig(): {
+		maxFileSize: number;
+		allowedMimeTypes: string[];
+		enableThumbnails: boolean;
+		rateLimits: {
+			uploadPerMinute: number;
+			downloadPerMinute: number;
+		};
+	} {
+		return this.config.media || this.getDefaultMediaConfig();
 	}
 
 	get serverName(): string {
@@ -173,6 +214,19 @@ export class ConfigService {
 			...baseConfig,
 			...newConfig,
 			database: { ...baseConfig.database, ...newConfig.database },
+			media: newConfig.media
+				? {
+						...baseConfig.media,
+						...newConfig.media,
+						rateLimits: newConfig.media.rateLimits
+							? {
+									...baseConfig.media?.rateLimits,
+									...newConfig.media.rateLimits,
+								}
+							: baseConfig.media?.rateLimits ||
+								this.getDefaultMediaConfig().rateLimits,
+					}
+				: baseConfig.media,
 		};
 	}
 
@@ -209,12 +263,58 @@ export class ConfigService {
 				60,
 			),
 			signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
+			media: {
+				maxFileSize: this.getNumberFromEnv(
+					'MEDIA_MAX_FILE_SIZE',
+					100 * 1024 * 1024,
+				), // 100MB
+				allowedMimeTypes:
+					process.env.MEDIA_ALLOWED_MIME_TYPES?.split(',') || [],
+				enableThumbnails: process.env.MEDIA_ENABLE_THUMBNAILS === 'true',
+				rateLimits: {
+					uploadPerMinute: this.getNumberFromEnv('MEDIA_UPLOAD_RATE_LIMIT', 10),
+					downloadPerMinute: this.getNumberFromEnv(
+						'MEDIA_DOWNLOAD_RATE_LIMIT',
+						60,
+					),
+				},
+			},
 		};
 	}
 
 	private getNumberFromEnv(key: string, defaultValue: number): number {
 		const envValue = process.env[key];
 		return envValue ? Number.parseInt(envValue) : defaultValue;
+	}
+
+	private getDefaultMediaConfig(): {
+		maxFileSize: number;
+		allowedMimeTypes: string[];
+		enableThumbnails: boolean;
+		rateLimits: {
+			uploadPerMinute: number;
+			downloadPerMinute: number;
+		};
+	} {
+		return {
+			maxFileSize: 100 * 1024 * 1024, // 100MB
+			allowedMimeTypes: [
+				'image/jpeg',
+				'image/png',
+				'image/gif',
+				'image/webp',
+				'text/plain',
+				'application/pdf',
+				'video/mp4',
+				'audio/mpeg',
+				'audio/ogg',
+			],
+			enableThumbnails: true,
+			rateLimits: {
+				uploadPerMinute: 10,
+				downloadPerMinute: 60,
+			},
+		};
 	}
 
 	getServerName(): string {
