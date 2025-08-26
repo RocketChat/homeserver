@@ -26,6 +26,7 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
+// TODO type is wrong, it is missing "state_key" from PduNoContentStateEventSchema
 type PduWithHashesAndSignaturesOptional = Omit<Pdu, 'hashes' | 'signatures'> & {
 	hashes?: Pdu['hashes'];
 	signatures?: Pdu['signatures'];
@@ -130,7 +131,6 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 		return {
 			...this.rawEvent,
-			origin: this.origin, // in case <11, they care, for 11+ redaction removes this anyway
 			signatures: this.signatures,
 			unsigned: this.rawEvent.unsigned ?? {},
 		};
