@@ -3,7 +3,13 @@ import { logger } from './packages/core/src/utils/logger';
 import { appPromise } from './packages/homeserver/src/homeserver.module';
 
 appPromise.then((app) => {
-	app.listen(8080, () => {
-		logger.info('🚀 App running on http://localhost:8080');
-	});
+	app.listen(
+		{
+			port: 8080,
+			idleTimeout: 255,
+		},
+		() => {
+			logger.info('🚀 App running on http://localhost:8080');
+		},
+	);
 });

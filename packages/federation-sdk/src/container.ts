@@ -133,7 +133,5 @@ export function createFederationContainer(
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
 
-	console.log(x, y);
-
 	return container;
 }

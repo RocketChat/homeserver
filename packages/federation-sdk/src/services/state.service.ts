@@ -420,17 +420,18 @@ export class StateService {
 			'last state mapping',
 		);
 
-		const prevStateIds = lastState?.prevStateIds?.concat(
-			lastState?._id?.toString(),
-		);
+		const conflictedEvent = state.get(event.getUniqueStateIdentifier());
 
-		const hasConflict = state.has(event.getUniqueStateIdentifier());
-
-		if (!hasConflict) {
+		if (!conflictedEvent) {
 			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
 			if (event.rejected) {
 				throw new Error(event.rejectedReason);
 			}
+
+			// if no conflct append the state ids
+			const prevStateIds = lastState?.prevStateIds?.concat(
+				lastState?._id?.toString(),
+			);
 
 			// save the state mapping
 			const { insertedId: stateMappingId } =
@@ -485,10 +486,22 @@ export class StateService {
 
 		// new state
 
+		// we replce the conflicted state id from this new list
+		// effectively halving the number of state ids we need to persist
+		const eventCollection = await this.eventRepository.getCollection();
+		const { stateId } =
+			(await eventCollection.findOne(
+				{ _id: conflictedEvent.eventId },
+				{ projection: { stateId: 1 } },
+			)) ?? {};
+
+		const stateIdSet = new Set(lastState?.prevStateIds);
+		stateIdSet.delete(stateId as string);
+
 		const { insertedId: stateMappingId } =
 			await this.stateRepository.createStateMapping(
 				resolvedEvent,
-				prevStateIds,
+				Array.from(stateIdSet),
 			);
 
 		const signedEvent = await this.signEvent(resolvedEvent);
@@ -504,7 +517,7 @@ export class StateService {
 	async persistStateEvent(event: PersistentEventBase): Promise<void> {
 		const exists = await this.eventRepository.findById(event.eventId);
 		if (exists) {
-			this.logger.debug({ eventId: event.eventId }, 'event already exists');
+			this.logger.info({ eventId: event.eventId }, 'event already exists');
 			return;
 		}
 
@@ -531,7 +544,9 @@ export class StateService {
 		);
 
 		if (!lastEvent) {
-			// create
+			// no event before current, this must be a create event
+			// TODO: later on, we should put these events in a queue to be processed later
+			// possible to have an event here that is NOT a create event, maybe
 			return this._persistEventAgainstState(event, new Map());
 		}
 

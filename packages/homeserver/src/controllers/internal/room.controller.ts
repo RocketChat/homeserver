@@ -219,24 +219,10 @@ export const internalRoomPlugin = (app: Elysia) => {
 				body,
 				set,
 			}): Promise<InternalLeaveRoomResponse | ErrorResponse> => {
-				const roomIdParse = RoomIdDto.safeParse(params.roomId);
-				const bodyParse = InternalLeaveRoomBodyDto.safeParse(body);
-				if (!roomIdParse.success || !bodyParse.success) {
-					set.status = 400;
-					return {
-						error: 'Invalid request',
-						details: {
-							roomId: roomIdParse.error?.flatten(),
-							body: bodyParse.error?.flatten(),
-						},
-					};
-				}
-				const { senderUserId } = bodyParse.data;
+				const { roomId } = params;
+				const { senderUserId } = body;
 				try {
-					const eventId = await roomService.leaveRoom(
-						roomIdParse.data,
-						senderUserId,
-					);
+					const eventId = await roomService.leaveRoom(roomId, senderUserId);
 					return { eventId };
 				} catch (error) {
 					set.status = 500;
