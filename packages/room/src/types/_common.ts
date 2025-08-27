@@ -1,4 +1,4 @@
-import type { PduType, PduTypeRoomCreate, Pdu } from './v3-11';
+import type { Pdu, PduType, PduTypeRoomCreate } from './v3-11';
 
 export type EventID = string;
 
