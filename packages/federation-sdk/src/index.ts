@@ -135,14 +135,21 @@ export type HomeserverEventSignatures = {
 			body: string;
 			msgtype: string;
 			'm.relates_to'?: {
-				rel_type: 'm.replace' | 'm.annotation';
+				rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
 				event_id: string;
+				'm.in_reply_to'?: {
+					event_id: string;
+					room_id: string;
+					sender: string;
+					origin_server_ts: number;
+				};
 			};
 			'm.new_content'?: {
 				body: string;
 				msgtype: string;
 				'm.mentions'?: Record<string, string>;
 			};
+			formatted_body?: string;
 		};
 	};
 	'homeserver.matrix.accept-invite': {
@@ -191,6 +198,22 @@ export type HomeserverEventSignatures = {
 			avatar_url?: string;
 			reason?: string;
 		};
+	};
+	'homeserver.matrix.room.name': {
+		room_id: string; // name of the room being changed
+		user_id: string; // user who changed the name
+		name: string; // new name of the room
+	};
+	'homeserver.matrix.room.topic': {
+		room_id: string; // topic of the room being changed
+		user_id: string; // user who changed the topic
+		topic: string; // new topic of the room
+	};
+	'homeserver.matrix.room.role': {
+		sender_id: string; // who changed
+		user_id: string; // whose changed
+		room_id: string; // room where the change happened
+		role: 'moderator' | 'owner' | 'user'; // 50, 100, 0
 	};
 };
 

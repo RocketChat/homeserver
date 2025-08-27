@@ -147,9 +147,7 @@ export class InviteService {
 			// the asking server will handle the transactions
 
 			// return the signed invite event
-			return {
-				event: inviteEvent.event,
-			};
+			return inviteEvent;
 		}
 
 		// are we already in the room?
@@ -170,8 +168,6 @@ export class InviteService {
 
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
-		return {
-			event: inviteEvent.event,
-		};
+		return inviteEvent;
 	}
 }

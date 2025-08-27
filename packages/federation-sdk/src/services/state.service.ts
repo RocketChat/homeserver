@@ -1,7 +1,12 @@
 import { inject, singleton } from 'tsyringe';
 import { StateRepository } from '../repositories/state.repository';
 import { EventRepository } from '../repositories/event.repository';
-import type { PduContent, PduType, StateMapKey } from '@hs/room';
+import {
+	type PduContent,
+	type PduType,
+	RoomState,
+	type StateMapKey,
+} from '@hs/room';
 import type { EventStore, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
@@ -87,6 +92,21 @@ export class StateService {
 
 	async findStateAtEvent(eventId: string): Promise<State> {
 		this.logger.debug({ eventId }, 'finding state at event');
+
+		const state = await this.findStateAroundEvent(eventId, true);
+
+		return state;
+	}
+
+	async findStateBeforeEvent(eventId: string): Promise<State> {
+		return this.findStateAroundEvent(eventId, false);
+	}
+
+	private async findStateAroundEvent(
+		eventId: string,
+		includeEvent = false,
+	): Promise<State> {
+		this.logger.debug({ eventId }, 'finding state before event');
 		const event = await this.eventRepository.findById(eventId);
 
 		if (!event) {
@@ -158,6 +178,12 @@ export class StateService {
 				),
 			);
 		}
+
+		if (!includeEvent) {
+			return state;
+		}
+
+		this.logger.debug({ eventId }, 'including event in state');
 
 		// update the last state
 		const { identifier: lastStateKey, eventId: lastStateEventId } =
@@ -239,6 +265,16 @@ export class StateService {
 		}
 
 		return finalState;
+	}
+
+	async getFullRoomState2(roomId: string): Promise<RoomState> {
+		const state = await this.getFullRoomState(roomId);
+		return new RoomState(state);
+	}
+
+	async getFullRoomStateBeforeEvent2(eventId: string): Promise<RoomState> {
+		const state = await this.findStateBeforeEvent(eventId);
+		return new RoomState(state);
 	}
 
 	public async getStrippedRoomState(
@@ -636,9 +672,11 @@ export class StateService {
 			return;
 		}
 
-		const roomVersion = event.isCreateEvent()
-			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
-			: await this.getRoomVersion(event.roomId);
+		if (event.isState()) {
+			throw new Error('State events are not persisted with this method');
+		}
+
+		const roomVersion = await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
 			throw new Error(
 				'Room version not found when trying to persist a timeline event',
@@ -646,6 +684,8 @@ export class StateService {
 		}
 
 		const room = await this.getFullRoomState(event.roomId);
+
+		this.logState('state at saving message', room);
 
 		// we need the auth events required to validate this event from our state
 		const requiredAuthEventsWeHaveSeenMap = new Map<

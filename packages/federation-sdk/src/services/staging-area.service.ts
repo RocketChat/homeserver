@@ -4,7 +4,14 @@ import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
 import { createLogger } from '@hs/core';
-import { Pdu, PersistentEventFactory } from '@hs/room';
+import {
+	Pdu,
+	PduPowerLevelsEventContent,
+	PduTypeRoomName,
+	PduTypeRoomPowerLevels,
+	PduTypeRoomTopic,
+	PersistentEventFactory,
+} from '@hs/room';
 import { Lock } from '../utils/lock.decorator';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -354,13 +361,15 @@ export class StagingAreaService {
 							body: event.event.content?.body as string,
 							msgtype: event.event.content?.msgtype as string,
 							'm.relates_to': event.event.content?.['m.relates_to'] as {
-								rel_type: 'm.replace' | 'm.annotation';
+								rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
 								event_id: string;
 							},
 							'm.new_content': event.event.content?.['m.new_content'] as {
 								body: string;
 								msgtype: string;
 							},
+							formatted_body: (event.event.content?.formatted_body ||
+								'') as string,
 						},
 					});
 					break;
@@ -407,6 +416,141 @@ export class StagingAreaService {
 							reason?: string;
 						},
 					});
+					break;
+				}
+				case PduTypeRoomName: {
+					this.eventEmitterService.emit('homeserver.matrix.room.name', {
+						room_id: event.roomId,
+						user_id: event.event.sender,
+						name: event.event.content?.name as string,
+					});
+					break;
+				}
+				case PduTypeRoomTopic: {
+					this.eventEmitterService.emit('homeserver.matrix.room.topic', {
+						room_id: event.roomId,
+						user_id: event.event.sender,
+						topic: event.event.content?.topic as string,
+					});
+					break;
+				}
+				case PduTypeRoomPowerLevels: {
+					const getRole = (powerLevel: number) => {
+						if (powerLevel === 100) {
+							return 'owner';
+						}
+						if (powerLevel === 50) {
+							return 'moderator';
+						}
+
+						return 'user';
+					};
+
+					// at this point we potentially have the new power level event
+					const oldRoomState =
+						await this.stateService.getFullRoomStateBeforeEvent2(event.eventId);
+
+					const oldPowerLevels = oldRoomState.powerLevels?.users;
+
+					const changedUserPowers = (
+						event.event.content as PduPowerLevelsEventContent
+					).users;
+
+					if (!changedUserPowers) {
+						this.logger.debug('No changed user powers, resetting all powers');
+						// everyone set to "user" except for the owner
+						const owner = oldRoomState.creator;
+						if (!oldPowerLevels) {
+							this.logger.debug('No current power levels, skipping');
+							break;
+						}
+
+						for (const userId of Object.keys(oldPowerLevels)) {
+							if (userId === owner) {
+								continue;
+							}
+
+							this.logger.debug(`Resetting power level for ${userId} to user`);
+
+							this.eventEmitterService.emit('homeserver.matrix.room.role', {
+								sender_id: event.event.sender,
+								user_id: userId,
+								room_id: event.roomId,
+								role: 'user', // since new power level reset all powers
+							});
+						}
+					} else {
+						this.logger.debug('Changed user powers, emitting events');
+						if (!oldPowerLevels) {
+							this.logger.debug('No current power levels, setting new ones');
+							// no existing, set the new ones
+							for (const [userId, power] of Object.entries(changedUserPowers)) {
+								this.logger.debug(
+									`Setting power level for ${userId} to ${power}`,
+								);
+								this.eventEmitterService.emit('homeserver.matrix.room.role', {
+									sender_id: event.event.sender,
+									user_id: userId,
+									room_id: event.roomId,
+									role: getRole(power),
+								});
+							}
+
+							break;
+						}
+						// need to know what changed
+						const usersInOldPowerLevelEvent = Object.keys(oldPowerLevels);
+						const usersInNewPowerLevelEvent = Object.keys(changedUserPowers);
+
+						const setOrUnsetPowerLevels = new Set(
+							usersInNewPowerLevelEvent,
+						).difference(new Set(usersInOldPowerLevelEvent));
+
+						this.logger.debug(
+							{
+								difference: Array.from(setOrUnsetPowerLevels),
+							},
+							'Strong difference in power levels',
+						);
+
+						// for the difference only new power level content matters
+						for (const userId of setOrUnsetPowerLevels) {
+							const newPowerLevel = changedUserPowers[userId]; // if unset, it's 0, if set, it's the power level
+							this.logger.debug(
+								`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`,
+							);
+							this.eventEmitterService.emit('homeserver.matrix.room.role', {
+								sender_id: event.event.sender,
+								user_id: userId,
+								room_id: event.roomId,
+								role: getRole(newPowerLevel),
+							});
+						}
+
+						this.logger.debug('Emitting events for changed user powers');
+
+						// now use the new content
+						for (const [userId, power] of Object.entries(changedUserPowers)) {
+							if (
+								power === oldPowerLevels[userId] || // no change
+								setOrUnsetPowerLevels.has(userId) // already handled
+							) {
+								continue;
+							}
+
+							this.logger.debug(
+								`Emitting event for ${userId} with power level ${power}`,
+							);
+
+							this.eventEmitterService.emit('homeserver.matrix.room.role', {
+								sender_id: event.event.sender,
+								user_id: userId,
+								room_id: event.roomId,
+								role: getRole(power),
+							});
+						}
+					}
+
 					break;
 				}
 				default:

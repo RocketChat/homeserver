@@ -221,6 +221,23 @@ export type PduJoinRuleEventContent = z.infer<
 	typeof PduJoinRuleEventContentSchema
 >;
 
+export const PduRoomTopicEventContentSchema = z.object({
+	topic: z.string().describe('The topic of the room.'),
+});
+
+export type PduRoomTopicEventContent = z.infer<
+	typeof PduRoomTopicEventContentSchema
+>;
+
+export const PduRoomRedactionContentSchema = z.object({
+	reason: z.string(),
+	redacts: z.string().describe('event id'),
+});
+
+export type PduRoomRedactionContent = z.infer<
+	typeof PduRoomRedactionContentSchema
+>;
+
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
 
 // https://spec.matrix.org/v1.12/rooms/v1/#mroompower_levels-events-accept-values-as-strings
@@ -344,11 +361,13 @@ export const PduMessageEventContentSchema = z.object({
 		.object({
 			rel_type: z
 				.enum(['m.replace', 'm.annotation', 'm.thread'])
-				.describe('The type of the relation.'),
+				.describe('The type of the relation.')
+				.optional(),
 			event_id: z
 				.string()
+				.optional()
 				.describe('The ID of the event that is being related to.'),
-      is_falling_back: z
+			is_falling_back: z
 				.boolean()
 				.optional()
 				.describe('Whether this is a fallback for older clients'),
@@ -369,9 +388,25 @@ export const PduMessageEventContentSchema = z.object({
 			msgtype: z
 				.enum(['m.text', 'm.image'])
 				.describe('The type of the new message content.'),
+			format: z
+				.enum(['org.matrix.custom.html'])
+				.describe('The format of the message content.')
+				.optional(),
+			formatted_body: z
+				.string()
+				.describe('The formatted body of the message.')
+				.optional(),
 		})
 		.optional()
 		.describe('The new content for message edits.'),
+	format: z
+		.enum(['org.matrix.custom.html'])
+		.describe('The format of the message content.')
+		.optional(),
+	formatted_body: z
+		.string()
+		.describe('The formatted body of the message.')
+		.optional(),
 });
 
 export type PduMessageEventContent = z.infer<
@@ -392,30 +427,6 @@ export const PduMessageReactionEventContentSchema = z.object({
 export type PduMessageReactionEventContent = z.infer<
 	typeof PduMessageReactionEventContentSchema
 >;
-
-export const PduRoomRedactionEventSchema = z.object({
-	redacts: z.string().describe('event id to redact, post v11 is a must').optional(),
-	reason: z.string().describe('why').optional(),
-});
-
-export type PduRoomRedactionEventContent = z.infer<typeof PduRoomRedactionEventSchema>;
-
-export const PduContentSchema = z
-	.union([
-		PduMembershipEventContentSchema,
-		PduCreateEventContentSchema,
-		PduJoinRuleEventContentSchema,
-		PduPowerLevelsEventContentSchema,
-		PduCanonicalAliasEventContentSchema,
-		PduRoomNameEventContentSchema,
-		PduMessageEventContentSchema,
-	])
-	.describe(
-		'The content of the event. This is an object with arbitrary keys and values.',
-	);
-
-// this is the same for all versions
-export type PduContent = z.infer<typeof PduContentSchema>;
 
 // SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
 export const PduNoContentTimelineEventSchema = {
@@ -522,6 +533,12 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 		}),
 
 		z.object({
+			...stateBase,
+			type: z.literal(PduTypeRoomTopic),
+			content: PduRoomTopicEventContentSchema,
+		}),
+
+		z.object({
 			...timelineBase,
 			type: z.literal(PduTypeRoomMessage),
 			content: PduMessageEventContentSchema,
@@ -536,8 +553,7 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 		z.object({
 			...timelineBase,
 			type: z.literal(PduTypeRoomRedaction),
-			content: PduRoomRedactionEventSchema,
-			redacts: z.string().describe('for older events to contain the id to redact').optional(),
+			content: PduRoomRedactionContentSchema,
 		}),
 	]);
 }
@@ -548,6 +564,8 @@ export const PduSchema = generatePduSchemaForBase(
 );
 
 export type Pdu = z.infer<typeof PduSchema>;
+
+export type PduContent = Pick<Pdu, 'content'>['content'];
 
 export function isTimelineEventType(type: PduType) {
 	return (
