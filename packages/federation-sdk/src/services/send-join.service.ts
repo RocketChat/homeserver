@@ -1,14 +1,14 @@
 import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
+import {
+	type PduMembershipEventContent,
+	PersistentEventFactory,
+	getAuthChain,
+} from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import type { EventService } from './event.service';
 import { StateService } from './state.service';
-import {
-	getAuthChain,
-	type PduMembershipEventContent,
-	PersistentEventFactory,
-} from '@hs/room';
 
 @singleton()
 export class SendJoinService {
