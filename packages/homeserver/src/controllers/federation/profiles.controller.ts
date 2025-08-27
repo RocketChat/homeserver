@@ -1,5 +1,3 @@
-import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
 	EventAuthParamsDto,
@@ -19,6 +17,8 @@ import {
 	QueryProfileResponseDto,
 } from '@hs/federation-sdk';
 import { type RoomVersion } from '@hs/room';
+import { Elysia } from 'elysia';
+import { container } from 'tsyringe';
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
