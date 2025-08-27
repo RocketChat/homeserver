@@ -1,6 +1,8 @@
 import {
 	Pdu,
 	type PduCreateEventContent,
+	type PduGuestAccessEventContent,
+	type PduHistoryVisibilityEventContent,
 	type PduJoinRuleEventContent,
 	type PduMembershipEventContent,
 	PduPowerLevelsEventContent,
@@ -8,6 +10,8 @@ import {
 	PduTypeReaction,
 	PduTypeRoomCanonicalAlias,
 	PduTypeRoomCreate,
+	PduTypeRoomGuestAccess,
+	PduTypeRoomHistoryVisibility,
 	PduTypeRoomJoinRules,
 	PduTypeRoomMember,
 	PduTypeRoomMessage,
@@ -720,5 +724,209 @@ export class PersistentEventFactory {
 		};
 
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
+
+	static newHistoryVisibilityEvent(
+		roomId: string,
+		sender: string,
+		historyVisibility: 'invited' | 'joined' | 'shared' | 'world_readable',
+		roomVersion: RoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomHistoryVisibility>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomHistoryVisibility,
+			content: { history_visibility: historyVisibility },
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
+
+	static newGuestAccessEvent(
+		roomId: string,
+		sender: string,
+		guestAccess: 'can_join' | 'forbidden',
+		roomVersion: RoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomGuestAccess>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomGuestAccess,
+			content: { guest_access: guestAccess },
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+	}
+
+	/**
+	 * Create a new direct message membership event with is_direct flag
+	 */
+	static newDirectMessageMembershipEvent(
+		roomId: string,
+		sender: string,
+		userId: string,
+		membership: PduMembershipEventContent['membership'],
+		roomInformation: PduCreateEventContent,
+		reason?: string,
+	) {
+		if (
+			!PersistentEventFactory.isSupportedRoomVersion(
+				roomInformation.room_version as RoomVersion,
+			)
+		) {
+			throw new Error(
+				`Room version ${roomInformation.room_version} is not supported`,
+			);
+		}
+
+		const displayname = userId.split(':').shift()?.slice(1);
+
+		if (!displayname) {
+			throw new Error(
+				'Displayname not found while trying to create a membership event',
+			);
+		}
+
+		const membershipContent: PduMembershipEventContent = {
+			membership,
+			displayname,
+			is_direct: true,
+			...(reason && { reason }),
+		};
+
+		const eventPartial: Omit<
+			PduForType<typeof PduTypeRoomMember>,
+			'signatures' | 'hashes'
+		> = {
+			type: PduTypeRoomMember,
+			content: membershipContent,
+			sender: sender,
+			origin: sender.split(':').pop(),
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: userId,
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
+
+		return PersistentEventFactory.createFromRawEvent(
+			eventPartial,
+			roomInformation.room_version as RoomVersion,
+		);
+	}
+
+	/**
+	 * Create initial state events for a direct message room
+	 */
+	static createDirectMessageRoomEvents(
+		creatorUserId: string,
+		targetUserId: string,
+		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
+	) {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
+		// Create the room
+		const createEvent = PersistentEventFactory.newCreateEvent(
+			creatorUserId,
+			roomVersion,
+		);
+		const roomId = createEvent.roomId;
+
+		// Create membership event for creator
+		const creatorMembershipEvent =
+			PersistentEventFactory.newDirectMessageMembershipEvent(
+				roomId,
+				creatorUserId,
+				creatorUserId,
+				'join',
+				createEvent.getContent(),
+			);
+
+		// Create power levels - equal power for both users in DM
+		const powerLevelsContent: PduPowerLevelsEventContent = {
+			users: {
+				[creatorUserId]: 50,
+				[targetUserId]: 50,
+			},
+			users_default: 0,
+			events: {},
+			events_default: 0,
+			state_default: 50,
+			ban: 50,
+			kick: 50,
+			redact: 50,
+			invite: 50,
+		};
+
+		const powerLevelsEvent = PersistentEventFactory.newPowerLevelEvent(
+			roomId,
+			creatorUserId,
+			powerLevelsContent,
+			roomVersion,
+		);
+
+		// Create join rules - invite only for DMs
+		const joinRulesEvent = PersistentEventFactory.newJoinRuleEvent(
+			roomId,
+			creatorUserId,
+			'invite',
+			roomVersion,
+		);
+
+		// Create history visibility - shared for DMs (essential for proper DM behavior)
+		const historyVisibilityEvent =
+			PersistentEventFactory.newHistoryVisibilityEvent(
+				roomId,
+				creatorUserId,
+				'shared',
+				roomVersion,
+			);
+
+		// Create guest access - forbidden for DMs (essential for proper DM behavior)
+		const guestAccessEvent = PersistentEventFactory.newGuestAccessEvent(
+			roomId,
+			creatorUserId,
+			'forbidden',
+			roomVersion,
+		);
+
+		return {
+			roomId,
+			createEvent,
+			creatorMembershipEvent,
+			powerLevelsEvent,
+			joinRulesEvent,
+			historyVisibilityEvent,
+			guestAccessEvent,
+		};
 	}
 }

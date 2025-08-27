@@ -238,6 +238,26 @@ export type PduRoomRedactionContent = z.infer<
 	typeof PduRoomRedactionContentSchema
 >;
 
+export const PduHistoryVisibilityEventContentSchema = z.object({
+	history_visibility: z
+		.enum(['invited', 'joined', 'shared', 'world_readable'])
+		.describe('Who can read the room history'),
+});
+
+export type PduHistoryVisibilityEventContent = z.infer<
+	typeof PduHistoryVisibilityEventContentSchema
+>;
+
+export const PduGuestAccessEventContentSchema = z.object({
+	guest_access: z
+		.enum(['can_join', 'forbidden'])
+		.describe('Whether guest users can join the room'),
+});
+
+export type PduGuestAccessEventContent = z.infer<
+	typeof PduGuestAccessEventContentSchema
+>;
+
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
 
 // https://spec.matrix.org/v1.12/rooms/v1/#mroompower_levels-events-accept-values-as-strings
@@ -536,6 +556,18 @@ export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
 			...stateBase,
 			type: z.literal(PduTypeRoomTopic),
 			content: PduRoomTopicEventContentSchema,
+		}),
+
+		z.object({
+			...stateBase,
+			type: z.literal(PduTypeRoomHistoryVisibility),
+			content: PduHistoryVisibilityEventContentSchema,
+		}),
+
+		z.object({
+			...stateBase,
+			type: z.literal(PduTypeRoomGuestAccess),
+			content: PduGuestAccessEventContentSchema,
 		}),
 
 		z.object({
