@@ -1,7 +1,7 @@
+import { type Pdu, PersistentEventFactory } from '@hs/room';
 import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
 import { encodeCanonicalJson, signJson } from './signJson';
-import { PersistentEventFactory, type Pdu } from '@hs/room';
 
 /**
  * Extracts the origin, destination, key, and signature from the authorization header.

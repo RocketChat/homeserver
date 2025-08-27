@@ -1,5 +1,5 @@
 import type { EventBase } from '../events/eventBase';
-import { computeHash, type HashedEvent } from './authentication';
+import { type HashedEvent, computeHash } from './authentication';
 import { MatrixError } from './errors';
 import { logger } from './logger';
 import { pruneEventDict } from './pruneEventDict';
