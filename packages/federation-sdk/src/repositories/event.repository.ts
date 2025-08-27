@@ -1,9 +1,9 @@
-import { singleton } from 'tsyringe';
-import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { generateId } from '@hs/core';
 import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { MongoError } from 'mongodb';
+import { singleton } from 'tsyringe';
+import { DatabaseConnectionService } from '../services/database-connection.service';
 
 @singleton()
 export class EventRepository {

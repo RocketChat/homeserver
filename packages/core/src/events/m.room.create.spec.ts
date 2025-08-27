@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import type { SignedEvent } from '../types';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
@@ -9,7 +10,6 @@ import {
 	isRoomCreateEvent,
 	roomCreateEvent,
 } from './m.room.create';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
 
 const finalEventId = '$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4';
 const finalEvent = {

@@ -1,8 +1,8 @@
+import { encodeCanonicalJson as encodeCanonicalJsonCrypto } from '@hs/crypto';
 import nacl from 'tweetnacl';
 import type { SigningKey } from '../types';
 import { EncryptionValidAlgorithm } from '../types';
 import { toBinaryData, toUnpaddedBase64 } from './binaryData';
-import { encodeCanonicalJson as encodeCanonicalJsonCrypto } from '@hs/crypto';
 
 export type ProtocolVersionKey = `${EncryptionValidAlgorithm}:${string}`;
 

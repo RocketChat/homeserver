@@ -1,11 +1,11 @@
-import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
 	SendJoinEventDto,
 	SendJoinResponseDto,
 	SendJoinService,
 } from '@hs/federation-sdk';
+import { Elysia, t } from 'elysia';
+import { container } from 'tsyringe';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const sendJoinService = container.resolve(SendJoinService);

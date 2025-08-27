@@ -1,6 +1,6 @@
 import { deepFreeze } from './event-wrapper';
 
-import { it, describe, expect } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 
 describe('[EventWrapper] Deep Freeze', () => {
 	it('should freeze all nested values', () => {
