@@ -3,7 +3,7 @@ import { singleton } from 'tsyringe';
 import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 
-import { createLogger } from '@hs/core';
+import { createLogger, isRedactedEvent } from '@hs/core';
 import {
 	Pdu,
 	PduPowerLevelsEventContent,
@@ -350,8 +350,8 @@ export class StagingAreaService {
 		try {
 			this.logger.debug(`Notifying clients about event ${eventId}`);
 
-			switch (event.event.type) {
-				case EventType.MESSAGE:
+			switch (true) {
+				case event.event.type === EventType.MESSAGE:
 					this.eventEmitterService.emit('homeserver.matrix.message', {
 						event_id: event.eventId,
 						room_id: event.roomId,
@@ -373,7 +373,7 @@ export class StagingAreaService {
 						},
 					});
 					break;
-				case EventType.REACTION: {
+				case event.event.type === EventType.REACTION: {
 					this.eventEmitterService.emit('homeserver.matrix.reaction', {
 						event_id: event.eventId,
 						room_id: event.roomId,
@@ -389,20 +389,20 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case EventType.REDACTION: {
+				case isRedactedEvent(event.event): {
 					this.eventEmitterService.emit('homeserver.matrix.redaction', {
 						event_id: event.eventId,
 						room_id: event.roomId,
 						sender: event.event.sender,
 						origin_server_ts: event.event.origin_server_ts,
-						redacts: (event.event as any).redacts,
+						redacts: event.event.redacts,
 						content: {
 							reason: event.event.content?.reason as string | undefined,
 						},
 					});
 					break;
 				}
-				case EventType.MEMBER: {
+				case event.event.type === EventType.MEMBER: {
 					this.eventEmitterService.emit('homeserver.matrix.membership', {
 						event_id: event.eventId,
 						room_id: event.roomId,
@@ -418,7 +418,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case PduTypeRoomName: {
+				case event.event.type === PduTypeRoomName: {
 					this.eventEmitterService.emit('homeserver.matrix.room.name', {
 						room_id: event.roomId,
 						user_id: event.event.sender,
@@ -426,7 +426,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case PduTypeRoomTopic: {
+				case event.event.type === PduTypeRoomTopic: {
 					this.eventEmitterService.emit('homeserver.matrix.room.topic', {
 						room_id: event.roomId,
 						user_id: event.event.sender,
@@ -434,7 +434,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case PduTypeRoomPowerLevels: {
+				case event.event.type === PduTypeRoomPowerLevels: {
 					const getRole = (powerLevel: number) => {
 						if (powerLevel === 100) {
 							return 'owner';
