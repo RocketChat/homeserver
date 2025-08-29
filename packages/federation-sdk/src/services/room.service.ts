@@ -759,7 +759,9 @@ export class RoomService {
 
 			await stateService.addPrevEvents(membershipEvent);
 
+			console.time('persistStateEvent');
 			await stateService.persistStateEvent(membershipEvent);
+			console.timeEnd('persistStateEvent');
 
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectedReason);
