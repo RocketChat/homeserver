@@ -230,7 +230,7 @@ export type PduRoomTopicEventContent = z.infer<
 >;
 
 export const PduRoomRedactionContentSchema = z.object({
-	reason: z.string(),
+	reason: z.string().optional(),
 	redacts: z.string().describe('event id'),
 });
 
