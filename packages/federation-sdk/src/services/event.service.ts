@@ -167,7 +167,7 @@ export class EventService {
 			);
 			if (existingEvent) {
 				// If it already exists as a regular event (not staged), nothing to do
-				if (!(existingEvent as any).is_staged) {
+				if (!existingEvent.is_staged) {
 					this.logger.debug(
 						`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`,
 					);
@@ -234,7 +234,7 @@ export class EventService {
 
 			// Also remove other staging metadata we might have added
 			// We need to do this directly since removeFromStaging only clears the staged flag
-			const collection = await (this.eventRepository as any).getCollection();
+			const collection = await this.eventRepository.getCollection();
 			await collection.updateOne(
 				{ _id: eventId },
 				{
@@ -264,7 +264,7 @@ export class EventService {
 			let updatedCount = 0;
 
 			// Get all staged events that have this dependency
-			const collection = await (this.eventRepository as any).getCollection();
+			const collection = await this.eventRepository.getCollection();
 			const stagedEvents = await collection
 				.find({
 					$or: [{ is_staged: true }, { staged: true }],
@@ -274,17 +274,16 @@ export class EventService {
 
 			// Update each one to remove the dependency
 			for (const event of stagedEvents) {
-				const missingDeps = event.missing_dependencies || [];
-				const updatedDeps = missingDeps.filter(
+				const updatedDeps = event.missing_dependencies?.filter(
 					(dep: string) => dep !== dependencyId,
 				);
-
-				await collection.updateOne(
-					{ _id: event._id },
-					{ $set: { missing_dependencies: updatedDeps } },
-				);
-
-				updatedCount++;
+				if (updatedDeps) {
+					await collection.updateOne(
+						{ _id: event._id },
+						{ $set: { missing_dependencies: updatedDeps } },
+					);
+					updatedCount++;
+				}
 			}
 
 			return updatedCount;

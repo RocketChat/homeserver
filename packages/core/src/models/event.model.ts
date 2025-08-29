@@ -9,7 +9,14 @@ export interface EventBaseWithOptionalId extends CoreEventBase {
 export interface EventStore {
 	_id: string;
 	event: EventBaseWithOptionalId;
+
+	// TODO: remove the duplication of fields
 	staged?: boolean;
+	is_staged?: boolean;
+
+	// TODO: check if this is needed or if we should create a new interface
+	missing_dependencies?: string[];
+
 	outlier?: boolean;
 
 	stateId: string;

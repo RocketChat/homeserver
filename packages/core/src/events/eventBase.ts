@@ -22,6 +22,15 @@ export type EventBase = {
 	unsigned?: Record<string, any> | undefined;
 };
 
+export interface RedactedEvent extends EventBase {
+	redacts: string;
+	type: 'm.room.redaction';
+}
+
+export const isRedactedEvent = (event: EventBase): event is RedactedEvent => {
+	return event.type === 'm.room.redaction';
+};
+
 export interface Events {}
 
 type KeyEvent = keyof Events;
