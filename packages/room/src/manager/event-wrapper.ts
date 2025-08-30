@@ -340,12 +340,8 @@ export abstract class PersistentEventBase<
 		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
-		const canonicalJson = encodeCanonicalJson(toHash);
 		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = crypto
-			.createHash('sha256')
-			.update(canonicalJson)
-			.digest();
+		const referenceHash = computeHashBuffer(toHash);
 
 		return referenceHash;
 	}
