@@ -1,5 +1,4 @@
-import crypto from 'node:crypto';
-import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/crypto';
+import { computeHashBuffer, toUnpaddedBase64 } from '@hs/crypto';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -296,12 +295,8 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
-		const canonicalJson = encodeCanonicalJson(toHash);
 		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = crypto
-			.createHash('sha256')
-			.update(canonicalJson)
-			.digest();
+		const referenceHash = computeHashBuffer(toHash);
 
 		this.freezeEvent();
 
@@ -310,13 +305,12 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
 	getContentHash() {
-		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
+		// First, any existing unsigned, signature, and hashes members are removed.
 		const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
 
-		return crypto
-			.createHash('sha256')
-			.update(encodeCanonicalJson(toHash))
-			.digest();
+		// The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
+
+		return computeHashBuffer(toHash);
 	}
 
 	getContentHashString() {

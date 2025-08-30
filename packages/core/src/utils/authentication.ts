@@ -161,7 +161,6 @@ export function computeHash<T extends Record<string, unknown>>(
 		algorithm,
 		PersistentEventFactory.createFromRawEvent(
 			content as unknown as Pdu,
-			PersistentEventFactory.defaultRoomVersion, // content hash doesn't care about room version or event version, it is ok to pass anything.
 		).getContentHashString(),
 	];
 }

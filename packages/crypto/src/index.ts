@@ -2,19 +2,22 @@ import nacl from 'tweetnacl';
 
 import crypto from 'node:crypto';
 
-export function computeHash<T extends Record<string, unknown>>(
+// computeJsonHashBuffer computes the hash of a JSON object using the specified algorithm (default is sha256).
+export function computeHashBuffer<T extends Record<string, unknown>>(
 	content: T,
 	algorithm: 'sha256' = 'sha256',
-): ['sha256', string] {
-	return [
-		algorithm,
-		toUnpaddedBase64(
-			crypto
-				.createHash(algorithm)
-				.update(encodeCanonicalJson(content))
-				.digest(),
-		),
-	];
+): Buffer<ArrayBufferLike> {
+	// making sure same JSON always results in same hash
+	const canonicalisedJson = encodeCanonicalJson(content);
+	return crypto.createHash(algorithm).update(canonicalisedJson).digest();
+}
+
+// computeJsonHashString computes the hash of a JSON object and returns it as a UNPADDED base64 string.
+export function computeHashString<T extends Record<string, unknown>>(
+	content: T,
+	algorithm = 'sha256' as const,
+) {
+	return toUnpaddedBase64(computeHashBuffer(content, algorithm));
 }
 
 export function toBinaryData(
@@ -93,7 +96,7 @@ export const isValidAlgorithm = (
 export function encodeCanonicalJson(value: unknown): string {
 	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
-		return JSON.stringify(value);
+		return String(value);
 	}
 
 	if (Array.isArray(value)) {

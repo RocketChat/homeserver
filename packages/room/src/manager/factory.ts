@@ -68,29 +68,27 @@ export class PersistentEventFactory {
 			signatures?: Pdu['signatures'];
 			hashes?: Pdu['hashes'];
 		},
-		roomVersion: RoomVersion,
+		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
 	): PersistentEventBase<RoomVersion> {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const event = rawEvent as Pdu;
-
 		switch (roomVersion) {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event, false);
+				return new PersistentEventV3(rawEvent, false);
 			case '6':
 			case '7':
-				return new PersistentEventV6(event, false);
+				return new PersistentEventV6(rawEvent, false);
 			case '8':
-				return new PersistentEventV8(event, false);
+				return new PersistentEventV8(rawEvent, false);
 			case '9':
 			case '10':
-				return new PersistentEventV9(event, false);
+				return new PersistentEventV9(rawEvent, false);
 			case '11':
-				return new PersistentEventV11(event, false);
+				return new PersistentEventV11(rawEvent, false);
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
