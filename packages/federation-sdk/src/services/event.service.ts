@@ -307,22 +307,13 @@ export class EventService {
 
 		for (const { eventId, event } of eventsWithIds) {
 			// TODO: Rewrite this poor typing
-			let result = await this.validateEventFormat(
-				eventId,
-				event as EventBaseWithOptionalId,
-			);
+			let result = await this.validateEventFormat(eventId, event);
 			if (result.valid) {
-				result = await this.validateEventTypeSpecific(
-					eventId,
-					event as EventBaseWithOptionalId,
-				);
+				result = await this.validateEventTypeSpecific(eventId, event);
 			}
 
 			if (result.valid) {
-				result = await this.validateSignaturesAndHashes(
-					eventId,
-					event as EventBaseWithOptionalId,
-				);
+				result = await this.validateSignaturesAndHashes(eventId, event);
 			}
 
 			validatedEvents.push(result);
