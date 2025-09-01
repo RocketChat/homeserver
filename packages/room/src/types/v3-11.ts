@@ -508,94 +508,113 @@ export const PduNoContentStateEventSchema = {
 		.describe('The state key of the event. This is an optional field.'),
 };
 
-export function generatePduSchemaForBase<T, S>(stateBase: T, timelineBase: S) {
-	return z.discriminatedUnion('type', [
-		z.object({
-			type: z.literal(PduTypeRoomCreate),
-			content: PduCreateEventContentSchema,
-			...stateBase,
-		}),
+const EventPduTypeRoomCreate = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomCreate),
+	content: PduCreateEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomMember),
-			content: PduMembershipEventContentSchema,
-		}),
+const EventPduTypeRoomMember = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomMember),
+	content: PduMembershipEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomJoinRules),
-			content: PduJoinRuleEventContentSchema,
-		}),
+const EventPduTypeRoomJoinRules = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomJoinRules),
+	content: PduJoinRuleEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomPowerLevels),
-			content: PduPowerLevelsEventContentSchema,
-		}),
+const EventPduTypeRoomPowerLevels = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomPowerLevels),
+	content: PduPowerLevelsEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomCanonicalAlias),
-			content: PduCanonicalAliasEventContentSchema,
-		}),
+const EventPduTypeRoomCanonicalAlias = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomCanonicalAlias),
+	content: PduCanonicalAliasEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomName),
-			content: PduRoomNameEventContentSchema,
-		}),
+const EventPduTypeRoomName = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomName),
+	content: PduRoomNameEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomAliases),
-			content: PduCanonicalAliasEventContentSchema,
-		}),
+const EventPduTypeRoomAliases = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomAliases),
+	content: PduCanonicalAliasEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomTopic),
-			content: PduRoomTopicEventContentSchema,
-		}),
+const EventPduTypeRoomTopic = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomTopic),
+	content: PduRoomTopicEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomHistoryVisibility),
-			content: PduHistoryVisibilityEventContentSchema,
-		}),
+const EventPduTypeRoomHistoryVisibility = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomHistoryVisibility),
+	content: PduHistoryVisibilityEventContentSchema,
+});
 
-		z.object({
-			...stateBase,
-			type: z.literal(PduTypeRoomGuestAccess),
-			content: PduGuestAccessEventContentSchema,
-		}),
+const EventPduTypeRoomGuestAccess = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal(PduTypeRoomGuestAccess),
+	content: PduGuestAccessEventContentSchema,
+});
 
-		z.object({
-			...timelineBase,
-			type: z.literal(PduTypeRoomMessage),
-			content: PduMessageEventContentSchema,
-		}),
+const EventPduTypeRoomMessage = z.object({
+	...PduNoContentTimelineEventSchema,
+	type: z.literal(PduTypeRoomMessage),
+	content: PduMessageEventContentSchema,
+});
 
-		z.object({
-			...timelineBase,
-			type: z.literal(PduTypeReaction),
-			content: PduMessageReactionEventContentSchema,
-		}),
+const EventPduTypeRoomReaction = z.object({
+	...PduNoContentTimelineEventSchema,
+	type: z.literal(PduTypeReaction),
+	content: PduMessageReactionEventContentSchema,
+});
 
-		z.object({
-			...timelineBase,
-			type: z.literal(PduTypeRoomRedaction),
-			content: PduRoomRedactionContentSchema,
-		}),
-	]);
-}
+const EventPduTypeRoomRedaction = z.object({
+	...PduNoContentTimelineEventSchema,
+	type: z.literal(PduTypeRoomRedaction),
+	content: PduRoomRedactionContentSchema,
+});
 
-export const PduSchema = generatePduSchemaForBase(
-	PduNoContentStateEventSchema,
-	PduNoContentTimelineEventSchema,
-);
+export const PduSchema = z.discriminatedUnion('type', [
+	EventPduTypeRoomCreate,
 
-export type Pdu = z.infer<typeof PduSchema>;
+	EventPduTypeRoomMember,
+
+	EventPduTypeRoomJoinRules,
+
+	EventPduTypeRoomPowerLevels,
+
+	EventPduTypeRoomCanonicalAlias,
+
+	EventPduTypeRoomName,
+
+	EventPduTypeRoomAliases,
+
+	EventPduTypeRoomTopic,
+
+	EventPduTypeRoomHistoryVisibility,
+
+	EventPduTypeRoomGuestAccess,
+
+	EventPduTypeRoomMessage,
+
+	EventPduTypeRoomReaction,
+
+	EventPduTypeRoomRedaction,
+]);
+
+export type Pdu = z.infer<typeof PduSchema> & {};
 
 export type PduContent = Pick<Pdu, 'content'>['content'];
 

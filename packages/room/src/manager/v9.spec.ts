@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 
-import { Pdu } from '../types/v3-11';
 import { PersistentEventV9 } from './v9';
 
 test('event without origin', async () => {
 	const event = new PersistentEventV9({
+		type: 'm.room.member',
 		auth_events: [
 			'$gbm6Tyhskcai9hxHXAh7RCoDlrwl1GFf4pWd1P6ELM4',
 			'$g5tzeYmxj1ulmzQv07uDZZztxHhiebe5WH7Gg7npwd0',
@@ -24,14 +24,13 @@ test('event without origin', async () => {
 		prev_events: ['$HhSZakbJx7fbn5zMxn7QQHCsRFHjEMRa3OIQdCdR2oc'],
 		room_id: '!cIgsCPRFcbabBKlTRk:hs2',
 		sender: '@admin:hs2',
-		signatures: {},
-		state_key: '@diego:rc1',
-		type: 'm.room.member',
 		unsigned: {
 			age: 5,
 			invite_room_state: [],
 		},
-	} as Pdu); // this is needed because they prop `state_key` is incorrectly not accepted
+		signatures: {},
+		state_key: '@diego:rc1',
+	});
 
 	expect(event.eventId).toBe('$iCA3OWE1EGtPVWIyGudgmifuJcIluQw88FuK_gd0FpM');
 });

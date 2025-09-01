@@ -26,11 +26,20 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
-// TODO type is wrong, it is missing "state_key" from PduNoContentStateEventSchema
-type PduWithHashesAndSignaturesOptional = Omit<Pdu, 'hashes' | 'signatures'> & {
-	hashes?: Pdu['hashes'];
-	signatures?: Pdu['signatures'];
+type MakeOptional<T, K extends keyof T> = {
+	[KK in K]?: T[KK];
+} & {
+	[KK in keyof T as KK extends K ? never : KK]: T[KK];
 };
+
+type Prettify<T> = {
+	[K in keyof T]: T[K];
+} & {};
+
+// TODO type is wrong, it is missing "state_key" from PduNoContentStateEventSchema
+export type PduWithHashesAndSignaturesOptional = Prettify<
+	MakeOptional<Pdu, 'hashes' | 'signatures'>
+>;
 
 export function deepFreeze(object: unknown) {
 	if (typeof object !== 'object' || object === null) {
