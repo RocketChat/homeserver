@@ -119,7 +119,6 @@ describe.skip('MissingEventListener', () => {
 					event: mockEvent,
 					origin,
 					missing_dependencies: [],
-					staged_at: Date.now(),
 				},
 			]),
 		);
@@ -223,7 +222,6 @@ describe.skip('MissingEventListener', () => {
 					event: mockEvent,
 					origin,
 					missing_dependencies: [],
-					staged_at: Date.now(),
 				},
 			]),
 		);
@@ -255,7 +253,6 @@ describe.skip('MissingEventListener', () => {
 					event: mockEvent,
 					origin,
 					missing_dependencies: ['missing1'],
-					staged_at: Date.now(),
 				},
 			]),
 		);
@@ -345,7 +342,6 @@ describe.skip('MissingEventListener', () => {
 			event: mockEvent,
 			origin,
 			missing_dependencies: [],
-			staged_at: Date.now(),
 		});
 
 		expect(mockEventService.markEventAsUnstaged).not.toHaveBeenCalled();

@@ -142,7 +142,6 @@ export class MissingEventListener {
 					event: event,
 					origin: event.origin || origin,
 					missing_dependencies: missing,
-					staged_at: Date.now(),
 				});
 
 				if (missing.length > 0) {

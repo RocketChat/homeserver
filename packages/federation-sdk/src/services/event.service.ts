@@ -44,7 +44,6 @@ export interface StagedEvent {
 	event: EventBaseWithOptionalId;
 	origin: string;
 	missing_dependencies: string[];
-	staged_at: number;
 	room_version?: string;
 	invite_room_state?: Record<string, unknown>;
 }
@@ -183,21 +182,7 @@ export class EventService {
 					`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
 				);
 			} else {
-				// Create a new staged event
 				await this.eventRepository.createStaged(stagedEvent.event);
-
-				// Add metadata for tracking dependencies
-				const collection = await this.eventRepository.getCollection();
-				await collection.updateOne(
-					{ _id: stagedEvent._id },
-					{
-						$set: {
-							missing_dependencies: stagedEvent.missing_dependencies,
-							staged_at: stagedEvent.staged_at,
-							is_staged: true,
-						},
-					},
-				);
 
 				this.logger.debug(
 					`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
@@ -241,7 +226,6 @@ export class EventService {
 					$unset: {
 						is_staged: '',
 						missing_dependencies: '',
-						staged_at: '',
 					},
 				},
 			);
@@ -344,7 +328,9 @@ export class EventService {
 				await this.processEDU(edu);
 			} catch (error) {
 				this.logger.error(
-					`Error processing EDU of type ${edu.edu_type}: ${error instanceof Error ? error.message : String(error)}`,
+					`Error processing EDU of type ${edu.edu_type}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
 				);
 				// Continue processing other EDUs even if one fails
 			}
@@ -410,7 +396,9 @@ export class EventService {
 			}
 
 			this.logger.debug(
-				`Processing presence update for ${presenceUpdate.user_id}: ${presenceUpdate.presence}${
+				`Processing presence update for ${presenceUpdate.user_id}: ${
+					presenceUpdate.presence
+				}${
 					presenceUpdate.last_active_ago !== undefined
 						? ` (${presenceUpdate.last_active_ago}ms ago)`
 						: ''
@@ -524,7 +512,9 @@ export class EventService {
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			this.logger.error(
-				`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`,
+				`Error in type-specific validation for ${eventId}: ${
+					error.message || String(error)
+				}`,
 			);
 			return {
 				eventId,
@@ -532,7 +522,9 @@ export class EventService {
 				valid: false,
 				error: {
 					errcode: 'M_TYPE_VALIDATION_ERROR',
-					error: `Error in type-specific validation: ${error.message || String(error)}`,
+					error: `Error in type-specific validation: ${
+						error.message || String(error)
+					}`,
 				},
 			};
 		}
@@ -564,7 +556,9 @@ export class EventService {
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			this.logger.error(
-				`Error validating signatures for ${eventId}: ${error.message || String(error)}`,
+				`Error validating signatures for ${eventId}: ${
+					error.message || String(error)
+				}`,
 			);
 			return {
 				eventId,
@@ -831,7 +825,9 @@ export class EventService {
 		const eventIdToRedact = redactionEvent.redacts;
 		if (!eventIdToRedact) {
 			this.logger.error(
-				`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`,
+				`[REDACTION] Event is missing 'redacts' field: ${generateId(
+					redactionEvent,
+				)}`,
 			);
 			return;
 		}
