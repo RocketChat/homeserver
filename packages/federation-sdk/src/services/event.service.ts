@@ -214,22 +214,7 @@ export class EventService {
 	 */
 	async markEventAsUnstaged(eventId: string): Promise<void> {
 		try {
-			// Use the existing repository method which is designed for this
-			await this.eventRepository.removeFromStaging('', eventId); // Room ID not needed
-
-			// Also remove other staging metadata we might have added
-			// We need to do this directly since removeFromStaging only clears the staged flag
-			const collection = await this.eventRepository.getCollection();
-			await collection.updateOne(
-				{ _id: eventId },
-				{
-					$unset: {
-						is_staged: '',
-						missing_dependencies: '',
-					},
-				},
-			);
-
+			await this.eventRepository.removeFromStaging(eventId);
 			this.logger.debug(`Marked event ${eventId} as no longer staged`);
 		} catch (error) {
 			this.logger.error(`Error unmarking staged event ${eventId}: ${error}`);

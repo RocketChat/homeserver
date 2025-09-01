@@ -167,11 +167,11 @@ export class EventRepository {
 		return id;
 	}
 
-	async removeFromStaging(roomId: string, eventId: string): Promise<void> {
+	async removeFromStaging(eventId: string): Promise<void> {
 		const collection = await this.getCollection();
 		await collection.updateOne(
-			{ _id: eventId, 'event.room_id': roomId },
-			{ $unset: { staged: 1 } },
+			{ _id: eventId },
+			{ $unset: { staged: 1, is_staged: 1, missing_dependencies: 1 } },
 		);
 	}
 
