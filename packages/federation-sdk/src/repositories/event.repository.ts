@@ -124,7 +124,10 @@ export class EventRepository {
 			.toArray();
 	}
 
-	async createStaged(event: EventBaseWithOptionalId): Promise<string> {
+	async createStaged(
+		event: EventBaseWithOptionalId,
+		missingDependencies?: EventStore['missing_dependencies'],
+	): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
@@ -132,9 +135,11 @@ export class EventRepository {
 			_id: id,
 			event,
 			stateId: '',
-			staged: true,
 			createdAt: new Date(),
 			nextEventId: '',
+			staged: true,
+			is_staged: true,
+			missing_dependencies: missingDependencies,
 		});
 
 		return id;
