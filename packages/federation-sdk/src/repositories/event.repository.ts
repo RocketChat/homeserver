@@ -81,49 +81,6 @@ export class EventRepository {
 		return this.persistEvent(event, eventId, stateId);
 	}
 
-	// TODO: not used
-	async createIfNotExists(event: EventBaseWithOptionalId): Promise<string> {
-		const collection = await this.getCollection();
-		const id = event.event_id || generateId(event);
-
-		const existingEvent = await collection.findOne({ _id: id });
-		if (existingEvent) return id;
-
-		await collection.insertOne({
-			_id: id,
-			event,
-			stateId: '',
-			createdAt: new Date(),
-			nextEventId: '',
-		});
-
-		return id;
-	}
-
-	async findAuthEventsIdsByRoomId(roomId: string): Promise<EventStore[]> {
-		const collection = await this.getCollection();
-		return collection
-			.find({
-				'event.room_id': roomId,
-				$or: [
-					{
-						'event.type': {
-							$in: [
-								'm.room.create',
-								'm.room.power_levels',
-								'm.room.join_rules',
-							],
-						},
-					},
-					{
-						'event.type': 'm.room.member',
-						'event.content.membership': 'invite',
-					},
-				],
-			})
-			.toArray();
-	}
-
 	async createStaged(
 		event: EventBaseWithOptionalId,
 		missingDependencies?: EventStore['missing_dependencies'],
