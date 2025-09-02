@@ -411,4 +411,12 @@ export class EventRepository {
 		);
 		return (await result.toArray())[0] ?? null;
 	}
+
+	async findLatestFromRoomId(roomId: string): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		return collection.findOne(
+			{ 'event.room_id': roomId },
+			{ sort: { 'event.depth': -1 } },
+		);
+	}
 }
