@@ -675,6 +675,8 @@ export class EventService {
 		return this.eventRepository.create(event, eventId || '', args);
 	}
 
+	// TODO: not used
+
 	async insertEventIfNotExists(
 		event: EventBaseWithOptionalId,
 	): Promise<string> {

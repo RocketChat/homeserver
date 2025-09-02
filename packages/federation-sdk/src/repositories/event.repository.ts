@@ -81,6 +81,7 @@ export class EventRepository {
 		return this.persistEvent(event, eventId, stateId);
 	}
 
+	// TODO: not used
 	async createIfNotExists(event: EventBaseWithOptionalId): Promise<string> {
 		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
