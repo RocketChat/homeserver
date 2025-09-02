@@ -26,11 +26,8 @@ type StateStore = {
 @singleton()
 export class StateRepository {
 	constructor(private readonly collection: Collection<WithId<StateStore>>) {}
-	async find(
-		query: Filter<StateStore>,
-	): Promise<FindCursor<WithId<StateStore>>> {
-		const collection = await this.getCollection();
-		return collection.find(query);
+	find(query: Filter<StateStore>): FindCursor<WithId<StateStore>> {
+		return this.collection.find(query);
 	}
 	async getStateById(stateId: string): Promise<WithId<StateStore> | null> {
 		return this.collection.findOne({ _id: new ObjectId(stateId) });
@@ -48,15 +45,15 @@ export class StateRepository {
 		return this.collection.findOne({ roomId }, { sort: { createdAt: -1 } });
 	}
 
-	async getStateMappingsByRoomIdOrderedAscending(
+	getStateMappingsByRoomIdOrderedAscending(
 		roomId: string,
-	): Promise<FindCursor<WithId<StateStore>>> {
+	): FindCursor<WithId<StateStore>> {
 		return this.collection.find({ roomId }).sort({ createdAt: 1 });
 	}
 
-	async getStateMappingsByStateIdsOrdered(
+	getStateMappingsByStateIdsOrdered(
 		stateIds: string[],
-	): Promise<FindCursor<WithId<StateStore>>> {
+	): FindCursor<WithId<StateStore>> {
 		return this.collection
 			.find({ _id: { $in: stateIds.map((id) => new ObjectId(id)) } })
 			.sort({ createdAt: 1 /* order as is saved */ });
@@ -87,19 +84,19 @@ export class StateRepository {
 		});
 	}
 
-	async getByRoomIdsAndIdentifier(
+	getByRoomIdsAndIdentifier(
 		roomIds: string[],
 		identifier: string | RegExp,
-	): Promise<FindCursor<WithId<StateStore>>> {
+	): FindCursor<WithId<StateStore>> {
 		return this.collection.find({
 			roomId: { $in: roomIds },
 			'delta.identifier': identifier,
 		});
 	}
 
-	async getStateMappingsByIdentifier(
+	getStateMappingsByIdentifier(
 		identifier: string,
-	): Promise<FindCursor<WithId<StateStore>>> {
+	): FindCursor<WithId<StateStore>> {
 		return this.collection.find({ 'delta.identifier': identifier });
 	}
 }

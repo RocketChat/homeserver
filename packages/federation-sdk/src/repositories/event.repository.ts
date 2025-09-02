@@ -12,11 +12,11 @@ export class EventRepository {
 		return this.collection.findOne({ _id: eventId });
 	}
 
-	async findAuthEvents(
+	findAuthEvents(
 		eventType: string,
 		roomId: string,
 		senderId: string,
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		const baseQueries = {
 			create: {
 				query: { 'event.room_id': roomId, 'event.type': 'm.room.create' },
@@ -204,10 +204,10 @@ export class EventRepository {
 		);
 	}
 
-	async findEventsByRoomIdAfterTimestamp(
+	findEventsByRoomIdAfterTimestamp(
 		roomId: string,
 		timestamp: number,
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		return this.collection
 			.find({
 				'event.room_id': roomId,
