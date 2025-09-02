@@ -128,7 +128,7 @@ export class StateService {
 		}
 
 		const { delta: lastStateDelta, prevStateIds = [] } =
-			(await this.stateRepository.getStateMapping(stateId)) ?? {};
+			(await this.stateRepository.getStateById(stateId)) ?? {};
 
 		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
 
