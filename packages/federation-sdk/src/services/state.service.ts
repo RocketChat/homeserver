@@ -308,9 +308,9 @@ export class StateService {
 					toFind.push(eventId);
 				}
 
-				const eventsFromStore = (
-					await this.eventRepository.findByIds(toFind)
-				).map((event) => {
+				const resultEventsCursor = await this.eventRepository.findByIds(toFind);
+				const resultEvents = await resultEventsCursor.toArray();
+				const eventsFromStore = resultEvents.map((event) => {
 					const e = PersistentEventFactory.createFromRawEvent(
 						event.event as any /* TODO: fix this with type unifi */,
 						roomVersion,
