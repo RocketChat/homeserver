@@ -664,11 +664,10 @@ export class EventService {
 		}
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
-		const events = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{},
-		);
-
+		// TODO: This would benefit from adding projections to the query
+		const events = await (
+			await this.eventRepository.findByIds(eventIds)
+		).toArray();
 		return events.map((event) => ({
 			_id: event._id,
 			event: event.event,
@@ -676,23 +675,13 @@ export class EventService {
 	}
 
 	/**
-	 * Find events based on a query
-	 */
-	async findEvents(query: any, options: any = {}): Promise<EventStore[]> {
-		this.logger.debug(`Finding events with query: ${JSON.stringify(query)}`);
-		const events = await this.eventRepository.find(query, options);
-		return events;
-	}
-
-	/**
 	 * Find all events for a room
 	 */
 	async findRoomEvents(roomId: string): Promise<EventBaseWithOptionalId[]> {
 		this.logger.debug(`Finding all events for room ${roomId}`);
-		const events = await this.eventRepository.find(
-			{ 'event.room_id': roomId },
-			{ sort: { 'event.depth': 1 } },
-		);
+		const events = await (
+			await this.eventRepository.findByRoomId(roomId)
+		).toArray();
 		return events.map((event) => event.event);
 	}
 
