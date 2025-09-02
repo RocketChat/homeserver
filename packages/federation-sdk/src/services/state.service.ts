@@ -791,12 +791,8 @@ export class StateService {
 		// TODO: i know thisd is overcomplicated
 		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
 
-		const nonPublicRooms = await eventsCollection
-			.find({
-				eventId: { $in: eventsToFetch },
-				'event.content.join_rule': { $ne: 'public' },
-			})
-			.toArray();
+		const nonPublicRoomsCursor = await this.eventRepository.findFromNonPublicRooms(eventsToFetch);
+		const nonPublicRooms = await nonPublicRoomsCursor.toArray();
 
 		// since no join_rule == public
 
