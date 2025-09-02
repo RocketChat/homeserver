@@ -92,7 +92,6 @@ export * from './dtos';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
-export { StateEventRepository } from './repositories/state-event.repository';
 export { ServerRepository } from './repositories/server.repository';
 export { KeyRepository } from './repositories/key.repository';
 export { StateRepository } from './repositories/state.repository';
