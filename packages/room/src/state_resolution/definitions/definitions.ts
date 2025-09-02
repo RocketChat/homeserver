@@ -1,6 +1,6 @@
 import { PriorityQueue } from '@datastructures-js/priority-queue';
 import type { EventID, State, StateMapKey } from '../../types/_common';
-import { type PduType, PduTypeRoomCreate } from '../../types/v3-11';
+import { type PduType } from '../../types/v3-11';
 
 import assert from 'node:assert';
 import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
@@ -309,7 +309,7 @@ export async function reverseTopologicalPowerSort(
 	const eventToPowerLevelMap = new Map<EventID, number>();
 
 	const roomCreateEvent = stateMap.get(
-		getStateMapKey({ type: PduTypeRoomCreate }),
+		getStateMapKey({ type: 'm.room.create' }),
 	);
 
 	if (!roomCreateEvent) {

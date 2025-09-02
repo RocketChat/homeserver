@@ -7,12 +7,6 @@ import {
 	PduPowerLevelsEventContent,
 	PduRoomNameEventContent,
 	PduRoomTopicEventContent,
-	PduTypeRoomCreate,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomName,
-	PduTypeRoomPowerLevels,
-	PduTypeRoomTopic,
 } from '../types/v3-11';
 import { type PersistentEventBase } from './event-wrapper';
 import { RoomVersion } from './type';
@@ -26,7 +20,7 @@ export class RoomState {
 	// who created the room
 	get creator() {
 		const createEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomCreate }),
+			getStateMapKey({ type: 'm.room.create' }),
 		);
 		if (!createEvent) {
 			throw new Error('Room create event not found');
@@ -39,7 +33,7 @@ export class RoomState {
 		userId: string,
 	): PduMembershipEventContent['membership'] | undefined {
 		const membershipEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomMember, state_key: userId }),
+			getStateMapKey({ type: 'm.room.member', state_key: userId }),
 		);
 		if (!membershipEvent) {
 			return undefined; // never been a member
@@ -72,7 +66,7 @@ export class RoomState {
 	// name of the room
 	get name() {
 		const nameEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomName }),
+			getStateMapKey({ type: 'm.room.name' }),
 		);
 		if (!nameEvent) {
 			throw new Error('Room name event not found');
@@ -84,7 +78,7 @@ export class RoomState {
 	// room privacy
 	get privacy(): PduJoinRuleEventContent['join_rule'] {
 		const joinRuleEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomJoinRules }),
+			getStateMapKey({ type: 'm.room.join_rules' }),
 		);
 		if (!joinRuleEvent) {
 			return 'public'; // default TODO: check this if is correct
@@ -108,7 +102,7 @@ export class RoomState {
 
 	get topic() {
 		const topicEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomTopic }),
+			getStateMapKey({ type: 'm.room.topic' }),
 		);
 		if (!topicEvent) {
 			return '';
@@ -120,7 +114,7 @@ export class RoomState {
 	// origin is the origin of the room gotten from the room id
 	get origin() {
 		const createEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomCreate }),
+			getStateMapKey({ type: 'm.room.create' }),
 		);
 
 		if (!createEvent) {
@@ -137,7 +131,7 @@ export class RoomState {
 
 	get powerLevels() {
 		const powerLevelsEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomPowerLevels }),
+			getStateMapKey({ type: 'm.room.power_levels' }),
 		);
 
 		if (!powerLevelsEvent) {
@@ -149,7 +143,7 @@ export class RoomState {
 
 	get version() {
 		const createEvent = this.stateMap.get(
-			getStateMapKey({ type: PduTypeRoomCreate }),
+			getStateMapKey({ type: 'm.room.create' }),
 		);
 		if (!createEvent) {
 			throw new Error('Room create event not found');

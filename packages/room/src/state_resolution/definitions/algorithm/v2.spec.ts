@@ -1,12 +1,5 @@
 import { type StateMapKey } from '../../../types/_common';
-import {
-	PduTypeRoomCreate,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomMessage,
-	PduTypeRoomPowerLevels,
-	PduTypeRoomTopic,
-} from '../../../types/v3-11';
+import {} from '../../../types/v3-11';
 import {
 	type EventStore,
 	_kahnsOrder,
@@ -112,31 +105,25 @@ class FakeEvent {
 }
 
 const INITIAL_EVENTS = [
-	new FakeEvent('CREATE', ALICE, PduTypeRoomCreate, '', { creator: ALICE }),
-	new FakeEvent(
-		'IMA',
-		ALICE,
-		PduTypeRoomMember,
-		ALICE,
-		MEMBERSHIP_CONTENT_JOIN,
-	),
-	new FakeEvent('IPOWER', ALICE, PduTypeRoomPowerLevels, '', {
+	new FakeEvent('CREATE', ALICE, 'm.room.create', '', { creator: ALICE }),
+	new FakeEvent('IMA', ALICE, 'm.room.member', ALICE, MEMBERSHIP_CONTENT_JOIN),
+	new FakeEvent('IPOWER', ALICE, 'm.room.power_levels', '', {
 		users: { ALICE: 100 },
 	}),
-	new FakeEvent('IJR', ALICE, PduTypeRoomJoinRules, '', {
+	new FakeEvent('IJR', ALICE, 'm.room.join_rules', '', {
 		join_rule: 'public',
 	}),
-	new FakeEvent('IMB', BOB, PduTypeRoomMember, BOB, MEMBERSHIP_CONTENT_JOIN),
+	new FakeEvent('IMB', BOB, 'm.room.member', BOB, MEMBERSHIP_CONTENT_JOIN),
 	new FakeEvent(
 		'IMC',
 		CHARLIE,
-		PduTypeRoomMember,
+		'm.room.member',
 		CHARLIE,
 		MEMBERSHIP_CONTENT_JOIN,
 	),
-	new FakeEvent('IMZ', ZARA, PduTypeRoomMember, ZARA, MEMBERSHIP_CONTENT_JOIN),
-	new FakeEvent('START', ZARA, PduTypeRoomMessage, null, {}),
-	new FakeEvent('END', ZARA, PduTypeRoomMessage, null, {}),
+	new FakeEvent('IMZ', ZARA, 'm.room.member', ZARA, MEMBERSHIP_CONTENT_JOIN),
+	new FakeEvent('START', ZARA, 'm.room.message', null, {}),
+	new FakeEvent('END', ZARA, 'm.room.message', null, {}),
 ];
 
 const INITIAL_EDGES = [
@@ -320,24 +307,18 @@ describe('Definitions', () => {
 
 	it('01 ban vs pl', async () => {
 		const events = [
-			new FakeEvent('PA', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PA', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
 			new FakeEvent(
 				'MA',
 				ALICE,
-				PduTypeRoomMember,
+				'm.room.member',
 				ALICE,
 				MEMBERSHIP_CONTENT_JOIN,
 			),
-			new FakeEvent(
-				'MB',
-				ALICE,
-				PduTypeRoomMember,
-				BOB,
-				MEMBERSHIP_CONTENT_BAN,
-			),
-			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('MB', ALICE, 'm.room.member', BOB, MEMBERSHIP_CONTENT_BAN),
+			new FakeEvent('PB', BOB, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
 		];
@@ -365,10 +346,10 @@ describe('Definitions', () => {
 
 	it('02 join rule evasion', async () => {
 		const events = [
-			new FakeEvent('JR', ALICE, PduTypeRoomJoinRules, '', {
+			new FakeEvent('JR', ALICE, 'm.room.join_rules', '', {
 				join_rules: 'private',
 			}),
-			new FakeEvent('ME', EVELYN, PduTypeRoomMember, EVELYN, {
+			new FakeEvent('ME', EVELYN, 'm.room.member', EVELYN, {
 				membership: 'join',
 			}),
 		];
@@ -388,13 +369,13 @@ describe('Definitions', () => {
 	it('offtopic pl', async () => {
 		// FIXME:
 		const events = [
-			new FakeEvent('PA', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PA', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PB', BOB, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50, [CHARLIE]: 50 },
 			}),
-			new FakeEvent('PC', CHARLIE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PC', CHARLIE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50, [CHARLIE]: 0 },
 			}),
 		];
@@ -413,18 +394,18 @@ describe('Definitions', () => {
 	});
 	it('topic basic', async () => {
 		const events = [
-			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA1', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T1', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA1', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T2', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA2', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T2', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA2', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 0 },
 			}),
-			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PB', BOB, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T3', BOB, PduTypeRoomTopic, '', {}),
+			new FakeEvent('T3', BOB, 'm.room.topic', '', {}),
 		];
 
 		const edges = [
@@ -445,18 +426,12 @@ describe('Definitions', () => {
 	});
 	it('topic reset', async () => {
 		const events = [
-			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T1', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T2', BOB, PduTypeRoomTopic, '', {}),
-			new FakeEvent(
-				'MB',
-				ALICE,
-				PduTypeRoomMember,
-				BOB,
-				MEMBERSHIP_CONTENT_BAN,
-			),
+			new FakeEvent('T2', BOB, 'm.room.topic', '', {}),
+			new FakeEvent('MB', ALICE, 'm.room.member', BOB, MEMBERSHIP_CONTENT_BAN),
 		];
 
 		const edges = [
@@ -482,20 +457,20 @@ describe('Definitions', () => {
 
 	it('topic', async () => {
 		const events = [
-			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA1', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T1', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA1', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T2', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA2', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T2', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA2', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 0 },
 			}),
-			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PB', BOB, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T3', BOB, PduTypeRoomTopic, '', {}),
-			new FakeEvent('MZ1', ZARA, PduTypeRoomMessage, null, {}),
-			new FakeEvent('T4', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('T3', BOB, 'm.room.topic', '', {}),
+			new FakeEvent('MZ1', ZARA, 'm.room.message', null, {}),
+			new FakeEvent('T4', ALICE, 'm.room.topic', '', {}),
 		];
 
 		const edges = [
@@ -517,20 +492,20 @@ describe('Definitions', () => {
 
 	it('mainline sort', async () => {
 		const events = [
-			new FakeEvent('T1', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA1', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T1', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA1', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T2', ALICE, PduTypeRoomTopic, '', {}),
-			new FakeEvent('PA2', ALICE, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('T2', ALICE, 'm.room.topic', '', {}),
+			new FakeEvent('PA2', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
-				events: { [PduTypeRoomPowerLevels]: 100 },
+				events: { 'm.room.power_levels': 100 },
 			}),
-			new FakeEvent('PB', BOB, PduTypeRoomPowerLevels, '', {
+			new FakeEvent('PB', BOB, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent('T3', BOB, PduTypeRoomTopic, '', {}),
-			new FakeEvent('T4', ALICE, PduTypeRoomTopic, '', {}),
+			new FakeEvent('T3', BOB, 'm.room.topic', '', {}),
+			new FakeEvent('T4', ALICE, 'm.room.topic', '', {}),
 		];
 
 		const edges = [
@@ -579,9 +554,9 @@ describe('Definitions', () => {
 	});
 
 	it('auth chain difference 1', async () => {
-		const a = new FakeEvent('A', ALICE, PduTypeRoomMember, '', {});
-		const b = new FakeEvent('B', ALICE, PduTypeRoomMember, '', {});
-		const c = new FakeEvent('C', ALICE, PduTypeRoomMember, '', {});
+		const a = new FakeEvent('A', ALICE, 'm.room.member', '', {});
+		const b = new FakeEvent('B', ALICE, 'm.room.member', '', {});
+		const c = new FakeEvent('C', ALICE, 'm.room.member', '', {});
 
 		const aEvent = a.toEvent([], []);
 		const bEvent = b.toEvent([aEvent.eventId], []);
@@ -603,10 +578,10 @@ describe('Definitions', () => {
 	});
 
 	it('auth chain difference 2', async () => {
-		const a = new FakeEvent('A', ALICE, PduTypeRoomMember, '', {});
-		const b = new FakeEvent('B', ALICE, PduTypeRoomMember, '', {});
-		const c = new FakeEvent('C', ALICE, PduTypeRoomMember, '', {});
-		const d = new FakeEvent('D', ALICE, PduTypeRoomMember, '', {});
+		const a = new FakeEvent('A', ALICE, 'm.room.member', '', {});
+		const b = new FakeEvent('B', ALICE, 'm.room.member', '', {});
+		const c = new FakeEvent('C', ALICE, 'm.room.member', '', {});
+		const d = new FakeEvent('D', ALICE, 'm.room.member', '', {});
 
 		const aEvent = a.toEvent([], []);
 		const bEvent = b.toEvent([aEvent.eventId], []);
@@ -632,11 +607,11 @@ describe('Definitions', () => {
 	});
 
 	it('auth chain difference 3', async () => {
-		const a = new FakeEvent('A', ALICE, PduTypeRoomMember, '', {});
-		const b = new FakeEvent('B', ALICE, PduTypeRoomMember, '', {});
-		const c = new FakeEvent('C', ALICE, PduTypeRoomMember, '', {});
-		const d = new FakeEvent('D', ALICE, PduTypeRoomMember, '', {});
-		const e = new FakeEvent('E', ALICE, PduTypeRoomMember, '', {});
+		const a = new FakeEvent('A', ALICE, 'm.room.member', '', {});
+		const b = new FakeEvent('B', ALICE, 'm.room.member', '', {});
+		const c = new FakeEvent('C', ALICE, 'm.room.member', '', {});
+		const d = new FakeEvent('D', ALICE, 'm.room.member', '', {});
+		const e = new FakeEvent('E', ALICE, 'm.room.member', '', {});
 
 		const aEvent = a.toEvent([], []);
 		const bEvent = b.toEvent([aEvent.eventId], []);

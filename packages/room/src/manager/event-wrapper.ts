@@ -11,12 +11,6 @@ import {
 	type PduJoinRuleEventContent,
 	type PduMembershipEventContent,
 	PduType,
-	PduTypeRoomAliases,
-	PduTypeRoomCanonicalAlias,
-	PduTypeRoomCreate,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
 	Signature,
 } from '../types/v3-11';
 import { PowerLevelEvent } from './power-level-event-wrapper';
@@ -188,27 +182,27 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 	}
 
 	isPowerLevelEvent() {
-		return this.isState() && this.type === PduTypeRoomPowerLevels;
+		return this.isState() && this.type === 'm.room.power_levels';
 	}
 
 	isJoinRuleEvent() {
-		return this.isState() && this.type === PduTypeRoomJoinRules;
+		return this.isState() && this.type === 'm.room.join_rules';
 	}
 
 	isMembershipEvent() {
-		return this.isState() && this.type === PduTypeRoomMember;
+		return this.isState() && this.type === 'm.room.member';
 	}
 
 	isCreateEvent() {
-		return this.isState() && this.type === PduTypeRoomCreate;
+		return this.isState() && this.type === 'm.room.create';
 	}
 
 	isCanonicalAliasEvent() {
-		return this.isState() && this.type === PduTypeRoomCanonicalAlias;
+		return this.isState() && this.type === 'm.room.canonical_alias';
 	}
 
 	isAliasEvent() {
-		return this.isState() && this.type === PduTypeRoomAliases;
+		return this.isState() && this.type === 'm.room.aliases';
 	}
 
 	getMembership() {
@@ -344,13 +338,13 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		// for all others
 		const authTypes = new Set<StateMapKey>([
 			// The current m.room.power_levels event, if any.
-			getStateMapKey({ type: PduTypeRoomPowerLevels }),
+			getStateMapKey({ type: 'm.room.power_levels' }),
 
 			// The sender's current m.room.member event, if any.
-			getStateMapKey({ type: PduTypeRoomMember, state_key: this.sender }),
+			getStateMapKey({ type: 'm.room.member', state_key: this.sender }),
 
 			// The m.room.create event.
-			getStateMapKey({ type: PduTypeRoomCreate }),
+			getStateMapKey({ type: 'm.room.create' }),
 		]);
 
 		// If type is m.room.member:
@@ -358,13 +352,13 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		if (this.isMembershipEvent()) {
 			//The target’s current m.room.member event, if any.
 			authTypes.add(
-				getStateMapKey({ type: PduTypeRoomMember, state_key: this.stateKey }),
+				getStateMapKey({ type: 'm.room.member', state_key: this.stateKey }),
 			);
 
 			// If membership is join or invite, the current m.room.join_rules event, if any.
 			const membership = this.getMembership();
 			if (membership === 'join' || membership === 'invite') {
-				authTypes.add(getStateMapKey({ type: PduTypeRoomJoinRules }));
+				authTypes.add(getStateMapKey({ type: 'm.room.join_rules' }));
 			}
 
 			// If membership is invite and content contains a third_party_invite property, the current m.room.third_party_invite event with state_key matching content.third_party_invite.signed.token, if any.
