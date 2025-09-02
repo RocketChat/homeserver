@@ -1,4 +1,5 @@
 import { isIPv4, isIPv6 } from 'node:net';
+import type { Logger } from 'pino';
 import { MultiError } from './_multi-error';
 import { resolver } from './_resolver';
 import { _URL } from './_url';
@@ -18,9 +19,8 @@ type IP4or6WithPortString = `${IP4or6String}:${PortString | number}`;
 // 	| 'http'
 // 	| 'https'}://${AddressWithPortString}`;
 
-type IP4or6WithPortAndProtocolString = `${
-	| 'http'
-	| 'https'}://${IP4or6WithPortString}`;
+type IP4or6WithPortAndProtocolString =
+	`${'http' | 'https'}://${IP4or6WithPortString}`;
 
 type HostHeaders = {
 	Host: AddressString | AddressWithPortString | IP4or6WithPortString;
@@ -73,12 +73,16 @@ export async function resolveHostname(
  * Server names are resolved to an IP address and port to connect to, and have various conditions affecting which certificates and Host headers to send.
  */
 
+// TODO remove logger from here. need to convert this into a service (?)
 export async function getHomeserverFinalAddress(
 	addr: AddressString,
+	logger: Logger,
 ): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
 	const url = new _URL(addr);
 
 	const { hostname, port } = url;
+
+	logger.debug({ msg: 'resolving homeserver address', addr, hostname, port });
 
 	/*
 	 * SPEC:
@@ -90,6 +94,9 @@ export async function getHomeserverFinalAddress(
 		const finalPort = port || DEFAULT_PORT;
 		// 'Target server must present a valid certificate for the IP address', i.e. always https
 		const finalAddress = `https://${finalIp}:${finalPort}` as const;
+
+		logger.debug({ msg: 'resolved to ip address', finalAddress });
+
 		const hostHeader = {
 			Host: `${hostname}${
 				/* only include port if it was included already */
@@ -110,6 +117,7 @@ export async function getHomeserverFinalAddress(
 		const hostHeaders = { Host: `${hostname}:${port}` as const }; // original serverName and port
 
 		const address = await resolveHostname(hostname, true); // intentional auto-throw
+		logger.debug({ msg: 'resolved hostname', address });
 
 		return [`https://${address}:${port}` as const, hostHeaders];
 	}
@@ -121,23 +129,35 @@ export async function getHomeserverFinalAddress(
 
 	try {
 		const [addr, hostHeaders] = await fromWellKnownDelegation(hostname);
+		logger.debug({
+			msg: 'result from well-known',
+			addr,
+			hostHeaders,
+		});
 
 		// found one -
 		return [addr, hostHeaders];
 	} catch (e: unknown) {
-		// didn't find a suitable result from wellknnown
+		// didn't find a suitable result from well-known
+		logger.debug({
+			msg: 'failed to resolve from well-known',
+			err: e,
+		});
 
 		try {
 			const [addr, hostHeaders] =
 				await fromSRVResolutionWithBasicFallback(hostname);
+			logger.debug({ msg: 'result from SRV resolution', addr, hostHeaders });
 
 			return [`https://${addr}` as const, hostHeaders];
 		} catch (e2: unknown) {
+			logger.debug({
+				msg: 'failed to resolve from SRV',
+				err: e2,
+			});
 			if (MultiError.isMultiError(e) && MultiError.isMultiError(e2)) {
 				throw e.concat(e2);
 			}
-
-			console.log(e, e2);
 
 			throw new Error(`failed to resolve ${hostname}`);
 		}
@@ -205,9 +225,8 @@ async function fromWellKnownDelegation(
 	if (url.isIP()) {
 		// compiler should take care of this redundant reassignment
 		const delegatedIp = delegatedHostname;
-		const finalAddress = `https://${delegatedIp}:${
-			delegatedPort || DEFAULT_PORT
-		}` as const;
+		const finalAddress =
+			`https://${delegatedIp}:${delegatedPort || DEFAULT_PORT}` as const;
 		return [
 			finalAddress,
 			{
@@ -250,9 +269,8 @@ async function fromSRVDelegation(
 
 			if (_is4 || _is6) {
 				// use as is
-				const finalAddress = `${_is6 ? fix6(srv.name) : srv.name}:${
-					srv.port
-				}` as const;
+				const finalAddress =
+					`${_is6 ? fix6(srv.name) : srv.name}:${srv.port}` as const;
 
 				return [finalAddress, { Host: hostname }];
 			}
@@ -298,8 +316,6 @@ async function fromSRVResolutionWithBasicFallback(
 			if (MultiError.isMultiError(e) && MultiError.isMultiError(e2)) {
 				throw e.concat(e2);
 			}
-
-			console.log(e, e2);
 
 			throw new Error(`failed to resolve ${hostname}`);
 		}
