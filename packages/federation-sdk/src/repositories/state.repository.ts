@@ -31,7 +31,7 @@ export class StateRepository {
 		this.getCollection();
 	}
 
-	async getCollection(): Promise<Collection<WithId<StateStore>>> {
+	private async getCollection(): Promise<Collection<WithId<StateStore>>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<WithId<StateStore>>('states');
 		return this.collection!;
