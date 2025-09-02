@@ -38,21 +38,17 @@ export class StateService {
 	) {}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const createEventMapping = await stateCollection.findOne({
+		const state = await this.stateRepository.getByRoomIdAndIdentifier(
 			roomId,
-			'delta.identifier': 'm.room.create:',
-		});
-
-		if (!createEventMapping) {
+			'm.room.create:',
+		);
+		if (!state) {
 			throw new Error('Create event mapping not found for room information');
 		}
 
 		const createEvent = await this.eventRepository.findById(
-			createEventMapping.delta.eventId,
+			state.delta.eventId,
 		);
-
 		if (!createEvent) {
 			throw new Error('Create event not found for room information');
 		}

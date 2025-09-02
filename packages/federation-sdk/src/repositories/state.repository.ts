@@ -65,6 +65,14 @@ export class StateRepository {
 			.sort({ createdAt: 1 /* order as is saved */ });
 	}
 
+	async getByRoomIdAndIdentifier(
+		roomId: string,
+		identifier: string,
+	): Promise<WithId<StateStore> | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({ roomId, 'delta.identifier': identifier });
+	}
+
 	async createStateMapping(
 		event: PersistentEventBase,
 		prevStateIds: string[] = [],
