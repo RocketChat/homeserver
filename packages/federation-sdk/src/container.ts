@@ -1,9 +1,13 @@
 import 'reflect-metadata';
 
+import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
+import type { StateMapKey } from '@hs/room';
 import type { Emitter } from '@rocket.chat/emitter';
+import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 
 import { MissingEventListener } from './listeners/missing-event.listener';
+import type { HomeserverEventSignatures } from './index';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
@@ -14,6 +18,7 @@ import { ServerRepository } from './repositories/server.repository';
 import { StateRepository } from './repositories/state.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
+import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventFetcherService } from './services/event-fetcher.service';
@@ -35,9 +40,49 @@ import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
-
-import { EduService, type HomeserverEventSignatures } from './index';
 import type { LockConfig } from './utils/lock.decorator';
+import { StateEventRepository } from './repositories/state-event.repository';
+
+// Type definitions for collections
+type Key = {
+	origin: string;
+	key_id: string;
+	public_key: string;
+	valid_until: Date;
+};
+
+type Room = {
+	_id: string;
+	room: {
+		name: string;
+		join_rules: string;
+		version: string;
+		alias?: string;
+		canonical_alias?: string;
+		deleted?: boolean;
+		tombstone_event_id?: string;
+	};
+};
+
+type Server = {
+	name: string;
+	keys: {
+		[key: string]: {
+			key: string;
+			validUntil: number;
+		};
+	};
+};
+
+type StateStore = {
+	delta: {
+		identifier: StateMapKey;
+		eventId: string;
+	};
+	createdAt: Date;
+	roomId: string;
+	prevStateIds: string[];
+};
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
@@ -70,6 +115,122 @@ export function createFederationContainer(
 		SignatureVerificationService,
 	);
 	container.registerSingleton('FederationService', FederationService);
+
+	// Register MongoDB collections
+	container.register('eventsCollection', {
+		useFactory: async () => {
+			const dbConnection = container.resolve<DatabaseConnectionService>(
+				'DatabaseConnectionService',
+			);
+			const db = await dbConnection.getDb();
+			return db.collection<EventStore>('events');
+		},
+	});
+
+	container.register('finalStateEventsCollection', {
+		useFactory: async () => {
+			const dbConnection = container.resolve<DatabaseConnectionService>(
+				'DatabaseConnectionService',
+			);
+			const db = await dbConnection.getDb();
+			return db.collection<EventBaseWithOptionalId>('final_state_events');
+		},
+	});
+
+	container.register('statesCollection', {
+		useFactory: async () => {
+			const dbConnection = container.resolve<DatabaseConnectionService>(
+				'DatabaseConnectionService',
+			);
+			const db = await dbConnection.getDb();
+			return db.collection<WithId<StateStore>>('states');
+		},
+	});
+
+	container.register('keysCollection', {
+		useFactory: async () => {
+			const dbConnection = container.resolve<DatabaseConnectionService>(
+				'DatabaseConnectionService',
+			);
+			const db = await dbConnection.getDb();
+			return db.collection<Key>('keys');
+		},
+	});
+
+	container.register('roomsCollection', {
+		useFactory: async () => {
+			const dbConnection = container.resolve<DatabaseConnectionService>(
+				'DatabaseConnectionService',
+			);
+			const db = await dbConnection.getDb();
+			return db.collection<Room>('rooms');
+		},
+	});
+
+	container.register('serversCollection', {
+		useFactory: async () => {
+			const dbConnection = container.resolve<DatabaseConnectionService>(
+				'DatabaseConnectionService',
+			);
+			const db = await dbConnection.getDb();
+			return db.collection<Server>('servers');
+		},
+	});
+
+	// Register repositories with their collections
+	container.register('EventRepository', {
+		useFactory: async () => {
+			const collection = (await container.resolve(
+				'eventsCollection',
+			)) as Collection<EventStore>;
+			return new EventRepository(collection);
+		},
+	});
+
+	container.register('KeyRepository', {
+		useFactory: async () => {
+			const collection = (await container.resolve(
+				'keysCollection',
+			)) as Collection<Key>;
+			return new KeyRepository(collection);
+		},
+	});
+
+	container.register('RoomRepository', {
+		useFactory: async () => {
+			const collection = (await container.resolve(
+				'roomsCollection',
+			)) as Collection<Room>;
+			return new RoomRepository(collection);
+		},
+	});
+
+	container.register('ServerRepository', {
+		useFactory: async () => {
+			const collection = (await container.resolve(
+				'serversCollection',
+			)) as Collection<Server>;
+			return new ServerRepository(collection);
+		},
+	});
+
+	container.register('StateRepository', {
+		useFactory: async () => {
+			const collection = (await container.resolve(
+				'statesCollection',
+			)) as Collection<WithId<StateStore>>;
+			return new StateRepository(collection);
+		},
+	});
+
+	container.register('StateEventRepository', {
+		useFactory: async () => {
+			const collection = (await container.resolve(
+				'finalStateEventsCollection',
+			)) as Collection<EventBaseWithOptionalId>;
+			return new StateEventRepository(collection);
+		},
+	});
 
 	// Register repositories
 	container.registerSingleton('EventRepository', EventRepository);
