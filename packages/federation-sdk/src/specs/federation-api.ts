@@ -103,7 +103,6 @@ export const MakeJoinEventSchema = z.object({
 		membership: z.literal('join'),
 		join_authorised_via_users_server: z.string().optional(),
 	}),
-	origin: z.string(),
 	origin_server_ts: z.number(),
 	sender: z.string(),
 	state_key: z.string(),
@@ -125,7 +124,6 @@ export const SendJoinEventSchema = z.object({
 	hashes: z.object({
 		sha256: z.string(),
 	}),
-	origin: z.string(),
 	origin_server_ts: z.number(),
 	prev_events: z.array(z.string()),
 	room_id: RoomIdSchema,
@@ -145,7 +143,6 @@ export const SendJoinResponseSchema = z.object({
 	auth_chain: z.array(z.any()),
 	event_id: EventIdSchema.optional(),
 	event: SendJoinEventSchema.optional(),
-	origin: z.string().optional(),
 	members_omitted: z.boolean().optional(),
 	servers_in_room: z.array(z.string()).optional(),
 });

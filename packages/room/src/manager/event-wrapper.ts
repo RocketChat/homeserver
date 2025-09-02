@@ -118,8 +118,10 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		return this.rawEvent.sender;
 	}
 
+	// TODO: This should be removed or different name used instead?
+
 	get origin() {
-		return this.rawEvent.origin || extractDomain(this.rawEvent.sender);
+		return extractDomain(this.rawEvent.sender);
 	}
 
 	get stateKey(): string | undefined {
