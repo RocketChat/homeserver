@@ -37,7 +37,7 @@ export class StateRepository {
 		return this.collection!;
 	}
 
-	async getStateMapping(stateId: string): Promise<WithId<StateStore> | null> {
+	async getStateById(stateId: string): Promise<WithId<StateStore> | null> {
 		const collection = await this.getCollection();
 		return collection.findOne({ _id: new ObjectId(stateId) });
 	}
