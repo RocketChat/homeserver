@@ -12,11 +12,11 @@ export class EventRepository {
 		return this.collection.findOne({ _id: eventId });
 	}
 
-	async findAuthEvents(
+	findAuthEvents(
 		eventType: string,
 		roomId: string,
 		senderId: string,
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		const baseQueries = {
 			create: {
 				query: { 'event.room_id': roomId, 'event.type': 'm.room.create' },
@@ -94,7 +94,7 @@ export class EventRepository {
 		return this.collection.find({ $or: queries.map((q) => q.query) });
 	}
 
-	async findByRoomId(roomId: string): Promise<FindCursor<EventStore>> {
+	findByRoomId(roomId: string): FindCursor<EventStore> {
 		return this.collection.find(
 			{ 'event.room_id': roomId },
 			{ sort: { 'event.depth': 1 } },
@@ -207,10 +207,10 @@ export class EventRepository {
 		);
 	}
 
-	async findEventsByRoomIdAfterTimestamp(
+	findEventsByRoomIdAfterTimestamp(
 		roomId: string,
 		timestamp: number,
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		return this.collection
 			.find({
 				'event.room_id': roomId,
@@ -267,9 +267,9 @@ export class EventRepository {
 		return eventId;
 	}
 
-	async findMembershipEventsFromDirectMessageRooms(
+	findMembershipEventsFromDirectMessageRooms(
 		users: string[],
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		return this.collection.find({
 			'event.type': 'm.room.member',
 			'event.state_key': { $in: users },
@@ -278,9 +278,7 @@ export class EventRepository {
 		});
 	}
 
-	async findTombstoneEventsByRoomId(
-		roomId: string,
-	): Promise<FindCursor<EventStore>> {
+	findTombstoneEventsByRoomId(roomId: string): FindCursor<EventStore> {
 		return this.collection.find({
 			'event.room_id': roomId,
 			'event.type': 'm.room.tombstone',
@@ -288,14 +286,14 @@ export class EventRepository {
 		});
 	}
 
-	async findByIds(eventIds: string[]): Promise<FindCursor<EventStore>> {
+	findByIds(eventIds: string[]): FindCursor<EventStore> {
 		return this.collection.find({ _id: { $in: eventIds } });
 	}
 
-	async findByRoomIdAndTypes(
+	findByRoomIdAndTypes(
 		roomId: string,
 		eventTypes: string[],
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		return this.collection.find({
 			'event.room_id': roomId,
 			'event.type': { $in: eventTypes },
@@ -312,18 +310,14 @@ export class EventRepository {
 		);
 	}
 
-	async findFromNonPublicRooms(
-		eventIds: string[],
-	): Promise<FindCursor<EventStore>> {
+	findFromNonPublicRooms(eventIds: string[]): FindCursor<EventStore> {
 		return this.collection.find({
 			eventId: { $in: eventIds },
 			'event.content.join_rule': { $ne: 'public' },
 		});
 	}
 
-	async findStagedEventsByDependencyId(
-		dependencyId: string,
-	): Promise<FindCursor<EventStore>> {
+	findStagedEventsByDependencyId(dependencyId: string): FindCursor<EventStore> {
 		return this.collection.find({
 			$or: [{ is_staged: true }, { staged: true }],
 			missing_dependencies: dependencyId,
@@ -340,11 +334,11 @@ export class EventRepository {
 		});
 	}
 
-	async findByRoomIdExcludingEventIds(
+	findByRoomIdExcludingEventIds(
 		roomId: string,
 		eventIdsToExclude: string[],
 		limit: number,
-	): Promise<FindCursor<EventStore>> {
+	): FindCursor<EventStore> {
 		return this.collection.find(
 			{
 				'event.room_id': roomId,
