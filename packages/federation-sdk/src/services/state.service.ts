@@ -395,17 +395,8 @@ export class StateService {
 		// check if has conflicts
 		// ^ now we could avoid full state reconstruction with something like "dropped" prop inside the state mapping
 
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const lastState = await stateCollection.findOne(
-			{
-				roomId: event.roomId,
-			},
-			{
-				sort: {
-					createdAt: -1,
-				},
-			},
+		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
+			event.roomId,
 		);
 
 		this.logger.debug(
@@ -531,17 +522,8 @@ export class StateService {
 			return this._persistEventAgainstState(event, new Map());
 		}
 
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const lastState = await stateCollection.findOne(
-			{
-				roomId: event.roomId,
-			},
-			{
-				sort: {
-					createdAt: -1,
-				},
-			},
+		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
+			event.roomId,
 		);
 
 		const prevStateIds = lastState?.prevStateIds?.concat(
