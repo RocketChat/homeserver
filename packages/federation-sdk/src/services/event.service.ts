@@ -620,14 +620,6 @@ export class EventService {
 		return this.eventRepository.create(event, eventId || '', args);
 	}
 
-	// TODO: not used
-
-	async insertEventIfNotExists(
-		event: EventBaseWithOptionalId,
-	): Promise<string> {
-		return this.eventRepository.createIfNotExists(event);
-	}
-
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
 		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
