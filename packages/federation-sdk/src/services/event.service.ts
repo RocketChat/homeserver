@@ -113,10 +113,8 @@ export class EventService {
 	async checkIfEventsExists(
 		eventIds: string[],
 	): Promise<{ missing: string[]; found: string[] }> {
-		const events: Pick<EventStore, '_id'>[] = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{ projection: { _id: 1 } },
-		);
+		const eventsCursor = await this.eventRepository.findByIds(eventIds);
+		const events = await eventsCursor.toArray();
 
 		return eventIds.reduce(
 			(acc: { missing: string[]; found: string[] }, id) => {
