@@ -629,7 +629,7 @@ export class EventService {
 	}
 
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
-		return this.eventRepository.findLatestInRoom(roomId);
+		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
 
 	async getCreateEventForRoom(
