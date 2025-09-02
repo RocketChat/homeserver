@@ -4,10 +4,10 @@ import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
 import type { MissingEventType } from '../queues/missing-event.queue';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { EventFetcherService } from './event-fetcher.service';
-import { EventService } from './event.service';
-import type { StagedEvent } from './event.service';
-import { StagingAreaService } from './staging-area.service';
+import { EventFetcherService } from '../services/event-fetcher.service';
+import { EventService } from '../services/event.service';
+import type { StagedEvent } from '../services/event.service';
+import { StagingAreaService } from '../services/staging-area.service';
 
 @singleton()
 export class MissingEventListener {
@@ -158,9 +158,9 @@ export class MissingEventListener {
 				await this.updateStagedEventDependencies(id);
 				return this.processStagedEvents();
 			}
-		} catch (err: any) {
+		} catch (err: unknown) {
 			this.logger.error(
-				`Error fetching missing event ${eventId}: ${err.message || String(err)}`,
+				`Error fetching missing event ${eventId}: ${err instanceof Error ? err.message : String(err)}`,
 			);
 		}
 	}

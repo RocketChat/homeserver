@@ -1,10 +1,10 @@
 import { type Mock, beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { EventBase } from '@hs/core';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { EventFetcherService } from './event-fetcher.service';
-import { EventService } from './event.service';
+import { EventFetcherService } from '../services/event-fetcher.service';
+import { EventService } from '../services/event.service';
+import { StagingAreaService } from '../services/staging-area.service';
 import { MissingEventListener } from './missing-event.listener';
-import { StagingAreaService } from './staging-area.service';
 
 function createMockEvent(
 	eventId: string,

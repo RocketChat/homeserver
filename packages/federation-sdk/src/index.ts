@@ -52,7 +52,7 @@ export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
-export { MissingEventListener } from './services/missing-event.listener';
+export { MissingEventListener } from './listeners/missing-event.listener';
 export { MediaService } from './services/media.service';
 
 // Repository interfaces and implementations
@@ -67,7 +67,6 @@ export {
 	MissingEventsQueue,
 	type MissingEventType,
 } from './queues/missing-event.queue';
-export { QueueModule } from './queues/queue.module';
 
 // Utility exports
 export { getErrorMessage } from './utils/get-error-message';

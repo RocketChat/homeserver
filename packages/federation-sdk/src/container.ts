@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import type { Emitter } from '@rocket.chat/emitter';
 import { container } from 'tsyringe';
 
+import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
@@ -24,7 +25,6 @@ import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
 import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
-import { MissingEventListener } from './services/missing-event.listener';
 import { MissingEventService } from './services/missing-event.service';
 import { NotificationService } from './services/notification.service';
 import { ProfilesService } from './services/profiles.service';
