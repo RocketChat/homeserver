@@ -641,11 +641,12 @@ export class EventService {
 		limit: number,
 	): Promise<{ events: { _id: string; event: EventBaseWithOptionalId }[] }> {
 		// TODO: This would benefit from adding projections to the query
-		const eventsCursor = await this.eventRepository.findByRoomIdExcludingEventIds(
-			roomId,
-			[...earliestEvents, ...latestEvents],
-			limit,
-		);
+		const eventsCursor =
+			await this.eventRepository.findByRoomIdExcludingEventIds(
+				roomId,
+				[...earliestEvents, ...latestEvents],
+				limit,
+			);
 		const events = await eventsCursor.toArray();
 
 		return {
