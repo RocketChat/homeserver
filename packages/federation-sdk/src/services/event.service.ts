@@ -198,14 +198,8 @@ export class EventService {
 	/**
 	 * Find all staged events in the database
 	 */
-	async findStagedEvents(): Promise<StagedEvent[]> {
-		// We need to find all events with the staged flag
-		// The explicit is_staged flag might be present, or the traditional staged flag
-		const events = await this.eventRepository.find(
-			{ $or: [{ is_staged: true }, { staged: true }] },
-			{},
-		);
-		return events as unknown as StagedEvent[];
+	async findStagedEvents(): Promise<EventStore[]> {
+		return await this.eventRepository.findStagedEvents();
 	}
 
 	/**
