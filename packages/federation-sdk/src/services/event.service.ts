@@ -39,6 +39,7 @@ type ValidationResult = {
 	};
 };
 
+// TODO: Merge with EventStore from event.model.ts
 export interface StagedEvent {
 	_id: string;
 	event: EventBaseWithOptionalId;
