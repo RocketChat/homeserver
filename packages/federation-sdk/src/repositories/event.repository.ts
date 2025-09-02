@@ -254,7 +254,11 @@ export class EventRepository {
 			.toArray();
 	}
 
-	async persistEvent(event: EventBase, eventId: string, stateId: string) {
+	private async persistEvent(
+		event: EventBase,
+		eventId: string,
+		stateId: string,
+	) {
 		const collection = await this.getCollection();
 
 		try {
