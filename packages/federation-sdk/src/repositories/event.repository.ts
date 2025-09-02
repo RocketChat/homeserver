@@ -175,6 +175,13 @@ export class EventRepository {
 		);
 	}
 
+	async findStagedEvents(): Promise<EventStore[]> {
+		const collection = await this.getCollection();
+		return collection
+			.find({ $or: [{ is_staged: true }, { staged: true }] })
+			.toArray();
+	}
+
 	async findOldestStaged(roomId: string): Promise<EventStore | null> {
 		const collection = await this.getCollection();
 		return collection.findOne(
