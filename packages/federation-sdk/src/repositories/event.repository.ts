@@ -366,4 +366,15 @@ export class EventRepository {
 			missing_dependencies: dependencyId,
 		});
 	}
+
+	async findByRoomIdAndType(
+		roomId: string,
+		eventType: string,
+	): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({
+			'event.room_id': roomId,
+			'event.type': eventType,
+		});
+	}
 }

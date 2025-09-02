@@ -657,19 +657,11 @@ export class EventService {
 	async getCreateEventForRoom(
 		roomId: string,
 	): Promise<EventBaseWithOptionalId | null> {
-		const createEvents = await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				'event.type': 'm.room.create',
-			},
-			{ limit: 1 },
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			roomId,
+			'm.room.create',
 		);
-
-		if (createEvents && createEvents.length > 0) {
-			return createEvents[0].event;
-		}
-
-		return null;
+		return createEvent?.event ?? null;
 	}
 
 	async getMissingEvents(
