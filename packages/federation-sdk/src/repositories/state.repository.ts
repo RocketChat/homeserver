@@ -84,4 +84,22 @@ export class StateRepository {
 			prevStateIds,
 		});
 	}
+
+	async getByRoomIdsAndIdentifier(
+		roomIds: string[],
+		identifier: string,
+	): Promise<FindCursor<WithId<StateStore>>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			roomId: { $in: roomIds },
+			'delta.identifier': identifier,
+		});
+	}
+
+	async getStateMappingsByIdentifier(
+		identifier: string,
+	): Promise<FindCursor<WithId<StateStore>>> {
+		const collection = await this.getCollection();
+		return collection.find({ 'delta.identifier': identifier });
+	}
 }
