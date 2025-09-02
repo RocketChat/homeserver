@@ -308,4 +308,20 @@ export class EventRepository {
 			'event.state_key': '',
 		});
 	}
+
+	async findByIds(eventIds: string[]): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find({ _id: { $in: eventIds } });
+	}
+
+	async findByRoomIdAndTypes(
+		roomId: string,
+		eventTypes: string[],
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			'event.room_id': roomId,
+			'event.type': { $in: eventTypes },
+		});
+	}
 }

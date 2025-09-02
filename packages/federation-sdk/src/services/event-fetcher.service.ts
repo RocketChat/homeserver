@@ -36,14 +36,15 @@ export class EventFetcherService {
 		// Try to get events from local database
 		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
 			[];
-		const dbEvents = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{},
-		);
 
-		localEvents.push(
-			...dbEvents.map(({ _id, event }) => ({ eventId: _id, event })),
-		);
+		const dbEvents = await this.eventRepository.findByIds(eventIds);
+		for await (const event of dbEvents) {
+			localEvents.push({
+				eventId: event._id,
+				event: event.event,
+			});
+		}
+
 		this.logger.debug(`Found ${localEvents.length} events in local database`);
 
 		if (localEvents.length === eventIds.length) {
@@ -93,13 +94,11 @@ export class EventFetcherService {
 
 		try {
 			// Find auth events of the required types in the room
-			const authEvents = await this.eventRepository.find(
-				{
-					'event.room_id': roomId,
-					'event.type': { $in: missingTypes },
-				},
-				{},
-			);
+			const authEvents = [];
+			const events = await this.eventRepository.findByRoomIdAndTypes(roomId, missingTypes);
+			for await (const event of events) {
+				authEvents.push(event);
+			}
 
 			// Group events by type
 			return authEvents.reduce(
