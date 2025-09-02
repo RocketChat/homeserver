@@ -32,7 +32,9 @@ export class StateRepository {
 		this.getCollection();
 	}
 
-	async find(query: Filter<StateStore>): Promise<FindCursor<WithId<StateStore>>> {
+	async find(
+		query: Filter<StateStore>,
+	): Promise<FindCursor<WithId<StateStore>>> {
 		const collection = await this.getCollection();
 		return collection.find(query);
 	}

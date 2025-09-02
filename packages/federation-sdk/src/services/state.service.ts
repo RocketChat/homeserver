@@ -633,7 +633,8 @@ export class StateService {
 	}
 
 	async getAllRoomIds() {
-		const stateMappingsCursor = await this.stateRepository.getStateMappingsByIdentifier('m.room.create:');
+		const stateMappingsCursor =
+			await this.stateRepository.getStateMappingsByIdentifier('m.room.create:');
 		const stateMappings = await stateMappingsCursor.toArray();
 		return stateMappings.map((stateMapping) => stateMapping.roomId);
 	}
@@ -723,18 +724,31 @@ export class StateService {
 	async getAllPublicRoomIdsAndNames() {
 		// all types
 		const roomIds = await this.getAllRoomIds();
-		const stateMappingsCursor = await this.stateRepository.getStateMappingsByIdentifier('m.room.join_rules:');
+		const stateMappingsCursor =
+			await this.stateRepository.getStateMappingsByIdentifier(
+				'm.room.join_rules:',
+			);
 		const stateMappings = await stateMappingsCursor.toArray();
-		const eventsToFetch = stateMappings.map((stateMapping) => stateMapping.delta.eventId);
-		
+		const eventsToFetch = stateMappings.map(
+			(stateMapping) => stateMapping.delta.eventId,
+		);
+
 		if (eventsToFetch.length === 0) {
-			const publicRoomsWithNamesCursor = await this.stateRepository.getByRoomIdsAndIdentifier(roomIds, 'm.room.name:');
+			const publicRoomsWithNamesCursor =
+				await this.stateRepository.getByRoomIdsAndIdentifier(
+					roomIds,
+					'm.room.name:',
+				);
 			const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
 
-			const eventIds = publicRoomsWithNames.map((stateMapping) => stateMapping.delta.eventId);
-			const publicRoomsWithNamesEventsCursor = await this.eventRepository.findByIds(eventIds);
-			const publicRoomsWithNamesEvents = await publicRoomsWithNamesEventsCursor.toArray();
-			
+			const eventIds = publicRoomsWithNames.map(
+				(stateMapping) => stateMapping.delta.eventId,
+			);
+			const publicRoomsWithNamesEventsCursor =
+				await this.eventRepository.findByIds(eventIds);
+			const publicRoomsWithNamesEvents =
+				await publicRoomsWithNamesEventsCursor.toArray();
+
 			return publicRoomsWithNamesEvents.map((event) => ({
 				room_id: event.event.room_id,
 				name: (event.event.content?.name as string) ?? '',
@@ -744,7 +758,8 @@ export class StateService {
 		// TODO: i know thisd is overcomplicated
 		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
 
-		const nonPublicRoomsCursor = await this.eventRepository.findFromNonPublicRooms(eventsToFetch);
+		const nonPublicRoomsCursor =
+			await this.eventRepository.findFromNonPublicRooms(eventsToFetch);
 		const nonPublicRooms = await nonPublicRoomsCursor.toArray();
 
 		// since no join_rule == public
@@ -754,12 +769,20 @@ export class StateService {
 				!nonPublicRooms.some((event) => event.event.room_id === roomId),
 		);
 
-		const publicRoomsWithNamesCursor = await this.stateRepository.getByRoomIdsAndIdentifier(publicRooms, 'm.room.name:');
+		const publicRoomsWithNamesCursor =
+			await this.stateRepository.getByRoomIdsAndIdentifier(
+				publicRooms,
+				'm.room.name:',
+			);
 		const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
 
-		const eventIds = publicRoomsWithNames.map((stateMapping) => stateMapping.delta.eventId);
-		const publicRoomsWithNamesEventsCursor = await this.eventRepository.findByIds(eventIds);
-		const publicRoomsWithNamesEvents = await publicRoomsWithNamesEventsCursor.toArray();
+		const eventIds = publicRoomsWithNames.map(
+			(stateMapping) => stateMapping.delta.eventId,
+		);
+		const publicRoomsWithNamesEventsCursor =
+			await this.eventRepository.findByIds(eventIds);
+		const publicRoomsWithNamesEvents =
+			await publicRoomsWithNamesEventsCursor.toArray();
 
 		return publicRoomsWithNamesEvents.map((event) => ({
 			room_id: event.event.room_id,
@@ -768,10 +791,16 @@ export class StateService {
 	}
 
 	async getMembersOfRoom(roomId: string) {
-		const stateMappingsCursor = await this.stateRepository.getByRoomIdsAndIdentifier([roomId], new RegExp('^m\\.room\\.member:'));
+		const stateMappingsCursor =
+			await this.stateRepository.getByRoomIdsAndIdentifier(
+				[roomId],
+				/^m\.room\.member:/,
+			);
 		const stateMappings = await stateMappingsCursor.toArray();
-		
-		const eventIds = stateMappings.map((stateMapping) => stateMapping.delta.eventId);
+
+		const eventIds = stateMappings.map(
+			(stateMapping) => stateMapping.delta.eventId,
+		);
 		const eventsCursor = await this.eventRepository.findByIds(eventIds);
 		const events = await eventsCursor.toArray();
 

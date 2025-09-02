@@ -95,7 +95,10 @@ export class EventFetcherService {
 		try {
 			// Find auth events of the required types in the room
 			const authEvents = [];
-			const events = await this.eventRepository.findByRoomIdAndTypes(roomId, missingTypes);
+			const events = await this.eventRepository.findByRoomIdAndTypes(
+				roomId,
+				missingTypes,
+			);
 			for await (const event of events) {
 				authEvents.push(event);
 			}
