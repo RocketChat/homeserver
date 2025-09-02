@@ -133,28 +133,6 @@ export class EventService {
 	}
 
 	/**
-	 * Check if an event exists in the database, including staged events
-	 */
-	async checkIfEventExistsIncludingStaged(eventId: string): Promise<boolean> {
-		// First check regular events
-		const regularEvent = await this.eventRepository.findById(eventId);
-		if (regularEvent) {
-			return true;
-		}
-
-		// Then check staged events
-		const stagedEvents = await this.eventRepository.find(
-			{
-				_id: eventId,
-				is_staged: true,
-			},
-			{},
-		);
-
-		return stagedEvents.length > 0;
-	}
-
-	/**
 	 * Store an event as staged with its missing dependencies
 	 */
 	async storeEventAsStaged(stagedEvent: StagedEvent): Promise<void> {
