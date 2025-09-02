@@ -57,12 +57,10 @@ export class StateService {
 	}
 
 	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
-		const events = await this.eventRepository.getCollection();
-
-		const createEvent = await events.findOne({
-			'event.type': 'm.room.create',
-			'event.room_id': roomId,
-		});
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			roomId,
+			'm.room.create',
+		);
 		if (!createEvent) {
 			throw new Error('Create event not found for room version');
 		}
