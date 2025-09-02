@@ -707,21 +707,14 @@ export class EventService {
 	/**
 	 * Find an invite event for a specific user in a specific room
 	 */
-	async findInviteEvent(roomId: string, userId: string): Promise<StagedEvent> {
-		this.logger.debug(
-			`Finding invite event for user ${userId} in room ${roomId}`,
+	async findInviteEvent(
+		roomId: string,
+		userId: string,
+	): Promise<EventStore | null> {
+		return await this.eventRepository.findInviteEventsByRoomIdAndUserId(
+			roomId,
+			userId,
 		);
-		const events = (await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				'event.type': 'm.room.member',
-				'event.state_key': userId,
-				'event.content.membership': 'invite',
-			},
-			{ limit: 1, sort: { 'event.origin_server_ts': -1 } },
-		)) as unknown as StagedEvent[];
-
-		return events[0];
 	}
 
 	async getAuthEventIds(

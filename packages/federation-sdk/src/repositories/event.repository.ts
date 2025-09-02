@@ -394,4 +394,21 @@ export class EventRepository {
 			},
 		);
 	}
+
+	async findInviteEventsByRoomIdAndUserId(
+		roomId: string,
+		userId: string,
+	): Promise<EventStore | null> {
+		const collection = await this.getCollection();
+		const result = collection.find(
+			{
+				'event.room_id': roomId,
+				'event.type': 'm.room.member',
+				'event.state_key': userId,
+				'event.content.membership': 'invite',
+			},
+			{ limit: 1, sort: { 'event.origin_server_ts': -1 } },
+		);
+		return (await result.toArray())[0] ?? null;
+	}
 }
