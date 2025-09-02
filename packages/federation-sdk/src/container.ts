@@ -11,7 +11,6 @@ import { EventRepository } from './repositories/event.repository';
 import { KeyRepository } from './repositories/key.repository';
 import { RoomRepository } from './repositories/room.repository';
 import { ServerRepository } from './repositories/server.repository';
-import { StateEventRepository } from './repositories/state-event.repository';
 import { StateRepository } from './repositories/state.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
@@ -78,7 +77,6 @@ export function createFederationContainer(
 	container.registerSingleton('RoomRepository', RoomRepository);
 	container.registerSingleton('ServerRepository', ServerRepository);
 	container.registerSingleton('StateRepository', StateRepository);
-	container.registerSingleton('StateEventRepository', StateEventRepository);
 
 	// Register business services
 	container.registerSingleton('StateService', StateService);
