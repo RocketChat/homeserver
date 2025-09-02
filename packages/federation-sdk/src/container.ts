@@ -6,8 +6,8 @@ import type { Emitter } from '@rocket.chat/emitter';
 import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import { MissingEventListener } from './listeners/missing-event.listener';
 import type { HomeserverEventSignatures } from './index';
+import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
@@ -41,7 +41,6 @@ import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import type { LockConfig } from './utils/lock.decorator';
-import { StateEventRepository } from './repositories/state-event.repository';
 
 // Type definitions for collections
 type Key = {
@@ -220,15 +219,6 @@ export function createFederationContainer(
 				'statesCollection',
 			)) as Collection<WithId<StateStore>>;
 			return new StateRepository(collection);
-		},
-	});
-
-	container.register('StateEventRepository', {
-		useFactory: async () => {
-			const collection = (await container.resolve(
-				'finalStateEventsCollection',
-			)) as Collection<EventBaseWithOptionalId>;
-			return new StateEventRepository(collection);
 		},
 	});
 

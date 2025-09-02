@@ -97,7 +97,7 @@ export class EventService {
 	async checkIfEventsExists(
 		eventIds: string[],
 	): Promise<{ missing: string[]; found: string[] }> {
-		const eventsCursor = await this.eventRepository.findByIds(eventIds);
+		const eventsCursor = this.eventRepository.findByIds(eventIds);
 		const events = await eventsCursor.toArray();
 
 		return eventIds.reduce(
@@ -189,7 +189,7 @@ export class EventService {
 
 			// Get all staged events that have this dependency
 			const stagedEvents =
-				await this.eventRepository.findStagedEventsByDependencyId(dependencyId);
+				this.eventRepository.findStagedEventsByDependencyId(dependencyId);
 
 			// Update each one to remove the dependency
 			for await (const event of stagedEvents) {
@@ -625,12 +625,11 @@ export class EventService {
 		limit: number,
 	): Promise<{ events: { _id: string; event: EventBaseWithOptionalId }[] }> {
 		// TODO: This would benefit from adding projections to the query
-		const eventsCursor =
-			await this.eventRepository.findByRoomIdExcludingEventIds(
-				roomId,
-				[...earliestEvents, ...latestEvents],
-				limit,
-			);
+		const eventsCursor = this.eventRepository.findByRoomIdExcludingEventIds(
+			roomId,
+			[...earliestEvents, ...latestEvents],
+			limit,
+		);
 		const events = await eventsCursor.toArray();
 
 		return {
@@ -650,9 +649,7 @@ export class EventService {
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
 		// TODO: This would benefit from adding projections to the query
-		const events = await (
-			await this.eventRepository.findByIds(eventIds)
-		).toArray();
+		const events = await this.eventRepository.findByIds(eventIds).toArray();
 		return events.map((event) => ({
 			_id: event._id,
 			event: event.event,
@@ -662,11 +659,8 @@ export class EventService {
 	/**
 	 * Find an invite event for a specific user in a specific room
 	 */
-	async findInviteEvent(
-		roomId: string,
-		userId: string,
-	): Promise<EventStore | null> {
-		return await this.eventRepository.findInviteEventsByRoomIdAndUserId(
+	findInviteEvent(roomId: string, userId: string): Promise<EventStore | null> {
+		return this.eventRepository.findInviteEventsByRoomIdAndUserId(
 			roomId,
 			userId,
 		);
@@ -676,7 +670,7 @@ export class EventService {
 		eventType: EventType,
 		params: AuthEventParams,
 	): Promise<AuthEventResult[]> {
-		const authEventsCursor = await this.eventRepository.findAuthEvents(
+		const authEventsCursor = this.eventRepository.findAuthEvents(
 			eventType,
 			params.roomId,
 			params.senderId,
