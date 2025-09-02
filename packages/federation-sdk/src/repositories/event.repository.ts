@@ -285,4 +285,27 @@ export class EventRepository {
 
 		return eventId;
 	}
+
+	async findMembershipEventsFromDirectMessageRooms(
+		users: string[],
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			'event.type': 'm.room.member',
+			'event.state_key': { $in: users },
+			'event.content.membership': { $in: ['join', 'invite'] },
+			'event.content.is_direct': true,
+		});
+	}
+
+	async findTombstoneEventsByRoomId(
+		roomId: string,
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			'event.room_id': roomId,
+			'event.type': 'm.room.tombstone',
+			'event.state_key': '',
+		});
+	}
 }
