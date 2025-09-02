@@ -675,17 +675,6 @@ export class EventService {
 	}
 
 	/**
-	 * Find all events for a room
-	 */
-	async findRoomEvents(roomId: string): Promise<EventBaseWithOptionalId[]> {
-		this.logger.debug(`Finding all events for room ${roomId}`);
-		const events = await (
-			await this.eventRepository.findByRoomId(roomId)
-		).toArray();
-		return events.map((event) => event.event);
-	}
-
-	/**
 	 * Find an invite event for a specific user in a specific room
 	 */
 	async findInviteEvent(

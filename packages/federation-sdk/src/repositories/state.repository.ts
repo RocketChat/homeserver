@@ -1,5 +1,6 @@
 import {
 	type Collection,
+	Filter,
 	FindCursor,
 	type InsertOneResult,
 	ObjectId,
@@ -29,6 +30,11 @@ export class StateRepository {
 
 	constructor(private readonly dbConnection: DatabaseConnectionService) {
 		this.getCollection();
+	}
+
+	async find(query: Filter<StateStore>): Promise<FindCursor<WithId<StateStore>>> {
+		const collection = await this.getCollection();
+		return collection.find(query);
 	}
 
 	private async getCollection(): Promise<Collection<WithId<StateStore>>> {
@@ -102,7 +108,7 @@ export class StateRepository {
 
 	async getByRoomIdsAndIdentifier(
 		roomIds: string[],
-		identifier: string,
+		identifier: string | RegExp,
 	): Promise<FindCursor<WithId<StateStore>>> {
 		const collection = await this.getCollection();
 		return collection.find({
