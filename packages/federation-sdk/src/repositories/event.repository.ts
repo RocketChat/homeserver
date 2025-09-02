@@ -324,4 +324,15 @@ export class EventRepository {
 			'event.type': { $in: eventTypes },
 		});
 	}
+
+	async setMissingDependencies(
+		eventId: string,
+		missingDependencies: EventStore['missing_dependencies'],
+	): Promise<void> {
+		const collection = await this.getCollection();
+		await collection.updateOne(
+			{ _id: eventId },
+			{ $set: { missing_dependencies: missingDependencies } },
+		);
+	}
 }

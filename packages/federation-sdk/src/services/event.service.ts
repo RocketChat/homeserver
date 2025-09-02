@@ -247,9 +247,9 @@ export class EventService {
 					(dep: string) => dep !== dependencyId,
 				);
 				if (updatedDeps) {
-					await collection.updateOne(
-						{ _id: event._id },
-						{ $set: { missing_dependencies: updatedDeps } },
+					await this.eventRepository.setMissingDependencies(
+						event._id,
+						updatedDeps,
 					);
 					updatedCount++;
 				}
