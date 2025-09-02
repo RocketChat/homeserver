@@ -226,16 +226,11 @@ export class EventService {
 			let updatedCount = 0;
 
 			// Get all staged events that have this dependency
-			const collection = await this.eventRepository.getCollection();
-			const stagedEvents = await collection
-				.find({
-					$or: [{ is_staged: true }, { staged: true }],
-					missing_dependencies: dependencyId,
-				})
-				.toArray();
+			const stagedEvents =
+				await this.eventRepository.findStagedEventsByDependencyId(dependencyId);
 
 			// Update each one to remove the dependency
-			for (const event of stagedEvents) {
+			for await (const event of stagedEvents) {
 				const updatedDeps = event.missing_dependencies?.filter(
 					(dep: string) => dep !== dependencyId,
 				);

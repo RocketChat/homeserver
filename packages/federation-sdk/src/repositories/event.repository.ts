@@ -356,4 +356,14 @@ export class EventRepository {
 			'event.content.join_rule': { $ne: 'public' },
 		});
 	}
+
+	async findStagedEventsByDependencyId(
+		dependencyId: string,
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			$or: [{ is_staged: true }, { staged: true }],
+			missing_dependencies: dependencyId,
+		});
+	}
 }
