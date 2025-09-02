@@ -13,7 +13,7 @@ export class EventRepository {
 		this.getCollection();
 	}
 
-	async getCollection(): Promise<Collection<EventStore>> {
+	private async getCollection(): Promise<Collection<EventStore>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<EventStore>('events');
 		return this.collection;
