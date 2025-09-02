@@ -2,7 +2,6 @@ import 'reflect-metadata';
 import type { EventBaseWithOptionalId } from '@hs/core';
 import { singleton } from 'tsyringe';
 
-
 // TODO: check why we have eventId and EventBaseWithOptionalId
 export interface StagingAreaEventType {
 	eventId: string;
