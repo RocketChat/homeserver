@@ -648,13 +648,13 @@ export class EventService {
 		latestEvents: string[],
 		limit: number,
 	): Promise<{ events: { _id: string; event: EventBaseWithOptionalId }[] }> {
-		const events = await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				_id: { $nin: [...earliestEvents, ...latestEvents] },
-			},
-			{ limit },
+		// TODO: This would benefit from adding projections to the query
+		const eventsCursor = await this.eventRepository.findByRoomIdExcludingEventIds(
+			roomId,
+			[...earliestEvents, ...latestEvents],
+			limit,
 		);
+		const events = await eventsCursor.toArray();
 
 		return {
 			events: events.map((event) => ({

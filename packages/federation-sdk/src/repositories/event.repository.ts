@@ -377,4 +377,21 @@ export class EventRepository {
 			'event.type': eventType,
 		});
 	}
+
+	async findByRoomIdExcludingEventIds(
+		roomId: string,
+		eventIdsToExclude: string[],
+		limit: number,
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find(
+			{
+				'event.room_id': roomId,
+				_id: { $nin: eventIdsToExclude },
+			},
+			{
+				limit,
+			},
+		);
+	}
 }
