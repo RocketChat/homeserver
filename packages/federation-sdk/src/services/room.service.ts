@@ -1052,7 +1052,8 @@ export class RoomService {
 				return true;
 			}
 
-			const tombstoneEvents = await this.eventRepository.findTombstoneEventsByRoomId(roomId);
+			const tombstoneEvents =
+				await this.eventRepository.findTombstoneEventsByRoomId(roomId);
 			return (await tombstoneEvents.toArray()).length > 0;
 		} catch (error) {
 			logger.error(`Error checking if room ${roomId} is tombstoned: ${error}`);
