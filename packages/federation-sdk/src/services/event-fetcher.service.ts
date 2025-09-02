@@ -37,7 +37,7 @@ export class EventFetcherService {
 		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
 			[];
 
-		const dbEventsCursor = await this.eventRepository.findByIds(eventIds);
+		const dbEventsCursor = this.eventRepository.findByIds(eventIds);
 		for await (const event of dbEventsCursor) {
 			localEvents.push({
 				eventId: event._id,
@@ -95,7 +95,7 @@ export class EventFetcherService {
 		try {
 			// Find auth events of the required types in the room
 			const authEvents = [];
-			const events = await this.eventRepository.findByRoomIdAndTypes(
+			const events = this.eventRepository.findByRoomIdAndTypes(
 				roomId,
 				missingTypes,
 			);

@@ -151,9 +151,9 @@ export class StateService {
 			return state;
 		}
 
-		const stateMappings = await (
-			await this.stateRepository.getStateMappingsByStateIdsOrdered(prevStateIds)
-		).toArray();
+		const stateMappings = await this.stateRepository
+			.getStateMappingsByStateIdsOrdered(prevStateIds)
+			.toArray();
 
 		const state = new Map<StateMapKey, PersistentEventBase>();
 
@@ -219,9 +219,7 @@ export class StateService {
 		}
 
 		const stateMappings =
-			await this.stateRepository.getStateMappingsByRoomIdOrderedAscending(
-				roomId,
-			);
+			this.stateRepository.getStateMappingsByRoomIdOrderedAscending(roomId);
 		const state = new Map<StateMapKey, string>();
 
 		// first reconstruct the final state
@@ -308,7 +306,7 @@ export class StateService {
 					toFind.push(eventId);
 				}
 
-				const resultEventsCursor = await this.eventRepository.findByIds(toFind);
+				const resultEventsCursor = this.eventRepository.findByIds(toFind);
 				const resultEvents = await resultEventsCursor.toArray();
 				const eventsFromStore = resultEvents.map((event) => {
 					const e = PersistentEventFactory.createFromRawEvent(
@@ -545,12 +543,9 @@ export class StateService {
 
 		this.logState('new state', state);
 
-		const restOfTheEvents = await (
-			await this.eventRepository.findEventsByRoomIdAfterTimestamp(
-				event.roomId,
-				event.originServerTs,
-			)
-		).toArray();
+		const restOfTheEvents = await this.eventRepository
+			.findEventsByRoomIdAfterTimestamp(event.roomId, event.originServerTs)
+			.toArray();
 
 		this.logger.debug(
 			{
@@ -634,7 +629,7 @@ export class StateService {
 
 	async getAllRoomIds() {
 		const stateMappingsCursor =
-			await this.stateRepository.getStateMappingsByIdentifier('m.room.create:');
+			this.stateRepository.getStateMappingsByIdentifier('m.room.create:');
 		const stateMappings = await stateMappingsCursor.toArray();
 		return stateMappings.map((stateMapping) => stateMapping.roomId);
 	}
@@ -725,9 +720,7 @@ export class StateService {
 		// all types
 		const roomIds = await this.getAllRoomIds();
 		const stateMappingsCursor =
-			await this.stateRepository.getStateMappingsByIdentifier(
-				'm.room.join_rules:',
-			);
+			this.stateRepository.getStateMappingsByIdentifier('m.room.join_rules:');
 		const stateMappings = await stateMappingsCursor.toArray();
 		const eventsToFetch = stateMappings.map(
 			(stateMapping) => stateMapping.delta.eventId,
@@ -735,17 +728,14 @@ export class StateService {
 
 		if (eventsToFetch.length === 0) {
 			const publicRoomsWithNamesCursor =
-				await this.stateRepository.getByRoomIdsAndIdentifier(
-					roomIds,
-					'm.room.name:',
-				);
+				this.stateRepository.getByRoomIdsAndIdentifier(roomIds, 'm.room.name:');
 			const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
 
 			const eventIds = publicRoomsWithNames.map(
 				(stateMapping) => stateMapping.delta.eventId,
 			);
 			const publicRoomsWithNamesEventsCursor =
-				await this.eventRepository.findByIds(eventIds);
+				this.eventRepository.findByIds(eventIds);
 			const publicRoomsWithNamesEvents =
 				await publicRoomsWithNamesEventsCursor.toArray();
 
@@ -759,7 +749,7 @@ export class StateService {
 		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
 
 		const nonPublicRoomsCursor =
-			await this.eventRepository.findFromNonPublicRooms(eventsToFetch);
+			this.eventRepository.findFromNonPublicRooms(eventsToFetch);
 		const nonPublicRooms = await nonPublicRoomsCursor.toArray();
 
 		// since no join_rule == public
@@ -770,7 +760,7 @@ export class StateService {
 		);
 
 		const publicRoomsWithNamesCursor =
-			await this.stateRepository.getByRoomIdsAndIdentifier(
+			this.stateRepository.getByRoomIdsAndIdentifier(
 				publicRooms,
 				'm.room.name:',
 			);
@@ -780,7 +770,7 @@ export class StateService {
 			(stateMapping) => stateMapping.delta.eventId,
 		);
 		const publicRoomsWithNamesEventsCursor =
-			await this.eventRepository.findByIds(eventIds);
+			this.eventRepository.findByIds(eventIds);
 		const publicRoomsWithNamesEvents =
 			await publicRoomsWithNamesEventsCursor.toArray();
 
@@ -791,17 +781,16 @@ export class StateService {
 	}
 
 	async getMembersOfRoom(roomId: string) {
-		const stateMappingsCursor =
-			await this.stateRepository.getByRoomIdsAndIdentifier(
-				[roomId],
-				/^m\.room\.member:/,
-			);
+		const stateMappingsCursor = this.stateRepository.getByRoomIdsAndIdentifier(
+			[roomId],
+			/^m\.room\.member:/,
+		);
 		const stateMappings = await stateMappingsCursor.toArray();
 
 		const eventIds = stateMappings.map(
 			(stateMapping) => stateMapping.delta.eventId,
 		);
-		const eventsCursor = await this.eventRepository.findByIds(eventIds);
+		const eventsCursor = this.eventRepository.findByIds(eventIds);
 		const events = await eventsCursor.toArray();
 
 		const members = events

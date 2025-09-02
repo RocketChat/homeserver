@@ -6,8 +6,8 @@ import type { Emitter } from '@rocket.chat/emitter';
 import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 
-import { MissingEventListener } from './listeners/missing-event.listener';
 import type { HomeserverEventSignatures } from './index';
+import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';

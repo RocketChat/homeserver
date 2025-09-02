@@ -26,9 +26,6 @@ type StateStore = {
 @singleton()
 export class StateRepository {
 	constructor(private readonly collection: Collection<WithId<StateStore>>) {}
-	find(query: Filter<StateStore>): FindCursor<WithId<StateStore>> {
-		return this.collection.find(query);
-	}
 	async getStateById(stateId: string): Promise<WithId<StateStore> | null> {
 		return this.collection.findOne({ _id: new ObjectId(stateId) });
 	}

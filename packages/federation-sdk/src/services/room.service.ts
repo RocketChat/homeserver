@@ -1053,7 +1053,7 @@ export class RoomService {
 			}
 
 			const tombstoneEvents =
-				await this.eventRepository.findTombstoneEventsByRoomId(roomId);
+				this.eventRepository.findTombstoneEventsByRoomId(roomId);
 			return (await tombstoneEvents.toArray()).length > 0;
 		} catch (error) {
 			logger.error(`Error checking if room ${roomId} is tombstoned: ${error}`);
@@ -1282,12 +1282,9 @@ export class RoomService {
 		userId2: string,
 	): Promise<string | null> {
 		try {
-			const membershipEvents = await (
-				await this.eventRepository.findMembershipEventsFromDirectMessageRooms([
-					userId1,
-					userId2,
-				])
-			).toArray();
+			const membershipEvents = await this.eventRepository
+				.findMembershipEventsFromDirectMessageRooms([userId1, userId2])
+				.toArray();
 
 			const roomMemberCounts = new Map<string, Set<string>>();
 
