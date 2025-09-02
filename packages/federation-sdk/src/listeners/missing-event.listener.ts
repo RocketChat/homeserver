@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core';
+import type { EventBase, EventStore } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
@@ -58,12 +58,12 @@ export class MissingEventListener {
 		return [...new Set([...authEvents, ...prevEvents].flat())];
 	}
 
-	private async processAndStoreStagedEvent(stagedEvent: StagedEvent) {
+	private async processAndStoreStagedEvent(stagedEvent: EventStore) {
 		try {
 			this.stagingAreaService.addEventToQueue({
 				eventId: stagedEvent._id,
 				roomId: stagedEvent.event.room_id,
-				origin: stagedEvent.event.origin || stagedEvent.origin,
+				origin: stagedEvent.event.origin,
 				event: stagedEvent.event,
 			});
 
@@ -102,8 +102,7 @@ export class MissingEventListener {
 	async handleQueueItem(data: MissingEventType) {
 		const { eventId, roomId, origin } = data;
 
-		const exists =
-			await this.eventService.checkIfEventExistsIncludingStaged(eventId);
+		const exists = await this.eventService.getEventById(eventId);
 		if (exists) {
 			this.logger.debug(
 				`Event ${eventId} already exists in database (staged or processed), marking as fetched`,
