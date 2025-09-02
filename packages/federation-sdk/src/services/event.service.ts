@@ -725,11 +725,12 @@ export class EventService {
 		const authEvents: AuthEventResult[] = [];
 
 		for (const queryConfig of queries) {
-			const events = await this.eventRepository.find(queryConfig.query, {
+			const eventsCursor = await this.eventRepository.find(queryConfig.query, {
 				sort: queryConfig.sort,
 				limit: queryConfig.limit,
 				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1 },
 			});
+			const events = await eventsCursor.toArray();
 
 			for (const storeEvent of events) {
 				const currentEventType = storeEvent.event?.type as EventType;
