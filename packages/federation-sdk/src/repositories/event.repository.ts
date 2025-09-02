@@ -19,13 +19,6 @@ export class EventRepository {
 		return this.collection;
 	}
 
-	async find(
-		query: Filter<EventStore>,
-		options: FindOptions,
-	): Promise<FindCursor<EventStore>> {
-		return this.collection.find(query, options);
-	}
-
 	async findById(eventId: string): Promise<EventStore | null> {
 		return this.collection.findOne({ _id: eventId });
 	}

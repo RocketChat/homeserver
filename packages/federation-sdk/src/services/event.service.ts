@@ -692,40 +692,34 @@ export class EventService {
 		eventType: EventType,
 		params: AuthEventParams,
 	): Promise<AuthEventResult[]> {
-		const queries = this.getAuthEventQueries(eventType, params);
+		const authEventsCursor = await this.eventRepository.findAuthEvents(
+			eventType,
+			params.roomId,
+			params.senderId,
+		);
 		const authEvents: AuthEventResult[] = [];
 
-		for (const queryConfig of queries) {
-			const eventsCursor = await this.eventRepository.find(queryConfig.query, {
-				sort: queryConfig.sort,
-				limit: queryConfig.limit,
-				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1 },
-			});
-			const events = await eventsCursor.toArray();
+		for await (const storeEvent of authEventsCursor) {
+			const { type, state_key } = storeEvent.event;
+			const eventTypeKey = Object.keys(EventType).find(
+				(key) => EventType[key as keyof typeof EventType] === type,
+			);
 
-			for (const storeEvent of events) {
-				const currentEventType = storeEvent.event?.type as EventType;
-				const currentStateKey = storeEvent.event?.state_key;
-				const eventTypeKey = Object.keys(EventType).find(
-					(key) =>
-						EventType[key as keyof typeof EventType] === currentEventType,
+			if (eventTypeKey && type) {
+				authEvents.push({
+					_id: storeEvent._id,
+					type: type as EventType,
+					...(state_key && {
+						state_key,
+					}),
+				});
+			} else {
+				this.logger.warn(
+					`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,
 				);
-
-				if (eventTypeKey && currentEventType) {
-					authEvents.push({
-						_id: storeEvent._id,
-						type: currentEventType,
-						...(currentStateKey !== undefined && {
-							state_key: currentStateKey,
-						}),
-					});
-				} else {
-					this.logger.warn(
-						`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,
-					);
-				}
 			}
 		}
+
 		return authEvents;
 	}
 
