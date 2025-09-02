@@ -7,7 +7,7 @@ import { DatabaseConnectionService } from '../services/database-connection.servi
 
 @singleton()
 export class EventRepository {
-	private collection: Collection<EventStore> | null = null;
+	private collection!: Collection<EventStore>;
 
 	constructor(private readonly dbConnection: DatabaseConnectionService) {
 		this.getCollection();
@@ -23,13 +23,11 @@ export class EventRepository {
 		query: Filter<EventStore>,
 		options: FindOptions,
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find(query, options);
+		return this.collection.find(query, options);
 	}
 
 	async findById(eventId: string): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({ _id: eventId });
+		return this.collection.findOne({ _id: eventId });
 	}
 
 	async findAuthEvents(
@@ -37,8 +35,6 @@ export class EventRepository {
 		roomId: string,
 		senderId: string,
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-
 		const baseQueries = {
 			create: {
 				query: { 'event.room_id': roomId, 'event.type': 'm.room.create' },
@@ -113,12 +109,11 @@ export class EventRepository {
 				throw new Error(`Unsupported event type: ${eventType}`);
 		}
 
-		return collection.find({ $or: queries.map((q) => q.query) });
+		return this.collection.find({ $or: queries.map((q) => q.query) });
 	}
 
 	async findByRoomId(roomId: string): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find(
+		return this.collection.find(
 			{ 'event.room_id': roomId },
 			{ sort: { 'event.depth': 1 } },
 		);
@@ -136,10 +131,9 @@ export class EventRepository {
 		event: EventBaseWithOptionalId,
 		missingDependencies?: EventStore['missing_dependencies'],
 	): Promise<string> {
-		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
-		await collection.insertOne({
+		await this.collection.insertOne({
 			_id: id,
 			event,
 			stateId: '',
@@ -154,19 +148,16 @@ export class EventRepository {
 	}
 
 	async redactEvent(eventId: string, redactedEvent: EventBase): Promise<void> {
-		const collection = await this.getCollection();
-
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ _id: eventId },
 			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
 	}
 
 	async upsert(event: EventBaseWithOptionalId): Promise<string> {
-		const collection = await this.getCollection();
 		const id = event.event_id || generateId(event);
 
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ _id: id },
 			{ $set: { _id: id, event } },
 			{ upsert: true },
@@ -176,23 +167,20 @@ export class EventRepository {
 	}
 
 	async removeFromStaging(eventId: string): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ _id: eventId },
 			{ $unset: { staged: 1, is_staged: 1, missing_dependencies: 1 } },
 		);
 	}
 
 	async findStagedEvents(): Promise<EventStore[]> {
-		const collection = await this.getCollection();
-		return collection
+		return this.collection
 			.find({ $or: [{ is_staged: true }, { staged: true }] })
 			.toArray();
 	}
 
 	async findOldestStaged(roomId: string): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		return collection.findOne(
+		return this.collection.findOne(
 			{ staged: true, 'event.room_id': roomId },
 			{ sort: { 'event.origin_server_ts': 1 } },
 		);
@@ -201,8 +189,7 @@ export class EventRepository {
 	public async findPowerLevelsEventByRoomId(
 		roomId: string,
 	): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({
+		return this.collection.findOne({
 			'event.room_id': roomId,
 			'event.type': 'm.room.power_levels',
 		});
@@ -211,8 +198,7 @@ export class EventRepository {
 	public async findAllJoinedMembersEventsByRoomId(
 		roomId: string,
 	): Promise<EventStore[]> {
-		const collection = await this.getCollection();
-		return collection
+		return this.collection
 			.find({
 				'event.room_id': roomId,
 				'event.type': 'm.room.member',
@@ -225,8 +211,7 @@ export class EventRepository {
 		roomId: string,
 		timestamp: number,
 	): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		return collection.findOne(
+		return this.collection.findOne(
 			{
 				'event.room_id': roomId,
 				'event.origin_server_ts': { $lt: timestamp }, // events before passed timestamp
@@ -244,8 +229,7 @@ export class EventRepository {
 		roomId: string,
 		timestamp: number,
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection
+		return this.collection
 			.find({
 				'event.room_id': roomId,
 				'event.origin_server_ts': { $gt: timestamp },
@@ -256,15 +240,13 @@ export class EventRepository {
 	}
 
 	async updateStateId(eventId: string, stateId: string): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne({ _id: eventId }, { $set: { stateId } });
+		await this.collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 
 	// finds events not yet referenced by other events
 	// more on the respective adr
 	async findPrevEvents(roomId: string) {
-		const collection = await this.getCollection();
-		return collection
+		return this.collection
 			.find({ nextEventId: '', 'event.room_id': roomId, _id: { $ne: '' } })
 			.toArray();
 	}
@@ -274,10 +256,8 @@ export class EventRepository {
 		eventId: string,
 		stateId: string,
 	) {
-		const collection = await this.getCollection();
-
 		try {
-			await collection.insertOne({
+			await this.collection.insertOne({
 				_id: eventId,
 				event: event,
 				stateId: stateId,
@@ -297,7 +277,7 @@ export class EventRepository {
 		}
 
 		// this must happen later to as to avoid finding 0 prev_events on a parallel request
-		await collection.updateMany(
+		await this.collection.updateMany(
 			{ _id: { $in: event.prev_events as string[] } },
 			{ $set: { nextEventId: eventId } },
 		);
@@ -308,8 +288,7 @@ export class EventRepository {
 	async findMembershipEventsFromDirectMessageRooms(
 		users: string[],
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find({
+		return this.collection.find({
 			'event.type': 'm.room.member',
 			'event.state_key': { $in: users },
 			'event.content.membership': { $in: ['join', 'invite'] },
@@ -320,8 +299,7 @@ export class EventRepository {
 	async findTombstoneEventsByRoomId(
 		roomId: string,
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find({
+		return this.collection.find({
 			'event.room_id': roomId,
 			'event.type': 'm.room.tombstone',
 			'event.state_key': '',
@@ -329,16 +307,14 @@ export class EventRepository {
 	}
 
 	async findByIds(eventIds: string[]): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find({ _id: { $in: eventIds } });
+		return this.collection.find({ _id: { $in: eventIds } });
 	}
 
 	async findByRoomIdAndTypes(
 		roomId: string,
 		eventTypes: string[],
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find({
+		return this.collection.find({
 			'event.room_id': roomId,
 			'event.type': { $in: eventTypes },
 		});
@@ -348,8 +324,7 @@ export class EventRepository {
 		eventId: string,
 		missingDependencies: EventStore['missing_dependencies'],
 	): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ _id: eventId },
 			{ $set: { missing_dependencies: missingDependencies } },
 		);
@@ -358,8 +333,7 @@ export class EventRepository {
 	async findFromNonPublicRooms(
 		eventIds: string[],
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find({
+		return this.collection.find({
 			eventId: { $in: eventIds },
 			'event.content.join_rule': { $ne: 'public' },
 		});
@@ -368,8 +342,7 @@ export class EventRepository {
 	async findStagedEventsByDependencyId(
 		dependencyId: string,
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find({
+		return this.collection.find({
 			$or: [{ is_staged: true }, { staged: true }],
 			missing_dependencies: dependencyId,
 		});
@@ -379,8 +352,7 @@ export class EventRepository {
 		roomId: string,
 		eventType: string,
 	): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({
+		return this.collection.findOne({
 			'event.room_id': roomId,
 			'event.type': eventType,
 		});
@@ -391,8 +363,7 @@ export class EventRepository {
 		eventIdsToExclude: string[],
 		limit: number,
 	): Promise<FindCursor<EventStore>> {
-		const collection = await this.getCollection();
-		return collection.find(
+		return this.collection.find(
 			{
 				'event.room_id': roomId,
 				_id: { $nin: eventIdsToExclude },
@@ -407,8 +378,7 @@ export class EventRepository {
 		roomId: string,
 		userId: string,
 	): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		const result = collection.find(
+		const result = this.collection.find(
 			{
 				'event.room_id': roomId,
 				'event.type': 'm.room.member',
@@ -421,8 +391,7 @@ export class EventRepository {
 	}
 
 	async findLatestFromRoomId(roomId: string): Promise<EventStore | null> {
-		const collection = await this.getCollection();
-		return collection.findOne(
+		return this.collection.findOne(
 			{ 'event.room_id': roomId },
 			{ sort: { 'event.depth': -1 } },
 		);

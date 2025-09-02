@@ -11,7 +11,7 @@ type Key = {
 
 @singleton()
 export class KeyRepository {
-	private collection: Collection<Key> | null = null;
+	private collection!: Collection<Key>;
 
 	constructor(private readonly dbConnection: DatabaseConnectionService) {
 		this.getCollection();
@@ -20,15 +20,14 @@ export class KeyRepository {
 	private async getCollection(): Promise<Collection<Key>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Key>('keys');
-		return this.collection!;
+		return this.collection;
 	}
 
 	async getValidPublicKeyFromLocal(
 		origin: string,
 		keyId: string,
 	): Promise<string | undefined> {
-		const collection = await this.getCollection();
-		const key = await collection.findOne({
+		const key = await this.collection.findOne({
 			origin,
 			key_id: keyId,
 			valid_until: { $gt: new Date() },
@@ -43,8 +42,7 @@ export class KeyRepository {
 		publicKey: string,
 		validUntil?: Date,
 	): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ origin, key_id: keyId },
 			{
 				$set: {

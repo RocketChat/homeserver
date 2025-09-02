@@ -14,7 +14,7 @@ type Server = {
 
 @singleton()
 export class ServerRepository {
-	private collection: Collection<Server> | null = null;
+	private collection!: Collection<Server>;
 
 	constructor(private readonly dbConnection: DatabaseConnectionService) {
 		this.getCollection();
@@ -23,15 +23,14 @@ export class ServerRepository {
 	private async getCollection(): Promise<Collection<Server>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Server>('servers');
-		return this.collection!;
+		return this.collection;
 	}
 
 	async getValidPublicKeyFromLocal(
 		origin: string,
 		key: string,
 	): Promise<string | undefined> {
-		const collection = await this.getCollection();
-		const server = await collection.findOne({ name: origin });
+		const server = await this.collection.findOne({ name: origin });
 		return server?.keys?.[key]?.key;
 	}
 
@@ -41,8 +40,7 @@ export class ServerRepository {
 		value: string,
 		validUntil: number,
 	): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.findOneAndUpdate(
+		await this.collection.findOneAndUpdate(
 			{ name: origin },
 			{
 				$set: {
