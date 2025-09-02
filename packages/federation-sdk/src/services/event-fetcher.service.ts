@@ -37,8 +37,8 @@ export class EventFetcherService {
 		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
 			[];
 
-		const dbEvents = await this.eventRepository.findByIds(eventIds);
-		for await (const event of dbEvents) {
+		const dbEventsCursor = await this.eventRepository.findByIds(eventIds);
+		for await (const event of dbEventsCursor) {
 			localEvents.push({
 				eventId: event._id,
 				event: event.event,

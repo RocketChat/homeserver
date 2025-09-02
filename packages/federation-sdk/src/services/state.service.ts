@@ -768,7 +768,7 @@ export class StateService {
 	}
 
 	async getMembersOfRoom(roomId: string) {
-		const stateMappingsCursor = await this.stateRepository.getByRoomIdsAndIdentifier([roomId], 'm.room.member:');
+		const stateMappingsCursor = await this.stateRepository.getByRoomIdsAndIdentifier([roomId], new RegExp('^m\\.room\\.member:'));
 		const stateMappings = await stateMappingsCursor.toArray();
 		
 		const eventIds = stateMappings.map((stateMapping) => stateMapping.delta.eventId);
