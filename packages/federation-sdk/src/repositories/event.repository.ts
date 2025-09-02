@@ -346,4 +346,14 @@ export class EventRepository {
 			{ $set: { missing_dependencies: missingDependencies } },
 		);
 	}
+
+	async findFromNonPublicRooms(
+		eventIds: string[],
+	): Promise<FindCursor<EventStore>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			eventId: { $in: eventIds },
+			'event.content.join_rule': { $ne: 'public' },
+		});
+	}
 }
