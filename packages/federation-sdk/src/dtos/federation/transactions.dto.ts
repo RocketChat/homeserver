@@ -6,6 +6,8 @@ export const SendTransactionParamsDto = t.Object({
 });
 
 export const SendTransactionBodyDto = t.Object({
+	origin: t.String({ description: 'Origin of the transaction' }),
+	origin_server_ts: t.Number({ description: 'Origin server timestamp' }),
 	pdus: t.Array(EventBaseDto, {
 		description: 'Persistent data units (PDUs) to process',
 		default: [],
