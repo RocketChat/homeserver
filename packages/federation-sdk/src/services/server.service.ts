@@ -28,7 +28,6 @@ export class ServerService {
 	}
 
 	async getSignedServerKey() {
-		const config = this.configService.getConfig();
 		const signingKeys = await this.configService.getSigningKey();
 
 		const keys = Object.fromEntries(
@@ -42,7 +41,7 @@ export class ServerService {
 
 		const baseResponse = {
 			old_verify_keys: {},
-			server_name: config.serverName,
+			server_name: this.configService.serverName,
 			signatures: {},
 			valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
 			verify_keys: keys,
@@ -50,7 +49,11 @@ export class ServerService {
 
 		let signedResponse = baseResponse;
 		for (const key of signingKeys) {
-			signedResponse = await signJson(signedResponse, key, config.serverName);
+			signedResponse = await signJson(
+				signedResponse,
+				key,
+				this.configService.serverName,
+			);
 		}
 
 		return signedResponse;

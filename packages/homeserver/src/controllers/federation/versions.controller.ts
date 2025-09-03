@@ -8,11 +8,10 @@ export const versionsPlugin = (app: Elysia) => {
 	return app.get(
 		'/_matrix/federation/v1/version',
 		() => {
-			const config = configService.getServerConfig();
 			return {
 				server: {
-					name: config.name,
-					version: config.version,
+					name: configService.serverName,
+					version: configService.version,
 				},
 			};
 		},
