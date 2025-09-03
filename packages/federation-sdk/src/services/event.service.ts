@@ -59,26 +59,10 @@ export enum EventType {
 	POWER_LEVELS = 'm.room.power_levels',
 }
 
-type EventAttributes = {
-	[EventType.NAME]: { roomId: string; senderId: string };
-	[EventType.MESSAGE]: { roomId: string; senderId: string };
-	[EventType.REACTION]: { roomId: string; senderId: string };
-	[EventType.MEMBER]: { roomId: string; senderId: string };
-	[EventType.CREATE]: { roomId: string };
-	[EventType.POWER_LEVELS]: { roomId: string; senderId: string };
-	[EventType.REDACTION]: { roomId: string; senderId: string };
-};
-
 interface AuthEventResult {
 	_id: string;
 	type: EventType;
 	state_key?: string;
-}
-
-interface QueryConfig {
-	query: Record<string, any>;
-	sort?: Record<string, 1 | -1>;
-	limit?: number;
 }
 
 export interface AuthEventParams {
@@ -782,84 +766,6 @@ export class EventService {
 		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
-	}
-
-	private getAuthEventQueries<T extends EventType>(
-		eventType: T,
-		attributes: EventAttributes[T],
-	): QueryConfig[] {
-		const { roomId } = attributes;
-		const senderId = 'senderId' in attributes ? attributes.senderId : undefined;
-
-		const baseQueries = {
-			create: {
-				query: { 'event.room_id': roomId, 'event.type': EventType.CREATE },
-			},
-			powerLevels: {
-				query: {
-					'event.room_id': roomId,
-					'event.type': EventType.POWER_LEVELS,
-				},
-				sort: { 'event.origin_server_ts': -1 },
-				limit: 1,
-			},
-			membership: {
-				query: {
-					'event.room_id': roomId,
-					'event.type': EventType.MEMBER,
-					'event.state_key': senderId,
-					'event.content.membership': 'join',
-				},
-				sort: { 'event.origin_server_ts': -1 },
-				limit: 1,
-			},
-		};
-
-		switch (eventType) {
-			case EventType.NAME:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.MESSAGE:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.REACTION:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.MEMBER:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.CREATE:
-				return [baseQueries.create];
-
-			case EventType.POWER_LEVELS:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.REDACTION:
-				return [baseQueries.create, baseQueries.powerLevels];
-
-			default:
-				throw new Error(`Unsupported event type: ${eventType}`);
-		}
 	}
 
 	async checkUserPermission(
