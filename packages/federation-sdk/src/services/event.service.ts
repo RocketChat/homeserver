@@ -1,7 +1,9 @@
 import type {
 	BaseEDU,
+	HashedEvent,
 	PresenceEDU,
 	RoomPowerLevelsEvent,
+	SignedJson,
 	TypingEDU,
 } from '@hs/core';
 import { isPresenceEDU, isTypingEDU } from '@hs/core';
@@ -17,7 +19,7 @@ import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { PersistentEventFactory } from '@hs/room';
+import { type PduType, PersistentEventFactory } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
@@ -49,19 +51,9 @@ export interface StagedEvent {
 	invite_room_state?: Record<string, unknown>;
 }
 
-export enum EventType {
-	CREATE = 'm.room.create',
-	MEMBER = 'm.room.member',
-	MESSAGE = 'm.room.message',
-	REDACTION = 'm.room.redaction',
-	REACTION = 'm.reaction',
-	NAME = 'm.room.name',
-	POWER_LEVELS = 'm.room.power_levels',
-}
-
 interface AuthEventResult {
 	_id: string;
-	type: EventType;
+	type: PduType;
 	state_key?: string;
 }
 
@@ -223,6 +215,14 @@ export class EventService {
 		pdus: EventBase[];
 		edus?: BaseEDU[];
 	}): Promise<void> {
+		if (!Array.isArray(pdus)) {
+			throw new Error('pdus must be an array');
+		}
+
+		if (edus && !Array.isArray(edus)) {
+			throw new Error('edus must be an array');
+		}
+
 		const totalPdus = pdus.length;
 		const totalEdus = edus?.length || 0;
 
@@ -516,11 +516,7 @@ export class EventService {
 					this.keyRepository.storePublicKey(origin, keyId, publicKey),
 			);
 
-			await checkSignAndHashes(
-				event as any,
-				event.origin,
-				getPublicKeyFromServer,
-			);
+			await checkSignAndHashes(event, event.origin, getPublicKeyFromServer);
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			this.logger.error(
@@ -698,7 +694,7 @@ export class EventService {
 	}
 
 	async getAuthEventIds(
-		eventType: EventType,
+		eventType: PduType,
 		params: AuthEventParams,
 	): Promise<AuthEventResult[]> {
 		const authEventsCursor = this.eventRepository.findAuthEvents(
@@ -710,14 +706,23 @@ export class EventService {
 
 		for await (const storeEvent of authEventsCursor) {
 			const { type, state_key } = storeEvent.event;
-			const eventTypeKey = Object.keys(EventType).find(
-				(key) => EventType[key as keyof typeof EventType] === type,
-			);
 
-			if (eventTypeKey && type) {
+			// TODO: check if those are the only valid auth events or the only current implemented
+			if (
+				type &&
+				[
+					'm.room.create',
+					'm.room.member',
+					'm.room.message',
+					'm.room.redaction',
+					'm.reaction',
+					'm.room.name',
+					'm.room.power_levels',
+				].includes(type)
+			) {
 				authEvents.push({
 					_id: storeEvent._id,
-					type: type as EventType,
+					type: type as PduType,
 					...(state_key && {
 						state_key,
 					}),
@@ -777,6 +782,7 @@ export class EventService {
 		redactedEventContent.unsigned.redacted_because = redactionEvent;
 
 		const finalRedactedEvent: EventBase = {
+			...redactedEventContent,
 			type: eventToRedact.event.type,
 			room_id: eventToRedact.event.room_id,
 			sender: eventToRedact.event.sender,
@@ -785,7 +791,6 @@ export class EventService {
 			depth: eventToRedact.event.depth,
 			prev_events: eventToRedact.event.prev_events,
 			auth_events: eventToRedact.event.auth_events,
-			...redactedEventContent,
 		};
 
 		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
@@ -796,7 +801,7 @@ export class EventService {
 	async checkUserPermission(
 		powerLevelsEventId: string,
 		userId: string,
-		actionType: EventType,
+		actionType: PduType,
 	): Promise<boolean> {
 		const powerLevelsEvent =
 			await this.eventRepository.findById(powerLevelsEventId);

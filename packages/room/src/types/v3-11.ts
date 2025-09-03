@@ -44,7 +44,8 @@ export const EduTypeSchema = z.enum([
 
 export type PduType = z.infer<typeof PduTypeSchema>;
 export type EduType = z.infer<typeof EduTypeSchema>;
-export type EventType = PduType | EduType;
+export const EventTypeSchema = z.union([PduTypeSchema, EduTypeSchema]);
+export type EventType = z.infer<typeof EventTypeSchema>;
 
 export const EventHashSchema = z.object({
 	sha256: z

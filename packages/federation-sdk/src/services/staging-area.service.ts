@@ -14,7 +14,7 @@ import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventStateService } from './event-state.service';
 import { EventService } from './event.service';
-import { EventType } from './event.service';
+
 import { MissingEventService } from './missing-event.service';
 import { StateService } from './state.service';
 
@@ -201,7 +201,7 @@ export class StagingAreaService {
 		try {
 			this.logger.debug(`Authorizing event ${eventId}`);
 			const authEvents = await this.eventService.getAuthEventIds(
-				EventType.MESSAGE,
+				'm.room.message',
 				{ roomId: event.roomId, senderId: event.event.sender },
 			);
 
@@ -349,7 +349,7 @@ export class StagingAreaService {
 			this.logger.debug(`Notifying clients about event ${eventId}`);
 
 			switch (true) {
-				case event.event.type === EventType.MESSAGE:
+				case event.event.type === 'm.room.message':
 					this.eventEmitterService.emit('homeserver.matrix.message', {
 						event_id: event.eventId,
 						room_id: event.roomId,
@@ -371,7 +371,7 @@ export class StagingAreaService {
 						},
 					});
 					break;
-				case event.event.type === EventType.REACTION: {
+				case event.event.type === 'm.reaction': {
 					this.eventEmitterService.emit('homeserver.matrix.reaction', {
 						event_id: event.eventId,
 						room_id: event.roomId,
@@ -400,7 +400,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case event.event.type === EventType.MEMBER: {
+				case event.event.type === 'm.room.member': {
 					this.eventEmitterService.emit('homeserver.matrix.membership', {
 						event_id: event.eventId,
 						room_id: event.roomId,

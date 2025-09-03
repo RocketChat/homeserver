@@ -14,6 +14,36 @@ interface RoomVersion {
 interface JsonDict {
 	[key: string]: any;
 }
+type AllowedKeysDefault = Extract<
+	keyof EventBase,
+	| 'event_id'
+	| 'sender'
+	| 'room_id'
+	| 'hashes'
+	| 'signatures'
+	| 'content'
+	| 'type'
+	| 'state_key'
+	| 'depth'
+	| 'prev_events'
+	| 'auth_events'
+	| 'origin_server_ts'
+	| 'unsigned'
+>;
+
+type AllowedKeysPowerLevels = Extract<
+	keyof EventBase,
+	| 'users'
+	| 'users_default'
+	| 'events'
+	| 'events_default'
+	| 'state_default'
+	| 'ban'
+	| 'kick'
+	| 'redact'
+>;
+
+type MergeMultipleKeys<T, U> = T | U;
 
 export function pruneEventDict<T extends EventBase>(
 	eventDict: T,
@@ -25,7 +55,13 @@ export function pruneEventDict<T extends EventBase>(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): Partial<T> {
+): Pick<
+	T,
+	MergeMultipleKeys<
+		AllowedKeysDefault,
+		T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never
+	> & {}
+> {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it
 	 * operates on objects rather than event instances.
@@ -171,5 +207,5 @@ export function pruneEventDict<T extends EventBase>(
 	return {
 		...allowedFields,
 		content,
-	} as Partial<T>;
+	} as T;
 }
