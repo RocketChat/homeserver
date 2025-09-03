@@ -7,9 +7,6 @@ import { createLogger, isRedactedEvent } from '@hs/core';
 import {
 	Pdu,
 	PduPowerLevelsEventContent,
-	PduTypeRoomName,
-	PduTypeRoomPowerLevels,
-	PduTypeRoomTopic,
 	PersistentEventFactory,
 } from '@hs/room';
 import { Lock } from '../utils/lock.decorator';
@@ -247,7 +244,8 @@ export class StagingAreaService {
 			}
 
 			const pdu = PersistentEventFactory.createFromRawEvent(
-				event.event as Pdu,
+				// TODO: refactor to StagingAreaEventType use Pdu
+				event.event as unknown as Pdu,
 				roomVersion,
 			);
 
@@ -418,7 +416,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case event.event.type === PduTypeRoomName: {
+				case event.event.type === 'm.room.name': {
 					this.eventEmitterService.emit('homeserver.matrix.room.name', {
 						room_id: event.roomId,
 						user_id: event.event.sender,
@@ -426,7 +424,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case event.event.type === PduTypeRoomTopic: {
+				case event.event.type === 'm.room.topic': {
 					this.eventEmitterService.emit('homeserver.matrix.room.topic', {
 						room_id: event.roomId,
 						user_id: event.event.sender,
@@ -434,7 +432,7 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case event.event.type === PduTypeRoomPowerLevels: {
+				case event.event.type === 'm.room.power_levels': {
 					const getRole = (powerLevel: number) => {
 						if (powerLevel === 100) {
 							return 'owner';

@@ -1,11 +1,4 @@
-import {
-	PduTypeRoomCreate,
-	PduTypeRoomHistoryVisibility,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
-	PduTypeRoomRedaction,
-} from '../types/v3-11';
+import {} from '../types/v3-11';
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
 import { PersistentEventV9 } from './v9';
 
@@ -30,10 +23,10 @@ export class PersistentEventV11 extends PersistentEventV9 {
 		string[] | typeof REDACT_ALLOW_ALL_KEYS
 	> {
 		return {
-			[PduTypeRoomMember]: ['membership', 'join_authorised_via_users_server'],
-			[PduTypeRoomCreate]: REDACT_ALLOW_ALL_KEYS,
-			[PduTypeRoomJoinRules]: ['join_rule', 'allow'],
-			[PduTypeRoomPowerLevels]: [
+			'm.room.member': ['membership', 'join_authorised_via_users_server'],
+			'm.room.create': REDACT_ALLOW_ALL_KEYS,
+			'm.room.join_rules': ['join_rule', 'allow'],
+			'm.room.power_levels': [
 				'ban',
 				'events',
 				'events_default',
@@ -44,8 +37,8 @@ export class PersistentEventV11 extends PersistentEventV9 {
 				'users',
 				'users_default',
 			],
-			[PduTypeRoomHistoryVisibility]: ['history_visibility'],
-			[PduTypeRoomRedaction]: ['redacts'],
+			'm.room.history_visibility': ['history_visibility'],
+			'm.room.redaction': ['redacts'],
 		};
 	}
 }

@@ -1,23 +1,9 @@
 import {
 	Pdu,
 	type PduCreateEventContent,
-	type PduGuestAccessEventContent,
-	type PduHistoryVisibilityEventContent,
 	type PduJoinRuleEventContent,
 	type PduMembershipEventContent,
 	PduPowerLevelsEventContent,
-	PduTypeReaction,
-	PduTypeRoomCanonicalAlias,
-	PduTypeRoomCreate,
-	PduTypeRoomGuestAccess,
-	PduTypeRoomHistoryVisibility,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomMessage,
-	PduTypeRoomName,
-	PduTypeRoomPowerLevels,
-	PduTypeRoomRedaction,
-	PduTypeRoomTopic,
 } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
@@ -113,13 +99,12 @@ export class PersistentEventFactory {
 
 		const roomId = `!${createRoomIdPrefix(8)}:${domain}`;
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomCreate>> = {
-			type: PduTypeRoomCreate,
+		const eventPartial: PartialEvent<PduForType<'m.room.create'>> = {
+			type: 'm.room.create',
 			state_key: '',
 			content: createContent,
 			sender: creator,
 			origin_server_ts: Date.now(),
-			origin: domain,
 			room_id: roomId,
 			prev_events: [],
 			auth_events: [],
@@ -161,11 +146,10 @@ export class PersistentEventFactory {
 			...(reason && { reason }),
 		};
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMember>> = {
-			type: PduTypeRoomMember,
+		const eventPartial: PartialEvent<PduForType<'m.room.member'>> = {
+			type: 'm.room.member',
 			content: membershipContent,
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: userId,
@@ -190,14 +174,11 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<
-			PduForType<typeof PduTypeRoomPowerLevels>
-		> = {
-			type: PduTypeRoomPowerLevels,
+		const eventPartial: PartialEvent<PduForType<'m.room.power_levels'>> = {
+			type: 'm.room.power_levels',
 			content: content,
 			sender: sender,
 			origin_server_ts: Date.now(),
-			origin: sender.split(':').pop(),
 			room_id: roomId,
 			state_key: '',
 			prev_events: [],
@@ -218,11 +199,10 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomName>> = {
-			type: PduTypeRoomName,
+		const eventPartial: PartialEvent<PduForType<'m.room.name'>> = {
+			type: 'm.room.name',
 			content: { name },
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -244,19 +224,17 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomJoinRules>> =
-			{
-				type: PduTypeRoomJoinRules,
-				content: { join_rule: joinRule },
-				sender: sender,
-				origin: sender.split(':').pop(),
-				origin_server_ts: Date.now(),
-				room_id: roomId,
-				state_key: '',
-				prev_events: [],
-				auth_events: [],
-				depth: 0,
-			};
+		const eventPartial: PartialEvent<PduForType<'m.room.join_rules'>> = {
+			type: 'm.room.join_rules',
+			content: { join_rule: joinRule },
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			state_key: '',
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+		};
 
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
@@ -271,13 +249,10 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<
-			PduForType<typeof PduTypeRoomCanonicalAlias>
-		> = {
-			type: PduTypeRoomCanonicalAlias,
+		const eventPartial: PartialEvent<PduForType<'m.room.canonical_alias'>> = {
+			type: 'm.room.canonical_alias',
 			content: { alias, alt_aliases: [] },
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -301,8 +276,8 @@ export class PersistentEventFactory {
 		}
 
 		// Note: event_id will be filled by the event wrapper on first access
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeReaction>> = {
-			type: PduTypeReaction,
+		const eventPartial: PartialEvent<PduForType<'m.reaction'>> = {
+			type: 'm.reaction',
 			content: {
 				'm.relates_to': {
 					rel_type: 'm.annotation',
@@ -311,7 +286,6 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop() ?? '',
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			// NO state_key - this is a timeline event
@@ -336,24 +310,22 @@ export class PersistentEventFactory {
 		}
 
 		// Note: event_id will be filled by the event wrapper on first access
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomRedaction>> =
-			{
-				type: PduTypeRoomRedaction,
+		const eventPartial: PartialEvent<PduForType<'m.room.redaction'>> = {
+			type: 'm.room.redaction',
+			redacts: eventIdToRedact,
+			content: {
 				redacts: eventIdToRedact,
-				content: {
-					redacts: eventIdToRedact,
-					...(reason && { reason }),
-				},
-				sender: sender,
-				origin: sender.split(':').pop() ?? '',
-				origin_server_ts: Date.now(),
-				room_id: roomId,
-				// NO state_key - this is a timeline event
-				prev_events: [],
-				auth_events: [],
-				depth: 0,
-				unsigned: {},
-			};
+				...(reason && { reason }),
+			},
+			sender: sender,
+			origin_server_ts: Date.now(),
+			room_id: roomId,
+			// NO state_key - this is a timeline event
+			prev_events: [],
+			auth_events: [],
+			depth: 0,
+			unsigned: {},
+		};
 
 		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
 	}
@@ -368,14 +340,13 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text' as const,
 				body: text,
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -397,8 +368,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text',
 				body: rawText,
@@ -406,7 +377,6 @@ export class PersistentEventFactory {
 				format: 'org.matrix.custom.html',
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -446,13 +416,12 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduForType<typeof PduTypeRoomMessage>,
+			PduForType<'m.room.message'>,
 			'signatures' | 'hashes'
 		> = {
-			type: PduTypeRoomMessage,
-			content: content as PduForType<typeof PduTypeRoomMessage>['content'],
+			type: 'm.room.message',
+			content: content as PduForType<'m.room.message'>['content'],
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -475,8 +444,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				body: rawText,
 				format: 'org.matrix.custom.html',
@@ -487,7 +456,6 @@ export class PersistentEventFactory {
 				msgtype: 'm.text',
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -509,8 +477,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text' as const,
 				body: `* ${newText}`, // Fallback for clients not supporting edits
@@ -524,7 +492,6 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -547,8 +514,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text' as const,
 				body: `* ${newRawText}`, // Fallback for clients not supporting edits
@@ -566,7 +533,6 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -589,8 +555,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text' as const,
 				body: text,
@@ -606,7 +572,6 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -630,8 +595,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text' as const,
 				body: rawText,
@@ -649,7 +614,6 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -673,8 +637,8 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomMessage>> = {
-			type: PduTypeRoomMessage,
+		const eventPartial: PartialEvent<PduForType<'m.room.message'>> = {
+			type: 'm.room.message',
 			content: {
 				msgtype: 'm.text',
 				body: rawText,
@@ -690,7 +654,6 @@ export class PersistentEventFactory {
 				},
 			},
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			prev_events: [],
@@ -711,11 +674,10 @@ export class PersistentEventFactory {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
 
-		const eventPartial: PartialEvent<PduForType<typeof PduTypeRoomTopic>> = {
-			type: PduTypeRoomTopic,
+		const eventPartial: PartialEvent<PduForType<'m.room.topic'>> = {
+			type: 'm.room.topic',
 			content: { topic },
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -738,13 +700,12 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduForType<typeof PduTypeRoomHistoryVisibility>,
+			PduForType<'m.room.history_visibility'>,
 			'signatures' | 'hashes'
 		> = {
-			type: PduTypeRoomHistoryVisibility,
+			type: 'm.room.history_visibility',
 			content: { history_visibility: historyVisibility },
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -767,13 +728,12 @@ export class PersistentEventFactory {
 		}
 
 		const eventPartial: Omit<
-			PduForType<typeof PduTypeRoomGuestAccess>,
+			PduForType<'m.room.guest_access'>,
 			'signatures' | 'hashes'
 		> = {
-			type: PduTypeRoomGuestAccess,
+			type: 'm.room.guest_access',
 			content: { guest_access: guestAccess },
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: '',
@@ -822,13 +782,12 @@ export class PersistentEventFactory {
 		};
 
 		const eventPartial: Omit<
-			PduForType<typeof PduTypeRoomMember>,
+			PduForType<'m.room.member'>,
 			'signatures' | 'hashes'
 		> = {
-			type: PduTypeRoomMember,
+			type: 'm.room.member',
 			content: membershipContent,
 			sender: sender,
-			origin: sender.split(':').pop(),
 			origin_server_ts: Date.now(),
 			room_id: roomId,
 			state_key: userId,

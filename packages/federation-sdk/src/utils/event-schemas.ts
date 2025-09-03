@@ -16,7 +16,6 @@ const baseEventSchema = z.object({
 		.array(z.string().or(z.tuple([z.string(), z.string()])))
 		.optional(),
 	redacts: z.string().optional(),
-	origin: z.string().optional(),
 	hashes: z.record(z.string()).optional(),
 	signatures: z.record(z.record(z.string())).optional(),
 	unsigned: z.any().optional(),
