@@ -25,7 +25,7 @@ export class RoomRepository {
 		this.getCollection();
 	}
 
-	async getCollection(): Promise<Collection<Room>> {
+	private async getCollection(): Promise<Collection<Room>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<Room>('rooms');
 		return this.collection!;

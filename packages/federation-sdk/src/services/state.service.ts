@@ -38,21 +38,17 @@ export class StateService {
 	) {}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const createEventMapping = await stateCollection.findOne({
+		const state = await this.stateRepository.getByRoomIdAndIdentifier(
 			roomId,
-			'delta.identifier': 'm.room.create:',
-		});
-
-		if (!createEventMapping) {
+			'm.room.create:',
+		);
+		if (!state) {
 			throw new Error('Create event mapping not found for room information');
 		}
 
 		const createEvent = await this.eventRepository.findById(
-			createEventMapping.delta.eventId,
+			state.delta.eventId,
 		);
-
 		if (!createEvent) {
 			throw new Error('Create event not found for room information');
 		}
@@ -61,12 +57,10 @@ export class StateService {
 	}
 
 	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
-		const events = await this.eventRepository.getCollection();
-
-		const createEvent = await events.findOne({
-			'event.type': 'm.room.create',
-			'event.room_id': roomId,
-		});
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			roomId,
+			'm.room.create',
+		);
 		if (!createEvent) {
 			throw new Error('Create event not found for room version');
 		}
@@ -128,7 +122,7 @@ export class StateService {
 		}
 
 		const { delta: lastStateDelta, prevStateIds = [] } =
-			(await this.stateRepository.getStateMapping(stateId)) ?? {};
+			(await this.stateRepository.getStateById(stateId)) ?? {};
 
 		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
 
@@ -314,9 +308,9 @@ export class StateService {
 					toFind.push(eventId);
 				}
 
-				const eventsFromStore = (
-					await this.eventRepository.findByIds(toFind)
-				).map((event) => {
+				const resultEventsCursor = await this.eventRepository.findByIds(toFind);
+				const resultEvents = await resultEventsCursor.toArray();
+				const eventsFromStore = resultEvents.map((event) => {
 					const e = PersistentEventFactory.createFromRawEvent(
 						event.event as any /* TODO: fix this with type unifi */,
 						roomVersion,
@@ -399,17 +393,8 @@ export class StateService {
 		// check if has conflicts
 		// ^ now we could avoid full state reconstruction with something like "dropped" prop inside the state mapping
 
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const lastState = await stateCollection.findOne(
-			{
-				roomId: event.roomId,
-			},
-			{
-				sort: {
-					createdAt: -1,
-				},
-			},
+		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
+			event.roomId,
 		);
 
 		this.logger.debug(
@@ -535,17 +520,8 @@ export class StateService {
 			return this._persistEventAgainstState(event, new Map());
 		}
 
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const lastState = await stateCollection.findOne(
-			{
-				roomId: event.roomId,
-			},
-			{
-				sort: {
-					createdAt: -1,
-				},
-			},
+		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
+			event.roomId,
 		);
 
 		const prevStateIds = lastState?.prevStateIds?.concat(
@@ -657,13 +633,10 @@ export class StateService {
 	}
 
 	async getAllRoomIds() {
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const stateMappings = await stateCollection.find({
-			'delta.identifier': 'm.room.create:',
-		});
-
-		return stateMappings.map((stateMapping) => stateMapping.roomId).toArray();
+		const stateMappingsCursor =
+			await this.stateRepository.getStateMappingsByIdentifier('m.room.create:');
+		const stateMappings = await stateMappingsCursor.toArray();
+		return stateMappings.map((stateMapping) => stateMapping.roomId);
 	}
 
 	async persistTimelineEvent(event: PersistentEventBase) {
@@ -749,54 +722,45 @@ export class StateService {
 	}
 
 	async getAllPublicRoomIdsAndNames() {
-		const stateCollection = await this.stateRepository.getCollection();
-
-		const eventsCollection = await this.eventRepository.getCollection();
-
 		// all types
 		const roomIds = await this.getAllRoomIds();
-
-		const stateMappings = await stateCollection.find({
-			'delta.identifier': 'm.room.join_rules:', // those that has this
-		});
-
-		const eventsToFetch = await stateMappings
-			.map((stateMapping) => stateMapping.delta.eventId)
-			.toArray();
+		const stateMappingsCursor =
+			await this.stateRepository.getStateMappingsByIdentifier(
+				'm.room.join_rules:',
+			);
+		const stateMappings = await stateMappingsCursor.toArray();
+		const eventsToFetch = stateMappings.map(
+			(stateMapping) => stateMapping.delta.eventId,
+		);
 
 		if (eventsToFetch.length === 0) {
-			const publicRoomsWithNames = await stateCollection
-				.find({
-					roomId: { $in: roomIds },
-					'delta.identifier': 'm.room.name:',
-				})
-				.toArray();
+			const publicRoomsWithNamesCursor =
+				await this.stateRepository.getByRoomIdsAndIdentifier(
+					roomIds,
+					'm.room.name:',
+				);
+			const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
 
-			const publicRooms = eventsCollection.find({
-				eventId: {
-					$in: publicRoomsWithNames.map(
-						(stateMapping) => stateMapping.delta.eventId,
-					),
-				},
-			});
+			const eventIds = publicRoomsWithNames.map(
+				(stateMapping) => stateMapping.delta.eventId,
+			);
+			const publicRoomsWithNamesEventsCursor =
+				await this.eventRepository.findByIds(eventIds);
+			const publicRoomsWithNamesEvents =
+				await publicRoomsWithNamesEventsCursor.toArray();
 
-			return publicRooms
-				.map((event) => ({
-					room_id: event.event.room_id,
-					name: (event.event.content?.name as string) ?? '',
-				}))
-				.toArray();
+			return publicRoomsWithNamesEvents.map((event) => ({
+				room_id: event.event.room_id,
+				name: (event.event.content?.name as string) ?? '',
+			}));
 		}
 
 		// TODO: i know thisd is overcomplicated
 		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
 
-		const nonPublicRooms = await eventsCollection
-			.find({
-				eventId: { $in: eventsToFetch },
-				'event.content.join_rule': { $ne: 'public' },
-			})
-			.toArray();
+		const nonPublicRoomsCursor =
+			await this.eventRepository.findFromNonPublicRooms(eventsToFetch);
+		const nonPublicRooms = await nonPublicRoomsCursor.toArray();
 
 		// since no join_rule == public
 
@@ -805,39 +769,40 @@ export class StateService {
 				!nonPublicRooms.some((event) => event.event.room_id === roomId),
 		);
 
-		const publicRoomsWithNames = await stateCollection
-			.find({
-				roomId: { $in: publicRooms },
-				'delta.identifier': 'm.room.name:',
-			})
-			.toArray();
+		const publicRoomsWithNamesCursor =
+			await this.stateRepository.getByRoomIdsAndIdentifier(
+				publicRooms,
+				'm.room.name:',
+			);
+		const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
 
-		const publicRoomsWithNamesEvents = eventsCollection.find({
-			eventId: {
-				$in: publicRoomsWithNames.map(
-					(stateMapping) => stateMapping.delta.eventId,
-				),
-			},
-		});
+		const eventIds = publicRoomsWithNames.map(
+			(stateMapping) => stateMapping.delta.eventId,
+		);
+		const publicRoomsWithNamesEventsCursor =
+			await this.eventRepository.findByIds(eventIds);
+		const publicRoomsWithNamesEvents =
+			await publicRoomsWithNamesEventsCursor.toArray();
 
-		return publicRoomsWithNamesEvents
-			.map((event) => ({
-				room_id: event.event.room_id,
-				name: (event.event.content?.name as string) ?? '',
-			}))
-			.toArray();
+		return publicRoomsWithNamesEvents.map((event) => ({
+			room_id: event.event.room_id,
+			name: (event.event.content?.name as string) ?? '',
+		}));
 	}
 
 	async getMembersOfRoom(roomId: string) {
-		const stateCollection = await this.stateRepository.getCollection();
+		const stateMappingsCursor =
+			await this.stateRepository.getByRoomIdsAndIdentifier(
+				[roomId],
+				/^m\.room\.member:/,
+			);
+		const stateMappings = await stateMappingsCursor.toArray();
 
-		const stateMappings = await stateCollection
-			.find({ roomId, 'delta.identifier': /^m\.room\.member:/ })
-			.toArray();
-
-		const events = await this.eventRepository.findByIds(
-			stateMappings.map((stateMapping) => stateMapping.delta.eventId),
+		const eventIds = stateMappings.map(
+			(stateMapping) => stateMapping.delta.eventId,
 		);
+		const eventsCursor = await this.eventRepository.findByIds(eventIds);
+		const events = await eventsCursor.toArray();
 
 		const members = events
 			.filter((event) => event.event.content?.membership === 'join')

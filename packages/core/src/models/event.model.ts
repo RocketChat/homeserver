@@ -6,6 +6,7 @@ export interface EventBaseWithOptionalId extends CoreEventBase {
 	event_id?: string;
 }
 
+// TODO: Merge with StagedEvent from event.service.ts
 export interface EventStore {
 	_id: string;
 	event: EventBaseWithOptionalId;

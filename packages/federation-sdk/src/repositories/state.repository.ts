@@ -1,5 +1,6 @@
 import {
 	type Collection,
+	Filter,
 	FindCursor,
 	type InsertOneResult,
 	ObjectId,
@@ -31,13 +32,20 @@ export class StateRepository {
 		this.getCollection();
 	}
 
-	async getCollection(): Promise<Collection<WithId<StateStore>>> {
+	async find(
+		query: Filter<StateStore>,
+	): Promise<FindCursor<WithId<StateStore>>> {
+		const collection = await this.getCollection();
+		return collection.find(query);
+	}
+
+	private async getCollection(): Promise<Collection<WithId<StateStore>>> {
 		const db = await this.dbConnection.getDb();
 		this.collection = db.collection<WithId<StateStore>>('states');
 		return this.collection!;
 	}
 
-	async getStateMapping(stateId: string): Promise<WithId<StateStore> | null> {
+	async getStateById(stateId: string): Promise<WithId<StateStore> | null> {
 		const collection = await this.getCollection();
 		return collection.findOne({ _id: new ObjectId(stateId) });
 	}
@@ -47,6 +55,13 @@ export class StateRepository {
 	): Promise<WithId<StateStore> | null> {
 		const collection = await this.getCollection();
 		return collection.findOne({ roomId }, { sort: { createdAt: 1 } });
+	}
+
+	async getLastStateMappingByRoomId(
+		roomId: string,
+	): Promise<WithId<StateStore> | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({ roomId }, { sort: { createdAt: -1 } });
 	}
 
 	async getStateMappingsByRoomIdOrderedAscending(
@@ -63,6 +78,14 @@ export class StateRepository {
 		return collection
 			.find({ _id: { $in: stateIds.map((id) => new ObjectId(id)) } })
 			.sort({ createdAt: 1 /* order as is saved */ });
+	}
+
+	async getByRoomIdAndIdentifier(
+		roomId: string,
+		identifier: string,
+	): Promise<WithId<StateStore> | null> {
+		const collection = await this.getCollection();
+		return collection.findOne({ roomId, 'delta.identifier': identifier });
 	}
 
 	async createStateMapping(
@@ -83,5 +106,23 @@ export class StateRepository {
 			roomId: event.roomId,
 			prevStateIds,
 		});
+	}
+
+	async getByRoomIdsAndIdentifier(
+		roomIds: string[],
+		identifier: string | RegExp,
+	): Promise<FindCursor<WithId<StateStore>>> {
+		const collection = await this.getCollection();
+		return collection.find({
+			roomId: { $in: roomIds },
+			'delta.identifier': identifier,
+		});
+	}
+
+	async getStateMappingsByIdentifier(
+		identifier: string,
+	): Promise<FindCursor<WithId<StateStore>>> {
+		const collection = await this.getCollection();
+		return collection.find({ 'delta.identifier': identifier });
 	}
 }

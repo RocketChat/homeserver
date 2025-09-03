@@ -1052,16 +1052,9 @@ export class RoomService {
 				return true;
 			}
 
-			const tombstoneEvents = await this.eventService.findEvents(
-				{
-					'event.room_id': roomId,
-					'event.type': 'm.room.tombstone',
-					'event.state_key': '',
-				},
-				{ limit: 1 },
-			);
-
-			return tombstoneEvents.length > 0;
+			const tombstoneEvents =
+				await this.eventRepository.findTombstoneEventsByRoomId(roomId);
+			return (await tombstoneEvents.toArray()).length > 0;
 		} catch (error) {
 			logger.error(`Error checking if room ${roomId} is tombstoned: ${error}`);
 			return false;
@@ -1289,15 +1282,12 @@ export class RoomService {
 		userId2: string,
 	): Promise<string | null> {
 		try {
-			const membershipEvents = await this.eventRepository.find(
-				{
-					'event.type': 'm.room.member',
-					'event.state_key': { $in: [userId1, userId2] },
-					'event.content.membership': { $in: ['join', 'invite'] },
-					'event.content.is_direct': true,
-				},
-				{},
-			);
+			const membershipEvents = await (
+				await this.eventRepository.findMembershipEventsFromDirectMessageRooms([
+					userId1,
+					userId2,
+				])
+			).toArray();
 
 			const roomMemberCounts = new Map<string, Set<string>>();
 

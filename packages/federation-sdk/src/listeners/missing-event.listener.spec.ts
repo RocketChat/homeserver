@@ -46,7 +46,6 @@ describe.skip('MissingEventListener', () => {
 		};
 
 		mockEventService = {
-			checkIfEventExistsIncludingStaged: mock(() => Promise.resolve(false)),
 			checkIfEventsExists: mock(() =>
 				Promise.resolve({ missing: [], found: [] }),
 			),
@@ -71,19 +70,12 @@ describe.skip('MissingEventListener', () => {
 	});
 
 	test('handleQueueItem should exit early if event already exists', async () => {
-		mockEventService.checkIfEventExistsIncludingStaged.mockReturnValue(
-			Promise.resolve(true),
-		);
-
 		await listener.handleQueueItem({
 			eventId: 'existing-event-id',
 			roomId: 'room-id',
 			origin: 'origin.com',
 		});
 
-		expect(
-			mockEventService.checkIfEventExistsIncludingStaged,
-		).toHaveBeenCalledWith('existing-event-id');
 		expect(
 			mockEventService.removeDependencyFromStagedEvents,
 		).toHaveBeenCalledWith('existing-event-id');
@@ -97,9 +89,6 @@ describe.skip('MissingEventListener', () => {
 
 		const mockEvent = createMockEvent(eventId, roomId, origin);
 
-		mockEventService.checkIfEventExistsIncludingStaged.mockReturnValue(
-			Promise.resolve(false),
-		);
 		mockEventFetcherService.fetchEventsByIds.mockReturnValue(
 			Promise.resolve({
 				events: [{ eventId, event: mockEvent }],
@@ -119,16 +108,12 @@ describe.skip('MissingEventListener', () => {
 					event: mockEvent,
 					origin,
 					missing_dependencies: [],
-					staged_at: Date.now(),
 				},
 			]),
 		);
 
 		await listener.handleQueueItem({ eventId, roomId, origin });
 
-		expect(
-			mockEventService.checkIfEventExistsIncludingStaged,
-		).toHaveBeenCalledWith(eventId);
 		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalledWith(
 			[eventId],
 			roomId,
@@ -160,9 +145,6 @@ describe.skip('MissingEventListener', () => {
 		const mockEvent = createMockEvent(eventId, roomId, origin);
 		mockEvent.auth_events = ['auth1', 'auth2'];
 
-		mockEventService.checkIfEventExistsIncludingStaged.mockReturnValue(
-			Promise.resolve(false),
-		);
 		mockEventFetcherService.fetchEventsByIds.mockReturnValue(
 			Promise.resolve({
 				events: [{ eventId, event: mockEvent }],
@@ -178,9 +160,6 @@ describe.skip('MissingEventListener', () => {
 
 		await listener.handleQueueItem({ eventId, roomId, origin });
 
-		expect(
-			mockEventService.checkIfEventExistsIncludingStaged,
-		).toHaveBeenCalledWith(eventId);
 		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalledWith(
 			[eventId],
 			roomId,
@@ -223,7 +202,6 @@ describe.skip('MissingEventListener', () => {
 					event: mockEvent,
 					origin,
 					missing_dependencies: [],
-					staged_at: Date.now(),
 				},
 			]),
 		);
@@ -255,7 +233,6 @@ describe.skip('MissingEventListener', () => {
 					event: mockEvent,
 					origin,
 					missing_dependencies: ['missing1'],
-					staged_at: Date.now(),
 				},
 			]),
 		);
@@ -345,16 +322,12 @@ describe.skip('MissingEventListener', () => {
 			event: mockEvent,
 			origin,
 			missing_dependencies: [],
-			staged_at: Date.now(),
 		});
 
 		expect(mockEventService.markEventAsUnstaged).not.toHaveBeenCalled();
 	});
 
 	test('handleQueueItem should handle errors during fetch', async () => {
-		mockEventService.checkIfEventExistsIncludingStaged.mockReturnValue(
-			Promise.resolve(false),
-		);
 		mockEventFetcherService.fetchEventsByIds.mockImplementation(() => {
 			throw new Error('Fetch error');
 		});
@@ -365,9 +338,6 @@ describe.skip('MissingEventListener', () => {
 			origin: 'origin.com',
 		});
 
-		expect(
-			mockEventService.checkIfEventExistsIncludingStaged,
-		).toHaveBeenCalled();
 		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalled();
 		expect(mockEventService.storeEventAsStaged).not.toHaveBeenCalled();
 	});
