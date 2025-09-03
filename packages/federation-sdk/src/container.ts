@@ -12,6 +12,7 @@ import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
+import { Lock, LockRepository } from './repositories/lock.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
@@ -37,8 +38,6 @@ import { SignatureVerificationService } from './services/signature-verification.
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { LockManagerService } from './utils/lock.decorator';
-import type { LockConfig } from './utils/lock.decorator';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
@@ -65,8 +64,13 @@ export async function createFederationContainer(
 	container.register<Collection<EventStore>>('EventCollection', {
 		useValue: db.collection<EventStore>('events'),
 	});
+
 	container.register<Collection<Key>>('KeyCollection', {
 		useValue: db.collection<Key>('keys'),
+	});
+
+	container.register<Collection<Lock>>('LockCollection', {
+		useValue: db.collection<Lock>('rocketchat_federation_lock'),
 	});
 
 	container.register<Collection<Room>>('RoomCollection', {
@@ -97,6 +101,7 @@ export async function createFederationContainer(
 	container.registerSingleton(EventService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
+	container.registerSingleton(LockRepository);
 	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
