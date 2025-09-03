@@ -22,7 +22,7 @@ import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
 import type { EventRepository } from '../repositories/event.repository';
 import type { ConfigService } from './config.service';
-import { EventService, EventType } from './event.service';
+import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import type { RoomService } from './room.service';
 import type { StateService } from './state.service';

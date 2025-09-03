@@ -28,8 +28,8 @@ export const EventBaseDto = t.Object({
 	}),
 	auth_events: t.Array(t.String(), { description: 'Authorization events' }),
 	origin: t.String({ description: 'Origin server' }),
-	hashes: t.Optional(EventHashDto),
-	signatures: t.Optional(EventSignatureDto),
+	hashes: EventHashDto,
+	signatures: EventSignatureDto,
 	unsigned: t.Optional(
 		t.Record(t.String(), t.Any(), { description: 'Unsigned data' }),
 	),

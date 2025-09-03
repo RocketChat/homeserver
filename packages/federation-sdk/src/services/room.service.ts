@@ -31,7 +31,7 @@ import { EventRepository } from '../repositories/event.repository';
 import type { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { EventType } from './event.service';
+
 import { InviteService } from './invite.service';
 import { StateService } from './state.service';
 
@@ -378,12 +378,12 @@ export class RoomService {
 		);
 
 		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
+			'm.room.power_levels',
 			{ roomId, senderId },
 		);
 		const currentPowerLevelsEvent =
 			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				authEventIds.find((e) => e.type === EventType.POWER_LEVELS)?._id || '',
+				authEventIds.find((e) => e.type === 'm.room.power_levels')?._id || '',
 			);
 
 		if (!currentPowerLevelsEvent) {
@@ -402,13 +402,13 @@ export class RoomService {
 		);
 
 		const createAuthResult = authEventIds.find(
-			(e) => e.type === EventType.CREATE,
+			(e) => e.type === 'm.room.create',
 		);
 		const powerLevelsAuthResult = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+			(e) => e.type === 'm.room.power_levels',
 		);
 		const memberAuthResult = authEventIds.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
+			(e) => e.type === 'm.room.member' && e.state_key === senderId,
 		);
 
 		const authEventsMap = {
@@ -513,14 +513,14 @@ export class RoomService {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
+			'm.room.member',
 			{ roomId, senderId },
 		);
 
 		// For a leave event, the user must have permission to send m.room.member events.
 		// This is typically covered by them being a member, but power levels might restrict it.
 		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+			(e) => e.type === 'm.room.power_levels',
 		)?._id;
 		if (!powerLevelsEventId) {
 			logger.warn(
@@ -535,7 +535,7 @@ export class RoomService {
 		const canLeaveRoom = await this.eventService.checkUserPermission(
 			powerLevelsEventId,
 			senderId,
-			EventType.MEMBER,
+			'm.room.member',
 		);
 
 		if (!canLeaveRoom) {
@@ -584,11 +584,11 @@ export class RoomService {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
+			'm.room.power_levels',
 			{ roomId, senderId },
 		);
 		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+			(e) => e.type === 'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -657,11 +657,11 @@ export class RoomService {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
+			'm.room.power_levels',
 			{ roomId, senderId },
 		);
 		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+			(e) => e.type === 'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -983,7 +983,7 @@ export class RoomService {
 		this.validatePowerLevelForTombstone(powerLevelsEvent.event, sender);
 
 		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
+			'm.room.message',
 			{
 				roomId,
 				senderId: sender,
@@ -995,17 +995,12 @@ export class RoomService {
 
 		const authEventsMap: TombstoneAuthEvents = {
 			'm.room.create':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.CREATE,
-				)?._id || '',
+				authEvents.find((event) => event.type === 'm.room.create')?._id || '',
 			'm.room.power_levels':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.POWER_LEVELS,
-				)?._id || '',
+				authEvents.find((event) => event.type === 'm.room.power_levels')?._id ||
+				'',
 			'm.room.member':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.MEMBER,
-				)?._id || '',
+				authEvents.find((event) => event.type === 'm.room.member')?._id || '',
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
 

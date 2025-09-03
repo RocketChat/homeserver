@@ -20,8 +20,15 @@ export type EventBase = {
 
 	content?: Record<string, unknown>;
 	unsigned?: Record<string, any> | undefined;
+	hashes: {
+		sha256: string;
+	};
+	signatures: {
+		[key: string]: {
+			[key: string]: string;
+		};
+	};
 };
-
 export interface RedactedEvent extends EventBase {
 	redacts: string;
 	type: 'm.room.redaction';
