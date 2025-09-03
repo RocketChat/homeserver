@@ -40,7 +40,6 @@ export { EventAuthorizationService } from './services/event-authorization.servic
 export { EventStateService } from './services/event-state.service';
 export { MissingEventService } from './services/missing-event.service';
 export { ProfilesService } from './services/profiles.service';
-export { NotificationService } from './services/notification.service';
 export { EventFetcherService } from './services/event-fetcher.service';
 export type { FetchedEvents } from './services/event-fetcher.service';
 export { InviteService } from './services/invite.service';
