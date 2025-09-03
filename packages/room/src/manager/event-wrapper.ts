@@ -30,7 +30,6 @@ type Prettify<T> = {
 	[K in keyof T]: T[K];
 } & {};
 
-// TODO type is wrong, it is missing "state_key" from PduNoContentStateEventSchema
 export type PduWithHashesAndSignaturesOptional = Prettify<
 	MakeOptional<Pdu, 'hashes' | 'signatures'>
 >;
