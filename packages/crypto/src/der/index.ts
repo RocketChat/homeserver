@@ -13,10 +13,10 @@ function encodeLength(len: number): Uint8Array {
 	// long form
 	const bytes = [];
 
-	let l = len;
-	while (l > 0) {
-		bytes.unshift(l & /* only pick the on bits */ 0xff /* all ones */);
-		l >>= 8; // move the "window" to right - multi byte integer
+	let value = len;
+	while (value > 0) {
+		bytes.unshift(value & /* only pick the on bits */ 0xff /* all ones */);
+		value >>= 8; // move the "window" to right - multi byte integer
 	}
 
 	return Uint8Array.of(
