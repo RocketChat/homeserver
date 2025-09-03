@@ -138,7 +138,6 @@ export class EventRepository {
 			createdAt: new Date(),
 			nextEventId: '',
 			staged: true,
-			is_staged: true,
 			missing_dependencies: missingDependencies,
 		});
 
@@ -171,15 +170,13 @@ export class EventRepository {
 		const collection = await this.getCollection();
 		await collection.updateOne(
 			{ _id: eventId },
-			{ $unset: { staged: 1, is_staged: 1, missing_dependencies: 1 } },
+			{ $unset: { staged: 1, missing_dependencies: 1 } },
 		);
 	}
 
 	async findStagedEvents(): Promise<EventStore[]> {
 		const collection = await this.getCollection();
-		return collection
-			.find({ $or: [{ is_staged: true }, { staged: true }] })
-			.toArray();
+		return collection.find({ staged: true }).toArray();
 	}
 
 	async findOldestStaged(roomId: string): Promise<EventStore | null> {
@@ -362,7 +359,7 @@ export class EventRepository {
 	): Promise<FindCursor<EventStore>> {
 		const collection = await this.getCollection();
 		return collection.find({
-			$or: [{ is_staged: true }, { staged: true }],
+			staged: true,
 			missing_dependencies: dependencyId,
 		});
 	}

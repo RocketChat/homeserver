@@ -13,7 +13,6 @@ export interface EventStore {
 
 	// TODO: remove the duplication of fields
 	staged?: boolean;
-	is_staged?: boolean;
 
 	// TODO: check if this is needed or if we should create a new interface
 	missing_dependencies?: string[];
