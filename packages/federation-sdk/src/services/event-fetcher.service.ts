@@ -1,14 +1,14 @@
 import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
-import type { EventBaseWithOptionalId } from '@hs/core';
 import { inject, singleton } from 'tsyringe';
+import type { EventBase } from '@hs/core';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
 
 export interface FetchedEvents {
-	events: { eventId: string; event: EventBaseWithOptionalId }[];
+	events: { eventId: string; event: EventBase }[];
 	missingEventIds: string[];
 }
 
@@ -37,8 +37,7 @@ export class EventFetcherService {
 		}
 
 		// Try to get events from local database
-		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
-			[];
+		const localEvents: { eventId: string; event: EventBase }[] = [];
 
 		const dbEventsCursor = this.eventRepository.findByIds(eventIds);
 		for await (const event of dbEventsCursor) {
@@ -71,7 +70,7 @@ export class EventFetcherService {
 			);
 
 			const federationEventsWithIds = federationEvents.map((e) => ({
-				eventId: e.event_id ? String(e.event_id) : generateId(e),
+				eventId: generateId(e),
 				event: e,
 			}));
 
@@ -92,8 +91,8 @@ export class EventFetcherService {
 	public async fetchAuthEventsByTypes(
 		missingTypes: string[],
 		roomId: string,
-	): Promise<Record<string, EventBaseWithOptionalId[]>> {
-		const results: Record<string, EventBaseWithOptionalId[]> = {};
+	): Promise<Record<string, EventBase[]>> {
+		const results: Record<string, EventBase[]> = {};
 
 		try {
 			// Find auth events of the required types in the room
@@ -117,7 +116,7 @@ export class EventFetcherService {
 					}
 					return acc;
 				},
-				{} as Record<string, EventBaseWithOptionalId[]>,
+				{} as Record<string, EventBase[]>,
 			);
 		} catch (error: unknown) {
 			const errorMessage =

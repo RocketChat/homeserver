@@ -1,5 +1,5 @@
-import { createLogger } from '@hs/core';
-import type { EventBaseWithOptionalId } from '@hs/core';
+import { createLogger, generateId } from '@hs/core';
+import type { EventBase } from '@hs/core';
 import { singleton } from 'tsyringe';
 
 @singleton()
@@ -7,11 +7,11 @@ export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
 
 	async authorizeEvent(
-		event: EventBaseWithOptionalId,
-		authEvents: EventBaseWithOptionalId[],
+		event: EventBase,
+		authEvents: EventBase[],
 	): Promise<boolean> {
 		this.logger.debug(
-			`Authorizing event ${event.event_id || 'unknown'} of type ${event.type}`,
+			`Authorizing event ${generateId(event)} of type ${event.type}`,
 		);
 
 		// Simple implementation - would need proper auth rules based on Matrix spec
@@ -44,7 +44,7 @@ export class EventAuthorizationService {
 		}
 	}
 
-	private authorizeCreateEvent(event: EventBaseWithOptionalId): boolean {
+	private authorizeCreateEvent(event: EventBase): boolean {
 		// Create events must not have prev_events
 		if (event.prev_events && event.prev_events.length > 0) {
 			this.logger.warn('Create event has prev_events');
@@ -61,8 +61,8 @@ export class EventAuthorizationService {
 	}
 
 	private checkSenderAllowed(
-		event: EventBaseWithOptionalId,
-		authEvents: EventBaseWithOptionalId[],
+		event: EventBase,
+		authEvents: EventBase[],
 	): boolean {
 		// Find power levels
 		const powerLevelsEvent = authEvents.find(
@@ -85,24 +85,24 @@ export class EventAuthorizationService {
 	}
 
 	private authorizeMemberEvent(
-		_event: EventBaseWithOptionalId,
-		_authEvents: EventBaseWithOptionalId[],
+		_event: EventBase,
+		_authEvents: EventBase[],
 	): boolean {
 		// Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
 	private authorizePowerLevelsEvent(
-		_event: EventBaseWithOptionalId,
-		_authEvents: EventBaseWithOptionalId[],
+		_event: EventBase,
+		_authEvents: EventBase[],
 	): boolean {
 		// Check sender has permission to change power levels
 		return true;
 	}
 
 	private authorizeJoinRulesEvent(
-		_event: EventBaseWithOptionalId,
-		_authEvents: EventBaseWithOptionalId[],
+		_event: EventBase,
+		_authEvents: EventBase[],
 	): boolean {
 		// Check sender has permission to change join rules
 		return true;

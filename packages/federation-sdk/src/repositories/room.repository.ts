@@ -1,5 +1,4 @@
-import type { EventBaseWithOptionalId } from '@hs/core';
-import type { EventStore } from '@hs/core';
+import type { EventBase } from '@hs/core';
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -22,7 +21,7 @@ export class RoomRepository {
 		@inject('RoomCollection') private readonly collection: Collection<Room>,
 	) {}
 
-	async upsert(roomId: string, state: EventBaseWithOptionalId[]) {
+	async upsert(roomId: string, state: EventBase[]) {
 		await this.collection.findOneAndUpdate(
 			{ _id: roomId },
 			{

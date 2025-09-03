@@ -1,13 +1,12 @@
 import 'reflect-metadata';
-import type { EventBaseWithOptionalId } from '@hs/core';
+import type { EventBase } from '@hs/core';
 import { singleton } from 'tsyringe';
 
-// TODO: check why we have eventId and EventBaseWithOptionalId
 export interface StagingAreaEventType {
 	eventId: string;
 	roomId: string;
 	origin: string;
-	event: EventBaseWithOptionalId;
+	event: EventBase;
 	metadata?: Record<string, unknown>;
 }
 

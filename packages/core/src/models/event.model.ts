@@ -2,14 +2,10 @@ import type { EventBase as CoreEventBase } from '../events/eventBase';
 
 // TODO: use room package
 
-export interface EventBaseWithOptionalId extends CoreEventBase {
-	event_id?: string;
-}
-
 // TODO: Merge with StagedEvent from event.service.ts
 export interface EventStore {
 	_id: string;
-	event: EventBaseWithOptionalId;
+	event: CoreEventBase & { event_id?: string };
 
 	staged?: boolean;
 
@@ -25,11 +21,11 @@ export interface EventStore {
 	nextEventId: string;
 }
 
-export interface StateEvent extends EventBaseWithOptionalId {
+export interface StateEvent extends CoreEventBase {
 	state_key: string;
 }
 
-export interface MessageEvent extends EventBaseWithOptionalId {
+export interface MessageEvent extends CoreEventBase {
 	content: {
 		msgtype: string;
 		body: string;
@@ -38,6 +34,6 @@ export interface MessageEvent extends EventBaseWithOptionalId {
 }
 
 export interface FetchedEvents {
-	events: { eventId: string; event: EventBaseWithOptionalId }[];
+	events: { eventId: string; event: CoreEventBase }[];
 	missingEventIds: string[];
 }

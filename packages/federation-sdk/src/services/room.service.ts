@@ -1,6 +1,5 @@
 import {
 	EventBase,
-	EventBaseWithOptionalId,
 	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
 	RoomTombstoneEvent,
@@ -18,10 +17,6 @@ import { FederationService } from './federation.service';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
-import type {
-	EventStore,
-	EventBaseWithOptionalId as ModelEventBase,
-} from '@hs/core';
 
 import { logger } from '@hs/core';
 import {

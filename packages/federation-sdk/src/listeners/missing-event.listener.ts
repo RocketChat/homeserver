@@ -124,20 +124,17 @@ export class MissingEventListener {
 				return;
 			}
 
-			for (const eventData of fetchedEvents.events) {
-				const event = eventData.event;
-				const id = event.event_id || eventData.eventId;
-
+			for (const { event, eventId } of fetchedEvents.events) {
 				const dependencies = this.extractDependencies(event);
 				const { missing } =
 					await this.eventService.checkIfEventsExists(dependencies);
 
 				this.logger.debug(
-					`Storing event ${id} as staged${missing.length ? ` with ${missing.length} missing dependencies` : ' (ready to process)'}`,
+					`Storing event ${eventId} as staged${missing.length ? ` with ${missing.length} missing dependencies` : ' (ready to process)'}`,
 				);
 
 				await this.eventService.storeEventAsStaged({
-					_id: id,
+					_id: eventId,
 					event: event,
 					origin: event.origin || origin,
 					missing_dependencies: missing,
@@ -153,7 +150,7 @@ export class MissingEventListener {
 					}
 				}
 
-				await this.updateStagedEventDependencies(id);
+				await this.updateStagedEventDependencies(eventId);
 				return this.processStagedEvents();
 			}
 		} catch (err: unknown) {
