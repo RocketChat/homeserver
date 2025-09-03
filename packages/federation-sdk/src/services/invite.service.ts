@@ -1,4 +1,4 @@
-import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
+import { EventBase, HttpException, HttpStatus } from '@hs/core';
 import { ConfigService, FederationService } from '@hs/federation-sdk';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
 import { inject, singleton } from 'tsyringe';
@@ -7,11 +7,7 @@ import { EventService } from './event.service';
 import { StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
-	event: EventBaseWithOptionalId & {
-		origin: string;
-		room_id: string;
-		state_key: string;
-	};
+	event: EventBase;
 	invite_room_state: unknown;
 	room_version: string;
 };
@@ -120,7 +116,7 @@ export class InviteService {
 	}
 
 	async processInvite<
-		T extends Omit<EventBaseWithOptionalId, 'origin'> & {
+		T extends Omit<EventBase, 'origin'> & {
 			origin?: string | undefined;
 			room_id: string;
 			state_key: string;

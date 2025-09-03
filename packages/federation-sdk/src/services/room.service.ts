@@ -1,6 +1,5 @@
 import {
 	EventBase,
-	EventBaseWithOptionalId,
 	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
 	RoomTombstoneEvent,
@@ -18,10 +17,6 @@ import { FederationService } from './federation.service';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
-import type {
-	EventStore,
-	EventBaseWithOptionalId as ModelEventBase,
-} from '@hs/core';
 
 import { logger } from '@hs/core';
 import {
@@ -461,9 +456,7 @@ export class RoomService {
 			auth_events: Object.values(authEventsMap).filter(
 				(id) => typeof id === 'string',
 			),
-			prev_events: lastEventStore.event.event_id
-				? [lastEventStore.event.event_id]
-				: [],
+			prev_events: lastEventStore._id ? [lastEventStore._id] : [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
 				...currentPowerLevelsEvent.content,

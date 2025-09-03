@@ -8,7 +8,7 @@ import { isPresenceEDU, isTypingEDU } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
-import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
+import type { EventBase, EventStore } from '@hs/core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
@@ -31,7 +31,7 @@ import type { StateService } from './state.service';
 
 type ValidationResult = {
 	eventId: string;
-	event: EventBaseWithOptionalId;
+	event: EventBase;
 	valid: boolean;
 	error?: {
 		errcode: string;
@@ -42,7 +42,7 @@ type ValidationResult = {
 // TODO: Merge with EventStore from event.model.ts
 export interface StagedEvent {
 	_id: string;
-	event: EventBaseWithOptionalId;
+	event: EventBase;
 	origin: string;
 	missing_dependencies: string[];
 	room_version?: string;
@@ -87,9 +87,7 @@ export class EventService {
 		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
-	async getEventById<T extends EventBaseWithOptionalId>(
-		eventId: string,
-	): Promise<T | null> {
+	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
 		const event = await this.eventRepository.findById(eventId);
 		return (event?.event as T) ?? null;
 	}
@@ -214,7 +212,7 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(pdus: EventBaseWithOptionalId[]): Promise<void> {
+	async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
 		console.log('processIncomingPDUs', pdus);
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
@@ -351,7 +349,7 @@ export class EventService {
 
 	private async validateEventFormat(
 		eventId: string,
-		event: EventBaseWithOptionalId,
+		event: EventBase,
 	): Promise<ValidationResult> {
 		try {
 			const roomVersion = await this.getRoomVersion(event);
@@ -407,7 +405,7 @@ export class EventService {
 
 	private async validateEventTypeSpecific(
 		eventId: string,
-		event: EventBaseWithOptionalId,
+		event: EventBase,
 	): Promise<ValidationResult> {
 		try {
 			if (event.type === 'm.room.create') {
@@ -467,7 +465,7 @@ export class EventService {
 
 	private async validateSignaturesAndHashes(
 		eventId: string,
-		event: EventBaseWithOptionalId,
+		event: EventBase,
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
@@ -572,7 +570,7 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: EventBaseWithOptionalId) {
+	private async getRoomVersion(event: EventBase) {
 		return (
 			this.stateService.getRoomVersion(event.room_id) ||
 			PersistentEventFactory.defaultRoomVersion
@@ -596,7 +594,7 @@ export class EventService {
 	}
 
 	async insertEvent(
-		event: EventBaseWithOptionalId,
+		event: EventBase,
 		eventId?: string,
 		args?: object,
 	): Promise<string> {
@@ -608,9 +606,7 @@ export class EventService {
 		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
 
-	async getCreateEventForRoom(
-		roomId: string,
-	): Promise<EventBaseWithOptionalId | null> {
+	async getCreateEventForRoom(roomId: string): Promise<EventBase | null> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
 			roomId,
 			'm.room.create',
@@ -623,7 +619,7 @@ export class EventService {
 		earliestEvents: string[],
 		latestEvents: string[],
 		limit: number,
-	): Promise<{ events: { _id: string; event: EventBaseWithOptionalId }[] }> {
+	): Promise<{ events: { _id: string; event: EventBase }[] }> {
 		// TODO: This would benefit from adding projections to the query
 		const eventsCursor = this.eventRepository.findByRoomIdExcludingEventIds(
 			roomId,
@@ -642,7 +638,7 @@ export class EventService {
 
 	async getEventsByIds(
 		eventIds: string[],
-	): Promise<{ _id: string; event: EventBaseWithOptionalId }[]> {
+	): Promise<{ _id: string; event: EventBase }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
@@ -745,7 +741,7 @@ export class EventService {
 		// Store the redaction event in the redacted_because field as specified in the Matrix spec
 		redactedEventContent.unsigned.redacted_because = redactionEvent;
 
-		const finalRedactedEvent: EventBaseWithOptionalId = {
+		const finalRedactedEvent: EventBase = {
 			type: eventToRedact.event.type,
 			room_id: eventToRedact.event.room_id,
 			sender: eventToRedact.event.sender,

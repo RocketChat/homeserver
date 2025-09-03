@@ -1,5 +1,5 @@
 import { generateId } from '@hs/core';
-import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
+import type { EventBase, EventStore } from '@hs/core';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { MongoError } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
@@ -113,10 +113,10 @@ export class EventRepository {
 	}
 
 	async createStaged(
-		event: EventBaseWithOptionalId,
+		event: EventBase,
 		missingDependencies?: EventStore['missing_dependencies'],
 	): Promise<string> {
-		const id = event.event_id || generateId(event);
+		const id = generateId(event);
 
 		await this.collection.insertOne({
 			_id: id,
@@ -138,8 +138,8 @@ export class EventRepository {
 		);
 	}
 
-	async upsert(event: EventBaseWithOptionalId): Promise<string> {
-		const id = event.event_id || generateId(event);
+	async upsert(event: EventBase): Promise<string> {
+		const id = generateId(event);
 
 		await this.collection.updateOne(
 			{ _id: id },
