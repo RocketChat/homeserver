@@ -52,7 +52,11 @@ export const roomPowerLevelsEvent = ({
 }: {
 	roomId: string;
 	members: [sender: string, ...member: string[]];
-	auth_events: string[];
+	auth_events: {
+		'm.room.create': string;
+		'm.room.power_levels': string;
+		'm.room.member': string;
+	};
 	prev_events: string[];
 	depth: number;
 	content?: RoomPowerLevelsEvent['content'];
@@ -62,7 +66,11 @@ export const roomPowerLevelsEvent = ({
 	return createEventBase('m.room.power_levels', {
 		roomId,
 		sender,
-		auth_events,
+		auth_events: [
+			auth_events['m.room.create'],
+			auth_events['m.room.power_levels'],
+			auth_events['m.room.member'],
+		],
 		prev_events,
 		depth,
 		ts,
