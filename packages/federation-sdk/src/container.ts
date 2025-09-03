@@ -25,7 +25,6 @@ import { InviteService } from './services/invite.service';
 import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { MissingEventService } from './services/missing-event.service';
-import { NotificationService } from './services/notification.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
@@ -89,7 +88,6 @@ export function createFederationContainer(
 	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
-	container.registerSingleton(NotificationService);
 	container.registerSingleton(ProfilesService);
 	container.registerSingleton('RoomService', RoomService);
 	container.registerSingleton(RoomService);
