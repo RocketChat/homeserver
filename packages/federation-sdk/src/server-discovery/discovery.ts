@@ -76,13 +76,13 @@ export async function resolveHostname(
 // TODO remove logger from here. need to convert this into a service (?)
 export async function getHomeserverFinalAddress(
 	addr: AddressString,
-	logger: Logger,
+	logger?: Logger,
 ): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
 	const url = new _URL(addr);
 
 	const { hostname, port } = url;
 
-	logger.debug({ msg: 'resolving homeserver address', addr, hostname, port });
+	logger?.debug({ msg: 'resolving homeserver address', addr, hostname, port });
 
 	/*
 	 * SPEC:
@@ -95,7 +95,7 @@ export async function getHomeserverFinalAddress(
 		// 'Target server must present a valid certificate for the IP address', i.e. always https
 		const finalAddress = `https://${finalIp}:${finalPort}` as const;
 
-		logger.debug({ msg: 'resolved to ip address', finalAddress });
+		logger?.debug({ msg: 'resolved to ip address', finalAddress });
 
 		const hostHeader = {
 			Host: `${hostname}${
@@ -117,7 +117,7 @@ export async function getHomeserverFinalAddress(
 		const hostHeaders = { Host: `${hostname}:${port}` as const }; // original serverName and port
 
 		const address = await resolveHostname(hostname, true); // intentional auto-throw
-		logger.debug({ msg: 'resolved hostname', address });
+		logger?.debug({ msg: 'resolved hostname', address });
 
 		return [`https://${address}:${port}` as const, hostHeaders];
 	}
@@ -129,7 +129,7 @@ export async function getHomeserverFinalAddress(
 
 	try {
 		const [addr, hostHeaders] = await fromWellKnownDelegation(hostname);
-		logger.debug({
+		logger?.debug({
 			msg: 'result from well-known',
 			addr,
 			hostHeaders,
@@ -139,7 +139,7 @@ export async function getHomeserverFinalAddress(
 		return [addr, hostHeaders];
 	} catch (e: unknown) {
 		// didn't find a suitable result from well-known
-		logger.debug({
+		logger?.debug({
 			msg: 'failed to resolve from well-known',
 			err: e,
 		});
@@ -147,11 +147,11 @@ export async function getHomeserverFinalAddress(
 		try {
 			const [addr, hostHeaders] =
 				await fromSRVResolutionWithBasicFallback(hostname);
-			logger.debug({ msg: 'result from SRV resolution', addr, hostHeaders });
+			logger?.debug({ msg: 'result from SRV resolution', addr, hostHeaders });
 
 			return [`https://${addr}` as const, hostHeaders];
 		} catch (e2: unknown) {
-			logger.debug({
+			logger?.debug({
 				msg: 'failed to resolve from SRV',
 				err: e2,
 			});
