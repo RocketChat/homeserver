@@ -44,7 +44,7 @@ type AllowedKeysPowerLevels = Extract<
 >;
 
 type MergeMultipleKeys<T, U> = T | U;
-//  | "prev_state" | "membership" | "join_rule" | "users" | "users_default" | "events" | "events_default" | "state_default" | "ban" | "kick" | "redact" | "aliases" | "history_visibility" | "redacts";
+
 export function pruneEventDict<T extends EventBase>(
 	eventDict: T,
 	roomVersion: RoomVersion = {

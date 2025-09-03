@@ -707,7 +707,7 @@ export class EventService {
 		for await (const storeEvent of authEventsCursor) {
 			const { type, state_key } = storeEvent.event;
 
-			// Check if the type is a valid PduType
+			// TODO: check if those are the only valid auth events or the only current implemented
 			if (
 				type &&
 				[
