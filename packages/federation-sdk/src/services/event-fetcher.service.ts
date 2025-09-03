@@ -2,7 +2,7 @@ import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { singleton } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
@@ -17,8 +17,11 @@ export class EventFetcherService {
 	private readonly logger = createLogger('EventFetcherService');
 
 	constructor(
+		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
+		@inject('ConfigService')
 		private readonly configService: ConfigService,
 	) {}
 

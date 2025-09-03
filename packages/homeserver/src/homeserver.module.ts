@@ -61,7 +61,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 		emitter: options?.emitter,
 	};
 
-	const container = createFederationContainer(containerOptions, config);
+	const container = await createFederationContainer(containerOptions, config);
 
 	const app = new Elysia();
 

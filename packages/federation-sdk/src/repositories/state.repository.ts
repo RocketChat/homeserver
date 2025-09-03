@@ -6,7 +6,7 @@ import {
 	ObjectId,
 	type WithId,
 } from 'mongodb';
-import { singleton } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 
 import type { StateMapKey } from '@hs/room';
 import type { PersistentEventBase } from '@hs/room';
@@ -25,7 +25,10 @@ type StateStore = {
 
 @singleton()
 export class StateRepository {
-	constructor(private readonly collection: Collection<WithId<StateStore>>) {}
+	constructor(
+		@inject('StateCollection')
+		private readonly collection: Collection<WithId<StateStore>>,
+	) {}
 	async getStateById(stateId: string): Promise<WithId<StateStore> | null> {
 		return this.collection.findOne({ _id: new ObjectId(stateId) });
 	}

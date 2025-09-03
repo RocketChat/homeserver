@@ -2,11 +2,14 @@ import { generateId } from '@hs/core';
 import type { EventBase, EventBaseWithOptionalId, EventStore } from '@hs/core';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { MongoError } from 'mongodb';
-import { singleton } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 
 @singleton()
 export class EventRepository {
-	constructor(private readonly collection: Collection<EventStore>) {}
+	constructor(
+		@inject('EventCollection')
+		private readonly collection: Collection<EventStore>,
+	) {}
 
 	async findById(eventId: string): Promise<EventStore | null> {
 		return this.collection.findOne({ _id: eventId });

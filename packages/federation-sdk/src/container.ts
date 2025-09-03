@@ -87,12 +87,10 @@ export interface FederationContainerOptions {
 	lockManagerOptions?: LockConfig;
 }
 
-export function createFederationContainer(
+export async function createFederationContainer(
 	options: FederationContainerOptions,
 	configInstance: ConfigService,
 ) {
-	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
-
 	// Register ConfigService with both string and class tokens
 	container.register<ConfigService>('ConfigService', {
 		useValue: configInstance,
@@ -104,6 +102,33 @@ export function createFederationContainer(
 		'DatabaseConnectionService',
 		DatabaseConnectionService,
 	);
+
+	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
+
+	const dbConnection = container.resolve<DatabaseConnectionService>(
+		'DatabaseConnectionService',
+	);
+	const db = await dbConnection.getDb();
+
+	container.register<Collection<EventStore>>('EventCollection', {
+		useValue: db.collection<EventStore>('events'),
+	});
+	container.register<Collection<Key>>('KeyCollection', {
+		useValue: db.collection<Key>('keys'),
+	});
+
+	container.register<Collection<Room>>('RoomCollection', {
+		useValue: db.collection<Room>('rooms'),
+	});
+
+	container.register<Collection<WithId<StateStore>>>('StateCollection', {
+		useValue: db.collection<WithId<StateStore>>('states'),
+	});
+
+	container.register<Collection<Server>>('ServerCollection', {
+		useValue: db.collection<Server>('servers'),
+	});
+
 	container.registerSingleton(
 		'FederationRequestService',
 		FederationRequestService,
@@ -114,117 +139,12 @@ export function createFederationContainer(
 	);
 	container.registerSingleton('FederationService', FederationService);
 
-	// Register MongoDB collections
-	container.register('eventsCollection', {
-		useFactory: async () => {
-			const dbConnection = container.resolve<DatabaseConnectionService>(
-				'DatabaseConnectionService',
-			);
-			const db = await dbConnection.getDb();
-			return db.collection<EventStore>('events');
-		},
-	});
-
-	container.register('finalStateEventsCollection', {
-		useFactory: async () => {
-			const dbConnection = container.resolve<DatabaseConnectionService>(
-				'DatabaseConnectionService',
-			);
-			const db = await dbConnection.getDb();
-			return db.collection<EventBaseWithOptionalId>('final_state_events');
-		},
-	});
-
-	container.register('statesCollection', {
-		useFactory: async () => {
-			const dbConnection = container.resolve<DatabaseConnectionService>(
-				'DatabaseConnectionService',
-			);
-			const db = await dbConnection.getDb();
-			return db.collection<WithId<StateStore>>('states');
-		},
-	});
-
-	container.register('keysCollection', {
-		useFactory: async () => {
-			const dbConnection = container.resolve<DatabaseConnectionService>(
-				'DatabaseConnectionService',
-			);
-			const db = await dbConnection.getDb();
-			return db.collection<Key>('keys');
-		},
-	});
-
-	container.register('roomsCollection', {
-		useFactory: async () => {
-			const dbConnection = container.resolve<DatabaseConnectionService>(
-				'DatabaseConnectionService',
-			);
-			const db = await dbConnection.getDb();
-			return db.collection<Room>('rooms');
-		},
-	});
-
-	container.register('serversCollection', {
-		useFactory: async () => {
-			const dbConnection = container.resolve<DatabaseConnectionService>(
-				'DatabaseConnectionService',
-			);
-			const db = await dbConnection.getDb();
-			return db.collection<Server>('servers');
-		},
-	});
-
-	// Register repositories with their collections
-	container.register('EventRepository', {
-		useFactory: async () => {
-			const collection = (await container.resolve(
-				'eventsCollection',
-			)) as Collection<EventStore>;
-			return new EventRepository(collection);
-		},
-	});
-
-	container.register('KeyRepository', {
-		useFactory: async () => {
-			const collection = (await container.resolve(
-				'keysCollection',
-			)) as Collection<Key>;
-			return new KeyRepository(collection);
-		},
-	});
-
-	container.register('RoomRepository', {
-		useFactory: async () => {
-			const collection = (await container.resolve(
-				'roomsCollection',
-			)) as Collection<Room>;
-			return new RoomRepository(collection);
-		},
-	});
-
-	container.register('ServerRepository', {
-		useFactory: async () => {
-			const collection = (await container.resolve(
-				'serversCollection',
-			)) as Collection<Server>;
-			return new ServerRepository(collection);
-		},
-	});
-
-	container.register('StateRepository', {
-		useFactory: async () => {
-			const collection = (await container.resolve(
-				'statesCollection',
-			)) as Collection<WithId<StateStore>>;
-			return new StateRepository(collection);
-		},
-	});
-
 	// Register repositories
 	container.registerSingleton('EventRepository', EventRepository);
+
 	container.registerSingleton('KeyRepository', KeyRepository);
 	container.registerSingleton('RoomRepository', RoomRepository);
+	container.registerSingleton('StateRepository', StateRepository);
 	container.registerSingleton('ServerRepository', ServerRepository);
 	container.registerSingleton('StateRepository', StateRepository);
 
@@ -281,6 +201,7 @@ export function createFederationContainer(
 		x.missingEventsQueue;
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
+	console.log('Container initialized');
 
 	return container;
 }

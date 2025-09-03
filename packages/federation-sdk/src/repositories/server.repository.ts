@@ -1,5 +1,5 @@
 import { Collection } from 'mongodb';
-import { singleton } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 
 type Server = {
 	name: string;
@@ -13,7 +13,9 @@ type Server = {
 
 @singleton()
 export class ServerRepository {
-	constructor(private readonly collection: Collection<Server>) {}
+	constructor(
+		@inject('ServerCollection') private readonly collection: Collection<Server>,
+	) {}
 
 	async getValidPublicKeyFromLocal(
 		origin: string,
