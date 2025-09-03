@@ -106,10 +106,10 @@ test('roomPowerLevelsEvent', async () => {
 
 	const event = roomPowerLevelsEvent({
 		roomId: '!uTqsSSWabZzthsSCNf:hs1',
-		auth_events: [
-			'$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4',
-			'$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8',
-		],
+		auth_events: {
+			'm.room.create': '$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4',
+			'm.room.power_levels': '$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8',
+		},
 		depth: 3,
 		prev_events: ['$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8'],
 		members: ['@admin:hs1', '@asd6:rc1'],
@@ -169,7 +169,10 @@ test('roomPowerLevelsEvent with custom content', async () => {
 	const event = roomPowerLevelsEvent({
 		roomId,
 		members: [senderId, targetUserId],
-		auth_events: ['$auth1:hs1', '$auth2:hs1'],
+		auth_events: {
+			'm.room.create': '$auth1:hs1',
+			'm.room.power_levels': '$auth2:hs1',
+		},
 		prev_events: ['$prev1:hs1'],
 		depth: 5,
 		content: customContent,

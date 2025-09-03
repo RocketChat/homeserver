@@ -55,7 +55,7 @@ export const roomPowerLevelsEvent = ({
 	auth_events: {
 		'm.room.create': string;
 		'm.room.power_levels': string;
-		'm.room.member': string;
+		'm.room.member': string; // TODO: Based on the tests, this is optional, based on the code, this is required check this
 	};
 	prev_events: string[];
 	depth: number;
@@ -70,7 +70,7 @@ export const roomPowerLevelsEvent = ({
 			auth_events['m.room.create'],
 			auth_events['m.room.power_levels'],
 			auth_events['m.room.member'],
-		],
+		].filter(Boolean) as string[],
 		prev_events,
 		depth,
 		ts,
