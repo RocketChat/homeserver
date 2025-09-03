@@ -127,7 +127,7 @@ export class EventService {
 			);
 			if (existingEvent) {
 				// If it already exists as a regular event (not staged), nothing to do
-				if (!existingEvent.is_staged) {
+				if (!existingEvent.staged) {
 					this.logger.debug(
 						`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`,
 					);
