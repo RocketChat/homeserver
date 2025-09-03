@@ -383,7 +383,8 @@ export class RoomService {
 		);
 		const currentPowerLevelsEvent =
 			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				authEventIds.find((e) => e.type === 'm.room.power_levels')?._id || '',
+				authEventIds.find((e) => e.event.type === 'm.room.power_levels')?._id ||
+					'',
 			);
 
 		if (!currentPowerLevelsEvent) {
@@ -402,13 +403,13 @@ export class RoomService {
 		);
 
 		const createAuthResult = authEventIds.find(
-			(e) => e.type === 'm.room.create',
+			(e) => e.event.type === 'm.room.create',
 		);
 		const powerLevelsAuthResult = authEventIds.find(
-			(e) => e.type === 'm.room.power_levels',
+			(e) => e.event.type === 'm.room.power_levels',
 		);
 		const memberAuthResult = authEventIds.find(
-			(e) => e.type === 'm.room.member' && e.state_key === senderId,
+			(e) => e.event.type === 'm.room.member' && e.event.state_key === senderId,
 		);
 
 		const authEventsMap = {
@@ -520,7 +521,7 @@ export class RoomService {
 		// For a leave event, the user must have permission to send m.room.member events.
 		// This is typically covered by them being a member, but power levels might restrict it.
 		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === 'm.room.power_levels',
+			(e) => e.event.type === 'm.room.power_levels',
 		)?._id;
 		if (!powerLevelsEventId) {
 			logger.warn(
@@ -588,7 +589,7 @@ export class RoomService {
 			{ roomId, senderId },
 		);
 		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === 'm.room.power_levels',
+			(e) => e.event.type === 'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -661,7 +662,7 @@ export class RoomService {
 			{ roomId, senderId },
 		);
 		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === 'm.room.power_levels',
+			(e) => e.event.type === 'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -995,12 +996,14 @@ export class RoomService {
 
 		const authEventsMap: TombstoneAuthEvents = {
 			'm.room.create':
-				authEvents.find((event) => event.type === 'm.room.create')?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === 'm.room.power_levels')?._id ||
+				authEvents.find((event) => event.event.type === 'm.room.create')?._id ||
 				'',
+			'm.room.power_levels':
+				authEvents.find((event) => event.event.type === 'm.room.power_levels')
+					?._id || '',
 			'm.room.member':
-				authEvents.find((event) => event.type === 'm.room.member')?._id || '',
+				authEvents.find((event) => event.event.type === 'm.room.member')?._id ||
+				'',
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
 

@@ -51,12 +51,6 @@ export interface StagedEvent {
 	invite_room_state?: Record<string, unknown>;
 }
 
-interface AuthEventResult {
-	_id: string;
-	type: PduType;
-	state_key?: string;
-}
-
 export interface AuthEventParams {
 	roomId: string;
 	senderId: string;
@@ -696,16 +690,16 @@ export class EventService {
 	async getAuthEventIds(
 		eventType: PduType,
 		params: AuthEventParams,
-	): Promise<AuthEventResult[]> {
+	): Promise<EventStore[]> {
 		const authEventsCursor = this.eventRepository.findAuthEvents(
 			eventType,
 			params.roomId,
 			params.senderId,
 		);
-		const authEvents: AuthEventResult[] = [];
+		const authEvents: EventStore[] = [];
 
 		for await (const storeEvent of authEventsCursor) {
-			const { type, state_key } = storeEvent.event;
+			const { type } = storeEvent.event;
 
 			// TODO: check if those are the only valid auth events or the only current implemented
 			if (
@@ -720,13 +714,7 @@ export class EventService {
 					'm.room.power_levels',
 				].includes(type)
 			) {
-				authEvents.push({
-					_id: storeEvent._id,
-					type: type as PduType,
-					...(state_key && {
-						state_key,
-					}),
-				});
+				authEvents.push(storeEvent);
 			} else {
 				this.logger.warn(
 					`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,

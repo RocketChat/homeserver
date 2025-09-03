@@ -207,7 +207,7 @@ export class StagingAreaService {
 
 			const isAuthorized = await this.eventAuthService.authorizeEvent(
 				event.event,
-				authEvents as unknown as EventBase[],
+				authEvents.map((e) => e.event),
 			);
 
 			if (isAuthorized) {
