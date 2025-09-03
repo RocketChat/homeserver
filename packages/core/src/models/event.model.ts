@@ -5,7 +5,7 @@ import type { EventBase as CoreEventBase } from '../events/eventBase';
 // TODO: Merge with StagedEvent from event.service.ts
 export interface EventStore {
 	_id: string;
-	event: CoreEventBase & { event_id?: string };
+	event: CoreEventBase;
 
 	staged?: boolean;
 

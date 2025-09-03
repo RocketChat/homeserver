@@ -456,9 +456,7 @@ export class RoomService {
 			auth_events: Object.values(authEventsMap).filter(
 				(id) => typeof id === 'string',
 			),
-			prev_events: lastEventStore.event.event_id
-				? [lastEventStore.event.event_id]
-				: [],
+			prev_events: lastEventStore._id ? [lastEventStore._id] : [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
 				...currentPowerLevelsEvent.content,

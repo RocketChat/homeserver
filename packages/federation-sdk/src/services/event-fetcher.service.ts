@@ -1,8 +1,8 @@
 import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
 import type { EventBase } from '@hs/core';
+import { inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
