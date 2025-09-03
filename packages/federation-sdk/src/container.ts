@@ -122,8 +122,8 @@ export async function createFederationContainer(
 		eventEmitterService.initializeStandalone();
 	}
 
-	container.resolve(MissingEventListener);
-	container.resolve(StagingAreaListener);
+	// container.resolve(MissingEventListener);
+	// container.resolve(StagingAreaListener);
 
 	return container;
 }
