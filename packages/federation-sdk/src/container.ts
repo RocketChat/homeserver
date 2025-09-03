@@ -1,19 +1,23 @@
 import 'reflect-metadata';
 
+import type { EventStore } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
+import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 
+import type { HomeserverEventSignatures } from './index';
 import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { StateRepository } from './repositories/state.repository';
+import { Key, KeyRepository } from './repositories/key.repository';
+import { Room, RoomRepository } from './repositories/room.repository';
+import { Server, ServerRepository } from './repositories/server.repository';
+import { StateRepository, StateStore } from './repositories/state.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
+import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventFetcherService } from './services/event-fetcher.service';
@@ -34,8 +38,6 @@ import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
-
-import { EduService, type HomeserverEventSignatures } from './index';
 import type { LockConfig } from './utils/lock.decorator';
 
 export interface FederationContainerOptions {
@@ -43,12 +45,10 @@ export interface FederationContainerOptions {
 	lockManagerOptions?: LockConfig;
 }
 
-export function createFederationContainer(
+export async function createFederationContainer(
 	options: FederationContainerOptions,
 	configInstance: ConfigService,
 ) {
-	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
-
 	// Register ConfigService with both string and class tokens
 	container.register<ConfigService>('ConfigService', {
 		useValue: configInstance,
@@ -60,6 +60,33 @@ export function createFederationContainer(
 		'DatabaseConnectionService',
 		DatabaseConnectionService,
 	);
+
+	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
+
+	const dbConnection = container.resolve<DatabaseConnectionService>(
+		'DatabaseConnectionService',
+	);
+	const db = await dbConnection.getDb();
+
+	container.register<Collection<EventStore>>('EventCollection', {
+		useValue: db.collection<EventStore>('events'),
+	});
+	container.register<Collection<Key>>('KeyCollection', {
+		useValue: db.collection<Key>('keys'),
+	});
+
+	container.register<Collection<Room>>('RoomCollection', {
+		useValue: db.collection<Room>('rooms'),
+	});
+
+	container.register<Collection<WithId<StateStore>>>('StateCollection', {
+		useValue: db.collection<WithId<StateStore>>('states'),
+	});
+
+	container.register<Collection<Server>>('ServerCollection', {
+		useValue: db.collection<Server>('servers'),
+	});
+
 	container.registerSingleton(
 		'FederationRequestService',
 		FederationRequestService,
@@ -72,8 +99,10 @@ export function createFederationContainer(
 
 	// Register repositories
 	container.registerSingleton('EventRepository', EventRepository);
+
 	container.registerSingleton('KeyRepository', KeyRepository);
 	container.registerSingleton('RoomRepository', RoomRepository);
+	container.registerSingleton('StateRepository', StateRepository);
 	container.registerSingleton('ServerRepository', ServerRepository);
 	container.registerSingleton('StateRepository', StateRepository);
 

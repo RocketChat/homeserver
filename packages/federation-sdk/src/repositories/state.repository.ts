@@ -6,13 +6,12 @@ import {
 	ObjectId,
 	type WithId,
 } from 'mongodb';
-import { singleton } from 'tsyringe';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { inject, singleton } from 'tsyringe';
 
 import type { StateMapKey } from '@hs/room';
 import type { PersistentEventBase } from '@hs/room';
 
-type StateStore = {
+export type StateStore = {
 	delta: {
 		identifier: StateMapKey;
 		eventId: string;
@@ -26,56 +25,36 @@ type StateStore = {
 
 @singleton()
 export class StateRepository {
-	private collection: Collection<WithId<StateStore>> | null = null;
-
-	constructor(private readonly dbConnection: DatabaseConnectionService) {
-		this.getCollection();
-	}
-
-	async find(
-		query: Filter<StateStore>,
-	): Promise<FindCursor<WithId<StateStore>>> {
-		const collection = await this.getCollection();
-		return collection.find(query);
-	}
-
-	private async getCollection(): Promise<Collection<WithId<StateStore>>> {
-		const db = await this.dbConnection.getDb();
-		this.collection = db.collection<WithId<StateStore>>('states');
-		return this.collection!;
-	}
-
+	constructor(
+		@inject('StateCollection')
+		private readonly collection: Collection<WithId<StateStore>>,
+	) {}
 	async getStateById(stateId: string): Promise<WithId<StateStore> | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({ _id: new ObjectId(stateId) });
+		return this.collection.findOne({ _id: new ObjectId(stateId) });
 	}
 
 	async getLatestStateMapping(
 		roomId: string,
 	): Promise<WithId<StateStore> | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({ roomId }, { sort: { createdAt: 1 } });
+		return this.collection.findOne({ roomId }, { sort: { createdAt: 1 } });
 	}
 
 	async getLastStateMappingByRoomId(
 		roomId: string,
 	): Promise<WithId<StateStore> | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({ roomId }, { sort: { createdAt: -1 } });
+		return this.collection.findOne({ roomId }, { sort: { createdAt: -1 } });
 	}
 
-	async getStateMappingsByRoomIdOrderedAscending(
+	getStateMappingsByRoomIdOrderedAscending(
 		roomId: string,
-	): Promise<FindCursor<WithId<StateStore>>> {
-		const collection = await this.getCollection();
-		return collection.find({ roomId }).sort({ createdAt: 1 });
+	): FindCursor<WithId<StateStore>> {
+		return this.collection.find({ roomId }).sort({ createdAt: 1 });
 	}
 
-	async getStateMappingsByStateIdsOrdered(
+	getStateMappingsByStateIdsOrdered(
 		stateIds: string[],
-	): Promise<FindCursor<WithId<StateStore>>> {
-		const collection = await this.getCollection();
-		return collection
+	): FindCursor<WithId<StateStore>> {
+		return this.collection
 			.find({ _id: { $in: stateIds.map((id) => new ObjectId(id)) } })
 			.sort({ createdAt: 1 /* order as is saved */ });
 	}
@@ -84,8 +63,7 @@ export class StateRepository {
 		roomId: string,
 		identifier: string,
 	): Promise<WithId<StateStore> | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({ roomId, 'delta.identifier': identifier });
+		return this.collection.findOne({ roomId, 'delta.identifier': identifier });
 	}
 
 	async createStateMapping(
@@ -97,9 +75,7 @@ export class StateRepository {
 			eventId: event.eventId,
 		};
 
-		const collection = await this.getCollection();
-
-		return collection.insertOne({
+		return this.collection.insertOne({
 			_id: new ObjectId(),
 			delta,
 			createdAt: new Date(),
@@ -108,21 +84,19 @@ export class StateRepository {
 		});
 	}
 
-	async getByRoomIdsAndIdentifier(
+	getByRoomIdsAndIdentifier(
 		roomIds: string[],
 		identifier: string | RegExp,
-	): Promise<FindCursor<WithId<StateStore>>> {
-		const collection = await this.getCollection();
-		return collection.find({
+	): FindCursor<WithId<StateStore>> {
+		return this.collection.find({
 			roomId: { $in: roomIds },
 			'delta.identifier': identifier,
 		});
 	}
 
-	async getStateMappingsByIdentifier(
+	getStateMappingsByIdentifier(
 		identifier: string,
-	): Promise<FindCursor<WithId<StateStore>>> {
-		const collection = await this.getCollection();
-		return collection.find({ 'delta.identifier': identifier });
+	): FindCursor<WithId<StateStore>> {
+		return this.collection.find({ 'delta.identifier': identifier });
 	}
 }

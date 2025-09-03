@@ -2,7 +2,7 @@ import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { EventBaseWithOptionalId } from '@hs/core';
-import { singleton } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
@@ -17,8 +17,11 @@ export class EventFetcherService {
 	private readonly logger = createLogger('EventFetcherService');
 
 	constructor(
+		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
+		@inject('FederationService')
 		private readonly federationService: FederationService,
+		@inject('ConfigService')
 		private readonly configService: ConfigService,
 	) {}
 
@@ -37,7 +40,7 @@ export class EventFetcherService {
 		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
 			[];
 
-		const dbEventsCursor = await this.eventRepository.findByIds(eventIds);
+		const dbEventsCursor = this.eventRepository.findByIds(eventIds);
 		for await (const event of dbEventsCursor) {
 			localEvents.push({
 				eventId: event._id,
@@ -95,7 +98,7 @@ export class EventFetcherService {
 		try {
 			// Find auth events of the required types in the room
 			const authEvents = [];
-			const events = await this.eventRepository.findByRoomIdAndTypes(
+			const events = this.eventRepository.findByRoomIdAndTypes(
 				roomId,
 				missingTypes,
 			);

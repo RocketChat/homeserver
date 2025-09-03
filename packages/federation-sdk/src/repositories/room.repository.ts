@@ -1,10 +1,9 @@
 import type { EventBaseWithOptionalId } from '@hs/core';
 import type { EventStore } from '@hs/core';
 import { Collection } from 'mongodb';
-import { singleton } from 'tsyringe';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { inject, singleton } from 'tsyringe';
 
-type Room = {
+export type Room = {
 	_id: string;
 	room: {
 		name: string;
@@ -19,21 +18,12 @@ type Room = {
 
 @singleton()
 export class RoomRepository {
-	private collection: Collection<Room> | null = null;
-
-	constructor(private readonly dbConnection: DatabaseConnectionService) {
-		this.getCollection();
-	}
-
-	private async getCollection(): Promise<Collection<Room>> {
-		const db = await this.dbConnection.getDb();
-		this.collection = db.collection<Room>('rooms');
-		return this.collection!;
-	}
+	constructor(
+		@inject('RoomCollection') private readonly collection: Collection<Room>,
+	) {}
 
 	async upsert(roomId: string, state: EventBaseWithOptionalId[]) {
-		const collection = await this.getCollection();
-		await collection.findOneAndUpdate(
+		await this.collection.findOneAndUpdate(
 			{ _id: roomId },
 			{
 				$set: {
@@ -49,8 +39,7 @@ export class RoomRepository {
 		roomId: string,
 		props: { name?: string; canonicalAlias?: string; alias?: string },
 	): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.insertOne({
+		await this.collection.insertOne({
 			_id: roomId,
 			room: {
 				name: props.name || '',
@@ -63,8 +52,7 @@ export class RoomRepository {
 	}
 
 	async getRoomVersion(roomId: string): Promise<string | null> {
-		const collection = await this.getCollection();
-		const room = await collection.findOne(
+		const room = await this.collection.findOne(
 			{ _id: roomId },
 			{ projection: { version: 1 } },
 		);
@@ -72,24 +60,21 @@ export class RoomRepository {
 	}
 
 	async updateRoomName(roomId: string, name: string): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ room_id: roomId },
 			{ $set: { name: name } },
 			{ upsert: false },
 		);
 	}
 	public async findOneById(roomId: string): Promise<Room | null> {
-		const collection = await this.getCollection();
-		return collection.findOne({ _id: roomId });
+		return this.collection.findOne({ _id: roomId });
 	}
 
 	async markRoomAsDeleted(
 		roomId: string,
 		tombstoneEventId: string,
 	): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ _id: roomId },
 			{
 				$set: {

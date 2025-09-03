@@ -1,8 +1,7 @@
 import { Collection } from 'mongodb';
-import { singleton } from 'tsyringe';
-import { DatabaseConnectionService } from '../services/database-connection.service';
+import { inject, singleton } from 'tsyringe';
 
-type Key = {
+export type Key = {
 	origin: string;
 	key_id: string;
 	public_key: string;
@@ -11,24 +10,15 @@ type Key = {
 
 @singleton()
 export class KeyRepository {
-	private collection: Collection<Key> | null = null;
-
-	constructor(private readonly dbConnection: DatabaseConnectionService) {
-		this.getCollection();
-	}
-
-	private async getCollection(): Promise<Collection<Key>> {
-		const db = await this.dbConnection.getDb();
-		this.collection = db.collection<Key>('keys');
-		return this.collection!;
-	}
+	constructor(
+		@inject('KeyCollection') private readonly collection: Collection<Key>,
+	) {}
 
 	async getValidPublicKeyFromLocal(
 		origin: string,
 		keyId: string,
 	): Promise<string | undefined> {
-		const collection = await this.getCollection();
-		const key = await collection.findOne({
+		const key = await this.collection.findOne({
 			origin,
 			key_id: keyId,
 			valid_until: { $gt: new Date() },
@@ -43,8 +33,7 @@ export class KeyRepository {
 		publicKey: string,
 		validUntil?: Date,
 	): Promise<void> {
-		const collection = await this.getCollection();
-		await collection.updateOne(
+		await this.collection.updateOne(
 			{ origin, key_id: keyId },
 			{
 				$set: {
