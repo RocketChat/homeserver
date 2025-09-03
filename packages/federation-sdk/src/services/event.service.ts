@@ -74,6 +74,8 @@ export interface AuthEventParams {
 export class EventService {
 	private readonly logger = createLogger('EventService');
 
+	private currentTransactions = new Set<string>();
+
 	constructor(
 		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
@@ -212,8 +214,41 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
-		console.log('processIncomingPDUs', pdus);
+	async processIncomingTransaction({
+		origin,
+		pdus,
+		edus,
+	}: {
+		origin: string;
+		pdus: EventBase[];
+		edus?: BaseEDU[];
+	}): Promise<void> {
+		const totalPdus = pdus.length;
+		const totalEdus = edus?.length || 0;
+
+		if (totalPdus > 50 || totalEdus > 100) {
+			throw new Error('too-many-events');
+		}
+
+		// only one current transaction per origin is allowed
+		if (this.currentTransactions.has(origin)) {
+			throw new Error('too-many-concurrent-transactions');
+		}
+
+		this.currentTransactions.add(origin);
+
+		if (totalPdus > 0) {
+			await this.processIncomingPDUs(pdus);
+		}
+
+		if (edus && totalEdus > 0) {
+			await this.processIncomingEDUs(edus);
+		}
+
+		this.currentTransactions.delete(origin);
+	}
+
+	private async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
@@ -253,7 +288,7 @@ export class EventService {
 		}
 	}
 
-	async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
+	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
 		this.logger.debug(`Processing ${edus.length} incoming EDUs`);
 
 		for (const edu of edus) {
