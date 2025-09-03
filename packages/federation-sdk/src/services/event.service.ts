@@ -227,17 +227,17 @@ export class EventService {
 			throw new Error('too-many-concurrent-transactions');
 		}
 
-		this.currentTransactions.add(origin);
+		try {
+			this.currentTransactions.add(origin);
 
-		if (totalPdus > 0) {
-			await this.processIncomingPDUs(pdus);
+			// process both PDU and EDU in "parallel" to no block EDUs due to heavy PDU operations
+			await Promise.all([
+				this.processIncomingPDUs(pdus),
+				edus && this.processIncomingEDUs(edus),
+			]);
+		} finally {
+			this.currentTransactions.delete(origin);
 		}
-
-		if (edus && totalEdus > 0) {
-			await this.processIncomingEDUs(edus);
-		}
-
-		this.currentTransactions.delete(origin);
 	}
 
 	private async processIncomingPDUs(pdus: Pdu[]): Promise<void> {
