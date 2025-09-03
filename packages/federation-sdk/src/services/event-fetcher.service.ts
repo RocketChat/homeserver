@@ -137,7 +137,7 @@ export class EventFetcherService {
 			const chunks = this.chunkArray(eventIds, 10);
 
 			for (const chunk of chunks) {
-				if (targetServerName === this.configService.getServerName()) {
+				if (targetServerName === this.configService.serverName) {
 					this.logger.info(`Skipping request to self: ${targetServerName}`);
 					return [];
 				}

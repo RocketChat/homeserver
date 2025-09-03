@@ -355,7 +355,7 @@ export class StateService {
 	public async signEvent(event: PersistentEventBase) {
 		const signingKey = await this.configService.getSigningKey();
 
-		const origin = this.configService.getServerName();
+		const origin = this.configService.serverName;
 
 		const result = await signEvent(
 			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.

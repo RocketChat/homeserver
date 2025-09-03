@@ -7,7 +7,7 @@ export class WellKnownService {
 
 	getWellKnownHostData() {
 		return {
-			'm.server': `${this.configService.getServerConfig().name}:443`,
+			'm.server': `${this.configService.serverName}:443`,
 		};
 	}
 }

@@ -72,7 +72,7 @@ export class InviteService {
 		}
 
 		// if user invited belongs to our server
-		if (invitedServer === this.configService.getServerName()) {
+		if (invitedServer === this.configService.serverName) {
 			await stateService.persistStateEvent(inviteEvent);
 
 			if (inviteEvent.rejected) {
@@ -142,7 +142,7 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
-		if (residentServer === this.configService.getServerName()) {
+		if (residentServer === this.configService.serverName) {
 			// we are the host of the server
 
 			// attempt to persist the invite event as we already have the state

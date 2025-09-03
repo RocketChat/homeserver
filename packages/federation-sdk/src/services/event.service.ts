@@ -509,7 +509,7 @@ export class EventService {
 				(origin, key) =>
 					getPublicKeyFromRemoteServer(
 						origin,
-						this.configService.getServerConfig().name,
+						this.configService.serverName,
 						key,
 					),
 				(origin, keyId, publicKey) =>

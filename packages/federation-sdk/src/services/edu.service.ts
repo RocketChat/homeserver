@@ -24,7 +24,7 @@ export class EduService {
 		typing: boolean,
 	): Promise<void> {
 		try {
-			const origin = this.configService.getServerName();
+			const origin = this.configService.serverName;
 			const typingEDU = createTypingEDU(roomId, userId, typing, origin);
 
 			this.logger.debug(
@@ -52,7 +52,7 @@ export class EduService {
 		roomIds: string[],
 	): Promise<void> {
 		try {
-			const origin = this.configService.getServerName();
+			const origin = this.configService.serverName;
 			const presenceEDU = createPresenceEDU(presenceUpdates, origin);
 
 			this.logger.debug(

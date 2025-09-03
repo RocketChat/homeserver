@@ -298,7 +298,7 @@ export class RoomService {
 		const canonicalAliasEvent = PersistentEventFactory.newCanonicalAliasEvent(
 			roomCreateEvent.roomId,
 			username,
-			`#${name}:${this.configService.getServerConfig().name}`,
+			`#${name}:${this.configService.serverName}`,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
@@ -441,7 +441,7 @@ export class RoomService {
 			);
 		}
 
-		const serverName = this.configService.getServerConfig().name;
+		const serverName = this.configService.serverName;
 		if (!serverName) {
 			logger.error('Server name is not configured. Cannot set event origin.');
 			throw new HttpException(
@@ -488,7 +488,7 @@ export class RoomService {
 		);
 
 		for (const server of targetServers) {
-			if (server === this.configService.getServerConfig().name) {
+			if (server === this.configService.serverName) {
 				continue;
 			}
 
@@ -729,7 +729,7 @@ export class RoomService {
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
-		if (residentServer === configService.getServerName()) {
+		if (residentServer === configService.serverName) {
 			const room = await stateService.getFullRoomState(roomId);
 
 			const createEvent = room.get('m.room.create:');
@@ -948,7 +948,7 @@ export class RoomService {
 		replacementRoomId?: string,
 	): Promise<SignedEvent<RoomTombstoneEvent>> {
 		logger.debug(`Marking room ${roomId} as tombstone by ${sender}`);
-		const config = this.configService.getServerConfig();
+		const serverName = this.configService.serverName;
 		const signingKey = await this.configService.getSigningKey();
 
 		const room = await this.roomRepository.findOneById(roomId);
@@ -960,7 +960,7 @@ export class RoomService {
 			logger.warn(`Attempted to delete an already tombstoned room: ${roomId}`);
 			throw new ForbiddenError('Cannot delete an already tombstoned room');
 		}
-		if (sender.split(':').pop() !== config.name) {
+		if (sender.split(':').pop() !== serverName) {
 			throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
 		}
 
@@ -1017,13 +1017,13 @@ export class RoomService {
 			auth_events: authEventsMap,
 			prev_events: prevEvents,
 			depth,
-			origin: config.name,
+			origin: serverName,
 		});
 
 		const signedEvent = await signEvent(
 			tombstoneEvent,
 			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			config.name,
+			serverName,
 		);
 
 		const eventId = await this.eventService.insertEvent(signedEvent);
@@ -1076,7 +1076,7 @@ export class RoomService {
 		roomId: string,
 		signedEvent: SignedEvent<RoomTombstoneEvent>,
 	): Promise<void> {
-		const config = this.configService.getServerConfig();
+		const rcServerName = this.configService.serverName;
 		const memberEvents =
 			await this.eventRepository.findAllJoinedMembersEventsByRoomId(roomId);
 		const remoteServers = new Set<string>();
@@ -1084,7 +1084,7 @@ export class RoomService {
 		for (const event of memberEvents) {
 			if (event.event.state_key) {
 				const serverName = event.event.state_key.split(':').pop();
-				if (serverName && serverName !== config.name) {
+				if (serverName && serverName !== rcServerName) {
 					remoteServers.add(serverName);
 				}
 			}

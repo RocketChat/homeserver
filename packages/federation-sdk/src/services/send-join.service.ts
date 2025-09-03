@@ -57,7 +57,7 @@ export class SendJoinService {
 
 		const configService = this.configService;
 
-		const origin = configService.getServerConfig().name;
+		const origin = configService.serverName;
 
 		const authChain = [];
 
