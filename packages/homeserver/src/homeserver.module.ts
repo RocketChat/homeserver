@@ -72,12 +72,14 @@ export async function setup(options?: HomeserverSetupOptions) {
 			],
 			enableThumbnails: process.env.MEDIA_ENABLE_THUMBNAILS === 'true' || true,
 			rateLimits: {
-				uploadPerMinute:
-					Number.parseInt(process.env.MEDIA_UPLOAD_RATE_LIMIT || '10', 10) ||
+				uploadPerMinute: Number.parseInt(
+					process.env.MEDIA_UPLOAD_RATE_LIMIT || '10',
 					10,
-				downloadPerMinute:
-					Number.parseInt(process.env.MEDIA_DOWNLOAD_RATE_LIMIT || '60', 10) ||
-					60,
+				),
+				downloadPerMinute: Number.parseInt(
+					process.env.MEDIA_DOWNLOAD_RATE_LIMIT || '60',
+					10,
+				),
 			},
 		},
 	});
