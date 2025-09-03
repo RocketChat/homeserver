@@ -96,7 +96,7 @@ export const isValidAlgorithm = (
 export function encodeCanonicalJson(value: unknown): string {
 	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
-		return String(value);
+		return JSON.stringify(value);
 	}
 
 	if (Array.isArray(value)) {
