@@ -40,17 +40,6 @@ type ValidationResult = {
 		error: string;
 	};
 };
-
-// TODO: Merge with EventStore from event.model.ts
-export interface StagedEvent {
-	_id: string;
-	event: EventBase;
-	origin: string;
-	missing_dependencies: string[];
-	room_version?: string;
-	invite_room_state?: Record<string, unknown>;
-}
-
 export interface AuthEventParams {
 	roomId: string;
 	senderId: string;
@@ -105,7 +94,9 @@ export class EventService {
 	/**
 	 * Store an event as staged with its missing dependencies
 	 */
-	async storeEventAsStaged(stagedEvent: StagedEvent): Promise<void> {
+	async storeEventAsStaged(
+		stagedEvent: Pick<EventStore, '_id' | 'event' | 'missing_dependencies'>,
+	): Promise<void> {
 		try {
 			// First check if the event already exists to avoid duplicates
 			const existingEvent = await this.eventRepository.findById(
@@ -120,19 +111,20 @@ export class EventService {
 					return;
 				}
 
+				// TODO: Remove unneeded db roundtrips by removing upsert or creatingStaged
 				// Update the staged event with potentially new dependencies info
 				await this.eventRepository.upsert(stagedEvent.event);
 				// Make a separate update for metadata since upsert only handles the event data
 				// We do this by using the createStaged method, which should update if exists
 				await this.eventRepository.createStaged(stagedEvent.event);
 				this.logger.debug(
-					`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
+					`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies?.length} missing dependencies`,
 				);
 			} else {
 				await this.eventRepository.createStaged(stagedEvent.event);
 
 				this.logger.debug(
-					`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
+					`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies?.length} missing dependencies`,
 				);
 			}
 		} catch (error) {
