@@ -30,21 +30,22 @@ import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
+import { LockRepository } from '../repositories/lock.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { StateService } from './state.service';
 
-type ValidationResult = {
-	eventId: string;
-	event: Pdu;
-	valid: boolean;
-	error?: {
-		errcode: string;
-		error: string;
-	};
-};
+// type ValidationResult = {
+// 	eventId: string;
+// 	event: EventBase;
+// 	valid: boolean;
+// 	error?: {
+// 		errcode: string;
+// 		error: string;
+// 	};
+// };
 export interface AuthEventParams {
 	roomId: string;
 	senderId: string;
@@ -58,6 +59,7 @@ export class EventService {
 
 	constructor(
 		private readonly eventRepository: EventRepository,
+		private readonly lockRepository: LockRepository,
 		private readonly roomRepository: RoomRepository,
 		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
@@ -240,45 +242,113 @@ export class EventService {
 		}
 	}
 
-	private async processIncomingPDUs(pdus: Pdu[]): Promise<void> {
-		const eventsWithIds = pdus.map((event) => ({
-			eventId: generateId(event),
-			event,
-			valid: true,
-		}));
-
-		const validatedEvents: ValidationResult[] = [];
-
-		for (const { eventId, event } of eventsWithIds) {
-			// TODO: Rewrite this poor typing
-			let result = await this.validateEventFormat(eventId, event);
-			if (result.valid) {
-				result = await this.validateEventTypeSpecific(eventId, event);
+	// TODO change type to Pdu
+	private async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
+		// organize events by room id
+		const eventsByRoomId = new Map<string, EventBase[]>();
+		for (const event of pdus) {
+			const roomId = event.room_id;
+			if (!eventsByRoomId.has(roomId)) {
+				eventsByRoomId.set(roomId, []);
 			}
-
-			if (result.valid) {
-				result = await this.validateSignaturesAndHashes(eventId, event);
-			}
-
-			validatedEvents.push(result);
+			eventsByRoomId.get(roomId)?.push(event);
 		}
 
-		for (const event of validatedEvents) {
-			if (!event.valid) {
-				this.logger.warn(
-					`Validation failed for event ${event.eventId}: ${event.error?.errcode} - ${event.error?.error}`,
-				);
-				continue;
-			}
+		// process each room's events in parallel
+		// TODO implement a concurrency limit
+		await Promise.all(
+			Array.from(eventsByRoomId.entries()).map(async ([roomId, events]) => {
+				for await (const event of events) {
+					try {
+						await this.validateEvent(event);
+					} catch (err) {
+						this.logger.error({
+							msg: 'Event validation failed',
+							event,
+							error: err,
+						});
+						continue;
+					}
 
-			this.stagingAreaQueue.enqueue({
-				eventId: event.eventId,
-				roomId: event.event.room_id,
-				// TODO: check what to do with origin
-				origin: event.event.sender.split(':')[1],
-				event: event.event,
+					// save the event as staged to be processed
+					await this.eventRepository.createStaged(event);
+
+					// acquire a lock for processing the event
+					const lock = await this.lockRepository.getLock(
+						roomId,
+						'event_processing',
+					);
+					if (!lock) {
+						this.logger.debug(`Failed to acquire lock for room ${roomId}`);
+						return;
+					}
+
+					// if we have a lock, we can process the event
+					console.log('Processing event', event);
+
+					// simulate event processing
+					await new Promise((resolve) => setTimeout(resolve, 3000));
+
+					// release the lock after processing
+					await this.lockRepository.releaseLock(roomId, 'event_processing');
+				}
+			}),
+		);
+	}
+
+	// TODO change type to Pdu
+	private async validateEvent(event: EventBase): Promise<void> {
+		const roomVersion = await this.getRoomVersion(event);
+		if (!roomVersion) {
+			throw new Error('M_UNKNOWN_ROOM_VERSION');
+		}
+
+		const eventSchema = this.getEventSchema(roomVersion, event.type);
+
+		const validationResult = eventSchema.safeParse(event);
+		if (!validationResult.success) {
+			const formattedErrors = JSON.stringify(validationResult.error.format());
+			this.logger.error({
+				msg: 'Event failed schema validation',
+				formattedErrors,
 			});
+
+			throw new Error('M_SCHEMA_VALIDATION_FAILED');
 		}
+
+		const validateErrors =
+			event.type === 'm.room.create'
+				? this.validateCreateEvent(event)
+				: this.validateNonCreateEvent(event);
+		if (validateErrors.length > 0) {
+			this.logger.error({
+				msg: 'Create event validation failed',
+				errors: validateErrors,
+			});
+
+			throw new Error('M_INVALID_EVENT');
+		}
+
+		const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
+			(origin, keyId) =>
+				this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
+			(origin, key) =>
+				getPublicKeyFromRemoteServer(
+					origin,
+					this.configService.serverName,
+					key,
+				),
+			(origin, keyId, publicKey) =>
+				this.keyRepository.storePublicKey(origin, keyId, publicKey),
+		);
+
+		await checkSignAndHashes(
+			// TODO validate event is hashed at this point
+			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			event as any,
+			event.origin,
+			getPublicKeyFromServer,
+		);
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
@@ -371,156 +441,7 @@ export class EventService {
 		}
 	}
 
-	private async validateEventFormat(
-		eventId: string,
-		event: Pdu,
-	): Promise<ValidationResult> {
-		try {
-			const roomVersion = await this.getRoomVersion(event);
-			if (!roomVersion) {
-				return {
-					eventId,
-					event,
-					valid: false,
-					error: {
-						errcode: 'M_UNKNOWN_ROOM_VERSION',
-						error: 'Could not determine room version for event',
-					},
-				};
-			}
-
-			const eventSchema = this.getEventSchema(roomVersion, event.type);
-			const validationResult = eventSchema.safeParse(event);
-
-			if (!validationResult.success) {
-				const formattedErrors = JSON.stringify(validationResult.error.format());
-				this.logger.error(
-					`Event ${eventId} failed schema validation: ${formattedErrors}`,
-				);
-
-				return {
-					eventId,
-					event,
-					valid: false,
-					error: {
-						errcode: 'M_SCHEMA_VALIDATION_FAILED',
-						error: `Schema validation failed: ${formattedErrors}`,
-					},
-				};
-			}
-			return { eventId, event, valid: true };
-		} catch (error: any) {
-			const errorMessage = error?.message || String(error);
-			this.logger.error(
-				`Error validating format for ${eventId}: ${errorMessage}`,
-			);
-
-			return {
-				eventId,
-				event,
-				valid: false,
-				error: {
-					errcode: 'M_FORMAT_VALIDATION_ERROR',
-					error: `Error validating format: ${errorMessage}`,
-				},
-			};
-		}
-	}
-
-	private async validateEventTypeSpecific(
-		eventId: string,
-		event: Pdu,
-	): Promise<ValidationResult> {
-		try {
-			if (event.type === 'm.room.create') {
-				const errors = this.validateCreateEvent(event);
-				if (errors.length > 0) {
-					this.logger.error(
-						`Create event ${eventId} validation failed: ${errors.join(', ')}`,
-					);
-					return {
-						eventId,
-						event,
-						valid: false,
-						error: {
-							errcode: 'M_INVALID_CREATE_EVENT',
-							error: `Create event validation failed: ${errors[0]}`,
-						},
-					};
-				}
-			} else {
-				const errors = this.validateNonCreateEvent(event);
-				if (errors.length > 0) {
-					this.logger.error(
-						`Event ${eventId} validation failed: ${errors.join(', ')}`,
-					);
-					return {
-						eventId,
-						event,
-						valid: false,
-						error: {
-							errcode: 'M_INVALID_EVENT',
-							error: `Event validation failed: ${errors[0]}`,
-						},
-					};
-				}
-			}
-
-			return { eventId, event, valid: true };
-		} catch (error: any) {
-			this.logger.error(
-				`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`,
-			);
-			return {
-				eventId,
-				event,
-				valid: false,
-				error: {
-					errcode: 'M_TYPE_VALIDATION_ERROR',
-					error: `Error in type-specific validation: ${error.message || String(error)}`,
-				},
-			};
-		}
-	}
-
-	private async validateSignaturesAndHashes(
-		eventId: string,
-		event: Pdu,
-	): Promise<ValidationResult> {
-		try {
-			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-				(origin, keyId) =>
-					this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
-				(origin, key) =>
-					getPublicKeyFromRemoteServer(
-						origin,
-						this.configService.serverName,
-						key,
-					),
-				(origin, keyId, publicKey) =>
-					this.keyRepository.storePublicKey(origin, keyId, publicKey),
-			);
-
-			const origin = event.sender.split(':')[1];
-			await checkSignAndHashes(event, origin, getPublicKeyFromServer);
-			return { eventId, event, valid: true };
-		} catch (error: any) {
-			this.logger.error(
-				`Error validating signatures for ${eventId}: ${error.message || String(error)}`,
-			);
-			return {
-				eventId,
-				event,
-				valid: false,
-				error: {
-					errcode: error instanceof MatrixError ? error.errcode : 'M_UNKNOWN',
-					error: error.message || String(error),
-				},
-			};
-		}
-	}
-
-	private validateCreateEvent(event: any): string[] {
+	private validateCreateEvent(event: EventBase): string[] {
 		const errors: string[] = [];
 
 		if (event.prev_events && event.prev_events.length > 0) {
@@ -558,7 +479,10 @@ export class EventService {
 				'10',
 				'11',
 			];
-			if (!validRoomVersions.includes(event.content.room_version)) {
+			if (
+				typeof event.content.room_version !== 'string' ||
+				!validRoomVersions.includes(event.content.room_version)
+			) {
 				errors.push(`Unsupported room version: ${event.content.room_version}`);
 			}
 		}
@@ -566,7 +490,7 @@ export class EventService {
 		return errors;
 	}
 
-	private validateNonCreateEvent(event: any): string[] {
+	private validateNonCreateEvent(event: EventBase): string[] {
 		const errors: string[] = [];
 
 		if (
