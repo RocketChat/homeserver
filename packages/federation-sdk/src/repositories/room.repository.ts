@@ -3,7 +3,7 @@ import type { EventStore } from '@hs/core';
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
-type Room = {
+export type Room = {
 	_id: string;
 	room: {
 		name: string;

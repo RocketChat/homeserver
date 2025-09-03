@@ -1,7 +1,7 @@
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
-type Server = {
+export type Server = {
 	name: string;
 	keys: {
 		[key: string]: {

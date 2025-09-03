@@ -1,7 +1,7 @@
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
-type Key = {
+export type Key = {
 	origin: string;
 	key_id: string;
 	public_key: string;

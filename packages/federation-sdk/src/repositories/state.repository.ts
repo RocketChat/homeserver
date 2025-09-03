@@ -11,7 +11,7 @@ import { inject, singleton } from 'tsyringe';
 import type { StateMapKey } from '@hs/room';
 import type { PersistentEventBase } from '@hs/room';
 
-type StateStore = {
+export type StateStore = {
 	delta: {
 		identifier: StateMapKey;
 		eventId: string;

@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 
-import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
-import type { StateMapKey } from '@hs/room';
+import type { EventStore } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
 import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
@@ -12,10 +11,10 @@ import { StagingAreaListener } from './listeners/staging-area.listener';
 import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
-import { KeyRepository } from './repositories/key.repository';
-import { RoomRepository } from './repositories/room.repository';
-import { ServerRepository } from './repositories/server.repository';
-import { StateRepository } from './repositories/state.repository';
+import { Key, KeyRepository } from './repositories/key.repository';
+import { Room, RoomRepository } from './repositories/room.repository';
+import { Server, ServerRepository } from './repositories/server.repository';
+import { StateRepository, StateStore } from './repositories/state.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EduService } from './services/edu.service';
@@ -40,47 +39,6 @@ import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 import { LockManagerService } from './utils/lock.decorator';
 import type { LockConfig } from './utils/lock.decorator';
-
-// Type definitions for collections
-type Key = {
-	origin: string;
-	key_id: string;
-	public_key: string;
-	valid_until: Date;
-};
-
-type Room = {
-	_id: string;
-	room: {
-		name: string;
-		join_rules: string;
-		version: string;
-		alias?: string;
-		canonical_alias?: string;
-		deleted?: boolean;
-		tombstone_event_id?: string;
-	};
-};
-
-type Server = {
-	name: string;
-	keys: {
-		[key: string]: {
-			key: string;
-			validUntil: number;
-		};
-	};
-};
-
-type StateStore = {
-	delta: {
-		identifier: StateMapKey;
-		eventId: string;
-	};
-	createdAt: Date;
-	roomId: string;
-	prevStateIds: string[];
-};
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
@@ -201,7 +159,6 @@ export async function createFederationContainer(
 		x.missingEventsQueue;
 	// @ts-ignore
 	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
-	console.log('Container initialized');
 
 	return container;
 }
