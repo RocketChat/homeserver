@@ -29,6 +29,25 @@ export const SendTransactionResponseDto = t.Object({
 	}),
 });
 
+export const GetEventParamsDto = t.Object({
+	eventId: t.String({ description: 'Event ID' }),
+});
+
+export const GetEventResponseDto = t.Object({
+	origin_server_ts: t.Number({ description: 'Origin server timestamp' }),
+	origin: t.String({ description: 'Origin server' }),
+	pdus: t.Array(EventBaseDto, {
+		description: 'An array containing a single PDU',
+	}),
+});
+
+export const GetEventErrorResponseDto = t.Object({
+	errcode: t.String({ description: 'Error code' }),
+	error: t.String({ description: 'Error message' }),
+});
+
 export type SendTransactionParams = Static<typeof SendTransactionParamsDto>;
 export type SendTransactionBody = Static<typeof SendTransactionBodyDto>;
 export type SendTransactionResponse = Static<typeof SendTransactionResponseDto>;
+export type GetEventParams = Static<typeof GetEventParamsDto>;
+export type GetEventResponse = Static<typeof GetEventResponseDto>;
