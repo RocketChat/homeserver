@@ -2,6 +2,7 @@ import type { Membership } from '@hs/core';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
+import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventService } from './services/event.service';
 import { InviteService } from './services/invite.service';
 import { MediaService } from './services/media.service';
@@ -108,6 +109,7 @@ export interface HomeserverServices {
 	config: ConfigService;
 	edu: EduService;
 	media: MediaService;
+	federationAuth: EventAuthorizationService;
 }
 
 export type HomeserverEventSignatures = {
@@ -231,6 +233,7 @@ export function getAllServices(): HomeserverServices {
 		config: container.resolve(ConfigService),
 		edu: container.resolve(EduService),
 		media: container.resolve(MediaService),
+		federationAuth: container.resolve(EventAuthorizationService),
 	};
 }
 
