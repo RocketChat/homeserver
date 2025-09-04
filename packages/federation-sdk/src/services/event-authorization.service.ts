@@ -39,7 +39,7 @@ export class EventAuthorizationService {
 			case 'm.room.join_rules':
 				return this.authorizeJoinRulesEvent(event, authEvents);
 			default:
-				// For simplicity, we'll allow other event types
+				//  TODO: remove for simplicity, we'll allow other event types
 				return true;
 		}
 	}
@@ -79,7 +79,7 @@ export class EventAuthorizationService {
 			return !createEvent;
 		}
 
-		// Check if sender has permission - simplified implementation
+		//  TODO: Check if sender has permission - simplified implementation
 		// Full implementation would need to check specific event type power levels
 		return true;
 	}
@@ -88,7 +88,7 @@ export class EventAuthorizationService {
 		_event: EventBase,
 		_authEvents: EventBase[],
 	): boolean {
-		// Basic implementation - full one would check join rules, bans, etc.
+		// TODO:  Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
@@ -96,7 +96,7 @@ export class EventAuthorizationService {
 		_event: EventBase,
 		_authEvents: EventBase[],
 	): boolean {
-		// Check sender has permission to change power levels
+		// TODO:  Check sender has permission to change power levels
 		return true;
 	}
 
@@ -104,7 +104,7 @@ export class EventAuthorizationService {
 		_event: EventBase,
 		_authEvents: EventBase[],
 	): boolean {
-		// Check sender has permission to change join rules
+		// TODO: Check sender has permission to change join rules
 		return true;
 	}
 }

@@ -1,5 +1,6 @@
 import {
 	EventBase,
+	EventStore,
 	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
 	RoomTombstoneEvent,
@@ -21,8 +22,9 @@ import { type SigningKey } from '@hs/core';
 import { logger } from '@hs/core';
 import {
 	PduCreateEventContent,
+	PduForType,
 	PduJoinRuleEventContent,
-	PduMembershipEventContent,
+	PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
@@ -366,6 +368,19 @@ export class RoomService {
 		void this.federationService.sendEventToAllServersInRoom(topicEvent);
 	}
 
+	private getEventByType<E extends PduType>(
+		authEventIds: EventStore[],
+		type: E,
+		extra?: (event: EventStore<PduForType<E>>) => boolean,
+	): EventStore<PduForType<E>> | undefined {
+		const event = authEventIds.find(
+			(e) =>
+				e.event.type === type &&
+				(!extra || extra(e as unknown as EventStore<PduForType<E>>)),
+		);
+		return event as unknown as EventStore<PduForType<E>> | undefined;
+	}
+
 	async updateUserPowerLevel(
 		roomId: string,
 		userId: string,
@@ -381,10 +396,17 @@ export class RoomService {
 			'm.room.power_levels',
 			{ roomId, senderId },
 		);
+
+		const powerLevelsAuthResult = this.getEventByType(
+			authEventIds,
+			'm.room.power_levels',
+		);
+
 		const currentPowerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				authEventIds.find((e) => e.type === 'm.room.power_levels')?._id || '',
-			);
+			powerLevelsAuthResult?._id &&
+			(await this.eventService.getEventById<RoomPowerLevelsEvent>(
+				powerLevelsAuthResult._id,
+			));
 
 		if (!currentPowerLevelsEvent) {
 			logger.error(`No m.room.power_levels event found for room ${roomId}`);
@@ -401,30 +423,18 @@ export class RoomService {
 			powerLevel,
 		);
 
-		const createAuthResult = authEventIds.find(
-			(e) => e.type === 'm.room.create',
-		);
-		const powerLevelsAuthResult = authEventIds.find(
-			(e) => e.type === 'm.room.power_levels',
-		);
-		const memberAuthResult = authEventIds.find(
-			(e) => e.type === 'm.room.member' && e.state_key === senderId,
-		);
+		const createAuthResult = this.getEventByType(authEventIds, 'm.room.create');
 
-		const authEventsMap = {
-			'm.room.create': createAuthResult?._id || '',
-			'm.room.power_levels': powerLevelsAuthResult?._id || '',
-			'm.room.member': memberAuthResult?._id || '',
-		};
+		const memberAuthResult = this.getEventByType(
+			authEventIds,
+			'm.room.member',
+			(e) => e.event.state_key === senderId,
+		);
 
 		// Ensure critical auth events were found
-		if (
-			!authEventsMap['m.room.create'] ||
-			!authEventsMap['m.room.power_levels'] ||
-			!authEventsMap['m.room.member']
-		) {
+		if (!createAuthResult || !powerLevelsAuthResult || !memberAuthResult) {
 			logger.error(
-				`Critical auth events missing for power level update. Create: ${authEventsMap['m.room.create']}, PowerLevels: ${authEventsMap['m.room.power_levels']}, Member: ${authEventsMap['m.room.member']}`,
+				`Critical auth events missing for power level update. Create: ${createAuthResult?._id ?? 'missing'}, PowerLevels: ${powerLevelsAuthResult?._id ?? 'missing'}, Member: ${memberAuthResult?._id ?? 'missing'}`,
 			);
 			throw new HttpException(
 				'Internal server error: Missing auth events for power level update.',
@@ -453,9 +463,11 @@ export class RoomService {
 		const eventToSign = roomPowerLevelsEvent({
 			roomId,
 			members: [senderId, userId],
-			auth_events: Object.values(authEventsMap).filter(
-				(id) => typeof id === 'string',
-			),
+			auth_events: {
+				'm.room.create': createAuthResult._id,
+				'm.room.power_levels': powerLevelsAuthResult._id,
+				'm.room.member': memberAuthResult._id,
+			},
 			prev_events: lastEventStore._id ? [lastEventStore._id] : [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
@@ -519,9 +531,11 @@ export class RoomService {
 
 		// For a leave event, the user must have permission to send m.room.member events.
 		// This is typically covered by them being a member, but power levels might restrict it.
-		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === 'm.room.power_levels',
+		const powerLevelsEventId = this.getEventByType(
+			authEventIds,
+			'm.room.power_levels',
 		)?._id;
+
 		if (!powerLevelsEventId) {
 			logger.warn(
 				`No power_levels event found for room ${roomId}, cannot verify permission to leave.`,
@@ -587,8 +601,9 @@ export class RoomService {
 			'm.room.power_levels',
 			{ roomId, senderId },
 		);
-		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === 'm.room.power_levels',
+		const powerLevelsEventId = this.getEventByType(
+			authEventIdsForPowerLevels,
+			'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -660,8 +675,10 @@ export class RoomService {
 			'm.room.power_levels',
 			{ roomId, senderId },
 		);
-		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === 'm.room.power_levels',
+
+		const powerLevelsEventId = this.getEventByType(
+			authEventIdsForPowerLevels,
+			'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -995,12 +1012,14 @@ export class RoomService {
 
 		const authEventsMap: TombstoneAuthEvents = {
 			'm.room.create':
-				authEvents.find((event) => event.type === 'm.room.create')?._id || '',
-			'm.room.power_levels':
-				authEvents.find((event) => event.type === 'm.room.power_levels')?._id ||
+				authEvents.find((event) => event.event.type === 'm.room.create')?._id ||
 				'',
+			'm.room.power_levels':
+				authEvents.find((event) => event.event.type === 'm.room.power_levels')
+					?._id || '',
 			'm.room.member':
-				authEvents.find((event) => event.type === 'm.room.member')?._id || '',
+				authEvents.find((event) => event.event.type === 'm.room.member')?._id ||
+				'',
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
 

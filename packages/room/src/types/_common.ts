@@ -8,6 +8,6 @@ export type StateMapKey = `${PduType}:${StateKey}`;
 
 export type State = Map<StateMapKey, EventID>;
 
-export type PduForType<P extends PduType> = Extract<Pdu, { type: P }>;
+export type PduForType<P extends PduType = PduType> = Extract<Pdu, { type: P }>;
 
 export type PduCreate = PduForType<'m.room.create'>;
