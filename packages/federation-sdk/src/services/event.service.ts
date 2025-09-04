@@ -19,7 +19,12 @@ import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { type PduType, PersistentEventFactory } from '@hs/room';
+import {
+	type Pdu,
+	type PduForType,
+	type PduType,
+	PersistentEventFactory,
+} from '@hs/room';
 import { singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
@@ -33,7 +38,7 @@ import { StateService } from './state.service';
 
 type ValidationResult = {
 	eventId: string;
-	event: EventBase;
+	event: Pdu;
 	valid: boolean;
 	error?: {
 		errcode: string;
@@ -63,9 +68,15 @@ export class EventService {
 		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
-	async getEventById<T extends EventBase>(eventId: string): Promise<T | null> {
-		const event = await this.eventRepository.findById(eventId);
-		return (event?.event as T) ?? null;
+	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
+		eventId: string,
+		type?: T,
+	): Promise<P | null> {
+		if (type) {
+			return (this.eventRepository.findByRoomIdAndType(eventId, type) ??
+				null) as Promise<P>;
+		}
+		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;
 	}
 
 	async checkIfEventsExists(
@@ -195,11 +206,7 @@ export class EventService {
 		origin,
 		pdus,
 		edus,
-	}: {
-		origin: string;
-		pdus: EventBase[];
-		edus?: BaseEDU[];
-	}): Promise<void> {
+	}: { origin: string; pdus: Pdu[]; edus?: BaseEDU[] }): Promise<void> {
 		if (!Array.isArray(pdus)) {
 			throw new Error('pdus must be an array');
 		}
@@ -233,7 +240,7 @@ export class EventService {
 		this.currentTransactions.delete(origin);
 	}
 
-	private async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
+	private async processIncomingPDUs(pdus: Pdu[]): Promise<void> {
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
@@ -267,7 +274,8 @@ export class EventService {
 			this.stagingAreaQueue.enqueue({
 				eventId: event.eventId,
 				roomId: event.event.room_id,
-				origin: event.event.origin,
+				// TODO: check what to do with origin
+				origin: event.event.sender.split(':')[1],
 				event: event.event,
 			});
 		}
@@ -281,9 +289,7 @@ export class EventService {
 				await this.processEDU(edu);
 			} catch (error) {
 				this.logger.error(
-					`Error processing EDU of type ${edu.edu_type}: ${
-						error instanceof Error ? error.message : String(error)
-					}`,
+					`Error processing EDU of type ${edu.edu_type}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 				// Continue processing other EDUs even if one fails
 			}
@@ -349,9 +355,7 @@ export class EventService {
 			}
 
 			this.logger.debug(
-				`Processing presence update for ${presenceUpdate.user_id}: ${
-					presenceUpdate.presence
-				}${
+				`Processing presence update for ${presenceUpdate.user_id}: ${presenceUpdate.presence}${
 					presenceUpdate.last_active_ago !== undefined
 						? ` (${presenceUpdate.last_active_ago}ms ago)`
 						: ''
@@ -369,7 +373,7 @@ export class EventService {
 
 	private async validateEventFormat(
 		eventId: string,
-		event: EventBase,
+		event: Pdu,
 	): Promise<ValidationResult> {
 		try {
 			const roomVersion = await this.getRoomVersion(event);
@@ -425,7 +429,7 @@ export class EventService {
 
 	private async validateEventTypeSpecific(
 		eventId: string,
-		event: EventBase,
+		event: Pdu,
 	): Promise<ValidationResult> {
 		try {
 			if (event.type === 'm.room.create') {
@@ -465,9 +469,7 @@ export class EventService {
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			this.logger.error(
-				`Error in type-specific validation for ${eventId}: ${
-					error.message || String(error)
-				}`,
+				`Error in type-specific validation for ${eventId}: ${error.message || String(error)}`,
 			);
 			return {
 				eventId,
@@ -475,9 +477,7 @@ export class EventService {
 				valid: false,
 				error: {
 					errcode: 'M_TYPE_VALIDATION_ERROR',
-					error: `Error in type-specific validation: ${
-						error.message || String(error)
-					}`,
+					error: `Error in type-specific validation: ${error.message || String(error)}`,
 				},
 			};
 		}
@@ -485,7 +485,7 @@ export class EventService {
 
 	private async validateSignaturesAndHashes(
 		eventId: string,
-		event: EventBase,
+		event: Pdu,
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
@@ -501,13 +501,12 @@ export class EventService {
 					this.keyRepository.storePublicKey(origin, keyId, publicKey),
 			);
 
-			await checkSignAndHashes(event, event.origin, getPublicKeyFromServer);
+			const origin = event.sender.split(':')[1];
+			await checkSignAndHashes(event, origin, getPublicKeyFromServer);
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			this.logger.error(
-				`Error validating signatures for ${eventId}: ${
-					error.message || String(error)
-				}`,
+				`Error validating signatures for ${eventId}: ${error.message || String(error)}`,
 			);
 			return {
 				eventId,
@@ -586,7 +585,7 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: EventBase) {
+	private async getRoomVersion(event: Pdu) {
 		return (
 			this.stateService.getRoomVersion(event.room_id) ||
 			PersistentEventFactory.defaultRoomVersion
@@ -610,7 +609,7 @@ export class EventService {
 	}
 
 	async insertEvent(
-		event: EventBase,
+		event: Pdu,
 		eventId?: string,
 		args?: object,
 	): Promise<string> {
@@ -622,7 +621,7 @@ export class EventService {
 		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
 
-	async getCreateEventForRoom(roomId: string): Promise<EventBase | null> {
+	async getCreateEventForRoom(roomId: string): Promise<Pdu | null> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
 			roomId,
 			'm.room.create',
@@ -635,7 +634,7 @@ export class EventService {
 		earliestEvents: string[],
 		latestEvents: string[],
 		limit: number,
-	): Promise<{ events: { _id: string; event: EventBase }[] }> {
+	): Promise<{ events: { _id: string; event: Pdu }[] }> {
 		// TODO: This would benefit from adding projections to the query
 		const eventsCursor = this.eventRepository.findByRoomIdExcludingEventIds(
 			roomId,
@@ -645,16 +644,13 @@ export class EventService {
 		const events = await eventsCursor.toArray();
 
 		return {
-			events: events.map((event) => ({
-				_id: event._id,
-				event: event.event,
-			})),
+			events,
 		};
 	}
 
 	async getEventsByIds(
 		eventIds: string[],
-	): Promise<{ _id: string; event: EventBase }[]> {
+	): Promise<{ _id: string; event: Pdu }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
@@ -720,9 +716,7 @@ export class EventService {
 		const eventIdToRedact = redactionEvent.redacts;
 		if (!eventIdToRedact) {
 			this.logger.error(
-				`[REDACTION] Event is missing 'redacts' field: ${generateId(
-					redactionEvent,
-				)}`,
+				`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`,
 			);
 			return;
 		}
@@ -760,19 +754,17 @@ export class EventService {
 		// Store the redaction event in the redacted_because field as specified in the Matrix spec
 		redactedEventContent.unsigned.redacted_because = redactionEvent;
 
-		const finalRedactedEvent: EventBase = {
+		await this.eventRepository.redactEvent(eventIdToRedact, {
 			...redactedEventContent,
-			type: eventToRedact.event.type,
 			room_id: eventToRedact.event.room_id,
 			sender: eventToRedact.event.sender,
-			origin: eventToRedact.event.origin,
+			// TODO: check what to do with origin
+			// origin: eventToRedact.event.sender.split(':')[1],
 			origin_server_ts: eventToRedact.event.origin_server_ts,
 			depth: eventToRedact.event.depth,
 			prev_events: eventToRedact.event.prev_events,
 			auth_events: eventToRedact.event.auth_events,
-		};
-
-		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
+		} as typeof eventToRedact.event);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}

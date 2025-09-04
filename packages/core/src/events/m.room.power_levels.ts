@@ -21,17 +21,17 @@ export interface RoomPowerLevelsEvent extends EventBase {
 		users: {
 			[key: string]: number;
 		};
-		users_default: number;
+		users_default?: number;
 		events: {
 			[key: string]: number;
 		};
-		events_default: number;
-		state_default: number;
-		ban: number;
-		kick: number;
-		redact: number;
-		invite: number;
-		historical: number;
+		events_default?: number;
+		state_default?: number;
+		ban?: number;
+		kick?: number;
+		redact?: number;
+		invite?: number;
+		// historical: number; TODO: check if historical exists in spec - m.power_levels
 		notifications?: {
 			[key: string]: number;
 		};
@@ -96,7 +96,9 @@ export const roomPowerLevelsEvent = ({
 			kick: 50,
 			redact: 50,
 			invite: 0,
-			historical: 100,
+
+			// TODO: check if historical exists in spec - m.power_levels
+			...({ historical: 100 } as any),
 		},
 		state_key: '',
 		origin_server_ts: ts,

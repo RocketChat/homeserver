@@ -1,6 +1,13 @@
 import { generateId } from '@hs/core';
 import type { EventBase, EventStore } from '@hs/core';
-import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
+import { Pdu, PduForType, PduType } from '@hs/room';
+import type {
+	Collection,
+	Filter,
+	FindCursor,
+	FindOptions,
+	WithId,
+} from 'mongodb';
 import { MongoError } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -105,7 +112,7 @@ export class EventRepository {
 	}
 
 	async create(
-		event: EventBase,
+		event: Pdu,
 		eventId: string,
 		stateId = '',
 	): Promise<string | undefined> {
@@ -113,7 +120,7 @@ export class EventRepository {
 	}
 
 	async createStaged(
-		event: EventBase,
+		event: Pdu,
 		missingDependencies?: EventStore['missing_dependencies'],
 	): Promise<string> {
 		const id = generateId(event);
@@ -131,18 +138,19 @@ export class EventRepository {
 		return id;
 	}
 
-	async redactEvent(eventId: string, redactedEvent: EventBase): Promise<void> {
+	async redactEvent(eventId: string, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
 			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
 	}
 
-	async upsert(event: EventBase): Promise<string> {
+	async upsert(event: Pdu): Promise<string> {
 		const id = generateId(event);
 
 		await this.collection.updateOne(
 			{ _id: id },
+			// TODO: _id is really required here?
 			{ $set: { _id: id, event } },
 			{ upsert: true },
 		);
@@ -163,23 +171,23 @@ export class EventRepository {
 
 	public async findPowerLevelsEventByRoomId(
 		roomId: string,
-	): Promise<EventStore | null> {
+	): Promise<EventStore<PduForType<'m.room.power_levels'>> | null> {
 		return this.collection.findOne({
 			'event.room_id': roomId,
 			'event.type': 'm.room.power_levels',
-		});
+		}) as unknown as EventStore<PduForType<'m.room.power_levels'>> | null;
 	}
 
 	public async findAllJoinedMembersEventsByRoomId(
 		roomId: string,
-	): Promise<EventStore[]> {
+	): Promise<EventStore<PduForType<'m.room.member'>>[]> {
 		return this.collection
 			.find({
 				'event.room_id': roomId,
 				'event.type': 'm.room.member',
 				'event.content.membership': 'join',
 			})
-			.toArray();
+			.toArray() as Promise<EventStore<PduForType<'m.room.member'>>[]>;
 	}
 
 	async findLatestEventByRoomIdBeforeTimestampWithAssociatedState(
@@ -226,11 +234,7 @@ export class EventRepository {
 			.toArray();
 	}
 
-	private async persistEvent(
-		event: EventBase,
-		eventId: string,
-		stateId: string,
-	) {
+	private async persistEvent(event: Pdu, eventId: string, stateId: string) {
 		try {
 			await this.collection.insertOne({
 				_id: eventId,
@@ -262,13 +266,13 @@ export class EventRepository {
 
 	findMembershipEventsFromDirectMessageRooms(
 		users: string[],
-	): FindCursor<EventStore> {
+	): FindCursor<EventStore<PduForType<'m.room.member'>>> {
 		return this.collection.find({
 			'event.type': 'm.room.member',
 			'event.state_key': { $in: users },
 			'event.content.membership': { $in: ['join', 'invite'] },
 			'event.content.is_direct': true,
-		});
+		}) as FindCursor<EventStore<PduForType<'m.room.member'>>>;
 	}
 
 	findTombstoneEventsByRoomId(roomId: string): FindCursor<EventStore> {
@@ -279,8 +283,12 @@ export class EventRepository {
 		});
 	}
 
-	findByIds(eventIds: string[]): FindCursor<EventStore> {
-		return this.collection.find({ _id: { $in: eventIds } });
+	findByIds<T extends PduType>(
+		eventIds: string[],
+	): FindCursor<WithId<EventStore<PduForType<T>>>> {
+		return this.collection.find({ _id: { $in: eventIds } }) as FindCursor<
+			WithId<EventStore<PduForType<T>>>
+		>;
 	}
 
 	findByRoomIdAndTypes(
@@ -317,14 +325,14 @@ export class EventRepository {
 		});
 	}
 
-	async findByRoomIdAndType(
+	async findByRoomIdAndType<T extends PduType>(
 		roomId: string,
-		eventType: string,
-	): Promise<EventStore | null> {
+		eventType: T,
+	): Promise<EventStore<PduForType<T>> | null> {
 		return this.collection.findOne({
 			'event.room_id': roomId,
 			'event.type': eventType,
-		});
+		}) as unknown as EventStore<PduForType<T>> | null;
 	}
 
 	findByRoomIdExcludingEventIds(

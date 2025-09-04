@@ -26,12 +26,12 @@ type MakeOptional<T, K extends keyof T> = {
 	[KK in keyof T as KK extends K ? never : KK]: T[KK];
 };
 
-type Prettify<T> = {
+export type Prettify<T> = {
 	[K in keyof T]: T[K];
 } & {};
 
-export type PduWithHashesAndSignaturesOptional = Prettify<
-	MakeOptional<Pdu, 'hashes' | 'signatures'>
+export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<
+	MakeOptional<T, 'hashes' | 'signatures'>
 >;
 
 export function deepFreeze(object: unknown) {
@@ -96,7 +96,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 			};
 		}
 
-		return this.rawEvent.hashes!.sha256;
+		return this.rawEvent.hashes.sha256;
 	}
 
 	get type() {

@@ -1,15 +1,13 @@
 import { createLogger, generateId } from '@hs/core';
 import type { EventBase } from '@hs/core';
+import { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 
 @singleton()
 export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
 
-	async authorizeEvent(
-		event: EventBase,
-		authEvents: EventBase[],
-	): Promise<boolean> {
+	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
 		this.logger.debug(
 			`Authorizing event ${generateId(event)} of type ${event.type}`,
 		);
@@ -44,7 +42,7 @@ export class EventAuthorizationService {
 		}
 	}
 
-	private authorizeCreateEvent(event: EventBase): boolean {
+	private authorizeCreateEvent(event: Pdu): boolean {
 		// Create events must not have prev_events
 		if (event.prev_events && event.prev_events.length > 0) {
 			this.logger.warn('Create event has prev_events');
@@ -60,10 +58,7 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	private checkSenderAllowed(
-		event: EventBase,
-		authEvents: EventBase[],
-	): boolean {
+	private checkSenderAllowed(event: Pdu, authEvents: Pdu[]): boolean {
 		// Find power levels
 		const powerLevelsEvent = authEvents.find(
 			(e) => e.type === 'm.room.power_levels',
@@ -84,26 +79,17 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	private authorizeMemberEvent(
-		_event: EventBase,
-		_authEvents: EventBase[],
-	): boolean {
+	private authorizeMemberEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
 		// TODO:  Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
-	private authorizePowerLevelsEvent(
-		_event: EventBase,
-		_authEvents: EventBase[],
-	): boolean {
+	private authorizePowerLevelsEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
 		// TODO:  Check sender has permission to change power levels
 		return true;
 	}
 
-	private authorizeJoinRulesEvent(
-		_event: EventBase,
-		_authEvents: EventBase[],
-	): boolean {
+	private authorizeJoinRulesEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
 		// TODO: Check sender has permission to change join rules
 		return true;
 	}

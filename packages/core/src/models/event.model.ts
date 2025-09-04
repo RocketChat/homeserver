@@ -1,10 +1,10 @@
-import { Pdu } from '@hs/room';
+import { Pdu, PduForType } from '@hs/room';
 import type { EventBase as CoreEventBase } from '../events/eventBase';
 
 // TODO: use room package
 
 // TODO: Merge with StagedEvent from event.service.ts
-export interface EventStore<E extends CoreEventBase | Pdu = CoreEventBase> {
+export interface EventStore<E extends CoreEventBase | Pdu = Pdu> {
 	_id: string;
 	event: E;
 
@@ -20,18 +20,6 @@ export interface EventStore<E extends CoreEventBase | Pdu = CoreEventBase> {
 
 	// for prev_events
 	nextEventId: string;
-}
-
-export interface StateEvent extends CoreEventBase {
-	state_key: string;
-}
-
-export interface MessageEvent extends CoreEventBase {
-	content: {
-		msgtype: string;
-		body: string;
-		[key: string]: unknown;
-	};
 }
 
 export interface FetchedEvents {

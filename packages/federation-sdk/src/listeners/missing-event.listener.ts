@@ -1,7 +1,8 @@
-import type { EventBase, EventStore } from '@hs/core';
+import type { EventStore } from '@hs/core';
 import { createLogger } from '@hs/core';
+import type { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
-import type { MissingEventType } from '../queues/missing-event.queue';
+import { MissingEventType } from '../queues/missing-event.queue';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { EventFetcherService } from '../services/event-fetcher.service';
 import { EventService } from '../services/event.service';
@@ -48,7 +49,7 @@ export class MissingEventListener {
 		}
 	}
 
-	private extractDependencies(event: EventBase): string[] {
+	private extractDependencies(event: Pdu): string[] {
 		const authEvents = event.auth_events || [];
 		const prevEvents = event.prev_events || [];
 		return [...new Set([...authEvents, ...prevEvents].flat())];
@@ -59,7 +60,8 @@ export class MissingEventListener {
 			this.stagingAreaService.addEventToQueue({
 				eventId: stagedEvent._id,
 				roomId: stagedEvent.event.room_id,
-				origin: stagedEvent.event.origin,
+				// TODO: check what to do with origin
+				origin: stagedEvent.event.sender.split(':')[1],
 				event: stagedEvent.event,
 			});
 
