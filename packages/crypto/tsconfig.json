@@ -8,6 +8,16 @@
 		"verbatimModuleSyntax": false,
 		"tsBuildInfoFile": "./.tsbuildinfo"
 	},
-	"include": ["src/**/*"],
-	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+	"include": [
+		"src/**/*",
+		"../../benchmark-scripts/signing-and-verifications/server.ts",
+		"../../benchmark-scripts/signing-and-verifications/script.js",
+		"src/contracts/key.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"**/*.spec.ts",
+		"**/*.test.ts"
+	]
 }
