@@ -4,6 +4,8 @@
 		"lib": [
 			"ESNext"
 		],
+		"outDir": "dist",
+		"sourceMap": false,
 		"target": "ESNext",
 		"module": "Preserve",
 		"moduleDetection": "force",
