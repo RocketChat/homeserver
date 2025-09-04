@@ -1,7 +1,7 @@
 import type { PresenceUpdate } from '@hs/core';
 import { createPresenceEDU, createTypingEDU } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { FederationService } from './federation.service';
@@ -12,10 +12,10 @@ export class EduService {
 	private readonly logger = createLogger('EduService');
 
 	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
+		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly eventEmitterService: EventEmitterService,
-		@inject('StateService') private readonly stateService: StateService,
+		private readonly stateService: StateService,
 	) {}
 
 	async sendTypingNotification(

@@ -20,16 +20,16 @@ import { pruneEventDict } from '@hs/core';
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { type PduType, PersistentEventFactory } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import type { z } from 'zod';
-import type { StagingAreaQueue } from '../queues/staging-area.queue';
-import type { EventRepository } from '../repositories/event.repository';
-import type { KeyRepository } from '../repositories/key.repository';
-import type { RoomRepository } from '../repositories/room.repository';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { EventRepository } from '../repositories/event.repository';
+import { KeyRepository } from '../repositories/key.repository';
+import { RoomRepository } from '../repositories/room.repository';
 import { eventSchemas } from '../utils/event-schemas';
-import type { ConfigService } from './config.service';
+import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
-import type { StateService } from './state.service';
+import { StateService } from './state.service';
 
 type ValidationResult = {
 	eventId: string;
@@ -69,15 +69,14 @@ export class EventService {
 	private currentTransactions = new Set<string>();
 
 	constructor(
-		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
-		@inject('KeyRepository') private readonly keyRepository: KeyRepository,
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('StagingAreaQueue')
+		private readonly roomRepository: RoomRepository,
+		private readonly keyRepository: KeyRepository,
+		private readonly configService: ConfigService,
+
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		@inject('StateService') private readonly stateService: StateService,
-		@inject(EventEmitterService)
+		private readonly stateService: StateService,
+
 		private readonly eventEmitterService: EventEmitterService,
 	) {}
 

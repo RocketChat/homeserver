@@ -2,7 +2,7 @@ import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
 import type { EventBase } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
@@ -17,11 +17,10 @@ export class EventFetcherService {
 	private readonly logger = createLogger('EventFetcherService');
 
 	constructor(
-		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		@inject('FederationService')
+
 		private readonly federationService: FederationService,
-		@inject('ConfigService')
+
 		private readonly configService: ConfigService,
 	) {}
 
@@ -86,44 +85,6 @@ export class EventFetcherService {
 			events: localEvents,
 			missingEventIds: [],
 		};
-	}
-
-	public async fetchAuthEventsByTypes(
-		missingTypes: string[],
-		roomId: string,
-	): Promise<Record<string, EventBase[]>> {
-		const results: Record<string, EventBase[]> = {};
-
-		try {
-			// Find auth events of the required types in the room
-			const authEvents = [];
-			const events = this.eventRepository.findByRoomIdAndTypes(
-				roomId,
-				missingTypes,
-			);
-			for await (const event of events) {
-				authEvents.push(event);
-			}
-
-			// Group events by type
-			return authEvents.reduce(
-				(acc, event) => {
-					if (event.event.type) {
-						if (!acc[event.event.type]) {
-							acc[event.event.type] = [];
-						}
-						acc[event.event.type].push(event.event);
-					}
-					return acc;
-				},
-				{} as Record<string, EventBase[]>,
-			);
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(`Error fetching auth events by type: ${errorMessage}`);
-			return results;
-		}
 	}
 
 	private async fetchEventsFromFederation(

@@ -6,7 +6,7 @@ import { EventService } from './event.service';
 import type { AuthEvents, EventBase, RoomMemberEvent } from '@hs/core';
 import type { EventStore } from '@hs/core';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateService } from './state.service';
 
@@ -15,12 +15,12 @@ export class ProfilesService {
 	private readonly logger = createLogger('ProfilesService');
 
 	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('EventService') private readonly eventService: EventService,
+		private readonly configService: ConfigService,
+		private readonly eventService: EventService,
 		// private readonly roomService: RoomService,
-		@inject('EventRepository')
+
 		private readonly eventRepository: EventRepository,
-		@inject('StateService') private readonly stateService: StateService,
+		private readonly stateService: StateService,
 	) {}
 	async queryProfile(userId: string): Promise<{
 		avatar_url: string;

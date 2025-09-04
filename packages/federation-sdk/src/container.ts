@@ -49,24 +49,18 @@ export async function createFederationContainer(
 	options: FederationContainerOptions,
 	configInstance: ConfigService,
 ) {
-	// Register ConfigService with both string and class tokens
-	container.register<ConfigService>('ConfigService', {
-		useValue: configInstance,
-	});
+	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
+
 	container.register<ConfigService>(ConfigService, {
 		useValue: configInstance,
 	});
-	container.registerSingleton(
-		'DatabaseConnectionService',
-		DatabaseConnectionService,
-	);
 
-	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
-
-	const dbConnection = container.resolve<DatabaseConnectionService>(
-		'DatabaseConnectionService',
-	);
+	container.registerSingleton(DatabaseConnectionService);
+	const dbConnection = container.resolve(DatabaseConnectionService);
 	const db = await dbConnection.getDb();
+
+	container.registerSingleton(MissingEventsQueue);
+	container.registerSingleton(StagingAreaQueue);
 
 	container.register<Collection<EventStore>>('EventCollection', {
 		useValue: db.collection<EventStore>('events'),
@@ -87,61 +81,40 @@ export async function createFederationContainer(
 		useValue: db.collection<Server>('servers'),
 	});
 
-	container.registerSingleton(
-		'FederationRequestService',
-		FederationRequestService,
-	);
-	container.registerSingleton(
-		'SignatureVerificationService',
-		SignatureVerificationService,
-	);
-	container.registerSingleton('FederationService', FederationService);
+	container.registerSingleton(EventRepository);
+	container.registerSingleton(KeyRepository);
+	container.registerSingleton(RoomRepository);
+	container.registerSingleton(StateRepository);
+	container.registerSingleton(ServerRepository);
 
-	// Register repositories
-	container.registerSingleton('EventRepository', EventRepository);
-
-	container.registerSingleton('KeyRepository', KeyRepository);
-	container.registerSingleton('RoomRepository', RoomRepository);
-	container.registerSingleton('StateRepository', StateRepository);
-	container.registerSingleton('ServerRepository', ServerRepository);
-	container.registerSingleton('StateRepository', StateRepository);
-
-	// Register business services
-	container.registerSingleton('StateService', StateService);
+	container.registerSingleton(FederationRequestService);
+	container.registerSingleton(SignatureVerificationService);
+	container.registerSingleton(FederationService);
+	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventStateService);
-	container.registerSingleton('EventService', EventService);
-	container.registerSingleton('EventEmitterService', EventEmitterService);
+	container.registerSingleton(EventService);
+	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
 	container.registerSingleton(ProfilesService);
-	container.registerSingleton('RoomService', RoomService);
 	container.registerSingleton(RoomService);
 	container.registerSingleton(ServerService);
 	container.registerSingleton(WellKnownService);
 	container.registerSingleton(SendJoinService);
-
-	// Register queues
-	container.registerSingleton('MissingEventsQueue', MissingEventsQueue);
-	container.registerSingleton('StagingAreaQueue', StagingAreaQueue);
-
-	// Register listeners
-	container.registerSingleton('MissingEventListener', MissingEventListener);
-	container.registerSingleton('StagingAreaListener', StagingAreaListener);
-	container.registerSingleton('EduService', EduService);
-
-	container.registerSingleton('StagingAreaService', StagingAreaService);
 	container.registerSingleton(StagingAreaService);
+	container.registerSingleton(EduService);
 
-	// Register lock manager with configuration
+	container.registerSingleton(MissingEventListener);
+	container.registerSingleton(StagingAreaListener);
+
 	container.register(LockManagerService, {
 		useFactory: () => new LockManagerService(lockManagerOptions),
 	});
 
-	// Configure event emitter
 	const eventEmitterService = container.resolve(EventEmitterService);
 	if (emitter) {
 		eventEmitterService.setEmitter(emitter);
@@ -149,16 +122,8 @@ export async function createFederationContainer(
 		eventEmitterService.initializeStandalone();
 	}
 
-	// Initialize listeners
-	const y = container.resolve(StagingAreaListener);
-	const x = container.resolve(MissingEventListener);
-
-	// @ts-ignore
-	x.stagingAreaService.missingEventsService.missingEventsQueue =
-		// @ts-ignore
-		x.missingEventsQueue;
-	// @ts-ignore
-	x.stagingAreaService.stagingAreaQueue = y.stagingAreaQueue;
+	container.resolve(MissingEventListener);
+	container.resolve(StagingAreaListener);
 
 	return container;
 }

@@ -18,27 +18,26 @@ import {
 	PersistentEventFactory,
 	type RoomVersion,
 } from '@hs/room';
-import { inject } from 'tsyringe';
 import { singleton } from 'tsyringe';
-import type { EventRepository } from '../repositories/event.repository';
-import type { ConfigService } from './config.service';
+import { EventRepository } from '../repositories/event.repository';
+import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
-import type { RoomService } from './room.service';
-import type { StateService } from './state.service';
+import { RoomService } from './room.service';
+import { StateService } from './state.service';
 
 @singleton()
 export class MessageService {
 	private readonly logger = createLogger('MessageService');
 
 	constructor(
-		@inject('EventService') private readonly eventService: EventService,
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('FederationService')
+		private readonly eventService: EventService,
+		private readonly configService: ConfigService,
+
 		private readonly federationService: FederationService,
-		@inject('RoomService') private readonly roomService: RoomService,
-		@inject('StateService') private readonly stateService: StateService,
-		@inject('EventRepository')
+		private readonly roomService: RoomService,
+		private readonly stateService: StateService,
+
 		private readonly eventRepository: EventRepository,
 	) {}
 
