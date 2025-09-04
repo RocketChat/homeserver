@@ -12,16 +12,24 @@ export class LockRepository {
 		@inject('LockCollection') private readonly collection: Collection<Lock>,
 	) {}
 
-	async getLock(roomId: string, instanceId: string): Promise<Lock | null> {
-		return this.collection.findOneAndUpdate(
+	async getLock(roomId: string, instanceId: string): Promise<boolean> {
+		const lock = await this.collection.findOneAndUpdate(
 			{ roomId },
 			{
-				$set: {
+				$setOnInsert: {
 					instanceId,
+					lockedAt: new Date(),
 				},
 			},
-			{ upsert: true, returnDocument: 'after' },
+			{ upsert: true, returnDocument: 'before' },
 		);
+		console.log('lock ->', lock);
+
+		if (!lock) {
+			return true;
+		}
+
+		return false;
 	}
 
 	async releaseLock(roomId: string, instanceId: string): Promise<void> {
