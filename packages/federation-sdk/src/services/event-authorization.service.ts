@@ -7,8 +7,7 @@ import {
 	generateId,
 	validateAuthorizationHeader,
 } from '@hs/core';
-import type { EventBase } from '@hs/core';
-import { Pdu } from '@hs/room';
+import type { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -26,10 +25,7 @@ export class EventAuthorizationService {
 		private readonly configService: ConfigService,
 	) {}
 
-	async authorizeEvent(
-		event: EventBase,
-		authEvents: EventBase[],
-	): Promise<boolean> {
+	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
 		this.logger.debug(
 			`Authorizing event ${generateId(event)} of type ${event.type}`,
 		);
@@ -223,7 +219,7 @@ export class EventAuthorizationService {
 				};
 			}
 
-			const roomId = event.room_id;
+			const roomId = event.event.room_id;
 
 			const serversInRoom = await this.stateService.getServersInRoom(roomId);
 			if (serversInRoom.includes(serverName)) {
