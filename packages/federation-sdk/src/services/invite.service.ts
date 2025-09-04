@@ -1,9 +1,10 @@
 import { EventBase, HttpException, HttpStatus } from '@hs/core';
-import { ConfigService, FederationService } from '@hs/federation-sdk';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
+import { ConfigService } from './config.service';
 import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
@@ -17,11 +18,11 @@ export class InviteService {
 	private readonly logger = createLogger('InviteService');
 
 	constructor(
-		@inject('EventService') private readonly eventService: EventService,
-		@inject('FederationService')
+		private readonly eventService: EventService,
+
 		private readonly federationService: FederationService,
-		@inject('StateService') private readonly stateService: StateService,
-		@inject('ConfigService') private readonly configService: ConfigService,
+		private readonly stateService: StateService,
+		private readonly configService: ConfigService,
 	) {}
 
 	/**

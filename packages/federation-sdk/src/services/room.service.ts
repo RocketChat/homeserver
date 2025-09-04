@@ -13,7 +13,7 @@ import {
 	roomTombstoneEvent,
 	signEvent,
 } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { FederationService } from './federation.service';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
@@ -30,7 +30,7 @@ import {
 	RoomVersion,
 } from '@hs/room';
 import { EventRepository } from '../repositories/event.repository';
-import type { RoomRepository } from '../repositories/room.repository';
+import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
@@ -40,14 +40,12 @@ import { StateService } from './state.service';
 @singleton()
 export class RoomService {
 	constructor(
-		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
-		@inject('EventRepository')
+		private readonly roomRepository: RoomRepository,
 		private readonly eventRepository: EventRepository,
-		@inject('EventService') private readonly eventService: EventService,
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('FederationService')
+		private readonly eventService: EventService,
+		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
-		@inject('StateService') private readonly stateService: StateService,
+		private readonly stateService: StateService,
 		private readonly inviteService: InviteService,
 	) {}
 

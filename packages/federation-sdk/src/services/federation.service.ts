@@ -3,7 +3,7 @@ import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { PersistentEventBase } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -22,10 +22,10 @@ export class FederationService {
 	private readonly logger = createLogger('FederationService');
 
 	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('FederationRequestService')
+		private readonly configService: ConfigService,
+
 		private readonly requestService: FederationRequestService,
-		@inject('SignatureVerificationService')
+
 		private readonly signatureService: SignatureVerificationService,
 		private readonly stateService: StateService,
 	) {}

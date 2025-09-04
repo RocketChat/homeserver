@@ -1,14 +1,13 @@
 import { type SigningKey, signJson, toUnpaddedBase64 } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
-import type { ServerRepository } from '../repositories/server.repository';
-import type { ConfigService } from './config.service';
+import { singleton } from 'tsyringe';
+import { ServerRepository } from '../repositories/server.repository';
+import { ConfigService } from './config.service';
 
 @singleton()
 export class ServerService {
 	constructor(
-		@inject('ServerRepository')
 		private readonly serverRepository: ServerRepository,
-		@inject('ConfigService') private configService: ConfigService,
+		private configService: ConfigService,
 	) {}
 
 	async getValidPublicKeyFromLocal(

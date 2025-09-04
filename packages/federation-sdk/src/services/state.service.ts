@@ -11,7 +11,7 @@ import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
 import type { PduCreateEventContent } from '@hs/room';
 import { checkEventAuthWithState } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateRepository } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
@@ -30,11 +30,10 @@ type StrippedRoomState = {
 export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(
-		@inject('StateRepository')
 		private readonly stateRepository: StateRepository,
-		@inject('EventRepository')
+
 		private readonly eventRepository: EventRepository,
-		@inject('ConfigService') private readonly configService: ConfigService,
+		private readonly configService: ConfigService,
 	) {}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {

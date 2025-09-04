@@ -161,13 +161,6 @@ export class EventRepository {
 		return this.collection.find({ staged: true }).toArray();
 	}
 
-	async findOldestStaged(roomId: string): Promise<EventStore | null> {
-		return this.collection.findOne(
-			{ staged: true, 'event.room_id': roomId },
-			{ sort: { 'event.origin_server_ts': 1 } },
-		);
-	}
-
 	public async findPowerLevelsEventByRoomId(
 		roomId: string,
 	): Promise<EventStore | null> {

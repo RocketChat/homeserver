@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createLogger } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
-import type { ConfigService } from './config.service';
+import { singleton } from 'tsyringe';
+import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 
 @singleton()
@@ -9,8 +9,8 @@ export class MediaService {
 	private readonly logger = createLogger('MediaService');
 
 	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('EventEmitterService')
+		private readonly configService: ConfigService,
+
 		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
