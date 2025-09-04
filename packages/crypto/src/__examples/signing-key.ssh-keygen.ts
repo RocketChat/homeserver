@@ -4,7 +4,7 @@ import { exists, writeFile } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import crypto from 'node:crypto';
 
-import { type SigningKey } from '../signing-key';
+import { type Signer } from '../contracts/key';
 import { readFile } from 'node:fs/promises';
 import {
 	type DataType,
@@ -38,7 +38,7 @@ async function loadKeys(
 	return { privateKey: Buffer.from(sk), publicKey: Buffer.from(pk) };
 }
 
-export class SshKeygenSigningKey implements SigningKey {
+export class SshKeygenSigningKey implements Signer {
 	public version = '0';
 	public constructor(private readonly config: SshKeygenSigningKeyConfig) {}
 
