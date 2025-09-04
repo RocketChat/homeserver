@@ -154,6 +154,10 @@ export class EventService {
 		return await this.eventRepository.findStagedEvents();
 	}
 
+	async getNextStagedEventForRoom(roomId: string): Promise<EventStore | null> {
+		return this.eventRepository.getNextStagedEventForRoom(roomId);
+	}
+
 	/**
 	 * Mark an event as no longer staged
 	 */
@@ -286,17 +290,14 @@ export class EventService {
 					);
 					if (!lock) {
 						this.logger.debug(`Failed to acquire lock for room ${roomId}`);
-						return;
+						// continue;
 					}
 
 					// if we have a lock, we can process the event
-					console.log('Processing event', event);
+					// void this.stagingAreaService.processEventForRoom(roomId);
 
-					// simulate event processing
-					await new Promise((resolve) => setTimeout(resolve, 3000));
-
-					// release the lock after processing
-					await this.lockRepository.releaseLock(roomId, 'event_processing');
+					// TODO change this to call stagingAreaService directly
+					// this.stagingAreaQueue.enqueue(roomId);
 				}
 			}),
 		);
