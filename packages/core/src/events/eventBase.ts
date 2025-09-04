@@ -1,6 +1,5 @@
 import { Pdu, PduForType } from '@hs/room';
 
-// export interface EventBase extends Pdu {}
 export type EventBase = {
 	auth_events: string[];
 	prev_events: string[];

@@ -2,11 +2,11 @@ import type { EventStore } from '@hs/core';
 import { createLogger } from '@hs/core';
 import type { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
-import type { MissingEventType } from '../queues/missing-event.queue';
-import type { MissingEventsQueue } from '../queues/missing-event.queue';
-import type { EventFetcherService } from '../services/event-fetcher.service';
-import type { EventService } from '../services/event.service';
-import type { StagingAreaService } from '../services/staging-area.service';
+import { MissingEventType } from '../queues/missing-event.queue';
+import { MissingEventsQueue } from '../queues/missing-event.queue';
+import { EventFetcherService } from '../services/event-fetcher.service';
+import { EventService } from '../services/event.service';
+import { StagingAreaService } from '../services/staging-area.service';
 
 @singleton()
 export class MissingEventListener {
@@ -15,9 +15,7 @@ export class MissingEventListener {
 	constructor(
 		private readonly missingEventsQueue: MissingEventsQueue,
 		private readonly stagingAreaService: StagingAreaService,
-		@inject('EventService')
 		private readonly eventService: EventService,
-		@inject('EventFetcherService')
 		private readonly eventFetcherService: EventFetcherService,
 	) {
 		this.missingEventsQueue.registerHandler(this.handleQueueItem.bind(this));

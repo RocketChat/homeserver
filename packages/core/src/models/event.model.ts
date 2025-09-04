@@ -22,18 +22,6 @@ export interface EventStore<E extends CoreEventBase | Pdu = Pdu> {
 	nextEventId: string;
 }
 
-// export interface StateEvent extends CoreEventBase {
-// 	state_key: string;
-// }
-
-// export interface MessageEvent extends CoreEventBase {
-// 	content: {
-// 		msgtype: string;
-// 		body: string;
-// 		[key: string]: unknown;
-// 	};
-// }
-
 export interface FetchedEvents {
 	events: { eventId: string; event: CoreEventBase }[];
 	missingEventIds: string[];
