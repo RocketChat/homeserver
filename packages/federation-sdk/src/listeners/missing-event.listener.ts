@@ -6,7 +6,6 @@ import type { MissingEventType } from '../queues/missing-event.queue';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
 import { EventFetcherService } from '../services/event-fetcher.service';
 import { EventService } from '../services/event.service';
-import type { StagedEvent } from '../services/event.service';
 import { StagingAreaService } from '../services/staging-area.service';
 
 @singleton()
@@ -136,7 +135,6 @@ export class MissingEventListener {
 				await this.eventService.storeEventAsStaged({
 					_id: eventId,
 					event: event,
-					origin: event.origin || origin,
 					missing_dependencies: missing,
 				});
 
