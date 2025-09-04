@@ -1,3 +1,6 @@
+import { Pdu, PduForType } from '@hs/room';
+
+// export interface EventBase extends Pdu {}
 export type EventBase = {
 	auth_events: string[];
 	prev_events: string[];
@@ -29,12 +32,15 @@ export type EventBase = {
 		};
 	};
 };
-export interface RedactedEvent extends EventBase {
+
+export type RedactedEvent = EventBase & {
 	redacts: string;
 	type: 'm.room.redaction';
-}
+};
 
-export const isRedactedEvent = (event: EventBase): event is RedactedEvent => {
+export const isRedactedEvent = (
+	event: Pdu,
+): event is PduForType<'m.room.redaction'> & {} => {
 	return event.type === 'm.room.redaction';
 };
 

@@ -2,7 +2,7 @@ import type { EventBase } from '@hs/core';
 import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { PersistentEventBase } from '@hs/room';
+import { Pdu, PduForType, PersistentEventBase } from '@hs/room';
 import { singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
@@ -129,7 +129,7 @@ export class FederationService {
 	/**
 	 * Send an event to a remote server
 	 */
-	async sendEvent<T extends EventBase>(
+	async sendEvent<T extends Pdu>(
 		domain: string,
 		event: T,
 	): Promise<SendTransactionResponse> {
@@ -150,10 +150,10 @@ export class FederationService {
 	/**
 	 * Get events from a remote server
 	 */
-	async getEvent(domain: string, eventId: string): Promise<EventBase> {
+	async getEvent(domain: string, eventId: string): Promise<Pdu> {
 		try {
 			const uri = FederationEndpoints.getEvent(eventId);
-			return await this.requestService.get<EventBase>(domain, uri);
+			return await this.requestService.get<Pdu>(domain, uri);
 		} catch (error: any) {
 			this.logger.error(`getEvent failed: ${error?.message}`, error?.stack);
 			throw error;
@@ -224,7 +224,7 @@ export class FederationService {
 	 */
 	async sendTombstone(
 		domain: string,
-		tombstoneEvent: EventBase,
+		tombstoneEvent: PduForType<'m.room.tombstone'>,
 	): Promise<SendTransactionResponse> {
 		try {
 			return await this.sendEvent(domain, tombstoneEvent);

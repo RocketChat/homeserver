@@ -1,14 +1,14 @@
-import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
+import { isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
-import type { EventBase } from '@hs/core';
+import { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
 
 export interface FetchedEvents {
-	events: { eventId: string; event: EventBase }[];
+	events: { eventId: string; event: Pdu }[];
 	missingEventIds: string[];
 }
 
@@ -36,7 +36,7 @@ export class EventFetcherService {
 		}
 
 		// Try to get events from local database
-		const localEvents: { eventId: string; event: EventBase }[] = [];
+		const localEvents: { eventId: string; event: Pdu }[] = [];
 
 		const dbEventsCursor = this.eventRepository.findByIds(eventIds);
 		for await (const event of dbEventsCursor) {
@@ -90,8 +90,8 @@ export class EventFetcherService {
 	private async fetchEventsFromFederation(
 		eventIds: string[],
 		targetServerName: string,
-	): Promise<MatrixPDU[]> {
-		const eventsToReturn: MatrixPDU[] = [];
+	): Promise<Pdu[]> {
+		const eventsToReturn: Pdu[] = [];
 
 		try {
 			// TODO: Improve batch event requests to avoid too many parallel requests

@@ -734,7 +734,7 @@ export class StateService {
 				(stateMapping) => stateMapping.delta.eventId,
 			);
 			const publicRoomsWithNamesEventsCursor =
-				this.eventRepository.findByIds(eventIds);
+				this.eventRepository.findByIds<'m.room.name'>(eventIds);
 			const publicRoomsWithNamesEvents =
 				await publicRoomsWithNamesEventsCursor.toArray();
 
@@ -769,7 +769,7 @@ export class StateService {
 			(stateMapping) => stateMapping.delta.eventId,
 		);
 		const publicRoomsWithNamesEventsCursor =
-			this.eventRepository.findByIds(eventIds);
+			this.eventRepository.findByIds<'m.room.name'>(eventIds);
 		const publicRoomsWithNamesEvents =
 			await publicRoomsWithNamesEventsCursor.toArray();
 
@@ -782,6 +782,7 @@ export class StateService {
 	async getMembersOfRoom(roomId: string) {
 		const stateMappingsCursor = this.stateRepository.getByRoomIdsAndIdentifier(
 			[roomId],
+			// TODO: why it must to end whit `:` ?
 			/^m\.room\.member:/,
 		);
 		const stateMappings = await stateMappingsCursor.toArray();
@@ -789,7 +790,8 @@ export class StateService {
 		const eventIds = stateMappings.map(
 			(stateMapping) => stateMapping.delta.eventId,
 		);
-		const eventsCursor = this.eventRepository.findByIds(eventIds);
+		const eventsCursor =
+			this.eventRepository.findByIds<'m.room.member'>(eventIds);
 		const events = await eventsCursor.toArray();
 
 		const members = events

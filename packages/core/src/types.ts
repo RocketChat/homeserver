@@ -1,10 +1,10 @@
-import type { EventBase } from './events/eventBase';
+import { Pdu } from '@hs/room';
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = 'ed25519',
 }
 
-export type SignedEvent<T extends EventBase> = T & {
+export type SignedEvent<T extends Pdu> = T & {
 	event_id: string;
 	hashes: {
 		sha256: string;

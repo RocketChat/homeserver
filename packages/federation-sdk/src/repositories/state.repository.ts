@@ -97,6 +97,7 @@ export class StateRepository {
 	getStateMappingsByIdentifier(
 		identifier: string,
 	): FindCursor<WithId<StateStore>> {
+		// TODO: why it must to end whit `:` ?
 		return this.collection.find({ 'delta.identifier': identifier });
 	}
 }

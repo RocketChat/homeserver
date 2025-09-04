@@ -4,6 +4,7 @@ import { BaseQueue } from './base.queue';
 export type MissingEventType = {
 	eventId: string;
 	roomId: string;
+	// TODO: check what to do with origin
 	origin: string;
 };
 

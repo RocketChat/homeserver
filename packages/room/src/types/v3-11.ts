@@ -299,6 +299,8 @@ export function getPduPowerLevelsEventContentSchema() {
 				'The power level for users in the room whose user_id is not mentioned in the users key. Defaults to 0 if unspecified.',
 			)
 			.optional(),
+
+		// historical: z.number(), TODO: check if historical exists in spec - m.power_levels
 	});
 }
 

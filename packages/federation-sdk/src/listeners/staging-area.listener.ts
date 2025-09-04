@@ -16,7 +16,8 @@ export class StagingAreaListener {
 	}
 
 	async handleQueueItem(data: StagingAreaEventType) {
-		this.logger.debug(`Processing event ${data.eventId} from ${data.origin}`);
+		// TODO: check what to do with origin
+		this.logger.debug(`Processing event ${data.eventId}`);
 		await this.stagingAreaService.processEvent(data);
 	}
 }

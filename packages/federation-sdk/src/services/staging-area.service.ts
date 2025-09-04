@@ -161,6 +161,7 @@ export class StagingAreaService {
 				this.missingEventsService.addEvent({
 					eventId: missingId,
 					roomId: event.roomId,
+					// TODO: check what to do with origin
 					origin: event.origin,
 				});
 			}
@@ -245,7 +246,7 @@ export class StagingAreaService {
 
 			const pdu = PersistentEventFactory.createFromRawEvent(
 				// TODO: refactor to StagingAreaEventType use Pdu
-				event.event as unknown as Pdu,
+				event.event,
 				roomVersion,
 			);
 
@@ -338,8 +339,8 @@ export class StagingAreaService {
 		}
 	}
 
-	private async processNotificationStage(event: StagingAreaEventType) {
-		const eventId = event.eventId;
+	private async processNotificationStage(stagedEvent: StagingAreaEventType) {
+		const { eventId, event } = stagedEvent;
 		const trackedEvent = this.processingEvents.get(eventId);
 		if (!trackedEvent) {
 			return;
@@ -349,35 +350,35 @@ export class StagingAreaService {
 			this.logger.debug(`Notifying clients about event ${eventId}`);
 
 			switch (true) {
-				case event.event.type === 'm.room.message':
+				case stagedEvent.event.type === 'm.room.message':
 					this.eventEmitterService.emit('homeserver.matrix.message', {
-						event_id: event.eventId,
-						room_id: event.roomId,
-						sender: event.event.sender,
-						origin_server_ts: event.event.origin_server_ts,
+						event_id: stagedEvent.eventId,
+						room_id: stagedEvent.roomId,
+						sender: stagedEvent.event.sender,
+						origin_server_ts: stagedEvent.event.origin_server_ts,
 						content: {
-							body: event.event.content?.body as string,
-							msgtype: event.event.content?.msgtype as string,
-							'm.relates_to': event.event.content?.['m.relates_to'] as {
+							body: stagedEvent.event.content?.body as string,
+							msgtype: stagedEvent.event.content?.msgtype as string,
+							'm.relates_to': stagedEvent.event.content?.['m.relates_to'] as {
 								rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
 								event_id: string;
 							},
-							'm.new_content': event.event.content?.['m.new_content'] as {
+							'm.new_content': stagedEvent.event.content?.['m.new_content'] as {
 								body: string;
 								msgtype: string;
 							},
-							formatted_body: (event.event.content?.formatted_body ||
+							formatted_body: (stagedEvent.event.content?.formatted_body ||
 								'') as string,
 						},
 					});
 					break;
-				case event.event.type === 'm.reaction': {
+				case stagedEvent.event.type === 'm.reaction': {
 					this.eventEmitterService.emit('homeserver.matrix.reaction', {
-						event_id: event.eventId,
-						room_id: event.roomId,
-						sender: event.event.sender,
-						origin_server_ts: event.event.origin_server_ts,
-						content: event.event.content as {
+						event_id: stagedEvent.eventId,
+						room_id: stagedEvent.roomId,
+						sender: stagedEvent.event.sender,
+						origin_server_ts: stagedEvent.event.origin_server_ts,
+						content: stagedEvent.event.content as {
 							'm.relates_to': {
 								rel_type: 'm.annotation';
 								event_id: string;
@@ -387,27 +388,27 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case isRedactedEvent(event.event): {
+				case isRedactedEvent(event): {
 					this.eventEmitterService.emit('homeserver.matrix.redaction', {
-						event_id: event.eventId,
-						room_id: event.roomId,
-						sender: event.event.sender,
-						origin_server_ts: event.event.origin_server_ts,
-						redacts: event.event.redacts,
+						event_id: stagedEvent.eventId,
+						room_id: stagedEvent.roomId,
+						sender: stagedEvent.event.sender,
+						origin_server_ts: stagedEvent.event.origin_server_ts,
+						redacts: event.content.redacts,
 						content: {
-							reason: event.event.content?.reason as string | undefined,
+							reason: event.content.reason,
 						},
 					});
 					break;
 				}
-				case event.event.type === 'm.room.member': {
+				case stagedEvent.event.type === 'm.room.member': {
 					this.eventEmitterService.emit('homeserver.matrix.membership', {
-						event_id: event.eventId,
-						room_id: event.roomId,
-						sender: event.event.sender,
-						state_key: event.event.state_key as string,
-						origin_server_ts: event.event.origin_server_ts,
-						content: event.event.content as {
+						event_id: stagedEvent.eventId,
+						room_id: stagedEvent.roomId,
+						sender: stagedEvent.event.sender,
+						state_key: stagedEvent.event.state_key as string,
+						origin_server_ts: stagedEvent.event.origin_server_ts,
+						content: stagedEvent.event.content as {
 							membership: Membership;
 							displayname?: string;
 							avatar_url?: string;
@@ -416,23 +417,23 @@ export class StagingAreaService {
 					});
 					break;
 				}
-				case event.event.type === 'm.room.name': {
+				case stagedEvent.event.type === 'm.room.name': {
 					this.eventEmitterService.emit('homeserver.matrix.room.name', {
-						room_id: event.roomId,
-						user_id: event.event.sender,
-						name: event.event.content?.name as string,
+						room_id: stagedEvent.roomId,
+						user_id: stagedEvent.event.sender,
+						name: stagedEvent.event.content?.name as string,
 					});
 					break;
 				}
-				case event.event.type === 'm.room.topic': {
+				case stagedEvent.event.type === 'm.room.topic': {
 					this.eventEmitterService.emit('homeserver.matrix.room.topic', {
-						room_id: event.roomId,
-						user_id: event.event.sender,
-						topic: event.event.content?.topic as string,
+						room_id: stagedEvent.roomId,
+						user_id: stagedEvent.event.sender,
+						topic: stagedEvent.event.content?.topic as string,
 					});
 					break;
 				}
-				case event.event.type === 'm.room.power_levels': {
+				case stagedEvent.event.type === 'm.room.power_levels': {
 					const getRole = (powerLevel: number) => {
 						if (powerLevel === 100) {
 							return 'owner';
@@ -446,12 +447,14 @@ export class StagingAreaService {
 
 					// at this point we potentially have the new power level event
 					const oldRoomState =
-						await this.stateService.getFullRoomStateBeforeEvent2(event.eventId);
+						await this.stateService.getFullRoomStateBeforeEvent2(
+							stagedEvent.eventId,
+						);
 
 					const oldPowerLevels = oldRoomState.powerLevels?.users;
 
 					const changedUserPowers = (
-						event.event.content as PduPowerLevelsEventContent
+						stagedEvent.event.content as PduPowerLevelsEventContent
 					).users;
 
 					if (!changedUserPowers) {
@@ -471,9 +474,9 @@ export class StagingAreaService {
 							this.logger.debug(`Resetting power level for ${userId} to user`);
 
 							this.eventEmitterService.emit('homeserver.matrix.room.role', {
-								sender_id: event.event.sender,
+								sender_id: stagedEvent.event.sender,
 								user_id: userId,
-								room_id: event.roomId,
+								room_id: stagedEvent.roomId,
 								role: 'user', // since new power level reset all powers
 							});
 						}
@@ -487,9 +490,9 @@ export class StagingAreaService {
 									`Setting power level for ${userId} to ${power}`,
 								);
 								this.eventEmitterService.emit('homeserver.matrix.room.role', {
-									sender_id: event.event.sender,
+									sender_id: stagedEvent.event.sender,
 									user_id: userId,
-									room_id: event.roomId,
+									room_id: stagedEvent.roomId,
 									role: getRole(power),
 								});
 							}
@@ -518,9 +521,9 @@ export class StagingAreaService {
 								`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`,
 							);
 							this.eventEmitterService.emit('homeserver.matrix.room.role', {
-								sender_id: event.event.sender,
+								sender_id: stagedEvent.event.sender,
 								user_id: userId,
-								room_id: event.roomId,
+								room_id: stagedEvent.roomId,
 								role: getRole(newPowerLevel),
 							});
 						}
@@ -541,9 +544,9 @@ export class StagingAreaService {
 							);
 
 							this.eventEmitterService.emit('homeserver.matrix.room.role', {
-								sender_id: event.event.sender,
+								sender_id: stagedEvent.event.sender,
 								user_id: userId,
-								room_id: event.roomId,
+								room_id: stagedEvent.roomId,
 								role: getRole(power),
 							});
 						}
@@ -553,7 +556,7 @@ export class StagingAreaService {
 				}
 				default:
 					this.logger.warn(
-						`Unknown event type: ${event.event.type} for emitterService for now`,
+						`Unknown event type: ${stagedEvent.event.type} for emitterService for now`,
 					);
 					break;
 			}
@@ -561,11 +564,11 @@ export class StagingAreaService {
 			trackedEvent.state = ProcessingState.COMPLETED;
 		} catch (error: unknown) {
 			this.logger.warn(
-				`Notification error for ${event.eventId}: ${String(error)}`,
+				`Notification error for ${stagedEvent.eventId}: ${String(error)}`,
 			);
 			trackedEvent.state = ProcessingState.COMPLETED;
 		}
 
-		this.processingEvents.set(event.eventId, trackedEvent);
+		this.processingEvents.set(stagedEvent.eventId, trackedEvent);
 	}
 }

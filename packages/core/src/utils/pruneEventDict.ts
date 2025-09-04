@@ -1,5 +1,6 @@
 import { isRoomMemberEvent } from '../events/isRoomMemberEvent';
 
+import { Pdu } from '@hs/room';
 import type { EventBase } from '../events/eventBase';
 
 interface RoomVersion {
@@ -15,7 +16,7 @@ interface JsonDict {
 	[key: string]: any;
 }
 type AllowedKeysDefault = Extract<
-	keyof EventBase,
+	keyof Pdu,
 	| 'event_id'
 	| 'sender'
 	| 'room_id'
@@ -32,7 +33,7 @@ type AllowedKeysDefault = Extract<
 >;
 
 type AllowedKeysPowerLevels = Extract<
-	keyof EventBase,
+	keyof Pdu,
 	| 'users'
 	| 'users_default'
 	| 'events'
@@ -44,8 +45,11 @@ type AllowedKeysPowerLevels = Extract<
 >;
 
 type MergeMultipleKeys<T, U> = T | U;
+export type Prettify<T> = {
+	[K in keyof T]: T[K];
+} & {};
 
-export function pruneEventDict<T extends EventBase>(
+export function pruneEventDict<T extends Pdu>(
 	eventDict: T,
 	roomVersion: RoomVersion = {
 		updated_redaction_rules: false,
@@ -55,12 +59,14 @@ export function pruneEventDict<T extends EventBase>(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): Pick<
-	T,
-	MergeMultipleKeys<
-		AllowedKeysDefault,
-		T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never
-	> & {}
+): Prettify<
+	Pick<
+		T,
+		MergeMultipleKeys<
+			AllowedKeysDefault,
+			T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never
+		> & {}
+	>
 > {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it

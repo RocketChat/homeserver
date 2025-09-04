@@ -50,7 +50,7 @@ export class RoomService {
 	) {}
 
 	private validatePowerLevelChange(
-		currentPowerLevelsContent: RoomPowerLevelsEvent['content'],
+		currentPowerLevelsContent: PduForType<'m.room.power_levels'>['content'],
 		senderId: string,
 		targetUserId: string,
 		newPowerLevel: number,
@@ -402,8 +402,9 @@ export class RoomService {
 
 		const currentPowerLevelsEvent =
 			powerLevelsAuthResult?._id &&
-			(await this.eventService.getEventById<RoomPowerLevelsEvent>(
+			(await this.eventService.getEventById(
 				powerLevelsAuthResult._id,
+				'm.room.power_levels',
 			));
 
 		if (!currentPowerLevelsEvent) {
@@ -415,7 +416,7 @@ export class RoomService {
 		}
 
 		this.validatePowerLevelChange(
-			currentPowerLevelsEvent.content,
+			currentPowerLevelsEvent.event.content,
 			senderId,
 			userId,
 			powerLevel,
@@ -469,25 +470,21 @@ export class RoomService {
 			prev_events: lastEventStore._id ? [lastEventStore._id] : [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
-				...currentPowerLevelsEvent.content,
+				...currentPowerLevelsEvent.event.content,
 				users: {
-					...(currentPowerLevelsEvent.content.users || {}),
+					...(currentPowerLevelsEvent.event.content.users || {}),
 					[userId]: powerLevel,
 				},
 			},
 			ts: Date.now(),
-		});
+		}) as PduForType<'m.room.power_levels'>;
 
 		const signingKeyConfig = await this.configService.getSigningKey();
 		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
 			? signingKeyConfig[0]
 			: signingKeyConfig;
 
-		const signedEvent: SignedEvent<RoomPowerLevelsEvent> = await signEvent(
-			eventToSign,
-			signingKey,
-			serverName,
-		);
+		const signedEvent = await signEvent(eventToSign, signingKey, serverName);
 
 		const eventId = generateId(signedEvent);
 
@@ -613,10 +610,10 @@ export class RoomService {
 				HttpStatus.FORBIDDEN,
 			);
 		}
-		const powerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				powerLevelsEventId,
-			);
+		const powerLevelsEvent = await this.eventService.getEventById(
+			powerLevelsEventId,
+			'm.room.power_levels',
+		);
 		if (!powerLevelsEvent) {
 			logger.error(
 				`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`,
@@ -628,7 +625,7 @@ export class RoomService {
 		}
 
 		this.validateKickPermission(
-			powerLevelsEvent.content,
+			powerLevelsEvent.event.content,
 			senderId,
 			kickedUserId,
 		);
@@ -688,10 +685,10 @@ export class RoomService {
 				HttpStatus.FORBIDDEN,
 			);
 		}
-		const powerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				powerLevelsEventId,
-			);
+		const powerLevelsEvent = await this.eventService.getEventById(
+			powerLevelsEventId,
+			'm.room.power_levels',
+		);
 		if (!powerLevelsEvent) {
 			logger.error(
 				`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`,
@@ -703,7 +700,7 @@ export class RoomService {
 		}
 
 		this.validateBanPermission(
-			powerLevelsEvent.content,
+			powerLevelsEvent.event.content,
 			senderId,
 			bannedUserId,
 		);
@@ -961,7 +958,7 @@ export class RoomService {
 		sender: string,
 		reason = 'This room has been deleted',
 		replacementRoomId?: string,
-	): Promise<SignedEvent<RoomTombstoneEvent>> {
+	): Promise<SignedEvent<PduForType<'m.room.tombstone'>>> {
 		logger.debug(`Marking room ${roomId} as tombstone by ${sender}`);
 		const serverName = this.configService.serverName;
 		const signingKey = await this.configService.getSigningKey();
@@ -985,13 +982,6 @@ export class RoomService {
 			throw new HttpException(
 				'Cannot delete room without power levels',
 				HttpStatus.FORBIDDEN,
-			);
-		}
-
-		if (!isRoomPowerLevelsEvent(powerLevelsEvent.event)) {
-			throw new HttpException(
-				'Invalid power levels event',
-				HttpStatus.INTERNAL_SERVER_ERROR,
 			);
 		}
 
@@ -1030,7 +1020,7 @@ export class RoomService {
 			prev_events: prevEvents,
 			depth,
 			origin: serverName,
-		});
+		}) as PduForType<'m.room.tombstone'>;
 
 		const signedEvent = await signEvent(
 			tombstoneEvent,
@@ -1067,7 +1057,7 @@ export class RoomService {
 	}
 
 	private validatePowerLevelForTombstone(
-		powerLevels: RoomPowerLevelsEvent,
+		powerLevels: PduForType<'m.room.power_levels'>,
 		sender: string,
 	): void {
 		const userPowerLevel =
@@ -1086,7 +1076,7 @@ export class RoomService {
 
 	private async notifyFederatedServersAboutTombstone(
 		roomId: string,
-		signedEvent: SignedEvent<RoomTombstoneEvent>,
+		signedEvent: SignedEvent<PduForType<'m.room.tombstone'>>,
 	): Promise<void> {
 		const rcServerName = this.configService.serverName;
 		const memberEvents =

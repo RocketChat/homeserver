@@ -4,12 +4,16 @@ import {
 	type PduJoinRuleEventContent,
 	type PduMembershipEventContent,
 	PduPowerLevelsEventContent,
+	PduType,
 } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
 
 import { PduForType } from '../types/_common';
-import type { PersistentEventBase } from './event-wrapper';
+import type {
+	PduWithHashesAndSignaturesOptional,
+	PersistentEventBase,
+} from './event-wrapper';
 import type { RoomVersion } from './type';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
@@ -50,17 +54,12 @@ export class PersistentEventFactory {
 	}
 
 	static createFromRawEvent(
-		rawEvent: PartialEvent & {
-			signatures?: Pdu['signatures'];
-			hashes?: Pdu['hashes'];
-		},
+		event: PduWithHashesAndSignaturesOptional,
 		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion> {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
-
-		const event = rawEvent as Pdu;
 
 		switch (roomVersion) {
 			case '3':
@@ -276,26 +275,28 @@ export class PersistentEventFactory {
 		}
 
 		// Note: event_id will be filled by the event wrapper on first access
-		const eventPartial: PartialEvent<PduForType<'m.reaction'>> = {
-			type: 'm.reaction',
-			content: {
-				'm.relates_to': {
-					rel_type: 'm.annotation',
-					event_id: eventIdToReact,
-					key: key,
-				},
-			},
-			sender: sender,
-			origin_server_ts: Date.now(),
-			room_id: roomId,
-			// NO state_key - this is a timeline event
-			prev_events: [],
-			auth_events: [],
-			depth: 0,
-			unsigned: {},
-		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent(
+			{
+				type: 'm.reaction',
+				content: {
+					'm.relates_to': {
+						rel_type: 'm.annotation',
+						event_id: eventIdToReact,
+						key: key,
+					},
+				},
+				sender: sender,
+				origin_server_ts: Date.now(),
+				room_id: roomId,
+				// NO state_key - this is a timeline event
+				prev_events: [],
+				auth_events: [],
+				depth: 0,
+				unsigned: {},
+			},
+			roomVersion,
+		);
 	}
 
 	static newRedactionEvent(
@@ -845,6 +846,8 @@ export class PersistentEventFactory {
 			kick: 50,
 			redact: 50,
 			invite: 50,
+
+			// historical: 100, TODO: check if historical exists in spec - m.power_levels
 		};
 
 		const powerLevelsEvent = PersistentEventFactory.newPowerLevelEvent(
