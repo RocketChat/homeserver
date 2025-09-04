@@ -3,6 +3,7 @@ import type { EventID } from '@hs/room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
+import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
@@ -88,6 +89,7 @@ export interface HomeserverServices {
 	edu: EduService;
 	media: MediaService;
 	request: FederationRequestService;
+	federationAuth: EventAuthorizationService;
 }
 
 export type HomeserverEventSignatures = {
@@ -212,6 +214,7 @@ export function getAllServices(): HomeserverServices {
 		edu: container.resolve(EduService),
 		media: container.resolve(MediaService),
 		request: container.resolve(FederationRequestService),
+		federationAuth: container.resolve(EventAuthorizationService),
 	};
 }
 

@@ -24,7 +24,7 @@ import { StateRepository, StateStore } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 
-type State = Map<StateMapKey, PersistentEventBase>;
+export type State = Map<StateMapKey, PersistentEventBase>;
 
 type StrippedRoomState = {
 	content: PduContent;
@@ -912,7 +912,7 @@ export class StateService {
 
 	async getServersInRoom(roomId: string) {
 		return this.getMembersOfRoom(roomId).then((members) =>
-			members.map((member) => member.split(':').pop()!),
+			members.map((member) => member.split(':').pop() ?? ''),
 		);
 	}
 }
