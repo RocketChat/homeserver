@@ -4,7 +4,7 @@ import {
 	octetStringTlv,
 	privateKeyVersionTlv,
 	sequenceOrderedTlv,
-} from '../der';
+} from '../../der';
 
 enum KeyType {
 	private = 'PRIVATE KEY',
@@ -36,6 +36,9 @@ export function toPem(base64: string, type: KeyType): string {
  * We don't use extensions
 */
 export function ed25519PrivateKeyRawToPem(rawKey: Uint8Array): string {
+	if (rawKey.length !== 32) {
+		throw new Error('Invalid Ed25519 private key length');
+	}
 	// version Version
 	const version = privateKeyVersionTlv;
 	// privateKeyAlgorithm PrivateKeyAlgorithmIdentifier
@@ -71,6 +74,9 @@ export function ed25519PrivateKeyRawToPem(rawKey: Uint8Array): string {
 	}
 */
 export function ed25519PublicKeyRawToPem(rawKey: Uint8Array): string {
+	if (rawKey.length !== 32) {
+		throw new Error('Invalid Ed25519 public key length');
+	}
 	// algorithm AlgorithmIdentifier
 	const algId = algorithmIdentifierTlv;
 	// subhjectPublicKey BIT STRING
