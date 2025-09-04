@@ -208,7 +208,11 @@ export class EventService {
 		origin,
 		pdus,
 		edus,
-	}: { origin: string; pdus: Pdu[]; edus?: BaseEDU[] }): Promise<void> {
+	}: {
+		origin: string;
+		pdus: Pdu[];
+		edus?: BaseEDU[];
+	}): Promise<void> {
 		if (!Array.isArray(pdus)) {
 			throw new Error('pdus must be an array');
 		}
@@ -234,7 +238,7 @@ export class EventService {
 
 			// process both PDU and EDU in "parallel" to no block EDUs due to heavy PDU operations
 			await Promise.all([
-				this.processIncomingPDUs(pdus),
+				this.processIncomingPDUs(origin, pdus),
 				edus && this.processIncomingEDUs(edus),
 			]);
 		} finally {
@@ -242,10 +246,12 @@ export class EventService {
 		}
 	}
 
-	// TODO change type to Pdu
-	private async processIncomingPDUs(pdus: EventBase[]): Promise<void> {
+	private async processIncomingPDUs(
+		origin: string,
+		pdus: Pdu[],
+	): Promise<void> {
 		// organize events by room id
-		const eventsByRoomId = new Map<string, EventBase[]>();
+		const eventsByRoomId = new Map<string, Pdu[]>();
 		for (const event of pdus) {
 			const roomId = event.room_id;
 			if (!eventsByRoomId.has(roomId)) {
@@ -260,7 +266,7 @@ export class EventService {
 			Array.from(eventsByRoomId.entries()).map(async ([roomId, events]) => {
 				for await (const event of events) {
 					try {
-						await this.validateEvent(event);
+						await this.validateEvent(origin, event);
 					} catch (err) {
 						this.logger.error({
 							msg: 'Event validation failed',
@@ -296,8 +302,7 @@ export class EventService {
 		);
 	}
 
-	// TODO change type to Pdu
-	private async validateEvent(event: EventBase): Promise<void> {
+	private async validateEvent(origin: string, event: Pdu): Promise<void> {
 		const roomVersion = await this.getRoomVersion(event);
 		if (!roomVersion) {
 			throw new Error('M_UNKNOWN_ROOM_VERSION');
@@ -316,10 +321,7 @@ export class EventService {
 			throw new Error('M_SCHEMA_VALIDATION_FAILED');
 		}
 
-		const validateErrors =
-			event.type === 'm.room.create'
-				? this.validateCreateEvent(event)
-				: this.validateNonCreateEvent(event);
+		const validateErrors = this.validateEventByType(event);
 		if (validateErrors.length > 0) {
 			this.logger.error({
 				msg: 'Create event validation failed',
@@ -342,13 +344,11 @@ export class EventService {
 				this.keyRepository.storePublicKey(origin, keyId, publicKey),
 		);
 
-		await checkSignAndHashes(
-			// TODO validate event is hashed at this point
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-			event as any,
-			event.origin,
-			getPublicKeyFromServer,
-		);
+		if (!event.hashes && !event.signatures) {
+			throw new Error('M_MISSING_SIGNATURES_OR_HASHES');
+		}
+
+		await checkSignAndHashes(event, origin, getPublicKeyFromServer);
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
@@ -441,64 +441,62 @@ export class EventService {
 		}
 	}
 
-	private validateCreateEvent(event: EventBase): string[] {
+	private validateEventByType(event: Pdu): string[] {
 		const errors: string[] = [];
 
-		if (event.prev_events && event.prev_events.length > 0) {
-			errors.push('Create event must not have prev_events');
-		}
-
-		if (event.room_id && event.sender) {
-			const roomDomain = this.extractDomain(event.room_id);
-			const senderDomain = this.extractDomain(event.sender);
-
-			if (roomDomain !== senderDomain) {
-				errors.push(
-					`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`,
-				);
-			}
-		}
-
-		if (event.auth_events && event.auth_events.length > 0) {
-			errors.push('Create event must not have auth_events');
-		}
-
-		if (!event.content || !event.content.room_version) {
-			errors.push('Create event must specify a room_version');
-		} else {
-			const validRoomVersions = [
-				'1',
-				'2',
-				'3',
-				'4',
-				'5',
-				'6',
-				'7',
-				'8',
-				'9',
-				'10',
-				'11',
-			];
+		if (event.type !== 'm.room.create') {
 			if (
-				typeof event.content.room_version !== 'string' ||
-				!validRoomVersions.includes(event.content.room_version)
+				!event.prev_events ||
+				!Array.isArray(event.prev_events) ||
+				event.prev_events.length === 0
 			) {
-				errors.push(`Unsupported room version: ${event.content.room_version}`);
+				errors.push('Event must reference previous events (prev_events)');
 			}
-		}
+		} else {
+			if (event.prev_events && event.prev_events.length > 0) {
+				errors.push('Create event must not have prev_events');
+			}
 
-		return errors;
-	}
+			if (event.room_id && event.sender) {
+				const roomDomain = this.extractDomain(event.room_id);
+				const senderDomain = this.extractDomain(event.sender);
 
-	private validateNonCreateEvent(event: EventBase): string[] {
-		const errors: string[] = [];
+				if (roomDomain !== senderDomain) {
+					errors.push(
+						`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`,
+					);
+				}
+			}
 
-		if (
-			!event.prev_events ||
-			!Array.isArray(event.prev_events) ||
-			event.prev_events.length === 0
-		) {
-			errors.push('Event must reference previous events (prev_events)');
+			if (event.auth_events && event.auth_events.length > 0) {
+				errors.push('Create event must not have auth_events');
+			}
+
+			if (!event.content || !event.content.room_version) {
+				errors.push('Create event must specify a room_version');
+			} else {
+				const validRoomVersions = [
+					'1',
+					'2',
+					'3',
+					'4',
+					'5',
+					'6',
+					'7',
+					'8',
+					'9',
+					'10',
+					'11',
+				];
+				if (
+					typeof event.content.room_version !== 'string' ||
+					!validRoomVersions.includes(event.content.room_version)
+				) {
+					errors.push(
+						`Unsupported room version: ${event.content.room_version}`,
+					);
+				}
+			}
 		}
 
 		return errors;
