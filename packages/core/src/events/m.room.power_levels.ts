@@ -97,7 +97,8 @@ export const roomPowerLevelsEvent = ({
 			redact: 50,
 			invite: 0,
 
-			// historical: 100, TODO: check if historical exists in spec - m.power_levels
+			// TODO: check if historical exists in spec - m.power_levels
+			...({ historical: 100 } as any),
 		},
 		state_key: '',
 		origin_server_ts: ts,

@@ -15,7 +15,9 @@ export class MissingEventListener {
 	constructor(
 		private readonly missingEventsQueue: MissingEventsQueue,
 		private readonly stagingAreaService: StagingAreaService,
+		@inject('EventService')
 		private readonly eventService: EventService,
+		@inject('EventFetcherService')
 		private readonly eventFetcherService: EventFetcherService,
 	) {
 		this.missingEventsQueue.registerHandler(this.handleQueueItem.bind(this));
