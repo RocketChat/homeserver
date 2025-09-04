@@ -3,14 +3,18 @@ import express, { type Request, type Response } from 'express';
 
 import { loadEd25519SignerFromSeed } from '../../packages/crypto/src/utils/keys';
 import { Readable } from 'node:stream';
-import { toUnpaddedBase64 } from '../../packages/crypto/src';
+import {
+	encodeCanonicalJson,
+	encodeCanonicalJsonAsync,
+	toUnpaddedBase64,
+} from '../../packages/crypto/src';
 
 const app = express();
 
 app.use(express.json());
 
 type SignAndVerifyRequest = {
-	message: string; // allow big payloads
+	message: string | object; // allow big payloads
 	api: {
 		engine: 'native' | 'tweetnacl'; // sodium
 		stream: boolean; // whether to use streaming API or not
@@ -26,9 +30,7 @@ function handleTweetnaclSignAndVerify(message: Uint8Array) {
 	nacl.sign.detached.verify(message, signature, tweetKeyPair.publicKey);
 }
 
-const nativeSigner = await loadEd25519SignerFromSeed(
-	Buffer.from(seedBytes).toString('base64'),
-);
+const nativeSigner = await loadEd25519SignerFromSeed(seedBytes);
 
 async function handleNativeSignAndVerify(message: Uint8Array, stream: boolean) {
 	if (!stream) {
@@ -41,10 +43,6 @@ async function handleNativeSignAndVerify(message: Uint8Array, stream: boolean) {
 // @ts-ignore
 app.post('/signAndVerify', async (req, res) => {
 	const { message, api } = req.body as SignAndVerifyRequest;
-	if (typeof message !== 'string') {
-		return res.status(400).json({ error: 'Message must be a string' });
-	}
-
 	if (!message) {
 		return res.status(400).json({ error: 'Message cannot be empty' });
 	}
@@ -52,7 +50,9 @@ app.post('/signAndVerify', async (req, res) => {
 	const { engine, stream = false } = api;
 
 	// encode should mimick copy of memory that we'll experience in real world, json -> string
-	const encodedMessage = new TextEncoder().encode(message);
+	const encodedMessage = new TextEncoder().encode(
+		typeof message === 'string' ? message : encodeCanonicalJson(message),
+	);
 
 	if (engine === 'tweetnacl') {
 		if (stream) {

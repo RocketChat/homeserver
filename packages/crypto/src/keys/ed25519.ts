@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-import { EncryptionValidAlgorithm } from '../constants';
+import { EncryptionValidAlgorithm } from '../utils/constants';
 import type { VerifierKey, Signer } from '../contracts/key';
 import {
 	ed25519PrivateKeyRawToPem,
@@ -11,6 +11,10 @@ export class Ed25519VerifierKeyImpl implements VerifierKey {
 	algorithm = EncryptionValidAlgorithm.ed25519;
 
 	private _publicKeyPem: string;
+
+	public get id() {
+		return `${this.algorithm}:${this.version}` as const;
+	}
 
 	constructor(
 		public version: string,

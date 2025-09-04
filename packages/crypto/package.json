@@ -16,17 +16,10 @@
 		}
 	},
 	"dependencies": {
-		"@noble/ed25519": "^3.0.0",
-		"asn1js": "^3.0.6",
-		"sodium-plus": "^0.9.0",
-		"tweetnacl": "^1.0.3"
+		"@noble/ed25519": "^3.0.0"
 	},
 	"devDependencies": {
-		"@types/libsodium-wrappers": "^0.7.14",
-		"@types/sodium-native": "^2.3.9",
-		"bun-types": "latest",
-		"express": "^5.1.0",
-		"k6": "^0.0.0"
+		"bun-types": "latest"
 	},
 	"files": [
 		"src",

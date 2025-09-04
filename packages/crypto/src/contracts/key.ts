@@ -2,7 +2,9 @@ import type {
 	DataType,
 	SignatureType,
 	EncryptionValidAlgorithm,
-} from '../constants';
+} from '../utils/constants';
+
+type KeyId = `${EncryptionValidAlgorithm}:${string}`;
 
 // when we only have a public key
 export interface VerifierKey {
@@ -10,6 +12,8 @@ export interface VerifierKey {
 	algorithm: EncryptionValidAlgorithm;
 	// key version, can change if rotated for example, can be any arbitrary string
 	version: string;
+
+	id: KeyId;
 
 	verify(data: DataType, signature: SignatureType): Promise<void>; // throws if invalid
 }
