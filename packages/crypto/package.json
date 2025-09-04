@@ -15,8 +15,14 @@
 			"require": "./dist/index.js"
 		}
 	},
+	"dependencies": {
+		"@noble/ed25519": "^3.0.0"
+	},
 	"devDependencies": {
 		"bun-types": "latest"
 	},
-	"files": ["src", "dist"]
+	"files": [
+		"src",
+		"dist"
+	]
 }
