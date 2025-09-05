@@ -2,7 +2,14 @@ import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
-import { Pdu, PduForType, PersistentEventFactory, RoomVersion } from '@hs/room';
+import {
+	Pdu,
+	PduForType,
+	PersistentEventFactory,
+	RoomVersion,
+	State,
+	getAuthChain,
+} from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateService } from './state.service';
@@ -130,43 +137,46 @@ export class ProfilesService {
 		eventId?: string,
 	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
 		try {
-			let state: Map<string, unknown>;
-
-			if (eventId) {
-				// Get state at a specific event
-				state = await this.stateService.findStateAtEvent(eventId);
-			} else {
-				// Get current room state
-				state = await this.stateService.getFullRoomState(roomId);
-			}
+			const state = eventId
+				? await this.stateService.findStateAtEvent(eventId)
+				: await this.stateService.getFullRoomState(roomId);
 
 			const pduIds: string[] = [];
-			const authChainIds: string[] = [];
+			const authChainIds = new Set<string>();
 
-			// Extract state event IDs
+			// Get room version for the store
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
+			if (!roomVersion) {
+				throw new Error('Room version not found');
+			}
+
+			// Get the event store
+			const store = this.stateService._getStore(roomVersion);
+
+			// Extract state event IDs and collect auth chain IDs
 			for (const [, event] of state.entries()) {
 				if (event && typeof event === 'object' && 'eventId' in event) {
-					const eventObj = event as { eventId: string };
-					pduIds.push(eventObj.eventId);
+					// PersistentEventBase has an eventId getter
+					pduIds.push(event.eventId);
+
+					// Get the complete auth chain for this event
+					try {
+						const authChain = await getAuthChain(event, store);
+						for (const authEventId of authChain) {
+							authChainIds.add(authEventId);
+						}
+					} catch (error) {
+						this.logger.warn(
+							`Failed to get auth chain for event ${event.eventId}:`,
+							error,
+						);
+					}
 				}
 			}
-
-			// For auth chain, we need to collect all auth events from the state events
-			// This is a simplified implementation - in practice, you'd need to traverse
-			// the auth chain more thoroughly
-			for (const [, event] of state.entries()) {
-				if (event && typeof event === 'object' && 'authEvents' in event) {
-					const eventObj = event as { authEvents: string[] };
-					authChainIds.push(...eventObj.authEvents);
-				}
-			}
-
-			// Remove duplicates
-			const uniqueAuthChainIds = [...new Set(authChainIds)];
 
 			return {
 				pdu_ids: pduIds,
-				auth_chain_ids: uniqueAuthChainIds,
+				auth_chain_ids: Array.from(authChainIds),
 			};
 		} catch (error) {
 			this.logger.error(`Failed to get state IDs for room ${roomId}:`, error);
@@ -182,7 +192,7 @@ export class ProfilesService {
 		auth_chain: Record<string, unknown>[];
 	}> {
 		try {
-			let state: Map<string, unknown>;
+			let state: Map<string, any>;
 
 			if (eventId) {
 				// Get state at a specific event
@@ -193,28 +203,52 @@ export class ProfilesService {
 			}
 
 			const pdus: Record<string, unknown>[] = [];
-			const authChain: Record<string, unknown>[] = [];
+			const authChainIds = new Set<string>();
 
-			// Extract state event objects
+			// Get room version for the store
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
+			if (!roomVersion) {
+				throw new Error('Room version not found');
+			}
+
+			// Get the event store
+			const store = this.stateService._getStore(roomVersion);
+
+			// Extract state event objects and collect auth chain IDs
 			for (const [, event] of state.entries()) {
-				if (event && typeof event === 'object' && 'event' in event) {
-					const eventObj = event as { event: Record<string, unknown> };
-					pdus.push(eventObj.event);
+				if (event && typeof event === 'object') {
+					// PersistentEventBase has an event getter that contains the actual event data
+					if ('event' in event) {
+						pdus.push(event.event);
+
+						// Get the complete auth chain for this event
+						try {
+							const authChain = await getAuthChain(event, store);
+							for (const authEventId of authChain) {
+								authChainIds.add(authEventId);
+							}
+						} catch (error) {
+							this.logger.warn(
+								`Failed to get auth chain for event ${event.eventId}:`,
+								error,
+							);
+						}
+					}
 				}
 			}
 
-			// For auth chain, we need to collect all auth events from the state events
-			// This is a simplified implementation - in practice, you'd need to traverse
-			// the auth chain more thoroughly and fetch the actual event objects
-			for (const [, event] of state.entries()) {
-				if (event && typeof event === 'object' && 'authEvents' in event) {
-					const eventObj = event as { authEvents: string[] };
-					// In a real implementation, you would fetch the actual event objects
-					// from the event repository using the auth event IDs
-					// For now, we'll return empty objects as placeholders
-					for (const _ of eventObj.authEvents) {
-						authChain.push({});
+			// Fetch the actual auth event objects
+			const authChain: Record<string, unknown>[] = [];
+			if (authChainIds.size > 0) {
+				try {
+					const authEvents = await store.getEvents(Array.from(authChainIds));
+					for (const authEvent of authEvents) {
+						if (authEvent && 'event' in authEvent) {
+							authChain.push(authEvent.event);
+						}
 					}
+				} catch (error) {
+					this.logger.warn('Failed to fetch auth event objects:', error);
 				}
 			}
 
