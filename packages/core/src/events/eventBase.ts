@@ -17,7 +17,6 @@ export type EventBase = {
 	sender: string;
 	depth: number;
 	state_key?: string;
-	origin: string;
 	origin_server_ts: number;
 
 	content?: Record<string, unknown>;

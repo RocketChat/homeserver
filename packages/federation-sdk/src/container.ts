@@ -12,6 +12,7 @@ import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
+import { Lock, LockRepository } from './repositories/lock.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
@@ -37,19 +38,16 @@ import { SignatureVerificationService } from './services/signature-verification.
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { LockManagerService } from './utils/lock.decorator';
-import type { LockConfig } from './utils/lock.decorator';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
-	lockManagerOptions?: LockConfig;
 }
 
 export async function createFederationContainer(
 	options: FederationContainerOptions,
 	configInstance: ConfigService,
 ) {
-	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
+	const { emitter } = options;
 
 	container.register<ConfigService>(ConfigService, {
 		useValue: configInstance,
@@ -63,21 +61,31 @@ export async function createFederationContainer(
 	container.registerSingleton(StagingAreaQueue);
 
 	container.register<Collection<EventStore>>('EventCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<EventStore>('events'),
 	});
+
 	container.register<Collection<Key>>('KeyCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Key>('keys'),
 	});
 
+	container.register<Collection<Lock>>('LockCollection', {
+		useValue: db.collection<Lock>('rocketchat_federation_lock'),
+	});
+
 	container.register<Collection<Room>>('RoomCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Room>('rooms'),
 	});
 
 	container.register<Collection<WithId<StateStore>>>('StateCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<WithId<StateStore>>('states'),
 	});
 
 	container.register<Collection<Server>>('ServerCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Server>('servers'),
 	});
 
@@ -97,6 +105,7 @@ export async function createFederationContainer(
 	container.registerSingleton(EventService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
+	container.registerSingleton(LockRepository);
 	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
@@ -111,9 +120,9 @@ export async function createFederationContainer(
 	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaListener);
 
-	container.register(LockManagerService, {
-		useFactory: () => new LockManagerService(lockManagerOptions),
-	});
+	// container.register(LockManagerService, {
+	// 	useFactory: () => new LockManagerService(lockManagerOptions),
+	// });
 
 	const eventEmitterService = container.resolve(EventEmitterService);
 	if (emitter) {
@@ -122,7 +131,7 @@ export async function createFederationContainer(
 		eventEmitterService.initializeStandalone();
 	}
 
-	container.resolve(MissingEventListener);
+	// container.resolve(MissingEventListener);
 	container.resolve(StagingAreaListener);
 
 	return container;

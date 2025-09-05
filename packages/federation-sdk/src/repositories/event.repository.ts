@@ -373,4 +373,16 @@ export class EventRepository {
 			{ sort: { 'event.depth': -1 } },
 		);
 	}
+
+	getNextStagedEventForRoom(roomId: string): Promise<EventStore | null> {
+		return this.collection.findOne(
+			{
+				'event.room_id': roomId,
+				staged: true,
+			},
+			{
+				sort: { createdAt: 1 },
+			},
+		);
+	}
 }

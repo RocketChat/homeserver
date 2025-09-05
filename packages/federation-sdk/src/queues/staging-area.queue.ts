@@ -1,41 +1,17 @@
 import 'reflect-metadata';
-import type { EventBase } from '@hs/core';
-import type { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 
-export interface StagingAreaEventType {
-	eventId: string;
-	roomId: string;
-	// TODO: check what to do with origin
-	origin: string;
-	event: Pdu;
-	metadata?: Record<string, unknown>;
-}
-
-type QueueHandler = (item: StagingAreaEventType) => Promise<void>;
+type QueueHandler = (roomId: string) => Promise<void>;
 
 @singleton()
 export class StagingAreaQueue {
-	private queue: StagingAreaEventType[] = [];
-	private priorityQueue: StagingAreaEventType[] = [];
+	private queue: string[] = [];
 	private handlers: QueueHandler[] = [];
 	private processing = false;
 
-	enqueue(item: StagingAreaEventType): void {
-		// If this is a continuation of processing (has metadata.state), add to priority queue
-		if (
-			item.metadata?.state &&
-			item.metadata.state !== 'pending_dependencies'
-		) {
-			this.priorityQueue.push(item);
-		} else {
-			this.queue.push(item);
-		}
+	enqueue(roomId: string): void {
+		this.queue.push(roomId);
 		this.processQueue();
-	}
-
-	dequeue(): StagingAreaEventType | undefined {
-		return this.queue.shift();
 	}
 
 	registerHandler(handler: QueueHandler): void {
@@ -50,20 +26,19 @@ export class StagingAreaQueue {
 		this.processing = true;
 
 		try {
-			while (this.priorityQueue.length > 0 || this.queue.length > 0) {
-				// Process priority queue first (events in mid-processing)
-				const item = this.priorityQueue.shift() || this.queue.shift();
-				if (!item) continue;
+			while (this.queue.length > 0) {
+				const roomId = this.queue.shift();
+				if (!roomId) continue;
 
 				for (const handler of this.handlers) {
-					await handler(item);
+					await handler(roomId);
 				}
 			}
 		} finally {
 			this.processing = false;
 
 			// Check if new items were added while processing
-			if (this.priorityQueue.length > 0 || this.queue.length > 0) {
+			if (this.queue.length > 0) {
 				this.processQueue();
 			}
 		}
