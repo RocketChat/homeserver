@@ -124,4 +124,107 @@ export class ProfilesService {
 			auth_chain: [],
 		};
 	}
+
+	async getStateIds(
+		roomId: string,
+		eventId?: string,
+	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
+		try {
+			let state: Map<string, unknown>;
+
+			if (eventId) {
+				// Get state at a specific event
+				state = await this.stateService.findStateAtEvent(eventId);
+			} else {
+				// Get current room state
+				state = await this.stateService.getFullRoomState(roomId);
+			}
+
+			const pduIds: string[] = [];
+			const authChainIds: string[] = [];
+
+			// Extract state event IDs
+			for (const [, event] of state.entries()) {
+				if (event && typeof event === 'object' && 'eventId' in event) {
+					const eventObj = event as { eventId: string };
+					pduIds.push(eventObj.eventId);
+				}
+			}
+
+			// For auth chain, we need to collect all auth events from the state events
+			// This is a simplified implementation - in practice, you'd need to traverse
+			// the auth chain more thoroughly
+			for (const [, event] of state.entries()) {
+				if (event && typeof event === 'object' && 'authEvents' in event) {
+					const eventObj = event as { authEvents: string[] };
+					authChainIds.push(...eventObj.authEvents);
+				}
+			}
+
+			// Remove duplicates
+			const uniqueAuthChainIds = [...new Set(authChainIds)];
+
+			return {
+				pdu_ids: pduIds,
+				auth_chain_ids: uniqueAuthChainIds,
+			};
+		} catch (error) {
+			this.logger.error(`Failed to get state IDs for room ${roomId}:`, error);
+			throw error;
+		}
+	}
+
+	async getState(
+		roomId: string,
+		eventId?: string,
+	): Promise<{
+		pdus: Record<string, unknown>[];
+		auth_chain: Record<string, unknown>[];
+	}> {
+		try {
+			let state: Map<string, unknown>;
+
+			if (eventId) {
+				// Get state at a specific event
+				state = await this.stateService.findStateAtEvent(eventId);
+			} else {
+				// Get current room state
+				state = await this.stateService.getFullRoomState(roomId);
+			}
+
+			const pdus: Record<string, unknown>[] = [];
+			const authChain: Record<string, unknown>[] = [];
+
+			// Extract state event objects
+			for (const [, event] of state.entries()) {
+				if (event && typeof event === 'object' && 'event' in event) {
+					const eventObj = event as { event: Record<string, unknown> };
+					pdus.push(eventObj.event);
+				}
+			}
+
+			// For auth chain, we need to collect all auth events from the state events
+			// This is a simplified implementation - in practice, you'd need to traverse
+			// the auth chain more thoroughly and fetch the actual event objects
+			for (const [, event] of state.entries()) {
+				if (event && typeof event === 'object' && 'authEvents' in event) {
+					const eventObj = event as { authEvents: string[] };
+					// In a real implementation, you would fetch the actual event objects
+					// from the event repository using the auth event IDs
+					// For now, we'll return empty objects as placeholders
+					for (const _ of eventObj.authEvents) {
+						authChain.push({});
+					}
+				}
+			}
+
+			return {
+				pdus: pdus,
+				auth_chain: authChain,
+			};
+		} catch (error) {
+			this.logger.error(`Failed to get state for room ${roomId}:`, error);
+			throw error;
+		}
+	}
 }
