@@ -23,8 +23,8 @@ export class LockRepository {
 			},
 			{ upsert: true, returnDocument: 'before' },
 		);
-		console.log('lock ->', lock);
 
+		// if no record was found, it means we successfully acquired the lock
 		if (!lock) {
 			return true;
 		}

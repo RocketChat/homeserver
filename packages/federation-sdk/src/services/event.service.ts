@@ -289,7 +289,7 @@ export class EventService {
 						this.configService.instanceId,
 					);
 					if (!lock) {
-						this.logger.debug(`Failed to acquire lock for room ${roomId}`);
+						this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
 						continue;
 					}
 
