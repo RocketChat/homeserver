@@ -416,7 +416,7 @@ export class EventRepository {
 				staged: true,
 			},
 			{
-				sort: { createdAt: -1 },
+				sort: { createdAt: 1 },
 			},
 		);
 	}
