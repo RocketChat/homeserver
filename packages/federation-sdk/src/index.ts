@@ -59,10 +59,7 @@ export { MediaService } from './services/media.service';
 
 // Queue implementations
 export { BaseQueue, type QueueHandler } from './queues/base.queue';
-export {
-	StagingAreaQueue,
-	type StagingAreaEventType,
-} from './queues/staging-area.queue';
+export { StagingAreaQueue } from './queues/staging-area.queue';
 export {
 	MissingEventsQueue,
 	type MissingEventType,

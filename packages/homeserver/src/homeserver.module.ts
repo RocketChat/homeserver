@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
@@ -41,6 +42,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 	}
 
 	const config = new ConfigService({
+		instanceId: crypto.randomUUID(),
 		serverName: process.env.SERVER_NAME || 'rc1',
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
 		database: {

@@ -286,18 +286,18 @@ export class EventService {
 					// acquire a lock for processing the event
 					const lock = await this.lockRepository.getLock(
 						roomId,
-						'event_processing',
+						this.configService.instanceId,
 					);
 					if (!lock) {
 						this.logger.debug(`Failed to acquire lock for room ${roomId}`);
-						// continue;
+						continue;
 					}
 
 					// if we have a lock, we can process the event
 					// void this.stagingAreaService.processEventForRoom(roomId);
 
 					// TODO change this to call stagingAreaService directly
-					// this.stagingAreaQueue.enqueue(roomId);
+					this.stagingAreaQueue.enqueue(roomId);
 				}
 			}),
 		);
