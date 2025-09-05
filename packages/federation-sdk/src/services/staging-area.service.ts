@@ -98,6 +98,7 @@ export class StagingAreaService {
 				this.logger.debug(
 					`Adding missing event ${missingId} to missing events service`,
 				);
+				// TODO how this should be implemented?
 				// this.missingEventsService.addEvent({
 				// 	eventId: missingId,
 				// 	roomId: event.roomId,
@@ -141,7 +142,7 @@ export class StagingAreaService {
 		}
 	}
 
-	private async processStateResolutionStage(event: EventStore<EventBase>) {
+	private async processStateResolutionStage(event: EventStore<Pdu>) {
 		this.logger.debug(`Resolving state for event ${event._id}`);
 		const roomVersion = await this.stateService.getRoomVersion(
 			event.event.room_id,
@@ -151,8 +152,7 @@ export class StagingAreaService {
 		}
 
 		const pdu = PersistentEventFactory.createFromRawEvent(
-			// TODO: refactor to StagingAreaEventType use Pdu
-			event.event as unknown as Pdu,
+			event.event,
 			roomVersion,
 		);
 
