@@ -61,10 +61,12 @@ export async function createFederationContainer(
 	container.registerSingleton(StagingAreaQueue);
 
 	container.register<Collection<EventStore>>('EventCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<EventStore>('events'),
 	});
 
 	container.register<Collection<Key>>('KeyCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Key>('keys'),
 	});
 
@@ -73,14 +75,17 @@ export async function createFederationContainer(
 	});
 
 	container.register<Collection<Room>>('RoomCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Room>('rooms'),
 	});
 
 	container.register<Collection<WithId<StateStore>>>('StateCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<WithId<StateStore>>('states'),
 	});
 
 	container.register<Collection<Server>>('ServerCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Server>('servers'),
 	});
 
