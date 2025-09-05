@@ -57,13 +57,15 @@ export class MissingEventListener {
 
 	private async processAndStoreStagedEvent(stagedEvent: EventStore) {
 		try {
-			this.stagingAreaService.addEventToQueue({
-				eventId: stagedEvent._id,
-				roomId: stagedEvent.event.room_id,
-				// TODO: check what to do with origin
-				origin: stagedEvent.event.sender.split(':')[1],
-				event: stagedEvent.event,
-			});
+			// TODO need to stage events here? if so, need to call the repository
+			// this.stagingAreaService.addEventToQueue({
+			// 	eventId: stagedEvent._id,
+			// 	roomId: stagedEvent.event.room_id,
+			// 	// TODO origin doesnt exist anymore
+			// 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+			// 	origin: (stagedEvent.event as any).origin,
+			// 	event: stagedEvent.event,
+			// });
 
 			await this.eventService.markEventAsUnstaged(stagedEvent._id);
 			this.logger.debug(

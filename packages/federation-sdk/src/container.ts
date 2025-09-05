@@ -41,14 +41,13 @@ import { WellKnownService } from './services/well-known.service';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
-	lockManagerOptions?: LockConfig;
 }
 
 export async function createFederationContainer(
 	options: FederationContainerOptions,
 	configInstance: ConfigService,
 ) {
-	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
+	const { emitter } = options;
 
 	container.register<ConfigService>(ConfigService, {
 		useValue: configInstance,
@@ -116,9 +115,9 @@ export async function createFederationContainer(
 	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaListener);
 
-	container.register(LockManagerService, {
-		useFactory: () => new LockManagerService(lockManagerOptions),
-	});
+	// container.register(LockManagerService, {
+	// 	useFactory: () => new LockManagerService(lockManagerOptions),
+	// });
 
 	const eventEmitterService = container.resolve(EventEmitterService);
 	if (emitter) {
@@ -128,7 +127,7 @@ export async function createFederationContainer(
 	}
 
 	// container.resolve(MissingEventListener);
-	// container.resolve(StagingAreaListener);
+	container.resolve(StagingAreaListener);
 
 	return container;
 }
