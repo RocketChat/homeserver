@@ -104,6 +104,7 @@ export const profilesPlugin = (app: Elysia) => {
 					body.earliest_events,
 					body.latest_events,
 					body.limit,
+					body.min_depth,
 				),
 			{
 				params: GetMissingEventsParamsDto,

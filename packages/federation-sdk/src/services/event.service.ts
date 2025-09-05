@@ -631,21 +631,47 @@ export class EventService {
 
 	async getMissingEvents(
 		roomId: string,
-		earliestEvents: string[],
-		latestEvents: string[],
+		earliestEventsId: string[],
+		latestEventsId: string[],
 		limit: number,
-	): Promise<{ events: { _id: string; event: Pdu }[] }> {
-		// TODO: This would benefit from adding projections to the query
-		const eventsCursor = this.eventRepository.findByRoomIdExcludingEventIds(
-			roomId,
-			[...earliestEvents, ...latestEvents],
-			limit,
-		);
-		const events = await eventsCursor.toArray();
+		minDepth: number,
+	): Promise<{ events: Pdu[] }> {
+		const latestEventsData = await this.eventRepository
+			.findEventsByIdsWithDepth(roomId, latestEventsId)
+			.map((e) => e.event.depth)
+			.toArray();
 
-		return {
-			events,
-		};
+		const maxDepth = Math.min(...latestEventsData);
+
+		const events = await this.eventRepository
+			.findEventsByRoomAndDepth(
+				roomId,
+				minDepth,
+				maxDepth,
+				[...earliestEventsId, ...latestEventsId],
+				limit,
+			)
+			.map((e) => e.event)
+			.toArray();
+
+		console.log(
+			'[getMissingEvents events]',
+			JSON.stringify(
+				{
+					minDepth,
+					maxDepth,
+					earliestEventsId,
+					latestEventsId,
+					limit,
+					roomId,
+					events,
+				},
+				null,
+				2,
+			),
+		);
+
+		return { events };
 	}
 
 	async getEventsByIds(
