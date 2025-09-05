@@ -342,12 +342,24 @@ export class StateService {
 
 		const prevEvents = await this.eventRepository.findPrevEvents(event.roomId);
 
+		let maxDepth = 0;
 		for (const prevEvent of prevEvents) {
 			const e = PersistentEventFactory.createFromRawEvent(
 				prevEvent.event as any,
 				roomVersion,
 			);
 			event.addPreviousEvent(e);
+			
+			// Track the maximum depth among previous events
+			if (e.depth > maxDepth) {
+				maxDepth = e.depth;
+			}
+		}
+
+		// Set the event's depth to be the maximum depth of previous events + 1
+		// If there are no previous events, depth remains 0 (for room creation events)
+		if (prevEvents.length > 0) {
+			(event as any).rawEvent.depth = maxDepth + 1;
 		}
 	}
 
