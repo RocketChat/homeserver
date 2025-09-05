@@ -13,6 +13,7 @@ export class LockRepository {
 	) {}
 
 	async getLock(roomId: string, instanceId: string): Promise<boolean> {
+		// TODO implement timeout logic
 		const lock = await this.collection.findOneAndUpdate(
 			{ roomId },
 			{
