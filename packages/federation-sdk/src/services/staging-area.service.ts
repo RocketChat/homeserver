@@ -124,7 +124,7 @@ export class StagingAreaService {
 		}
 	}
 
-	private async processAuthorizationStage(event: EventStore<EventBase>) {
+	private async processAuthorizationStage(event: EventStore<Pdu>) {
 		this.logger.debug(`Authorizing event ${event._id}`);
 		const authEvents = await this.eventService.getAuthEventIds(
 			'm.room.message',
