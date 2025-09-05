@@ -392,8 +392,19 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 		return this._rejectedReason;
 	}
 
+	addPrevEvents(events: PersistentEventBase<T>[]) {
+		this.rawEvent.prev_events.push(...events.map((e) => e.eventId));
+		if (this.rawEvent.depth <= events[events.length - 1].depth) {
+			this.rawEvent.depth = events[events.length - 1].depth + 1;
+		}
+		return this;
+	}
+
 	addPreviousEvent(event: PersistentEventBase<T>) {
 		this.rawEvent.prev_events.push(event.eventId);
+		if (this.rawEvent.depth <= event.depth) {
+			this.rawEvent.depth = event.depth + 1;
+		}
 		return this;
 	}
 

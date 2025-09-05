@@ -100,13 +100,15 @@ export class ProfilesService {
 		roomId: string,
 		earliestEvents: string[],
 		latestEvents: string[],
-		limit: number,
-	): Promise<{ events: { _id: string; event: Pdu }[] }> {
+		limit = 10,
+		minDepth = 0,
+	): Promise<{ events: Pdu[] }> {
 		return this.eventService.getMissingEvents(
 			roomId,
 			earliestEvents,
 			latestEvents,
 			limit,
+			minDepth,
 		);
 	}
 

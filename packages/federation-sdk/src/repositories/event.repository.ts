@@ -373,4 +373,39 @@ export class EventRepository {
 			{ sort: { 'event.depth': -1 } },
 		);
 	}
+
+	findEventsByIdsWithDepth(
+		roomId: string,
+		eventIds: string[],
+	): FindCursor<EventStore<Pick<Pdu, 'depth'>>> {
+		return this.collection.find(
+			{
+				'event.room_id': roomId,
+				_id: { $in: eventIds },
+			},
+			{ projection: { _id: 1, 'event.depth': 1 } },
+		);
+	}
+
+	findEventsByRoomAndDepth(
+		roomId: string,
+		minDepth: number,
+		maxDepth: number,
+		excludeEventIds: string[],
+		limit: number,
+	): FindCursor<EventStore<Pdu>> {
+		return this.collection
+			.find(
+				{
+					'event.room_id': roomId,
+					'event.depth': { $gte: minDepth, $lte: maxDepth },
+					event_id: { $nin: excludeEventIds },
+				},
+				{
+					projection: { event: 1 },
+				},
+			)
+			.sort({ 'event.depth': 1 })
+			.limit(limit);
+	}
 }
