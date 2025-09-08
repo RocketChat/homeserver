@@ -3,6 +3,7 @@ import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
 import { EventService } from './services/event.service';
+import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
 import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
@@ -108,6 +109,7 @@ export interface HomeserverServices {
 	config: ConfigService;
 	edu: EduService;
 	media: MediaService;
+	request: FederationRequestService;
 }
 
 export type HomeserverEventSignatures = {
@@ -231,6 +233,7 @@ export function getAllServices(): HomeserverServices {
 		config: container.resolve(ConfigService),
 		edu: container.resolve(EduService),
 		media: container.resolve(MediaService),
+		request: container.resolve(FederationRequestService),
 	};
 }
 
