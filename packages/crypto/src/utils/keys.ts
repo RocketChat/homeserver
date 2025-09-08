@@ -1,6 +1,6 @@
 import * as ed25519 from '@noble/ed25519';
-import { Ed25519SigningKeyImpl } from '../keys/ed25519';
 import type { Signer, VerifierKey } from '../contracts/key';
+import { Ed25519SigningKeyImpl } from '../keys/ed25519';
 import {
 	encodeCanonicalJson,
 	toBinaryData,

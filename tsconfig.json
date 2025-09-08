@@ -5,10 +5,7 @@
 		"noEmit": true,
 		"tsBuildInfoFile": ".tsbuildinfo"
 	},
-	"include": [
-		"index.ts",
-		"test-setup.ts"
-	],
+	"include": ["index.ts", "test-setup.ts"],
 	"exclude": [
 		"node_modules",
 		"dist",
