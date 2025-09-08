@@ -105,7 +105,7 @@ export class StagingAreaService {
 				`Adding missing event ${missingId} to missing events service`,
 			);
 
-			this.missingEventsService.fetchMissingEvent({
+			await this.missingEventsService.fetchMissingEvent({
 				eventId: missingId,
 				roomId: event.event.room_id,
 				origin: event.origin,
