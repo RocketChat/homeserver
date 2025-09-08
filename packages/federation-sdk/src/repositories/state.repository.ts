@@ -40,6 +40,16 @@ export class StateRepository {
 		return this.collection.findOne({ roomId }, { sort: { createdAt: 1 } });
 	}
 
+	async getLatestStateMappingBeforeEvent(
+		roomId: string,
+		createdAt: Date,
+	): Promise<WithId<StateStore> | null> {
+		return this.collection.findOne(
+			{ roomId, createdAt: { $lt: createdAt } },
+			{ sort: { createdAt: -1 } },
+		);
+	}
+
 	async getLastStateMappingByRoomId(
 		roomId: string,
 	): Promise<WithId<StateStore> | null> {
