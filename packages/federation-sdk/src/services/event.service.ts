@@ -1,16 +1,13 @@
 import type {
 	BaseEDU,
-	HashedEvent,
 	PresenceEDU,
 	RoomPowerLevelsEvent,
-	SignedJson,
 	TypingEDU,
 } from '@hs/core';
 import { isPresenceEDU, isTypingEDU } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
 import { generateId } from '@hs/core';
-import { MatrixError } from '@hs/core';
-import type { EventBase, EventStore } from '@hs/core';
+import type { EventStore } from '@hs/core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
@@ -452,6 +449,16 @@ export class EventService {
 				event.prev_events.length === 0
 			) {
 				errors.push('Event must reference previous events (prev_events)');
+			}
+
+			// checks it doesn't have an excessive number of prev_events or auth_events,
+			// which could cause a huge state resolution or cascade of event fetches
+			// https://github.com/element-hq/synapse/blob/19fe3f001ed0aff5a5f136e440ae53c04340be88/synapse/handlers/federation_event.py#L2359
+			if (event.prev_events.length > 20) {
+				errors.push('Event must not have more than 20 prev_events');
+			}
+			if (event.auth_events.length > 10) {
+				errors.push('Event must not have more than 10 auth_events');
 			}
 		} else {
 			if (event.prev_events && event.prev_events.length > 0) {
