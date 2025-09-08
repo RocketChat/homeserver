@@ -65,17 +65,17 @@ export class PersistentEventFactory {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(rawEvent, false);
+				return new PersistentEventV3(event, false);
 			case '6':
 			case '7':
-				return new PersistentEventV6(rawEvent, false);
+				return new PersistentEventV6(event, false);
 			case '8':
-				return new PersistentEventV8(rawEvent, false);
+				return new PersistentEventV8(event, false);
 			case '9':
 			case '10':
-				return new PersistentEventV9(rawEvent, false);
+				return new PersistentEventV9(event, false);
 			case '11':
-				return new PersistentEventV11(rawEvent, false);
+				return new PersistentEventV11(event, false);
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
