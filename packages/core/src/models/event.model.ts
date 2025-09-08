@@ -4,7 +4,7 @@ import type { EventBase as CoreEventBase } from '../events/eventBase';
 // TODO: use room package
 
 // TODO: Merge with StagedEvent from event.service.ts
-export interface EventStore<E extends CoreEventBase | Pdu = Pdu> {
+export interface EventStore<E = Pdu> {
 	_id: string;
 	event: E;
 

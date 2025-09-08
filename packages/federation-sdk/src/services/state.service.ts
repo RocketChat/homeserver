@@ -342,9 +342,15 @@ export class StateService {
 
 		const prevEvents = await this.eventRepository.findPrevEvents(event.roomId);
 
+		event.addPrevEvents(
+			prevEvents.map((e) =>
+				PersistentEventFactory.createFromRawEvent(e.event, roomVersion),
+			),
+		);
+
 		for (const prevEvent of prevEvents) {
 			const e = PersistentEventFactory.createFromRawEvent(
-				prevEvent.event as any,
+				prevEvent.event,
 				roomVersion,
 			);
 			event.addPreviousEvent(e);
