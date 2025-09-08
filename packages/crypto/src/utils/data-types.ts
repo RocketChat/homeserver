@@ -81,6 +81,6 @@ export function encodeCanonicalJson(value: unknown): string {
 	return `{${serializedEntries.join(',')}}`;
 }
 
-export function toSeedBytes(seed: string): Uint8Array {
-	return Uint8Array.from(atob(seed), (c) => c.charCodeAt(0));
+export function fromBase64ToBytes(base64: string): Uint8Array {
+	return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }

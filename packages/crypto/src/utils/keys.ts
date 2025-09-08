@@ -1,6 +1,6 @@
 import * as ed25519 from '@noble/ed25519';
 import type { Signer, VerifierKey } from '../contracts/key';
-import { Ed25519SigningKeyImpl } from '../keys/ed25519';
+import { Ed25519SigningKeyImpl, Ed25519VerifierKeyImpl } from '../keys/ed25519';
 import {
 	encodeCanonicalJson,
 	toBinaryData,
@@ -20,7 +20,7 @@ export async function loadEd25519VerifierFromPublicKey(
 	publicKey: Uint8Array,
 	version = '0',
 ): Promise<VerifierKey> {
-	return new Ed25519SigningKeyImpl(version, new Uint8Array(32), publicKey);
+	return new Ed25519VerifierKeyImpl(version, publicKey);
 }
 
 export async function signJson<T extends object>(

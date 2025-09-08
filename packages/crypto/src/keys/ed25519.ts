@@ -25,13 +25,21 @@ export class Ed25519VerifierKeyImpl implements VerifierKey {
 
 	public async verify(data: Uint8Array, signature: Uint8Array): Promise<void> {
 		return new Promise((resolve, reject) => {
-			crypto.verify(null, data, this._publicKeyPem, signature, (err) => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve();
-				}
-			});
+			crypto.verify(
+				null,
+				data,
+				this._publicKeyPem,
+				signature,
+				(err, verified) => {
+					if (err) {
+						reject(err);
+					} else if (verified) {
+						resolve();
+					} else {
+						reject(new Error('Invalid signature'));
+					}
+				},
+			);
 		});
 	}
 }
