@@ -489,7 +489,21 @@ export class RoomService {
 		const eventId = generateId(signedEvent);
 
 		// Store the event locally BEFORE attempting federation
-		await this.eventService.insertEvent(signedEvent, eventId);
+		/**
+		 * TODO: is that correct? all the other state events are using stateService.persistStateEvent
+		 */
+
+		const event = PersistentEventFactory.newPowerLevelEvent(
+			roomId,
+			signedEvent.sender,
+			signedEvent.content,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+		await this.stateService.addAuthEvents(event);
+		await this.stateService.addPrevEvents(event);
+		await this.stateService.signEvent(event);
+		await this.stateService.persistStateEvent(event);
+
 		logger.info(
 			`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`,
 		);
