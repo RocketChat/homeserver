@@ -112,14 +112,16 @@ export class EventRepository {
 	}
 
 	async create(
+		origin: string,
 		event: Pdu,
 		eventId: string,
 		stateId = '',
 	): Promise<string | undefined> {
-		return this.persistEvent(event, eventId, stateId);
+		return this.persistEvent(origin, event, eventId, stateId);
 	}
 
 	async createStaged(
+		origin: string,
 		event: Pdu,
 		missingDependencies?: EventStore['missing_dependencies'],
 	): Promise<string> {
@@ -127,6 +129,7 @@ export class EventRepository {
 
 		await this.collection.insertOne({
 			_id: id,
+			origin,
 			event,
 			stateId: '',
 			createdAt: new Date(),
@@ -234,10 +237,16 @@ export class EventRepository {
 			.toArray();
 	}
 
-	private async persistEvent(event: Pdu, eventId: string, stateId: string) {
+	private async persistEvent(
+		origin: string,
+		event: Pdu,
+		eventId: string,
+		stateId: string,
+	) {
 		try {
 			await this.collection.insertOne({
 				_id: eventId,
+				origin,
 				event: event,
 				stateId: stateId,
 				createdAt: new Date(),

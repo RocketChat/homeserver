@@ -8,6 +8,8 @@ export interface EventStore<E = Pdu> {
 	_id: string;
 	event: E;
 
+	origin: string;
+
 	staged?: boolean;
 
 	// TODO: check if this is needed or if we should create a new interface
