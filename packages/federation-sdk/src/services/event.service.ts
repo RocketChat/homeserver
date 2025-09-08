@@ -654,23 +654,6 @@ export class EventService {
 			.map((e) => e.event)
 			.toArray();
 
-		console.log(
-			'[getMissingEvents events]',
-			JSON.stringify(
-				{
-					minDepth,
-					maxDepth,
-					earliestEventsId,
-					latestEventsId,
-					limit,
-					roomId,
-					events,
-				},
-				null,
-				2,
-			),
-		);
-
 		return { events };
 	}
 

@@ -112,8 +112,8 @@ export const GetMissingEventsBodyDto = t.Object({
 		description: 'Maximum number of events to return',
 	}),
 	min_depth: t.Number({
-		minimum: 0,
-		default: 0,
+		minimum: 1,
+		default: 1,
 		description: 'Minimum depth of the events to return',
 	}),
 });
