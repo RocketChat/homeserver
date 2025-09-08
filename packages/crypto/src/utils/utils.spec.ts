@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { encodeCanonicalJson, toSeedBytes } from './data-types';
+import { encodeCanonicalJson, fromBase64ToBytes } from './data-types';
 import {
 	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
@@ -13,7 +13,7 @@ import {
 async function getSignerFromKeyContent(content: string) {
 	// biome-ignore lint/style/noNonNullAssertion: I can see pop won't fail, input isn't unknown -__-
 	const seed = content.split(' ').pop()!;
-	const seedBytes = toSeedBytes(seed);
+	const seedBytes = fromBase64ToBytes(seed);
 
 	//vvv
 	const signer = await loadEd25519SignerFromSeed(seedBytes);
@@ -95,7 +95,7 @@ describe('Signing and verifying payloads', async () => {
 		const diffPublicKeyContent = 'tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8';
 
 		const verifier = await loadEd25519VerifierFromPublicKey(
-			toSeedBytes(diffPublicKeyContent),
+			fromBase64ToBytes(diffPublicKeyContent),
 			'0',
 		);
 

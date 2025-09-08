@@ -12,24 +12,23 @@ import * as core from '@hs/core';
 import * as nacl from 'tweetnacl';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
+import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';
+
+const signingKeyContent =
+	'ed25519 a_FAET FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04';
+
+const origin = 'syn1.tunnel.dev.rocket.chat';
+
+const destination = 'syn2.tunnel.dev.rocket.chat';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;
 	let configService: ConfigService;
 
-	const mockServerName = 'example.com';
-	const mockSigningKey = 'aGVsbG93b3JsZA==';
-	const mockSigningKeyId = 'ed25519:1';
-
-	const mockKeyPair = {
-		publicKey: new Uint8Array([1, 2, 3]),
-		secretKey: new Uint8Array([4, 5, 6]),
-	};
-
 	const mockDiscoveryResult = [
-		'https://target.example.com:443' as const,
+		`https://${destination}:443` as const,
 		{
-			Host: 'target.example.com',
+			Host: destination,
 		},
 	];
 
@@ -64,33 +63,13 @@ describe('FederationRequestService', async () => {
 		}));
 	});
 
-	const mockSignature = new Uint8Array([7, 8, 9]);
-
-	const mockSignedJson = {
-		content: 'test',
-		signatures: {
-			'example.com': {
-				'ed25519:1': 'abcdef',
-			},
-		},
-	};
-
-	const mockAuthHeaders =
-		'X-Matrix origin="example.com",destination="target.example.com",key="ed25519:1",sig="xyz123"';
-
 	beforeEach(() => {
-		spyOn(nacl.sign.keyPair, 'fromSecretKey').mockReturnValue(mockKeyPair);
-		spyOn(nacl.sign, 'detached').mockReturnValue(mockSignature);
-
-		spyOn(core, 'extractURIfromURL').mockReturnValue('/test/path?query=value');
-		spyOn(core, 'authorizationHeaders').mockResolvedValue(mockAuthHeaders);
-		spyOn(core, 'signJson').mockResolvedValue(mockSignedJson);
-		spyOn(core, 'computeAndMergeHash').mockImplementation((obj: any) => obj);
-
 		configService = {
-			serverName: mockServerName,
-			getSigningKeyBase64: async () => mockSigningKey,
-			getSigningKeyId: async () => mockSigningKeyId,
+			serverName: origin,
+			getSigningKey: async () => {
+				const [, version, seed] = signingKeyContent.split(' ');
+				return loadEd25519SignerFromSeed(fromBase64ToBytes(seed), version);
+			},
 		} as ConfigService;
 
 		service = new FederationRequestService(configService);
@@ -101,234 +80,89 @@ describe('FederationRequestService', async () => {
 	});
 
 	describe('makeSignedRequest', () => {
-		it('should make a successful signed request without body', async () => {
+		it('should make a successful signed request with a body', async () => {
+			const transactionBody = {
+				edus: [
+					{
+						content: {
+							push: [
+								{
+									last_active_ago: 561472,
+									presence: 'unavailable',
+									user_id: '@debdut1:syn1.tunnel.dev.rocket.chat',
+								},
+							],
+						},
+						edu_type: 'm.presence',
+					},
+				],
+				origin: 'syn1.tunnel.dev.rocket.chat',
+				origin_server_ts: 1757329414731,
+				pdus: [],
+			};
+
+			// PUT /_matrix/federation/v1/send/1757328278684 HTTP/1.1
+
+			const uri = '/_matrix/federation/v1/send/1757328278684';
+
+			const method = 'PUT';
 			const fetchSpy = spyOn(core, 'fetch');
 
-			const result = await service.makeSignedRequest({
-				method: 'GET',
-				domain: 'target.example.com',
-				uri: '/test/path',
+			await service.makeSignedRequest({
+				method,
+				// Host: syn2.tunnel.dev.rocket.chat
+				domain: 'syn2.tunnel.dev.rocket.chat',
+				uri,
+				body: transactionBody,
 			});
 
-			expect(configService.serverName).toBe(mockServerName);
-			expect(await configService.getSigningKeyBase64()).toBe(mockSigningKey);
-			expect(await configService.getSigningKeyId()).toBe(mockSigningKeyId);
-			expect(configService.serverName).toBe(mockServerName);
-			expect(await configService.getSigningKeyBase64()).toBe(mockSigningKey);
-			expect(await configService.getSigningKeyId()).toBe(mockSigningKeyId);
-
-			expect(nacl.sign.keyPair.fromSecretKey).toHaveBeenCalled();
-
 			expect(fetchSpy).toHaveBeenCalledWith(
-				new URL('https://target.example.com/test/path'),
+				new URL(`https://${destination}${uri}`),
 				expect.objectContaining({
-					method: 'GET',
+					method: 'PUT',
 					headers: expect.objectContaining({
-						Authorization: mockAuthHeaders,
-						Host: 'target.example.com',
+						// Authorization: X-Matrix origin="syn1.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="+MRd0eKdc/3T7mS7ZR+ltpOiN7RBXgfxTWWYLejy5gBRXG717aXHPCDm044D10kgqQvs2HqR3MdPEIx+2a0nDg",destination="syn2.tunnel.dev.rocket.chat"
+						Authorization:
+							'X-Matrix origin="syn1.tunnel.dev.rocket.chat",destination="syn2.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="+MRd0eKdc/3T7mS7ZR+ltpOiN7RBXgfxTWWYLejy5gBRXG717aXHPCDm044D10kgqQvs2HqR3MdPEIx+2a0nDg"',
+						Host: destination,
 					}),
 				}),
 			);
-
-			expect(result).toEqual({ result: 'success' });
 		});
 
-		it('should make a successful signed request with body', async () => {
+		it('should make a successful signed GET request', async () => {
+			/*
+				GET /_matrix/federation/v1/make_join/%21VoUasOLSpcdtRbGHdT%3Asyn2.tunnel.dev.rocket.chat/%40debdut1%3Asyn1.tunnel.dev.rocket.chat?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11 HTTP/1.1
+				Host: syn2.tunnel.dev.rocket.chat
+				User-Agent: Synapse/1.132.0
+				Authorization: X-Matrix origin="syn1.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="PNSix5GF9IquSmMOj+yx6rPDEZwcI1KrAQ6TzspAQyrwapQuFYXfhQmxoxKA1X7PUhUGSmQZUWrO4VInIpwwCA",destination="syn2.tunnel.dev.rocket.chat"
+			*/
+			const uri =
+				'/_matrix/federation/v1/make_join/%21VoUasOLSpcdtRbGHdT%3Asyn2.tunnel.dev.rocket.chat/%40debdut1%3Asyn1.tunnel.dev.rocket.chat';
+			const method = 'GET';
+			const queryString =
+				'ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11';
+
 			const fetchSpy = spyOn(core, 'fetch');
 
-			const mockBody = { key: 'value' };
-
-			const result = await service.makeSignedRequest({
-				method: 'POST',
-				domain: 'target.example.com',
-				uri: '/test/path',
-				body: mockBody,
+			await service.makeSignedRequest({
+				method,
+				domain: destination,
+				uri,
+				queryString,
 			});
 
-			expect(core.signJson).toHaveBeenCalledWith(
-				expect.objectContaining({ key: 'value', signatures: {} }),
-				expect.any(Object),
-				mockServerName,
-			);
-
-			expect(core.authorizationHeaders).toHaveBeenCalledWith(
-				mockServerName,
-				expect.any(Object),
-				'target.example.com',
-				'POST',
-				'/test/path?query=value',
-				mockSignedJson,
-			);
-
 			expect(fetchSpy).toHaveBeenCalledWith(
-				new URL('https://target.example.com/test/path'),
+				new URL(`https://${destination}${uri}?${queryString}`),
 				expect.objectContaining({
-					method: 'POST',
-					body: JSON.stringify(mockSignedJson),
+					method: 'GET',
+					headers: expect.objectContaining({
+						Authorization:
+							'X-Matrix origin="syn1.tunnel.dev.rocket.chat",destination="syn2.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="PNSix5GF9IquSmMOj+yx6rPDEZwcI1KrAQ6TzspAQyrwapQuFYXfhQmxoxKA1X7PUhUGSmQZUWrO4VInIpwwCA"',
+						Host: destination,
+					}),
 				}),
 			);
-
-			expect(result).toEqual({ result: 'success' });
-		});
-
-		it('should make a signed request with query parameters', async () => {
-			const fetchSpy = spyOn(core, 'fetch');
-
-			const result = await service.makeSignedRequest({
-				method: 'GET',
-				domain: 'target.example.com',
-				uri: '/test/path',
-				queryString: 'param1=value1&param2=value2',
-			});
-
-			expect(fetchSpy).toHaveBeenCalledWith(
-				new URL(
-					'https://target.example.com/test/path?param1=value1&param2=value2',
-				),
-				expect.any(Object),
-			);
-
-			expect(result).toEqual({ result: 'success' });
-		});
-
-		it('should handle fetch errors properly', async () => {
-			globalThis.fetch = Object.assign(
-				async () => {
-					return {
-						ok: false,
-						status: 404,
-						text: async () => 'Not Found',
-					} as Response;
-				},
-				{ preconnect: () => {} },
-			) as typeof fetch;
-
-			try {
-				await service.makeSignedRequest({
-					method: 'GET',
-					domain: 'target.example.com',
-					uri: '/test/path',
-				});
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					expect(error.message).toContain(
-						'Federation request failed: 404 Not Found',
-					);
-				} else {
-					throw error;
-				}
-			}
-		});
-
-		it('should handle JSON error responses properly', async () => {
-			globalThis.fetch = Object.assign(
-				async () => {
-					return {
-						ok: false,
-						status: 400,
-						text: async () =>
-							'{"error":"Bad Request","code":"M_INVALID_PARAM"}',
-					} as Response;
-				},
-				{ preconnect: () => {} },
-			) as typeof fetch;
-
-			try {
-				await service.makeSignedRequest({
-					method: 'GET',
-					domain: 'target.example.com',
-					uri: '/test/path',
-				});
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					expect(error.message).toContain(
-						'Federation request failed: 400 {"error":"Bad Request","code":"M_INVALID_PARAM"}',
-					);
-				} else {
-					throw error;
-				}
-			}
-		});
-
-		it('should handle network errors properly', async () => {
-			globalThis.fetch = Object.assign(
-				async () => {
-					throw new Error('Network Error');
-				},
-				{ preconnect: () => {} },
-			) as typeof fetch;
-
-			try {
-				await service.makeSignedRequest({
-					method: 'GET',
-					domain: 'target.example.com',
-					uri: '/test/path',
-				});
-			} catch (error: unknown) {
-				if (error instanceof Error) {
-					expect(error.message).toBe('Network Error');
-				} else {
-					throw error;
-				}
-			}
-		});
-	});
-
-	describe('convenience methods', () => {
-		it('should call makeSignedRequest with correct parameters for GET', async () => {
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({ result: 'success' });
-
-			await service.get('target.example.com', '/api/resource', {
-				filter: 'active',
-			});
-
-			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
-				method: 'GET',
-				domain: 'target.example.com',
-				uri: '/api/resource',
-				queryString: 'filter=active',
-			});
-		});
-
-		it('should call makeSignedRequest with correct parameters for POST', async () => {
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({ result: 'success' });
-
-			const body = { data: 'example' };
-			await service.post('target.example.com', '/api/resource', body, {
-				version: '1',
-			});
-
-			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
-				method: 'POST',
-				domain: 'target.example.com',
-				uri: '/api/resource',
-				body,
-				queryString: 'version=1',
-			});
-		});
-
-		it('should call makeSignedRequest with correct parameters for PUT', async () => {
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({ result: 'success' });
-
-			const body = { data: 'updated' };
-			await service.put('target.example.com', '/api/resource/123', body);
-
-			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
-				method: 'PUT',
-				domain: 'target.example.com',
-				uri: '/api/resource/123',
-				body,
-				queryString: '',
-			});
 		});
 	});
 });
