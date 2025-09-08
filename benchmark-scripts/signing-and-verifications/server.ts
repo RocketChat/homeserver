@@ -1,13 +1,8 @@
+import express from 'express';
 import nacl from 'tweetnacl';
-import express, { type Request, type Response } from 'express';
 
+import { encodeCanonicalJson } from '../../packages/crypto/src';
 import { loadEd25519SignerFromSeed } from '../../packages/crypto/src/utils/keys';
-import { Readable } from 'node:stream';
-import {
-	encodeCanonicalJson,
-	encodeCanonicalJsonAsync,
-	toUnpaddedBase64,
-} from '../../packages/crypto/src';
 
 const app = express();
 

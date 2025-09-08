@@ -16,9 +16,7 @@
 		"turbo": "~2.5.6",
 		"typescript": "~5.9.2"
 	},
-	"workspaces": [
-		"packages/*"
-	],
+	"workspaces": ["packages/*"],
 	"dependencies": {
 		"dotenv": "^16.5.0",
 		"memoize": "^10.1.0",
@@ -43,9 +41,7 @@
 			"biome format --write --no-errors-on-unmatched --diagnostic-level=error",
 			"biome lint --write --no-errors-on-unmatched --diagnostic-level=error"
 		],
-		"*": [
-			"biome check --no-errors-on-unmatched --files-ignore-unknown=true"
-		]
+		"*": ["biome check --no-errors-on-unmatched --files-ignore-unknown=true"]
 	},
 	"scripts": {
 		"prepare": "husky",
