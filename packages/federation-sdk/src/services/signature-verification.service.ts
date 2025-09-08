@@ -36,6 +36,23 @@ type KeyId = {
 // since in matrix it is unpadded base64, we remove the 2 padding chars => 86 characters
 export const MAX_SIGNATURE_LENGTH_FOR_ED25519 = 86;
 
+export type FederationRequest<Content extends object> =
+	| {
+			method: 'GET' | 'DELETE';
+			uri: `/${string}`;
+			origin: string;
+			destination: string;
+			signature: Record<string, Record<string, string>>;
+	  }
+	| {
+			method: 'PUT' | 'POST' | 'DELETE';
+			uri: `/${string}`;
+			origin: string;
+			destination: string;
+			content: Content;
+			signature: Record<string, Record<string, string>>;
+	  };
+
 export class SignatureVerificationService {
 	private get logger() {
 		return createLogger('SignatureVerificationService');
@@ -43,8 +60,7 @@ export class SignatureVerificationService {
 	private cachedKeys = new Map<string, KeyData>();
 
 	/**
-	 * Implements SPEC: https://spec.matrix.org/v1.12/appendices/#checking-for-a-signature
-	 * and part of https://spec.matrix.org/v1.12/server-server-api/#validating-hashes-and-signatures-on-received-events
+	 * Implements part of SPEC: https://spec.matrix.org/v1.12/server-server-api/#validating-hashes-and-signatures-on-received-events
 	 * The event structure should be verifier by the time this method is utilized, thus justifying the use of PersistentEventBase.
 	 */
 	async verifyEventSignature(event: PersistentEventBase): Promise<void> {
@@ -57,8 +73,23 @@ export class SignatureVerificationService {
 			);
 		}
 
+		const { unsigned, ...toCheck } = redactedEvent;
+
+		await this.verifySignature(toCheck, origin);
+	}
+
+	async verifyRequestSignature() {}
+
+	/**
+	 * Implements SPEC: https://spec.matrix.org/v1.12/appendices/#checking-for-a-signature
+	 */
+	async verifySignature<
+		T extends {
+			signatures: Record<string, Record<string, string>>;
+		},
+	>(data: T, origin: string) {
 		// 1. Checks if the signatures member of the object contains an entry with the name of the entity. If the entry is missing then the check fails.
-		const originSignature = redactedEvent.signatures?.[origin];
+		const originSignature = data.signatures?.[origin];
 		if (!originSignature) {
 			throw new Error(`No signature found for origin ${origin}`);
 		}
@@ -124,7 +155,7 @@ export class SignatureVerificationService {
 
 		if (signatureEntry.length !== MAX_SIGNATURE_LENGTH_FOR_ED25519) {
 			throw new Error(
-				`Invalid signature length for keyId ${verifier.id} from origin ${origin}, expected 86 got ${signatureEntry.length} characters`,
+				`Invalid signature length for keyId ${verifier.id} from origin ${origin}, expected ${MAX_SIGNATURE_LENGTH_FOR_ED25519} got ${signatureEntry.length} characters`,
 			);
 		}
 
@@ -138,7 +169,7 @@ export class SignatureVerificationService {
 		}
 
 		// 5. Removes the signatures and unsigned members of the object.
-		const { signatures, unsigned, ...rest } = redactedEvent;
+		const { signatures, ...rest } = data;
 
 		// 6. Encodes the remainder of the JSON object using the Canonical JSON encoding.
 		const canonicalJson = encodeCanonicalJson(rest);
