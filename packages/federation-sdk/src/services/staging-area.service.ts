@@ -104,12 +104,12 @@ export class StagingAreaService {
 			this.logger.debug(
 				`Adding missing event ${missingId} to missing events service`,
 			);
-			// TODO how this should be implemented?
-			// this.missingEventsService.addEvent({
-			// 	eventId: missingId,
-			// 	roomId: event.roomId,
-			// 	origin: event.origin,
-			// });
+
+			this.missingEventsService.fetchMissingEvent({
+				eventId: missingId,
+				roomId: event.event.room_id,
+				origin: event.origin,
+			});
 		}
 
 		// trackedEvent.retryCount = (trackedEvent.retryCount || 0) + 1;

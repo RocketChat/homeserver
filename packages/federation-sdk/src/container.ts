@@ -6,9 +6,7 @@ import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from './index';
-import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
-import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
@@ -57,7 +55,6 @@ export async function createFederationContainer(
 	const dbConnection = container.resolve(DatabaseConnectionService);
 	const db = await dbConnection.getDb();
 
-	container.registerSingleton(MissingEventsQueue);
 	container.registerSingleton(StagingAreaQueue);
 
 	container.register<Collection<EventStore>>('EventCollection', {
@@ -117,7 +114,6 @@ export async function createFederationContainer(
 	container.registerSingleton(StagingAreaService);
 	container.registerSingleton(EduService);
 
-	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaListener);
 
 	// container.register(LockManagerService, {
