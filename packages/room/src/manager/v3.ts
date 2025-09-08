@@ -1,12 +1,5 @@
 import { toUnpaddedBase64 } from '@hs/crypto';
-import {
-	PduTypeRoomAliases,
-	PduTypeRoomCreate,
-	PduTypeRoomHistoryVisibility,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
-} from '../types/v3-11';
+import {} from '../types/v3-11';
 import {
 	type EventStore,
 	PersistentEventBase,
@@ -63,10 +56,10 @@ export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
 		string[] | typeof REDACT_ALLOW_ALL_KEYS
 	> {
 		return {
-			[PduTypeRoomCreate]: ['creator'],
-			[PduTypeRoomMember]: ['membership'],
-			[PduTypeRoomJoinRules]: ['join_rule'],
-			[PduTypeRoomPowerLevels]: [
+			'm.room.create': ['creator'],
+			'm.room.member': ['membership'],
+			'm.room.join_rules': ['join_rule'],
+			'm.room.power_levels': [
 				'users',
 				'users_default',
 				'events',
@@ -76,8 +69,8 @@ export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
 				'kick',
 				'redact',
 			],
-			[PduTypeRoomAliases]: ['aliases'],
-			[PduTypeRoomHistoryVisibility]: ['history_visibility'],
+			'm.room.aliases': ['aliases'],
+			'm.room.history_visibility': ['history_visibility'],
 		};
 	}
 }

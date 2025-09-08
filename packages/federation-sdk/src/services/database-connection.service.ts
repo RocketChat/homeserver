@@ -1,6 +1,6 @@
 import { createLogger } from '@hs/core';
 import { Db, MongoClient, type MongoClientOptions } from 'mongodb';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 
 @singleton()
@@ -10,9 +10,7 @@ export class DatabaseConnectionService {
 	private connectionPromise: Promise<void> | null = null;
 	private readonly logger = createLogger('DatabaseConnectionService');
 
-	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
-	) {
+	constructor(private readonly configService: ConfigService) {
 		this.connect().catch((err) =>
 			this.logger.error(`Initial database connection failed: ${err.message}`),
 		);

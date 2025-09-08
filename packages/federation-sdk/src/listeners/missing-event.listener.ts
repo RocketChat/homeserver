@@ -1,22 +1,19 @@
-import type { EventBase } from '@hs/core';
+import type { EventStore } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { inject } from 'tsyringe';
+import type { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
-import type { MissingEventType } from '../queues/missing-event.queue';
+import { MissingEventType } from '../queues/missing-event.queue';
 import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { EventFetcherService } from './event-fetcher.service';
-import { EventService } from './event.service';
-import type { StagedEvent } from './event.service';
-import { StagingAreaService } from './staging-area.service';
+import { EventFetcherService } from '../services/event-fetcher.service';
+import { EventService } from '../services/event.service';
+import { StagingAreaService } from '../services/staging-area.service';
 
 @singleton()
 export class MissingEventListener {
 	private readonly logger = createLogger('MissingEventListener');
 
 	constructor(
-		@inject('MissingEventsQueue')
 		private readonly missingEventsQueue: MissingEventsQueue,
-		@inject('StagingAreaService')
 		private readonly stagingAreaService: StagingAreaService,
 		private readonly eventService: EventService,
 		private readonly eventFetcherService: EventFetcherService,
@@ -52,18 +49,19 @@ export class MissingEventListener {
 		}
 	}
 
-	private extractDependencies(event: EventBase): string[] {
+	private extractDependencies(event: Pdu): string[] {
 		const authEvents = event.auth_events || [];
 		const prevEvents = event.prev_events || [];
 		return [...new Set([...authEvents, ...prevEvents].flat())];
 	}
 
-	private async processAndStoreStagedEvent(stagedEvent: StagedEvent) {
+	private async processAndStoreStagedEvent(stagedEvent: EventStore) {
 		try {
 			this.stagingAreaService.addEventToQueue({
 				eventId: stagedEvent._id,
 				roomId: stagedEvent.event.room_id,
-				origin: stagedEvent.event.origin || stagedEvent.origin,
+				// TODO: check what to do with origin
+				origin: stagedEvent.event.sender.split(':')[1],
 				event: stagedEvent.event,
 			});
 
@@ -102,8 +100,7 @@ export class MissingEventListener {
 	async handleQueueItem(data: MissingEventType) {
 		const { eventId, roomId, origin } = data;
 
-		const exists =
-			await this.eventService.checkIfEventExistsIncludingStaged(eventId);
+		const exists = await this.eventService.getEventById(eventId);
 		if (exists) {
 			this.logger.debug(
 				`Event ${eventId} already exists in database (staged or processed), marking as fetched`,
@@ -125,24 +122,19 @@ export class MissingEventListener {
 				return;
 			}
 
-			for (const eventData of fetchedEvents.events) {
-				const event = eventData.event;
-				const id = event.event_id || eventData.eventId;
-
+			for (const { event, eventId } of fetchedEvents.events) {
 				const dependencies = this.extractDependencies(event);
 				const { missing } =
 					await this.eventService.checkIfEventsExists(dependencies);
 
 				this.logger.debug(
-					`Storing event ${id} as staged${missing.length ? ` with ${missing.length} missing dependencies` : ' (ready to process)'}`,
+					`Storing event ${eventId} as staged${missing.length ? ` with ${missing.length} missing dependencies` : ' (ready to process)'}`,
 				);
 
 				await this.eventService.storeEventAsStaged({
-					_id: id,
+					_id: eventId,
 					event: event,
-					origin: event.origin || origin,
 					missing_dependencies: missing,
-					staged_at: Date.now(),
 				});
 
 				if (missing.length > 0) {
@@ -155,12 +147,12 @@ export class MissingEventListener {
 					}
 				}
 
-				await this.updateStagedEventDependencies(id);
+				await this.updateStagedEventDependencies(eventId);
 				return this.processStagedEvents();
 			}
-		} catch (err: any) {
+		} catch (err: unknown) {
 			this.logger.error(
-				`Error fetching missing event ${eventId}: ${err.message || String(err)}`,
+				`Error fetching missing event ${eventId}: ${err instanceof Error ? err.message : String(err)}`,
 			);
 		}
 	}

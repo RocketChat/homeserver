@@ -4,11 +4,6 @@ import {
 	type PduMembershipEventContent,
 	type PduPowerLevelsEventContent,
 	type PduType,
-	PduTypeRoomCreate,
-	PduTypeRoomJoinRules,
-	PduTypeRoomMember,
-	PduTypeRoomPowerLevels,
-	PduTypeRoomThirdPartyInvite,
 } from '../types/v3-11';
 
 import type { PersistentEventBase } from '../manager/event-wrapper';
@@ -150,7 +145,7 @@ async function isMembershipChangeAllowed(
 	// sender information, like does this user have permission?
 	const sender = membershipEventToCheck.sender;
 	const senderMembershipEvent = authEventStateMap.get(
-		getStateMapKey({ type: PduTypeRoomMember, state_key: sender }),
+		getStateMapKey({ type: 'm.room.member', state_key: sender }),
 	);
 
 	const senderMembership = senderMembershipEvent?.getMembership();
@@ -158,13 +153,13 @@ async function isMembershipChangeAllowed(
 	// user to be invited
 	const invitee = membershipEventToCheck.stateKey;
 	const inviteeMembershipEvent = authEventStateMap.get(
-		getStateMapKey({ type: PduTypeRoomMember, state_key: invitee }),
+		getStateMapKey({ type: 'm.room.member', state_key: invitee }),
 	);
 
 	const inviteeMembership = inviteeMembershipEvent?.getMembership();
 
 	const joinRuleEvent = authEventStateMap.get(
-		getStateMapKey({ type: PduTypeRoomJoinRules }),
+		getStateMapKey({ type: 'm.room.join_rules' }),
 	);
 
 	const joinRule = joinRuleEvent?.isJoinRuleEvent()
@@ -172,11 +167,11 @@ async function isMembershipChangeAllowed(
 		: undefined;
 
 	const powerLevelEvent = PowerLevelEvent.fromEvent(
-		authEventStateMap.get(getStateMapKey({ type: PduTypeRoomPowerLevels })),
+		authEventStateMap.get(getStateMapKey({ type: 'm.room.power_levels' })),
 	);
 
 	const roomCreateEvent = authEventStateMap.get(
-		getStateMapKey({ type: PduTypeRoomCreate }),
+		getStateMapKey({ type: 'm.room.create' }),
 	);
 
 	assert(roomCreateEvent, 'room create event not found'); // must exist
@@ -371,7 +366,7 @@ export function validatePowerLevelEvent(
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
 	// If there is no previous m.room.power_levels event in the room, allow.
 	const existingPowerLevel = PowerLevelEvent.fromEvent(
-		authEventMap.get(getStateMapKey({ type: PduTypeRoomPowerLevels })),
+		authEventMap.get(getStateMapKey({ type: 'm.room.power_levels' })),
 	);
 
 	const newPowerLevel = powerLevelEvent;
@@ -704,7 +699,7 @@ export function checkEventAuthWithoutState(
 	}
 
 	const roomCreateEvent = authEventStateMap.get(
-		getStateMapKey({ type: PduTypeRoomCreate }),
+		getStateMapKey({ type: 'm.room.create' }),
 	);
 
 	if (!roomCreateEvent) {
@@ -726,9 +721,7 @@ export async function checkEventAuthWithState(
 		return;
 	}
 
-	const roomCreateEvent = state.get(
-		getStateMapKey({ type: PduTypeRoomCreate }),
-	);
+	const roomCreateEvent = state.get(getStateMapKey({ type: 'm.room.create' }));
 
 	assert(roomCreateEvent, 'missing m.room.create event');
 
@@ -757,7 +750,7 @@ export async function checkEventAuthWithState(
 
 	// If the sender’s current membership state is not join, reject.
 	const senderMembership = state.get(
-		getStateMapKey({ type: PduTypeRoomMember, state_key: event.sender }),
+		getStateMapKey({ type: 'm.room.member', state_key: event.sender }),
 	);
 	if (senderMembership?.getMembership() !== 'join') {
 		throw new StateResolverAuthorizationError(
@@ -771,7 +764,7 @@ export async function checkEventAuthWithState(
 
 	// If type is m.room.third_party_invite:
 	// @ts-ignore the pdu union doesn't have this type TODO: add
-	if (event.type === PduTypeRoomThirdPartyInvite) {
+	if (event.type === 'm.room.third_party_invite') {
 		console.warn('third_party_invite not implemented');
 		throw new StateResolverAuthorizationError(
 			'third_party_invite not implemented',
@@ -782,7 +775,7 @@ export async function checkEventAuthWithState(
 	}
 
 	const powerLevelEvent = PowerLevelEvent.fromEvent(
-		state.get(getStateMapKey({ type: PduTypeRoomPowerLevels })),
+		state.get(getStateMapKey({ type: 'm.room.power_levels' })),
 	);
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.

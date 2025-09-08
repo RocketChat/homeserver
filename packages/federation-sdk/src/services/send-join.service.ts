@@ -4,20 +4,20 @@ import {
 	PersistentEventFactory,
 	getAuthChain,
 } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
-import type { EventService } from './event.service';
+import { EventService } from './event.service';
 import { StateService } from './state.service';
 
 @singleton()
 export class SendJoinService {
 	constructor(
-		@inject('EventService') private readonly eventService: EventService,
-		@inject(EventEmitterService)
+		private readonly eventService: EventService,
+
 		private readonly emitterService: EventEmitterService,
-		@inject(StateService) private readonly stateService: StateService,
-		@inject(ConfigService) private readonly configService: ConfigService,
+		private readonly stateService: StateService,
+		private readonly configService: ConfigService,
 	) {}
 
 	async sendJoin(roomId: string, eventId: string, event: RoomMemberEvent) {
@@ -57,7 +57,7 @@ export class SendJoinService {
 
 		const configService = this.configService;
 
-		const origin = configService.getServerConfig().name;
+		const origin = configService.serverName;
 
 		const authChain = [];
 

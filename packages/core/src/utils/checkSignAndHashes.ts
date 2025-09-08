@@ -1,4 +1,4 @@
-import type { EventBase } from '../events/eventBase';
+import { Pdu } from '@hs/room';
 import { type HashedEvent, computeHash } from './authentication';
 import { MatrixError } from './errors';
 import { logger } from './logger';
@@ -9,7 +9,7 @@ import {
 	verifyJsonSignature,
 } from './signJson';
 
-export async function checkSignAndHashes<T extends SignedJson<EventBase>>(
+export async function checkSignAndHashes<T extends SignedJson<Pdu>>(
 	pdu: HashedEvent<T>,
 	origin: string,
 	getPublicKeyFromServer: (origin: string, key: string) => Promise<string>,

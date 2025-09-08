@@ -1,3 +1,4 @@
+import { Pdu } from '@hs/room';
 import type { EventBase } from './eventBase';
 
 export type JoinRule =
@@ -64,8 +65,6 @@ export interface RoomMemberEvent extends EventBase {
 	};
 }
 
-export const isRoomMemberEvent = (
-	event: EventBase,
-): event is RoomMemberEvent => {
+export const isRoomMemberEvent = (event: Pdu): event is RoomMemberEvent => {
 	return event.type === 'm.room.member';
 };

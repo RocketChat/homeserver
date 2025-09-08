@@ -1,14 +1,13 @@
 import { type SigningKey, signJson, toUnpaddedBase64 } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
-import type { ServerRepository } from '../repositories/server.repository';
-import type { ConfigService } from './config.service';
+import { singleton } from 'tsyringe';
+import { ServerRepository } from '../repositories/server.repository';
+import { ConfigService } from './config.service';
 
 @singleton()
 export class ServerService {
 	constructor(
-		@inject('ServerRepository')
 		private readonly serverRepository: ServerRepository,
-		@inject('ConfigService') private configService: ConfigService,
+		private configService: ConfigService,
 	) {}
 
 	async getValidPublicKeyFromLocal(
@@ -28,7 +27,6 @@ export class ServerService {
 	}
 
 	async getSignedServerKey() {
-		const config = this.configService.getConfig();
 		const signingKeys = await this.configService.getSigningKey();
 
 		const keys = Object.fromEntries(
@@ -42,7 +40,7 @@ export class ServerService {
 
 		const baseResponse = {
 			old_verify_keys: {},
-			server_name: config.serverName,
+			server_name: this.configService.serverName,
 			signatures: {},
 			valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
 			verify_keys: keys,
@@ -50,7 +48,11 @@ export class ServerService {
 
 		let signedResponse = baseResponse;
 		for (const key of signingKeys) {
-			signedResponse = await signJson(signedResponse, key, config.serverName);
+			signedResponse = await signJson(
+				signedResponse,
+				key,
+				this.configService.serverName,
+			);
 		}
 
 		return signedResponse;

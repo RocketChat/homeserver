@@ -21,17 +21,17 @@ export interface RoomPowerLevelsEvent extends EventBase {
 		users: {
 			[key: string]: number;
 		};
-		users_default: number;
+		users_default?: number;
 		events: {
 			[key: string]: number;
 		};
-		events_default: number;
-		state_default: number;
-		ban: number;
-		kick: number;
-		redact: number;
-		invite: number;
-		historical: number;
+		events_default?: number;
+		state_default?: number;
+		ban?: number;
+		kick?: number;
+		redact?: number;
+		invite?: number;
+		// historical: number; TODO: check if historical exists in spec - m.power_levels
 		notifications?: {
 			[key: string]: number;
 		};
@@ -52,7 +52,11 @@ export const roomPowerLevelsEvent = ({
 }: {
 	roomId: string;
 	members: [sender: string, ...member: string[]];
-	auth_events: string[];
+	auth_events: {
+		'm.room.create': string;
+		'm.room.power_levels': string;
+		'm.room.member': string; // TODO: Based on the tests, this is optional, based on the code, this is required check this
+	};
 	prev_events: string[];
 	depth: number;
 	content?: RoomPowerLevelsEvent['content'];
@@ -62,7 +66,11 @@ export const roomPowerLevelsEvent = ({
 	return createEventBase('m.room.power_levels', {
 		roomId,
 		sender,
-		auth_events,
+		auth_events: [
+			auth_events['m.room.create'],
+			auth_events['m.room.power_levels'],
+			auth_events['m.room.member'],
+		].filter(Boolean) as string[],
 		prev_events,
 		depth,
 		ts,
@@ -88,7 +96,9 @@ export const roomPowerLevelsEvent = ({
 			kick: 50,
 			redact: 50,
 			invite: 0,
-			historical: 100,
+
+			// TODO: check if historical exists in spec - m.power_levels
+			...({ historical: 100 } as any),
 		},
 		state_key: '',
 		origin_server_ts: ts,

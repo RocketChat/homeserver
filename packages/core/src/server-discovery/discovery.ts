@@ -120,7 +120,7 @@ export const getAddressFromTargetWellKnownEndpoint = async (
 	serverName: string,
 ): Promise<{ address: string; maxAge: number }> => {
 	let response: Response | undefined;
-	let data: { 'm.server': string } | undefined;
+	let data: unknown;
 	try {
 		response = await fetch(`https://${serverName}/.well-known/matrix/server`);
 
@@ -133,7 +133,14 @@ export const getAddressFromTargetWellKnownEndpoint = async (
 		throw new Error('No address found');
 	}
 
-	if (!data?.['m.server']) {
+	if (
+		!(
+			typeof data === 'object' &&
+			data !== null &&
+			'm.server' in data &&
+			typeof data['m.server'] === 'string'
+		)
+	) {
 		throw new Error('No address found');
 	}
 

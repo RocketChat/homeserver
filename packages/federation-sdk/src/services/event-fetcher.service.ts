@@ -1,14 +1,14 @@
-import { type MatrixPDU, isFederationEventWithPDUs } from '@hs/core';
+import { isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
-import type { EventBaseWithOptionalId } from '@hs/core';
+import { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
 
 export interface FetchedEvents {
-	events: { eventId: string; event: EventBaseWithOptionalId }[];
+	events: { eventId: string; event: Pdu }[];
 	missingEventIds: string[];
 }
 
@@ -18,7 +18,9 @@ export class EventFetcherService {
 
 	constructor(
 		private readonly eventRepository: EventRepository,
+
 		private readonly federationService: FederationService,
+
 		private readonly configService: ConfigService,
 	) {}
 
@@ -34,16 +36,16 @@ export class EventFetcherService {
 		}
 
 		// Try to get events from local database
-		const localEvents: { eventId: string; event: EventBaseWithOptionalId }[] =
-			[];
-		const dbEvents = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{},
-		);
+		const localEvents: { eventId: string; event: Pdu }[] = [];
 
-		localEvents.push(
-			...dbEvents.map(({ _id, event }) => ({ eventId: _id, event })),
-		);
+		const dbEventsCursor = this.eventRepository.findByIds(eventIds);
+		for await (const event of dbEventsCursor) {
+			localEvents.push({
+				eventId: event._id,
+				event: event.event,
+			});
+		}
+
 		this.logger.debug(`Found ${localEvents.length} events in local database`);
 
 		if (localEvents.length === eventIds.length) {
@@ -67,7 +69,7 @@ export class EventFetcherService {
 			);
 
 			const federationEventsWithIds = federationEvents.map((e) => ({
-				eventId: e.event_id ? String(e.event_id) : generateId(e),
+				eventId: generateId(e),
 				event: e,
 			}));
 
@@ -85,55 +87,18 @@ export class EventFetcherService {
 		};
 	}
 
-	public async fetchAuthEventsByTypes(
-		missingTypes: string[],
-		roomId: string,
-	): Promise<Record<string, EventBaseWithOptionalId[]>> {
-		const results: Record<string, EventBaseWithOptionalId[]> = {};
-
-		try {
-			// Find auth events of the required types in the room
-			const authEvents = await this.eventRepository.find(
-				{
-					'event.room_id': roomId,
-					'event.type': { $in: missingTypes },
-				},
-				{},
-			);
-
-			// Group events by type
-			return authEvents.reduce(
-				(acc, event) => {
-					if (event.event.type) {
-						if (!acc[event.event.type]) {
-							acc[event.event.type] = [];
-						}
-						acc[event.event.type].push(event.event);
-					}
-					return acc;
-				},
-				{} as Record<string, EventBaseWithOptionalId[]>,
-			);
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(`Error fetching auth events by type: ${errorMessage}`);
-			return results;
-		}
-	}
-
 	private async fetchEventsFromFederation(
 		eventIds: string[],
 		targetServerName: string,
-	): Promise<MatrixPDU[]> {
-		const eventsToReturn: MatrixPDU[] = [];
+	): Promise<Pdu[]> {
+		const eventsToReturn: Pdu[] = [];
 
 		try {
 			// TODO: Improve batch event requests to avoid too many parallel requests
 			const chunks = this.chunkArray(eventIds, 10);
 
 			for (const chunk of chunks) {
-				if (targetServerName === this.configService.getServerName()) {
+				if (targetServerName === this.configService.serverName) {
 					this.logger.info(`Skipping request to self: ${targetServerName}`);
 					return [];
 				}

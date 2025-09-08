@@ -1,3 +1,4 @@
+import { Pdu } from '@hs/room';
 import type { EventBase } from './eventBase';
 
 /**
@@ -19,14 +20,15 @@ export interface MatrixPDU extends EventBase {
 /**
  * Response from a federation server containing PDUs (Persistent Data Units)
  */
-export interface FederationEventResponse extends EventBase {
-	pdus: MatrixPDU[];
+export interface FederationEventResponse {
+	pdus: Pdu[];
 }
 
 export const isFederationEventWithPDUs = (
-	response: EventBase,
+	response: unknown,
 ): response is FederationEventResponse => {
 	return (
+		response instanceof Object &&
 		'pdus' in response &&
 		Array.isArray(response.pdus) &&
 		response.pdus.length > 0

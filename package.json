@@ -13,8 +13,8 @@
 		"lint-staged": "^16.1.2",
 		"sinon": "^20.0.0",
 		"tsconfig-paths": "^4.2.0",
-		"turbo": "^2.5.4",
-		"typescript": "^5.8.3"
+		"turbo": "~2.5.6",
+		"typescript": "~5.9.2"
 	},
 	"workspaces": [
 		"packages/*"
@@ -35,12 +35,12 @@
 	"packageManager": "bun@1.1.10",
 	"lint-staged": {
 		"**.{js|ts|cjs|mjs|d.cts|d.mts|jsx|tsx|json|jsonc}": [
-			"biome check --files-ignore-unknown=true",
-			"biome check --write --no-errors-on-unmatched",
-			"biome check --write --organize-imports-enabled=false --no-errors-on-unmatched",
-			"biome check --write --unsafe --no-errors-on-unmatched",
-			"biome format --write --no-errors-on-unmatched",
-			"biome lint --write --no-errors-on-unmatched"
+			"biome check --files-ignore-unknown=true --diagnostic-level=error",
+			"biome check --write --no-errors-on-unmatched --diagnostic-level=error",
+			"biome check --write --organize-imports-enabled=false --no-errors-on-unmatched --diagnostic-level=error",
+			"biome check --write --unsafe --no-errors-on-unmatched --diagnostic-level=error",
+			"biome format --write --no-errors-on-unmatched --diagnostic-level=error",
+			"biome lint --write --no-errors-on-unmatched --diagnostic-level=error"
 		],
 		"*": [
 			"biome check --no-errors-on-unmatched --files-ignore-unknown=true"

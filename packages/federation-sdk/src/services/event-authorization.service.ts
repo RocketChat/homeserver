@@ -1,17 +1,15 @@
-import { createLogger } from '@hs/core';
-import type { EventBaseWithOptionalId } from '@hs/core';
+import { createLogger, generateId } from '@hs/core';
+import type { EventBase } from '@hs/core';
+import { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 
 @singleton()
 export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
 
-	async authorizeEvent(
-		event: EventBaseWithOptionalId,
-		authEvents: EventBaseWithOptionalId[],
-	): Promise<boolean> {
+	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
 		this.logger.debug(
-			`Authorizing event ${event.event_id || 'unknown'} of type ${event.type}`,
+			`Authorizing event ${generateId(event)} of type ${event.type}`,
 		);
 
 		// Simple implementation - would need proper auth rules based on Matrix spec
@@ -39,12 +37,12 @@ export class EventAuthorizationService {
 			case 'm.room.join_rules':
 				return this.authorizeJoinRulesEvent(event, authEvents);
 			default:
-				// For simplicity, we'll allow other event types
+				//  TODO: remove for simplicity, we'll allow other event types
 				return true;
 		}
 	}
 
-	private authorizeCreateEvent(event: EventBaseWithOptionalId): boolean {
+	private authorizeCreateEvent(event: Pdu): boolean {
 		// Create events must not have prev_events
 		if (event.prev_events && event.prev_events.length > 0) {
 			this.logger.warn('Create event has prev_events');
@@ -60,10 +58,7 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	private checkSenderAllowed(
-		event: EventBaseWithOptionalId,
-		authEvents: EventBaseWithOptionalId[],
-	): boolean {
+	private checkSenderAllowed(event: Pdu, authEvents: Pdu[]): boolean {
 		// Find power levels
 		const powerLevelsEvent = authEvents.find(
 			(e) => e.type === 'm.room.power_levels',
@@ -79,32 +74,23 @@ export class EventAuthorizationService {
 			return !createEvent;
 		}
 
-		// Check if sender has permission - simplified implementation
+		//  TODO: Check if sender has permission - simplified implementation
 		// Full implementation would need to check specific event type power levels
 		return true;
 	}
 
-	private authorizeMemberEvent(
-		_event: EventBaseWithOptionalId,
-		_authEvents: EventBaseWithOptionalId[],
-	): boolean {
-		// Basic implementation - full one would check join rules, bans, etc.
+	private authorizeMemberEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
+		// TODO:  Basic implementation - full one would check join rules, bans, etc.
 		return true;
 	}
 
-	private authorizePowerLevelsEvent(
-		_event: EventBaseWithOptionalId,
-		_authEvents: EventBaseWithOptionalId[],
-	): boolean {
-		// Check sender has permission to change power levels
+	private authorizePowerLevelsEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
+		// TODO:  Check sender has permission to change power levels
 		return true;
 	}
 
-	private authorizeJoinRulesEvent(
-		_event: EventBaseWithOptionalId,
-		_authEvents: EventBaseWithOptionalId[],
-	): boolean {
-		// Check sender has permission to change join rules
+	private authorizeJoinRulesEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
+		// TODO: Check sender has permission to change join rules
 		return true;
 	}
 }

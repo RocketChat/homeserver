@@ -1,14 +1,16 @@
 import type {
 	BaseEDU,
+	HashedEvent,
 	PresenceEDU,
 	RoomPowerLevelsEvent,
+	SignedJson,
 	TypingEDU,
 } from '@hs/core';
 import { isPresenceEDU, isTypingEDU } from '@hs/core';
 import type { RedactionEvent } from '@hs/core';
 import { generateId } from '@hs/core';
 import { MatrixError } from '@hs/core';
-import type { EventBaseWithOptionalId, EventStore } from '@hs/core';
+import type { EventBase, EventStore } from '@hs/core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
@@ -17,70 +19,32 @@ import { pruneEventDict } from '@hs/core';
 
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { PersistentEventFactory } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import {
+	type Pdu,
+	type PduForType,
+	type PduType,
+	PersistentEventFactory,
+} from '@hs/room';
+import { singleton } from 'tsyringe';
 import type { z } from 'zod';
-import type { StagingAreaQueue } from '../queues/staging-area.queue';
-import type { EventRepository } from '../repositories/event.repository';
-import type { KeyRepository } from '../repositories/key.repository';
-import type { RoomRepository } from '../repositories/room.repository';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { EventRepository } from '../repositories/event.repository';
+import { KeyRepository } from '../repositories/key.repository';
+import { RoomRepository } from '../repositories/room.repository';
 import { eventSchemas } from '../utils/event-schemas';
-import type { ConfigService } from './config.service';
+import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
-import type { StateService } from './state.service';
+import { StateService } from './state.service';
 
 type ValidationResult = {
 	eventId: string;
-	event: EventBaseWithOptionalId;
+	event: Pdu;
 	valid: boolean;
 	error?: {
 		errcode: string;
 		error: string;
 	};
 };
-
-export interface StagedEvent {
-	_id: string;
-	event: EventBaseWithOptionalId;
-	origin: string;
-	missing_dependencies: string[];
-	staged_at: number;
-	room_version?: string;
-	invite_room_state?: Record<string, unknown>;
-}
-
-export enum EventType {
-	CREATE = 'm.room.create',
-	MEMBER = 'm.room.member',
-	MESSAGE = 'm.room.message',
-	REDACTION = 'm.room.redaction',
-	REACTION = 'm.reaction',
-	NAME = 'm.room.name',
-	POWER_LEVELS = 'm.room.power_levels',
-}
-
-type EventAttributes = {
-	[EventType.NAME]: { roomId: string; senderId: string };
-	[EventType.MESSAGE]: { roomId: string; senderId: string };
-	[EventType.REACTION]: { roomId: string; senderId: string };
-	[EventType.MEMBER]: { roomId: string; senderId: string };
-	[EventType.CREATE]: { roomId: string };
-	[EventType.POWER_LEVELS]: { roomId: string; senderId: string };
-	[EventType.REDACTION]: { roomId: string; senderId: string };
-};
-
-interface AuthEventResult {
-	_id: string;
-	type: EventType;
-	state_key?: string;
-}
-
-interface QueryConfig {
-	query: Record<string, any>;
-	sort?: Record<string, 1 | -1>;
-	limit?: number;
-}
-
 export interface AuthEventParams {
 	roomId: string;
 	senderId: string;
@@ -90,33 +54,36 @@ export interface AuthEventParams {
 export class EventService {
 	private readonly logger = createLogger('EventService');
 
+	private currentTransactions = new Set<string>();
+
 	constructor(
-		@inject('EventRepository')
 		private readonly eventRepository: EventRepository,
-		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
-		@inject('KeyRepository') private readonly keyRepository: KeyRepository,
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('StagingAreaQueue')
+		private readonly roomRepository: RoomRepository,
+		private readonly keyRepository: KeyRepository,
+		private readonly configService: ConfigService,
+
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		@inject('StateService') private readonly stateService: StateService,
-		@inject(EventEmitterService)
+		private readonly stateService: StateService,
+
 		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
-	async getEventById<T extends EventBaseWithOptionalId>(
+	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
 		eventId: string,
-	): Promise<T | null> {
-		const event = await this.eventRepository.findById(eventId);
-		return (event?.event as T) ?? null;
+		type?: T,
+	): Promise<P | null> {
+		if (type) {
+			return (this.eventRepository.findByRoomIdAndType(eventId, type) ??
+				null) as Promise<P>;
+		}
+		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;
 	}
 
 	async checkIfEventsExists(
 		eventIds: string[],
 	): Promise<{ missing: string[]; found: string[] }> {
-		const events: Pick<EventStore, '_id'>[] = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{ projection: { _id: 1 } },
-		);
+		const eventsCursor = this.eventRepository.findByIds(eventIds);
+		const events = await eventsCursor.toArray();
 
 		return eventIds.reduce(
 			(acc: { missing: string[]; found: string[] }, id) => {
@@ -135,31 +102,11 @@ export class EventService {
 	}
 
 	/**
-	 * Check if an event exists in the database, including staged events
-	 */
-	async checkIfEventExistsIncludingStaged(eventId: string): Promise<boolean> {
-		// First check regular events
-		const regularEvent = await this.eventRepository.findById(eventId);
-		if (regularEvent) {
-			return true;
-		}
-
-		// Then check staged events
-		const stagedEvents = await this.eventRepository.find(
-			{
-				_id: eventId,
-				is_staged: true,
-			},
-			{},
-		);
-
-		return stagedEvents.length > 0;
-	}
-
-	/**
 	 * Store an event as staged with its missing dependencies
 	 */
-	async storeEventAsStaged(stagedEvent: StagedEvent): Promise<void> {
+	async storeEventAsStaged(
+		stagedEvent: Pick<EventStore, '_id' | 'event' | 'missing_dependencies'>,
+	): Promise<void> {
 		try {
 			// First check if the event already exists to avoid duplicates
 			const existingEvent = await this.eventRepository.findById(
@@ -167,40 +114,27 @@ export class EventService {
 			);
 			if (existingEvent) {
 				// If it already exists as a regular event (not staged), nothing to do
-				if (!existingEvent.is_staged) {
+				if (!existingEvent.staged) {
 					this.logger.debug(
 						`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`,
 					);
 					return;
 				}
 
+				// TODO: Remove unneeded db roundtrips by removing upsert or creatingStaged
 				// Update the staged event with potentially new dependencies info
 				await this.eventRepository.upsert(stagedEvent.event);
 				// Make a separate update for metadata since upsert only handles the event data
 				// We do this by using the createStaged method, which should update if exists
 				await this.eventRepository.createStaged(stagedEvent.event);
 				this.logger.debug(
-					`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
+					`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies?.length} missing dependencies`,
 				);
 			} else {
-				// Create a new staged event
 				await this.eventRepository.createStaged(stagedEvent.event);
 
-				// Add metadata for tracking dependencies
-				const collection = await this.eventRepository.getCollection();
-				await collection.updateOne(
-					{ _id: stagedEvent._id },
-					{
-						$set: {
-							missing_dependencies: stagedEvent.missing_dependencies,
-							staged_at: stagedEvent.staged_at,
-							is_staged: true,
-						},
-					},
-				);
-
 				this.logger.debug(
-					`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies.length} missing dependencies`,
+					`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies?.length} missing dependencies`,
 				);
 			}
 		} catch (error) {
@@ -214,14 +148,8 @@ export class EventService {
 	/**
 	 * Find all staged events in the database
 	 */
-	async findStagedEvents(): Promise<StagedEvent[]> {
-		// We need to find all events with the staged flag
-		// The explicit is_staged flag might be present, or the traditional staged flag
-		const events = await this.eventRepository.find(
-			{ $or: [{ is_staged: true }, { staged: true }] },
-			{},
-		);
-		return events as unknown as StagedEvent[];
+	async findStagedEvents(): Promise<EventStore[]> {
+		return await this.eventRepository.findStagedEvents();
 	}
 
 	/**
@@ -229,23 +157,7 @@ export class EventService {
 	 */
 	async markEventAsUnstaged(eventId: string): Promise<void> {
 		try {
-			// Use the existing repository method which is designed for this
-			await this.eventRepository.removeFromStaging('', eventId); // Room ID not needed
-
-			// Also remove other staging metadata we might have added
-			// We need to do this directly since removeFromStaging only clears the staged flag
-			const collection = await this.eventRepository.getCollection();
-			await collection.updateOne(
-				{ _id: eventId },
-				{
-					$unset: {
-						is_staged: '',
-						missing_dependencies: '',
-						staged_at: '',
-					},
-				},
-			);
-
+			await this.eventRepository.removeFromStaging(eventId);
 			this.logger.debug(`Marked event ${eventId} as no longer staged`);
 		} catch (error) {
 			this.logger.error(`Error unmarking staged event ${eventId}: ${error}`);
@@ -264,23 +176,18 @@ export class EventService {
 			let updatedCount = 0;
 
 			// Get all staged events that have this dependency
-			const collection = await this.eventRepository.getCollection();
-			const stagedEvents = await collection
-				.find({
-					$or: [{ is_staged: true }, { staged: true }],
-					missing_dependencies: dependencyId,
-				})
-				.toArray();
+			const stagedEvents =
+				this.eventRepository.findStagedEventsByDependencyId(dependencyId);
 
 			// Update each one to remove the dependency
-			for (const event of stagedEvents) {
+			for await (const event of stagedEvents) {
 				const updatedDeps = event.missing_dependencies?.filter(
 					(dep: string) => dep !== dependencyId,
 				);
 				if (updatedDeps) {
-					await collection.updateOne(
-						{ _id: event._id },
-						{ $set: { missing_dependencies: updatedDeps } },
+					await this.eventRepository.setMissingDependencies(
+						event._id,
+						updatedDeps,
 					);
 					updatedCount++;
 				}
@@ -295,8 +202,45 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(pdus: EventBaseWithOptionalId[]): Promise<void> {
-		console.log('processIncomingPDUs', pdus);
+	async processIncomingTransaction({
+		origin,
+		pdus,
+		edus,
+	}: { origin: string; pdus: Pdu[]; edus?: BaseEDU[] }): Promise<void> {
+		if (!Array.isArray(pdus)) {
+			throw new Error('pdus must be an array');
+		}
+
+		if (edus && !Array.isArray(edus)) {
+			throw new Error('edus must be an array');
+		}
+
+		const totalPdus = pdus.length;
+		const totalEdus = edus?.length || 0;
+
+		if (totalPdus > 50 || totalEdus > 100) {
+			throw new Error('too-many-events');
+		}
+
+		// only one current transaction per origin is allowed
+		if (this.currentTransactions.has(origin)) {
+			throw new Error('too-many-concurrent-transactions');
+		}
+
+		this.currentTransactions.add(origin);
+
+		if (totalPdus > 0) {
+			await this.processIncomingPDUs(pdus);
+		}
+
+		if (edus && totalEdus > 0) {
+			await this.processIncomingEDUs(edus);
+		}
+
+		this.currentTransactions.delete(origin);
+	}
+
+	private async processIncomingPDUs(pdus: Pdu[]): Promise<void> {
 		const eventsWithIds = pdus.map((event) => ({
 			eventId: generateId(event),
 			event,
@@ -307,22 +251,13 @@ export class EventService {
 
 		for (const { eventId, event } of eventsWithIds) {
 			// TODO: Rewrite this poor typing
-			let result = await this.validateEventFormat(
-				eventId,
-				event as EventBaseWithOptionalId,
-			);
+			let result = await this.validateEventFormat(eventId, event);
 			if (result.valid) {
-				result = await this.validateEventTypeSpecific(
-					eventId,
-					event as EventBaseWithOptionalId,
-				);
+				result = await this.validateEventTypeSpecific(eventId, event);
 			}
 
 			if (result.valid) {
-				result = await this.validateSignaturesAndHashes(
-					eventId,
-					event as EventBaseWithOptionalId,
-				);
+				result = await this.validateSignaturesAndHashes(eventId, event);
 			}
 
 			validatedEvents.push(result);
@@ -339,13 +274,14 @@ export class EventService {
 			this.stagingAreaQueue.enqueue({
 				eventId: event.eventId,
 				roomId: event.event.room_id,
-				origin: event.event.origin,
+				// TODO: check what to do with origin
+				origin: event.event.sender.split(':')[1],
 				event: event.event,
 			});
 		}
 	}
 
-	async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
+	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
 		this.logger.debug(`Processing ${edus.length} incoming EDUs`);
 
 		for (const edu of edus) {
@@ -437,7 +373,7 @@ export class EventService {
 
 	private async validateEventFormat(
 		eventId: string,
-		event: EventBaseWithOptionalId,
+		event: Pdu,
 	): Promise<ValidationResult> {
 		try {
 			const roomVersion = await this.getRoomVersion(event);
@@ -493,7 +429,7 @@ export class EventService {
 
 	private async validateEventTypeSpecific(
 		eventId: string,
-		event: EventBaseWithOptionalId,
+		event: Pdu,
 	): Promise<ValidationResult> {
 		try {
 			if (event.type === 'm.room.create') {
@@ -549,7 +485,7 @@ export class EventService {
 
 	private async validateSignaturesAndHashes(
 		eventId: string,
-		event: EventBaseWithOptionalId,
+		event: Pdu,
 	): Promise<ValidationResult> {
 		try {
 			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
@@ -558,18 +494,15 @@ export class EventService {
 				(origin, key) =>
 					getPublicKeyFromRemoteServer(
 						origin,
-						this.configService.getServerConfig().name,
+						this.configService.serverName,
 						key,
 					),
 				(origin, keyId, publicKey) =>
 					this.keyRepository.storePublicKey(origin, keyId, publicKey),
 			);
 
-			await checkSignAndHashes(
-				event as any,
-				event.origin,
-				getPublicKeyFromServer,
-			);
+			const origin = event.sender.split(':')[1];
+			await checkSignAndHashes(event, origin, getPublicKeyFromServer);
 			return { eventId, event, valid: true };
 		} catch (error: any) {
 			this.logger.error(
@@ -652,7 +585,7 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: EventBaseWithOptionalId) {
+	private async getRoomVersion(event: Pdu) {
 		return (
 			this.stateService.getRoomVersion(event.room_id) ||
 			PersistentEventFactory.defaultRoomVersion
@@ -676,7 +609,7 @@ export class EventService {
 	}
 
 	async insertEvent(
-		event: EventBaseWithOptionalId,
+		event: Pdu,
 		eventId?: string,
 		args?: object,
 	): Promise<string> {
@@ -684,32 +617,16 @@ export class EventService {
 		return this.eventRepository.create(event, eventId || '', args);
 	}
 
-	async insertEventIfNotExists(
-		event: EventBaseWithOptionalId,
-	): Promise<string> {
-		return this.eventRepository.createIfNotExists(event);
-	}
-
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
-		return this.eventRepository.findLatestInRoom(roomId);
+		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
 
-	async getCreateEventForRoom(
-		roomId: string,
-	): Promise<EventBaseWithOptionalId | null> {
-		const createEvents = await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				'event.type': 'm.room.create',
-			},
-			{ limit: 1 },
+	async getCreateEventForRoom(roomId: string): Promise<Pdu | null> {
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			roomId,
+			'm.room.create',
 		);
-
-		if (createEvents && createEvents.length > 0) {
-			return createEvents[0].event;
-		}
-
-		return null;
+		return createEvent?.event ?? null;
 	}
 
 	async getMissingEvents(
@@ -717,36 +634,30 @@ export class EventService {
 		earliestEvents: string[],
 		latestEvents: string[],
 		limit: number,
-	): Promise<{ events: { _id: string; event: EventBaseWithOptionalId }[] }> {
-		const events = await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				_id: { $nin: [...earliestEvents, ...latestEvents] },
-			},
-			{ limit },
+	): Promise<{ events: { _id: string; event: Pdu }[] }> {
+		// TODO: This would benefit from adding projections to the query
+		const eventsCursor = this.eventRepository.findByRoomIdExcludingEventIds(
+			roomId,
+			[...earliestEvents, ...latestEvents],
+			limit,
 		);
+		const events = await eventsCursor.toArray();
 
 		return {
-			events: events.map((event) => ({
-				_id: event._id,
-				event: event.event,
-			})),
+			events,
 		};
 	}
 
 	async getEventsByIds(
 		eventIds: string[],
-	): Promise<{ _id: string; event: EventBaseWithOptionalId }[]> {
+	): Promise<{ _id: string; event: Pdu }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
 
 		this.logger.debug(`Retrieving ${eventIds.length} events by IDs`);
-		const events = await this.eventRepository.find(
-			{ _id: { $in: eventIds } },
-			{},
-		);
-
+		// TODO: This would benefit from adding projections to the query
+		const events = await this.eventRepository.findByIds(eventIds).toArray();
 		return events.map((event) => ({
 			_id: event._id,
 			event: event.event,
@@ -754,83 +665,50 @@ export class EventService {
 	}
 
 	/**
-	 * Find events based on a query
-	 */
-	async findEvents(query: any, options: any = {}): Promise<EventStore[]> {
-		this.logger.debug(`Finding events with query: ${JSON.stringify(query)}`);
-		const events = await this.eventRepository.find(query, options);
-		return events;
-	}
-
-	/**
-	 * Find all events for a room
-	 */
-	async findRoomEvents(roomId: string): Promise<EventBaseWithOptionalId[]> {
-		this.logger.debug(`Finding all events for room ${roomId}`);
-		const events = await this.eventRepository.find(
-			{ 'event.room_id': roomId },
-			{ sort: { 'event.depth': 1 } },
-		);
-		return events.map((event) => event.event);
-	}
-
-	/**
 	 * Find an invite event for a specific user in a specific room
 	 */
-	async findInviteEvent(roomId: string, userId: string): Promise<StagedEvent> {
-		this.logger.debug(
-			`Finding invite event for user ${userId} in room ${roomId}`,
+	findInviteEvent(roomId: string, userId: string): Promise<EventStore | null> {
+		return this.eventRepository.findInviteEventsByRoomIdAndUserId(
+			roomId,
+			userId,
 		);
-		const events = (await this.eventRepository.find(
-			{
-				'event.room_id': roomId,
-				'event.type': 'm.room.member',
-				'event.state_key': userId,
-				'event.content.membership': 'invite',
-			},
-			{ limit: 1, sort: { 'event.origin_server_ts': -1 } },
-		)) as unknown as StagedEvent[];
-
-		return events[0];
 	}
 
 	async getAuthEventIds(
-		eventType: EventType,
+		eventType: PduType,
 		params: AuthEventParams,
-	): Promise<AuthEventResult[]> {
-		const queries = this.getAuthEventQueries(eventType, params);
-		const authEvents: AuthEventResult[] = [];
+	): Promise<EventStore[]> {
+		const authEventsCursor = this.eventRepository.findAuthEvents(
+			eventType,
+			params.roomId,
+			params.senderId,
+		);
+		const authEvents: EventStore[] = [];
 
-		for (const queryConfig of queries) {
-			const events = await this.eventRepository.find(queryConfig.query, {
-				sort: queryConfig.sort,
-				limit: queryConfig.limit,
-				projection: { _id: 1, 'event.type': 1, 'event.state_key': 1 },
-			});
+		for await (const storeEvent of authEventsCursor) {
+			const { type } = storeEvent.event;
 
-			for (const storeEvent of events) {
-				const currentEventType = storeEvent.event?.type as EventType;
-				const currentStateKey = storeEvent.event?.state_key;
-				const eventTypeKey = Object.keys(EventType).find(
-					(key) =>
-						EventType[key as keyof typeof EventType] === currentEventType,
+			// TODO: check if those are the only valid auth events or the only current implemented
+			if (
+				type &&
+				[
+					'm.room.create',
+					'm.room.member',
+					'm.room.message',
+					'm.room.redaction',
+					'm.reaction',
+					'm.room.name',
+					'm.room.power_levels',
+				].includes(type)
+			) {
+				authEvents.push(storeEvent);
+			} else {
+				this.logger.warn(
+					`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,
 				);
-
-				if (eventTypeKey && currentEventType) {
-					authEvents.push({
-						_id: storeEvent._id,
-						type: currentEventType,
-						...(currentStateKey !== undefined && {
-							state_key: currentStateKey,
-						}),
-					});
-				} else {
-					this.logger.warn(
-						`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,
-					);
-				}
 			}
 		}
+
 		return authEvents;
 	}
 
@@ -876,105 +754,25 @@ export class EventService {
 		// Store the redaction event in the redacted_because field as specified in the Matrix spec
 		redactedEventContent.unsigned.redacted_because = redactionEvent;
 
-		const finalRedactedEvent: EventBaseWithOptionalId = {
-			type: eventToRedact.event.type,
+		await this.eventRepository.redactEvent(eventIdToRedact, {
+			...redactedEventContent,
 			room_id: eventToRedact.event.room_id,
 			sender: eventToRedact.event.sender,
-			origin: eventToRedact.event.origin,
+			// TODO: check what to do with origin
+			// origin: eventToRedact.event.sender.split(':')[1],
 			origin_server_ts: eventToRedact.event.origin_server_ts,
 			depth: eventToRedact.event.depth,
 			prev_events: eventToRedact.event.prev_events,
 			auth_events: eventToRedact.event.auth_events,
-			...redactedEventContent,
-		};
-
-		await this.eventRepository.redactEvent(eventIdToRedact, finalRedactedEvent);
+		} as typeof eventToRedact.event);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
-	}
-
-	private getAuthEventQueries<T extends EventType>(
-		eventType: T,
-		attributes: EventAttributes[T],
-	): QueryConfig[] {
-		const { roomId } = attributes;
-		const senderId = 'senderId' in attributes ? attributes.senderId : undefined;
-
-		const baseQueries = {
-			create: {
-				query: { 'event.room_id': roomId, 'event.type': EventType.CREATE },
-			},
-			powerLevels: {
-				query: {
-					'event.room_id': roomId,
-					'event.type': EventType.POWER_LEVELS,
-				},
-				sort: { 'event.origin_server_ts': -1 },
-				limit: 1,
-			},
-			membership: {
-				query: {
-					'event.room_id': roomId,
-					'event.type': EventType.MEMBER,
-					'event.state_key': senderId,
-					'event.content.membership': 'join',
-				},
-				sort: { 'event.origin_server_ts': -1 },
-				limit: 1,
-			},
-		};
-
-		switch (eventType) {
-			case EventType.NAME:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.MESSAGE:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.REACTION:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.MEMBER:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.CREATE:
-				return [baseQueries.create];
-
-			case EventType.POWER_LEVELS:
-				return [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-
-			case EventType.REDACTION:
-				return [baseQueries.create, baseQueries.powerLevels];
-
-			default:
-				throw new Error(`Unsupported event type: ${eventType}`);
-		}
 	}
 
 	async checkUserPermission(
 		powerLevelsEventId: string,
 		userId: string,
-		actionType: EventType,
+		actionType: PduType,
 	): Promise<boolean> {
 		const powerLevelsEvent =
 			await this.eventRepository.findById(powerLevelsEventId);

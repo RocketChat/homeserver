@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createLogger } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
-import type { ConfigService } from './config.service';
+import { singleton } from 'tsyringe';
+import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 
 @singleton()
@@ -9,13 +9,13 @@ export class MediaService {
 	private readonly logger = createLogger('MediaService');
 
 	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('EventEmitterService')
+		private readonly configService: ConfigService,
+
 		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	generateMXCUri(mediaId?: string): string {
-		const serverName = this.configService.getServerConfig().name;
+		const serverName = this.configService.serverName;
 		const id = mediaId || crypto.randomBytes(16).toString('hex');
 		return `mxc://${serverName}/${id}`;
 	}
@@ -52,7 +52,7 @@ export class MediaService {
 			if (decoded.includes(':')) {
 				userId = `@${decoded}`;
 			} else {
-				userId = `@${decoded}:${this.configService.getServerConfig().name}`;
+				userId = `@${decoded}:${this.configService.serverName}`;
 			}
 
 			if (userId.match(/^@[^:]+:[^:]+$/)) {
@@ -69,7 +69,7 @@ export class MediaService {
 		authHeader: string | null,
 	): Promise<Response | { errcode: string; error: string }> {
 		const { userId, isAuthenticated } = this.extractUserFromToken(authHeader);
-		const ourServerName = this.configService.getServerConfig().name;
+		const ourServerName = this.configService.serverName;
 
 		this.logger.info('Media download request', {
 			serverName,
@@ -110,7 +110,7 @@ export class MediaService {
 			const response = await fetch(remoteUrl, {
 				method: 'GET',
 				headers: {
-					'User-Agent': `RocketChat-Matrix-Bridge/${this.configService.getServerConfig().version}`,
+					'User-Agent': `RocketChat-Matrix-Bridge/${this.configService.version}`,
 				},
 				signal: AbortSignal.timeout(30000),
 			});
@@ -182,7 +182,7 @@ export class MediaService {
 			};
 		}
 
-		const ourServerName = this.configService.getServerConfig().name;
+		const ourServerName = this.configService.serverName;
 		if (serverName === ourServerName) {
 			return {
 				errcode: 'M_UNRECOGNIZED',

@@ -12,17 +12,7 @@ export const transactionsPlugin = (app: Elysia) => {
 	return app.put(
 		'/_matrix/federation/v1/send/:txnId',
 		async ({ body }) => {
-			const { pdus = [], edus = [] } = body;
-
-			// Process PDUs if present
-			if (pdus.length > 0) {
-				await eventService.processIncomingPDUs(pdus);
-			}
-
-			// Process EDUs if present
-			if (edus.length > 0) {
-				await eventService.processIncomingEDUs(edus);
-			}
+			await eventService.processIncomingTransaction(body as any);
 
 			return {
 				pdus: {},

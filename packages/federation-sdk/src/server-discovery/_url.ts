@@ -1,6 +1,13 @@
 import { isIPv4, isIPv6 } from 'node:net';
 
 // use this to parse since .split would incorrectly parse any ipv6 addresses
+
+declare global {
+	interface URL {
+		readonly port: string;
+	}
+}
+
 export class _URL extends URL {
 	private __url: string;
 

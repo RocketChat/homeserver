@@ -1,17 +1,14 @@
-import { EventBaseWithOptionalId, HttpException, HttpStatus } from '@hs/core';
-import { ConfigService, FederationService } from '@hs/federation-sdk';
+import { EventBase, HttpException, HttpStatus } from '@hs/core';
 import { PersistentEventFactory, RoomVersion } from '@hs/room';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
+import { ConfigService } from './config.service';
 import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
-	event: EventBaseWithOptionalId & {
-		origin: string;
-		room_id: string;
-		state_key: string;
-	};
+	event: EventBase;
 	invite_room_state: unknown;
 	room_version: string;
 };
@@ -21,11 +18,11 @@ export class InviteService {
 	private readonly logger = createLogger('InviteService');
 
 	constructor(
-		@inject('EventService') private readonly eventService: EventService,
-		@inject('FederationService')
+		private readonly eventService: EventService,
+
 		private readonly federationService: FederationService,
-		@inject('StateService') private readonly stateService: StateService,
-		@inject('ConfigService') private readonly configService: ConfigService,
+		private readonly stateService: StateService,
+		private readonly configService: ConfigService,
 	) {}
 
 	/**
@@ -76,7 +73,7 @@ export class InviteService {
 		}
 
 		// if user invited belongs to our server
-		if (invitedServer === this.configService.getServerName()) {
+		if (invitedServer === this.configService.serverName) {
 			await stateService.persistStateEvent(inviteEvent);
 
 			if (inviteEvent.rejected) {
@@ -120,7 +117,7 @@ export class InviteService {
 	}
 
 	async processInvite<
-		T extends Omit<EventBaseWithOptionalId, 'origin'> & {
+		T extends Omit<EventBase, 'origin'> & {
 			origin?: string | undefined;
 			room_id: string;
 			state_key: string;
@@ -146,7 +143,7 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
-		if (residentServer === this.configService.getServerName()) {
+		if (residentServer === this.configService.serverName) {
 			// we are the host of the server
 
 			// attempt to persist the invite event as we already have the state

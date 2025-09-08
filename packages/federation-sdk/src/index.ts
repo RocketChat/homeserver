@@ -40,7 +40,6 @@ export { EventAuthorizationService } from './services/event-authorization.servic
 export { EventStateService } from './services/event-state.service';
 export { MissingEventService } from './services/missing-event.service';
 export { ProfilesService } from './services/profiles.service';
-export { NotificationService } from './services/notification.service';
 export { EventFetcherService } from './services/event-fetcher.service';
 export type { FetchedEvents } from './services/event-fetcher.service';
 export { InviteService } from './services/invite.service';
@@ -52,7 +51,7 @@ export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
-export { MissingEventListener } from './services/missing-event.listener';
+export { MissingEventListener } from './listeners/missing-event.listener';
 export { MediaService } from './services/media.service';
 
 // Repository interfaces and implementations
@@ -67,7 +66,6 @@ export {
 	MissingEventsQueue,
 	type MissingEventType,
 } from './queues/missing-event.queue';
-export { QueueModule } from './queues/queue.module';
 
 // Utility exports
 export { getErrorMessage } from './utils/get-error-message';
@@ -93,7 +91,6 @@ export * from './dtos';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
-export { StateEventRepository } from './repositories/state-event.repository';
 export { ServerRepository } from './repositories/server.repository';
 export { KeyRepository } from './repositories/key.repository';
 export { StateRepository } from './repositories/state.repository';

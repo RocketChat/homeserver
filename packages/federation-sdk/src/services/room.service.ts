@@ -1,6 +1,6 @@
 import {
 	EventBase,
-	EventBaseWithOptionalId,
+	EventStore,
 	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
 	RoomTombstoneEvent,
@@ -13,49 +13,44 @@ import {
 	roomTombstoneEvent,
 	signEvent,
 } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import { FederationService } from './federation.service';
 
 import { ForbiddenError, HttpException, HttpStatus } from '@hs/core';
 import { type SigningKey } from '@hs/core';
-import type {
-	EventStore,
-	EventBaseWithOptionalId as ModelEventBase,
-} from '@hs/core';
 
 import { logger } from '@hs/core';
 import {
 	PduCreateEventContent,
+	PduForType,
 	PduJoinRuleEventContent,
-	PduMembershipEventContent,
+	PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
 } from '@hs/room';
 import { EventRepository } from '../repositories/event.repository';
-import type { RoomRepository } from '../repositories/room.repository';
+import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { EventType } from './event.service';
+
 import { InviteService } from './invite.service';
 import { StateService } from './state.service';
 
 @singleton()
 export class RoomService {
 	constructor(
-		@inject('RoomRepository') private readonly roomRepository: RoomRepository,
-		@inject('EventRepository')
+		private readonly roomRepository: RoomRepository,
 		private readonly eventRepository: EventRepository,
-		@inject('EventService') private readonly eventService: EventService,
-		@inject('ConfigService') private readonly configService: ConfigService,
-		@inject('FederationService')
+		private readonly eventService: EventService,
+		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
-		@inject('StateService') private readonly stateService: StateService,
+		private readonly stateService: StateService,
 		private readonly inviteService: InviteService,
 	) {}
 
 	private validatePowerLevelChange(
-		currentPowerLevelsContent: RoomPowerLevelsEvent['content'],
+		currentPowerLevelsContent: PduForType<'m.room.power_levels'>['content'],
 		senderId: string,
 		targetUserId: string,
 		newPowerLevel: number,
@@ -303,7 +298,7 @@ export class RoomService {
 		const canonicalAliasEvent = PersistentEventFactory.newCanonicalAliasEvent(
 			roomCreateEvent.roomId,
 			username,
-			`#${name}:${this.configService.getServerConfig().name}`,
+			`#${name}:${this.configService.serverName}`,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
@@ -371,6 +366,19 @@ export class RoomService {
 		void this.federationService.sendEventToAllServersInRoom(topicEvent);
 	}
 
+	private getEventByType<E extends PduType>(
+		authEventIds: EventStore[],
+		type: E,
+		extra?: (event: EventStore<PduForType<E>>) => boolean,
+	): EventStore<PduForType<E>> | undefined {
+		const event = authEventIds.find(
+			(e) =>
+				e.event.type === type &&
+				(!extra || extra(e as unknown as EventStore<PduForType<E>>)),
+		);
+		return event as unknown as EventStore<PduForType<E>> | undefined;
+	}
+
 	async updateUserPowerLevel(
 		roomId: string,
 		userId: string,
@@ -383,13 +391,21 @@ export class RoomService {
 		);
 
 		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
+			'm.room.power_levels',
 			{ roomId, senderId },
 		);
+
+		const powerLevelsAuthResult = this.getEventByType(
+			authEventIds,
+			'm.room.power_levels',
+		);
+
 		const currentPowerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				authEventIds.find((e) => e.type === EventType.POWER_LEVELS)?._id || '',
-			);
+			powerLevelsAuthResult?._id &&
+			(await this.eventService.getEventById(
+				powerLevelsAuthResult._id,
+				'm.room.power_levels',
+			));
 
 		if (!currentPowerLevelsEvent) {
 			logger.error(`No m.room.power_levels event found for room ${roomId}`);
@@ -400,36 +416,24 @@ export class RoomService {
 		}
 
 		this.validatePowerLevelChange(
-			currentPowerLevelsEvent.content,
+			currentPowerLevelsEvent.event.content,
 			senderId,
 			userId,
 			powerLevel,
 		);
 
-		const createAuthResult = authEventIds.find(
-			(e) => e.type === EventType.CREATE,
-		);
-		const powerLevelsAuthResult = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
-		);
-		const memberAuthResult = authEventIds.find(
-			(e) => e.type === EventType.MEMBER && e.state_key === senderId,
-		);
+		const createAuthResult = this.getEventByType(authEventIds, 'm.room.create');
 
-		const authEventsMap = {
-			'm.room.create': createAuthResult?._id || '',
-			'm.room.power_levels': powerLevelsAuthResult?._id || '',
-			'm.room.member': memberAuthResult?._id || '',
-		};
+		const memberAuthResult = this.getEventByType(
+			authEventIds,
+			'm.room.member',
+			(e) => e.event.state_key === senderId,
+		);
 
 		// Ensure critical auth events were found
-		if (
-			!authEventsMap['m.room.create'] ||
-			!authEventsMap['m.room.power_levels'] ||
-			!authEventsMap['m.room.member']
-		) {
+		if (!createAuthResult || !powerLevelsAuthResult || !memberAuthResult) {
 			logger.error(
-				`Critical auth events missing for power level update. Create: ${authEventsMap['m.room.create']}, PowerLevels: ${authEventsMap['m.room.power_levels']}, Member: ${authEventsMap['m.room.member']}`,
+				`Critical auth events missing for power level update. Create: ${createAuthResult?._id ?? 'missing'}, PowerLevels: ${powerLevelsAuthResult?._id ?? 'missing'}, Member: ${memberAuthResult?._id ?? 'missing'}`,
 			);
 			throw new HttpException(
 				'Internal server error: Missing auth events for power level update.',
@@ -446,7 +450,7 @@ export class RoomService {
 			);
 		}
 
-		const serverName = this.configService.getServerConfig().name;
+		const serverName = this.configService.serverName;
 		if (!serverName) {
 			logger.error('Server name is not configured. Cannot set event origin.');
 			throw new HttpException(
@@ -458,33 +462,29 @@ export class RoomService {
 		const eventToSign = roomPowerLevelsEvent({
 			roomId,
 			members: [senderId, userId],
-			auth_events: Object.values(authEventsMap).filter(
-				(id) => typeof id === 'string',
-			),
-			prev_events: lastEventStore.event.event_id
-				? [lastEventStore.event.event_id]
-				: [],
+			auth_events: {
+				'm.room.create': createAuthResult._id,
+				'm.room.power_levels': powerLevelsAuthResult._id,
+				'm.room.member': memberAuthResult._id,
+			},
+			prev_events: lastEventStore._id ? [lastEventStore._id] : [],
 			depth: lastEventStore.event.depth + 1,
 			content: {
-				...currentPowerLevelsEvent.content,
+				...currentPowerLevelsEvent.event.content,
 				users: {
-					...(currentPowerLevelsEvent.content.users || {}),
+					...(currentPowerLevelsEvent.event.content.users || {}),
 					[userId]: powerLevel,
 				},
 			},
 			ts: Date.now(),
-		});
+		}) as PduForType<'m.room.power_levels'>;
 
 		const signingKeyConfig = await this.configService.getSigningKey();
 		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
 			? signingKeyConfig[0]
 			: signingKeyConfig;
 
-		const signedEvent: SignedEvent<RoomPowerLevelsEvent> = await signEvent(
-			eventToSign,
-			signingKey,
-			serverName,
-		);
+		const signedEvent = await signEvent(eventToSign, signingKey, serverName);
 
 		const eventId = generateId(signedEvent);
 
@@ -495,7 +495,7 @@ export class RoomService {
 		);
 
 		for (const server of targetServers) {
-			if (server === this.configService.getServerConfig().name) {
+			if (server === this.configService.serverName) {
 				continue;
 			}
 
@@ -520,15 +520,17 @@ export class RoomService {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIds = await this.eventService.getAuthEventIds(
-			EventType.MEMBER,
+			'm.room.member',
 			{ roomId, senderId },
 		);
 
 		// For a leave event, the user must have permission to send m.room.member events.
 		// This is typically covered by them being a member, but power levels might restrict it.
-		const powerLevelsEventId = authEventIds.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+		const powerLevelsEventId = this.getEventByType(
+			authEventIds,
+			'm.room.power_levels',
 		)?._id;
+
 		if (!powerLevelsEventId) {
 			logger.warn(
 				`No power_levels event found for room ${roomId}, cannot verify permission to leave.`,
@@ -542,7 +544,7 @@ export class RoomService {
 		const canLeaveRoom = await this.eventService.checkUserPermission(
 			powerLevelsEventId,
 			senderId,
-			EventType.MEMBER,
+			'm.room.member',
 		);
 
 		if (!canLeaveRoom) {
@@ -591,11 +593,12 @@ export class RoomService {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
+			'm.room.power_levels',
 			{ roomId, senderId },
 		);
-		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+		const powerLevelsEventId = this.getEventByType(
+			authEventIdsForPowerLevels,
+			'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -607,10 +610,10 @@ export class RoomService {
 				HttpStatus.FORBIDDEN,
 			);
 		}
-		const powerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				powerLevelsEventId,
-			);
+		const powerLevelsEvent = await this.eventService.getEventById(
+			powerLevelsEventId,
+			'm.room.power_levels',
+		);
 		if (!powerLevelsEvent) {
 			logger.error(
 				`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`,
@@ -622,7 +625,7 @@ export class RoomService {
 		}
 
 		this.validateKickPermission(
-			powerLevelsEvent.content,
+			powerLevelsEvent.event.content,
 			senderId,
 			kickedUserId,
 		);
@@ -664,11 +667,13 @@ export class RoomService {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
-			EventType.POWER_LEVELS,
+			'm.room.power_levels',
 			{ roomId, senderId },
 		);
-		const powerLevelsEventId = authEventIdsForPowerLevels.find(
-			(e) => e.type === EventType.POWER_LEVELS,
+
+		const powerLevelsEventId = this.getEventByType(
+			authEventIdsForPowerLevels,
+			'm.room.power_levels',
 		)?._id;
 
 		if (!powerLevelsEventId) {
@@ -680,10 +685,10 @@ export class RoomService {
 				HttpStatus.FORBIDDEN,
 			);
 		}
-		const powerLevelsEvent =
-			await this.eventService.getEventById<RoomPowerLevelsEvent>(
-				powerLevelsEventId,
-			);
+		const powerLevelsEvent = await this.eventService.getEventById(
+			powerLevelsEventId,
+			'm.room.power_levels',
+		);
 		if (!powerLevelsEvent) {
 			logger.error(
 				`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`,
@@ -695,7 +700,7 @@ export class RoomService {
 		}
 
 		this.validateBanPermission(
-			powerLevelsEvent.content,
+			powerLevelsEvent.event.content,
 			senderId,
 			bannedUserId,
 		);
@@ -736,7 +741,7 @@ export class RoomService {
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
-		if (residentServer === configService.getServerName()) {
+		if (residentServer === configService.serverName) {
 			const room = await stateService.getFullRoomState(roomId);
 
 			const createEvent = room.get('m.room.create:');
@@ -953,9 +958,9 @@ export class RoomService {
 		sender: string,
 		reason = 'This room has been deleted',
 		replacementRoomId?: string,
-	): Promise<SignedEvent<RoomTombstoneEvent>> {
+	): Promise<SignedEvent<PduForType<'m.room.tombstone'>>> {
 		logger.debug(`Marking room ${roomId} as tombstone by ${sender}`);
-		const config = this.configService.getServerConfig();
+		const serverName = this.configService.serverName;
 		const signingKey = await this.configService.getSigningKey();
 
 		const room = await this.roomRepository.findOneById(roomId);
@@ -967,7 +972,7 @@ export class RoomService {
 			logger.warn(`Attempted to delete an already tombstoned room: ${roomId}`);
 			throw new ForbiddenError('Cannot delete an already tombstoned room');
 		}
-		if (sender.split(':').pop() !== config.name) {
+		if (sender.split(':').pop() !== serverName) {
 			throw new HttpException('Invalid sender', HttpStatus.BAD_REQUEST);
 		}
 
@@ -980,17 +985,10 @@ export class RoomService {
 			);
 		}
 
-		if (!isRoomPowerLevelsEvent(powerLevelsEvent.event)) {
-			throw new HttpException(
-				'Invalid power levels event',
-				HttpStatus.INTERNAL_SERVER_ERROR,
-			);
-		}
-
 		this.validatePowerLevelForTombstone(powerLevelsEvent.event, sender);
 
 		const authEvents = await this.eventService.getAuthEventIds(
-			EventType.MESSAGE,
+			'm.room.message',
 			{
 				roomId,
 				senderId: sender,
@@ -1002,17 +1000,14 @@ export class RoomService {
 
 		const authEventsMap: TombstoneAuthEvents = {
 			'm.room.create':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.CREATE,
-				)?._id || '',
+				authEvents.find((event) => event.event.type === 'm.room.create')?._id ||
+				'',
 			'm.room.power_levels':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.POWER_LEVELS,
-				)?._id || '',
+				authEvents.find((event) => event.event.type === 'm.room.power_levels')
+					?._id || '',
 			'm.room.member':
-				authEvents.find(
-					(event: { type: EventType }) => event.type === EventType.MEMBER,
-				)?._id || '',
+				authEvents.find((event) => event.event.type === 'm.room.member')?._id ||
+				'',
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
 
@@ -1024,13 +1019,13 @@ export class RoomService {
 			auth_events: authEventsMap,
 			prev_events: prevEvents,
 			depth,
-			origin: config.name,
-		});
+			origin: serverName,
+		}) as PduForType<'m.room.tombstone'>;
 
 		const signedEvent = await signEvent(
 			tombstoneEvent,
 			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			config.name,
+			serverName,
 		);
 
 		const eventId = await this.eventService.insertEvent(signedEvent);
@@ -1052,16 +1047,9 @@ export class RoomService {
 				return true;
 			}
 
-			const tombstoneEvents = await this.eventService.findEvents(
-				{
-					'event.room_id': roomId,
-					'event.type': 'm.room.tombstone',
-					'event.state_key': '',
-				},
-				{ limit: 1 },
-			);
-
-			return tombstoneEvents.length > 0;
+			const tombstoneEvents =
+				this.eventRepository.findTombstoneEventsByRoomId(roomId);
+			return (await tombstoneEvents.toArray()).length > 0;
 		} catch (error) {
 			logger.error(`Error checking if room ${roomId} is tombstoned: ${error}`);
 			return false;
@@ -1069,7 +1057,7 @@ export class RoomService {
 	}
 
 	private validatePowerLevelForTombstone(
-		powerLevels: RoomPowerLevelsEvent,
+		powerLevels: PduForType<'m.room.power_levels'>,
 		sender: string,
 	): void {
 		const userPowerLevel =
@@ -1088,9 +1076,9 @@ export class RoomService {
 
 	private async notifyFederatedServersAboutTombstone(
 		roomId: string,
-		signedEvent: SignedEvent<RoomTombstoneEvent>,
+		signedEvent: SignedEvent<PduForType<'m.room.tombstone'>>,
 	): Promise<void> {
-		const config = this.configService.getServerConfig();
+		const rcServerName = this.configService.serverName;
 		const memberEvents =
 			await this.eventRepository.findAllJoinedMembersEventsByRoomId(roomId);
 		const remoteServers = new Set<string>();
@@ -1098,7 +1086,7 @@ export class RoomService {
 		for (const event of memberEvents) {
 			if (event.event.state_key) {
 				const serverName = event.event.state_key.split(':').pop();
-				if (serverName && serverName !== config.name) {
+				if (serverName && serverName !== rcServerName) {
 					remoteServers.add(serverName);
 				}
 			}
@@ -1289,15 +1277,9 @@ export class RoomService {
 		userId2: string,
 	): Promise<string | null> {
 		try {
-			const membershipEvents = await this.eventRepository.find(
-				{
-					'event.type': 'm.room.member',
-					'event.state_key': { $in: [userId1, userId2] },
-					'event.content.membership': { $in: ['join', 'invite'] },
-					'event.content.is_direct': true,
-				},
-				{},
-			);
+			const membershipEvents = await this.eventRepository
+				.findMembershipEventsFromDirectMessageRooms([userId1, userId2])
+				.toArray();
 
 			const roomMemberCounts = new Map<string, Set<string>>();
 

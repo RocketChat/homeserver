@@ -49,8 +49,10 @@ export class FederationRequestService {
 					nacl.sign.detached(data, keyPair.secretKey),
 			};
 
-			const [address, discoveryHeaders] =
-				await getHomeserverFinalAddress(domain);
+			const [address, discoveryHeaders] = await getHomeserverFinalAddress(
+				domain,
+				this.logger,
+			);
 
 			const url = new URL(`${address}${uri}`);
 			if (queryString) {

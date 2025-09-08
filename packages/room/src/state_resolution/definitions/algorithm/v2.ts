@@ -60,7 +60,7 @@
 import assert from 'node:assert';
 import { PersistentEventBase } from '../../../manager/event-wrapper';
 import type { EventID, StateMapKey } from '../../../types/_common';
-import { PduTypeRoomPowerLevels } from '../../../types/v3-11';
+import {} from '../../../types/v3-11';
 import {
 	type EventStore,
 	getAuthChain,
@@ -259,7 +259,7 @@ export async function resolveStateV2Plus(
 	// we can validate if the rest of the events are "allowed" or not
 
 	const powerLevelEvent = partiallyResolvedState.get(
-		getStateMapKey({ type: PduTypeRoomPowerLevels }),
+		getStateMapKey({ type: 'm.room.power_levels' }),
 	);
 
 	assert(powerLevelEvent, 'power level event should not be null');

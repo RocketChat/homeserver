@@ -3,8 +3,7 @@
 		"incremental": true,
 		// Enable latest features
 		"lib": [
-			"ESNext",
-			"DOM"
+			"ESNext"
 		],
 		// "target": "ESNext",
 		"target": "es2018", // same as rocket.chat

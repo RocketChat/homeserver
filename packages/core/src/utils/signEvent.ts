@@ -1,11 +1,11 @@
-import type { EventBase } from '../events/eventBase';
+import { Pdu } from '@hs/room';
 import type { SignedEvent } from '../types';
 import type { SigningKey } from '../types';
 import { computeAndMergeHash } from './authentication';
 import { pruneEventDict } from './pruneEventDict';
 import { signJson } from './signJson';
 
-export const signEvent = async <T extends EventBase>(
+export const signEvent = async <T extends Pdu>(
 	event: T,
 	signature: SigningKey,
 	signingName: string,
