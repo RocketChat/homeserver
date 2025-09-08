@@ -55,7 +55,6 @@ export async function setup(options?: HomeserverSetupOptions) {
 			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
 			10,
 		),
-		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
 		media: {
 			maxFileSize: process.env.MEDIA_MAX_FILE_SIZE

@@ -2,7 +2,12 @@ import type { EventBase } from '@hs/core';
 import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { Pdu, PduForType, PersistentEventBase } from '@hs/room';
+import {
+	Pdu,
+	PduForType,
+	PersistentEventBase,
+	PersistentEventFactory,
+} from '@hs/room';
 import { singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
@@ -22,7 +27,6 @@ export class FederationService {
 
 	constructor(
 		private readonly configService: ConfigService,
-
 		private readonly requestService: FederationRequestService,
 
 		private readonly stateService: StateService,

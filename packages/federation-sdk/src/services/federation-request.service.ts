@@ -2,13 +2,13 @@ import type { SigningKey } from '@hs/core';
 import { authorizationHeaders, computeAndMergeHash } from '@hs/core';
 import { extractURIfromURL } from '@hs/core';
 import { EncryptionValidAlgorithm } from '@hs/core';
-import { signJson } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { fetch } from '@hs/core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { ConfigService } from './config.service';
+import { signJson } from '@hs/crypto';
 
 interface SignedRequest {
 	method: string;
@@ -26,6 +26,7 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
+	// Implements SPEC: https://spec.matrix.org/v1.12/server-server-api/#request-authentication
 	async makeSignedRequest<T>({
 		method,
 		domain,
@@ -33,94 +34,95 @@ export class FederationRequestService {
 		body,
 		queryString,
 	}: SignedRequest): Promise<T> {
-		try {
-			const serverName = this.configService.serverName;
-			const signingKeyBase64 = await this.configService.getSigningKeyBase64();
-			const signingKeyId = await this.configService.getSigningKeyId();
-			const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
-			const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
+		const signer = await this.configService.getSigningKey();
 
-			const signingKey: SigningKey = {
-				algorithm: EncryptionValidAlgorithm.ed25519,
-				version: signingKeyId.split(':')[1] || '1',
-				privateKey: keyPair.secretKey,
-				publicKey: keyPair.publicKey,
-				sign: async (data: Uint8Array) =>
-					nacl.sign.detached(data, keyPair.secretKey),
-			};
+		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
+			domain,
+			this.logger,
+		);
 
-			const [address, discoveryHeaders] = await getHomeserverFinalAddress(
-				domain,
-				this.logger,
-			);
+		const origin = this.configService.serverName;
 
-			const url = new URL(`${address}${uri}`);
-			if (queryString) {
-				url.search = queryString;
-			}
-
-			this.logger.debug(`Making ${method} request to ${url.toString()}`);
-
-			let signedBody: Record<string, unknown> | undefined;
-			if (body) {
-				signedBody = await signJson(
-					body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
-					signingKey,
-					serverName,
-				);
-			}
-
-			const auth = await authorizationHeaders(
-				serverName,
-				signingKey,
-				domain,
-				method,
-				extractURIfromURL(url),
-				signedBody,
-			);
-
-			const headers = {
-				Authorization: auth,
-				...discoveryHeaders,
-			};
-
-			this.logger.debug(
-				{
-					method,
-					body: signedBody,
-					headers,
-					url: url.toString(),
-				},
-				'making http request',
-			);
-
-			const response = await fetch(url, {
-				method,
-				...(signedBody && { body: JSON.stringify(signedBody) }),
-				headers,
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				let errorDetail = errorText;
-				try {
-					errorDetail = JSON.stringify(JSON.parse(errorText));
-				} catch {
-					/* use raw text if parsing fails */
-				}
-				throw new Error(
-					`Federation request failed: ${response.status} ${errorDetail}`,
-				);
-			}
-
-			return response.json();
-		} catch (error: any) {
-			this.logger.error(
-				`Federation request failed: ${error.message}`,
-				error.stack,
-			);
-			throw error;
+		const url = new URL(`${address}${uri}`);
+		if (queryString) {
+			url.search = queryString;
 		}
+
+		if (body) {
+			const signature = await signJson(body, signer);
+			body.signatures = {
+				[origin]: { [signer.id]: signature },
+			};
+		}
+
+		/*
+			{
+				"method": "POST",
+				"uri": "/target",
+				"origin": "origin.hs.example.com",
+				"destination": "destination.hs.example.com",
+				"content": <JSON-parsed request body>,
+				"signatures": {
+					"origin.hs.example.com": {
+						"ed25519:key1": "ABCDEF..."
+					}
+				}
+			}
+		*/
+		// build the auth request
+		const request = {
+			method,
+			uri: url.pathname + url.search,
+			origin,
+			destination: domain,
+			...(body && { content: body }),
+		};
+
+		const requestSignature = await signJson(request, signer);
+
+		// authorization_headers.append(bytes(
+		//     "X-Matrix origin=\"%s\",destination=\"%s\",key=\"%s\",sig=\"%s\"" % (
+		//         origin_name, destination_name, key, sig,
+		//     )
+		// ))
+		const authorizationHeaderValue = `X-Matrix origin=${origin},destination=${domain},key=${signer.id},sig=${requestSignature}`;
+
+		const headers = {
+			Authorization: authorizationHeaderValue,
+			...discoveryHeaders,
+		};
+
+		// TODO: make logging take a function for object to avoid unnecessary computation when log level is high
+		this.logger.debug(
+			{
+				method,
+				body: body,
+				headers,
+				url: url.toString(),
+			},
+			'making http request',
+		);
+
+		const response = await fetch(url, {
+			method,
+			...(body && { body: JSON.stringify(body) }),
+			headers,
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+			let errorDetail = errorText;
+			try {
+				errorDetail = JSON.stringify(JSON.parse(errorText));
+			} catch {
+				/* use raw text if parsing fails */
+			}
+			throw new Error(
+				`Federation request failed: ${response.status} ${errorDetail}`,
+			);
+		}
+
+		return response.json();
 	}
 
 	async request<T>(

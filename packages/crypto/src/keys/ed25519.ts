@@ -18,7 +18,7 @@ export class Ed25519VerifierKeyImpl implements VerifierKey {
 
 	constructor(
 		public version: string,
-		private readonly publicKey: Uint8Array,
+		public readonly publicKey: Uint8Array,
 	) {
 		this._publicKeyPem = ed25519PublicKeyRawToPem(this.publicKey);
 	}
@@ -62,7 +62,7 @@ export class Ed25519SigningKeyImpl
 	private _privateKeyPem!: string;
 	constructor(
 		public version: string,
-		private readonly privateKey: Uint8Array,
+		public readonly privateKey: Uint8Array,
 		publicKey: Uint8Array,
 	) {
 		super(version, publicKey);
