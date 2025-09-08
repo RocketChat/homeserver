@@ -16,7 +16,12 @@ import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 
 function extractDomain(identifier: string) {
-	return identifier.split(':').pop();
+	const idx = identifier.indexOf(':');
+	if (idx === -1) {
+		throw new Error(`Invalid identifier, missing domain part: ${identifier}`);
+	}
+
+	return identifier.substring(idx + 1); // return everything after the first colon, can have port in there which is also0 valid
 }
 
 type MakeOptional<T, K extends keyof T> = {
