@@ -136,13 +136,20 @@ export class StateService {
 
 		const { stateId } = event;
 
-		if (!stateId) {
-			this.logger.error({ eventId }, 'state id not found');
-			throw new Error('State id not found');
-		}
+		/**
+		 * TODO: Regular events like message have no stateId
+		 * probably I'm missing something here
+		 * but regular events like message have no stateId
+		 * so instead of throwing an error, I'm going to return the newest state before the event
+		 */
 
 		const { delta: lastStateDelta, prevStateIds = [] } =
-			(await this.stateRepository.getStateById(stateId)) ?? {};
+			(stateId
+				? await this.stateRepository.getStateById(stateId)
+				: await this.stateRepository.getLatestStateMappingBeforeEvent(
+						event.event.room_id,
+						event.createdAt,
+					)) ?? {};
 
 		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
 
@@ -161,7 +168,7 @@ export class StateService {
 			}
 
 			state.set(
-				stateKey as StateMapKey,
+				stateKey,
 				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
 			);
 
@@ -182,7 +189,7 @@ export class StateService {
 			}
 
 			state.set(
-				stateKey as StateMapKey,
+				stateKey,
 				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
 			);
 		}
