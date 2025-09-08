@@ -1,13 +1,9 @@
-import {
-	createLogger,
-	generateKeyPairsFromString,
-	getKeyPair,
-	toUnpaddedBase64,
-} from '@hs/core';
+import { createLogger } from '@hs/core';
+import { type Signer } from '@hs/crypto';
 
 import { z } from 'zod';
-
-const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
+import { loadEd25519SignerFromSeed } from '../../../crypto/dist/utils/keys';
+import { fromBase64ToBytes } from '../../../crypto/dist/utils/data-types';
 
 export interface AppConfig {
 	serverName: string;
@@ -18,7 +14,6 @@ export interface AppConfig {
 	keyRefreshInterval: number;
 	signingKey?: string;
 	timeout?: number;
-	signingKeyPath?: string;
 	database: {
 		uri: string;
 		name: string;
@@ -47,7 +42,6 @@ export const AppConfigSchema = z.object({
 		.min(1, 'Key refresh interval must be at least 1'),
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
-	signingKeyPath: z.string(),
 	database: z.object({
 		uri: z.string().min(1, 'Database URI is required'),
 		name: z.string().min(1, 'Database name is required'),
@@ -76,6 +70,8 @@ export const AppConfigSchema = z.object({
 export class ConfigService {
 	private config: AppConfig;
 	private logger = createLogger('ConfigService');
+
+	private signer: Signer | undefined;
 
 	constructor(values: AppConfig) {
 		try {
@@ -112,42 +108,40 @@ export class ConfigService {
 	}
 
 	async getSigningKey() {
+		if (this.signer) {
+			return this.signer;
+		}
+
 		// If config contains a signing key, use it
 		if (this.config.signingKey) {
-			const signingKey = await generateKeyPairsFromString(
-				this.config.signingKey,
-			);
-			return [signingKey];
+			const [algorithm, version, seed] = this.config.signingKey
+				.trim()
+				.split(' ');
+
+			if (!algorithm || !version || !seed) {
+				throw new Error('Invalid signing key format in configuration');
+			}
+
+			const signer = await loadEd25519SignerFromSeed(fromBase64ToBytes(seed));
+
+			this.signer = signer;
+		} else {
+			// let's generate
+			const signer = await loadEd25519SignerFromSeed(); // randomly generated seed
+
+			this.signer = signer;
 		}
-		// Otherwise load from file
-		return this.loadSigningKey();
+
+		return this.signer;
 	}
 
 	async getSigningKeyId(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		const signingKey = signingKeys[0];
-		return `${signingKey.algorithm}:${signingKey.version}` || 'ed25519:1';
-	}
-
-	async getSigningKeyBase64(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		return toUnpaddedBase64(signingKeys[0].privateKey);
-	}
-
-	async loadSigningKey() {
-		try {
-			const signingKeyPath = `${CONFIG_FOLDER}/${this.config.serverName}.signing.key`;
-			this.logger.info(`Loading signing key from ${signingKeyPath}`);
-			const keys = await getKeyPair({ signingKeyPath });
-			this.logger.info(
-				`Successfully loaded signing key for server ${this.config.serverName}`,
-			);
-			return keys;
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : 'Unknown error';
-			this.logger.error(`Failed to load signing key: ${errorMessage}`);
-			throw error;
+		if (this.signer) {
+			return this.signer.id;
 		}
+
+		const signer = await this.getSigningKey();
+
+		return signer.id;
 	}
 }

@@ -1,4 +1,4 @@
-import { signEvent } from '@hs/core';
+import { signJson } from '@hs/crypto';
 import {
 	type PduContent,
 	type PduType,
@@ -366,19 +366,17 @@ export class StateService {
 
 		const origin = this.configService.serverName;
 
-		const result = await signEvent(
+		const { signatures, ...toSign } = event.redactedEvent;
+
+		const signature = await signJson(
 			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.
 			// ^^ is done already through redactedEvent fgetter
 			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server’s signing key (see also Retrieving server keys).
-			event.redactedEvent as any,
-			signingKey[0],
-			origin,
-			false, // already passed through redactedEvent, hash is already part of this
+			toSign,
+			signingKey,
 		);
 
-		const keyId = `${signingKey[0].algorithm}:${signingKey[0].version}`;
-
-		event.addSignature(origin, keyId, result.signatures[origin][keyId]);
+		event.addSignature(origin, signingKey.id, signature);
 
 		return event;
 	}
