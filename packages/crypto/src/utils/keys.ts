@@ -3,12 +3,13 @@ import type { Signer, VerifierKey } from '../contracts/key';
 import { Ed25519SigningKeyImpl, Ed25519VerifierKeyImpl } from '../keys/ed25519';
 import {
 	encodeCanonicalJson,
+	fromBase64ToBytes,
 	toBinaryData,
 	toUnpaddedBase64,
 } from './data-types';
 //
 export async function loadEd25519SignerFromSeed(
-	seed: Uint8Array,
+	seed?: Uint8Array,
 	version = '0',
 ): Promise<Signer> {
 	const { secretKey, publicKey } = await ed25519.keygenAsync(seed);
@@ -42,7 +43,7 @@ export async function verifyJsonSignature<T extends object>(
 ): Promise<void> {
 	const sortedSerializedForm = encodeCanonicalJson(jsonObject);
 
-	const signatureBuffer = toBinaryData(signature);
+	const signatureBuffer = fromBase64ToBytes(signature);
 
 	return key.verify(toBinaryData(sortedSerializedForm), signatureBuffer);
 }

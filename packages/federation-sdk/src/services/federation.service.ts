@@ -2,7 +2,12 @@ import type { EventBase } from '@hs/core';
 import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { Pdu, PduForType, PersistentEventBase } from '@hs/room';
+import {
+	Pdu,
+	PduForType,
+	PersistentEventBase,
+	PersistentEventFactory,
+} from '@hs/room';
 import { singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
@@ -23,9 +28,7 @@ export class FederationService {
 
 	constructor(
 		private readonly configService: ConfigService,
-
 		private readonly requestService: FederationRequestService,
-
 		private readonly signatureService: SignatureVerificationService,
 		private readonly stateService: StateService,
 	) {}
@@ -215,8 +218,13 @@ export class FederationService {
 			signatures?: Record<string, Record<ProtocolVersionKey, string>>;
 			unsigned?: unknown;
 		},
-	>(event: T, originServer: string): Promise<boolean> {
-		return this.signatureService.verifySignature(event, originServer);
+	>(event: T, _originServer: string): Promise<boolean> {
+		// TODO: pass room version here
+		await this.signatureService.verifyEventSignature(
+			PersistentEventFactory.createFromRawEvent(event as any), // need structure validated here, to read Pdu and also need room version passed
+		);
+
+		return true;
 	}
 
 	/**
