@@ -47,15 +47,19 @@ export class StagingAreaService {
 		let event = await this.eventService.getNextStagedEventForRoom(roomId);
 		if (!event) {
 			this.logger.debug({ msg: 'No staged event found for room', roomId });
-			await this.lockRepository.releaseLock(roomId, 'event_processing');
+			await this.lockRepository.releaseLock(
+				roomId,
+				this.configService.instanceId,
+			);
 			return;
 		}
 
 		while (event) {
+			this.logger.debug({ msg: 'Processing event', eventId: event._id });
 			try {
 				await this.processDependencyStage(event);
 				await this.processAuthorizationStage(event);
-				await this.processStateResolutionStage(event);
+				await this.stateService.persistEvent(event.event);
 				await this.processNotificationStage(event);
 
 				await this.eventService.markEventAsUnstaged(event._id);
@@ -90,39 +94,40 @@ export class StagingAreaService {
 			eventIds.flat(),
 		);
 
-		if (missing.length > 0) {
-			this.logger.debug(`Missing ${missing.length} events for ${eventId}`);
-			// trackedEvent.missingEvents = missing;
-
-			for (const missingId of missing) {
-				this.logger.debug(
-					`Adding missing event ${missingId} to missing events service`,
-				);
-				// TODO how this should be implemented?
-				// this.missingEventsService.addEvent({
-				// 	eventId: missingId,
-				// 	roomId: event.roomId,
-				// 	origin: event.origin,
-				// });
-			}
-
-			// trackedEvent.retryCount = (trackedEvent.retryCount || 0) + 1;
-
-			// if (trackedEvent.retryCount < 5) {
-			// 	setTimeout(() => {
-			// 		this.stagingAreaQueue.enqueue({
-			// 			...event,
-			// 			metadata: {
-			// 				state: ProcessingState.PENDING_DEPENDENCIES,
-			// 			},
-			// 		});
-			// 	}, 1000 * trackedEvent.retryCount); // Exponential backoff
-			// } else {
-			// 	trackedEvent.state = ProcessingState.REJECTED;
-			// 	trackedEvent.error = `Failed to fetch dependencies after ${trackedEvent.retryCount} attempts`;
-			// 	this.processingEvents.set(eventId, trackedEvent);
-			// }
+		if (missing.length === 0) {
+			return;
 		}
+		this.logger.debug(`Missing ${missing.length} events for ${eventId}`);
+		// trackedEvent.missingEvents = missing;
+
+		for (const missingId of missing) {
+			this.logger.debug(
+				`Adding missing event ${missingId} to missing events service`,
+			);
+			// TODO how this should be implemented?
+			// this.missingEventsService.addEvent({
+			// 	eventId: missingId,
+			// 	roomId: event.roomId,
+			// 	origin: event.origin,
+			// });
+		}
+
+		// trackedEvent.retryCount = (trackedEvent.retryCount || 0) + 1;
+
+		// if (trackedEvent.retryCount < 5) {
+		// 	setTimeout(() => {
+		// 		this.stagingAreaQueue.enqueue({
+		// 			...event,
+		// 			metadata: {
+		// 				state: ProcessingState.PENDING_DEPENDENCIES,
+		// 			},
+		// 		});
+		// 	}, 1000 * trackedEvent.retryCount); // Exponential backoff
+		// } else {
+		// 	trackedEvent.state = ProcessingState.REJECTED;
+		// 	trackedEvent.error = `Failed to fetch dependencies after ${trackedEvent.retryCount} attempts`;
+		// 	this.processingEvents.set(eventId, trackedEvent);
+		// }
 	}
 
 	private async processAuthorizationStage(event: EventStore<Pdu>) {
@@ -139,33 +144,6 @@ export class StagingAreaService {
 
 		if (!isAuthorized) {
 			throw new Error('event authorization failed');
-		}
-	}
-
-	private async processStateResolutionStage(event: EventStore<Pdu>) {
-		this.logger.debug(`Resolving state for event ${event._id}`);
-		const roomVersion = await this.stateService.getRoomVersion(
-			event.event.room_id,
-		);
-		if (!roomVersion) {
-			throw new Error('processStateResolutionStage: Room version not found');
-		}
-
-		const pdu = PersistentEventFactory.createFromRawEvent(
-			event.event,
-			roomVersion,
-		);
-
-		if (pdu.isState()) {
-			await this.stateService.persistStateEvent(pdu);
-			if (pdu.rejected) {
-				throw new Error(pdu.rejectedReason);
-			}
-		} else {
-			await this.stateService.persistTimelineEvent(pdu);
-			if (pdu.rejected) {
-				throw new Error(pdu.rejectedReason);
-			}
 		}
 	}
 

@@ -5,7 +5,7 @@ import {
 	RoomState,
 	type StateMapKey,
 } from '@hs/room';
-import type { EventStore, PersistentEventBase } from '@hs/room';
+import type { EventStore, Pdu, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
@@ -35,6 +35,27 @@ export class StateService {
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
 	) {}
+
+	async persistEvent(event: Pdu) {
+		const roomVersion = await this.getRoomVersion(event.room_id);
+		if (!roomVersion) {
+			throw new Error('processStateResolutionStage: Room version not found');
+		}
+
+		const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
+
+		if (pdu.isState()) {
+			await this.persistStateEvent(pdu);
+			if (pdu.rejected) {
+				throw new Error(pdu.rejectedReason);
+			}
+		} else {
+			await this.persistTimelineEvent(pdu);
+			if (pdu.rejected) {
+				throw new Error(pdu.rejectedReason);
+			}
+		}
+	}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
 		const state = await this.stateRepository.getByRoomIdAndIdentifier(
