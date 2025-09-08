@@ -14,7 +14,7 @@ import { EventStateService } from './event-state.service';
 import { EventService } from './event.service';
 
 import { LockRepository } from '../repositories/lock.repository';
-import type { ConfigService } from './config.service';
+import { ConfigService } from './config.service';
 import { MissingEventService } from './missing-event.service';
 import { StateService } from './state.service';
 
@@ -24,7 +24,7 @@ export class StagingAreaService {
 	private readonly logger = createLogger('StagingAreaService');
 
 	constructor(
-		@inject('ConfigService') private readonly configService: ConfigService,
+		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
 		private readonly missingEventsService: MissingEventService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
