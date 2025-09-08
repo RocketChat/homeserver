@@ -62,13 +62,6 @@ export class FederationRequestService {
 			url.search = queryString;
 		}
 
-		if (body) {
-			const signature = await signJson(body, signer);
-			body.signatures = {
-				[origin]: { [signer.id]: signature },
-			};
-		}
-
 		/*
 			{
 				"method": "POST",
@@ -99,7 +92,7 @@ export class FederationRequestService {
 		//         origin_name, destination_name, key, sig,
 		//     )
 		// ))
-		const authorizationHeaderValue = `X-Matrix origin=${origin},destination=${domain},key=${signer.id},sig=${requestSignature}`;
+		const authorizationHeaderValue = `X-Matrix origin="${origin}",destination="${domain}",key="${signer.id}",sig="${requestSignature}"`;
 
 		const headers = {
 			Authorization: authorizationHeaderValue,
