@@ -1,9 +1,7 @@
 {
 	"compilerOptions": {
 		// Environment setup & latest features
-		"lib": [
-			"ESNext"
-		],
+		"lib": ["ESNext"],
 		"outDir": "dist",
 		"sourceMap": false,
 		"target": "ESNext",

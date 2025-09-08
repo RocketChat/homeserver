@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 
-import { EncryptionValidAlgorithm } from '../utils/constants';
-import type { VerifierKey, Signer } from '../contracts/key';
+import type { Signer, VerifierKey } from '../contracts/key';
 import {
 	ed25519PrivateKeyRawToPem,
 	ed25519PublicKeyRawToPem,
 } from '../rfc/8410/ed25519-pem';
+import { EncryptionValidAlgorithm } from '../utils/constants';
 
 export class Ed25519VerifierKeyImpl implements VerifierKey {
 	algorithm = EncryptionValidAlgorithm.ed25519;

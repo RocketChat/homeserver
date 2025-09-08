@@ -1,4 +1,4 @@
-import { expect, describe, it } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
 import { encodeCanonicalJson, toSeedBytes } from './data-types';
 import {
 	loadEd25519SignerFromSeed,
@@ -6,7 +6,6 @@ import {
 	signJson,
 	verifyJsonSignature,
 } from './keys';
-import { EncryptionValidAlgorithm } from './constants';
 
 // NOTE(deb): listing file names as I port the tests
 // can and should be removed later, won't have must point later
