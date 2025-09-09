@@ -92,7 +92,7 @@ export class ProfilesService {
 
 		return {
 			room_version: roomVersion,
-			event: membershipEvent.event as any, // TODO(deb): part of aligning event-wrapper types
+			event: membershipEvent.event,
 		};
 	}
 
