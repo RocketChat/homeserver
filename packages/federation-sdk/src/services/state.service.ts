@@ -136,13 +136,6 @@ export class StateService {
 
 		const { stateId } = event;
 
-		/**
-		 * TODO: Regular events like message have no stateId
-		 * probably I'm missing something here
-		 * but regular events like message have no stateId
-		 * so instead of throwing an error, I'm going to return the newest state before the event
-		 */
-
 		const { delta: lastStateDelta, prevStateIds = [] } =
 			(stateId
 				? await this.stateRepository.getStateById(stateId)
