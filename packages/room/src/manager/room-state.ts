@@ -149,7 +149,6 @@ export class RoomState {
 			throw new Error('Room create event not found');
 		}
 
-		return createEvent.getContent<PduCreateEventContent>()
-			.room_version as RoomVersion;
+		return createEvent.getContent<PduCreateEventContent>().room_version;
 	}
 }

@@ -73,7 +73,7 @@ export class ProfilesService {
 		const stateService = this.stateService;
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
-		const roomVersion = roomInformation.room_version as RoomVersion;
+		const roomVersion = roomInformation.room_version;
 
 		if (!versions.includes(roomVersion)) {
 			throw new Error(`Unsupported room version: ${roomVersion}`);

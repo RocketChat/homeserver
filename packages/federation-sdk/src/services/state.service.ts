@@ -64,7 +64,7 @@ export class StateService {
 			throw new Error('Create event not found for room version');
 		}
 
-		return createEvent.event.content?.room_version as RoomVersion;
+		return createEvent.event.content?.room_version;
 	}
 
 	private logState(label: string, state: State) {
@@ -384,7 +384,7 @@ export class StateService {
 		state: State,
 	): Promise<void> {
 		const roomVersion = event.isCreateEvent()
-			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
+			? event.getContent<PduCreateEventContent>().room_version
 			: await this.getRoomVersion(event.roomId);
 
 		if (!roomVersion) {
@@ -497,7 +497,7 @@ export class StateService {
 		}
 
 		const roomVersion = event.isCreateEvent()
-			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
+			? event.getContent<PduCreateEventContent>().room_version
 			: await this.getRoomVersion(event.roomId);
 
 		if (!roomVersion) {

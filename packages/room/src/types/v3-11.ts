@@ -136,7 +136,7 @@ export const PduCreateEventContentSchema = z.object({
 		})
 		.optional(),
 	room_version: z
-		.string()
+		.enum(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'])
 		.describe(
 			" The version of the room. Defaults to '1' if the key does not exist.",
 		)
