@@ -33,7 +33,6 @@ import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
-import { SignatureVerificationService } from './services/signature-verification.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
@@ -102,7 +101,6 @@ export async function createFederationContainer(
 	container.registerSingleton(ServerRepository);
 
 	container.registerSingleton(FederationRequestService);
-	container.registerSingleton(SignatureVerificationService);
 	container.registerSingleton(FederationService);
 	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);

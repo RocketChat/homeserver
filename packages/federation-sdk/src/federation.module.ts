@@ -3,7 +3,6 @@ import { EduService } from './services/edu.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
-import { SignatureVerificationService } from './services/signature-verification.service';
 
 export class FederationModule {
 	static forRootAsync(options: Record<string, unknown>) {
@@ -13,14 +12,12 @@ export class FederationModule {
 			providers: [
 				ConfigService,
 				FederationService,
-				SignatureVerificationService,
 				FederationRequestService,
 				EduService,
 				InviteService,
 			],
 			exports: [
 				FederationService,
-				SignatureVerificationService,
 				FederationRequestService,
 				ConfigService,
 				EduService,

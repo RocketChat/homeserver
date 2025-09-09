@@ -29,7 +29,6 @@ export { FederationModule } from './federation.module';
 
 export { FederationRequestService } from './services/federation-request.service';
 export { FederationService } from './services/federation.service';
-export { SignatureVerificationService } from './services/signature-verification.service';
 export { WellKnownService } from './services/well-known.service';
 export { ConfigService } from './services/config.service';
 export type { AppConfig } from './services/config.service';

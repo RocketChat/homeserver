@@ -14,7 +14,6 @@ import {
 } from '../specs/federation-api';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
-import { SignatureVerificationService } from './signature-verification.service';
 import { StateService } from './state.service';
 
 @singleton()
@@ -26,7 +25,6 @@ export class FederationService {
 
 		private readonly requestService: FederationRequestService,
 
-		private readonly signatureService: SignatureVerificationService,
 		private readonly stateService: StateService,
 	) {}
 
@@ -205,18 +203,6 @@ export class FederationService {
 			this.logger.error(`getVersion failed: ${error?.message}`, error?.stack);
 			throw error;
 		}
-	}
-
-	/**
-	 * Verify PDU from a remote server
-	 */
-	async verifyPDU<
-		T extends object & {
-			signatures?: Record<string, Record<ProtocolVersionKey, string>>;
-			unsigned?: unknown;
-		},
-	>(event: T, originServer: string): Promise<boolean> {
-		return this.signatureService.verifySignature(event, originServer);
 	}
 
 	/**
