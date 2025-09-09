@@ -36,6 +36,8 @@ type PartialEvent<T extends Pdu = Pdu> = Omit<T, 'signatures' | 'hashes'>;
 // The idea is to ALWAYS use this to create different events
 export class PersistentEventFactory {
 	static supportedRoomVersions = [
+		// '1',
+		// '2',
 		'3',
 		'4',
 		'5',
@@ -45,11 +47,13 @@ export class PersistentEventFactory {
 		'9',
 		'10',
 		'11',
-	] as RoomVersion[];
+	];
 
 	static defaultRoomVersion = '10' as const; // same as synapse
 
-	static isSupportedRoomVersion(roomVersion: RoomVersion) {
+	static isSupportedRoomVersion(
+		roomVersion: string,
+	): roomVersion is RoomVersion {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
@@ -123,7 +127,7 @@ export class PersistentEventFactory {
 	) {
 		if (
 			!PersistentEventFactory.isSupportedRoomVersion(
-				roomInformation.room_version as RoomVersion,
+				roomInformation.room_version,
 			)
 		) {
 			throw new Error(
@@ -159,7 +163,7 @@ export class PersistentEventFactory {
 
 		return PersistentEventFactory.createFromRawEvent(
 			eventPartial,
-			roomInformation.room_version as RoomVersion,
+			roomInformation.room_version,
 		);
 	}
 
@@ -759,7 +763,7 @@ export class PersistentEventFactory {
 	) {
 		if (
 			!PersistentEventFactory.isSupportedRoomVersion(
-				roomInformation.room_version as RoomVersion,
+				roomInformation.room_version,
 			)
 		) {
 			throw new Error(
@@ -799,7 +803,7 @@ export class PersistentEventFactory {
 
 		return PersistentEventFactory.createFromRawEvent(
 			eventPartial,
-			roomInformation.room_version as RoomVersion,
+			roomInformation.room_version,
 		);
 	}
 

@@ -280,7 +280,7 @@ export class MessageService {
 			senderUserId,
 			eventId,
 			emoji,
-			roomInfo.room_version as RoomVersion,
+			roomInfo.room_version,
 		);
 
 		await this.stateService.addAuthEvents(reactionEvent);
@@ -309,7 +309,7 @@ export class MessageService {
 			senderUserId,
 			eventIdReactedTo,
 			'Unsetting reaction',
-			roomInfo.room_version as RoomVersion,
+			roomInfo.room_version,
 		);
 
 		await this.stateService.addAuthEvents(redactionEvent);
@@ -340,7 +340,7 @@ export class MessageService {
 			rawMessage,
 			formattedMessage,
 			eventIdToReplace,
-			roomInfo.room_version as RoomVersion,
+			roomInfo.room_version,
 		);
 
 		await this.stateService.addAuthEvents(redactionEvent);
@@ -376,7 +376,7 @@ export class MessageService {
 			senderUserId,
 			eventIdToRedact,
 			`Deleting message: ${eventIdToRedact}`,
-			roomInfo.room_version as RoomVersion,
+			roomInfo.room_version,
 		);
 
 		await this.stateService.addAuthEvents(redactionEvent);

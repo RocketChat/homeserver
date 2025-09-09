@@ -54,9 +54,25 @@ export const MakeJoinParamsDto = t.Object({
 	userId: UsernameDto,
 });
 
+export const RoomVersionDto = t.Union([
+	t.Literal('1'),
+	t.Literal('2'),
+	t.Literal('3'),
+	t.Literal('4'),
+	t.Literal('5'),
+	t.Literal('6'),
+	t.Literal('7'),
+	t.Literal('8'),
+	t.Literal('9'),
+	t.Literal('10'),
+	t.Literal('11'),
+]);
+
 export const MakeJoinQueryDto = t.Object({
 	ver: t.Optional(
-		t.Array(t.String(), { description: 'Supported room versions' }),
+		t.Array(RoomVersionDto, {
+			description: 'Supported room versions',
+		}),
 	),
 });
 

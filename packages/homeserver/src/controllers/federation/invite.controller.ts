@@ -1,8 +1,4 @@
-import {
-	ProcessInviteBodyDto,
-	ProcessInviteParamsDto,
-	ProcessInviteResponseDto,
-} from '@hs/federation-sdk';
+import { ProcessInviteParamsDto, RoomVersionDto } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
@@ -23,7 +19,7 @@ export const invitePlugin = (app: Elysia) => {
 			params: ProcessInviteParamsDto,
 			body: t.Object({
 				event: t.Any(),
-				room_version: t.String(),
+				room_version: RoomVersionDto,
 				invite_room_state: t.Any(),
 			}),
 			detail: {

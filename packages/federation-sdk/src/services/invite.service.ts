@@ -103,7 +103,7 @@ export class InviteService {
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
 				inviteResponse.event,
-				roomInformation.room_version as RoomVersion,
+				roomInformation.room_version,
 			),
 		);
 
@@ -122,7 +122,7 @@ export class InviteService {
 			room_id: string;
 			state_key: string;
 		},
-	>(event: T, roomId: string, eventId: string, roomVersion: string) {
+	>(event: T, roomId: string, eventId: string, roomVersion: RoomVersion) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 
 		const residentServer = roomId.split(':').pop();
@@ -134,7 +134,7 @@ export class InviteService {
 			event as unknown as Parameters<
 				typeof PersistentEventFactory.createFromRawEvent
 			>[0],
-			roomVersion as RoomVersion,
+			roomVersion,
 		);
 
 		if (inviteEvent.eventId !== eventId) {
