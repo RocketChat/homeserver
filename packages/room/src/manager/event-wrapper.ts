@@ -4,7 +4,7 @@ import {
 	type EventStore,
 	getStateMapKey,
 } from '../state_resolution/definitions/definitions';
-import type { StateMapKey } from '../types/_common';
+import type { PduForType, StateMapKey } from '../types/_common';
 import {
 	Pdu,
 	PduContent,
@@ -51,7 +51,10 @@ export function deepFreeze(object: unknown) {
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
-export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
+export abstract class PersistentEventBase<
+	T extends RoomVersion = '11',
+	Type extends PduType = PduType,
+> {
 	private _rejectedReason?: string;
 
 	private signatures: Signature = {};
@@ -129,7 +132,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 
 	// if we are accessing the inner event, the event itself should be frozen immediately to not change the reference hash any longer, affecting the id
 	// if anywhere the code still tries to, we will throw an error, which is why "lock" isn't just a flag in the class.
-	get event() {
+	get event(): Readonly<PduForType<Type>> {
 		// freeze any change to this event to lock in the reference hash
 		this.freezeEvent();
 
@@ -137,7 +140,7 @@ export abstract class PersistentEventBase<T extends RoomVersion = '11'> {
 			...this.rawEvent,
 			signatures: this.signatures,
 			unsigned: this.rawEvent.unsigned ?? {},
-		};
+		} as PduForType<Type>;
 	}
 
 	get depth() {

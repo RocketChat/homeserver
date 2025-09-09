@@ -57,10 +57,10 @@ export class PersistentEventFactory {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
-	static createFromRawEvent(
+	static createFromRawEvent<Type extends PduType>(
 		event: PduWithHashesAndSignaturesOptional,
 		roomVersion: RoomVersion,
-	): PersistentEventBase<RoomVersion> {
+	): PersistentEventBase<RoomVersion, Type> {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
@@ -69,17 +69,32 @@ export class PersistentEventFactory {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event, false);
+				return new PersistentEventV3(event, false) as PersistentEventBase<
+					RoomVersion,
+					Type
+				>;
 			case '6':
 			case '7':
-				return new PersistentEventV6(event, false);
+				return new PersistentEventV6(event, false) as PersistentEventBase<
+					RoomVersion,
+					Type
+				>;
 			case '8':
-				return new PersistentEventV8(event, false);
+				return new PersistentEventV8(event, false) as PersistentEventBase<
+					RoomVersion,
+					Type
+				>;
 			case '9':
 			case '10':
-				return new PersistentEventV9(event, false);
+				return new PersistentEventV9(event, false) as PersistentEventBase<
+					RoomVersion,
+					Type
+				>;
 			case '11':
-				return new PersistentEventV11(event, false);
+				return new PersistentEventV11(event, false) as PersistentEventBase<
+					RoomVersion,
+					Type
+				>;
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
@@ -114,7 +129,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newMembershipEvent(
@@ -161,7 +179,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(
+		return PersistentEventFactory.createFromRawEvent<'m.room.member'>(
 			eventPartial,
 			roomInformation.room_version,
 		);
@@ -189,7 +207,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.power_levels'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newRoomNameEvent(
@@ -214,7 +235,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.name'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newJoinRuleEvent(
@@ -239,7 +263,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.join_rules'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newCanonicalAliasEvent(
@@ -264,7 +291,10 @@ export class PersistentEventFactory {
 			prev_events: [],
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.canonical_alias'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newReactionEvent(
@@ -280,7 +310,7 @@ export class PersistentEventFactory {
 
 		// Note: event_id will be filled by the event wrapper on first access
 
-		return PersistentEventFactory.createFromRawEvent(
+		return PersistentEventFactory.createFromRawEvent<'m.reaction'>(
 			{
 				type: 'm.reaction',
 				content: {
@@ -332,7 +362,10 @@ export class PersistentEventFactory {
 			unsigned: {},
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.redaction'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newMessageEvent(
@@ -359,7 +392,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newRichTextMessageEvent(
@@ -389,7 +425,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newFileMessageEvent(
@@ -434,7 +473,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newReplyToRichTextMessageEvent(
@@ -468,7 +510,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newMessageUpdateEvent(
@@ -504,7 +549,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newRichTextMessageUpdateEvent(
@@ -545,7 +593,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newThreadMessageEvent(
@@ -584,7 +635,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newRichTextThreadMessageEvent(
@@ -626,7 +680,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newReplyToRichTextThreadMessageEvent(
@@ -666,7 +723,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newRoomTopicEvent(
@@ -691,7 +751,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.history_visibility'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newHistoryVisibilityEvent(
@@ -719,7 +782,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.guest_access'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	static newGuestAccessEvent(
@@ -747,7 +813,10 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(eventPartial, roomVersion);
+		return PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+			eventPartial,
+			roomVersion,
+		);
 	}
 
 	/**
@@ -801,7 +870,7 @@ export class PersistentEventFactory {
 			depth: 0,
 		};
 
-		return PersistentEventFactory.createFromRawEvent(
+		return PersistentEventFactory.createFromRawEvent<'m.room.member'>(
 			eventPartial,
 			roomInformation.room_version,
 		);
