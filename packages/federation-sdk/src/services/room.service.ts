@@ -1013,8 +1013,18 @@ export class RoomService {
 			serverName,
 		);
 
-		const eventId = await this.eventService.insertEvent(signedEvent);
-		await this.roomRepository.markRoomAsDeleted(roomId, eventId);
+		const event = PersistentEventFactory.createFromRawEvent(
+			signedEvent,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		this.stateService.addAuthEvents(event);
+		this.stateService.addPrevEvents(event);
+		this.stateService.signEvent(event);
+
+		const _stateId = await this.stateService.persistStateEvent(event);
+
+		await this.roomRepository.markRoomAsDeleted(roomId, event.eventId);
 
 		await this.notifyFederatedServersAboutTombstone(roomId, signedEvent);
 		logger.info(`Successfully marked room ${roomId} as tombstone`);
