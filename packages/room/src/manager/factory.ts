@@ -69,29 +69,29 @@ export class PersistentEventFactory {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event, false) as PersistentEventBase<
+				return new PersistentEventV3(event) as PersistentEventBase<
 					RoomVersion,
 					Type
 				>;
 			case '6':
 			case '7':
-				return new PersistentEventV6(event, false) as PersistentEventBase<
+				return new PersistentEventV6(event) as PersistentEventBase<
 					RoomVersion,
 					Type
 				>;
 			case '8':
-				return new PersistentEventV8(event, false) as PersistentEventBase<
+				return new PersistentEventV8(event) as PersistentEventBase<
 					RoomVersion,
 					Type
 				>;
 			case '9':
 			case '10':
-				return new PersistentEventV9(event, false) as PersistentEventBase<
+				return new PersistentEventV9(event) as PersistentEventBase<
 					RoomVersion,
 					Type
 				>;
 			case '11':
-				return new PersistentEventV11(event, false) as PersistentEventBase<
+				return new PersistentEventV11(event) as PersistentEventBase<
 					RoomVersion,
 					Type
 				>;

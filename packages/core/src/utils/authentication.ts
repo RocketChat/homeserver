@@ -1,4 +1,8 @@
-import { type Pdu, PersistentEventFactory } from '@hs/room';
+import {
+	type Pdu,
+	PersistentEventBase,
+	PersistentEventFactory,
+} from '@hs/room';
 import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
 import { encodeCanonicalJson, signJson } from './signJson';
@@ -159,9 +163,8 @@ export function computeHash<T extends Record<string, unknown>>(
 	// remove the fields that are not part of the hash
 	return [
 		algorithm,
-		PersistentEventFactory.createFromRawEvent(
-			content as unknown as Pdu,
-			PersistentEventFactory.defaultRoomVersion, // content hash doesn't care about room version or event version, it is ok to pass anything.
-		).getContentHashString(),
+		PersistentEventBase.getContentHashString(
+			content as unknown as Pdu, // content hash doesn't care about room version or event version, it is ok to pass anything.
+		),
 	];
 }

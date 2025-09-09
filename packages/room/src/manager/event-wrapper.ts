@@ -59,20 +59,12 @@ export abstract class PersistentEventBase<
 
 	private signatures: Signature = {};
 
-	constructor(
-		protected rawEvent: PduWithHashesAndSignaturesOptional,
-		freeze = false,
-	) {
-		if (freeze) {
-			this.freezeEvent();
-		}
+	protected rawEvent: PduWithHashesAndSignaturesOptional;
 
-		if (rawEvent.signatures) {
-			this.signatures = rawEvent.signatures;
-			rawEvent.signatures = undefined; // to avoid this from freezing
-			// signature should not "change" if is already there, but they can be "re" set.
-			// hashes, on the other hand should be freezed, as that affects eventId.
-			// if hash was passed, don't change it or eventid will change and can break cross system state.
+	constructor(event: PduWithHashesAndSignaturesOptional) {
+		this.rawEvent = structuredClone(event);
+		if (this.rawEvent.signatures) {
+			this.signatures = this.rawEvent.signatures;
 		}
 	}
 
@@ -133,9 +125,6 @@ export abstract class PersistentEventBase<
 	// if we are accessing the inner event, the event itself should be frozen immediately to not change the reference hash any longer, affecting the id
 	// if anywhere the code still tries to, we will throw an error, which is why "lock" isn't just a flag in the class.
 	get event(): Readonly<PduForType<Type>> {
-		// freeze any change to this event to lock in the reference hash
-		this.freezeEvent();
-
 		return {
 			...this.rawEvent,
 			signatures: this.signatures,
@@ -316,14 +305,22 @@ export abstract class PersistentEventBase<
 	}
 
 	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
-	getContentHash() {
+	static getContentHash(rawEvent: PduWithHashesAndSignaturesOptional) {
 		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
-		const { unsigned, signatures, hashes, ...toHash } = this.rawEvent; // must not use this.event as it can potentially call getContentHash again
+		const { unsigned, signatures, hashes, ...toHash } = rawEvent; // must not use this.event as it can potentially call getContentHash again
 
 		return crypto
 			.createHash('sha256')
 			.update(encodeCanonicalJson(toHash))
 			.digest();
+	}
+
+	static getContentHashString(rawEvent: PduWithHashesAndSignaturesOptional) {
+		return toUnpaddedBase64(PersistentEventBase.getContentHash(rawEvent));
+	}
+
+	getContentHash() {
+		return PersistentEventBase.getContentHash(this.rawEvent);
 	}
 
 	getContentHashString() {
