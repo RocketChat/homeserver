@@ -34,20 +34,6 @@ export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<
 	MakeOptional<T, 'hashes' | 'signatures'>
 >;
 
-export function deepFreeze(object: unknown) {
-	if (typeof object !== 'object' || object === null) {
-		return;
-	}
-
-	Object.freeze(object);
-
-	for (const value of Object.values(object)) {
-		if (!Object.isFrozen(value)) {
-			deepFreeze(value);
-		}
-	}
-}
-
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
@@ -66,21 +52,6 @@ export abstract class PersistentEventBase<
 		if (this.rawEvent.signatures) {
 			this.signatures = this.rawEvent.signatures;
 		}
-	}
-
-	// at the point of calculating the reference hash, mark the internal reference as read only
-	// once we have accessed the id of an event, the redacted event MUST NOT CHANGE
-	// while it is allowed to change keys that are not part of the redaction algorithm, we will still freeze the full event for now.
-	protected freezeEvent() {
-		// 1. signatures are out of this (see event getter) so ok to freeze
-		// 2. if everything is frozen, freezing the content hash also makes sense, but build it first
-		if (!this.rawEvent.hashes) {
-			this.rawEvent.hashes = {
-				sha256: toUnpaddedBase64(this.getContentHash()),
-			};
-		}
-
-		deepFreeze(this.rawEvent);
 	}
 
 	// don't recalculate the hash if it is already set
@@ -298,8 +269,6 @@ export abstract class PersistentEventBase<
 			.createHash('sha256')
 			.update(canonicalJson)
 			.digest();
-
-		this.freezeEvent();
 
 		return referenceHash;
 	}
