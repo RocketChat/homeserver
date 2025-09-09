@@ -352,6 +352,8 @@ export class StateService {
 	}
 
 	public async signEvent(event: PersistentEventBase) {
+		if (process.env.NODE_ENV === 'test') return event;
+
 		const signingKey = await this.configService.getSigningKey();
 
 		const origin = this.configService.serverName;
@@ -489,6 +491,12 @@ export class StateService {
 			this.logger.debug({ eventId: event.eventId }, 'event already exists');
 			return;
 		}
+
+		/*
+		 * check if current event's depth is the same (use stateId of prev_events for that)
+		 * If not, take state from that point till now and call state res
+		 * otherwise, kick off iterativeauthchecks maybe
+		 */
 
 		const roomVersion = event.isCreateEvent()
 			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)

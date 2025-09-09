@@ -145,6 +145,7 @@ export async function getAuthChainDifference(
 	for (const state of states) {
 		const authChainForState = new Set<EventID>();
 
+		// NOTE: the state can avoid having some events
 		for (const eventid of state.values()) {
 			const [event] = await store.getEvents([eventid]);
 			if (!event) {
@@ -152,6 +153,7 @@ export async function getAuthChainDifference(
 				continue;
 			}
 
+			// NOTE2: however, this should grab the required events from the list
 			for (const authChainEventId of await getAuthChain(event, store)) {
 				authChainForState.add(authChainEventId);
 			}

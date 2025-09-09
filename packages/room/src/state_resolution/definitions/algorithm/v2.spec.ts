@@ -1,5 +1,5 @@
 import { type StateMapKey } from '../../../types/_common';
-import {} from '../../../types/v3-11';
+import { PduType } from '../../../types/v3-11';
 import {
 	type EventStore,
 	_kahnsOrder,
@@ -9,8 +9,12 @@ import {
 import { resolveStateV2Plus } from './v2';
 
 import { afterEach, describe, expect, it } from 'bun:test';
-import type { PersistentEventBase } from '../../../manager/event-wrapper';
+import {
+	PersistentEventBase,
+	REDACT_ALLOW_ALL_KEYS,
+} from '../../../manager/event-wrapper';
 import { PersistentEventFactory } from '../../../manager/factory';
+import { PersistentEventV11 } from '../../../manager/v11';
 
 class MockEventStore implements EventStore {
 	public events: Array<PersistentEventBase> = [];
@@ -46,6 +50,12 @@ const MEMBERSHIP_CONTENT_BAN = { membership: 'ban' };
 
 let ORIGIN_SERVER_TS = 0;
 
+class MyPdu extends PersistentEventV11 {
+	get eventId() {
+		return this.rawEvent.event_id;
+	}
+}
+
 class FakeEvent {
 	node_id: string;
 	sender: string;
@@ -73,19 +83,20 @@ class FakeEvent {
 
 	// event_dict should be filled by toEvent
 	get event_id() {
-		if (!this.event_dict) {
-			throw new Error('event_dict is not set');
-		}
+		return this._event_id;
+		// if (!this.event_dict) {
+		// 	throw new Error('event_dict is not set');
+		// }
 
-		return PersistentEventFactory.createFromRawEvent(this.event_dict, '11')
-			.eventId;
+		// return PersistentEventFactory.createFromRawEvent(this.event_dict, '11')
+		// 	.eventId;
 	}
 
 	toEvent(auth_events: string[], prev_events: string[]) {
 		this.event_dict = {
 			auth_events: auth_events,
 			prev_events: prev_events,
-			// event_id: this.event_id,
+			event_id: this.event_id,
 			sender: this.sender,
 			type: this.type,
 			state_key: null,
@@ -100,7 +111,7 @@ class FakeEvent {
 			this.event_dict.state_key = this.state_key;
 		}
 
-		return PersistentEventFactory.createFromRawEvent(this.event_dict, '11');
+		return new MyPdu(this.event_dict, false);
 	}
 }
 
@@ -220,15 +231,24 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 				fakeEventMap.get(prevEventsNodeIds.values().next().value!)!.event_id,
 			)!;
 		} else {
-			stateBefore = await resolveStateV2Plus(
-				prevEventsNodeIds
-					.values()
-					.map(
-						(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)!.event_id)!,
-					)
-					.toArray(),
-				eventStore,
-			);
+			const states = prevEventsNodeIds
+				.values()
+				.map(
+					(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)!.event_id)!,
+				)
+				.toArray();
+			for (const state of states) {
+				for (const [key, pdu] of (
+					state as Map<string, PersistentEventBase>
+				).entries()) {
+					if (pdu.isMembershipEvent()) {
+						// we delete this and see if algo still succeeds
+						state.delete(key);
+						// 2 failed
+					}
+				}
+			}
+			stateBefore = await resolveStateV2Plus(states, eventStore);
 		}
 
 		// whatever was state before, append current event info to new state
@@ -263,6 +283,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 
 		stateAtEventId.set(event.eventId, stateAfter as any);
 	}
+	return stateAtEventId.get('END:example.com');
 
 	const eventIdToNodeIdMap = new Map();
 

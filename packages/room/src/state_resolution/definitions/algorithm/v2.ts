@@ -89,12 +89,9 @@ export async function resolveStateV2Plus(
 
 	const eventIdToEventMap = new Map<EventID, PersistentEventBase>(); // cache used everywhere
 
-	const eventHashToEventIdMap = new Map<string, EventID>();
-
 	for (const state of states) {
 		for (const event of state.values()) {
 			eventIdToEventMap.set(event.eventId, event);
-			eventHashToEventIdMap.set(event.sha256hash, event.eventId);
 		}
 	}
 
@@ -120,7 +117,6 @@ export async function resolveStateV2Plus(
 			for (const event of events) {
 				resultEvents.push(event);
 				eventIdToEventMap.set(event.eventId, event);
-				eventHashToEventIdMap.set(event.sha256hash, event.eventId);
 			}
 
 			return resultEvents;
@@ -129,6 +125,7 @@ export async function resolveStateV2Plus(
 
 	// 1. Select the set X of all power events that appear in the full conflicted set.
 
+	// NOTE: could we not just return the conflicted states themselves? unconflicted isn't really doing much here is it?
 	const [unconflicted, conflicted] = partitionState(eventIdToEventMap.values());
 
 	const unconflictedStateMap = unconflicted
@@ -199,7 +196,7 @@ export async function resolveStateV2Plus(
 
 			if (
 				/* authEvent is conflicted */
-				fullConflictedSet.has(authEvent.eventId) &&
+				// fullConflictedSet.has(authEvent.eventId) &&
 				/* is power event */
 				isPowerEvent(authEvent) &&
 				/* it isn't in the list already */

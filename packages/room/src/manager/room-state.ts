@@ -43,7 +43,7 @@ export class RoomState {
 	}
 
 	isUserInRoom(userId: string): boolean {
-		return this.getUserMembership(userId) !== undefined;
+		return this.getUserMembership(userId) === 'join';
 	}
 
 	isUserKicked(userId: string): boolean {
