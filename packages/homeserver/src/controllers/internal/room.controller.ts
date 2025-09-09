@@ -125,14 +125,13 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { senderUserId, powerLevel, targetServers } = bodyParse.data;
+				const { senderUserId, powerLevel } = bodyParse.data;
 				try {
 					const eventId = await roomService.updateUserPowerLevel(
 						params.roomId,
 						params.userId,
 						powerLevel,
 						senderUserId,
-						targetServers,
 					);
 					return { eventId };
 				} catch (error) {

@@ -384,7 +384,6 @@ export class RoomService {
 		userId: string,
 		powerLevel: number,
 		senderId: string,
-		targetServers: string[] = [],
 	): Promise<string> {
 		logger.info(
 			`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`,
@@ -479,53 +478,25 @@ export class RoomService {
 			ts: Date.now(),
 		}) as PduForType<'m.room.power_levels'>;
 
-		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
-
-		const signedEvent = await signEvent(eventToSign, signingKey, serverName);
-
-		const eventId = generateId(signedEvent);
-
-		// Store the event locally BEFORE attempting federation
-		/**
-		 * TODO: is that correct? all the other state events are using stateService.persistStateEvent
-		 */
-
 		const event = PersistentEventFactory.newPowerLevelEvent(
 			roomId,
-			signedEvent.sender,
-			signedEvent.content,
+			eventToSign.sender,
+			eventToSign.content,
 			PersistentEventFactory.defaultRoomVersion,
 		);
+
 		await this.stateService.addAuthEvents(event);
 		await this.stateService.addPrevEvents(event);
 		await this.stateService.signEvent(event);
 		await this.stateService.persistStateEvent(event);
 
 		logger.info(
-			`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`,
+			`Successfully created and stored m.room.power_levels event ${event.eventId} for room ${roomId}`,
 		);
 
-		for (const server of targetServers) {
-			if (server === this.configService.serverName) {
-				continue;
-			}
+		void this.federationService.sendEventToAllServersInRoom(event);
 
-			try {
-				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.power_levels event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
-			} catch (error) {
-				logger.error(
-					`Failed to send m.room.power_levels event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-
-		return eventId;
+		return event.eventId;
 	}
 
 	async leaveRoom(roomId: string, senderId: string): Promise<string> {
