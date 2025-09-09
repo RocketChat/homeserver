@@ -96,6 +96,10 @@ export abstract class PersistentEventBase<
 	// if we are accessing the inner event, the event itself should be frozen immediately to not change the reference hash any longer, affecting the id
 	// if anywhere the code still tries to, we will throw an error, which is why "lock" isn't just a flag in the class.
 	get event(): Readonly<PduForType<Type>> {
+		this.rawEvent.hashes = {
+			sha256: toUnpaddedBase64(this.getContentHash()),
+		};
+
 		return {
 			...this.rawEvent,
 			signatures: this.signatures,
