@@ -533,6 +533,24 @@ const EventPduTypeRoomGuestAccess = z.object({
 	content: PduGuestAccessEventContentSchema,
 });
 
+export const PduRoomTombstoneEventContentSchema = z.object({
+	body: z.string().describe('The body of the tombstone.'),
+	replacement_room: z
+		.string()
+		.describe('The ID of the replacement room.')
+		.optional(),
+});
+
+export type PduRoomTombstoneEventContent = z.infer<
+	typeof PduRoomTombstoneEventContentSchema
+>;
+
+const EventPduTypeRoomTombstone = z.object({
+	...PduNoContentTimelineEventSchema,
+	type: z.literal('m.room.tombstone'),
+	content: PduRoomTombstoneEventContentSchema,
+});
+
 const EventPduTypeRoomMessage = z.object({
 	...PduNoContentTimelineEventSchema,
 	type: z.literal('m.room.message'),
@@ -577,6 +595,8 @@ export const PduSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomReaction,
 
 	EventPduTypeRoomRedaction,
+
+	EventPduTypeRoomTombstone,
 ]);
 
 export type Pdu = z.infer<typeof PduSchema> & {};
