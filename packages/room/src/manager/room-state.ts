@@ -17,6 +17,10 @@ export class RoomState {
 		private readonly stateMap: Map<StateMapKey, PersistentEventBase>,
 	) {}
 
+	get __map() {
+		return this.stateMap;
+	}
+
 	// who created the room
 	get creator() {
 		const createEvent = this.stateMap.get(

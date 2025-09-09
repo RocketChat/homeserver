@@ -6,11 +6,7 @@ import { EventRepository } from '../repositories/event.repository';
 import { type WithId } from 'mongodb';
 import { type EventStore } from '@hs/core';
 import { StateService } from './state.service';
-import {
-	PduCreate,
-	PduCreateEventContent,
-	PersistentEventFactory,
-} from '@hs/room';
+import { PduCreateEventContent, PersistentEventFactory } from '@hs/room';
 
 describe('StateService', async () => {
 	if (process.env.NODE_ENV !== 'test') {

@@ -373,4 +373,43 @@ export class EventRepository {
 			{ sort: { 'event.depth': -1 } },
 		);
 	}
+
+	async getLatestStateIdForEventIds(
+		eventIds: string[],
+	): Promise<string | null> {
+		const { stateId, createdAt, event } =
+			(await this.collection.findOne<{
+				stateId: string;
+				_id: string;
+				createdAt: Date;
+				event: { room_id: 1 };
+			}>(
+				{ _id: { $in: eventIds }, stateId: { $ne: '' } },
+				{
+					projection: { _id: 1, stateId: 1, createdAt: 1, 'event.room_id': 1 },
+					sort: { createdAt: -1 },
+				},
+			)) ?? {};
+
+		if (stateId && event && createdAt) {
+			return stateId;
+		}
+
+		// TODO: once gazzo's pr addingh stateid to all events get merged this won't be necessary
+		// find any event with stateId in the prev_events
+		const eventWithStateId = await this.collection.findOne(
+			{
+				'event.room_id': event!.room_id,
+				createdAt: { $lt: createdAt },
+				stateId: { $ne: '' },
+			},
+			{ projection: { stateId: 1 }, sort: { createdAt: -1 } },
+		);
+
+		if (!eventWithStateId) {
+			return null;
+		}
+
+		return eventWithStateId.stateId;
+	}
 }

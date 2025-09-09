@@ -375,263 +375,175 @@ export class StateService {
 		return event;
 	}
 
-	private async _persistEventAgainstState(
-		event: PersistentEventBase,
-		state: State,
-	): Promise<void> {
-		const roomVersion = event.isCreateEvent()
-			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
-			: await this.getRoomVersion(event.roomId);
-
-		if (!roomVersion) {
-			throw new Error('Room version not found');
-		}
-
-		// always check for conflicts at the prev_event state
-
-		// check if has conflicts
-		// ^ now we could avoid full state reconstruction with something like "dropped" prop inside the state mapping
-
-		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
-			event.roomId,
-		);
-
-		this.logger.debug(
-			{
-				stateMappingId: lastState?._id.toString(),
-				eventId: lastState?.delta?.eventId,
-			},
-			'last state mapping',
-		);
-
-		const prevStateIds = lastState?.prevStateIds?.concat(
-			lastState?._id?.toString(),
-		);
-
-		const hasConflict = state.has(event.getUniqueStateIdentifier());
-
-		if (!hasConflict) {
-			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
-			if (event.rejected) {
-				throw new Error(event.rejectedReason);
-			}
-
-			// save the state mapping
-			const { insertedId: stateMappingId } =
-				await this.stateRepository.createStateMapping(event, prevStateIds);
-
-			const signedEvent = await this.signEvent(event);
-
-			await this.eventRepository.create(
-				signedEvent.event as any,
-				event.eventId,
-				stateMappingId.toString(),
-			);
-
-			return;
-		}
-
-		const conflictedState = new Map(state.entries());
-		conflictedState.set(event.getUniqueStateIdentifier(), event);
-
-		this.logState('conflicted state', conflictedState);
-
-		const resolvedState = await resolveStateV2Plus(
-			[state, conflictedState],
-			this._getStore(roomVersion),
-		);
-
-		const resolvedEvent = resolvedState.get(event.getUniqueStateIdentifier());
-
-		if (!resolvedEvent) {
-			this.logger.error({ msg: 'resolved event not found' });
-			throw new Error('Resolved event not found, something is wrong');
-		}
-
-		this.logger.debug(
-			{
-				resolvedEvent: resolvedEvent?.event,
-			},
-			'resolved event',
-		);
-
-		if (resolvedEvent.eventId !== event.eventId) {
-			// state did not change, resolvedEvent is an older event
-			// just persist the event
-			// TODO: mark rejected, although no code yet uses it so let it go
-			await this.eventRepository.create(
-				resolvedEvent.event as any /* TODO: fix this with type unifi */,
-				resolvedEvent.eventId,
-				'',
-			);
-			return;
-		}
-
-		// new state
-
-		const { insertedId: stateMappingId } =
-			await this.stateRepository.createStateMapping(
-				resolvedEvent,
-				prevStateIds,
-			);
-
-		const signedEvent = await this.signEvent(resolvedEvent);
-
-		await this.eventRepository.create(
-			signedEvent.event as any,
-			resolvedEvent.eventId,
-			stateMappingId.toString(),
-		);
-	}
-
 	// checks for conflicts, saves the event along with the new state
 	async persistStateEvent(event: PersistentEventBase): Promise<void> {
+		if (!event.isState()) {
+			throw new Error('Only state events can be persisted with this method');
+		}
+
 		const exists = await this.eventRepository.findById(event.eventId);
 		if (exists) {
-			this.logger.debug({ eventId: event.eventId }, 'event already exists');
+			this.logger.debug(
+				{ eventId: event.eventId },
+				'event exists but attempted to persist again, should not happen',
+			);
 			return;
 		}
 
-		/*
-		 * check if current event's depth is the same (use stateId of prev_events for that)
-		 * If not, take state from that point till now and call state res
-		 * otherwise, kick off iterativeauthchecks maybe
-		 */
+		// handle create events separately
+		if (event.isCreateEvent()) {
+			this.logger.debug({ eventId: event.eventId }, 'handling create event');
+			const { insertedId: stateId } =
+				await this.stateRepository.createStateMapping(event);
 
-		const roomVersion = event.isCreateEvent()
-			? (event.getContent<PduCreateEventContent>().room_version as RoomVersion)
-			: await this.getRoomVersion(event.roomId);
-
-		if (!roomVersion) {
-			throw new Error('Room version not found');
-		}
-
-		const lastEvent =
-			await this.eventRepository.findLatestEventByRoomIdBeforeTimestampWithAssociatedState(
-				event.roomId,
-				event.originServerTs,
-			);
-
-		this.logger.debug(
-			{
-				eventId: lastEvent?._id,
-				event: lastEvent?.event,
-			},
-			'last event seen before current event',
-		);
-
-		if (!lastEvent) {
-			// create
-			return this._persistEventAgainstState(event, new Map());
-		}
-
-		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
-			event.roomId,
-		);
-
-		const prevStateIds = lastState?.prevStateIds?.concat(
-			lastState?._id?.toString(),
-		);
-
-		const state = await this.findStateAtEvent(lastEvent._id);
-
-		this.logState('state at last event seen:', state);
-
-		await this._persistEventAgainstState(event, state);
-
-		// if event was not rejected, update local copy
-		if (!event.rejected) {
-			this.logger.debug(
+			await this.eventRepository.create(
+				event.event as any,
 				event.eventId,
-				'event was accepted against the state at the time of the event creation',
+				stateId.toString(),
 			);
-			state.set(event.getUniqueStateIdentifier(), event);
+
+			return;
 		}
 
-		this.logState('new state', state);
+		// we jus want one, no need to compare full state
+		const currentLatestStateMapping =
+			await this.stateRepository.getLatestStateMapping(event.roomId);
+		if (!currentLatestStateMapping) {
+			this.logger.debug(
+				{ event: event.event, eventId: event.eventId },
+				'no state yet, we should likely handle a requeue for this',
+			);
+			throw new Error(
+				'No state mapping found for room, cannot persist state event',
+			);
+		}
 
-		const restOfTheEvents = await this.eventRepository
-			.findEventsByRoomIdAfterTimestamp(event.roomId, event.originServerTs)
-			.toArray();
+		// 1. take all the previous events from this event
+		// 2. grab them but in the order they were saved
+		// 3. take just the state id of the latest one from there, latest one of the prev_events should have the latest state
+		const stateId = await this.eventRepository.getLatestStateIdForEventIds(
+			event.event.prev_events,
+		);
+		if (!stateId) {
+			this.logger.debug(
+				{ event: event.event, eventId: event.eventId },
+				'no state yet, we should likely handle a requeue for this',
+			);
+			throw new Error(
+				'No state id found from previous events, cannot persist state event',
+			);
+		}
 
 		this.logger.debug(
 			{
-				events: restOfTheEvents,
+				stateIdForIncomingEvent: stateId,
+				latestStateId: currentLatestStateMapping._id.toString(),
 			},
-			'events seen after passed event',
+			'state ids',
 		);
 
-		const conflictedStates = [];
-
-		const conflicts = [];
-
-		for await (const event of restOfTheEvents) {
-			const e = PersistentEventFactory.createFromRawEvent(
-				event.event as any /* TODO: fix this with type unifi */,
-				roomVersion,
-			);
-
-			if (state.has(e.getUniqueStateIdentifier())) {
-				conflicts.push(e.getUniqueStateIdentifier());
-				const conflictedState = new Map(state.entries());
-				conflictedState.set(e.getUniqueStateIdentifier(), e);
-				conflictedStates.push(conflictedState);
+		if (stateId !== currentLatestStateMapping._id.toString()) {
+			// this is an old event we just received, state resolution needs to happen now
+			const oldStateMapping = await this.stateRepository.getStateById(stateId);
+			if (!oldStateMapping) {
+				throw new Error('Old state not found, cannot persist state event');
 			}
-		}
 
-		this.logger.debug({ conflicts }, 'conflicts');
-
-		// if we have any conflicts now, resolve all at once
-		if (conflictedStates.length > 0) {
-			const resolvedState = await resolveStateV2Plus(
-				conflictedStates,
-				this._getStore(roomVersion),
+			const oldState = await this.findStateAtEvent(
+				oldStateMapping.delta.eventId,
 			);
 
-			for (const stateKey of conflicts) {
-				const resolvedEvent = resolvedState.get(stateKey as StateMapKey);
+			const currentLatestState = await this.getFullRoomState2(event.roomId);
 
-				this.logger.debug(
-					{
-						resolvedEvent: resolvedEvent?.event,
-					},
-					'resolved event',
-				);
+			this.logState('old state', oldState);
+			this.logState('current latest state', currentLatestState.__map);
 
-				if (!resolvedEvent) {
-					throw new Error('Resolved event not found, something is wrong');
-				}
+			// now we have the old state and the current latest state
+			// we need to resolve the state
+			const newState = await resolveStateV2Plus(
+				[oldState, currentLatestState.__map],
+				this._getStore(currentLatestState.version),
+			);
 
-				const lastStateEvent = state.get(stateKey as StateMapKey);
+			oldState.clear(); // aggressively clean the object, don't need this anymore
 
-				if (resolvedEvent.eventId === lastStateEvent?.eventId) {
-					// state did not change
-					// just persist the event
-					// TODO: mark rejected, although no code yet uses it so let it go
-					const signedEvent = await this.signEvent(resolvedEvent);
+			this.logState('new resolved state', newState);
 
-					await this.eventRepository.create(
-						signedEvent.event as any,
-						resolvedEvent.eventId,
-						'',
-					);
+			const previousStateIds = currentLatestStateMapping.prevStateIds.concat(
+				currentLatestStateMapping._id.toString(),
+			);
 
+			// TODO: this should 100% happen inside a transaction
+			for (const [stateKey, newEvent] of newState) {
+				const currentEvent = currentLatestState.__map.get(stateKey);
+				if (currentEvent && currentEvent.eventId === newEvent.eventId) {
+					// same event already in current state, no need to update
 					continue;
 				}
 
-				// state changed
-				const { insertedId: stateMappingId } =
+				// this means currentEvent is rejected
+				// TODO: save this too
+				if (currentEvent?.rejected) {
+					// save
+				}
+
+				// new event == new state entry
+				const { insertedId: newStateId } =
 					await this.stateRepository.createStateMapping(
-						resolvedEvent,
-						prevStateIds,
+						newEvent,
+						previousStateIds,
 					);
 
-				await this.eventRepository.updateStateId(
-					resolvedEvent.eventId,
-					stateMappingId.toString(),
+				previousStateIds.push(newStateId.toString());
+
+				this.logger.debug(
+					{ stateKey, eventId: newEvent.eventId, newStateId },
+					'new state entry created',
 				);
+
+				// save the event or update
+				// possible an event that was previously rejected now is not so much rejected
+				const existing = await this.eventRepository.findById(newEvent.eventId);
+				if (!existing) {
+					await this.eventRepository.create(
+						newEvent.event as any,
+						newEvent.eventId,
+						newStateId.toString(),
+					);
+				} else if (existing.stateId !== newStateId.toString()) {
+					await this.eventRepository.updateStateId(
+						newEvent.eventId,
+						newStateId.toString(),
+					);
+				}
 			}
 		}
+
+		// the event we received is based on the latest state we have
+		const currentLatestState = await this.getFullRoomState2(event.roomId);
+
+		this.logState('current state', currentLatestState.__map);
+
+		// TODO: handle the erros and save the rejected events too
+		await checkEventAuthWithState(
+			event,
+			currentLatestState.__map,
+			this._getStore(currentLatestState.version),
+		);
+
+		// here so it passed
+		const previousStateIds = currentLatestStateMapping.prevStateIds.concat(
+			currentLatestStateMapping._id.toString(),
+		);
+
+		const { insertedId: newStateId } =
+			await this.stateRepository.createStateMapping(event, previousStateIds);
+
+		await this.eventRepository.create(
+			event.event as any,
+			event.eventId,
+			newStateId.toString(),
+		);
 	}
 
 	async getAllRoomIds() {
