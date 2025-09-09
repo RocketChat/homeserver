@@ -1,344 +1,346 @@
-import { type Mock, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { EventBase } from '@hs/core';
-import { MissingEventsQueue } from '../queues/missing-event.queue';
-import { EventFetcherService } from '../services/event-fetcher.service';
-import { EventService } from '../services/event.service';
-import { StagingAreaService } from '../services/staging-area.service';
-import { MissingEventListener } from './missing-event.listener';
+// TODO check if need to keep this tests with the new file
 
-function createMockEvent(
-	eventId: string,
-	roomId: string,
-	origin: string,
-): EventBase {
-	return {
-		event_id: eventId,
-		room_id: roomId,
-		type: 'test.event',
-		sender: 'user@test.com',
-		content: {},
-		origin_server_ts: Date.now(),
-		origin,
-		depth: 1,
-		prev_events: ['prev1'],
-		auth_events: ['auth1'],
-	} as EventBase;
-}
+// import { type Mock, beforeEach, describe, expect, mock, test } from 'bun:test';
+// import type { EventBase } from '@hs/core';
+// import { MissingEventsQueue } from '../queues/missing-event.queue';
+// import { EventFetcherService } from '../services/event-fetcher.service';
+// import { EventService } from '../services/event.service';
+// import { StagingAreaService } from '../services/staging-area.service';
+// import { MissingEventListener } from './missing-event.listener';
 
-describe.skip('MissingEventListener', () => {
-	let mockMissingEventsQueue: {
-		registerHandler: Mock<(fn: unknown) => unknown>;
-		enqueue: Mock<() => Promise<void>>;
-	};
-	let mockStagingAreaService: Record<string, Mock<() => unknown>>;
-	let mockEventService: Record<string, Mock<() => unknown>>;
-	let mockEventFetcherService: Record<string, Mock<() => unknown>>;
-	let listener: MissingEventListener;
+// function createMockEvent(
+// 	eventId: string,
+// 	roomId: string,
+// 	origin: string,
+// ): EventBase {
+// 	return {
+// 		event_id: eventId,
+// 		room_id: roomId,
+// 		type: 'test.event',
+// 		sender: 'user@test.com',
+// 		content: {},
+// 		origin_server_ts: Date.now(),
+// 		origin,
+// 		depth: 1,
+// 		prev_events: ['prev1'],
+// 		auth_events: ['auth1'],
+// 	} as EventBase;
+// }
 
-	beforeEach(() => {
-		mockMissingEventsQueue = {
-			registerHandler: mock((fn: unknown) => fn),
-			enqueue: mock(() => Promise.resolve()),
-		};
+// describe.skip('MissingEventListener', () => {
+// 	let mockMissingEventsQueue: {
+// 		registerHandler: Mock<(fn: unknown) => unknown>;
+// 		enqueue: Mock<() => Promise<void>>;
+// 	};
+// 	let mockStagingAreaService: Record<string, Mock<() => unknown>>;
+// 	let mockEventService: Record<string, Mock<() => unknown>>;
+// 	let mockEventFetcherService: Record<string, Mock<() => unknown>>;
+// 	let listener: MissingEventListener;
 
-		mockStagingAreaService = {
-			addEventToQueue: mock(() => Promise.resolve()),
-		};
+// 	beforeEach(() => {
+// 		mockMissingEventsQueue = {
+// 			registerHandler: mock((fn: unknown) => fn),
+// 			enqueue: mock(() => Promise.resolve()),
+// 		};
 
-		mockEventService = {
-			checkIfEventsExists: mock(() =>
-				Promise.resolve({ missing: [], found: [] }),
-			),
-			storeEventAsStaged: mock(() => Promise.resolve()),
-			removeDependencyFromStagedEvents: mock(() => Promise.resolve(0)),
-			findStagedEvents: mock(() => Promise.resolve([])),
-			markEventAsUnstaged: mock(() => Promise.resolve()),
-		};
+// 		mockStagingAreaService = {
+// 			addEventToQueue: mock(() => Promise.resolve()),
+// 		};
 
-		mockEventFetcherService = {
-			fetchEventsByIds: mock(() =>
-				Promise.resolve({ events: [], missingEventIds: [] }),
-			),
-		};
+// 		mockEventService = {
+// 			checkIfEventsExists: mock(() =>
+// 				Promise.resolve({ missing: [], found: [] }),
+// 			),
+// 			storeEventAsStaged: mock(() => Promise.resolve()),
+// 			removeDependencyFromStagedEvents: mock(() => Promise.resolve(0)),
+// 			findStagedEvents: mock(() => Promise.resolve([])),
+// 			markEventAsUnstaged: mock(() => Promise.resolve()),
+// 		};
 
-		listener = new MissingEventListener(
-			mockMissingEventsQueue as unknown as MissingEventsQueue,
-			mockStagingAreaService as unknown as StagingAreaService,
-			mockEventService as unknown as EventService,
-			mockEventFetcherService as unknown as EventFetcherService,
-		);
-	});
+// 		mockEventFetcherService = {
+// 			fetchEventsByIds: mock(() =>
+// 				Promise.resolve({ events: [], missingEventIds: [] }),
+// 			),
+// 		};
 
-	test('handleQueueItem should exit early if event already exists', async () => {
-		await listener.handleQueueItem({
-			eventId: 'existing-event-id',
-			roomId: 'room-id',
-			origin: 'origin.com',
-		});
+// 		listener = new MissingEventListener(
+// 			mockMissingEventsQueue as unknown as MissingEventsQueue,
+// 			mockStagingAreaService as unknown as StagingAreaService,
+// 			mockEventService as unknown as EventService,
+// 			mockEventFetcherService as unknown as EventFetcherService,
+// 		);
+// 	});
 
-		expect(
-			mockEventService.removeDependencyFromStagedEvents,
-		).toHaveBeenCalledWith('existing-event-id');
-		expect(mockEventFetcherService.fetchEventsByIds).not.toHaveBeenCalled();
-	});
+// 	test('handleQueueItem should exit early if event already exists', async () => {
+// 		await listener.handleQueueItem({
+// 			eventId: 'existing-event-id',
+// 			roomId: 'room-id',
+// 			origin: 'origin.com',
+// 		});
 
-	test('handleQueueItem should process fetched events with no missing dependencies', async () => {
-		const eventId = 'event-id';
-		const roomId = 'room-id';
-		const origin = 'origin.com';
+// 		expect(
+// 			mockEventService.removeDependencyFromStagedEvents,
+// 		).toHaveBeenCalledWith('existing-event-id');
+// 		expect(mockEventFetcherService.fetchEventsByIds).not.toHaveBeenCalled();
+// 	});
 
-		const mockEvent = createMockEvent(eventId, roomId, origin);
+// 	test('handleQueueItem should process fetched events with no missing dependencies', async () => {
+// 		const eventId = 'event-id';
+// 		const roomId = 'room-id';
+// 		const origin = 'origin.com';
 
-		mockEventFetcherService.fetchEventsByIds.mockReturnValue(
-			Promise.resolve({
-				events: [{ eventId, event: mockEvent }],
-				missingEventIds: [],
-			}),
-		);
-		mockEventService.checkIfEventsExists.mockReturnValue(
-			Promise.resolve({
-				missing: [],
-				found: ['auth1', 'prev1'],
-			}),
-		);
-		mockEventService.findStagedEvents.mockReturnValue(
-			Promise.resolve([
-				{
-					_id: eventId,
-					event: mockEvent,
-					origin,
-					missing_dependencies: [],
-				},
-			]),
-		);
+// 		const mockEvent = createMockEvent(eventId, roomId, origin);
 
-		await listener.handleQueueItem({ eventId, roomId, origin });
+// 		mockEventFetcherService.fetchEventsByIds.mockReturnValue(
+// 			Promise.resolve({
+// 				events: [{ eventId, event: mockEvent }],
+// 				missingEventIds: [],
+// 			}),
+// 		);
+// 		mockEventService.checkIfEventsExists.mockReturnValue(
+// 			Promise.resolve({
+// 				missing: [],
+// 				found: ['auth1', 'prev1'],
+// 			}),
+// 		);
+// 		mockEventService.findStagedEvents.mockReturnValue(
+// 			Promise.resolve([
+// 				{
+// 					_id: eventId,
+// 					event: mockEvent,
+// 					origin,
+// 					missing_dependencies: [],
+// 				},
+// 			]),
+// 		);
 
-		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalledWith(
-			[eventId],
-			roomId,
-			origin,
-		);
-		expect(mockEventService.checkIfEventsExists).toHaveBeenCalledWith([
-			'auth1',
-			'prev1',
-		]);
-		expect(mockEventService.storeEventAsStaged).toHaveBeenCalledWith(
-			expect.objectContaining({
-				_id: eventId,
-				event: mockEvent,
-				origin,
-				missing_dependencies: [],
-			}),
-		);
-		expect(
-			mockEventService.removeDependencyFromStagedEvents,
-		).toHaveBeenCalledWith(eventId);
-		expect(mockEventService.findStagedEvents).toHaveBeenCalled();
-	});
+// 		await listener.handleQueueItem({ eventId, roomId, origin });
 
-	test('handleQueueItem should process fetched events with missing dependencies', async () => {
-		const eventId = 'event-id';
-		const roomId = 'room-id';
-		const origin = 'origin.com';
+// 		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalledWith(
+// 			[eventId],
+// 			roomId,
+// 			origin,
+// 		);
+// 		expect(mockEventService.checkIfEventsExists).toHaveBeenCalledWith([
+// 			'auth1',
+// 			'prev1',
+// 		]);
+// 		expect(mockEventService.storeEventAsStaged).toHaveBeenCalledWith(
+// 			expect.objectContaining({
+// 				_id: eventId,
+// 				event: mockEvent,
+// 				origin,
+// 				missing_dependencies: [],
+// 			}),
+// 		);
+// 		expect(
+// 			mockEventService.removeDependencyFromStagedEvents,
+// 		).toHaveBeenCalledWith(eventId);
+// 		expect(mockEventService.findStagedEvents).toHaveBeenCalled();
+// 	});
 
-		const mockEvent = createMockEvent(eventId, roomId, origin);
-		mockEvent.auth_events = ['auth1', 'auth2'];
+// 	test('handleQueueItem should process fetched events with missing dependencies', async () => {
+// 		const eventId = 'event-id';
+// 		const roomId = 'room-id';
+// 		const origin = 'origin.com';
 
-		mockEventFetcherService.fetchEventsByIds.mockReturnValue(
-			Promise.resolve({
-				events: [{ eventId, event: mockEvent }],
-				missingEventIds: [],
-			}),
-		);
-		mockEventService.checkIfEventsExists.mockReturnValue(
-			Promise.resolve({
-				missing: ['auth2'],
-				found: ['auth1', 'prev1'],
-			}),
-		);
+// 		const mockEvent = createMockEvent(eventId, roomId, origin);
+// 		mockEvent.auth_events = ['auth1', 'auth2'];
 
-		await listener.handleQueueItem({ eventId, roomId, origin });
+// 		mockEventFetcherService.fetchEventsByIds.mockReturnValue(
+// 			Promise.resolve({
+// 				events: [{ eventId, event: mockEvent }],
+// 				missingEventIds: [],
+// 			}),
+// 		);
+// 		mockEventService.checkIfEventsExists.mockReturnValue(
+// 			Promise.resolve({
+// 				missing: ['auth2'],
+// 				found: ['auth1', 'prev1'],
+// 			}),
+// 		);
 
-		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalledWith(
-			[eventId],
-			roomId,
-			origin,
-		);
-		expect(mockEventService.checkIfEventsExists).toHaveBeenCalledWith([
-			'auth1',
-			'auth2',
-			'prev1',
-		]);
-		expect(mockEventService.storeEventAsStaged).toHaveBeenCalledWith(
-			expect.objectContaining({
-				_id: eventId,
-				event: mockEvent,
-				origin,
-				missing_dependencies: ['auth2'],
-			}),
-		);
-		expect(mockMissingEventsQueue.enqueue).toHaveBeenCalledWith({
-			eventId: 'auth2',
-			roomId,
-			origin,
-		});
-		expect(
-			mockEventService.removeDependencyFromStagedEvents,
-		).toHaveBeenCalledWith(eventId);
-	});
+// 		await listener.handleQueueItem({ eventId, roomId, origin });
 
-	test('processStagedEvents should process events with no missing dependencies', async () => {
-		const eventId = 'event-id';
-		const roomId = 'room-id';
-		const origin = 'origin.com';
+// 		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalledWith(
+// 			[eventId],
+// 			roomId,
+// 			origin,
+// 		);
+// 		expect(mockEventService.checkIfEventsExists).toHaveBeenCalledWith([
+// 			'auth1',
+// 			'auth2',
+// 			'prev1',
+// 		]);
+// 		expect(mockEventService.storeEventAsStaged).toHaveBeenCalledWith(
+// 			expect.objectContaining({
+// 				_id: eventId,
+// 				event: mockEvent,
+// 				origin,
+// 				missing_dependencies: ['auth2'],
+// 			}),
+// 		);
+// 		expect(mockMissingEventsQueue.enqueue).toHaveBeenCalledWith({
+// 			eventId: 'auth2',
+// 			roomId,
+// 			origin,
+// 		});
+// 		expect(
+// 			mockEventService.removeDependencyFromStagedEvents,
+// 		).toHaveBeenCalledWith(eventId);
+// 	});
 
-		const mockEvent = createMockEvent(eventId, roomId, origin);
+// 	test('processStagedEvents should process events with no missing dependencies', async () => {
+// 		const eventId = 'event-id';
+// 		const roomId = 'room-id';
+// 		const origin = 'origin.com';
 
-		mockEventService.findStagedEvents.mockReturnValue(
-			Promise.resolve([
-				{
-					_id: eventId,
-					event: mockEvent,
-					origin,
-					missing_dependencies: [],
-				},
-			]),
-		);
+// 		const mockEvent = createMockEvent(eventId, roomId, origin);
 
-		// @ts-ignore
-		await listener.processStagedEvents();
+// 		mockEventService.findStagedEvents.mockReturnValue(
+// 			Promise.resolve([
+// 				{
+// 					_id: eventId,
+// 					event: mockEvent,
+// 					origin,
+// 					missing_dependencies: [],
+// 				},
+// 			]),
+// 		);
 
-		expect(mockEventService.findStagedEvents).toHaveBeenCalled();
-		expect(mockStagingAreaService.addEventToQueue).toHaveBeenCalledWith({
-			eventId,
-			roomId,
-			origin,
-			event: mockEvent,
-		});
-		expect(mockEventService.markEventAsUnstaged).toHaveBeenCalledWith(eventId);
-	});
+// 		// @ts-ignore
+// 		await listener.processStagedEvents();
 
-	test('processStagedEvents should skip events with missing dependencies', async () => {
-		const eventId = 'event-id';
-		const roomId = 'room-id';
-		const origin = 'origin.com';
+// 		expect(mockEventService.findStagedEvents).toHaveBeenCalled();
+// 		expect(mockStagingAreaService.addEventToQueue).toHaveBeenCalledWith({
+// 			eventId,
+// 			roomId,
+// 			origin,
+// 			event: mockEvent,
+// 		});
+// 		expect(mockEventService.markEventAsUnstaged).toHaveBeenCalledWith(eventId);
+// 	});
 
-		const mockEvent = createMockEvent(eventId, roomId, origin);
+// 	test('processStagedEvents should skip events with missing dependencies', async () => {
+// 		const eventId = 'event-id';
+// 		const roomId = 'room-id';
+// 		const origin = 'origin.com';
 
-		mockEventService.findStagedEvents.mockReturnValue(
-			Promise.resolve([
-				{
-					_id: eventId,
-					event: mockEvent,
-					origin,
-					missing_dependencies: ['missing1'],
-				},
-			]),
-		);
+// 		const mockEvent = createMockEvent(eventId, roomId, origin);
 
-		// @ts-ignore
-		await listener.processStagedEvents();
+// 		mockEventService.findStagedEvents.mockReturnValue(
+// 			Promise.resolve([
+// 				{
+// 					_id: eventId,
+// 					event: mockEvent,
+// 					origin,
+// 					missing_dependencies: ['missing1'],
+// 				},
+// 			]),
+// 		);
 
-		expect(mockEventService.findStagedEvents).toHaveBeenCalled();
-		expect(mockStagingAreaService.addEventToQueue).not.toHaveBeenCalled();
-		expect(mockEventService.markEventAsUnstaged).not.toHaveBeenCalled();
-	});
+// 		// @ts-ignore
+// 		await listener.processStagedEvents();
 
-	test('extractDependencies should return unique merged auth_events and prev_events', () => {
-		const event: EventBase = {
-			auth_events: ['auth1', 'auth2', 'common'],
-			prev_events: ['prev1', 'common'],
-			type: 'test.event',
-			room_id: 'room-id',
-			sender: 'user@test.com',
-			origin_server_ts: Date.now(),
-			origin: 'origin.com',
-			depth: 1,
-		} as EventBase;
+// 		expect(mockEventService.findStagedEvents).toHaveBeenCalled();
+// 		expect(mockStagingAreaService.addEventToQueue).not.toHaveBeenCalled();
+// 		expect(mockEventService.markEventAsUnstaged).not.toHaveBeenCalled();
+// 	});
 
-		// @ts-ignore
-		const result = listener.extractDependencies(event);
+// 	test('extractDependencies should return unique merged auth_events and prev_events', () => {
+// 		const event: EventBase = {
+// 			auth_events: ['auth1', 'auth2', 'common'],
+// 			prev_events: ['prev1', 'common'],
+// 			type: 'test.event',
+// 			room_id: 'room-id',
+// 			sender: 'user@test.com',
+// 			origin_server_ts: Date.now(),
+// 			origin: 'origin.com',
+// 			depth: 1,
+// 		} as EventBase;
 
-		expect(result).toContain('auth1');
-		expect(result).toContain('auth2');
-		expect(result).toContain('common');
-		expect(result).toContain('prev1');
-		expect(result.length).toBe(4);
-	});
+// 		// @ts-ignore
+// 		const result = listener.extractDependencies(event);
 
-	test('extractDependencies should handle empty arrays', () => {
-		const event: EventBase = {
-			auth_events: [],
-			prev_events: [],
-			type: 'test.event',
-			room_id: 'room-id',
-			sender: 'user@test.com',
-			origin_server_ts: Date.now(),
-			origin: 'origin.com',
-			depth: 1,
-		} as EventBase;
+// 		expect(result).toContain('auth1');
+// 		expect(result).toContain('auth2');
+// 		expect(result).toContain('common');
+// 		expect(result).toContain('prev1');
+// 		expect(result.length).toBe(4);
+// 	});
 
-		// @ts-ignore
-		const result = listener.extractDependencies(event);
+// 	test('extractDependencies should handle empty arrays', () => {
+// 		const event: EventBase = {
+// 			auth_events: [],
+// 			prev_events: [],
+// 			type: 'test.event',
+// 			room_id: 'room-id',
+// 			sender: 'user@test.com',
+// 			origin_server_ts: Date.now(),
+// 			origin: 'origin.com',
+// 			depth: 1,
+// 		} as EventBase;
 
-		expect(result).toEqual([]);
-	});
+// 		// @ts-ignore
+// 		const result = listener.extractDependencies(event);
 
-	test('extractDependencies should handle missing arrays', () => {
-		const event = {} as EventBase;
+// 		expect(result).toEqual([]);
+// 	});
 
-		// @ts-ignore
-		const result = listener.extractDependencies(event);
+// 	test('extractDependencies should handle missing arrays', () => {
+// 		const event = {} as EventBase;
 
-		expect(result).toEqual([]);
-	});
+// 		// @ts-ignore
+// 		const result = listener.extractDependencies(event);
 
-	test('updateStagedEventDependencies should handle errors', async () => {
-		const error = new Error('Mock error');
-		mockEventService.removeDependencyFromStagedEvents.mockImplementation(() => {
-			throw error;
-		});
+// 		expect(result).toEqual([]);
+// 	});
 
-		// @ts-ignore
-		await listener.updateStagedEventDependencies('event-id');
-	});
+// 	test('updateStagedEventDependencies should handle errors', async () => {
+// 		const error = new Error('Mock error');
+// 		mockEventService.removeDependencyFromStagedEvents.mockImplementation(() => {
+// 			throw error;
+// 		});
 
-	test('processAndStoreStagedEvent should handle errors', async () => {
-		const eventId = 'event-id';
-		const roomId = 'room-id';
-		const origin = 'origin.com';
+// 		// @ts-ignore
+// 		await listener.updateStagedEventDependencies('event-id');
+// 	});
 
-		const mockEvent = createMockEvent(eventId, roomId, origin);
+// 	test('processAndStoreStagedEvent should handle errors', async () => {
+// 		const eventId = 'event-id';
+// 		const roomId = 'room-id';
+// 		const origin = 'origin.com';
 
-		const error = new Error('Mock error');
-		mockStagingAreaService.addEventToQueue.mockImplementation(() => {
-			throw error;
-		});
+// 		const mockEvent = createMockEvent(eventId, roomId, origin);
 
-		// @ts-ignore
-		await listener.processAndStoreStagedEvent({
-			_id: eventId,
-			event: mockEvent,
-			origin,
-			missing_dependencies: [],
-		});
+// 		const error = new Error('Mock error');
+// 		mockStagingAreaService.addEventToQueue.mockImplementation(() => {
+// 			throw error;
+// 		});
 
-		expect(mockEventService.markEventAsUnstaged).not.toHaveBeenCalled();
-	});
+// 		// @ts-ignore
+// 		await listener.processAndStoreStagedEvent({
+// 			_id: eventId,
+// 			event: mockEvent,
+// 			origin,
+// 			missing_dependencies: [],
+// 		});
 
-	test('handleQueueItem should handle errors during fetch', async () => {
-		mockEventFetcherService.fetchEventsByIds.mockImplementation(() => {
-			throw new Error('Fetch error');
-		});
+// 		expect(mockEventService.markEventAsUnstaged).not.toHaveBeenCalled();
+// 	});
 
-		await listener.handleQueueItem({
-			eventId: 'event-id',
-			roomId: 'room-id',
-			origin: 'origin.com',
-		});
+// 	test('handleQueueItem should handle errors during fetch', async () => {
+// 		mockEventFetcherService.fetchEventsByIds.mockImplementation(() => {
+// 			throw new Error('Fetch error');
+// 		});
 
-		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalled();
-		expect(mockEventService.storeEventAsStaged).not.toHaveBeenCalled();
-	});
-});
+// 		await listener.handleQueueItem({
+// 			eventId: 'event-id',
+// 			roomId: 'room-id',
+// 			origin: 'origin.com',
+// 		});
+
+// 		expect(mockEventFetcherService.fetchEventsByIds).toHaveBeenCalled();
+// 		expect(mockEventService.storeEventAsStaged).not.toHaveBeenCalled();
+// 	});
+// });
