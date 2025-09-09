@@ -200,7 +200,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 	// the first one should be prevEvents.length === 0
 	expect(create).toEqual('CREATE');
 
-	const createEvent = fakeEventMap.get(create)!.toEvent([], []);
+	const createEvent = fakeEventMap.get(create)?.toEvent([], []);
 
 	eventStore.events.push(createEvent);
 
@@ -217,14 +217,14 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		if (prevEventsNodeIds.size === 1) {
 			// very next to CREATE
 			stateBefore = stateAtEventId.get(
-				fakeEventMap.get(prevEventsNodeIds.values().next().value!)!.event_id,
+				fakeEventMap.get(prevEventsNodeIds.values().next().value!)?.event_id,
 			)!;
 		} else {
 			stateBefore = await resolveStateV2Plus(
 				prevEventsNodeIds
 					.values()
 					.map(
-						(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)!.event_id)!,
+						(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)?.event_id)!,
 					)
 					.toArray(),
 				eventStore,
@@ -238,8 +238,8 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		const authEvents = [];
 
 		const authTypes = fakeEventMap
-			.get(nodeId)!
-			.toEvent([], [])
+			.get(nodeId)
+			?.toEvent([], [])
 			.getAuthEventStateKeys();
 
 		for (const type of authTypes) {
@@ -249,11 +249,11 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 				authEvents.push(authEvent.eventId);
 			}
 		}
-		const event = fakeEventMap.get(nodeId)!.toEvent(
+		const event = fakeEventMap.get(nodeId)?.toEvent(
 			authEvents,
 			prevEventsNodeIds
 				.values()
-				.map((nodeId) => fakeEventMap.get(nodeId)!.event_id)
+				.map((nodeId) => fakeEventMap.get(nodeId)?.event_id)
 				.toArray(),
 		);
 

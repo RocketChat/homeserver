@@ -13,8 +13,6 @@ export class EventEmitterService {
 	private emitter: Emitter<HomeserverEventSignatures> =
 		new Emitter<HomeserverEventSignatures>();
 
-	constructor() {}
-
 	public setEmitter(emitter: Emitter<HomeserverEventSignatures>): void {
 		this.emitter = emitter;
 		logger.info('EventEmitterService: External emitter injected');

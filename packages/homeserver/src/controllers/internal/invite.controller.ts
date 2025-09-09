@@ -1,10 +1,10 @@
-import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { PersistentEventFactory } from '@hs/room';
 import type { PduCreateEventContent } from '@hs/room';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
 import {
 	InternalInviteUserBodyDto,
 	type InternalInviteUserResponse,

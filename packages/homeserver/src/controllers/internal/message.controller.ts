@@ -1,7 +1,7 @@
-import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
 import { MessageService } from '@hs/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
 import {
 	type InternalMessageResponse,
 	InternalMessageResponseDto,

@@ -1,15 +1,15 @@
-import {
-	type ErrorResponse,
-	ErrorResponseDto,
-	RoomIdDto,
-	UsernameDto,
-} from '@hs/federation-sdk';
 import { RoomService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 import { type PduCreateEventContent, PersistentEventFactory } from '@hs/room';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
+import {
+	type ErrorResponse,
+	ErrorResponseDto,
+	RoomIdDto,
+	UsernameDto,
+} from '../../dtos';
 import {
 	InternalBanUserBodyDto,
 	InternalBanUserParamsDto,
