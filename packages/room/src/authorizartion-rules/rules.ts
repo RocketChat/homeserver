@@ -31,22 +31,6 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
-export function getPowerLevelForUser(
-	userId: string,
-	roomCreateEvent: PersistentEventBase,
-	powerLevelEvent?: PowerLevelEvent,
-) {
-	if (!powerLevelEvent) {
-		if (roomCreateEvent.sender === userId) {
-			return 100;
-		}
-
-		return 0;
-	}
-
-	return powerLevelEvent.getPowerLevelForUser(userId, roomCreateEvent);
-}
-
 function isCreateAllowed(createEvent: PersistentEventBase) {
 	// If it has any prev_events, reject.
 	if (createEvent.event.prev_events.length > 0) {
