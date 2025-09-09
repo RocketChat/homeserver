@@ -82,7 +82,7 @@ export const profilesPlugin = (app: Elysia) => {
 
 				const { ver } = query;
 
-				return profilesService.makeJoin(roomId, userId, ver ?? ['1']) as any;
+				return profilesService.makeJoin(roomId, userId, ver ?? ['1']);
 			},
 			{
 				params: MakeJoinParamsDto,
