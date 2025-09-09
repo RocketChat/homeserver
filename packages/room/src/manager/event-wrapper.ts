@@ -403,14 +403,6 @@ export abstract class PersistentEventBase<
 		return this;
 	}
 
-	addPreviousEvent(event: PersistentEventBase<T>) {
-		this.rawEvent.prev_events.push(event.eventId);
-		if (this.rawEvent.depth <= event.depth) {
-			this.rawEvent.depth = event.depth + 1;
-		}
-		return this;
-	}
-
 	authedBy(event: PersistentEventBase<T>) {
 		this.rawEvent.auth_events.push(event.eventId);
 		return this;

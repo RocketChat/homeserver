@@ -338,14 +338,6 @@ export class StateService {
 				PersistentEventFactory.createFromRawEvent(e.event, roomVersion),
 			),
 		);
-
-		for (const prevEvent of prevEvents) {
-			const e = PersistentEventFactory.createFromRawEvent(
-				prevEvent.event,
-				roomVersion,
-			);
-			event.addPreviousEvent(e);
-		}
 	}
 
 	public async signEvent(event: PersistentEventBase) {
