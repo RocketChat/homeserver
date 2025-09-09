@@ -141,10 +141,7 @@ export class StateService {
 
 			state.set(
 				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(
-					event.event as any /* TODO: fix this with type unifi */,
-					roomVersion,
-				),
+				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
 			);
 
 			return state;
@@ -165,10 +162,7 @@ export class StateService {
 
 			state.set(
 				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(
-					event.event as any /* TODO: fix this with type unifi */,
-					roomVersion,
-				),
+				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
 			);
 		}
 
@@ -189,10 +183,7 @@ export class StateService {
 
 		state.set(
 			lastStateKey,
-			PersistentEventFactory.createFromRawEvent(
-				lastEvent.event as any /* TODO: fix this with type unifi */,
-				roomVersion,
-			),
+			PersistentEventFactory.createFromRawEvent(lastEvent.event, roomVersion),
 		);
 
 		return state;
@@ -244,7 +235,7 @@ export class StateService {
 			}
 
 			const pdu = PersistentEventFactory.createFromRawEvent(
-				event.event as any,
+				event.event,
 				roomVersion,
 			);
 
@@ -309,7 +300,7 @@ export class StateService {
 				const resultEvents = await resultEventsCursor.toArray();
 				const eventsFromStore = resultEvents.map((event) => {
 					const e = PersistentEventFactory.createFromRawEvent(
-						event.event as any /* TODO: fix this with type unifi */,
+						event.event,
 						roomVersion,
 					);
 					cache.set(e.eventId, e);
@@ -427,7 +418,7 @@ export class StateService {
 			const signedEvent = await this.signEvent(event);
 
 			await this.eventRepository.create(
-				signedEvent.event as any,
+				signedEvent.event,
 				event.eventId,
 				stateMappingId.toString(),
 			);
@@ -464,7 +455,7 @@ export class StateService {
 			// just persist the event
 			// TODO: mark rejected, although no code yet uses it so let it go
 			await this.eventRepository.create(
-				resolvedEvent.event as any /* TODO: fix this with type unifi */,
+				resolvedEvent.event,
 				resolvedEvent.eventId,
 				'',
 			);
@@ -482,7 +473,7 @@ export class StateService {
 		const signedEvent = await this.signEvent(resolvedEvent);
 
 		await this.eventRepository.create(
-			signedEvent.event as any,
+			signedEvent.event,
 			resolvedEvent.eventId,
 			stateMappingId.toString(),
 		);
@@ -565,7 +556,7 @@ export class StateService {
 
 		for await (const event of restOfTheEvents) {
 			const e = PersistentEventFactory.createFromRawEvent(
-				event.event as any /* TODO: fix this with type unifi */,
+				event.event,
 				roomVersion,
 			);
 
@@ -609,7 +600,7 @@ export class StateService {
 					const signedEvent = await this.signEvent(resolvedEvent);
 
 					await this.eventRepository.create(
-						signedEvent.event as any,
+						signedEvent.event,
 						resolvedEvent.eventId,
 						'',
 					);
@@ -713,7 +704,7 @@ export class StateService {
 
 		// now we persist the event
 		await this.eventRepository.create(
-			event.event as any,
+			event.event,
 			event.eventId,
 			'' /* no state id for you */,
 		);

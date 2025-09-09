@@ -284,7 +284,6 @@ export class StagingAreaService {
 
 		try {
 			this.logger.debug(`Persisting event ${eventId}`);
-			// await this.eventService.insertEvent(event.event as any);
 			console.log('Skipping persistence stage, persisted in previous stage'); // TODO: revisit
 
 			trackedEvent.state = ProcessingState.PENDING_FEDERATION;
