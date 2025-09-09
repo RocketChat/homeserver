@@ -224,6 +224,8 @@ export class StateService {
 	}
 
 	async getFullRoomState(roomId: string): Promise<State> {
+		// TODO: can we get this from `getLastStateMappingByRoomId` ?
+
 		const roomVersion = await this.getRoomVersion(roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found, there is no state');
