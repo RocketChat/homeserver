@@ -205,24 +205,6 @@ export class FederationService {
 		}
 	}
 
-	/**
-	 * Send a room tombstone event to a remote server
-	 */
-	async sendTombstone(
-		domain: string,
-		tombstoneEvent: PduForType<'m.room.tombstone'>,
-	): Promise<SendTransactionResponse> {
-		try {
-			return await this.sendEvent(domain, tombstoneEvent);
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			const errorStack = error instanceof Error ? error.stack : undefined;
-			this.logger.error(`sendTombstone failed: ${errorMessage}`, errorStack);
-			throw error;
-		}
-	}
-
 	// invite user from another homeserver to our homeserver
 	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
 		const uri = FederationEndpoints.inviteV2(

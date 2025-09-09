@@ -1026,7 +1026,8 @@ export class RoomService {
 
 		await this.roomRepository.markRoomAsDeleted(roomId, event.eventId);
 
-		await this.notifyFederatedServersAboutTombstone(roomId, signedEvent);
+		void this.federationService.sendEventToAllServersInRoom(event);
+
 		logger.info(`Successfully marked room ${roomId} as tombstone`);
 
 		return signedEvent;
@@ -1067,37 +1068,6 @@ export class RoomService {
 				HttpStatus.FORBIDDEN,
 			);
 		}
-	}
-
-	private async notifyFederatedServersAboutTombstone(
-		roomId: string,
-		signedEvent: SignedEvent<PduForType<'m.room.tombstone'>>,
-	): Promise<void> {
-		const rcServerName = this.configService.serverName;
-		const memberEvents =
-			await this.eventRepository.findAllJoinedMembersEventsByRoomId(roomId);
-		const remoteServers = new Set<string>();
-
-		for (const event of memberEvents) {
-			if (event.event.state_key) {
-				const serverName = event.event.state_key.split(':').pop();
-				if (serverName && serverName !== rcServerName) {
-					remoteServers.add(serverName);
-				}
-			}
-		}
-
-		const federationPromises = Array.from(remoteServers).map((server) => {
-			logger.debug(
-				`Sending tombstone event to server ${server} for room ${roomId}`,
-			);
-			return this.federationService.sendTombstone(server, signedEvent);
-		});
-
-		await Promise.all(federationPromises);
-		logger.info(
-			`Notified ${remoteServers.size} federated servers about room mark as tombstone`,
-		);
 	}
 
 	async setPowerLevelForUser(
