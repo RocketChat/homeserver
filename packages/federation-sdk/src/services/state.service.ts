@@ -13,7 +13,7 @@ import type { PduCreateEventContent } from '@hs/room';
 import { checkEventAuthWithState } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
-import { StateRepository } from '../repositories/state.repository';
+import { StateRepository, StateStore } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 
@@ -223,18 +223,50 @@ export class StateService {
 		return stateMapping._id.toString();
 	}
 
-	async getFullRoomState(roomId: string): Promise<State> {
-		// TODO: can we get this from `getLastStateMappingByRoomId` ?
-
+	private async buildLastRoomState(roomId: string): Promise<State> {
 		const roomVersion = await this.getRoomVersion(roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found, there is no state');
 		}
 
-		const stateMappings =
-			this.stateRepository.getStateMappingsByRoomIdOrderedAscending(roomId);
-		const state = new Map<StateMapKey, string>();
+		const stateMappings = await this.stateRepository
+			.getStateMappingsByRoomIdOrderedAscending(roomId)
+			.toArray();
 
+		return this.buildFullRoomStateFromStateMappings(stateMappings, roomVersion);
+	}
+
+	private async buildFullRoomStateFromStateMapping(
+		state: StateStore,
+		roomVersion: RoomVersion,
+	): Promise<Map<StateMapKey, PersistentEventBase>> {
+		const stateMappings = await this.stateRepository
+			.getStateMappingsByStateIdsOrdered(state.prevStateIds)
+			.toArray();
+		return this.buildFullRoomStateStoredEvents(
+			await this.buildFullRoomStateFromEvents(stateMappings),
+			roomVersion,
+		);
+	}
+
+	private async buildFullRoomStateFromStateMappings(
+		stateMappings: StateStore[],
+		roomVersion: RoomVersion,
+	): Promise<Map<StateMapKey, PersistentEventBase>> {
+		const state = await this.buildFullRoomStateFromEvents(stateMappings);
+
+		const finalState = await this.buildFullRoomStateStoredEvents(
+			state,
+			roomVersion,
+		);
+
+		return finalState;
+	}
+
+	private async buildFullRoomStateFromEvents(
+		stateMappings: StateStore[],
+	): Promise<Map<StateMapKey, string>> {
+		const state = new Map<StateMapKey, string>();
 		// first reconstruct the final state
 		for await (const stateMapping of stateMappings) {
 			if (!stateMapping.delta) {
@@ -246,12 +278,19 @@ export class StateService {
 			}
 			const { identifier: stateKey, eventId } = stateMapping.delta;
 
-			state.set(stateKey as StateMapKey, eventId);
+			state.set(stateKey, eventId);
 		}
 
+		return state;
+	}
+
+	private async buildFullRoomStateStoredEvents(
+		events: Map<StateMapKey, string>,
+		roomVersion: RoomVersion,
+	): Promise<Map<StateMapKey, PersistentEventBase>> {
 		const finalState = new Map<StateMapKey, PersistentEventBase>();
 
-		for (const [stateKey, eventId] of state) {
+		for (const [stateKey, eventId] of events) {
 			const event = await this.eventRepository.findById(eventId);
 			if (!event) {
 				throw new Error('Event not found');
@@ -270,6 +309,52 @@ export class StateService {
 		}
 
 		return finalState;
+	}
+
+	async getFullRoomState(
+		roomId: string,
+	): Promise<Map<StateMapKey, PersistentEventBase>> {
+		return (await this.getFullRoomStateAndStateId(roomId)).state;
+	}
+
+	async getFullRoomStateAndStateId(roomId: string): Promise<{
+		stateId: string;
+		state: Map<StateMapKey, PersistentEventBase>;
+	}> {
+		const roomVersion = await this.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found, there is no state');
+		}
+
+		const storedState =
+			await this.stateRepository.getLastStateMappingByRoomId(roomId);
+
+		const fullStoredState =
+			storedState &&
+			this.buildFullRoomStateFromStateMapping(storedState, roomVersion);
+
+		if (fullStoredState) {
+			return {
+				stateId: storedState._id.toString(),
+				state: await fullStoredState,
+			};
+		}
+
+		// TODO: we should be ok to remove the fallback scenario for production, but since we are already running in some places I wanted to keep it for now
+
+		// if (process.env.NODE_ENV === 'development') {
+		// 	throw new Error('No stored state found, and we are in production');
+		// }
+
+		this.logger.info(
+			{ roomId },
+			'no stored state, building last state, that should be a fallback scenario',
+		);
+		const lastStateId = await this.getStateIdForRoom(roomId);
+		return {
+			state: await this.buildLastRoomState(roomId),
+			stateId: lastStateId,
+		};
 	}
 
 	async getFullRoomState2(roomId: string): Promise<RoomState> {
@@ -666,7 +751,9 @@ export class StateService {
 			);
 		}
 
-		const room = await this.getFullRoomState(event.roomId);
+		const { state: room, stateId } = await this.getFullRoomStateAndStateId(
+			event.roomId,
+		);
 
 		this.logState('state at saving message', room);
 
@@ -726,7 +813,7 @@ export class StateService {
 			event.origin,
 			event.event,
 			event.eventId,
-			'' /* no state id for you */,
+			stateId
 		);
 
 		// transactions not handled here, since we can use this method as part of a "transaction receive"
