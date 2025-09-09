@@ -499,9 +499,9 @@ export class RoomService {
 			signedEvent.content,
 			PersistentEventFactory.defaultRoomVersion,
 		);
-		// await this.stateService.addAuthEvents(event);
-		// await this.stateService.addPrevEvents(event);
-		// await this.stateService.signEvent(event);
+		await this.stateService.addAuthEvents(event);
+		await this.stateService.addPrevEvents(event);
+		await this.stateService.signEvent(event);
 		await this.stateService.persistStateEvent(event);
 
 		logger.info(
