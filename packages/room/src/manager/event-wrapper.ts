@@ -62,7 +62,7 @@ export abstract class PersistentEventBase<
 	protected rawEvent: PduWithHashesAndSignaturesOptional;
 
 	constructor(event: PduWithHashesAndSignaturesOptional) {
-		this.rawEvent = structuredClone(event);
+		this.rawEvent = JSON.parse(JSON.stringify(event));
 		if (this.rawEvent.signatures) {
 			this.signatures = this.rawEvent.signatures;
 		}
