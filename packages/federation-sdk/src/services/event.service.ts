@@ -608,15 +608,6 @@ export class EventService {
 		return schema;
 	}
 
-	async insertEvent(
-		event: Pdu,
-		eventId?: string,
-		args?: object,
-	): Promise<string> {
-		// @ts-ignore: I am not using this code, ts-ignore to avoid ci problems for now
-		return this.eventRepository.create(event, eventId || '', args);
-	}
-
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
 		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
