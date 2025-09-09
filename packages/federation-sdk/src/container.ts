@@ -21,7 +21,6 @@ import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
@@ -105,7 +104,6 @@ export async function createFederationContainer(
 	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton('EventFetcherService', EventFetcherService);
-	container.registerSingleton(EventStateService);
 	container.registerSingleton(EventService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);

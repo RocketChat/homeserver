@@ -37,7 +37,6 @@ export { EduService } from './services/edu.service';
 
 export { ServerService } from './services/server.service';
 export { EventAuthorizationService } from './services/event-authorization.service';
-export { EventStateService } from './services/event-state.service';
 export { MissingEventService } from './services/missing-event.service';
 export { ProfilesService } from './services/profiles.service';
 export { EventFetcherService } from './services/event-fetcher.service';
