@@ -1,7 +1,7 @@
-import { WellKnownServerResponseDto } from '@hs/federation-sdk';
 import { WellKnownService } from '@hs/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
+import { WellKnownServerResponseDto } from '../../dtos';
 
 export const wellKnownPlugin = (app: Elysia) => {
 	const wellKnownService = container.resolve(WellKnownService);

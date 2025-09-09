@@ -1,7 +1,7 @@
-import { type ErrorResponse, ErrorResponseDto } from '@hs/federation-sdk';
 import { RoomService } from '@hs/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
+import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
 
 // DTOs for direct message operations
 export const InternalCreateDirectMessageBodyDto = t.Object({

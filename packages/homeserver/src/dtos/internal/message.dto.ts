@@ -1,5 +1,9 @@
-import { RoomIdDto, ServerNameDto, UsernameDto } from '@hs/federation-sdk';
 import { type Static, t } from 'elysia';
+import {
+	RoomIdDto,
+	ServerNameDto,
+	UsernameDto,
+} from '../common/validation.dto';
 
 export const InternalSendMessageBodyDto = t.Object({
 	roomId: RoomIdDto,

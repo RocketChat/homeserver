@@ -1,7 +1,7 @@
-import { ProcessInviteParamsDto, RoomVersionDto } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
+import { ProcessInviteParamsDto, RoomVersionDto } from '../../dtos';
 
 export const invitePlugin = (app: Elysia) => {
 	const inviteService = container.resolve(InviteService);

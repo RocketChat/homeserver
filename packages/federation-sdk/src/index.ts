@@ -87,9 +87,6 @@ export {
 	type ILockProvider,
 } from './utils/lock.decorator';
 
-// DTOs
-export * from './dtos';
-
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
 export { ServerRepository } from './repositories/server.repository';
