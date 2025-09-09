@@ -384,7 +384,6 @@ export class RoomService {
 		userId: string,
 		powerLevel: number,
 		senderId: string,
-		targetServers: string[] = [],
 	): Promise<string> {
 		logger.info(
 			`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`,
@@ -479,39 +478,25 @@ export class RoomService {
 			ts: Date.now(),
 		}) as PduForType<'m.room.power_levels'>;
 
-		const signingKeyConfig = await this.configService.getSigningKey();
-		const signingKey: SigningKey = Array.isArray(signingKeyConfig)
-			? signingKeyConfig[0]
-			: signingKeyConfig;
-
-		const signedEvent = await signEvent(eventToSign, signingKey, serverName);
-
-		const eventId = generateId(signedEvent);
-
-		// Store the event locally BEFORE attempting federation
-		await this.eventService.insertEvent(signedEvent, eventId);
-		logger.info(
-			`Successfully created and stored m.room.power_levels event ${eventId} for room ${roomId}`,
+		const event = PersistentEventFactory.newPowerLevelEvent(
+			roomId,
+			eventToSign.sender,
+			eventToSign.content,
+			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		for (const server of targetServers) {
-			if (server === this.configService.serverName) {
-				continue;
-			}
+		await this.stateService.addAuthEvents(event);
+		await this.stateService.addPrevEvents(event);
+		await this.stateService.signEvent(event);
+		await this.stateService.persistStateEvent(event);
 
-			try {
-				await this.federationService.sendEvent(server, signedEvent);
-				logger.info(
-					`Successfully sent m.room.power_levels event ${eventId} over federation to ${server} for room ${roomId}`,
-				);
-			} catch (error) {
-				logger.error(
-					`Failed to send m.room.power_levels event ${eventId} over federation to ${server}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
+		logger.info(
+			`Successfully created and stored m.room.power_levels event ${event.eventId} for room ${roomId}`,
+		);
 
-		return eventId;
+		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event.eventId;
 	}
 
 	async leaveRoom(roomId: string, senderId: string): Promise<string> {
