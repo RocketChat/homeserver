@@ -6,6 +6,7 @@ import type {
 	Filter,
 	FindCursor,
 	FindOptions,
+	UpdateResult,
 	WithId,
 } from 'mongodb';
 import { MongoError } from 'mongodb';
@@ -266,11 +267,21 @@ export class EventRepository {
 
 		// this must happen later to as to avoid finding 0 prev_events on a parallel request
 		await this.collection.updateMany(
-			{ _id: { $in: event.prev_events as string[] } },
+			{ _id: { $in: event.prev_events } },
 			{ $set: { nextEventId: eventId } },
 		);
 
 		return eventId;
+	}
+
+	async updateNextEventId(
+		eventId: string,
+		prevEvents: string[],
+	): Promise<UpdateResult> {
+		return this.collection.updateMany(
+			{ _id: { $in: prevEvents } },
+			{ $set: { nextEventId: eventId } },
+		);
 	}
 
 	findMembershipEventsFromDirectMessageRooms(

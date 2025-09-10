@@ -62,7 +62,7 @@ export class StagingAreaService {
 				await this.stateService.persistEvent(event.event);
 				await this.processNotificationStage(event);
 
-				await this.eventService.markEventAsUnstaged(event._id);
+				await this.eventService.markEventAsUnstaged(event);
 
 				// TODO add missing logic from synapse: Prune the event queue if it's getting large.
 			} catch (err: unknown) {

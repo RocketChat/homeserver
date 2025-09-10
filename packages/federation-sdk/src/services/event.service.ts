@@ -158,12 +158,19 @@ export class EventService {
 	/**
 	 * Mark an event as no longer staged
 	 */
-	async markEventAsUnstaged(eventId: string): Promise<void> {
+	async markEventAsUnstaged(event: EventStore): Promise<void> {
 		try {
-			await this.eventRepository.removeFromStaging(eventId);
-			this.logger.debug(`Marked event ${eventId} as no longer staged`);
+			await Promise.all([
+				this.eventRepository.removeFromStaging(event._id),
+				this.eventRepository.updateNextEventId(
+					event._id,
+					event.event.prev_events,
+				),
+			]);
+
+			this.logger.debug(`Marked event ${event._id} as no longer staged`);
 		} catch (error) {
-			this.logger.error(`Error unmarking staged event ${eventId}: ${error}`);
+			this.logger.error(`Error unmarking staged event ${event._id}: ${error}`);
 			throw error;
 		}
 	}

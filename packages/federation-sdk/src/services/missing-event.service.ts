@@ -155,7 +155,7 @@ export class MissingEventService {
 			// 	event: stagedEvent.event,
 			// });
 
-			await this.eventService.markEventAsUnstaged(stagedEvent._id);
+			await this.eventService.markEventAsUnstaged(stagedEvent);
 			this.logger.debug(
 				`Added previously staged event ${stagedEvent._id} to processing queue`,
 			);
