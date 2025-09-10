@@ -275,12 +275,7 @@ export class StateService {
 			if (!stateMapping.delta) {
 				throw new Error('State mapping has no delta');
 			}
-
-			if (!stateMapping.delta) {
-				throw new Error('State mapping delta is empty');
-			}
 			const { identifier: stateKey, eventId } = stateMapping.delta;
-
 			state.set(stateKey, eventId);
 		}
 
@@ -308,7 +303,7 @@ export class StateService {
 				throw new Error('Event id mismatch in trying to room state');
 			}
 
-			finalState.set(stateKey as StateMapKey, pdu);
+			finalState.set(stateKey, pdu);
 		}
 
 		return finalState;
