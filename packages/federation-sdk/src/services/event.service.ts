@@ -284,8 +284,20 @@ export class EventService {
 						continue;
 					}
 
+					const eventId = generateId(event);
+
+					const existing = await this.eventRepository.findById(eventId);
+					if (existing) {
+						this.logger.info(
+							`Ignoring received event ${eventId} which we have already seen`,
+						);
+
+						// TODO we may need to check if an event is an outlier and re-process it
+						continue;
+					}
+
 					// save the event as staged to be processed
-					await this.eventRepository.createStaged(origin, event);
+					await this.eventRepository.createStaged(origin, event, eventId);
 
 					// acquire a lock for processing the event
 					const lock = await this.lockRepository.getLock(

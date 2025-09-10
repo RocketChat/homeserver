@@ -124,9 +124,9 @@ export class EventRepository {
 	async createStaged(
 		origin: string,
 		event: Pdu,
-		missingDependencies?: EventStore['missing_dependencies'],
+		eventId?: string,
 	): Promise<string> {
-		const id = generateId(event);
+		const id = eventId ?? generateId(event);
 
 		await this.collection.insertOne({
 			_id: id,
@@ -136,7 +136,6 @@ export class EventRepository {
 			createdAt: new Date(),
 			nextEventId: '',
 			staged: true,
-			missing_dependencies: missingDependencies,
 		});
 
 		return id;
