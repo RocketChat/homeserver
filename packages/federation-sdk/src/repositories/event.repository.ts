@@ -439,4 +439,8 @@ export class EventRepository {
 			},
 		);
 	}
+
+	async getDistinctStagedRooms(): Promise<string[]> {
+		return this.collection.distinct('event.room_id', { staged: true });
+	}
 }

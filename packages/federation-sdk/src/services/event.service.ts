@@ -34,15 +34,6 @@ import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { StateService } from './state.service';
 
-// type ValidationResult = {
-// 	eventId: string;
-// 	event: EventBase;
-// 	valid: boolean;
-// 	error?: {
-// 		errcode: string;
-// 		error: string;
-// 	};
-// };
 export interface AuthEventParams {
 	roomId: string;
 	senderId: string;
@@ -65,7 +56,12 @@ export class EventService {
 		private readonly stateService: StateService,
 
 		private readonly eventEmitterService: EventEmitterService,
-	) {}
+	) {
+		// on startup we look for old staged events and try to process them
+		setTimeout(() => {
+			void this.processOldStagedEvents();
+		}, 5000);
+	}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
 		eventId: string,
@@ -312,7 +308,7 @@ export class EventService {
 					// if we have a lock, we can process the event
 					// void this.stagingAreaService.processEventForRoom(roomId);
 
-					// TODO change this to call stagingAreaService directly
+					// TODO change this to call stagingAreaService directly (line above)
 					this.stagingAreaQueue.enqueue(roomId);
 				}
 			}),
@@ -746,5 +742,39 @@ export class EventService {
 			`Permission check for ${userId} to send ${actionType}: UserLevel=${userPowerLevel}, RequiredLevel=${requiredPowerLevel}`,
 		);
 		return userPowerLevel >= requiredPowerLevel;
+	}
+
+	private async processOldStagedEvents() {
+		this.logger.info('Processing old staged events on startup');
+
+		const rooms = await this.eventRepository.getDistinctStagedRooms();
+		if (rooms.length === 0) {
+			this.logger.info('No old staged events found to process');
+			return;
+		}
+
+		// shuffle the rooms to give a chance to other instances to process other rooms
+		rooms.sort(() => Math.random() - 0.5);
+
+		// not we try to process one room at a time
+		for await (const roomId of rooms) {
+			const lock = await this.lockRepository.getLock(
+				roomId,
+				this.configService.instanceId,
+			);
+			if (!lock) {
+				this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
+				continue;
+			}
+
+			// if we have a lock, we can process the event
+			// void this.stagingAreaService.processEventForRoom(roomId);
+
+			// TODO change this to call stagingAreaService directly (line above)
+			this.stagingAreaQueue.enqueue(roomId);
+
+			// wait a bit before processing the next room to also give a chance to other instances
+			await new Promise((resolve) => setTimeout(resolve, 5000));
+		}
 	}
 }
