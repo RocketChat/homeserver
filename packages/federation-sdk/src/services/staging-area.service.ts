@@ -1,16 +1,10 @@
 import type { EventBase, EventStore, Membership } from '@hs/core';
-import { inject, singleton } from 'tsyringe';
-import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { singleton } from 'tsyringe';
 
 import { createLogger, isRedactedEvent } from '@hs/core';
-import {
-	Pdu,
-	PduPowerLevelsEventContent,
-	PersistentEventFactory,
-} from '@hs/room';
+import { Pdu, PduPowerLevelsEventContent } from '@hs/room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
-import { EventStateService } from './event-state.service';
 import { EventService } from './event.service';
 
 import { LockRepository } from '../repositories/lock.repository';
@@ -20,16 +14,13 @@ import { StateService } from './state.service';
 
 @singleton()
 export class StagingAreaService {
-	// private processingEvents = new Map<string, ExtendedStagingEvent>();
 	private readonly logger = createLogger('StagingAreaService');
 
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
 		private readonly missingEventsService: MissingEventService,
-		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly eventAuthService: EventAuthorizationService,
-		private readonly eventStateService: EventStateService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly stateService: StateService,
 		private readonly lockRepository: LockRepository,
@@ -119,23 +110,6 @@ export class StagingAreaService {
 				origin: event.origin,
 			});
 		}
-
-		// trackedEvent.retryCount = (trackedEvent.retryCount || 0) + 1;
-
-		// if (trackedEvent.retryCount < 5) {
-		// 	setTimeout(() => {
-		// 		this.stagingAreaQueue.enqueue({
-		// 			...event,
-		// 			metadata: {
-		// 				state: ProcessingState.PENDING_DEPENDENCIES,
-		// 			},
-		// 		});
-		// 	}, 1000 * trackedEvent.retryCount); // Exponential backoff
-		// } else {
-		// 	trackedEvent.state = ProcessingState.REJECTED;
-		// 	trackedEvent.error = `Failed to fetch dependencies after ${trackedEvent.retryCount} attempts`;
-		// 	this.processingEvents.set(eventId, trackedEvent);
-		// }
 	}
 
 	private async processAuthorizationStage(event: EventStore<Pdu>) {

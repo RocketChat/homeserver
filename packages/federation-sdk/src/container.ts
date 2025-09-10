@@ -116,10 +116,6 @@ export async function createFederationContainer(
 
 	container.registerSingleton(StagingAreaListener);
 
-	// container.register(LockManagerService, {
-	// 	useFactory: () => new LockManagerService(lockManagerOptions),
-	// });
-
 	const eventEmitterService = container.resolve(EventEmitterService);
 	if (emitter) {
 		eventEmitterService.setEmitter(emitter);
@@ -127,7 +123,6 @@ export async function createFederationContainer(
 		eventEmitterService.initializeStandalone();
 	}
 
-	// container.resolve(MissingEventListener);
 	container.resolve(StagingAreaListener);
 
 	return container;

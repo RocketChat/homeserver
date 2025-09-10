@@ -96,50 +96,6 @@ export class EventService {
 		);
 	}
 
-	// /**
-	//  * Store an event as staged with its missing dependencies
-	//  */
-	// async storeEventAsStaged(
-	// 	stagedEvent: Pick<EventStore, '_id' | 'event' | 'missing_dependencies'>,
-	// ): Promise<void> {
-	// 	try {
-	// 		// First check if the event already exists to avoid duplicates
-	// 		const existingEvent = await this.eventRepository.findById(
-	// 			stagedEvent._id,
-	// 		);
-	// 		if (existingEvent) {
-	// 			// If it already exists as a regular event (not staged), nothing to do
-	// 			if (!existingEvent.staged) {
-	// 				this.logger.debug(
-	// 					`Event ${stagedEvent._id} already exists as a regular event, nothing to stage`,
-	// 				);
-	// 				return;
-	// 			}
-
-	// 			// TODO: Remove unneeded db roundtrips by removing upsert or creatingStaged
-	// 			// Update the staged event with potentially new dependencies info
-	// 			await this.eventRepository.upsert(stagedEvent.event);
-	// 			// Make a separate update for metadata since upsert only handles the event data
-	// 			// We do this by using the createStaged method, which should update if exists
-	// 			await this.eventRepository.createStaged(stagedEvent.event);
-	// 			this.logger.debug(
-	// 				`Updated staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies?.length} missing dependencies`,
-	// 			);
-	// 		} else {
-	// 			await this.eventRepository.createStaged(stagedEvent.event);
-
-	// 			this.logger.debug(
-	// 				`Stored new staged event ${stagedEvent._id} with ${stagedEvent.missing_dependencies?.length} missing dependencies`,
-	// 			);
-	// 		}
-	// 	} catch (error) {
-	// 		this.logger.error(
-	// 			`Error storing staged event ${stagedEvent._id}: ${error}`,
-	// 		);
-	// 		throw error;
-	// 	}
-	// }
-
 	/**
 	 * Find all staged events in the database
 	 */
