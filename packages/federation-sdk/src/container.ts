@@ -88,6 +88,7 @@ export async function createFederationContainer(
 
 	container.registerSingleton(EventRepository);
 	container.registerSingleton(KeyRepository);
+	container.registerSingleton(LockRepository);
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(StateRepository);
 	container.registerSingleton(ServerRepository);
@@ -102,7 +103,6 @@ export async function createFederationContainer(
 	container.registerSingleton(EventService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
-	container.registerSingleton(LockRepository);
 	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);

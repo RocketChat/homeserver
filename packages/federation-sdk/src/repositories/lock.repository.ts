@@ -53,9 +53,6 @@ export class LockRepository {
 	}
 
 	async releaseLock(roomId: string, instanceId: string): Promise<void> {
-		console.log(
-			`Releasing lock for room ${roomId} held by instance ${instanceId}`,
-		);
 		await this.collection.deleteOne({ roomId, instanceId });
 	}
 
