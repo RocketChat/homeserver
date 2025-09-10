@@ -42,8 +42,6 @@ export class StagingAreaService {
 	}
 
 	async processEventForRoom(roomId: string) {
-		// TODO add some debug logs
-
 		let event = await this.eventService.getNextStagedEventForRoom(roomId);
 		if (!event) {
 			this.logger.debug({ msg: 'No staged event found for room', roomId });
@@ -55,7 +53,8 @@ export class StagingAreaService {
 		}
 
 		while (event) {
-			this.logger.debug({ msg: 'Processing event', eventId: event._id });
+			this.logger.info({ msg: 'Processing event', eventId: event._id });
+
 			try {
 				await this.processDependencyStage(event);
 				await this.processAuthorizationStage(event);
@@ -73,6 +72,15 @@ export class StagingAreaService {
 			}
 
 			event = await this.eventService.getNextStagedEventForRoom(roomId);
+
+			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
+			// and acquired by another instance while we're processing a batch of events for this room
+			if (event) {
+				await this.lockRepository.updateLockTimestamp(
+					roomId,
+					this.configService.instanceId,
+				);
+			}
 		}
 
 		// release the lock after processing
