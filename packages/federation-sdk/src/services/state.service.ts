@@ -247,7 +247,10 @@ export class StateService {
 		roomVersion: RoomVersion,
 	): Promise<Map<StateMapKey, PersistentEventBase>> {
 		const stateMappings = await this.stateRepository
-			.getStateMappingsByStateIdsOrdered(state.prevStateIds)
+			.getStateMappingsByStateIdsOrdered([
+				state._id.toString(),
+				...state.prevStateIds,
+			])
 			.toArray();
 		return this.buildFullRoomStateStoredEvents(
 			await this.buildFullRoomStateFromEvents(stateMappings),
