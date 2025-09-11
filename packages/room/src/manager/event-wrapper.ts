@@ -80,7 +80,11 @@ export abstract class PersistentEventBase<
 	// TODO: This should be removed or different name used instead?
 
 	get origin() {
-		return extractDomain(this.rawEvent.sender);
+		const domain = extractDomain(this.rawEvent.sender);
+		if (!domain) {
+			throw new Error('Invalid sender, no domain found');
+		}
+		return domain;
 	}
 
 	get stateKey(): string | undefined {

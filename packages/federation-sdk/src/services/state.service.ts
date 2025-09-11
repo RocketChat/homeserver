@@ -431,7 +431,7 @@ export class StateService {
 			const signedEvent = await this.signEvent(event);
 
 			await this.eventRepository.create(
-				event.origin || '', // TODO origin cannot be empty
+				event.origin,
 				signedEvent.event,
 				event.eventId,
 				stateMappingId.toString(),
@@ -469,7 +469,7 @@ export class StateService {
 			// just persist the event
 			// TODO: mark rejected, although no code yet uses it so let it go
 			await this.eventRepository.create(
-				resolvedEvent.origin || '', // TODO origin cannot be empty
+				resolvedEvent.origin,
 				resolvedEvent.event,
 				resolvedEvent.eventId,
 				'',
@@ -488,7 +488,7 @@ export class StateService {
 		const signedEvent = await this.signEvent(resolvedEvent);
 
 		await this.eventRepository.create(
-			resolvedEvent.origin || '', // TODO origin cannot be empty
+			resolvedEvent.origin,
 			signedEvent.event,
 			resolvedEvent.eventId,
 			stateMappingId.toString(),
@@ -616,7 +616,7 @@ export class StateService {
 					const signedEvent = await this.signEvent(resolvedEvent);
 
 					await this.eventRepository.create(
-						resolvedEvent.origin || '', // TODO origin cannot be empty
+						resolvedEvent.origin,
 						signedEvent.event,
 						resolvedEvent.eventId,
 						'',
@@ -721,7 +721,7 @@ export class StateService {
 
 		// now we persist the event
 		await this.eventRepository.create(
-			event.origin || '', // TODO origin cannot be empty
+			event.origin,
 			event.event,
 			event.eventId,
 			'' /* no state id for you */,
