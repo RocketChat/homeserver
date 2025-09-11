@@ -1,24 +1,60 @@
 import { createLogger } from '@hs/core';
-import { singleton } from 'tsyringe';
-import type { MissingEventType } from '../queues/missing-event.queue';
-import { MissingEventsQueue } from '../queues/missing-event.queue';
 
-const logger = createLogger('MissingEventService');
+import { singleton } from 'tsyringe';
+import { EventFetcherService } from './event-fetcher.service';
+import { EventService } from './event.service';
+import { StateService } from './state.service';
+
+type MissingEventType = {
+	eventId: string;
+	roomId: string;
+	origin: string;
+};
 
 @singleton()
 export class MissingEventService {
-	constructor(private readonly missingEventsQueue: MissingEventsQueue) {}
+	private readonly logger = createLogger('EventService');
 
-	addEvent(event: MissingEventType) {
-		logger.debug(
-			`Adding missing event ${event.eventId} to missing events queue`,
-		);
-		this.missingEventsQueue.enqueue(event);
-	}
+	constructor(
+		private readonly eventService: EventService,
+		private readonly stateService: StateService,
+		private readonly eventFetcherService: EventFetcherService,
+	) {}
 
-	addEvents(events: MissingEventType[]) {
-		for (const event of events) {
-			this.addEvent(event);
+	async fetchMissingEvent(data: MissingEventType) {
+		const { eventId, roomId, origin } = data;
+
+		const exists = await this.eventService.getEventById(eventId);
+		if (exists) {
+			this.logger.debug(
+				`Event ${eventId} already exists in database (staged or processed), marking as fetched`,
+			);
+			return;
+		}
+
+		try {
+			const fetchedEvents = await this.eventFetcherService.fetchEventsByIds(
+				[eventId],
+				roomId,
+				origin,
+			);
+			if (fetchedEvents.events.length === 0) {
+				this.logger.warn(
+					`Failed to fetch missing event ${eventId} from ${origin}`,
+				);
+				return;
+			}
+
+			for (const { event, eventId } of fetchedEvents.events) {
+				this.logger.debug(`Persisting fetched missing event ${eventId}`);
+
+				// TODO is there anything else we need to do with missing dependencies from received event?
+				await this.stateService.persistEvent(event);
+			}
+		} catch (err: unknown) {
+			this.logger.error(
+				`Error fetching missing event ${eventId}: ${err instanceof Error ? err.message : String(err)}`,
+			);
 		}
 	}
 }

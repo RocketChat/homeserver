@@ -1,6 +1,5 @@
 import { createLogger } from '@hs/core';
 import { singleton } from 'tsyringe';
-import type { StagingAreaEventType } from '../queues/staging-area.queue';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { StagingAreaService } from '../services/staging-area.service';
 
@@ -15,9 +14,8 @@ export class StagingAreaListener {
 		this.stagingAreaQueue.registerHandler(this.handleQueueItem.bind(this));
 	}
 
-	async handleQueueItem(data: StagingAreaEventType) {
-		// TODO: check what to do with origin
-		this.logger.debug(`Processing event ${data.eventId}`);
-		await this.stagingAreaService.processEvent(data);
+	async handleQueueItem(data: string) {
+		this.logger.debug(`Processing event ${data}`);
+		await this.stagingAreaService.processEventForRoom(data);
 	}
 }

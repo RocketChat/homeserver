@@ -11,6 +11,7 @@ const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
 export interface AppConfig {
 	serverName: string;
+	instanceId: string;
 	port: number;
 	version: string;
 	matrixDomain: string;
@@ -35,6 +36,7 @@ export interface AppConfig {
 }
 
 export const AppConfigSchema = z.object({
+	instanceId: z.string().min(1, 'Instance id is required'),
 	serverName: z.string().min(1, 'Server name is required'),
 	port: z.number().int().min(1).max(65535, 'Port must be between 1 and 65535'),
 	version: z.string().min(1, 'Server version is required'),
@@ -95,6 +97,10 @@ export class ConfigService {
 
 	get version(): string {
 		return this.config.version;
+	}
+
+	get instanceId(): string {
+		return this.config.instanceId;
 	}
 
 	getDatabaseConfig(): AppConfig['database'] {

@@ -52,21 +52,13 @@ export { StateService } from './services/state.service';
 export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
-export { MissingEventListener } from './listeners/missing-event.listener';
 export { MediaService } from './services/media.service';
 
 // Repository interfaces and implementations
 
 // Queue implementations
 export { BaseQueue, type QueueHandler } from './queues/base.queue';
-export {
-	StagingAreaQueue,
-	type StagingAreaEventType,
-} from './queues/staging-area.queue';
-export {
-	MissingEventsQueue,
-	type MissingEventType,
-} from './queues/missing-event.queue';
+export { StagingAreaQueue } from './queues/staging-area.queue';
 
 // Utility exports
 export { getErrorMessage } from './utils/get-error-message';
@@ -76,16 +68,6 @@ export {
 	roomV10Schemas,
 	type BaseEventType,
 } from './utils/event-schemas';
-export {
-	LockManagerService,
-	Lock,
-	type LockOptions,
-	type LockConfig,
-	type MemoryLockConfig,
-	type NatsLockConfig,
-	type ExternalLockConfig,
-	type ILockProvider,
-} from './utils/lock.decorator';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';

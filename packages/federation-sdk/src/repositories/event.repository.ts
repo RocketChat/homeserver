@@ -6,6 +6,7 @@ import type {
 	Filter,
 	FindCursor,
 	FindOptions,
+	UpdateResult,
 	WithId,
 } from 'mongodb';
 import { MongoError } from 'mongodb';
@@ -112,30 +113,12 @@ export class EventRepository {
 	}
 
 	async create(
+		origin: string,
 		event: Pdu,
 		eventId: string,
 		stateId = '',
 	): Promise<string | undefined> {
-		return this.persistEvent(event, eventId, stateId);
-	}
-
-	async createStaged(
-		event: Pdu,
-		missingDependencies?: EventStore['missing_dependencies'],
-	): Promise<string> {
-		const id = generateId(event);
-
-		await this.collection.insertOne({
-			_id: id,
-			event,
-			stateId: '',
-			createdAt: new Date(),
-			nextEventId: '',
-			staged: true,
-			missing_dependencies: missingDependencies,
-		});
-
-		return id;
+		return this.persistEvent(origin, event, eventId, stateId);
 	}
 
 	async redactEvent(eventId: string, redactedEvent: Pdu): Promise<void> {
@@ -156,17 +139,6 @@ export class EventRepository {
 		);
 
 		return id;
-	}
-
-	async removeFromStaging(eventId: string): Promise<void> {
-		await this.collection.updateOne(
-			{ _id: eventId },
-			{ $unset: { staged: 1, missing_dependencies: 1 } },
-		);
-	}
-
-	async findStagedEvents(): Promise<EventStore[]> {
-		return this.collection.find({ staged: true }).toArray();
 	}
 
 	public async findPowerLevelsEventByRoomId(
@@ -234,10 +206,16 @@ export class EventRepository {
 			.toArray();
 	}
 
-	private async persistEvent(event: Pdu, eventId: string, stateId: string) {
+	private async persistEvent(
+		origin: string,
+		event: Pdu,
+		eventId: string,
+		stateId: string,
+	) {
 		try {
 			await this.collection.insertOne({
 				_id: eventId,
+				origin,
 				event: event,
 				stateId: stateId,
 				createdAt: new Date(),
@@ -257,7 +235,7 @@ export class EventRepository {
 
 		// this must happen later to as to avoid finding 0 prev_events on a parallel request
 		await this.collection.updateMany(
-			{ _id: { $in: event.prev_events as string[] } },
+			{ _id: { $in: event.prev_events } },
 			{ $set: { nextEventId: eventId } },
 		);
 
@@ -315,13 +293,6 @@ export class EventRepository {
 		return this.collection.find({
 			eventId: { $in: eventIds },
 			'event.content.join_rule': { $ne: 'public' },
-		});
-	}
-
-	findStagedEventsByDependencyId(dependencyId: string): FindCursor<EventStore> {
-		return this.collection.find({
-			staged: true,
-			missing_dependencies: dependencyId,
 		});
 	}
 

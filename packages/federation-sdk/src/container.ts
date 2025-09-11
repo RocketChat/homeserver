@@ -1,17 +1,17 @@
 import 'reflect-metadata';
 
-import type { EventStore } from '@hs/core';
+import type { EventStagingStore, EventStore } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
 import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from './index';
-import { MissingEventListener } from './listeners/missing-event.listener';
 import { StagingAreaListener } from './listeners/staging-area.listener';
-import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
+import { EventStagingRepository } from './repositories/event-staging.repository';
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
+import { Lock, LockRepository } from './repositories/lock.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
@@ -37,19 +37,16 @@ import { SignatureVerificationService } from './services/signature-verification.
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { LockManagerService } from './utils/lock.decorator';
-import type { LockConfig } from './utils/lock.decorator';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
-	lockManagerOptions?: LockConfig;
 }
 
 export async function createFederationContainer(
 	options: FederationContainerOptions,
 	configInstance: ConfigService,
 ) {
-	const { emitter, lockManagerOptions = { type: 'memory' } } = options;
+	const { emitter } = options;
 
 	container.register<ConfigService>(ConfigService, {
 		useValue: configInstance,
@@ -59,30 +56,47 @@ export async function createFederationContainer(
 	const dbConnection = container.resolve(DatabaseConnectionService);
 	const db = await dbConnection.getDb();
 
-	container.registerSingleton(MissingEventsQueue);
 	container.registerSingleton(StagingAreaQueue);
 
 	container.register<Collection<EventStore>>('EventCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<EventStore>('events'),
 	});
+
+	container.register<Collection<EventStagingStore>>('EventStagingCollection', {
+		useValue: db.collection<EventStagingStore>(
+			'rocketchat_federation_events_staging',
+		),
+	});
+
 	container.register<Collection<Key>>('KeyCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Key>('keys'),
 	});
 
+	container.register<Collection<Lock>>('LockCollection', {
+		useValue: db.collection<Lock>('rocketchat_federation_lock'),
+	});
+
 	container.register<Collection<Room>>('RoomCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Room>('rooms'),
 	});
 
 	container.register<Collection<WithId<StateStore>>>('StateCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<WithId<StateStore>>('states'),
 	});
 
 	container.register<Collection<Server>>('ServerCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Server>('servers'),
 	});
 
 	container.registerSingleton(EventRepository);
+	container.registerSingleton(EventStagingRepository);
 	container.registerSingleton(KeyRepository);
+	container.registerSingleton(LockRepository);
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(StateRepository);
 	container.registerSingleton(ServerRepository);
@@ -108,12 +122,7 @@ export async function createFederationContainer(
 	container.registerSingleton(StagingAreaService);
 	container.registerSingleton(EduService);
 
-	container.registerSingleton(MissingEventListener);
 	container.registerSingleton(StagingAreaListener);
-
-	container.register(LockManagerService, {
-		useFactory: () => new LockManagerService(lockManagerOptions),
-	});
 
 	const eventEmitterService = container.resolve(EventEmitterService);
 	if (emitter) {
@@ -122,7 +131,6 @@ export async function createFederationContainer(
 		eventEmitterService.initializeStandalone();
 	}
 
-	container.resolve(MissingEventListener);
 	container.resolve(StagingAreaListener);
 
 	return container;

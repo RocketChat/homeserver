@@ -5,7 +5,7 @@ import {
 	RoomState,
 	type StateMapKey,
 } from '@hs/room';
-import type { EventStore, PersistentEventBase } from '@hs/room';
+import type { EventStore, Pdu, PersistentEventBase } from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
@@ -35,6 +35,27 @@ export class StateService {
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
 	) {}
+
+	async persistEvent(event: Pdu) {
+		const roomVersion = await this.getRoomVersion(event.room_id);
+		if (!roomVersion) {
+			throw new Error('processStateResolutionStage: Room version not found');
+		}
+
+		const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
+
+		if (pdu.isState()) {
+			await this.persistStateEvent(pdu);
+			if (pdu.rejected) {
+				throw new Error(pdu.rejectedReason);
+			}
+		} else {
+			await this.persistTimelineEvent(pdu);
+			if (pdu.rejected) {
+				throw new Error(pdu.rejectedReason);
+			}
+		}
+	}
 
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
 		const state = await this.stateRepository.getByRoomIdAndIdentifier(
@@ -410,6 +431,7 @@ export class StateService {
 			const signedEvent = await this.signEvent(event);
 
 			await this.eventRepository.create(
+				event.origin,
 				signedEvent.event,
 				event.eventId,
 				stateMappingId.toString(),
@@ -447,6 +469,7 @@ export class StateService {
 			// just persist the event
 			// TODO: mark rejected, although no code yet uses it so let it go
 			await this.eventRepository.create(
+				resolvedEvent.origin,
 				resolvedEvent.event,
 				resolvedEvent.eventId,
 				'',
@@ -465,6 +488,7 @@ export class StateService {
 		const signedEvent = await this.signEvent(resolvedEvent);
 
 		await this.eventRepository.create(
+			resolvedEvent.origin,
 			signedEvent.event,
 			resolvedEvent.eventId,
 			stateMappingId.toString(),
@@ -592,6 +616,7 @@ export class StateService {
 					const signedEvent = await this.signEvent(resolvedEvent);
 
 					await this.eventRepository.create(
+						resolvedEvent.origin,
 						signedEvent.event,
 						resolvedEvent.eventId,
 						'',
@@ -696,6 +721,7 @@ export class StateService {
 
 		// now we persist the event
 		await this.eventRepository.create(
+			event.origin,
 			event.event,
 			event.eventId,
 			'' /* no state id for you */,
