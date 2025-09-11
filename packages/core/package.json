@@ -17,6 +17,7 @@
 	},
 	"files": ["./src", "./dist"],
 	"dependencies": {
+		"@hs/crypto": "workspace:*",
 		"@hs/room": "workspace:*"
 	},
 	"devDependencies": {

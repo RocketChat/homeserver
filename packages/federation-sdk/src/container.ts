@@ -21,7 +21,6 @@ import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventFetcherService } from './services/event-fetcher.service';
-import { EventStateService } from './services/event-state.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
@@ -33,7 +32,6 @@ import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
-import { SignatureVerificationService } from './services/signature-verification.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
@@ -102,12 +100,10 @@ export async function createFederationContainer(
 	container.registerSingleton(ServerRepository);
 
 	container.registerSingleton(FederationRequestService);
-	container.registerSingleton(SignatureVerificationService);
 	container.registerSingleton(FederationService);
 	container.registerSingleton(StateService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton('EventFetcherService', EventFetcherService);
-	container.registerSingleton(EventStateService);
 	container.registerSingleton(EventService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
