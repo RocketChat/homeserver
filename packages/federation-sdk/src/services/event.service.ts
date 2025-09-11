@@ -1,5 +1,6 @@
 import type {
 	BaseEDU,
+	EventStagingStore,
 	PresenceEDU,
 	RoomPowerLevelsEvent,
 	TypingEDU,
@@ -25,10 +26,10 @@ import {
 import { singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
 import { LockRepository } from '../repositories/lock.repository';
-import { RoomRepository } from '../repositories/room.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -47,8 +48,8 @@ export class EventService {
 
 	constructor(
 		private readonly eventRepository: EventRepository,
+		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly lockRepository: LockRepository,
-		private readonly roomRepository: RoomRepository,
 		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 
@@ -96,72 +97,17 @@ export class EventService {
 		);
 	}
 
-	/**
-	 * Find all staged events in the database
-	 */
-	async findStagedEvents(): Promise<EventStore[]> {
-		return await this.eventRepository.findStagedEvents();
-	}
-
-	async getNextStagedEventForRoom(roomId: string): Promise<EventStore | null> {
-		return this.eventRepository.getNextStagedEventForRoom(roomId);
+	async getNextStagedEventForRoom(
+		roomId: string,
+	): Promise<EventStagingStore | null> {
+		return this.eventStagingRepository.getNextStagedEventForRoom(roomId);
 	}
 
 	/**
 	 * Mark an event as no longer staged
 	 */
-	async markEventAsUnstaged(event: EventStore): Promise<void> {
-		try {
-			await Promise.all([
-				this.eventRepository.removeFromStaging(event._id),
-				this.eventRepository.updateNextEventId(
-					event._id,
-					event.event.prev_events,
-				),
-			]);
-
-			this.logger.debug(`Marked event ${event._id} as no longer staged`);
-		} catch (error) {
-			this.logger.error(`Error unmarking staged event ${event._id}: ${error}`);
-			throw error;
-		}
-	}
-
-	/**
-	 * Remove a dependency from all staged events that reference it
-	 */
-	async removeDependencyFromStagedEvents(
-		dependencyId: string,
-	): Promise<number> {
-		try {
-			// We need to do this manually since there's no repository method specifically for this
-			let updatedCount = 0;
-
-			// Get all staged events that have this dependency
-			const stagedEvents =
-				this.eventRepository.findStagedEventsByDependencyId(dependencyId);
-
-			// Update each one to remove the dependency
-			for await (const event of stagedEvents) {
-				const updatedDeps = event.missing_dependencies?.filter(
-					(dep: string) => dep !== dependencyId,
-				);
-				if (updatedDeps) {
-					await this.eventRepository.setMissingDependencies(
-						event._id,
-						updatedDeps,
-					);
-					updatedCount++;
-				}
-			}
-
-			return updatedCount;
-		} catch (error) {
-			this.logger.error(
-				`Error removing dependency ${dependencyId} from staged events: ${error}`,
-			);
-			throw error;
-		}
+	async markEventAsUnstaged(event: EventStagingStore): Promise<void> {
+		await this.eventStagingRepository.removeByEventId(event._id);
 	}
 
 	async processIncomingTransaction({
@@ -249,7 +195,7 @@ export class EventService {
 					}
 
 					// save the event as staged to be processed
-					await this.eventRepository.createStaged(origin, event, eventId);
+					await this.eventStagingRepository.create(origin, event, eventId);
 
 					// acquire a lock for processing the event
 					const lock = await this.lockRepository.getLock(
@@ -703,7 +649,7 @@ export class EventService {
 	private async processOldStagedEvents() {
 		this.logger.info('Processing old staged events on startup');
 
-		const rooms = await this.eventRepository.getDistinctStagedRooms();
+		const rooms = await this.eventStagingRepository.getDistinctStagedRooms();
 		if (rooms.length === 0) {
 			this.logger.info('No old staged events found to process');
 			return;

@@ -121,26 +121,6 @@ export class EventRepository {
 		return this.persistEvent(origin, event, eventId, stateId);
 	}
 
-	async createStaged(
-		origin: string,
-		event: Pdu,
-		eventId?: string,
-	): Promise<string> {
-		const id = eventId ?? generateId(event);
-
-		await this.collection.insertOne({
-			_id: id,
-			origin,
-			event,
-			stateId: '',
-			createdAt: new Date(),
-			nextEventId: '',
-			staged: true,
-		});
-
-		return id;
-	}
-
 	async redactEvent(eventId: string, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
@@ -159,17 +139,6 @@ export class EventRepository {
 		);
 
 		return id;
-	}
-
-	async removeFromStaging(eventId: string): Promise<void> {
-		await this.collection.updateOne(
-			{ _id: eventId },
-			{ $unset: { staged: 1, missing_dependencies: 1 } },
-		);
-	}
-
-	async findStagedEvents(): Promise<EventStore[]> {
-		return this.collection.find({ staged: true }).toArray();
 	}
 
 	public async findPowerLevelsEventByRoomId(
@@ -337,13 +306,6 @@ export class EventRepository {
 		});
 	}
 
-	findStagedEventsByDependencyId(dependencyId: string): FindCursor<EventStore> {
-		return this.collection.find({
-			staged: true,
-			missing_dependencies: dependencyId,
-		});
-	}
-
 	async findByRoomIdAndType<T extends PduType>(
 		roomId: string,
 		eventType: T,
@@ -426,21 +388,5 @@ export class EventRepository {
 			)
 			.sort({ 'event.depth': 1 })
 			.limit(limit);
-	}
-
-	getNextStagedEventForRoom(roomId: string): Promise<EventStore | null> {
-		return this.collection.findOne(
-			{
-				'event.room_id': roomId,
-				staged: true,
-			},
-			{
-				sort: { createdAt: 1 },
-			},
-		);
-	}
-
-	async getDistinctStagedRooms(): Promise<string[]> {
-		return this.collection.distinct('event.room_id', { staged: true });
 	}
 }

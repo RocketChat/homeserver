@@ -1,4 +1,4 @@
-import type { EventBase, EventStore, Membership } from '@hs/core';
+import type { EventBase, EventStagingStore, Membership } from '@hs/core';
 import { singleton } from 'tsyringe';
 
 import { createLogger, isRedactedEvent } from '@hs/core';
@@ -81,7 +81,7 @@ export class StagingAreaService {
 		);
 	}
 
-	private async processDependencyStage(event: EventStore<EventBase>) {
+	private async processDependencyStage(event: EventStagingStore) {
 		const eventId = event._id;
 
 		const eventIds = this.extractEventsFromIncomingPDU(event.event);
@@ -112,7 +112,7 @@ export class StagingAreaService {
 		}
 	}
 
-	private async processAuthorizationStage(event: EventStore<Pdu>) {
+	private async processAuthorizationStage(event: EventStagingStore) {
 		this.logger.debug(`Authorizing event ${event._id}`);
 		const authEvents = await this.eventService.getAuthEventIds(
 			'm.room.message',
@@ -129,7 +129,7 @@ export class StagingAreaService {
 		}
 	}
 
-	private async processNotificationStage(event: EventStore<Pdu>) {
+	private async processNotificationStage(event: EventStagingStore) {
 		this.logger.debug(`Notifying clients about event ${event._id}`);
 
 		const {

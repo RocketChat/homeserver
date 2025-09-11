@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import type { EventStore } from '@hs/core';
+import type { EventStagingStore, EventStore } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
 import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
@@ -8,6 +8,7 @@ import { container } from 'tsyringe';
 import type { HomeserverEventSignatures } from './index';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { StagingAreaQueue } from './queues/staging-area.queue';
+import { EventStagingRepository } from './repositories/event-staging.repository';
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
 import { Lock, LockRepository } from './repositories/lock.repository';
@@ -62,6 +63,12 @@ export async function createFederationContainer(
 		useValue: db.collection<EventStore>('events'),
 	});
 
+	container.register<Collection<EventStagingStore>>('EventStagingCollection', {
+		useValue: db.collection<EventStagingStore>(
+			'rocketchat_federation_events_staging',
+		),
+	});
+
 	container.register<Collection<Key>>('KeyCollection', {
 		// TODO change collection name to include at least the "rocketchat_" prefix
 		useValue: db.collection<Key>('keys'),
@@ -87,6 +94,7 @@ export async function createFederationContainer(
 	});
 
 	container.registerSingleton(EventRepository);
+	container.registerSingleton(EventStagingRepository);
 	container.registerSingleton(KeyRepository);
 	container.registerSingleton(LockRepository);
 	container.registerSingleton(RoomRepository);
