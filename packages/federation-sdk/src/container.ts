@@ -26,6 +26,7 @@ import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
+import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { MissingEventService } from './services/missing-event.service';
 import { ProfilesService } from './services/profiles.service';
@@ -96,6 +97,7 @@ export async function createFederationContainer(
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
+	container.registerSingleton(MediaService);
 	container.registerSingleton(MessageService);
 	container.registerSingleton(MissingEventService);
 	container.registerSingleton(ProfilesService);
