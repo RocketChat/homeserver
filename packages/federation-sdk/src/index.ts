@@ -68,16 +68,6 @@ export {
 	roomV10Schemas,
 	type BaseEventType,
 } from './utils/event-schemas';
-export {
-	LockManagerService,
-	Lock,
-	type LockOptions,
-	type LockConfig,
-	type MemoryLockConfig,
-	type NatsLockConfig,
-	type ExternalLockConfig,
-	type ILockProvider,
-} from './utils/lock.decorator';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
