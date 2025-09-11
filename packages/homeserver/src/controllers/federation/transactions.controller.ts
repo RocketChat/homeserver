@@ -1,5 +1,9 @@
-import { ConfigService, EventService } from '@hs/federation-sdk';
-import { Elysia } from 'elysia';
+import {
+	ConfigService,
+	EventAuthorizationService,
+	EventService,
+} from '@hs/federation-sdk';
+import { Context, Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
@@ -9,10 +13,12 @@ import {
 	SendTransactionBodyDto,
 	SendTransactionResponseDto,
 } from '../../dtos';
+import { canAccessEvent } from '../../middlewares/acl.middleware';
 
 export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 	const configService = container.resolve(ConfigService);
+	const eventAuthService = container.resolve(EventAuthorizationService);
 
 	app.put(
 		'/_matrix/federation/v1/send/:txnId',
@@ -57,6 +63,7 @@ export const transactionsPlugin = (app: Elysia) => {
 			};
 		},
 		{
+			beforeHandle: canAccessEvent(eventAuthService),
 			params: GetEventParamsDto,
 			response: {
 				200: GetEventResponseDto,

@@ -17,7 +17,7 @@ import { StateRepository } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 
-type State = Map<StateMapKey, PersistentEventBase>;
+export type State = Map<StateMapKey, PersistentEventBase>;
 
 type StrippedRoomState = {
 	content: PduContent;
@@ -257,6 +257,17 @@ export class StateService {
 	async getFullRoomStateBeforeEvent2(eventId: string): Promise<RoomState> {
 		const state = await this.findStateBeforeEvent(eventId);
 		return new RoomState(state);
+	}
+
+	async getStateEventsByType(roomId: string, type: PduType) {
+		const state = await this.getFullRoomState(roomId);
+		const events = [];
+		for (const [, event] of state) {
+			if (event.type === type) {
+				events.push(event);
+			}
+		}
+		return events;
 	}
 
 	public async getStrippedRoomState(
@@ -792,7 +803,7 @@ export class StateService {
 
 	async getServersInRoom(roomId: string) {
 		return this.getMembersOfRoom(roomId).then((members) =>
-			members.map((member) => member.split(':').pop()!),
+			members.map((member) => member.split(':').pop() ?? ''),
 		);
 	}
 }

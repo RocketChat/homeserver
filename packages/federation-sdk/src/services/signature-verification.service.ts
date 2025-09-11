@@ -94,7 +94,7 @@ export class SignatureVerificationService {
 	/**
 	 * Get public key from cache or fetch it from the server
 	 */
-	private async getOrFetchPublicKey(
+	async getOrFetchPublicKey(
 		serverName: string,
 		keyId: string,
 	): Promise<KeyData | null | undefined> {
