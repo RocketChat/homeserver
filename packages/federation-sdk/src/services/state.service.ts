@@ -217,45 +217,13 @@ export class StateService {
 			throw new Error('Room version not found, there is no state');
 		}
 
-		const stateMappings =
-			this.stateRepository.getStateMappingsByRoomIdOrderedAscending(roomId);
-		const state = new Map<StateMapKey, string>();
-
-		// first reconstruct the final state
-		for await (const stateMapping of stateMappings) {
-			if (!stateMapping.delta) {
-				throw new Error('State mapping has no delta');
-			}
-
-			if (!stateMapping.delta) {
-				throw new Error('State mapping delta is empty');
-			}
-			const { identifier: stateKey, eventId } = stateMapping.delta;
-
-			state.set(stateKey as StateMapKey, eventId);
+		const latestStateMapping =
+			await this.stateRepository.getLatestStateMapping(roomId);
+		if (!latestStateMapping) {
+			throw new Error('No state mapping found for room, cannot get full state');
 		}
 
-		const finalState = new Map<StateMapKey, PersistentEventBase>();
-
-		for (const [stateKey, eventId] of state) {
-			const event = await this.eventRepository.findById(eventId);
-			if (!event) {
-				throw new Error('Event not found');
-			}
-
-			const pdu = PersistentEventFactory.createFromRawEvent(
-				event.event as any,
-				roomVersion,
-			);
-
-			if (pdu.eventId !== eventId) {
-				throw new Error('Event id mismatch in trying to room state');
-			}
-
-			finalState.set(stateKey as StateMapKey, pdu);
-		}
-
-		return finalState;
+		return await this.findStateAtEvent(latestStateMapping.delta.eventId);
 	}
 
 	async getFullRoomState2(roomId: string): Promise<RoomState> {

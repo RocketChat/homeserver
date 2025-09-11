@@ -601,11 +601,13 @@ describe('StateService', async () => {
 
 		await stateService.persistStateEvent(joinRuleInvite);
 
-		const _state2 = await stateService.findStateAtEvent(joinRuleInvite.eventId);
+		// const _state2 = await stateService.findStateAtEvent(joinRuleInvite.eventId);
 
-		const state2 = new RoomState(_state2);
+		// const state2 = new RoomState(_state2);
 
-		console.log('state', [..._state2.entries()]);
+		// console.log('state', [..._state2.entries()]);
+
+		const state2 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
 
 		expect(state2.isUserInRoom(randomUser1)).toBe(false);
 		expect(state2.isUserInRoom(randomUser2)).toBe(false);
