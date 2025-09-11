@@ -36,7 +36,7 @@ export class StateRepository {
 	async getLatestStateMapping(
 		roomId: string,
 	): Promise<WithId<StateStore> | null> {
-		return this.collection.findOne({ roomId }, { sort: { createdAt: 1 } });
+		return this.collection.findOne({ roomId }, { sort: { createdAt: -1 } });
 	}
 
 	async getLastStateMappingByRoomId(

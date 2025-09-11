@@ -562,6 +562,9 @@ export class StateService {
 			// this is an old event we just received, state resolution needs to happen now
 			const oldState = await this.getStateAtStateId(stateId);
 
+			// if we're here, event passed auth checks for oldState
+			oldState.set(event.getUniqueStateIdentifier(), event);
+
 			const currentLatestState = await this.getFullRoomState2(event.roomId);
 
 			this.logState('old state', oldState);
@@ -578,7 +581,7 @@ export class StateService {
 
 			this.logState('new resolved state', newState);
 
-			const previousStateIds = prevStateIds.concat(latestStateId);
+			const previousStateIds = prevStateIds.concat(latestStateId.toString());
 
 			// TODO: this should 100% happen inside a transaction
 			for (const [stateKey, newEvent] of newState) {
@@ -645,7 +648,7 @@ export class StateService {
 		}
 
 		// here so it passed
-		const previousStateIds = prevStateIds.concat(latestStateId);
+		const previousStateIds = prevStateIds.concat(latestStateId.toString());
 
 		const { insertedId: newStateId } =
 			await this.stateRepository.createStateMapping(event, previousStateIds);

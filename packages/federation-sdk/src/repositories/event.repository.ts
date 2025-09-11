@@ -286,9 +286,10 @@ export class EventRepository {
 	findByIds<T extends PduType>(
 		eventIds: string[],
 	): FindCursor<WithId<EventStore<PduForType<T>>>> {
-		return this.collection.find({ _id: { $in: eventIds } }) as FindCursor<
-			WithId<EventStore<PduForType<T>>>
-		>;
+		return this.collection.find(
+			{ _id: { $in: eventIds } },
+			{ sort: { createdAt: -1 } },
+		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
 	}
 
 	findByRoomIdAndTypes(

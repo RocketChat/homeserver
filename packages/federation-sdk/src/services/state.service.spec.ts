@@ -8,6 +8,8 @@ import { type EventStore } from '@hs/core';
 import { StateService } from './state.service';
 import {
 	PduCreateEventContent,
+	PduPowerLevelsEventContent,
+	PduRoomNameEventContent,
 	PersistentEventFactory,
 	RoomVersion,
 } from '@hs/room';
@@ -152,6 +154,47 @@ describe('StateService', async () => {
 		};
 	};
 
+	const joinUser = async (roomId: string, userId: string) => {
+		return _setUserMembership(roomId, userId, 'join');
+	};
+
+	const banUser = async (roomId: string, userId: string, sender: string) => {
+		return _setUserMembership(roomId, userId, 'ban', sender);
+	};
+
+	const leaveUser = async (roomId: string, userId: string) => {
+		return _setUserMembership(roomId, userId, 'leave');
+	};
+
+	const inviteUser = async (roomId: string, userId: string, sender: string) => {
+		return _setUserMembership(roomId, userId, 'invite', sender);
+	};
+
+	const _setUserMembership = async (
+		roomId: string,
+		userId: string,
+		membership: string,
+		sender?: string,
+	) => {
+		const state = await stateService.getFullRoomState2(roomId);
+		const membershipEvent = PersistentEventFactory.newMembershipEvent(
+			roomId,
+			sender || userId,
+			userId,
+			membership as any,
+			{ room_version: state.version } as any,
+		);
+
+		await Promise.all([
+			stateService.addAuthEvents(membershipEvent),
+			stateService.addPrevEvents(membershipEvent),
+		]);
+
+		await stateService.persistStateEvent(membershipEvent);
+
+		return membershipEvent;
+	};
+
 	it('should create a room successfully', async () => {
 		const {
 			roomCreateEvent: { roomId },
@@ -164,21 +207,10 @@ describe('StateService', async () => {
 
 	it('should successfully have a user join the room', async () => {
 		const { roomCreateEvent } = await createRoom('public');
+
 		const newUser = '@bob:example.com';
-		const membershipEvent = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			newUser,
-			newUser,
-			'join',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
 
-		await Promise.all([
-			stateService.addAuthEvents(membershipEvent),
-			stateService.addPrevEvents(membershipEvent),
-		]);
-
-		await stateService.persistStateEvent(membershipEvent);
+		await joinUser(roomCreateEvent.roomId, newUser);
 
 		const state = await stateService.getFullRoomState2(roomCreateEvent.roomId);
 		expect(state.isUserInRoom(newUser)).toBe(true);
@@ -187,41 +219,16 @@ describe('StateService', async () => {
 	it('should have a user leave the room successfully', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const newUser = '@bob:example.com';
-		const membershipEventJoin = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			newUser,
-			newUser,
-			'join',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
 
-		await Promise.all([
-			stateService.addAuthEvents(membershipEventJoin),
-			stateService.addPrevEvents(membershipEventJoin),
-		]);
+		await joinUser(roomCreateEvent.roomId, newUser);
 
-		await stateService.persistStateEvent(membershipEventJoin);
-
-		const membershipEventLeave = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			newUser,
-			newUser,
-			'leave',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
-
-		await Promise.all([
-			stateService.addAuthEvents(membershipEventLeave),
-			stateService.addPrevEvents(membershipEventLeave),
-		]);
-
-		await stateService.persistStateEvent(membershipEventLeave);
+		await leaveUser(roomCreateEvent.roomId, newUser);
 
 		const state = await stateService.getFullRoomState2(roomCreateEvent.roomId);
 		expect(state.isUserInRoom(newUser)).toBe(false);
 	});
 
-	it('should not allow joining if room is invite only', async () => {
+	it('should not allow joining if room is imenvite only', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com';
 		const membershipEvent = PersistentEventFactory.newMembershipEvent(
@@ -245,20 +252,12 @@ describe('StateService', async () => {
 	it('should allow joining if invited in invite only room', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com';
-		const membershipEventInvite = PersistentEventFactory.newMembershipEvent(
+
+		await inviteUser(
 			roomCreateEvent.roomId,
-			roomCreateEvent.getContent<PduCreateEventContent>().creator,
 			newUser,
-			'invite',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
 		);
-
-		await Promise.all([
-			stateService.addAuthEvents(membershipEventInvite),
-			stateService.addPrevEvents(membershipEventInvite),
-		]);
-
-		await stateService.persistStateEvent(membershipEventInvite);
 
 		expect(
 			(
@@ -266,20 +265,7 @@ describe('StateService', async () => {
 			).isUserInvited(newUser),
 		).toBeTrue();
 
-		const membershipEventJoin = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			newUser,
-			newUser,
-			'join',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
-
-		await Promise.all([
-			stateService.addAuthEvents(membershipEventJoin),
-			stateService.addPrevEvents(membershipEventJoin),
-		]);
-
-		await stateService.persistStateEvent(membershipEventJoin);
+		await joinUser(roomCreateEvent.roomId, newUser);
 
 		const state = await stateService.getFullRoomState2(roomCreateEvent.roomId);
 		expect(state.isUserInRoom(newUser)).toBe(true);
@@ -289,20 +275,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const newUser = '@bob:example.com';
 		// join first
-		const membershipEventJoin = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			newUser,
-			newUser,
-			'join',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
-
-		await Promise.all([
-			stateService.addAuthEvents(membershipEventJoin),
-			stateService.addPrevEvents(membershipEventJoin),
-		]);
-
-		await stateService.persistStateEvent(membershipEventJoin);
+		await joinUser(roomCreateEvent.roomId, newUser);
 
 		expect(
 			(
@@ -310,20 +283,11 @@ describe('StateService', async () => {
 			).isUserInRoom(newUser),
 		).toBeTrue();
 
-		const membershipEventBan = PersistentEventFactory.newMembershipEvent(
+		await banUser(
 			roomCreateEvent.roomId,
-			roomCreateEvent.getContent<PduCreateEventContent>().creator,
 			newUser,
-			'ban',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
 		);
-
-		await Promise.all([
-			stateService.addAuthEvents(membershipEventBan),
-			stateService.addPrevEvents(membershipEventBan),
-		]);
-
-		await stateService.persistStateEvent(membershipEventBan);
 
 		expect(
 			(
@@ -354,36 +318,13 @@ describe('StateService', async () => {
 
 		// add a user
 		const bob = '@bob:example.com';
-		const bobJoinEvent = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			bob,
-			bob,
-			'join',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
-
-		await Promise.all([
-			stateService.addAuthEvents(bobJoinEvent),
-			stateService.addPrevEvents(bobJoinEvent),
-		]);
-
-		await stateService.persistStateEvent(bobJoinEvent);
-
+		await joinUser(roomCreateEvent.roomId, bob);
 		// ban bob now
-		const banBobEvent = PersistentEventFactory.newMembershipEvent(
+		const banBobEvent = await banUser(
 			roomCreateEvent.roomId,
-			roomCreateEvent.getContent<PduCreateEventContent>().creator,
 			bob,
-			'ban',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
 		);
-
-		await Promise.all([
-			stateService.addAuthEvents(banBobEvent),
-			stateService.addPrevEvents(banBobEvent),
-		]);
-
-		await stateService.persistStateEvent(banBobEvent);
 
 		const state1 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
 		expect(state1.getUserMembership(bob)).toBe('ban');
@@ -420,6 +361,98 @@ describe('StateService', async () => {
 		await expect(
 			stateService.persistStateEvent(bobLeaveEvent),
 		).rejects.toThrowError();
+	});
+
+	it('should fix state in case of older event arriving late', async () => {
+		const { roomCreateEvent, powerLevelEvent, roomNameEvent } =
+			await createRoom('public');
+
+		// add a user
+		const bob = '@bob:example.com';
+		await joinUser(roomCreateEvent.roomId, bob);
+
+		const powerLevelContent = structuredClone(
+			powerLevelEvent.getContent<PduPowerLevelsEventContent>(),
+		);
+
+		// we increase bob to 50 allowing room name change
+
+		powerLevelContent.users[bob] = 50;
+
+		const newPowerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
+			roomCreateEvent.roomId,
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
+			powerLevelContent,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await Promise.all([
+			stateService.addAuthEvents(newPowerLevelEvent),
+			stateService.addPrevEvents(newPowerLevelEvent),
+		]);
+
+		await stateService.persistStateEvent(newPowerLevelEvent);
+
+		const state1 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
+		expect(state1.powerLevels?.users[bob]).toBe(50);
+
+		// now we make bob change the room name, this should work
+		const newRoomName = 'New Room Name';
+		const roomNameEventByBob = PersistentEventFactory.newRoomNameEvent(
+			roomCreateEvent.roomId,
+			bob,
+			newRoomName,
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await Promise.all([
+			stateService.addAuthEvents(roomNameEventByBob),
+			stateService.addPrevEvents(roomNameEventByBob),
+		]);
+
+		await stateService.persistStateEvent(roomNameEventByBob);
+
+		const state2 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
+		expect(state2.name).toBe(newRoomName);
+
+		// we now mimick sending a ban event for bob, but before the power level event was sent
+		const banBobEvent = PersistentEventFactory.newMembershipEvent(
+			roomCreateEvent.roomId,
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
+			bob,
+			'ban',
+			roomCreateEvent.getContent<PduCreateEventContent>(),
+		);
+
+		const eventsBeforePowerLevel = await newPowerLevelEvent.getPreviousEvents(
+			stateService._getStore(
+				roomCreateEvent.getContent<PduCreateEventContent>()
+					.room_version as RoomVersion,
+			),
+		);
+
+		eventsBeforePowerLevel.forEach((element) => {
+			banBobEvent.addPreviousEvent(element);
+		});
+
+		const stateBeforePowerLevelEvent = await stateService.findStateBeforeEvent(
+			powerLevelEvent.eventId,
+		);
+
+		for (const requiredAuthEvent of banBobEvent.getAuthEventStateKeys()) {
+			const authEvent = stateBeforePowerLevelEvent.get(requiredAuthEvent);
+			if (authEvent) {
+				banBobEvent.authedBy(authEvent);
+			}
+		}
+
+		await stateService.persistStateEvent(banBobEvent);
+
+		const state3 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
+
+		expect(state3.name).toBe(
+			roomNameEvent.getContent<PduRoomNameEventContent>().name,
+		); // should set the state to right versions
 	});
 
 	test.todo('rejected events', async () => {});
