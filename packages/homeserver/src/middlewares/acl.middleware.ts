@@ -4,60 +4,48 @@ const errCodes = {
 	M_UNAUTHORIZED: {
 		errcode: 'M_UNAUTHORIZED',
 		error: 'Invalid or missing signature',
+		status: 401,
 	},
 	M_FORBIDDEN: {
 		errcode: 'M_FORBIDDEN',
 		error: 'Access denied',
+		status: 403,
 	},
 	M_UNKNOWN: {
 		errcode: 'M_UNKNOWN',
 		error: 'Internal server error while processing request',
+		status: 500,
 	},
 };
 
-export const aclMiddleware = (federationAuth: EventAuthorizationService) => {
-	return async (context: any) => {
-		const { params, set, request, headers } = context;
-		const { eventId } = params as { eventId: string };
+interface ACLContext {
+	params: { eventId: string };
+	headers: Record<string, string | undefined>;
+	request: Request;
+	set: Record<string, unknown>;
+}
 
-		try {
-			const headerObj: Record<string, string> = {};
-			if (headers && typeof headers === 'object') {
-				for (const [key, value] of Object.entries(headers)) {
-					if (value !== undefined) {
-						headerObj[key] = String(value);
-					}
-				}
-			}
+export const canAccessEvent = (federationAuth: EventAuthorizationService) => {
+	return async (context: ACLContext) => {
+		const { params, headers, request, set } = context;
+		const { eventId } = params;
+		const authorizationHeader = headers.authorization || '';
+		const method = request.method;
+		const uri = new URL(request.url).pathname;
 
-			const verificationResult = await federationAuth.verifyRequestSignature({
-				method: request.method,
-				uri: request.url,
-				headers: headerObj,
-				body: undefined, // GET requests don't have body
-			});
+		const result = await federationAuth.canAccessEventFromAuthorizationHeader(
+			eventId,
+			authorizationHeader,
+			method,
+			uri,
+		);
 
-			if (!verificationResult.valid) {
-				set.status = 401;
-				return errCodes.M_UNAUTHORIZED;
-			}
-
-			const authResult = await federationAuth.canAccessEvent(
-				eventId,
-				verificationResult.serverName,
-			);
-			if (!authResult.authorized) {
-				set.status = 403;
-				return errCodes.M_FORBIDDEN;
-			}
-
-			return;
-		} catch (error) {
-			console.error('ACL middleware error:', error);
-			set.status = 500;
-			return errCodes.M_UNKNOWN;
+		if (!result.authorized) {
+			set.status = errCodes[result.errorCode].status;
+			return {
+				errcode: errCodes[result.errorCode].errcode,
+				error: errCodes[result.errorCode].error,
+			};
 		}
 	};
 };
-
-export const federationEventMiddleware = aclMiddleware;

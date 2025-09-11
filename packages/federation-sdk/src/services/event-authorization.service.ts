@@ -1,7 +1,4 @@
 import {
-	JoinRule,
-	RoomJoinRulesEvent,
-	RoomMemberEvent,
 	createLogger,
 	extractSignaturesFromHeader,
 	generateId,
@@ -12,7 +9,7 @@ import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { SignatureVerificationService } from './signature-verification.service';
-import { State, StateService } from './state.service';
+import { StateService } from './state.service';
 
 @singleton()
 export class EventAuthorizationService {
@@ -112,46 +109,37 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	public async verifyRequestSignature(request: {
-		method: string;
-		uri: string;
-		headers: Record<string, string>;
-		body?: unknown;
-	}): Promise<
-		| {
-				valid: true;
-				serverName: string;
-		  }
-		| {
-				valid: false;
-				error: string;
-		  }
-	> {
-		const authHeader = request.headers.Authorization;
-		if (!authHeader?.startsWith('X-Matrix')) {
-			return {
-				valid: false,
-				error: 'Missing or invalid X-Matrix authorization header',
-			};
+	private async verifyRequestSignature(
+		method: string,
+		uri: string,
+		authorizationHeader: string,
+		body?: Record<string, unknown>,
+	): Promise<string | undefined> {
+		if (!authorizationHeader?.startsWith('X-Matrix')) {
+			this.logger.debug('Missing or invalid X-Matrix authorization header');
+			return;
 		}
 
 		try {
 			const { origin, destination, key, signature } =
-				extractSignaturesFromHeader(authHeader);
+				extractSignaturesFromHeader(authorizationHeader);
+
+			if (!origin || !key || !signature) {
+				this.logger.warn('Missing required fields in X-Matrix header');
+				return;
+			}
 
 			if (destination && destination !== this.configService.serverName) {
-				return {
-					valid: false,
-					error: 'Request destination does not match this server',
-				};
+				this.logger.warn(
+					`Request destination ${destination} does not match server name ${this.configService.serverName}`,
+				);
+				return;
 			}
 
 			const [algorithm] = key.split(':');
 			if (algorithm !== 'ed25519') {
-				return {
-					valid: false,
-					error: `Unsupported signature algorithm: ${algorithm}`,
-				};
+				this.logger.warn(`Unsupported key algorithm: ${algorithm}`);
+				return;
 			}
 
 			const publicKey =
@@ -160,134 +148,224 @@ export class EventAuthorizationService {
 					key,
 				);
 			if (!publicKey) {
-				return {
-					valid: false,
-					error: 'Could not fetch server signing key',
-				};
+				this.logger.warn(`Could not fetch public key for ${origin}:${key}`);
+				return;
 			}
 
 			const isValid = await validateAuthorizationHeader(
 				origin,
 				publicKey.verify_keys[key].key,
 				destination || this.configService.serverName,
-				request.method,
-				request.uri,
+				method,
+				uri,
 				signature,
-				request.body as object,
+				body,
 			);
-
 			if (!isValid) {
-				return {
-					valid: false,
-					error: 'Invalid signature',
-				};
+				this.logger.warn(`Invalid signature from ${origin}`);
+				return;
 			}
 
-			return {
-				valid: true,
-				serverName: origin,
-			};
+			return origin;
 		} catch (error) {
-			return {
-				valid: false,
-				error:
-					error instanceof Error ? error.message : 'Failed to verify signature',
-			};
+			this.logger.error(
+				{ error, method, uri, authorizationHeader, body },
+				'Error verifying request signature',
+			);
+			return;
 		}
 	}
 
-	public async canAccessEvent(
+	private async canAccessEvent(
 		eventId: string,
 		serverName: string,
-	): Promise<
-		| {
-				authorized: true;
-		  }
-		| {
-				authorized: false;
-				reason: string;
-				errorCode: string;
-		  }
-	> {
+	): Promise<boolean> {
 		try {
 			const event = await this.eventService.getEventById(eventId);
 			if (!event) {
-				return {
-					authorized: false,
-					reason: 'Event not found',
-					errorCode: 'M_NOT_FOUND',
-				};
+				this.logger.debug(`Event ${eventId} not found`);
+				return false;
 			}
 
 			const roomId = event.event.room_id;
 
+			const isServerAllowed = await this.checkServerAcl(roomId, serverName);
+			if (!isServerAllowed) {
+				this.logger.warn(
+					`Server ${serverName} is denied by room ACL for room ${roomId}`,
+				);
+				return false;
+			}
+
 			const serversInRoom = await this.stateService.getServersInRoom(roomId);
 			if (serversInRoom.includes(serverName)) {
-				return { authorized: true };
+				this.logger.debug(`Server ${serverName} is in room, allowing access`);
+				return true;
 			}
 
 			const roomState = await this.stateService.getFullRoomState(roomId);
-			// for (const [, stateEvent] of roomState) {
-			// 	if (stateEvent.type === 'm.room.history_visibility') {
-			// 		const content = stateEvent.getContent();
-			// 		if (content?.history_visibility === 'world_readable') {
-			// 			return { authorized: true };
-			// 		}
-			// 		break;
-			// 	}
-			// }
-
-			// For restricted visibility, check if server had access at event times
-			const joinRules = this.getJoinRules(roomState);
-			if (joinRules === 'public') {
-				// Public rooms with non-world_readable visibility still require membership
-				return {
-					authorized: false,
-					reason: 'Server is not a member of this room',
-					errorCode: 'M_FORBIDDEN',
-				};
+			const historyVisibility = this.getHistoryVisibility(roomState);
+			if (historyVisibility === 'world_readable') {
+				this.logger.debug(
+					`Event ${eventId} is world_readable, allowing ${serverName}`,
+				);
+				return true;
 			}
 
-			// For invite-only rooms, check historical membership
-			const stateAtEvent =
-				await this.stateService.findStateBeforeEvent(eventId);
-			for (const [, stateEvent] of stateAtEvent) {
-				if (stateEvent.type === 'm.room.member') {
-					const content = stateEvent.getContent() as RoomMemberEvent['content'];
-					if (
-						content?.membership === 'join' &&
-						stateEvent.stateKey?.split(':')[1] === serverName
-					) {
-						return { authorized: true };
-					}
-				}
-			}
-
-			return {
-				authorized: false,
-				reason: 'Server does not have access to this event',
-				errorCode: 'M_FORBIDDEN',
-			};
+			this.logger.debug(
+				`Server ${serverName} not authorized: not in room and event not world_readable`,
+			);
+			return false;
 		} catch (error) {
 			this.logger.error(
 				{ error, eventId, serverName },
 				'Error checking event access',
 			);
+			return false;
+		}
+	}
+
+	private getHistoryVisibility(roomState: Map<any, any>): string {
+		for (const [, stateEvent] of roomState) {
+			if (stateEvent.type === 'm.room.history_visibility') {
+				const content = stateEvent.getContent() as {
+					history_visibility?: string;
+				};
+				return content?.history_visibility || 'joined';
+			}
+		}
+		return 'joined'; // default per Matrix spec
+	}
+
+	async canAccessEventFromAuthorizationHeader(
+		eventId: string,
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
+	): Promise<
+		| { authorized: true }
+		| {
+				authorized: false;
+				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
+		  }
+	> {
+		try {
+			const signatureResult = await this.verifyRequestSignature(
+				method,
+				uri,
+				authorizationHeader,
+				body, // keep body due to canonical json validation
+			);
+			if (!signatureResult) {
+				return {
+					authorized: false,
+					errorCode: 'M_UNAUTHORIZED',
+				};
+			}
+
+			const authorized = await this.canAccessEvent(eventId, signatureResult);
+			if (!authorized) {
+				return {
+					authorized: false,
+					errorCode: 'M_FORBIDDEN',
+				};
+			}
+
+			return {
+				authorized: true,
+			};
+		} catch (error) {
+			this.logger.error(
+				{ error, eventId, authorizationHeader, method, uri, body },
+				'Error checking event access',
+			);
 			return {
 				authorized: false,
-				reason: 'Internal error checking authorization',
 				errorCode: 'M_UNKNOWN',
 			};
 		}
 	}
 
-	private getJoinRules(roomState: State): JoinRule {
-		for (const [, event] of roomState) {
-			if (event.type === 'm.room.join_rules') {
-				return event.getContent<RoomJoinRulesEvent['content']>().join_rule;
+	// as per Matrix spec: https://spec.matrix.org/v1.15/client-server-api/#mroomserver_acl
+	private async checkServerAcl(
+		roomId: string,
+		serverName: string,
+	): Promise<boolean> {
+		const [serverAcl] = await this.stateService.getStateEventsByType(
+			roomId,
+			'm.room.server_acl',
+		);
+		if (!serverAcl) {
+			return true;
+		}
+
+		const serverAclContent = serverAcl.getContent() as {
+			allow?: string[];
+			deny?: string[];
+			allow_ip_literals?: boolean;
+		};
+		const {
+			allow = [],
+			deny = [],
+			allow_ip_literals = true,
+		} = serverAclContent;
+
+		const isIpLiteral =
+			/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(serverName) ||
+			/^\[.*\](:\d+)?$/.test(serverName); // IPv6
+		if (isIpLiteral && !allow_ip_literals) {
+			this.logger.debug(`Server ${serverName} denied: IP literals not allowed`);
+			return false;
+		}
+
+		for (const pattern of deny) {
+			if (this.matchesServerPattern(serverName, pattern)) {
+				this.logger.debug(
+					`Server ${serverName} matches deny pattern: ${pattern}`,
+				);
+				return false;
 			}
 		}
 
-		return 'invite';
+		// if allow list is empty, deny all servers (as per Matrix spec)
+		// empty allow list means no servers are allowed
+		if (allow.length === 0) {
+			this.logger.debug(`Server ${serverName} denied: allow list is empty`);
+			return false;
+		}
+
+		for (const pattern of allow) {
+			if (this.matchesServerPattern(serverName, pattern)) {
+				this.logger.debug(
+					`Server ${serverName} matches allow pattern: ${pattern}`,
+				);
+				return true;
+			}
+		}
+
+		this.logger.debug(`Server ${serverName} not in allow list`);
+		return false;
+	}
+
+	private matchesServerPattern(serverName: string, pattern: string): boolean {
+		if (serverName === pattern) {
+			return true;
+		}
+
+		let regexPattern = pattern
+			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+			.replace(/\*/g, '.*')
+			.replace(/\?/g, '.');
+
+		regexPattern = `^${regexPattern}$`;
+
+		try {
+			const regex = new RegExp(regexPattern);
+			return regex.test(serverName);
+		} catch (error) {
+			this.logger.warn(`Invalid ACL pattern: ${pattern}`, error);
+			return false;
+		}
 	}
 }
