@@ -594,9 +594,21 @@ export class StateService {
 				this._getStore(currentLatestState.version),
 			);
 
+			console.log('newState', [...newState.entries()]);
+
 			oldState.clear(); // aggressively clean the object, don't need this anymore
 
 			this.logState('new resolved state', newState);
+
+			for (const stateKey of latestStateMappings.keys()) {
+				if (!newState.has(stateKey as StateMapKey)) {
+					// state entry in our current latest state is not in the new state, means it was removed
+					// while it SHOULD be always append, in case of old events rebuilding the graph, some events from the old state can get rejected now.
+					// this way, the previous state for all the entries this point forward will mark the event as removed.
+					// old state can still have the event, but that does not matter since the final say in whether an event is processed or not is mmade the current state
+					latestStateMappings.delete(stateKey);
+				}
+			}
 
 			// TODO: this should 100% happen inside a transaction
 			for (const [stateKey, newEvent] of newState) {

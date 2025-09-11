@@ -196,7 +196,7 @@ export async function resolveStateV2Plus(
 
 			if (
 				/* authEvent is conflicted */
-				// fullConflictedSet.has(authEvent.eventId) &&
+				fullConflictedSet.has(authEvent.eventId) &&
 				/* is power event */
 				isPowerEvent(authEvent) &&
 				/* it isn't in the list already */
@@ -222,11 +222,16 @@ export async function resolveStateV2Plus(
 	// 2. Apply the iterative auth checks algorithm, starting from the unconflicted state map, to the list of events from the previous step to get a partially resolved state.
 	const initialState = new Map<StateMapKey, PersistentEventBase>();
 	for (const [key, eventId] of unconflicted) {
+		if (fullConflictedSet.has(eventId)) {
+			continue;
+		}
 		// self explanatory
 		const [event] = await wrappedStore.getEvents([eventId]);
 		assert(event, `event should not be null ${eventId}`);
 		initialState.set(key, event);
 	}
+
+	console.log('initial state', [...initialState.entries()]);
 
 	// we have all the power events by their preference
 	// with the initialState i.e. the unconflicted state, as reference
@@ -235,22 +240,22 @@ export async function resolveStateV2Plus(
 	// so subsequent event validation will be biased by the earlier events.
 	// why kahns' algorithm matters :)
 	const partiallyResolvedState = await iterativeAuthChecks(
-		(
-			await Promise.all(
-				sortedPowerEvents.map(
-					(e) => wrappedStore.getEvents([e]), // FIXME:
-				),
-			)
-		).flat(),
+		await wrappedStore.getEvents(sortedPowerEvents),
 		initialState,
 		wrappedStore,
 	);
+
+	console.log('partially resolved state', [
+		...partiallyResolvedState.entries(),
+	]);
 
 	// 3. Take all remaining events that weren’t picked in step 1 and order them by the mainline ordering based on the power level in the partially resolved state obtained in step 2.
 	const remainingEvents = fullConflictedSet
 		.values()
 		.filter((e) => !sortedPowerEvents.includes(e))
 		.toArray();
+
+	console.log('remaining events', remainingEvents);
 
 	// ^^ non power events, since we should have power events figured out already, i.e. having single resolved power level event, single resolved join rules event, etc.
 	// we can validate if the rest of the events are "allowed" or not

@@ -11,6 +11,7 @@ import {
 	PduPowerLevelsEventContent,
 	PduRoomNameEventContent,
 	PersistentEventFactory,
+	RoomState,
 	RoomVersion,
 } from '@hs/room';
 
@@ -540,11 +541,74 @@ describe('StateService', async () => {
 			newRoomNameEvent.eventId,
 		); // before this event, the room name should be the old one
 
-		console.log('state', [...state.entries()]);
-
 		expect(
 			state.get('m.room.name:')?.getContent<PduRoomNameEventContent>().name,
 		).toBe(roomNameEvent.getContent<PduRoomNameEventContent>().name);
+	});
+
+	it('should fix state in case of older event arriving late (2)', async () => {
+		const { roomCreateEvent } = await createRoom('public');
+
+		// add a user
+		const bob = '@bob:example.com';
+		await joinUser(roomCreateEvent.roomId, bob);
+
+		const diego = '@diego:example.com';
+		await joinUser(roomCreateEvent.roomId, diego);
+
+		const joinRuleInvite = PersistentEventFactory.newJoinRuleEvent(
+			roomCreateEvent.roomId,
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
+			'invite',
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		// we will NOT fill or send the event yet.
+
+		const randomUser1 = '@random1:example.com';
+		const randomUserJoinEvent = await joinUser(
+			roomCreateEvent.roomId,
+			randomUser1,
+		);
+
+		const randomUser2 = '@random2:example.com';
+		await joinUser(roomCreateEvent.roomId, randomUser2);
+
+		const state1 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
+
+		expect(state1.isUserInRoom(randomUser1)).toBe(true);
+		expect(state1.isUserInRoom(randomUser2)).toBe(true);
+
+		// join rule was changed before randomuser joined
+		const store = stateService._getStore(state1.version);
+
+		const previousEventsForJoinRUle =
+			await randomUserJoinEvent.getPreviousEvents(store);
+		previousEventsForJoinRUle.forEach((e) =>
+			joinRuleInvite.addPreviousEvent(e),
+		);
+
+		// while the join doesn't affect the auth events for joinrule, still doing it this way as an example for the correct way
+		const stateBeforeRandomUserJoin = await stateService.findStateBeforeEvent(
+			randomUserJoinEvent.eventId,
+		);
+		for (const requiredAuthEvent of joinRuleInvite.getAuthEventStateKeys()) {
+			const authEvent = stateBeforeRandomUserJoin.get(requiredAuthEvent);
+			if (authEvent) {
+				joinRuleInvite.authedBy(authEvent);
+			}
+		}
+
+		await stateService.persistStateEvent(joinRuleInvite);
+
+		const _state2 = await stateService.findStateAtEvent(joinRuleInvite.eventId);
+
+		const state2 = new RoomState(_state2);
+
+		console.log('state', [..._state2.entries()]);
+
+		expect(state2.isUserInRoom(randomUser1)).toBe(false);
+		expect(state2.isUserInRoom(randomUser2)).toBe(false);
 	});
 
 	test.todo('rejected events', async () => {});

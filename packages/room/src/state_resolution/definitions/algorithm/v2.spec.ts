@@ -237,17 +237,17 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 					(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)!.event_id)!,
 				)
 				.toArray();
-			for (const state of states) {
-				for (const [key, pdu] of (
-					state as Map<string, PersistentEventBase>
-				).entries()) {
-					if (pdu.isMembershipEvent()) {
-						// we delete this and see if algo still succeeds
-						state.delete(key);
-						// 2 failed
-					}
-				}
-			}
+			// for (const state of states) {
+			// 	for (const [key, pdu] of (
+			// 		state as Map<string, PersistentEventBase>
+			// 	).entries()) {
+			// 		if (pdu.isMembershipEvent()) {
+			// 			// we delete this and see if algo still succeeds
+			// 			state.delete(key);
+			// 			// 2 failed
+			// 		}
+			// 	}
+			// }
 			stateBefore = await resolveStateV2Plus(states, eventStore);
 		}
 
