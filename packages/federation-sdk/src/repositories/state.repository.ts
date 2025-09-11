@@ -51,6 +51,12 @@ export class StateRepository {
 		return this.collection.find({ roomId }).sort({ createdAt: 1 });
 	}
 
+	getStateIds(stateIds: string[]): FindCursor<WithId<StateStore>> {
+		const objectIds = stateIds.map((id) => new ObjectId(id));
+		const filter: Filter<WithId<StateStore>> = { _id: { $in: objectIds } };
+		return this.collection.find(filter);
+	}
+
 	getStateMappingsByStateIdsOrdered(
 		stateIds: string[],
 	): FindCursor<WithId<StateStore>> {

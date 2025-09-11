@@ -455,5 +455,97 @@ describe('StateService', async () => {
 		); // should set the state to right versions
 	});
 
+	it('should not inifinitely append to prevStateIds but replace with the new state event being accepted for current state delta', async () => {
+		const { roomCreateEvent, roomNameEvent } = await createRoom('public');
+
+		const newUser = '@bob:example.com';
+
+		await joinUser(roomCreateEvent.roomId, newUser);
+
+		// each delta will point to the previous one, thus if we immediately leave, the previous state ids will NOT include the join state becuase the previous state itself is join state.
+		// so we leave and rejoin to add a membership state in the list
+		// any other state event will do as well, i just had these helper functions ready
+
+		await leaveUser(roomCreateEvent.roomId, newUser);
+
+		const mapping1 = await stateRepository.getLatestStateMapping(
+			roomCreateEvent.roomId,
+		);
+
+		if (!mapping1) {
+			throw new Error('No state mapping found');
+		}
+
+		await joinUser(roomCreateEvent.roomId, newUser);
+
+		const mapping2 = await stateRepository.getLatestStateMapping(
+			roomCreateEvent.roomId,
+		);
+
+		if (!mapping2) {
+			throw new Error('No state mapping found');
+		}
+
+		expect(mapping1.prevStateIds.length).toBe(mapping2.prevStateIds.length);
+
+		// a bunch of times
+		await leaveUser(roomCreateEvent.roomId, newUser);
+		await joinUser(roomCreateEvent.roomId, newUser);
+		await leaveUser(roomCreateEvent.roomId, newUser);
+		await joinUser(roomCreateEvent.roomId, newUser);
+		await leaveUser(roomCreateEvent.roomId, newUser);
+		await joinUser(roomCreateEvent.roomId, newUser);
+		await leaveUser(roomCreateEvent.roomId, newUser);
+		await joinUser(roomCreateEvent.roomId, newUser);
+
+		const mapping3 = await stateRepository.getLatestStateMapping(
+			roomCreateEvent.roomId,
+		);
+
+		if (!mapping3) {
+			throw new Error('No state mapping found');
+		}
+
+		// prev ids will not grow indefinitely for any membership changes
+		expect(mapping1.prevStateIds.length).toBe(mapping3.prevStateIds.length);
+
+		// add a new room name now to see if it still holds for other event types
+		const newRoomNameEvent = PersistentEventFactory.newRoomNameEvent(
+			roomCreateEvent.roomId,
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
+			'New Room Name',
+			PersistentEventFactory.defaultRoomVersion,
+		);
+
+		await Promise.all([
+			stateService.addAuthEvents(newRoomNameEvent),
+			stateService.addPrevEvents(newRoomNameEvent),
+		]);
+
+		await stateService.persistStateEvent(newRoomNameEvent);
+
+		const mapping4 = await stateRepository.getLatestStateMapping(
+			roomCreateEvent.roomId,
+		);
+
+		if (!mapping4) {
+			throw new Error('No state mapping found');
+		}
+
+		// because state should already have a room name event;
+		expect(mapping1.prevStateIds.length).toBe(mapping4.prevStateIds.length);
+
+		// however must also make sure we can get the older state correctly
+		const state = await stateService.findStateBeforeEvent(
+			newRoomNameEvent.eventId,
+		); // before this event, the room name should be the old one
+
+		console.log('state', [...state.entries()]);
+
+		expect(
+			state.get('m.room.name:')?.getContent<PduRoomNameEventContent>().name,
+		).toBe(roomNameEvent.getContent<PduRoomNameEventContent>().name);
+	});
+
 	test.todo('rejected events', async () => {});
 });

@@ -383,7 +383,7 @@ export class StateService {
 		return state;
 	}
 
-	async getLatestStateIdAndPreviousStateIds(event: PersistentEventBase) {
+	async getLatestStateIdAndPreviousStateIdsForRoom(event: PersistentEventBase) {
 		const currentLatestStateMapping =
 			await this.stateRepository.getLatestStateMapping(event.roomId);
 		if (!currentLatestStateMapping) {
@@ -396,9 +396,26 @@ export class StateService {
 			);
 		}
 
+		const eventTypeToStateIdMap = new Map<string, string>([
+			[
+				currentLatestStateMapping.delta.identifier,
+				currentLatestStateMapping._id.toString(),
+			],
+		]);
+
+		const stateMappings = await this.stateRepository.getStateIds(
+			currentLatestStateMapping.prevStateIds,
+		);
+		for await (const stateMapping of stateMappings) {
+			eventTypeToStateIdMap.set(
+				stateMapping.delta.identifier,
+				stateMapping._id.toString(),
+			);
+		}
+
 		return {
-			stateId: currentLatestStateMapping._id.toString(),
-			prevStateIds: currentLatestStateMapping.prevStateIds,
+			latestStateId: currentLatestStateMapping._id.toString(),
+			latestStateMappings: eventTypeToStateIdMap,
 		};
 	}
 
@@ -528,8 +545,8 @@ export class StateService {
 		}
 
 		// we jus want one, no need to compare full state
-		const { stateId: latestStateId, prevStateIds } =
-			await this.getLatestStateIdAndPreviousStateIds(event);
+		const { latestStateId, latestStateMappings } =
+			await this.getLatestStateIdAndPreviousStateIdsForRoom(event);
 
 		// since there is NO gurantee on how prev_events are calculated, we can not check if ours and theirs are the same. They can very well not be.
 		// instead since all events have a state and state itself is linear, we check what state we have for a set of "prev_events", if it differs from our current latest state, means we have different branches and we need to calculate state.
@@ -581,8 +598,6 @@ export class StateService {
 
 			this.logState('new resolved state', newState);
 
-			const previousStateIds = prevStateIds.concat(latestStateId.toString());
-
 			// TODO: this should 100% happen inside a transaction
 			for (const [stateKey, newEvent] of newState) {
 				const currentEvent = currentLatestState.__map.get(stateKey);
@@ -601,10 +616,14 @@ export class StateService {
 				const { insertedId: newStateId } =
 					await this.stateRepository.createStateMapping(
 						newEvent,
-						previousStateIds,
+						latestStateMappings.values().toArray(),
 					);
 
-				previousStateIds.push(newStateId.toString());
+				// for the next delta to be saved, the previous state must have this current state id
+				latestStateMappings.set(
+					newEvent.getUniqueStateIdentifier(),
+					newStateId.toString(),
+				);
 
 				this.logger.debug(
 					{ stateKey, eventId: newEvent.eventId, newStateId },
@@ -647,11 +666,11 @@ export class StateService {
 			throw error;
 		}
 
-		// here so it passed
-		const previousStateIds = prevStateIds.concat(latestStateId.toString());
-
 		const { insertedId: newStateId } =
-			await this.stateRepository.createStateMapping(event, previousStateIds);
+			await this.stateRepository.createStateMapping(
+				event,
+				latestStateMappings.values().toArray(),
+			);
 
 		await this.eventRepository.create(
 			event.event as any,
