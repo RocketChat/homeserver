@@ -153,9 +153,6 @@ export class ProfilesService {
 
 			// Extract state event IDs and collect auth chain IDs
 			for (const [, event] of state.entries()) {
-				if (!(event && typeof event === 'object' && 'eventId' in event)) {
-					throw new Error('Event is not a PersistentEventBase');
-				}
 				// PersistentEventBase has an eventId getter
 				pduIds.push(event.eventId);
 
