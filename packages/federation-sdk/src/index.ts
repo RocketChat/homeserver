@@ -6,6 +6,7 @@ import { EventAuthorizationService } from './services/event-authorization.servic
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
+import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
@@ -45,6 +46,7 @@ export { EventFetcherService } from './services/event-fetcher.service';
 export type { FetchedEvents } from './services/event-fetcher.service';
 export { InviteService } from './services/invite.service';
 export type { ProcessInviteEvent } from './services/invite.service';
+export { MediaService } from './services/media.service';
 export { MessageService } from './services/message.service';
 export { EventService } from './services/event.service';
 export { RoomService } from './services/room.service';
@@ -95,6 +97,7 @@ export { StateRepository } from './repositories/state.repository';
 export interface HomeserverServices {
 	room: RoomService;
 	message: MessageService;
+	media: MediaService;
 	event: EventService;
 	invite: InviteService;
 	wellKnown: WellKnownService;
@@ -219,6 +222,7 @@ export function getAllServices(): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),
 		message: container.resolve(MessageService),
+		media: container.resolve(MediaService),
 		event: container.resolve(EventService),
 		invite: container.resolve(InviteService),
 		wellKnown: container.resolve(WellKnownService),

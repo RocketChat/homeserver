@@ -180,4 +180,61 @@ export class FederationRequestService {
 	): Promise<T> {
 		return this.request<T>('POST', targetServer, endpoint, body, queryParams);
 	}
+
+	async prepareSignedRequest(
+		targetServer: string,
+		endpoint: string,
+		method: string,
+		body?: Record<string, unknown>,
+	): Promise<{ url: URL; headers: Record<string, string> }> {
+		const serverName = this.configService.serverName;
+		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
+		const signingKeyId = await this.configService.getSigningKeyId();
+		const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
+		const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
+
+		const signingKey: SigningKey = {
+			algorithm: EncryptionValidAlgorithm.ed25519,
+			version: signingKeyId.split(':')[1] || '1',
+			privateKey: keyPair.secretKey,
+			publicKey: keyPair.publicKey,
+			sign: async (data: Uint8Array) =>
+				nacl.sign.detached(data, keyPair.secretKey),
+		};
+
+		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
+			targetServer,
+			this.logger,
+		);
+
+		const url = new URL(`${address}${endpoint}`);
+
+		let signedBody: Record<string, unknown> | undefined;
+		if (body) {
+			signedBody = await signJson(
+				body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
+				signingKey,
+				serverName,
+			);
+		}
+
+		const auth = await authorizationHeaders(
+			serverName,
+			signingKey,
+			targetServer,
+			method,
+			extractURIfromURL(url),
+			signedBody,
+		);
+
+		return {
+			url,
+			headers: {
+				Authorization: auth,
+				'User-Agent': 'Rocket.Chat Federation',
+				'Content-Type': 'application/json',
+				...discoveryHeaders,
+			},
+		};
+	}
 }
