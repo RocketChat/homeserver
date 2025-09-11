@@ -6,7 +6,11 @@ import { EventRepository } from '../repositories/event.repository';
 import { type WithId } from 'mongodb';
 import { type EventStore } from '@hs/core';
 import { StateService } from './state.service';
-import { PduCreateEventContent, PersistentEventFactory } from '@hs/room';
+import {
+	PduCreateEventContent,
+	PersistentEventFactory,
+	RoomVersion,
+} from '@hs/room';
 
 describe('StateService', async () => {
 	if (process.env.NODE_ENV !== 'test') {
@@ -138,11 +142,20 @@ describe('StateService', async () => {
 
 		await stateService.persistStateEvent(canonicalAliasEvent);
 
-		return roomCreateEvent;
+		return {
+			roomCreateEvent,
+			joinRuleEvent,
+			powerLevelEvent,
+			creatorMembershipEvent,
+			roomNameEvent,
+			canonicalAliasEvent,
+		};
 	};
 
 	it('should create a room successfully', async () => {
-		const { roomId } = await createRoom('public');
+		const {
+			roomCreateEvent: { roomId },
+		} = await createRoom('public');
 		expect(roomId).toBeDefined();
 		return expect(
 			stateService.getFullRoomState2(roomId),
@@ -150,7 +163,7 @@ describe('StateService', async () => {
 	});
 
 	it('should successfully have a user join the room', async () => {
-		const roomCreateEvent = await createRoom('public');
+		const { roomCreateEvent } = await createRoom('public');
 		const newUser = '@bob:example.com';
 		const membershipEvent = PersistentEventFactory.newMembershipEvent(
 			roomCreateEvent.roomId,
@@ -172,7 +185,7 @@ describe('StateService', async () => {
 	});
 
 	it('should have a user leave the room successfully', async () => {
-		const roomCreateEvent = await createRoom('public');
+		const { roomCreateEvent } = await createRoom('public');
 		const newUser = '@bob:example.com';
 		const membershipEventJoin = PersistentEventFactory.newMembershipEvent(
 			roomCreateEvent.roomId,
@@ -209,7 +222,7 @@ describe('StateService', async () => {
 	});
 
 	it('should not allow joining if room is invite only', async () => {
-		const roomCreateEvent = await createRoom('invite');
+		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com';
 		const membershipEvent = PersistentEventFactory.newMembershipEvent(
 			roomCreateEvent.roomId,
@@ -230,7 +243,7 @@ describe('StateService', async () => {
 	});
 
 	it('should allow joining if invited in invite only room', async () => {
-		const roomCreateEvent = await createRoom('invite');
+		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com';
 		const membershipEventInvite = PersistentEventFactory.newMembershipEvent(
 			roomCreateEvent.roomId,
@@ -273,7 +286,7 @@ describe('StateService', async () => {
 	});
 
 	test.todo('should not allow joining if banned', async () => {
-		const roomCreateEvent = await createRoom('public');
+		const { roomCreateEvent } = await createRoom('public');
 		const newUser = '@bob:example.com';
 		// join first
 		const membershipEventJoin = PersistentEventFactory.newMembershipEvent(
@@ -336,7 +349,78 @@ describe('StateService', async () => {
 		).rejects.toThrowError();
 	});
 
-	test.todo('soft fail events', async () => {});
+	it('should soft fail events', async () => {
+		const { roomCreateEvent } = await createRoom('public');
+
+		// add a user
+		const bob = '@bob:example.com';
+		const bobJoinEvent = PersistentEventFactory.newMembershipEvent(
+			roomCreateEvent.roomId,
+			bob,
+			bob,
+			'join',
+			roomCreateEvent.getContent<PduCreateEventContent>(),
+		);
+
+		await Promise.all([
+			stateService.addAuthEvents(bobJoinEvent),
+			stateService.addPrevEvents(bobJoinEvent),
+		]);
+
+		await stateService.persistStateEvent(bobJoinEvent);
+
+		// ban bob now
+		const banBobEvent = PersistentEventFactory.newMembershipEvent(
+			roomCreateEvent.roomId,
+			roomCreateEvent.getContent<PduCreateEventContent>().creator,
+			bob,
+			'ban',
+			roomCreateEvent.getContent<PduCreateEventContent>(),
+		);
+
+		await Promise.all([
+			stateService.addAuthEvents(banBobEvent),
+			stateService.addPrevEvents(banBobEvent),
+		]);
+
+		await stateService.persistStateEvent(banBobEvent);
+
+		const state1 = await stateService.getFullRoomState2(roomCreateEvent.roomId);
+		expect(state1.getUserMembership(bob)).toBe('ban');
+
+		// now we try to make bob "leave", but set the depth manually to be before he was banned
+		// leave is a state event
+		const bobLeaveEvent = PersistentEventFactory.newMembershipEvent(
+			roomCreateEvent.roomId,
+			bob,
+			bob,
+			'leave',
+			roomCreateEvent.getContent<PduCreateEventContent>(),
+		);
+
+		const eventsBeforeBobWasBanned = await banBobEvent.getPreviousEvents(
+			stateService._getStore(
+				roomCreateEvent.getContent<PduCreateEventContent>()
+					.room_version as RoomVersion,
+			),
+		);
+		const authEventsForBobBan = await banBobEvent.getAuthorizationEvents(
+			stateService._getStore(
+				roomCreateEvent.getContent<PduCreateEventContent>()
+					.room_version as RoomVersion,
+			),
+		); // should be the same for bob
+
+		eventsBeforeBobWasBanned.forEach((element) => {
+			bobLeaveEvent.addPreviousEvent(element);
+		});
+
+		authEventsForBobBan.forEach((e) => bobLeaveEvent.authedBy(e));
+
+		await expect(
+			stateService.persistStateEvent(bobLeaveEvent),
+		).rejects.toThrowError();
+	});
 
 	test.todo('rejected events', async () => {});
 });

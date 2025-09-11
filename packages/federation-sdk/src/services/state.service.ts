@@ -375,12 +375,134 @@ export class StateService {
 		return event;
 	}
 
-	// checks for conflicts, saves the event along with the new state
-	async persistStateEvent(event: PersistentEventBase): Promise<void> {
-		if (!event.isState()) {
-			throw new Error('Only state events can be persisted with this method');
+	private toStateMap(events: PersistentEventBase[]): State {
+		const state = new Map<StateMapKey, PersistentEventBase>();
+		for (const event of events) {
+			state.set(event.getUniqueStateIdentifier(), event);
+		}
+		return state;
+	}
+
+	async getLatestStateIdAndPreviousStateIds(event: PersistentEventBase) {
+		const currentLatestStateMapping =
+			await this.stateRepository.getLatestStateMapping(event.roomId);
+		if (!currentLatestStateMapping) {
+			this.logger.debug(
+				{ event: event.event, eventId: event.eventId },
+				'no state yet, we should likely handle a requeue for this',
+			);
+			throw new Error(
+				'No state mapping found for room, cannot persist state event',
+			);
 		}
 
+		return {
+			stateId: currentLatestStateMapping._id.toString(),
+			prevStateIds: currentLatestStateMapping.prevStateIds,
+		};
+	}
+
+	async getLatestStateIdForEventIds(eventIds: string[]) {
+		// FIXME: once gazzo's pr merges, we will not need this
+		const events = await this.eventRepository.findByIds(eventIds).toArray();
+		if (events.length !== eventIds.length) {
+			this.logger.debug(
+				{ eventIds, found: events.length },
+				'some events not found when trying to get latest state id for event ids',
+			);
+			throw new Error(
+				'Some events not found when trying to get state id for those',
+			);
+			// breaking because we will not process an event with missing previous event
+			// we do not support partial state, so this shouldn't happen
+		}
+
+		return (
+			(await this.eventRepository.getLatestStateIdForEventIds(eventIds)) ?? ''
+		);
+	}
+
+	async getStateAtStateId(stateId: string) {
+		const oldStateMapping = await this.stateRepository.getStateById(stateId);
+		if (!oldStateMapping) {
+			throw new Error('Old state not found, cannot persist state event');
+		}
+
+		return this.findStateAtEvent(oldStateMapping.delta.eventId);
+	}
+
+	// handle received pdu from transaction
+	// implements spec:https://spec.matrix.org/v1.12/server-server-api/#checks-performed-on-receipt-of-a-pdu
+	// TODO: this is not state related, can and should accept timeline events too, move to event service?
+	async handlePdu(event: PersistentEventBase): Promise<void> {
+		// TODO: 1. Is a valid event, otherwise it is dropped. For an event to be valid, it must contain a room_id, and it must comply with the event format of that room version.
+		// 2. Passes signature checks, otherwise it is dropped.
+		// ^ done someplace else. move here? TODO:
+		// 3. Passes hash checks, otherwise it is redacted before being processed further. same as 2
+		// 4. Passes authorization rules based on the event’s auth events, otherwise it is rejected.
+
+		const roomVersion = await this.getRoomVersion(event.roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found while handling pdu');
+		}
+
+		const authEvents = await event.getAuthorizationEvents(
+			this._getStore(roomVersion),
+		);
+
+		await checkEventAuthWithState(
+			event,
+			this.toStateMap(authEvents),
+			this._getStore(roomVersion),
+		);
+
+		// 5. Passes authorization rules based on the state before the event, otherwise it is rejected.
+		// TODO: don't need full state, just auth events, should be easy to direct query those.
+		const stateAtReceivedEvent = await this.findStateBeforeEvent(event.eventId);
+
+		// if this set of auth events are the same as the one in the event itself, we can skip the check altogether
+		const authEventIdsInState = new Set();
+		for (const authEventType of event.getAuthEventStateKeys()) {
+			const authEvent = stateAtReceivedEvent.get(authEventType);
+			if (authEvent) {
+				authEventIdsInState.add(authEvent.eventId);
+			}
+		}
+
+		const authEventIdsInEvent = new Set(event.event.auth_events as string[]);
+
+		if (
+			authEventIdsInEvent.size !== authEventIdsInState.size ||
+			authEventIdsInEvent.difference(authEventIdsInState).size !== 0
+		) {
+			// diff auth events, check against this state
+			await checkEventAuthWithState(
+				event,
+				stateAtReceivedEvent,
+				this._getStore(roomVersion),
+			);
+		}
+
+		// 6. Passes authorization rules based on the current state of the room, otherwise it is “soft failed”.
+
+		// if event already rejected, can skip soft fail check
+		// if we are here, means the event is technically "valid", in other words when the event came into existence, nothing was wrong with it, possibly we received it much later.
+		// soft fail check is about if the event even passes auth rules based on current state, if not means, again, event valid, but doesn't matter because current state doesn't allow it, something changed in between, no need to worry about it.
+		if (event.isTimelineEvent()) {
+			return this.persistTimelineEvent(event);
+		}
+
+		if (event.isState()) {
+			return this.persistStateEvent(event);
+		}
+
+		throw new Error(
+			'Unknown event type, neither state nor timeline, something is very wrong',
+		);
+	}
+
+	// checks for conflicts, saves the event along with the new state, always uses CURRENT LATEST STATE
+	async persistStateEvent(event: PersistentEventBase): Promise<void> {
 		const exists = await this.eventRepository.findById(event.eventId);
 		if (exists) {
 			this.logger.debug(
@@ -406,22 +528,16 @@ export class StateService {
 		}
 
 		// we jus want one, no need to compare full state
-		const currentLatestStateMapping =
-			await this.stateRepository.getLatestStateMapping(event.roomId);
-		if (!currentLatestStateMapping) {
-			this.logger.debug(
-				{ event: event.event, eventId: event.eventId },
-				'no state yet, we should likely handle a requeue for this',
-			);
-			throw new Error(
-				'No state mapping found for room, cannot persist state event',
-			);
-		}
+		const { stateId: latestStateId, prevStateIds } =
+			await this.getLatestStateIdAndPreviousStateIds(event);
+
+		// since there is NO gurantee on how prev_events are calculated, we can not check if ours and theirs are the same. They can very well not be.
+		// instead since all events have a state and state itself is linear, we check what state we have for a set of "prev_events", if it differs from our current latest state, means we have different branches and we need to calculate state.
 
 		// 1. take all the previous events from this event
 		// 2. grab them but in the order they were saved
 		// 3. take just the state id of the latest one from there, latest one of the prev_events should have the latest state
-		const stateId = await this.eventRepository.getLatestStateIdForEventIds(
+		const stateId = await this.getLatestStateIdForEventIds(
 			event.event.prev_events,
 		);
 		if (!stateId) {
@@ -437,21 +553,14 @@ export class StateService {
 		this.logger.debug(
 			{
 				stateIdForIncomingEvent: stateId,
-				latestStateId: currentLatestStateMapping._id.toString(),
+				latestStateId: latestStateId,
 			},
 			'state ids',
 		);
 
-		if (stateId !== currentLatestStateMapping._id.toString()) {
+		if (stateId !== latestStateId) {
 			// this is an old event we just received, state resolution needs to happen now
-			const oldStateMapping = await this.stateRepository.getStateById(stateId);
-			if (!oldStateMapping) {
-				throw new Error('Old state not found, cannot persist state event');
-			}
-
-			const oldState = await this.findStateAtEvent(
-				oldStateMapping.delta.eventId,
-			);
+			const oldState = await this.getStateAtStateId(stateId);
 
 			const currentLatestState = await this.getFullRoomState2(event.roomId);
 
@@ -469,9 +578,7 @@ export class StateService {
 
 			this.logState('new resolved state', newState);
 
-			const previousStateIds = currentLatestStateMapping.prevStateIds.concat(
-				currentLatestStateMapping._id.toString(),
-			);
+			const previousStateIds = prevStateIds.concat(latestStateId);
 
 			// TODO: this should 100% happen inside a transaction
 			for (const [stateKey, newEvent] of newState) {
@@ -525,16 +632,20 @@ export class StateService {
 		this.logState('current state', currentLatestState.__map);
 
 		// TODO: handle the erros and save the rejected events too
-		await checkEventAuthWithState(
-			event,
-			currentLatestState.__map,
-			this._getStore(currentLatestState.version),
-		);
+		try {
+			await checkEventAuthWithState(
+				event,
+				currentLatestState.__map,
+				this._getStore(currentLatestState.version),
+			);
+		} catch (error) {
+			// rejected against current state, soft fail the event
+			this.logger.info({ event: event.event, error }, 'event soft failed');
+			throw error;
+		}
 
 		// here so it passed
-		const previousStateIds = currentLatestStateMapping.prevStateIds.concat(
-			currentLatestStateMapping._id.toString(),
-		);
+		const previousStateIds = prevStateIds.concat(latestStateId);
 
 		const { insertedId: newStateId } =
 			await this.stateRepository.createStateMapping(event, previousStateIds);

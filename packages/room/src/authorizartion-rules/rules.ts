@@ -818,7 +818,5 @@ export async function checkEventAuthWithState(
 		);
 	}
 
-	// TODO: redaction
-
 	// 12. otherwise allow
 }
