@@ -1,7 +1,7 @@
 import { generateId } from '@hs/core';
 import type { EventStagingStore } from '@hs/core';
 import { Pdu } from '@hs/room';
-import type { Collection, DeleteResult } from 'mongodb';
+import type { Collection, DeleteResult, UpdateResult } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 @singleton()
@@ -13,14 +13,16 @@ export class EventStagingRepository {
 		this.collection.createIndex({ roomId: 1, createdAt: 1 });
 	}
 
-	async create(origin: string, event: Pdu, eventId?: string): Promise<string> {
-		const id = eventId ?? generateId(event);
-
+	async create(
+		eventId: string,
+		origin: string,
+		event: Pdu,
+	): Promise<UpdateResult> {
 		// We use an upsert here to handle the case where we see the same event
 		// from the same server multiple times.
-		await this.collection.updateOne(
+		return await this.collection.updateOne(
 			{
-				_id: id,
+				_id: eventId,
 				origin,
 			},
 			{
@@ -36,8 +38,6 @@ export class EventStagingRepository {
 				upsert: true,
 			},
 		);
-
-		return id;
 	}
 
 	removeByEventId(eventId: string): Promise<DeleteResult> {

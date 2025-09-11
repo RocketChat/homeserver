@@ -195,7 +195,7 @@ export class EventService {
 					}
 
 					// save the event as staged to be processed
-					await this.eventStagingRepository.create(origin, event, eventId);
+					await this.eventStagingRepository.create(eventId, origin, event);
 
 					// acquire a lock for processing the event
 					const lock = await this.lockRepository.getLock(

@@ -242,16 +242,6 @@ export class EventRepository {
 		return eventId;
 	}
 
-	async updateNextEventId(
-		eventId: string,
-		prevEvents: string[],
-	): Promise<UpdateResult> {
-		return this.collection.updateMany(
-			{ _id: { $in: prevEvents } },
-			{ $set: { nextEventId: eventId } },
-		);
-	}
-
 	findMembershipEventsFromDirectMessageRooms(
 		users: string[],
 	): FindCursor<EventStore<PduForType<'m.room.member'>>> {
