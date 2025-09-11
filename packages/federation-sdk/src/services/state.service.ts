@@ -259,6 +259,17 @@ export class StateService {
 		return new RoomState(state);
 	}
 
+	async getStateEventsByType(roomId: string, type: PduType) {
+		const state = await this.getFullRoomState(roomId);
+		const events = [];
+		for (const [, event] of state) {
+			if (event.type === type) {
+				events.push(event);
+			}
+		}
+		return events;
+	}
+
 	public async getStrippedRoomState(
 		roomId: string,
 	): Promise<StrippedRoomState[]> {
