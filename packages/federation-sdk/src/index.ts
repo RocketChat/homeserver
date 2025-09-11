@@ -6,7 +6,6 @@ import { EventAuthorizationService } from './services/event-authorization.servic
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
-import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
@@ -54,7 +53,6 @@ export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
 export { MissingEventListener } from './listeners/missing-event.listener';
-export { MediaService } from './services/media.service';
 
 // Repository interfaces and implementations
 
@@ -106,7 +104,6 @@ export interface HomeserverServices {
 	server: ServerService;
 	config: ConfigService;
 	edu: EduService;
-	media: MediaService;
 	request: FederationRequestService;
 	federationAuth: EventAuthorizationService;
 }
@@ -231,7 +228,6 @@ export function getAllServices(): HomeserverServices {
 		server: container.resolve(ServerService),
 		config: container.resolve(ConfigService),
 		edu: container.resolve(EduService),
-		media: container.resolve(MediaService),
 		request: container.resolve(FederationRequestService),
 		federationAuth: container.resolve(EventAuthorizationService),
 	};
