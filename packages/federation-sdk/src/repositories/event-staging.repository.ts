@@ -20,7 +20,7 @@ export class EventStagingRepository {
 	): Promise<UpdateResult> {
 		// We use an upsert here to handle the case where we see the same event
 		// from the same server multiple times.
-		return await this.collection.updateOne(
+		return this.collection.updateOne(
 			{
 				_id: eventId,
 				origin,
