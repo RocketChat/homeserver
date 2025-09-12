@@ -133,7 +133,7 @@ export class ProfilesService {
 		eventId: string,
 	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
 		try {
-			const state = await this.stateService.findStateAtEvent(eventId);
+			const state = await this.stateService.findStateBeforeEvent(eventId);
 
 			const pduIds: string[] = [];
 			const authChainIds = new Set<string>();
@@ -189,7 +189,7 @@ export class ProfilesService {
 
 			if (eventId) {
 				// Get state at a specific event
-				state = await this.stateService.findStateAtEvent(eventId);
+				state = await this.stateService.findStateBeforeEvent(eventId);
 			} else {
 				// Get current room state
 				state = await this.stateService.getFullRoomState(roomId);
