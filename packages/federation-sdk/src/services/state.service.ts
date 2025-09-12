@@ -223,8 +223,8 @@ export class StateService {
 		includeEvent = false,
 	): Promise<State> {
 		this.logger.debug({ eventId }, 'finding state before event');
-		const event = await this.eventRepository.findById(eventId);
 
+		const event = await this.eventRepository.findById(eventId);
 		if (!event) {
 			this.logger.error({ eventId }, 'event not found');
 			throw new Error(`Event ${eventId} not found`);
@@ -247,7 +247,6 @@ export class StateService {
 			return new Map();
 		}
 
-
 		console.log('pdu ->>>', pdu.isState(), pdu.type);
 		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
 		const stateId = !pdu.isState()
@@ -257,6 +256,7 @@ export class StateService {
 		const { delta: lastStateDelta, prevStateIds = [] } =
 			(await this.stateRepository.getStateById(stateId)) ?? {};
 
+		console.log('prevStateIds ->>>', prevStateIds);
 		console.log('stateId ->>>', stateId);
 
 		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
@@ -266,28 +266,29 @@ export class StateService {
 			throw new Error(`State at event ${eventId} not found`);
 		}
 
+		const state = new Map<StateMapKey, PersistentEventBase>();
+
 		if (prevStateIds.length === 0) {
-			const state = new Map<StateMapKey, PersistentEventBase>();
-			const { identifier: stateKey, eventId: _lastStateEventId } =
-				lastStateDelta;
-			const event = await this.eventRepository.findById(eventId);
-			if (!event) {
-				throw new Error(`Event ${eventId} not found`);
+			const previous = await this.eventRepository.findById(
+				lastStateDelta.eventId,
+			);
+			if (!previous) {
+				throw new Error(`Event ${lastStateDelta.eventId} not found`);
 			}
 
 			state.set(
-				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
+				lastStateDelta.identifier,
+				PersistentEventFactory.createFromRawEvent(previous.event, roomVersion),
 			);
 
 			return state;
 		}
 
 		const stateMappings = await this.stateRepository
-			.getStateMappingsByStateIdsOrdered([...prevStateIds, stateId])
+			.getStateMappingsByStateIdsOrdered(prevStateIds)
 			.toArray();
 
-		const state = new Map<StateMapKey, PersistentEventBase>();
+		console.log('stateMappings ->', stateMappings);
 
 		for await (const { delta } of stateMappings) {
 			const { identifier: stateKey, eventId } = delta;
