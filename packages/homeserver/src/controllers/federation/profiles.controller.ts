@@ -157,7 +157,7 @@ export const profilesPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/state/:roomId',
 			({ params, query }) =>
-				profilesService.getState(params.roomId, query.event_id),
+				profilesService.getState(params.roomId, query.event_id!),
 			{
 				params: GetStateParamsDto,
 				query: GetStateQueryDto,

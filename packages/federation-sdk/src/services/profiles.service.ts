@@ -151,7 +151,7 @@ export class ProfilesService {
 			for (const [, event] of state.entries()) {
 				// PersistentEventBase has an eventId getter
 				pduIds.push(event.eventId);
-
+				console.log('event', event);
 				// Get the complete auth chain for this event
 				try {
 					const authChain = await getAuthChain(event, store);
@@ -178,7 +178,7 @@ export class ProfilesService {
 
 	async getState(
 		roomId: string,
-		eventId?: string,
+		eventId: string,
 	): Promise<{
 		pdus: Record<string, unknown>[];
 		auth_chain: Record<string, unknown>[];
@@ -187,13 +187,8 @@ export class ProfilesService {
 			let state: Map<string, any>;
 			console.log('eventId', eventId);
 
-			if (eventId) {
 				// Get state at a specific event
-				state = await this.stateService.findStateBeforeEvent(eventId);
-			} else {
-				// Get current room state
-				state = await this.stateService.getFullRoomState(roomId);
-			}
+			state = await this.stateService.findStateBeforeEvent(eventId);
 
 			const pdus: Record<string, unknown>[] = [];
 			const authChainIds = new Set<string>();
@@ -207,26 +202,23 @@ export class ProfilesService {
 			// Get the event store
 			const store = this.stateService._getStore(roomVersion);
 
+
 			// Extract state event objects and collect auth chain IDs
 			for (const [, event] of state.entries()) {
-				if (event && typeof event === 'object') {
 					// PersistentEventBase has an event getter that contains the actual event data
-					if ('event' in event) {
-						pdus.push(event.event);
-
-						// Get the complete auth chain for this event
-						try {
-							const authChain = await getAuthChain(event, store);
-							for (const authEventId of authChain) {
-								authChainIds.add(authEventId);
-							}
-						} catch (error) {
-							this.logger.warn(
-								`Failed to get auth chain for event ${event.eventId}:`,
-								error,
-							);
-						}
+				pdus.push(event.event);
+				console.log('event ->>>', event);
+				// Get the complete auth chain for this event
+				try {
+					const authChain = await getAuthChain(event, store);
+					for (const authEventId of authChain) {
+						authChainIds.add(authEventId);
 					}
+				} catch (error) {
+					this.logger.warn(
+						`Failed to get auth chain for event ${event.eventId}:`,
+						error,
+					);
 				}
 			}
 
@@ -236,9 +228,7 @@ export class ProfilesService {
 				try {
 					const authEvents = await store.getEvents(Array.from(authChainIds));
 					for (const authEvent of authEvents) {
-						if (authEvent && 'event' in authEvent) {
-							authChain.push(authEvent.event);
-						}
+						authChain.push(authEvent.event);
 					}
 				} catch (error) {
 					this.logger.warn('Failed to fetch auth event objects:', error);

@@ -6,7 +6,7 @@ export const GetStateParamsDto = t.Object({
 });
 
 export const GetStateQueryDto = t.Object({
-	event_id: t.Optional(t.String({ description: 'Event ID to get state at' })),
+	event_id: t.String({ description: 'Event ID to get state at' }),
 });
 
 export const GetStateResponseDto = t.Object({
