@@ -2,11 +2,11 @@ import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 export type Upload = {
+	rid: string;
 	federation: {
 		mxcUri: string;
 		serverName: string;
 		mediaId: string;
-		roomId: string;
 	};
 };
 
@@ -16,15 +16,11 @@ export class UploadRepository {
 		@inject('UploadCollection') private readonly collection: Collection<Upload>,
 	) {}
 
-	async findRoomIdByMediaIdAndServerName(
-		mediaId: string,
-		serverName: string,
-	): Promise<string | null> {
+	async findRocketChatRoomIdByMediaId(mediaId: string): Promise<string | null> {
 		const upload = await this.collection.findOne({
 			'federation.mediaId': mediaId,
-			'federation.serverName': serverName,
 		});
 
-		return upload?.federation.roomId || null;
+		return upload?.rid || null;
 	}
 }

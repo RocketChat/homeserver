@@ -6,6 +6,7 @@ import {
 } from '@hs/core';
 import type { Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
+import { MatrixBridgedRoomRepository } from '../repositories/matrix-bridged-room.repository';
 import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -22,6 +23,7 @@ export class EventAuthorizationService {
 		private readonly signatureVerificationService: SignatureVerificationService,
 		private readonly configService: ConfigService,
 		private readonly uploadRepository: UploadRepository,
+		private readonly matrixBridgedRoomRepository: MatrixBridgedRoomRepository,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -127,20 +129,15 @@ export class EventAuthorizationService {
 				extractSignaturesFromHeader(authorizationHeader);
 
 			if (!origin || !key || !signature) {
-				this.logger.warn('Missing required fields in X-Matrix header');
 				return;
 			}
 
 			if (destination && destination !== this.configService.serverName) {
-				this.logger.warn(
-					`Request destination ${destination} does not match server name ${this.configService.serverName}`,
-				);
 				return;
 			}
 
 			const [algorithm] = key.split(':');
 			if (algorithm !== 'ed25519') {
-				this.logger.warn(`Unsupported key algorithm: ${algorithm}`);
 				return;
 			}
 
@@ -154,10 +151,11 @@ export class EventAuthorizationService {
 				return;
 			}
 
+			const actualDestination = destination || this.configService.serverName;
 			const isValid = await validateAuthorizationHeader(
 				origin,
 				publicKey.verify_keys[key].key,
-				destination || this.configService.serverName,
+				actualDestination,
 				method,
 				uri,
 				signature,
@@ -170,10 +168,7 @@ export class EventAuthorizationService {
 
 			return origin;
 		} catch (error) {
-			this.logger.error(
-				{ error, method, uri, authorizationHeader, body },
-				'Error verifying request signature',
-			);
+			this.logger.error(error, 'Error verifying request signature');
 			return;
 		}
 	}
@@ -294,15 +289,15 @@ export class EventAuthorizationService {
 		roomId: string,
 		serverName: string,
 	): Promise<boolean> {
-		const [serverAcl] = await this.stateService.getStateEventsByType(
+		const [aclEvent] = await this.stateService.getStateEventsByType(
 			roomId,
 			'm.room.server_acl',
 		);
-		if (!serverAcl) {
+		if (!aclEvent) {
 			return true;
 		}
 
-		const serverAclContent = serverAcl.getContent() as {
+		const serverAclContent = aclEvent.getContent() as {
 			allow?: string[];
 			deny?: string[];
 			allow_ip_literals?: boolean;
@@ -373,37 +368,45 @@ export class EventAuthorizationService {
 
 	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
 		try {
-			const roomId =
-				await this.uploadRepository.findRoomIdByMediaIdAndServerName(
-					mediaId,
-					serverName,
-				);
-			if (!roomId) {
+			const rcRoomId =
+				await this.uploadRepository.findRocketChatRoomIdByMediaId(mediaId);
+			if (!rcRoomId) {
 				this.logger.debug(`Media ${mediaId} not found in any room`);
 				return false;
 			}
 
-			const isServerAllowed = await this.checkServerAcl(roomId, serverName);
+			const matrixRoomId =
+				await this.matrixBridgedRoomRepository.findMatrixRoomId(rcRoomId);
+			if (!matrixRoomId) {
+				this.logger.debug(`Media ${mediaId} not found in any room`);
+				return false;
+			}
+
+			const isServerAllowed = await this.checkServerAcl(
+				matrixRoomId,
+				serverName,
+			);
 			if (!isServerAllowed) {
 				this.logger.warn(
-					`Server ${serverName} is denied by room ACL for media in room ${roomId}`,
+					`Server ${serverName} is denied by room ACL for media in room ${matrixRoomId}`,
 				);
 				return false;
 			}
 
-			const serversInRoom = await this.stateService.getServersInRoom(roomId);
+			const serversInRoom =
+				await this.stateService.getServersInRoom(matrixRoomId);
 			if (serversInRoom.includes(serverName)) {
 				this.logger.debug(
-					`Server ${serverName} is in room ${roomId}, allowing media access`,
+					`Server ${serverName} is in room ${matrixRoomId}, allowing media access`,
 				);
 				return true;
 			}
 
-			const roomState = await this.stateService.getFullRoomState(roomId);
+			const roomState = await this.stateService.getFullRoomState(matrixRoomId);
 			const historyVisibility = this.getHistoryVisibility(roomState);
 			if (historyVisibility === 'world_readable') {
 				this.logger.debug(
-					`Room ${roomId} is world_readable, allowing media access to ${serverName}`,
+					`Room ${matrixRoomId} is world_readable, allowing media access to ${serverName}`,
 				);
 				return true;
 			}
