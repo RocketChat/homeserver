@@ -840,7 +840,7 @@ export class StateService {
 			event.origin,
 			event.event,
 			event.eventId,
-			stateId
+			stateId,
 		);
 
 		// transactions not handled here, since we can use this method as part of a "transaction receive"
