@@ -185,6 +185,7 @@ export class ProfilesService {
 	}> {
 		try {
 			let state: Map<string, any>;
+			console.log('eventId', eventId);
 
 			if (eventId) {
 				// Get state at a specific event
