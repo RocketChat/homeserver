@@ -88,8 +88,17 @@ export async function createFederationContainer(
 	});
 
 	container.register<Collection<Upload>>('UploadCollection', {
-		useValue: db.collection<Upload>('uploads'),
+		useValue: db.collection<Upload>('rocketchat_uploads'),
 	});
+
+	container.register<Collection<MatrixBridgedRoom>>(
+		'MatrixBridgedRoomCollection',
+		{
+			useValue: db.collection<MatrixBridgedRoom>(
+				'rocketchat_matrix_bridged_rooms',
+			),
+		},
+	);
 
 	container.registerSingleton(EventRepository);
 	container.registerSingleton(EventStagingRepository);
@@ -98,6 +107,7 @@ export async function createFederationContainer(
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(StateRepository);
 	container.registerSingleton(ServerRepository);
+	container.registerSingleton(MatrixBridgedRoomRepository);
 	container.registerSingleton(UploadRepository);
 
 	container.registerSingleton(FederationRequestService);
