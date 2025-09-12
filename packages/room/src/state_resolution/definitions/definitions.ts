@@ -116,6 +116,7 @@ export async function getAuthChain(
 		let newAuthChainPart = existingAuthChainPart.union(authEventIdsSet);
 
 		for (const authEvent of authEvents) {
+			console.log('authEvent ->>>', authEvent);
 			const nextAuthChainPart = await _getAuthChain(
 				authEvent,
 				newAuthChainPart,
