@@ -9,6 +9,7 @@ import {
 import type { EventID, Pdu, PersistentEventBase } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
+import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { StateService } from './state.service';
@@ -22,6 +23,7 @@ export class EventAuthorizationService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly keyRepository: KeyRepository,
+		private readonly uploadRepository: UploadRepository,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -356,6 +358,106 @@ export class EventAuthorizationService {
 		} catch (error) {
 			this.logger.warn(`Invalid ACL pattern: ${pattern}`, error);
 			return false;
+		}
+	}
+
+	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
+		try {
+			const roomId =
+				await this.uploadRepository.findRoomIdByMediaIdAndServerName(
+					mediaId,
+					serverName,
+				);
+			if (!roomId) {
+				this.logger.debug(`Media ${mediaId} not found in any room`);
+				return false;
+			}
+
+			const isServerAllowed = await this.checkServerAcl(roomId, serverName);
+			if (!isServerAllowed) {
+				this.logger.warn(
+					`Server ${serverName} is denied by room ACL for media in room ${roomId}`,
+				);
+				return false;
+			}
+
+			const serversInRoom = await this.stateService.getServersInRoom(roomId);
+			if (serversInRoom.includes(serverName)) {
+				this.logger.debug(
+					`Server ${serverName} is in room ${roomId}, allowing media access`,
+				);
+				return true;
+			}
+
+			const roomState = await this.stateService.getFullRoomState(roomId);
+			const historyVisibility = this.getHistoryVisibility(roomState);
+			if (historyVisibility === 'world_readable') {
+				this.logger.debug(
+					`Room ${roomId} is world_readable, allowing media access to ${serverName}`,
+				);
+				return true;
+			}
+
+			this.logger.debug(
+				`Server ${serverName} not authorized for media ${mediaId}: not in room and room not world_readable`,
+			);
+			return false;
+		} catch (error) {
+			this.logger.error(
+				{ error, mediaId, serverName },
+				'Error checking media access',
+			);
+			return false;
+		}
+	}
+
+	async canAccessMediaFromAuthorizationHeader(
+		mediaId: string,
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
+	): Promise<
+		| { authorized: true }
+		| {
+				authorized: false;
+				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
+		  }
+	> {
+		try {
+			const signatureResult = await this.verifyRequestSignature(
+				method,
+				uri,
+				authorizationHeader,
+				body,
+			);
+			if (!signatureResult) {
+				return {
+					authorized: false,
+					errorCode: 'M_UNAUTHORIZED',
+				};
+			}
+
+			const authorized = await this.canAccessMedia(mediaId, signatureResult);
+			if (!authorized) {
+				return {
+					authorized: false,
+					errorCode: 'M_FORBIDDEN',
+				};
+			}
+
+			return {
+				authorized: true,
+			};
+		} catch (error) {
+			this.logger.error(
+				{ error, mediaId, authorizationHeader, method, uri, body },
+				'Error checking media access',
+			);
+			return {
+				authorized: false,
+				errorCode: 'M_UNKNOWN',
+			};
 		}
 	}
 }
