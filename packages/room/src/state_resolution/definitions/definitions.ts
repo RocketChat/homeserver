@@ -102,11 +102,11 @@ export async function getAuthChain(
 		const eventId = event.eventId;
 
 		if (eventIdToAuthChainMap.has(eventId)) {
-			return eventIdToAuthChainMap.get(eventId);
+			return eventIdToAuthChainMap.get(eventId)!;
 		}
 
 		const authEvents = await event.getAuthorizationEvents(store);
-
+		console.log('authEvents ->>>', authEvents);
 		if (authEvents.length === 0) {
 			eventIdToAuthChainMap.set(eventId, existingAuthChainPart);
 			return existingAuthChainPart;
@@ -117,6 +117,7 @@ export async function getAuthChain(
 		let newAuthChainPart = existingAuthChainPart.union(authEventIdsSet);
 
 		for (const authEvent of authEvents) {
+			console.log('authEvent ->>>', authEvent);
 			const nextAuthChainPart = await _getAuthChain(
 				authEvent,
 				newAuthChainPart,
@@ -130,8 +131,9 @@ export async function getAuthChain(
 		return newAuthChainPart;
 	};
 
-	const result = await _getAuthChain(event, new Set([event.eventId]));
-	return result || new Set<EventID>([event.eventId]);
+	return _getAuthChain(event, new Set(
+		[event.eventId]
+	));
 }
 
 // Auth difference
