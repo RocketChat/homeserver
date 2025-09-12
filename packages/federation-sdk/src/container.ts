@@ -15,6 +15,7 @@ import { Key, KeyRepository } from './repositories/key.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
+import { Upload, UploadRepository } from './repositories/upload.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EduService } from './services/edu.service';
@@ -81,11 +82,16 @@ export async function createFederationContainer(
 		useValue: db.collection<Server>('servers'),
 	});
 
+	container.register<Collection<Upload>>('UploadCollection', {
+		useValue: db.collection<Upload>('uploads'),
+	});
+
 	container.registerSingleton(EventRepository);
 	container.registerSingleton(KeyRepository);
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(StateRepository);
 	container.registerSingleton(ServerRepository);
+	container.registerSingleton(UploadRepository);
 
 	container.registerSingleton(FederationRequestService);
 	container.registerSingleton(SignatureVerificationService);
