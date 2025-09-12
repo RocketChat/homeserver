@@ -130,8 +130,8 @@ export async function getAuthChain(
 		return newAuthChainPart;
 	};
 
-	const result = await _getAuthChain(event, new Set([event.eventId]));
-	return result || new Set<EventID>([event.eventId]);
+	const result = await _getAuthChain(event, new Set());
+	return result || new Set<EventID>();
 }
 
 // Auth difference
