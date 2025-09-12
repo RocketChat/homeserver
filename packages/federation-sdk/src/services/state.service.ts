@@ -122,6 +122,18 @@ export class StateService {
 		return this.findStateAroundEvent(eventId, false);
 	}
 
+	private async findPreviousStateId(stateId: string) {
+		const state = await this.stateRepository.getStateById(stateId);
+		if (!state) {
+			throw new Error(`Event ${stateId} not found`);
+		}
+		const prevStateId = state.prevStateIds.pop();
+		if (!prevStateId) {
+			throw new Error(`State ${stateId} has no previous state`);
+		}
+		return prevStateId;
+	}
+
 	private async findStateAroundEvent(
 		eventId: string,
 		includeEvent = false,
@@ -140,7 +152,26 @@ export class StateService {
 			throw new Error('Room version not found');
 		}
 
-		const { stateId } = event;
+		const pdu = PersistentEventFactory.createFromRawEvent(
+			event.event,
+			roomVersion,
+		);
+
+		// The fully resolved state for the room, prior to considering any state changes induced by the requested event. Includes the authorization chain for the events.
+
+		if (pdu.type === 'm.room.create') {
+			return new Map();
+		}
+
+		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
+		const stateId = !pdu.isState()
+			? event.stateId
+			: await this.findPreviousStateId(event.stateId);
+
+		if (!stateId) {
+			this.logger.error({ eventId }, 'state id not found');
+			throw new Error('State id not found');
+		}
 
 		const { delta: lastStateDelta, prevStateIds = [] } =
 			(stateId
@@ -159,11 +190,11 @@ export class StateService {
 
 		if (prevStateIds.length === 0) {
 			const state = new Map<StateMapKey, PersistentEventBase>();
-			const { identifier: stateKey, eventId: _lastStateEventId } =
+			const { identifier: stateKey, eventId: lastStateEventId } =
 				lastStateDelta;
-			const event = await this.eventRepository.findById(eventId);
+			const event = await this.eventRepository.findById(lastStateEventId);
 			if (!event) {
-				throw new Error(`Event ${eventId} not found`);
+				throw new Error(`Event ${lastStateEventId} not found`);
 			}
 
 			state.set(
