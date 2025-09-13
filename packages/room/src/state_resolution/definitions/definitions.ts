@@ -131,9 +131,7 @@ export async function getAuthChain(
 		return newAuthChainPart;
 	};
 
-	return _getAuthChain(event, new Set(
-		[event.eventId]
-	));
+	return _getAuthChain(event, new Set([event.eventId]));
 }
 
 // Auth difference
