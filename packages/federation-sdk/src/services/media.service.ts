@@ -1,8 +1,6 @@
-import crypto from 'node:crypto';
 import { createLogger } from '@hs/core';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
-import { EventEmitterService } from './event-emitter.service';
 import { FederationRequestService } from './federation-request.service';
 
 @singleton()
