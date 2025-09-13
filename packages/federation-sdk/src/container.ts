@@ -12,9 +12,14 @@ import { MissingEventsQueue } from './queues/missing-event.queue';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
+import {
+	MatrixBridgedRoom,
+	MatrixBridgedRoomRepository,
+} from './repositories/matrix-bridged-room.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
+import { Upload, UploadRepository } from './repositories/upload.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EduService } from './services/edu.service';
@@ -81,11 +86,26 @@ export async function createFederationContainer(
 		useValue: db.collection<Server>('servers'),
 	});
 
+	container.register<Collection<Upload>>('UploadCollection', {
+		useValue: db.collection<Upload>('rocketchat_uploads'),
+	});
+
+	container.register<Collection<MatrixBridgedRoom>>(
+		'MatrixBridgedRoomCollection',
+		{
+			useValue: db.collection<MatrixBridgedRoom>(
+				'rocketchat_matrix_bridged_rooms',
+			),
+		},
+	);
+
 	container.registerSingleton(EventRepository);
 	container.registerSingleton(KeyRepository);
 	container.registerSingleton(RoomRepository);
 	container.registerSingleton(StateRepository);
 	container.registerSingleton(ServerRepository);
+	container.registerSingleton(MatrixBridgedRoomRepository);
+	container.registerSingleton(UploadRepository);
 
 	container.registerSingleton(FederationRequestService);
 	container.registerSingleton(SignatureVerificationService);

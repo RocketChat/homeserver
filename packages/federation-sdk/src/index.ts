@@ -46,6 +46,7 @@ export { EventFetcherService } from './services/event-fetcher.service';
 export type { FetchedEvents } from './services/event-fetcher.service';
 export { InviteService } from './services/invite.service';
 export type { ProcessInviteEvent } from './services/invite.service';
+export { MediaService } from './services/media.service';
 export { MessageService } from './services/message.service';
 export { EventService } from './services/event.service';
 export { RoomService } from './services/room.service';
@@ -54,7 +55,6 @@ export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
 export { MissingEventListener } from './listeners/missing-event.listener';
-export { MediaService } from './services/media.service';
 
 // Repository interfaces and implementations
 
@@ -97,6 +97,7 @@ export { StateRepository } from './repositories/state.repository';
 export interface HomeserverServices {
 	room: RoomService;
 	message: MessageService;
+	media: MediaService;
 	event: EventService;
 	invite: InviteService;
 	wellKnown: WellKnownService;
@@ -106,7 +107,6 @@ export interface HomeserverServices {
 	server: ServerService;
 	config: ConfigService;
 	edu: EduService;
-	media: MediaService;
 	request: FederationRequestService;
 	federationAuth: EventAuthorizationService;
 }
@@ -222,6 +222,7 @@ export function getAllServices(): HomeserverServices {
 	return {
 		room: container.resolve(RoomService),
 		message: container.resolve(MessageService),
+		media: container.resolve(MediaService),
 		event: container.resolve(EventService),
 		invite: container.resolve(InviteService),
 		wellKnown: container.resolve(WellKnownService),
@@ -231,7 +232,6 @@ export function getAllServices(): HomeserverServices {
 		server: container.resolve(ServerService),
 		config: container.resolve(ConfigService),
 		edu: container.resolve(EduService),
-		media: container.resolve(MediaService),
 		request: container.resolve(FederationRequestService),
 		federationAuth: container.resolve(EventAuthorizationService),
 	};
