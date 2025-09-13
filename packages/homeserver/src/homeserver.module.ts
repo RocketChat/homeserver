@@ -14,6 +14,7 @@ import * as dotenv from 'dotenv';
 import { swagger } from '@elysiajs/swagger';
 import type { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
+import { eventPlugin } from './controllers/federation/event.controller';
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
 import { roomPlugin } from './controllers/federation/rooms.controller';
@@ -109,6 +110,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 			}),
 		)
 		.use(invitePlugin)
+		.use(eventPlugin)
 		.use(profilesPlugin)
 		.use(sendJoinPlugin)
 		.use(transactionsPlugin)

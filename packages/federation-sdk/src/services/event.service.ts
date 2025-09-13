@@ -22,6 +22,7 @@ import {
 	type PduForType,
 	type PduType,
 	PersistentEventFactory,
+	getAuthChain,
 } from '@hs/room';
 import { singleton } from 'tsyringe';
 import type { z } from 'zod';
@@ -677,6 +678,120 @@ export class EventService {
 
 			// wait a bit before processing the next room to also give a chance to other instances
 			await new Promise((resolve) => setTimeout(resolve, 5000));
+		}
+	}
+
+	async getStateIds(
+		roomId: string,
+		eventId: string,
+	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
+		try {
+			const state = await this.stateService.findStateBeforeEvent(eventId);
+
+			const pduIds: string[] = [];
+			const authChainIds = new Set<string>();
+
+			// Get room version for the store
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
+			if (!roomVersion) {
+				throw new Error('Room version not found');
+			}
+
+			// Get the event store
+			const store = this.stateService._getStore(roomVersion);
+
+			// Extract state event IDs and collect auth chain IDs
+			for (const [, event] of state.entries()) {
+				// PersistentEventBase has an eventId getter
+				pduIds.push(event.eventId);
+				console.log('event', event);
+				// Get the complete auth chain for this event
+				try {
+					const authChain = await getAuthChain(event, store);
+					for (const authEventId of authChain) {
+						authChainIds.add(authEventId);
+					}
+				} catch (error) {
+					this.logger.warn(
+						`Failed to get auth chain for event ${event.eventId}:`,
+						error,
+					);
+				}
+			}
+
+			return {
+				pdu_ids: pduIds,
+				auth_chain_ids: Array.from(authChainIds),
+			};
+		} catch (error) {
+			this.logger.error(`Failed to get state IDs for room ${roomId}:`, error);
+			throw error;
+		}
+	}
+
+	async getState(
+		roomId: string,
+		eventId: string,
+	): Promise<{
+		pdus: Record<string, unknown>[];
+		auth_chain: Record<string, unknown>[];
+	}> {
+		try {
+			let state: Map<string, any>;
+			console.log('eventId', eventId);
+
+			// Get state at a specific event
+			state = await this.stateService.findStateBeforeEvent(eventId);
+
+			const pdus: Record<string, unknown>[] = [];
+			const authChainIds = new Set<string>();
+
+			// Get room version for the store
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
+			if (!roomVersion) {
+				throw new Error('Room version not found');
+			}
+
+			// Get the event store
+			const store = this.stateService._getStore(roomVersion);
+			// Extract state event objects and collect auth chain IDs
+			for (const [, event] of state.entries()) {
+				// PersistentEventBase has an event getter that contains the actual event data
+				pdus.push(event.event);
+				// Get the complete auth chain for this event
+				try {
+					const authChain = await getAuthChain(event, store);
+					for (const authEventId of authChain) {
+						authChainIds.add(authEventId);
+					}
+				} catch (error) {
+					this.logger.warn(
+						`Failed to get auth chain for event ${event.eventId}:`,
+						error,
+					);
+				}
+			}
+
+			// Fetch the actual auth event objects
+			const authChain: Record<string, unknown>[] = [];
+			if (authChainIds.size > 0) {
+				try {
+					const authEvents = await store.getEvents(Array.from(authChainIds));
+					for (const authEvent of authEvents) {
+						authChain.push(authEvent.event);
+					}
+				} catch (error) {
+					this.logger.warn('Failed to fetch auth event objects:', error);
+				}
+			}
+
+			return {
+				pdus: pdus,
+				auth_chain: authChain,
+			};
+		} catch (error) {
+			this.logger.error(`Failed to get state for room ${roomId}:`, error);
+			throw error;
 		}
 	}
 }
