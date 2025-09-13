@@ -288,8 +288,6 @@ export class StateService {
 			.getStateMappingsByStateIdsOrdered(prevStateIds)
 			.toArray();
 
-		console.log('stateMappings ->', stateMappings);
-
 		for await (const { delta } of stateMappings) {
 			const { identifier: stateKey, eventId } = delta;
 			const event = await this.eventRepository.findById(eventId);
