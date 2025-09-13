@@ -187,7 +187,7 @@ export class ProfilesService {
 			let state: Map<string, any>;
 			console.log('eventId', eventId);
 
-				// Get state at a specific event
+			// Get state at a specific event
 			state = await this.stateService.findStateBeforeEvent(eventId);
 
 			const pdus: Record<string, unknown>[] = [];
@@ -201,11 +201,9 @@ export class ProfilesService {
 
 			// Get the event store
 			const store = this.stateService._getStore(roomVersion);
-
-
 			// Extract state event objects and collect auth chain IDs
 			for (const [, event] of state.entries()) {
-					// PersistentEventBase has an event getter that contains the actual event data
+				// PersistentEventBase has an event getter that contains the actual event data
 				pdus.push(event.event);
 				console.log('event ->>>', event);
 				// Get the complete auth chain for this event
