@@ -254,9 +254,7 @@ export class StateService {
 		}
 
 		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
-		const stateId = !pdu.isState()
-			? event.stateId
-			: await this.findPreviousStateId(event.stateId);
+		const { stateId } = event;
 
 		const { delta: lastStateDelta, prevStateIds = [] } =
 			(await this.stateRepository.getStateById(stateId)) ?? {};
