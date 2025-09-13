@@ -1,4 +1,3 @@
-import https from 'node:https';
 import { createLogger } from '@hs/core';
 import { singleton } from 'tsyringe';
 import { FederationRequestService } from './federation-request.service';
