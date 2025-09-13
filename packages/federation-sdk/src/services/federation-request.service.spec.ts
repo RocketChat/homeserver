@@ -50,6 +50,7 @@ describe('FederationRequestService', async () => {
 				status: 200,
 				json: async () => ({ result: 'success' }),
 				text: async () => '{"result":"success"}',
+				multipart: async () => null,
 			} as Response;
 		},
 	}));
@@ -198,6 +199,7 @@ describe('FederationRequestService', async () => {
 						ok: false,
 						status: 404,
 						text: async () => 'Not Found',
+						multipart: async () => null,
 					} as Response;
 				},
 				{ preconnect: () => {} },
@@ -228,6 +230,7 @@ describe('FederationRequestService', async () => {
 						status: 400,
 						text: async () =>
 							'{"error":"Bad Request","code":"M_INVALID_PARAM"}',
+						multipart: async () => null,
 					} as Response;
 				},
 				{ preconnect: () => {} },
@@ -329,6 +332,53 @@ describe('FederationRequestService', async () => {
 				body,
 				queryString: '',
 			});
+		});
+	});
+
+	describe('requestBinaryData', () => {
+		it('should call makeSignedRequest for binary data without query params', async () => {
+			const mockBuffer = Buffer.from('binary content');
+			const makeSignedRequestSpy = spyOn(
+				service,
+				'makeSignedRequest',
+			).mockResolvedValue(mockBuffer);
+
+			const result = await service.requestBinaryData(
+				'GET',
+				'target.example.com',
+				'/media/download',
+			);
+
+			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
+				method: 'GET',
+				domain: 'target.example.com',
+				uri: '/media/download',
+				queryString: '',
+			});
+			expect(result).toEqual(mockBuffer);
+		});
+
+		it('should call makeSignedRequest for binary data with query params', async () => {
+			const mockBuffer = Buffer.from('binary content');
+			const makeSignedRequestSpy = spyOn(
+				service,
+				'makeSignedRequest',
+			).mockResolvedValue(mockBuffer);
+
+			const result = await service.requestBinaryData(
+				'GET',
+				'target.example.com',
+				'/media/download',
+				{ width: '100', height: '100' },
+			);
+
+			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
+				method: 'GET',
+				domain: 'target.example.com',
+				uri: '/media/download',
+				queryString: 'width=100&height=100',
+			});
+			expect(result).toEqual(mockBuffer);
 		});
 	});
 });
