@@ -11,6 +11,12 @@ import {
 	GetMissingEventsBodyDto,
 	GetMissingEventsParamsDto,
 	GetMissingEventsResponseDto,
+	GetStateIdsParamsDto,
+	GetStateIdsQueryDto,
+	GetStateIdsResponseDto,
+	GetStateParamsDto,
+	GetStateQueryDto,
+	GetStateResponseDto,
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
@@ -76,7 +82,7 @@ export const profilesPlugin = (app: Elysia) => {
 
 				const { ver } = query;
 
-				return profilesService.makeJoin(roomId, userId, ver ?? ['1']) as any;
+				return profilesService.makeJoin(roomId, userId, ver ?? ['1']);
 			},
 			{
 				params: MakeJoinParamsDto,
@@ -127,6 +133,42 @@ export const profilesPlugin = (app: Elysia) => {
 					tags: ['Federation'],
 					summary: 'Event auth',
 					description: 'Get event auth for a room',
+				},
+			},
+		)
+		.get(
+			'/_matrix/federation/v1/state_ids/:roomId',
+			({ params, query }) =>
+				profilesService.getStateIds(params.roomId, query.event_id),
+			{
+				params: GetStateIdsParamsDto,
+				query: GetStateIdsQueryDto,
+				response: {
+					200: GetStateIdsResponseDto,
+					400: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Federation'],
+					summary: 'Get state IDs',
+					description: 'Get state event IDs for a room',
+				},
+			},
+		)
+		.get(
+			'/_matrix/federation/v1/state/:roomId',
+			({ params, query }) =>
+				profilesService.getState(params.roomId, query.event_id!),
+			{
+				params: GetStateParamsDto,
+				query: GetStateQueryDto,
+				response: {
+					200: GetStateResponseDto,
+					400: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Federation'],
+					summary: 'Get state',
+					description: 'Get state events for a room',
 				},
 			},
 		);

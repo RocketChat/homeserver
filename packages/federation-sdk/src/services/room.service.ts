@@ -816,7 +816,7 @@ export class RoomService {
 		// TODO: 2 have state service do this or not modify our event
 		const copyEvent = (event: Readonly<PersistentEventBase>) => {
 			return PersistentEventFactory.createFromRawEvent(
-				structuredClone(event.event),
+				event.event,
 				roomVersion,
 			);
 		};
@@ -892,13 +892,24 @@ export class RoomService {
 			persisted.add(event.eventId);
 		};
 
-		for (const stateEvent of eventMap.values()) {
+		// Sort events by depth to ensure proper DAG ordering
+		const sortedEvents = Array.from(eventMap.values()).sort((a, b) => {
+			const aDepth = a.depth;
+			const bDepth = b.depth;
+			// If depths are equal, sort by event_id for deterministic ordering
+			if (a.depth === b.depth) {
+				return a.eventId.localeCompare(b.eventId);
+			}
+			return aDepth - bDepth;
+		});
+
+		for (const stateEvent of sortedEvents) {
 			if (persisted.has(stateEvent.eventId)) {
 				continue;
 			}
 
 			logger.info(
-				`Persisting state event ${stateEvent.eventId}, ${JSON.stringify(
+				`Persisting state event ${stateEvent.eventId} (depth: ${stateEvent.event.depth}), ${JSON.stringify(
 					stateEvent.event,
 					null,
 					2,

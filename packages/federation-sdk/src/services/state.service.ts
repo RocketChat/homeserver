@@ -112,10 +112,6 @@ export class StateService {
 		return state;
 	}
 
-	async findStateBeforeEvent(eventId: string): Promise<State> {
-		return this.findStateAroundEvent(eventId, false);
-	}
-
 	private async findStateAroundEvent(
 		eventId: string,
 		includeEvent = false,
@@ -173,6 +169,122 @@ export class StateService {
 			.toArray();
 
 		const state = new Map<StateMapKey, PersistentEventBase>();
+
+		for await (const { delta } of stateMappings) {
+			const { identifier: stateKey, eventId } = delta;
+			const event = await this.eventRepository.findById(eventId);
+			if (!event) {
+				throw new Error(`Event ${eventId} not found`);
+			}
+
+			state.set(
+				stateKey as StateMapKey,
+				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
+			);
+		}
+
+		if (!includeEvent) {
+			return state;
+		}
+
+		this.logger.debug({ eventId }, 'including event in state');
+
+		// update the last state
+		const { identifier: lastStateKey, eventId: lastStateEventId } =
+			lastStateDelta;
+
+		const lastEvent = await this.eventRepository.findById(lastStateEventId);
+		if (!lastEvent) {
+			throw new Error(`Event ${lastStateEventId} not found`);
+		}
+
+		state.set(
+			lastStateKey,
+			PersistentEventFactory.createFromRawEvent(lastEvent.event, roomVersion),
+		);
+
+		return state;
+	}
+
+	private async findPreviousStateId(stateId: string) {
+		const state = await this.stateRepository.getStateById(stateId);
+		if (!state) {
+			throw new Error(`Event ${stateId} not found`);
+		}
+		const prevStateId = state.prevStateIds.pop();
+		if (!prevStateId) {
+			throw new Error(`State ${stateId} has no previous state`);
+		}
+		return prevStateId;
+	}
+
+	async findStateBeforeEvent(
+		eventId: string,
+		includeEvent = false,
+	): Promise<State> {
+		this.logger.debug({ eventId }, 'finding state before event');
+
+		const event = await this.eventRepository.findById(eventId);
+		if (!event) {
+			this.logger.error({ eventId }, 'event not found');
+			throw new Error(`Event ${eventId} not found`);
+		}
+
+		const roomVersion = await this.getRoomVersion(event.event.room_id);
+		if (!roomVersion) {
+			this.logger.error({ eventId }, 'room version not found');
+			throw new Error('Room version not found');
+		}
+
+		const pdu = PersistentEventFactory.createFromRawEvent(
+			event.event,
+			roomVersion,
+		);
+
+		// The fully resolved state for the room, prior to considering any state changes induced by the requested event. Includes the authorization chain for the events.
+
+		if (pdu.type === 'm.room.create') {
+			return new Map();
+		}
+
+		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
+		const stateId = !pdu.isState()
+			? event.stateId
+			: await this.findPreviousStateId(event.stateId);
+
+		const { delta: lastStateDelta, prevStateIds = [] } =
+			(await this.stateRepository.getStateById(stateId)) ?? {};
+
+		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
+
+		if (!lastStateDelta) {
+			this.logger.error(eventId, 'last state delta not found');
+			throw new Error(`State at event ${eventId} not found`);
+		}
+
+		const state = new Map<StateMapKey, PersistentEventBase>();
+
+		if (prevStateIds.length === 0) {
+			const previous = await this.eventRepository.findById(
+				lastStateDelta.eventId,
+			);
+			if (!previous) {
+				throw new Error(`Event ${lastStateDelta.eventId} not found`);
+			}
+
+			state.set(
+				lastStateDelta.identifier,
+				PersistentEventFactory.createFromRawEvent(previous.event, roomVersion),
+			);
+
+			return state;
+		}
+
+		const stateMappings = await this.stateRepository
+			.getStateMappingsByStateIdsOrdered(prevStateIds)
+			.toArray();
+
+		console.log('stateMappings ->', stateMappings);
 
 		for await (const { delta } of stateMappings) {
 			const { identifier: stateKey, eventId } = delta;
@@ -275,12 +387,7 @@ export class StateService {
 			if (!stateMapping.delta) {
 				throw new Error('State mapping has no delta');
 			}
-
-			if (!stateMapping.delta) {
-				throw new Error('State mapping delta is empty');
-			}
 			const { identifier: stateKey, eventId } = stateMapping.delta;
-
 			state.set(stateKey, eventId);
 		}
 
@@ -308,7 +415,7 @@ export class StateService {
 				throw new Error('Event id mismatch in trying to room state');
 			}
 
-			finalState.set(stateKey as StateMapKey, pdu);
+			finalState.set(stateKey, pdu);
 		}
 
 		return finalState;
@@ -366,7 +473,7 @@ export class StateService {
 	}
 
 	async getFullRoomStateBeforeEvent2(eventId: string): Promise<RoomState> {
-		const state = await this.findStateBeforeEvent(eventId);
+		const state = await this.findStateAroundEvent(eventId);
 		return new RoomState(state);
 	}
 
