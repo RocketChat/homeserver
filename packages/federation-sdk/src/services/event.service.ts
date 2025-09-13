@@ -704,7 +704,6 @@ export class EventService {
 			for (const [, event] of state.entries()) {
 				// PersistentEventBase has an eventId getter
 				pduIds.push(event.eventId);
-				console.log('event', event);
 				// Get the complete auth chain for this event
 				try {
 					const authChain = await getAuthChain(event, store);
@@ -738,7 +737,6 @@ export class EventService {
 	}> {
 		try {
 			let state: Map<string, any>;
-			console.log('eventId', eventId);
 
 			// Get state at a specific event
 			state = await this.stateService.findStateBeforeEvent(eventId);
