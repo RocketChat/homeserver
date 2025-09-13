@@ -23,9 +23,9 @@ export class EventAuthorizationService {
 		private readonly stateService: StateService,
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
-		private readonly keyRepository: KeyRepository,
 		private readonly uploadRepository: UploadRepository,
 		private readonly matrixBridgedRoomRepository: MatrixBridgedRoomRepository,
+		private readonly keyRepository: KeyRepository,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -225,11 +225,8 @@ export class EventAuthorizationService {
 				`Server ${serverName} not authorized: not in room and event not world_readable`,
 			);
 			return false;
-		} catch (error) {
-			this.logger.error(
-				{ error, eventId, serverName },
-				'Error checking event access',
-			);
+		} catch (err) {
+			this.logger.error('Error checking event access', err);
 			return false;
 		}
 	}
@@ -472,7 +469,7 @@ export class EventAuthorizationService {
 			};
 		} catch (error) {
 			this.logger.error(
-				{ error, mediaId, authorizationHeader, method, uri, body },
+				{ error, mediaId, authorizationHeader, method, uri },
 				'Error checking media access',
 			);
 			return {

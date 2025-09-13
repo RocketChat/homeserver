@@ -12,6 +12,10 @@ import { EventStagingRepository } from './repositories/event-staging.repository'
 import { EventRepository } from './repositories/event.repository';
 import { Key, KeyRepository } from './repositories/key.repository';
 import { Lock, LockRepository } from './repositories/lock.repository';
+import {
+	MatrixBridgedRoom,
+	MatrixBridgedRoomRepository,
+} from './repositories/matrix-bridged-room.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
@@ -113,9 +117,8 @@ export async function createFederationContainer(
 	container.registerSingleton(FederationRequestService);
 	container.registerSingleton(FederationService);
 	container.registerSingleton(StateService);
-	container.registerSingleton(EventAuthorizationService);
-	container.registerSingleton('EventFetcherService', EventFetcherService);
 	container.registerSingleton(EventService);
+	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);

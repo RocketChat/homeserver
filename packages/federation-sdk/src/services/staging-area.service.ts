@@ -145,6 +145,7 @@ export class StagingAreaService {
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
 					content: {
+						...event.event.content,
 						body: event.event.content?.body as string,
 						msgtype: event.event.content?.msgtype as string,
 						'm.relates_to': event.event.content?.['m.relates_to'] as {
