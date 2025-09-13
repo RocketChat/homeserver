@@ -637,4 +637,34 @@ describe('Definitions', () => {
 
 		expect(diff).toEqual(new Set([dEvent.eventId, eEvent.eventId]));
 	});
+
+	it('should resolve correct state based on auth chain difference', async () => {
+		const events = [
+			// two memberships
+			// one join rule
+			new FakeEvent(
+				'EB',
+				EVELYN,
+				'm.room.member',
+				EVELYN,
+				MEMBERSHIP_CONTENT_JOIN,
+			),
+			new FakeEvent('JRI', ALICE, 'm.room.join_rules', '', {
+				join_rule: 'invite',
+			}),
+		];
+
+		const edges = [
+			['END', 'EB', 'IJR'],
+			['END', 'JRI', 'IJR'],
+		];
+
+		const finalState = await runTest(events, edges);
+
+		expect(finalState.get('m.room.join_rules:')).toHaveProperty(
+			'eventId',
+			'JRI:example.com',
+		);
+		expect(finalState.get('m.room.member:@evelyn:example.com')).toBeUndefined();
+	});
 });
