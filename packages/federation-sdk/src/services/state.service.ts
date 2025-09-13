@@ -247,7 +247,6 @@ export class StateService {
 			return new Map();
 		}
 
-		console.log('pdu ->>>', pdu.isState(), pdu.type);
 		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
 		const stateId = !pdu.isState()
 			? event.stateId
@@ -255,9 +254,6 @@ export class StateService {
 
 		const { delta: lastStateDelta, prevStateIds = [] } =
 			(await this.stateRepository.getStateById(stateId)) ?? {};
-
-		console.log('prevStateIds ->>>', prevStateIds);
-		console.log('stateId ->>>', stateId);
 
 		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
 

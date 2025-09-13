@@ -106,7 +106,6 @@ export async function getAuthChain(
 		}
 
 		const authEvents = await event.getAuthorizationEvents(store);
-		console.log('authEvents ->>>', authEvents);
 		if (authEvents.length === 0) {
 			eventIdToAuthChainMap.set(eventId, existingAuthChainPart);
 			return existingAuthChainPart;
@@ -117,7 +116,6 @@ export async function getAuthChain(
 		let newAuthChainPart = existingAuthChainPart.union(authEventIdsSet);
 
 		for (const authEvent of authEvents) {
-			console.log('authEvent ->>>', authEvent);
 			const nextAuthChainPart = await _getAuthChain(
 				authEvent,
 				newAuthChainPart,

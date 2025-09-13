@@ -205,7 +205,6 @@ export class ProfilesService {
 			for (const [, event] of state.entries()) {
 				// PersistentEventBase has an event getter that contains the actual event data
 				pdus.push(event.event);
-				console.log('event ->>>', event);
 				// Get the complete auth chain for this event
 				try {
 					const authChain = await getAuthChain(event, store);
