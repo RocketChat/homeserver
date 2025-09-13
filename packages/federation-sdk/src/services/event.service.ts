@@ -686,6 +686,12 @@ export class EventService {
 		eventId: string,
 	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
 		try {
+			// Ensure the event exists and belongs to the requested room
+			const persisted = await this.eventRepository.findById(eventId);
+			if (!persisted || persisted.event.room_id !== roomId) {
+				throw new Error('M_NOT_FOUND');
+			}
+
 			const state = await this.stateService.findStateBeforeEvent(eventId);
 
 			const pduIds: string[] = [];
@@ -736,6 +742,12 @@ export class EventService {
 		auth_chain: Record<string, unknown>[];
 	}> {
 		try {
+			// Ensure the event exists and belongs to the requested room
+			const persisted = await this.eventRepository.findById(eventId);
+			if (!persisted || persisted.event.room_id !== roomId) {
+				throw new Error('M_NOT_FOUND');
+			}
+
 			let state: Map<string, any>;
 
 			// Get state at a specific event
