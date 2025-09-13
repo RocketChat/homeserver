@@ -234,7 +234,7 @@ export async function resolveStateV2Plus(
 		if (authChainDifference.has(eventId)) {
 			continue;
 		}
-		const event = await Promise.resolve(eventIdToEventMap.get(eventId)); // the cache MUST HAVE IT. The promise is just allowing the loop to be non blocking
+		const event = eventIdToEventMap.get(eventId);
 		assert(event, `event should not be null ${eventId}`);
 		initialState.set(key, event);
 	}
