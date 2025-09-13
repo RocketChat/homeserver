@@ -1,10 +1,13 @@
 import type { SigningKey } from '@hs/core';
-import { authorizationHeaders, computeAndMergeHash } from '@hs/core';
-import { extractURIfromURL } from '@hs/core';
-import { EncryptionValidAlgorithm } from '@hs/core';
-import { signJson } from '@hs/core';
-import { createLogger } from '@hs/core';
-import { fetch } from '@hs/core';
+import {
+	EncryptionValidAlgorithm,
+	authorizationHeaders,
+	computeAndMergeHash,
+	createLogger,
+	extractURIfromURL,
+	fetch,
+	signJson,
+} from '@hs/core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
@@ -26,13 +29,28 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
+	// the redirect URL should be fetched without Matrix auth
+	// and will only occur for media downloads as per Matrix spec
+	private async handleRedirect(redirect: string): Promise<Buffer> {
+		const redirectResponse = await fetch(new URL(redirect), {
+			method: 'GET',
+			headers: {},
+		});
+
+		if (!redirectResponse.ok) {
+			throw new Error(`Failed to fetch media from redirect: ${redirect}`);
+		}
+
+		return await redirectResponse.buffer();
+	}
+
 	async makeSignedRequest<T>({
 		method,
 		domain,
 		uri,
 		body,
 		queryString,
-	}: SignedRequest): Promise<T> {
+	}: SignedRequest): Promise<T | Buffer | null> {
 		try {
 			const serverName = this.configService.serverName;
 			const signingKeyBase64 = await this.configService.getSigningKeyBase64();
@@ -82,19 +100,10 @@ export class FederationRequestService {
 			const headers = {
 				Authorization: auth,
 				...discoveryHeaders,
+				...(signedBody && { 'Content-Type': 'application/json' }),
 			};
 
-			this.logger.debug(
-				{
-					method,
-					body: signedBody,
-					headers,
-					url: url.toString(),
-				},
-				'making http request',
-			);
-
-			const response = await fetch(url, {
+			const response = await fetch<T>(url, {
 				method,
 				...(signedBody && { body: JSON.stringify(signedBody) }),
 				headers,
@@ -104,7 +113,7 @@ export class FederationRequestService {
 				const errorText = await response.text();
 				let errorDetail = errorText;
 				try {
-					errorDetail = JSON.stringify(JSON.parse(errorText));
+					errorDetail = JSON.stringify(JSON.parse(errorText || ''));
 				} catch {
 					/* use raw text if parsing fails */
 				}
@@ -113,13 +122,20 @@ export class FederationRequestService {
 				);
 			}
 
+			const multipart = await response.multipart();
+			if (multipart?.redirect) {
+				return this.handleRedirect(multipart.redirect);
+			}
+			if (multipart !== null) {
+				return multipart.content;
+			}
+
 			return response.json();
-		} catch (error: any) {
+		} catch (err) {
 			this.logger.error(
-				`Federation request failed: ${error.message}`,
-				error.stack,
+				`Federation request failed: ${err instanceof Error ? err.message : String(err)}`,
 			);
-			throw error;
+			throw err;
 		}
 	}
 
@@ -129,7 +145,7 @@ export class FederationRequestService {
 		endpoint: string,
 		body?: Record<string, unknown>,
 		queryParams?: Record<string, string>,
-	): Promise<T> {
+	) {
 		let queryString = '';
 
 		if (queryParams) {
@@ -146,7 +162,7 @@ export class FederationRequestService {
 			uri: endpoint,
 			body,
 			queryString,
-		});
+		}) as Promise<T>;
 	}
 
 	async get<T>(
@@ -181,60 +197,19 @@ export class FederationRequestService {
 		return this.request<T>('POST', targetServer, endpoint, body, queryParams);
 	}
 
-	async prepareSignedRequest(
+	async requestBinaryData(
+		method: string,
 		targetServer: string,
 		endpoint: string,
-		method: string,
-		body?: Record<string, unknown>,
-	): Promise<{ url: URL; headers: Record<string, string> }> {
-		const serverName = this.configService.serverName;
-		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
-		const signingKeyId = await this.configService.getSigningKeyId();
-		const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
-		const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
-
-		const signingKey: SigningKey = {
-			algorithm: EncryptionValidAlgorithm.ed25519,
-			version: signingKeyId.split(':')[1] || '1',
-			privateKey: keyPair.secretKey,
-			publicKey: keyPair.publicKey,
-			sign: async (data: Uint8Array) =>
-				nacl.sign.detached(data, keyPair.secretKey),
-		};
-
-		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
-			targetServer,
-			this.logger,
-		);
-
-		const url = new URL(`${address}${endpoint}`);
-
-		let signedBody: Record<string, unknown> | undefined;
-		if (body) {
-			signedBody = await signJson(
-				body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
-				signingKey,
-				serverName,
-			);
-		}
-
-		const auth = await authorizationHeaders(
-			serverName,
-			signingKey,
-			targetServer,
+		queryParams?: Record<string, string>,
+	) {
+		return this.makeSignedRequest({
 			method,
-			extractURIfromURL(url),
-			signedBody,
-		);
-
-		return {
-			url,
-			headers: {
-				Authorization: auth,
-				'User-Agent': 'Rocket.Chat Federation',
-				'Content-Type': 'application/json',
-				...discoveryHeaders,
-			},
-		};
+			domain: targetServer,
+			uri: endpoint,
+			queryString: queryParams
+				? new URLSearchParams(queryParams).toString()
+				: '',
+		}) as Promise<Buffer>;
 	}
 }
