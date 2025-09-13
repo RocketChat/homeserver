@@ -217,7 +217,7 @@ export class StateService {
 		if (!state) {
 			throw new Error(`Event ${stateId} not found`);
 		}
-		const prevStateId = state.prevStateIds.pop();
+		const prevStateId = state.prevStateIds.at(-1);
 		if (!prevStateId) {
 			throw new Error(`State ${stateId} has no previous state`);
 		}
@@ -256,36 +256,44 @@ export class StateService {
 		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
 		const { stateId } = event;
 
-		const { delta: lastStateDelta, prevStateIds = [] } =
-			(await this.stateRepository.getStateById(stateId)) ?? {};
+		const storedState = await this.stateRepository.getStateById(stateId);
 
-		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
-
-		if (!lastStateDelta) {
+		if (!storedState) {
 			this.logger.error(eventId, 'last state delta not found');
 			throw new Error(`State at event ${eventId} not found`);
 		}
 
+		this.logger.debug(
+			{ delta: storedState?.delta, prevStateIds: storedState.prevStateIds },
+			'last state',
+		);
+
 		const state = new Map<StateMapKey, PersistentEventBase>();
 
-		if (prevStateIds.length === 0) {
+		// TODO: not sure which case is this
+		if (storedState.prevStateIds.length === 0) {
 			const previous = await this.eventRepository.findById(
-				lastStateDelta.eventId,
+				storedState.delta.eventId,
 			);
 			if (!previous) {
-				throw new Error(`Event ${lastStateDelta.eventId} not found`);
+				throw new Error(`Event ${eventId} not found`);
 			}
 
 			state.set(
-				lastStateDelta.identifier,
+				storedState.delta.identifier,
 				PersistentEventFactory.createFromRawEvent(previous.event, roomVersion),
 			);
 
 			return state;
 		}
 
+		const eventsToFetch = [
+			includeEvent && storedState._id.toString(),
+			...storedState.prevStateIds,
+		].filter(Boolean) as string[];
+
 		const stateMappings = await this.stateRepository
-			.getStateMappingsByStateIdsOrdered(prevStateIds)
+			.getStateMappingsByStateIdsOrdered(eventsToFetch)
 			.toArray();
 
 		for await (const { delta } of stateMappings) {
@@ -300,26 +308,6 @@ export class StateService {
 				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
 			);
 		}
-
-		if (!includeEvent) {
-			return state;
-		}
-
-		this.logger.debug({ eventId }, 'including event in state');
-
-		// update the last state
-		const { identifier: lastStateKey, eventId: lastStateEventId } =
-			lastStateDelta;
-
-		const lastEvent = await this.eventRepository.findById(lastStateEventId);
-		if (!lastEvent) {
-			throw new Error(`Event ${lastStateEventId} not found`);
-		}
-
-		state.set(
-			lastStateKey,
-			PersistentEventFactory.createFromRawEvent(lastEvent.event, roomVersion),
-		);
 
 		return state;
 	}
@@ -414,7 +402,7 @@ export class StateService {
 			);
 
 			if (pdu.eventId !== eventId) {
-				throw new Error('Event id mismatch in trying to room state');
+				throw new Error('Event id mismatch while building room state');
 			}
 
 			finalState.set(stateKey, pdu);
