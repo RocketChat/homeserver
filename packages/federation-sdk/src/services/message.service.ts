@@ -167,8 +167,7 @@ export class MessageService {
 		const event = await this.stateService.buildEvent<'m.room.message'>(
 			{
 				type: 'm.room.message',
-				// TODO: add file content schema
-				content: content as any,
+				content: content,
 				room_id: roomId,
 				auth_events: [],
 				depth: 0,
