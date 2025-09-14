@@ -1,4 +1,4 @@
-import { type OutgoingHttpHeaders } from 'node:http';
+import { type IncomingHttpHeaders } from 'node:http';
 import https from 'node:https';
 
 type RequestOptions = Parameters<typeof https.request>[1];
@@ -88,7 +88,7 @@ function handleMultipart(
 // this fetch is used when connecting to a multihome server, same server hosting multiple homeservers, and we need to verify the cert with the right SNI (hostname), or else, cert check will fail due to connecting through ip and not hostname (due to matrix spec).
 export async function fetch<T>(url: URL, options: RequestInit) {
 	const serverName = new URL(
-		`http://${(options.headers as OutgoingHttpHeaders).Host}` as string,
+		`http://${(options.headers as IncomingHttpHeaders).Host}` as string,
 	).hostname;
 
 	const requestParams: RequestOptions = {
@@ -96,7 +96,7 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 		port: url.port,
 		method: options.method,
 		path: url.pathname + url.search,
-		headers: options.headers as OutgoingHttpHeaders,
+		headers: options.headers as IncomingHttpHeaders,
 		servername: serverName,
 	};
 
@@ -104,7 +104,7 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 		const response: {
 			statusCode: number | undefined;
 			body: Buffer;
-			headers: OutgoingHttpHeaders;
+			headers: IncomingHttpHeaders;
 		} = await new Promise((resolve, reject) => {
 			const request = https.request(requestParams, (res) => {
 				const chunks: Buffer[] = [];
