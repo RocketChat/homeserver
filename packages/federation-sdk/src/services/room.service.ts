@@ -1276,11 +1276,18 @@ export class RoomService {
 
 		await stateService.persistStateEvent(roomCreateEvent);
 
+		// Extract displayname from userId for direct messages
+		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
+
 		const creatorMembershipEvent =
-			PersistentEventFactory.newEvent<'m.room.member'>(
+			await stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
-					content: { membership: 'join' },
+					content: {
+						membership: 'join',
+						is_direct: true,
+						displayname: creatorDisplayname,
+					},
 					room_id: roomCreateEvent.roomId,
 					state_key: creatorUserId,
 					auth_events: [],
@@ -1292,12 +1299,10 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.addAuthEvents(creatorMembershipEvent);
-		await stateService.addPrevEvents(creatorMembershipEvent);
 		await stateService.persistStateEvent(creatorMembershipEvent);
 
 		const powerLevelsEvent =
-			PersistentEventFactory.newEvent<'m.room.power_levels'>(
+			await stateService.buildEvent<'m.room.power_levels'>(
 				{
 					type: 'm.room.power_levels',
 					content: {
@@ -1325,11 +1330,9 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.addAuthEvents(powerLevelsEvent);
-		await stateService.addPrevEvents(powerLevelsEvent);
 		await stateService.persistStateEvent(powerLevelsEvent);
 
-		const joinRulesEvent = PersistentEventFactory.newEvent<'m.room.join_rules'>(
+		const joinRulesEvent = await stateService.buildEvent<'m.room.join_rules'>(
 			{
 				type: 'm.room.join_rules',
 				content: { join_rule: 'invite' },
@@ -1344,12 +1347,10 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.addAuthEvents(joinRulesEvent);
-		await stateService.addPrevEvents(joinRulesEvent);
 		await stateService.persistStateEvent(joinRulesEvent);
 
 		const historyVisibilityEvent =
-			PersistentEventFactory.newEvent<'m.room.history_visibility'>(
+			await stateService.buildEvent<'m.room.history_visibility'>(
 				{
 					type: 'm.room.history_visibility',
 					content: { history_visibility: 'shared' },
@@ -1364,12 +1365,10 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.addAuthEvents(historyVisibilityEvent);
-		await stateService.addPrevEvents(historyVisibilityEvent);
 		await stateService.persistStateEvent(historyVisibilityEvent);
 
 		const guestAccessEvent =
-			PersistentEventFactory.newEvent<'m.room.guest_access'>(
+			await stateService.buildEvent<'m.room.guest_access'>(
 				{
 					type: 'm.room.guest_access',
 					content: { guest_access: 'forbidden' },
@@ -1384,8 +1383,6 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.addAuthEvents(guestAccessEvent);
-		await stateService.addPrevEvents(guestAccessEvent);
 		await stateService.persistStateEvent(guestAccessEvent);
 
 		if (isExternalUser) {
@@ -1396,11 +1393,18 @@ export class RoomService {
 				true, // isDirectMessage
 			);
 		} else {
+			// Extract displayname from userId for direct messages
+			const displayname = targetUserId.split(':').shift()?.slice(1);
+
 			const targetMembershipEvent =
-				PersistentEventFactory.newEvent<'m.room.member'>(
+				await stateService.buildEvent<'m.room.member'>(
 					{
 						type: 'm.room.member',
-						content: { membership: 'join' },
+						content: {
+							membership: 'join',
+							is_direct: true,
+							displayname: displayname,
+						},
 						room_id: roomCreateEvent.roomId,
 						state_key: targetUserId,
 						auth_events: [],
@@ -1412,8 +1416,6 @@ export class RoomService {
 					PersistentEventFactory.defaultRoomVersion,
 				);
 
-			await stateService.addAuthEvents(targetMembershipEvent);
-			await stateService.addPrevEvents(targetMembershipEvent);
 			await stateService.persistStateEvent(targetMembershipEvent);
 		}
 

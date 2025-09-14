@@ -5,7 +5,13 @@ import {
 	RoomState,
 	type StateMapKey,
 } from '@hs/room';
-import type { EventStore, Pdu, PersistentEventBase } from '@hs/room';
+import type {
+	EventStore,
+	Pdu,
+	PduForType,
+	PduWithHashesAndSignaturesOptional,
+	PersistentEventBase,
+} from '@hs/room';
 import { PersistentEventFactory } from '@hs/room';
 import type { RoomVersion } from '@hs/room';
 import { resolveStateV2Plus } from '@hs/room';
@@ -331,6 +337,22 @@ export class StateService {
 				return events.concat(eventsFromStore);
 			},
 		};
+	}
+
+	async buildEvent<T extends PduType>(
+		event: PduWithHashesAndSignaturesOptional<PduForType<T>>,
+		roomVersion: RoomVersion,
+	) {
+		const instance = PersistentEventFactory.createFromRawEvent(
+			event,
+			roomVersion,
+		);
+
+		await this.addAuthEvents(instance);
+		await this.addPrevEvents(instance);
+		await this.signEvent(instance);
+
+		return instance;
 	}
 
 	async addAuthEvents(event: PersistentEventBase) {

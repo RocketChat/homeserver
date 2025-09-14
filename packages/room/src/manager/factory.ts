@@ -889,20 +889,47 @@ export class PersistentEventFactory {
 		}
 
 		// Create the room
-		const createEvent = PersistentEventFactory.newCreateEvent(
-			creatorUserId,
+		const createEvent = PersistentEventFactory.newEvent<'m.room.create'>(
+			{
+				type: 'm.room.create',
+				content: {
+					room_version: roomVersion,
+					creator: creatorUserId,
+				},
+				room_id: '',
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: creatorUserId,
+			},
 			roomVersion,
 		);
 		const roomId = createEvent.roomId;
 
 		// Create membership event for creator
+		// Extract displayname from userId for direct messages
+		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
+
 		const creatorMembershipEvent =
-			PersistentEventFactory.newDirectMessageMembershipEvent(
-				roomId,
-				creatorUserId,
-				creatorUserId,
-				'join',
-				createEvent.getContent(),
+			PersistentEventFactory.newEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: {
+						membership: 'join',
+						is_direct: true,
+						displayname: creatorDisplayname,
+					},
+					room_id: roomId,
+					state_key: creatorUserId,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomVersion,
 			);
 
 		// Create power levels - equal power for both users in DM
@@ -923,37 +950,71 @@ export class PersistentEventFactory {
 			// historical: 100, TODO: check if historical exists in spec - m.power_levels
 		};
 
-		const powerLevelsEvent = PersistentEventFactory.newPowerLevelEvent(
-			roomId,
-			creatorUserId,
-			powerLevelsContent,
-			roomVersion,
-		);
+		const powerLevelsEvent =
+			PersistentEventFactory.newEvent<'m.room.power_levels'>(
+				{
+					type: 'm.room.power_levels',
+					content: powerLevelsContent,
+					room_id: roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomVersion,
+			);
 
 		// Create join rules - invite only for DMs
-		const joinRulesEvent = PersistentEventFactory.newJoinRuleEvent(
-			roomId,
-			creatorUserId,
-			'invite',
+		const joinRulesEvent = PersistentEventFactory.newEvent<'m.room.join_rules'>(
+			{
+				type: 'm.room.join_rules',
+				content: { join_rule: 'invite' },
+				room_id: roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: creatorUserId,
+			},
 			roomVersion,
 		);
 
 		// Create history visibility - shared for DMs (essential for proper DM behavior)
 		const historyVisibilityEvent =
-			PersistentEventFactory.newHistoryVisibilityEvent(
-				roomId,
-				creatorUserId,
-				'shared',
+			PersistentEventFactory.newEvent<'m.room.history_visibility'>(
+				{
+					type: 'm.room.history_visibility',
+					content: { history_visibility: 'shared' },
+					room_id: roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
 				roomVersion,
 			);
 
 		// Create guest access - forbidden for DMs (essential for proper DM behavior)
-		const guestAccessEvent = PersistentEventFactory.newGuestAccessEvent(
-			roomId,
-			creatorUserId,
-			'forbidden',
-			roomVersion,
-		);
+		const guestAccessEvent =
+			PersistentEventFactory.newEvent<'m.room.guest_access'>(
+				{
+					type: 'm.room.guest_access',
+					content: { guest_access: 'forbidden' },
+					room_id: roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomVersion,
+			);
 
 		return {
 			roomId,
