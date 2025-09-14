@@ -965,4 +965,11 @@ export class PersistentEventFactory {
 			guestAccessEvent,
 		};
 	}
+
+	static newEvent<Type extends PduType>(
+		event: PduWithHashesAndSignaturesOptional<PduForType<Type>>,
+		roomVersion: RoomVersion,
+	): PersistentEventBase<RoomVersion, Type> {
+		return PersistentEventFactory.createFromRawEvent(event, roomVersion);
+	}
 }

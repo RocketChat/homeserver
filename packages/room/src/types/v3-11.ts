@@ -563,8 +563,13 @@ export const PduNoContentStateEventSchema = {
 		.describe('The state key of the event. This is an optional field.'),
 };
 
+export const PduNoContentEmptyStateKeyStateEventSchema = {
+	...PduNoContentTimelineEventSchema,
+	state_key: z.literal(''),
+};
+
 const EventPduTypeRoomCreate = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.create'),
 	content: PduCreateEventContentSchema,
 });
@@ -576,13 +581,13 @@ const EventPduTypeRoomMember = z.object({
 });
 
 const EventPduTypeRoomJoinRules = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.join_rules'),
 	content: PduJoinRuleEventContentSchema,
 });
 
 const EventPduTypeRoomPowerLevels = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.power_levels'),
 	content: PduPowerLevelsEventContentSchema,
 });
