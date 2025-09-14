@@ -111,7 +111,16 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 
 				res.once('error', reject);
 
+				// TODO: Make @hs/core fetch size limit configurable
+				let total = 0;
+				const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
+
 				res.on('data', (chunk) => {
+					total += chunk.length;
+					if (total > MAX_RESPONSE_BYTES) {
+						request.destroy(new Error('Response exceeds size limit'));
+						return;
+					}
 					chunks.push(chunk);
 				});
 
