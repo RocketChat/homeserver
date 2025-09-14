@@ -79,7 +79,7 @@ export class ProfilesService {
 			throw new Error(`Unsupported room version: ${roomVersion}`);
 		}
 
-		const membershipEvent = PersistentEventFactory.newEvent<'m.room.member'>(
+		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
 				content: { membership: 'join' },
@@ -93,9 +93,6 @@ export class ProfilesService {
 			},
 			roomInformation.room_version,
 		);
-
-		await stateService.addAuthEvents(membershipEvent);
-		await stateService.addPrevEvents(membershipEvent);
 
 		return {
 			room_version: roomVersion,

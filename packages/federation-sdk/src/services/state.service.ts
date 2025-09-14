@@ -342,8 +342,8 @@ export class StateService {
 	async buildEvent<T extends PduType>(
 		event: PduWithHashesAndSignaturesOptional<PduForType<T>>,
 		roomVersion: RoomVersion,
-	) {
-		const instance = PersistentEventFactory.createFromRawEvent(
+	): Promise<PersistentEventBase<RoomVersion, T>> {
+		const instance = PersistentEventFactory.createFromRawEvent<T>(
 			event,
 			roomVersion,
 		);
@@ -355,7 +355,7 @@ export class StateService {
 		return instance;
 	}
 
-	async addAuthEvents(event: PersistentEventBase) {
+	private async addAuthEvents(event: PersistentEventBase) {
 		const state = await this.getFullRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();
@@ -368,7 +368,7 @@ export class StateService {
 		}
 	}
 
-	async addPrevEvents(event: PersistentEventBase) {
+	private async addPrevEvents(event: PersistentEventBase) {
 		const roomVersion = await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while filling prev events');
@@ -383,7 +383,7 @@ export class StateService {
 		);
 	}
 
-	public async signEvent(event: PersistentEventBase) {
+	async signEvent(event: PersistentEventBase) {
 		const signingKey = await this.configService.getSigningKey();
 
 		const origin = this.configService.serverName;

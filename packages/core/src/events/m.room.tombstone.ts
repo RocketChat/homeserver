@@ -20,9 +20,9 @@ declare module './eventBase' {
 }
 
 export type TombstoneAuthEvents = {
-	'm.room.create': string | undefined;
-	'm.room.power_levels': string | undefined;
-	'm.room.member': string | undefined;
+	'm.room.create': string;
+	'm.room.power_levels': string;
+	'm.room.member': string;
 };
 
 type RoomTombstoneEventProps = {
