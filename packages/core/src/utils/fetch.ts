@@ -109,6 +109,8 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 			const request = https.request(requestParams, (res) => {
 				const chunks: Buffer[] = [];
 
+				res.once('error', reject);
+
 				res.on('data', (chunk) => {
 					chunks.push(chunk);
 				});
@@ -121,6 +123,15 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 					});
 				});
 			});
+
+			const signal = options.signal;
+			if (signal) {
+				const onAbort = () => request.destroy(new Error('Aborted'));
+				signal.addEventListener('abort', onAbort, { once: true });
+				request.once('close', () =>
+					signal.removeEventListener('abort', onAbort),
+				);
+			}
 
 			request.on('error', (err) => {
 				reject(err);
