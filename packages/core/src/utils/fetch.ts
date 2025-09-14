@@ -126,6 +126,11 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 				reject(err);
 			});
 
+			// TODO: Make @hs/core fetch timeout configurable
+			request.setTimeout(20_000, () => {
+				request.destroy(new Error('Request timed out after 20s'));
+			});
+
 			request.end(options.body);
 		});
 
