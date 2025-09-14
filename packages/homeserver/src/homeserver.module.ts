@@ -15,6 +15,7 @@ import { swagger } from '@elysiajs/swagger';
 import type { Emitter } from '@rocket.chat/emitter';
 import Elysia from 'elysia';
 import { invitePlugin } from './controllers/federation/invite.controller';
+import { mediaPlugin } from './controllers/federation/media.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
 import { roomPlugin } from './controllers/federation/rooms.controller';
 import { sendJoinPlugin } from './controllers/federation/send-join.controller';
@@ -121,7 +122,8 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(internalRoomPlugin)
 		.use(serverKeyPlugin)
 		.use(wellKnownPlugin)
-		.use(roomPlugin);
+		.use(roomPlugin)
+		.use(mediaPlugin);
 
 	return { app, container };
 }
