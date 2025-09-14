@@ -70,12 +70,12 @@ function handleMultipart(
 	contentType: string,
 	body: Buffer,
 ): Promise<MultipartResult | null> {
-	if (!contentType.includes('multipart')) {
+	if (!/\bmultipart\b/i.test(contentType)) {
 		return Promise.resolve(null);
 	}
 
 	// extract boundary from content-type header
-	const boundaryMatch = contentType.match(/boundary=([^;,\s]+)/);
+	const boundaryMatch = contentType.match(/boundary=([^;,\s]+)/i);
 	if (!boundaryMatch) {
 		return Promise.resolve(null);
 	}
