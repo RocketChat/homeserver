@@ -24,6 +24,7 @@ export class MediaService {
 
 		for (const endpoint of endpoints) {
 			try {
+				// TODO: Stream remote file downloads instead of buffering the entire file in memory.
 				return this.federationRequest.requestBinaryData(
 					'GET',
 					serverName,
