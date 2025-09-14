@@ -1,15 +1,59 @@
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
-type MessageType =
-	| 'm.text'
-	| 'm.emote'
-	| 'm.notice'
-	| 'm.image'
-	| 'm.file'
-	| 'm.audio'
-	| 'm.video'
-	| 'm.location';
+export type TextMessageType = 'm.text' | 'm.emote' | 'm.notice';
+export type FileMessageType = 'm.image' | 'm.file' | 'm.audio' | 'm.video';
+export type LocationMessageType = 'm.location';
+export type MessageType =
+	| TextMessageType
+	| FileMessageType
+	| LocationMessageType;
+
+// Base message content
+type BaseMessageContent = {
+	body: string;
+	'm.mentions'?: Record<string, any>;
+	format?: string;
+	formatted_body?: string;
+	'm.relates_to'?: MessageRelation;
+};
+
+// Text message content
+export type TextMessageContent = BaseMessageContent & {
+	msgtype: TextMessageType;
+};
+
+// File message content
+export type FileMessageContent = BaseMessageContent & {
+	msgtype: FileMessageType;
+	url: string;
+	info?: {
+		size?: number;
+		mimetype?: string;
+		w?: number;
+		h?: number;
+		duration?: number;
+		thumbnail_url?: string;
+		thumbnail_info?: {
+			w?: number;
+			h?: number;
+			mimetype?: string;
+			size?: number;
+		};
+	};
+};
+
+// Location message content
+export type LocationMessageContent = BaseMessageContent & {
+	msgtype: LocationMessageType;
+	geo_uri: string;
+};
+
+// New content for edits
+type NewContent =
+	| Pick<TextMessageContent, 'body' | 'msgtype' | 'format' | 'formatted_body'>
+	| Pick<FileMessageContent, 'body' | 'msgtype' | 'url' | 'info'>
+	| Pick<LocationMessageContent, 'body' | 'msgtype' | 'geo_uri'>;
 
 declare module './eventBase' {
 	interface Events {
@@ -17,19 +61,12 @@ declare module './eventBase' {
 			unsigned: {
 				age_ts: number;
 			};
-			content: {
-				body: string;
-				msgtype: MessageType;
-				'm.mentions'?: Record<string, any>;
-				format?: string;
-				formatted_body?: string;
-				'm.relates_to'?: MessageRelation;
-				'm.new_content'?: {
-					body: string;
-					msgtype: MessageType;
-					format?: string;
-					formatted_body?: string;
-				};
+			content: (
+				| TextMessageContent
+				| FileMessageContent
+				| LocationMessageContent
+			) & {
+				'm.new_content'?: NewContent;
 			};
 		};
 	}
@@ -67,19 +104,12 @@ export const isRoomMessageEvent = (
 
 export interface RoomMessageEvent extends EventBase {
 	type: 'm.room.message';
-	content: {
-		body: string;
-		msgtype: MessageType;
-		'm.mentions'?: Record<string, any>;
-		format?: string;
-		formatted_body?: string;
-		'm.relates_to'?: MessageRelation;
-		'm.new_content'?: {
-			body: string;
-			msgtype: MessageType;
-			format?: string;
-			formatted_body?: string;
-		};
+	content: (
+		| TextMessageContent
+		| FileMessageContent
+		| LocationMessageContent
+	) & {
+		'm.new_content'?: NewContent;
 	};
 	unsigned: {
 		age: number;
@@ -110,19 +140,12 @@ export const roomMessageEvent = ({
 	prev_events: string[];
 	depth: number;
 	unsigned?: RoomMessageEvent['unsigned'];
-	content: {
-		body: string;
-		msgtype: MessageType;
-		'm.mentions'?: Record<string, any>;
-		format?: string;
-		formatted_body?: string;
-		'm.relates_to'?: MessageRelation;
-		'm.new_content'?: {
-			body: string;
-			msgtype: MessageType;
-			format?: string;
-			formatted_body?: string;
-		};
+	content: (
+		| TextMessageContent
+		| FileMessageContent
+		| LocationMessageContent
+	) & {
+		'm.new_content'?: NewContent;
 	};
 	origin?: string;
 	ts?: number;
