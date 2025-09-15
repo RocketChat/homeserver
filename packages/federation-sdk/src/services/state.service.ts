@@ -212,18 +212,6 @@ export class StateService {
 		return state;
 	}
 
-	private async findPreviousStateId(stateId: string) {
-		const state = await this.stateRepository.getStateById(stateId);
-		if (!state) {
-			throw new Error(`Event ${stateId} not found`);
-		}
-		const prevStateId = state.prevStateIds.at(-1);
-		if (!prevStateId) {
-			throw new Error(`State ${stateId} has no previous state`);
-		}
-		return prevStateId;
-	}
-
 	async findStateBeforeEvent(
 		eventId: string,
 		includeEvent = false,
