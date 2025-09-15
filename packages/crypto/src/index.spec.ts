@@ -8,7 +8,7 @@ import {
 	signJson,
 	verifyJsonSignature,
 } from './utils/keys';
-import { encodeCanonicalJson, fromBase64ToBytes } from './utils/data-types';
+import { fromBase64ToBytes } from './utils/data-types';
 
 describe('signJson', () => {
 	it('should sign a json object', async () => {
