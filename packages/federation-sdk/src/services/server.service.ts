@@ -57,7 +57,7 @@ export class ServerService {
 
 		const keys = {
 			[signer.id]: {
-				key: toUnpaddedBase64(signer.publicKey),
+				key: toUnpaddedBase64(signer.getPublicKey()),
 			},
 		};
 

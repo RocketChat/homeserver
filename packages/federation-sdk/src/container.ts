@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import type { EventStagingStore, EventStore, ServerKey } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
 import type {
 	EventStagingStore,
@@ -13,7 +14,7 @@ import { StagingAreaListener } from './listeners/staging-area.listener';
 import { StagingAreaQueue } from './queues/staging-area.queue';
 import { EventStagingRepository } from './repositories/event-staging.repository';
 import { EventRepository } from './repositories/event.repository';
-import { Key, KeyRepository } from './repositories/key.repository';
+import { KeyRepository } from './repositories/key.repository';
 import { Lock, LockRepository } from './repositories/lock.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
@@ -42,6 +43,7 @@ import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
+import { KeyService } from './services/key.service';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
@@ -73,8 +75,9 @@ export async function createFederationContainer(
 		),
 	});
 
-	container.register<Collection<Key>>('KeyCollection', {
-		useValue: db.collection<Key>('rocketchat_federation_keys'),
+	container.register<Collection<ServerKey>>('KeyCollection', {
+		// TODO change collection name to include at least the "rocketchat_" prefix
+		useValue: db.collection<ServerKey>('keys'),
 	});
 
 	container.register<Collection<Lock>>('LockCollection', {
@@ -126,6 +129,7 @@ export async function createFederationContainer(
 	container.registerSingleton(SendJoinService);
 	container.registerSingleton(StagingAreaService);
 	container.registerSingleton(EduService);
+	container.registerSingleton(KeyService);
 
 	container.registerSingleton(StagingAreaListener);
 
