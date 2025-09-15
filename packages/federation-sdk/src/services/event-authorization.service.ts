@@ -2,13 +2,15 @@ import {
 	createLogger,
 	extractSignaturesFromHeader,
 	generateId,
+	getPublicKeyFromRemoteServer,
+	makeGetPublicKeyFromServerProcedure,
 	validateAuthorizationHeader,
 } from '@hs/core';
 import type { EventID, Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
+import { KeyRepository } from '../repositories/key.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { SignatureVerificationService } from './signature-verification.service';
 import { StateService } from './state.service';
 
 @singleton()
@@ -18,8 +20,8 @@ export class EventAuthorizationService {
 	constructor(
 		private readonly stateService: StateService,
 		private readonly eventService: EventService,
-		private readonly signatureVerificationService: SignatureVerificationService,
 		private readonly configService: ConfigService,
+		private readonly keyRepository: KeyRepository,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -124,38 +126,44 @@ export class EventAuthorizationService {
 			const { origin, destination, key, signature } =
 				extractSignaturesFromHeader(authorizationHeader);
 
-			if (!origin || !key || !signature) {
-				this.logger.warn('Missing required fields in X-Matrix header');
-				return;
-			}
-
-			if (destination && destination !== this.configService.serverName) {
-				this.logger.warn(
-					`Request destination ${destination} does not match server name ${this.configService.serverName}`,
-				);
+			if (
+				!origin ||
+				!key ||
+				!signature ||
+				(destination && destination !== this.configService.serverName)
+			) {
 				return;
 			}
 
 			const [algorithm] = key.split(':');
 			if (algorithm !== 'ed25519') {
-				this.logger.warn(`Unsupported key algorithm: ${algorithm}`);
 				return;
 			}
 
-			const publicKey =
-				await this.signatureVerificationService.getOrFetchPublicKey(
-					origin,
-					key,
-				);
+			// TODO: move makeGetPublicKeyFromServerProcedure procedure to a proper service
+			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
+				(origin, keyId) =>
+					this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
+				(origin, key) =>
+					getPublicKeyFromRemoteServer(
+						origin,
+						this.configService.serverName,
+						key,
+					),
+				(origin, keyId, publicKey) =>
+					this.keyRepository.storePublicKey(origin, keyId, publicKey),
+			);
+			const publicKey = await getPublicKeyFromServer(origin, key);
 			if (!publicKey) {
 				this.logger.warn(`Could not fetch public key for ${origin}:${key}`);
 				return;
 			}
 
+			const actualDestination = destination || this.configService.serverName;
 			const isValid = await validateAuthorizationHeader(
 				origin,
-				publicKey.verify_keys[key].key,
-				destination || this.configService.serverName,
+				publicKey,
+				actualDestination,
 				method,
 				uri,
 				signature,
@@ -168,10 +176,7 @@ export class EventAuthorizationService {
 
 			return origin;
 		} catch (error) {
-			this.logger.error(
-				{ error, method, uri, authorizationHeader, body },
-				'Error verifying request signature',
-			);
+			this.logger.error(error, 'Error verifying request signature');
 			return;
 		}
 	}
@@ -292,15 +297,15 @@ export class EventAuthorizationService {
 		roomId: string,
 		serverName: string,
 	): Promise<boolean> {
-		const [serverAcl] = await this.stateService.getStateEventsByType(
+		const [aclEvent] = await this.stateService.getStateEventsByType(
 			roomId,
 			'm.room.server_acl',
 		);
-		if (!serverAcl) {
+		if (!aclEvent) {
 			return true;
 		}
 
-		const serverAclContent = serverAcl.getContent() as {
+		const serverAclContent = aclEvent.getContent() as {
 			allow?: string[];
 			deny?: string[];
 			allow_ip_literals?: boolean;
