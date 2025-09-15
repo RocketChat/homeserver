@@ -27,7 +27,6 @@ import { internalMessagePlugin } from './controllers/internal/message.controller
 import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
-import { mediaPlugin } from './controllers/media.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
 
 export type { HomeserverEventSignatures };
@@ -122,8 +121,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(internalRoomPlugin)
 		.use(serverKeyPlugin)
 		.use(wellKnownPlugin)
-		.use(roomPlugin)
-		.use(mediaPlugin);
+		.use(roomPlugin);
 
 	return { app, container };
 }
