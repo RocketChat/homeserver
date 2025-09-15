@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'bun:test';
+import { fromBase64ToBytes } from './utils/data-types';
 import {
-	EncryptionValidAlgorithm,
-	encodeCanonicalJson,
+	loadEd25519SignerFromSeed,
+	loadEd25519VerifierFromPublicKey,
 	signJson,
-	toBinaryData,
-	verifySignature,
-} from '.';
+	verifyJsonSignature,
+} from './utils/keys';
 
 describe('signJson', () => {
 	it('should sign a json object', async () => {
@@ -42,7 +42,9 @@ describe('signJson', () => {
 
 		const seed = 'FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04';
 
-		const signature = await signJson(json, seed);
+		const signer = await loadEd25519SignerFromSeed(fromBase64ToBytes(seed));
+
+		const signature = await signJson(json, signer);
 
 		expect(signature).toBe(
 			'ZDz7K7NRz0OwgR6n96YMIyt9h8KUCb7T9TklId7S1UDVOwc2y45+tC12/51kxRxpUkaOgr+iBtSBBh74BIrsBQ',
@@ -99,16 +101,10 @@ describe('signJson', () => {
 		const verifyKey =
 			keyv2serverresponsefromorigin.verify_keys['ed25519:a_FAET'].key;
 
-		const content = encodeCanonicalJson(json);
-
-		await verifySignature(
-			content,
-			new Uint8Array(Buffer.from(signature, 'base64')),
-			new Uint8Array(Buffer.from(verifyKey, 'base64')),
-			{
-				algorithm: EncryptionValidAlgorithm.ed25519,
-				signingName: 'syn1.tunnel.dev.rocket.chat',
-			},
+		const verifier = await loadEd25519VerifierFromPublicKey(
+			fromBase64ToBytes(verifyKey),
 		);
+
+		expect(verifyJsonSignature(json, signature, verifier)).resolves;
 	});
 });
