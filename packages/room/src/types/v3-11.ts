@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PduForType } from './_common';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -32,6 +33,7 @@ export const PduTypeSchema = z.enum([
 	'm.call.invite',
 	'm.poll.start',
 ]);
+
 export const EduTypeSchema = z.enum([
 	'm.presence',
 	'm.typing',
@@ -220,6 +222,28 @@ export const PduGuestAccessEventContentSchema = z.object({
 
 export type PduGuestAccessEventContent = z.infer<
 	typeof PduGuestAccessEventContentSchema
+>;
+
+// https://spec.matrix.org/v1.12/client-server-api/#mroomserver_acl
+
+export const PduServerAclEventContentSchema = z.object({
+	allow: z
+		.array(z.string())
+		.describe('A list of server names to allow, including wildcards.')
+		.optional(),
+	deny: z
+		.array(z.string())
+		.describe('A list of server names to deny, including wildcards.')
+		.optional(),
+	allow_ip_literals: z
+		.boolean()
+		.describe('Whether to allow server names that are IP address literals.')
+		.optional()
+		.default(true),
+});
+
+export type PduServerAclEventContent = z.infer<
+	typeof PduServerAclEventContentSchema
 >;
 
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
@@ -628,6 +652,12 @@ const EventPduTypeRoomGuestAccess = z.object({
 	content: PduGuestAccessEventContentSchema,
 });
 
+const EventPduTypeRoomServerAcl = z.object({
+	...PduNoContentEmptyStateKeyStateEventSchema,
+	type: z.literal('m.room.server_acl'),
+	content: PduServerAclEventContentSchema,
+});
+
 export const PduRoomTombstoneEventContentSchema = z.object({
 	body: z.string().describe('The body of the tombstone.'),
 	replacement_room: z
@@ -685,6 +715,8 @@ export const PduSchema = z.discriminatedUnion('type', [
 
 	EventPduTypeRoomGuestAccess,
 
+	EventPduTypeRoomServerAcl,
+
 	EventPduTypeRoomMessage,
 
 	EventPduTypeRoomReaction,
@@ -696,7 +728,7 @@ export const PduSchema = z.discriminatedUnion('type', [
 
 export type Pdu = z.infer<typeof PduSchema> & {};
 
-export type PduContent = Pick<Pdu, 'content'>['content'];
+export type PduContent<T extends PduType = PduType> = PduForType<T>['content'];
 
 export function isTimelineEventType(type: PduType) {
 	return (
