@@ -221,8 +221,21 @@ export class RoomService {
 			`Creating room for ${username} with ${name} join_rule: ${joinRule}`,
 		);
 
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
-			username,
+		const roomCreateEvent = PersistentEventFactory.newEvent<'m.room.create'>(
+			{
+				type: 'm.room.create',
+				content: {
+					room_version: PersistentEventFactory.defaultRoomVersion,
+					creator: username,
+				},
+				room_id: '',
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: username,
+			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
@@ -230,81 +243,106 @@ export class RoomService {
 
 		await stateService.persistStateEvent(roomCreateEvent);
 
-		const creatorMembershipEvent = PersistentEventFactory.newMembershipEvent(
-			roomCreateEvent.roomId,
-			username,
-			username,
-			'join',
-			roomCreateEvent.getContent<PduCreateEventContent>(),
-		);
-
-		await stateService.addAuthEvents(creatorMembershipEvent);
-
-		await stateService.addPrevEvents(creatorMembershipEvent);
+		const creatorMembershipEvent =
+			await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'join' },
+					room_id: roomCreateEvent.roomId,
+					state_key: username,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
 
 		await stateService.persistStateEvent(creatorMembershipEvent);
 
-		const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
-			roomCreateEvent.roomId,
-			username,
-			name,
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.addAuthEvents(roomNameEvent);
-
-		await stateService.addPrevEvents(roomNameEvent);
-
-		await stateService.persistStateEvent(roomNameEvent);
-
-		const powerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
-			roomCreateEvent.roomId,
-			username,
+		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
 			{
-				users: {
-					[username]: 100,
-				},
-				users_default: 0,
-				events: {},
-				events_default: 0,
-				state_default: 50,
-				ban: 50,
-				kick: 50,
-				redact: 50,
-				invite: 50,
+				type: 'm.room.name',
+				content: { name: name },
+				room_id: roomCreateEvent.roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: username,
 			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.addAuthEvents(powerLevelEvent);
+		await stateService.persistStateEvent(roomNameEvent);
 
-		await stateService.addPrevEvents(powerLevelEvent);
+		const powerLevelEvent =
+			await stateService.buildEvent<'m.room.power_levels'>(
+				{
+					type: 'm.room.power_levels',
+					content: {
+						users: {
+							[username]: 100,
+						},
+						users_default: 0,
+						events: {},
+						events_default: 0,
+						state_default: 50,
+						ban: 50,
+						kick: 50,
+						redact: 50,
+						invite: 50,
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
 
 		await stateService.persistStateEvent(powerLevelEvent);
 
-		const joinRuleEvent = PersistentEventFactory.newJoinRuleEvent(
-			roomCreateEvent.roomId,
-			username,
-			joinRule,
+		const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
+			{
+				type: 'm.room.join_rules',
+				content: { join_rule: joinRule },
+				room_id: roomCreateEvent.roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: username,
+			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
-
-		await stateService.addAuthEvents(joinRuleEvent);
-
-		await stateService.addPrevEvents(joinRuleEvent);
 
 		await stateService.persistStateEvent(joinRuleEvent);
 
-		const canonicalAliasEvent = PersistentEventFactory.newCanonicalAliasEvent(
-			roomCreateEvent.roomId,
-			username,
-			`#${name}:${this.configService.serverName}`,
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.addAuthEvents(canonicalAliasEvent);
-
-		await stateService.addPrevEvents(canonicalAliasEvent);
+		const canonicalAliasEvent =
+			await stateService.buildEvent<'m.room.canonical_alias'>(
+				{
+					type: 'm.room.canonical_alias',
+					content: {
+						alias: `#${name}:${this.configService.serverName}`,
+						alt_aliases: [],
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
 
 		await stateService.persistStateEvent(canonicalAliasEvent);
 
@@ -323,19 +361,22 @@ export class RoomService {
 		if (!roomversion) {
 			throw new Error('Room version not found');
 		}
-
-		const roomNameEvent = PersistentEventFactory.newRoomNameEvent(
-			roomId,
-			senderId,
-			name,
-			roomversion,
-		);
-
 		const stateService = this.stateService;
 
-		await stateService.addAuthEvents(roomNameEvent);
-
-		await stateService.addPrevEvents(roomNameEvent);
+		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
+			{
+				type: 'm.room.name',
+				content: { name },
+				room_id: roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderId,
+			},
+			roomversion,
+		);
 
 		await stateService.persistStateEvent(roomNameEvent);
 
@@ -350,16 +391,20 @@ export class RoomService {
 			throw new Error('Room version not found while setting room topic');
 		}
 
-		const topicEvent = PersistentEventFactory.newRoomTopicEvent(
-			roomId,
-			sender,
-			topic,
+		const topicEvent = await this.stateService.buildEvent<'m.room.topic'>(
+			{
+				type: 'm.room.topic',
+				content: { topic },
+				room_id: roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: sender,
+			},
 			roomVersion,
 		);
-
-		await this.stateService.addAuthEvents(topicEvent);
-		await this.stateService.addPrevEvents(topicEvent);
-		await this.stateService.signEvent(topicEvent);
 
 		await this.stateService.persistStateEvent(topicEvent);
 
@@ -478,16 +523,21 @@ export class RoomService {
 			ts: Date.now(),
 		}) as PduForType<'m.room.power_levels'>;
 
-		const event = PersistentEventFactory.newPowerLevelEvent(
-			roomId,
-			eventToSign.sender,
-			eventToSign.content,
+		const event = await this.stateService.buildEvent<'m.room.power_levels'>(
+			{
+				type: 'm.room.power_levels',
+				content: eventToSign.content,
+				room_id: roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: eventToSign.sender,
+			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await this.stateService.addAuthEvents(event);
-		await this.stateService.addPrevEvents(event);
-		await this.stateService.signEvent(event);
 		await this.stateService.persistStateEvent(event);
 
 		logger.info(
@@ -542,17 +592,20 @@ export class RoomService {
 			);
 		}
 
-		const leaveEvent = PersistentEventFactory.newMembershipEvent(
-			roomId,
-			senderId,
-			senderId, // For leave events, sender and state_key are the same
-			'leave',
-			roomInfo,
+		const leaveEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: { membership: 'leave' },
+				room_id: roomId,
+				state_key: senderId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderId,
+			},
+			roomInfo.room_version,
 		);
-
-		await this.stateService.addAuthEvents(leaveEvent);
-
-		await this.stateService.addPrevEvents(leaveEvent);
 
 		await this.stateService.persistStateEvent(leaveEvent);
 
@@ -615,18 +668,23 @@ export class RoomService {
 			kickedUserId,
 		);
 
-		const kickEvent = PersistentEventFactory.newMembershipEvent(
-			roomId,
-			senderId,
-			kickedUserId,
-			'leave',
-			roomInfo,
-			reason,
+		const kickEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'leave',
+					reason: reason,
+				},
+				room_id: roomId,
+				state_key: kickedUserId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderId,
+			},
+			roomInfo.room_version,
 		);
-
-		await this.stateService.addAuthEvents(kickEvent);
-
-		await this.stateService.addPrevEvents(kickEvent);
 
 		await this.stateService.persistStateEvent(kickEvent);
 
@@ -690,18 +748,23 @@ export class RoomService {
 			bannedUserId,
 		);
 
-		const banEvent = PersistentEventFactory.newMembershipEvent(
-			roomId,
-			senderId,
-			bannedUserId,
-			'ban',
-			roomInfo,
-			reason,
+		const banEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'ban',
+					reason: reason,
+				},
+				room_id: roomId,
+				state_key: bannedUserId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderId,
+			},
+			roomInfo.room_version,
 		);
-
-		await this.stateService.addAuthEvents(banEvent);
-
-		await this.stateService.addPrevEvents(banEvent);
 
 		await this.stateService.persistStateEvent(banEvent);
 
@@ -737,17 +800,20 @@ export class RoomService {
 				);
 			}
 
-			const membershipEvent = PersistentEventFactory.newMembershipEvent(
-				roomId,
-				userId, // sender and state_key are the same for join events
-				userId,
-				'join',
-				createEvent.getContent(),
+			const membershipEvent = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'join' },
+					room_id: roomId,
+					state_key: userId,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: userId,
+				},
+				PersistentEventFactory.defaultRoomVersion,
 			);
-
-			await stateService.addAuthEvents(membershipEvent);
-
-			await stateService.addPrevEvents(membershipEvent);
 
 			await stateService.persistStateEvent(membershipEvent);
 
@@ -946,7 +1012,6 @@ export class RoomService {
 	): Promise<SignedEvent<PduForType<'m.room.tombstone'>>> {
 		logger.debug(`Marking room ${roomId} as tombstone by ${sender}`);
 		const serverName = this.configService.serverName;
-		const signingKey = await this.configService.getSigningKey();
 
 		const room = await this.roomRepository.findOneById(roomId);
 		if (!room) {
@@ -996,31 +1061,25 @@ export class RoomService {
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
 
-		const tombstoneEvent = roomTombstoneEvent({
-			roomId,
-			sender,
-			body: reason,
-			replacementRoom: replacementRoomId,
-			auth_events: authEventsMap,
-			prev_events: prevEvents,
-			depth,
-			origin: serverName,
-		}) as PduForType<'m.room.tombstone'>;
-
-		const signedEvent = await signEvent(
-			tombstoneEvent,
-			Array.isArray(signingKey) ? signingKey[0] : signingKey,
-			serverName,
-		);
-
-		const event = PersistentEventFactory.createFromRawEvent(
-			signedEvent,
+		const event = await this.stateService.buildEvent<'m.room.tombstone'>(
+			{
+				room_id: roomId,
+				sender: sender,
+				content: {
+					body: reason,
+					replacement_room: replacementRoomId,
+				},
+				auth_events: [...Object.values(authEventsMap)],
+				prev_events: prevEvents,
+				depth,
+				origin_server_ts: Date.now(),
+				unsigned: { age_ts: Date.now() },
+				hashes: { sha256: '' },
+				signatures: {},
+				type: 'm.room.tombstone',
+			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
-
-		this.stateService.addAuthEvents(event);
-		this.stateService.addPrevEvents(event);
-		this.stateService.signEvent(event);
 
 		const _stateId = await this.stateService.persistStateEvent(event);
 
@@ -1030,7 +1089,12 @@ export class RoomService {
 
 		logger.info(`Successfully marked room ${roomId} as tombstone`);
 
-		return signedEvent;
+		const { event: eventToReturn } = event;
+
+		return {
+			...eventToReturn,
+			event_id: event.eventId,
+		};
 	}
 
 	public async isRoomTombstoned(roomId: string): Promise<boolean> {
@@ -1095,16 +1159,20 @@ export class RoomService {
 
 		clone.users[userId] = powerLevel;
 
-		const event = PersistentEventFactory.newPowerLevelEvent(
-			roomId,
-			sender,
-			clone,
+		const event = await this.stateService.buildEvent<'m.room.power_levels'>(
+			{
+				type: 'm.room.power_levels',
+				content: clone,
+				room_id: roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: sender,
+			},
 			state.version,
 		);
-
-		await this.stateService.addAuthEvents(event);
-		await this.stateService.addPrevEvents(event);
-		await this.stateService.signEvent(event);
 
 		await this.stateService.persistStateEvent(event);
 
@@ -1134,82 +1202,133 @@ export class RoomService {
 
 		const stateService = this.stateService;
 
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
-			creatorUserId,
+		const roomCreateEvent = PersistentEventFactory.newEvent<'m.room.create'>(
+			{
+				type: 'm.room.create',
+				content: {
+					room_version: PersistentEventFactory.defaultRoomVersion,
+					creator: creatorUserId,
+				},
+				room_id: '',
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: creatorUserId,
+			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
 		await stateService.persistStateEvent(roomCreateEvent);
 
+		// Extract displayname from userId for direct messages
+		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
+
 		const creatorMembershipEvent =
-			PersistentEventFactory.newDirectMessageMembershipEvent(
-				roomCreateEvent.roomId,
-				creatorUserId,
-				creatorUserId,
-				'join',
-				roomCreateEvent.getContent<PduCreateEventContent>(),
+			await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: {
+						membership: 'join',
+						is_direct: true,
+						displayname: creatorDisplayname,
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: creatorUserId,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.addAuthEvents(creatorMembershipEvent);
-		await stateService.addPrevEvents(creatorMembershipEvent);
 		await stateService.persistStateEvent(creatorMembershipEvent);
 
-		const powerLevelsEvent = PersistentEventFactory.newPowerLevelEvent(
-			roomCreateEvent.roomId,
-			creatorUserId,
-			{
-				users: {
-					[creatorUserId]: 50,
-					[targetUserId]: 50,
+		const powerLevelsEvent =
+			await stateService.buildEvent<'m.room.power_levels'>(
+				{
+					type: 'm.room.power_levels',
+					content: {
+						users: {
+							[creatorUserId]: 50,
+							[targetUserId]: 50,
+						},
+						users_default: 0,
+						events: {},
+						events_default: 0,
+						state_default: 50,
+						ban: 50,
+						kick: 50,
+						redact: 50,
+						invite: 50,
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
 				},
-				users_default: 0,
-				events: {},
-				events_default: 0,
-				state_default: 50,
-				ban: 50,
-				kick: 50,
-				redact: 50,
-				invite: 50,
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+		await stateService.persistStateEvent(powerLevelsEvent);
+
+		const joinRulesEvent = await stateService.buildEvent<'m.room.join_rules'>(
+			{
+				type: 'm.room.join_rules',
+				content: { join_rule: 'invite' },
+				room_id: roomCreateEvent.roomId,
+				state_key: '',
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: creatorUserId,
 			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.addAuthEvents(powerLevelsEvent);
-		await stateService.addPrevEvents(powerLevelsEvent);
-		await stateService.persistStateEvent(powerLevelsEvent);
-
-		const joinRulesEvent = PersistentEventFactory.newJoinRuleEvent(
-			roomCreateEvent.roomId,
-			creatorUserId,
-			'invite',
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.addAuthEvents(joinRulesEvent);
-		await stateService.addPrevEvents(joinRulesEvent);
 		await stateService.persistStateEvent(joinRulesEvent);
 
 		const historyVisibilityEvent =
-			PersistentEventFactory.newHistoryVisibilityEvent(
-				roomCreateEvent.roomId,
-				creatorUserId,
-				'shared',
+			await stateService.buildEvent<'m.room.history_visibility'>(
+				{
+					type: 'm.room.history_visibility',
+					content: { history_visibility: 'shared' },
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.addAuthEvents(historyVisibilityEvent);
-		await stateService.addPrevEvents(historyVisibilityEvent);
 		await stateService.persistStateEvent(historyVisibilityEvent);
 
-		const guestAccessEvent = PersistentEventFactory.newGuestAccessEvent(
-			roomCreateEvent.roomId,
-			creatorUserId,
-			'forbidden',
-			PersistentEventFactory.defaultRoomVersion,
-		);
+		const guestAccessEvent =
+			await stateService.buildEvent<'m.room.guest_access'>(
+				{
+					type: 'm.room.guest_access',
+					content: { guest_access: 'forbidden' },
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
 
-		await stateService.addAuthEvents(guestAccessEvent);
-		await stateService.addPrevEvents(guestAccessEvent);
 		await stateService.persistStateEvent(guestAccessEvent);
 
 		if (isExternalUser) {
@@ -1220,17 +1339,29 @@ export class RoomService {
 				true, // isDirectMessage
 			);
 		} else {
+			// Extract displayname from userId for direct messages
+			const displayname = targetUserId.split(':').shift()?.slice(1);
+
 			const targetMembershipEvent =
-				PersistentEventFactory.newDirectMessageMembershipEvent(
-					roomCreateEvent.roomId,
-					creatorUserId,
-					targetUserId,
-					'join',
-					roomCreateEvent.getContent<PduCreateEventContent>(),
+				await stateService.buildEvent<'m.room.member'>(
+					{
+						type: 'm.room.member',
+						content: {
+							membership: 'join',
+							is_direct: true,
+							displayname: displayname,
+						},
+						room_id: roomCreateEvent.roomId,
+						state_key: targetUserId,
+						auth_events: [],
+						depth: 0,
+						prev_events: [],
+						origin_server_ts: Date.now(),
+						sender: creatorUserId,
+					},
+					PersistentEventFactory.defaultRoomVersion,
 				);
 
-			await stateService.addAuthEvents(targetMembershipEvent);
-			await stateService.addPrevEvents(targetMembershipEvent);
 			await stateService.persistStateEvent(targetMembershipEvent);
 		}
 

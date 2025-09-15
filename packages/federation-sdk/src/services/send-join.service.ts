@@ -32,12 +32,10 @@ export class SendJoinService {
 		// delete existing auth events and refill them
 		event.auth_events = [];
 
-		const joinEvent = PersistentEventFactory.createFromRawEvent(
+		const joinEvent = await stateService.buildEvent<'m.room.member'>(
 			event,
 			roomVersion,
 		);
-
-		await stateService.addAuthEvents(joinEvent);
 
 		// now check the calculated id if it matches what is passed in param
 		if (joinEvent.eventId !== eventId) {
@@ -48,7 +46,6 @@ export class SendJoinService {
 
 		// fetch state before allowing join here - TODO: don't just persist the membership like this
 		const state = await stateService.getFullRoomState(roomId);
-
 		await stateService.persistStateEvent(joinEvent);
 
 		if (joinEvent.rejected) {
