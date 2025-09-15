@@ -14,12 +14,13 @@ export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 	const configService = container.resolve(ConfigService);
 
-	app.put(
-		'/_matrix/federation/v1/send/:txnId',
-		async ({ body }) => {
-			// TODO need to validate better the payload
-			// biome-ignore lint/suspicious/noExplicitAny:
-			await eventService.processIncomingTransaction(body as any);
+	return app
+		.put(
+			'/_matrix/federation/v1/send/:txnId',
+			async ({ body }) => {
+				// TODO need to validate better the payload
+				// biome-ignore lint/suspicious/noExplicitAny:
+				await eventService.processIncomingTransaction(body as any);
 
 				return {
 					pdus: {},
