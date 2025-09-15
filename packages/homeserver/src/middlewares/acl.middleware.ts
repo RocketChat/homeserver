@@ -1,23 +1,20 @@
 import type { EventAuthorizationService } from '@hs/federation-sdk';
 import { errCodes } from '@hs/federation-sdk';
-
-interface ACLContext {
-	params: { eventId: string };
-	headers: Record<string, string | undefined>;
-	request: Request;
-	set: Record<string, unknown>;
-}
+import type { EventID } from '@hs/room';
+import Elysia from 'elysia';
 
 export const canAccessEvent = (federationAuth: EventAuthorizationService) => {
-	return async (context: ACLContext) => {
-		const { params, headers, request, set } = context;
+	return new Elysia({
+		name: 'homeserver/canAccessEvent',
+	}).onBeforeHandle<{ params: { eventId: string } }>(async (req) => {
+		const { params, headers, request, set } = req;
 		const { eventId } = params;
 		const authorizationHeader = headers.authorization || '';
 		const method = request.method;
 		const uri = new URL(request.url).pathname;
 
 		const result = await federationAuth.canAccessEventFromAuthorizationHeader(
-			eventId,
+			eventId as EventID,
 			authorizationHeader,
 			method,
 			uri,
@@ -30,5 +27,5 @@ export const canAccessEvent = (federationAuth: EventAuthorizationService) => {
 				error: errCodes[result.errorCode].error,
 			};
 		}
-	};
+	});
 };
