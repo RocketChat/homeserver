@@ -52,7 +52,7 @@ export function toUnpaddedBase64(
 		urlSafe?: boolean;
 	} = { urlSafe: false },
 ): string {
-	const hash = btoa(String.fromCharCode(...value)).replace(/=+$/, '');
+	const hash = Buffer.from(value).toString('base64').replace(/=+$/, '');
 
 	if (!options.urlSafe) return hash;
 
@@ -100,5 +100,5 @@ export function encodeCanonicalJson(value: unknown): string {
 }
 
 export function fromBase64ToBytes(base64: string): Uint8Array {
-	return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+	return Buffer.from(base64, 'base64');
 }
