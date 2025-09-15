@@ -352,7 +352,10 @@ export class StateService {
 		return new RoomState(state);
 	}
 
-	async getStateEventsByType(roomId: string, type: PduType) {
+	async getStateEventsByType(
+		roomId: string,
+		type: PduType,
+	): Promise<PersistentEventBase[]> {
 		const state = await this.getFullRoomState(roomId);
 		const events = [];
 		for (const [, event] of state) {
@@ -922,8 +925,16 @@ export class StateService {
 	}
 
 	async getServersInRoom(roomId: string) {
-		return this.getMembersOfRoom(roomId).then((members) =>
-			members.map((member) => member.split(':').pop() ?? ''),
-		);
+		const members = await this.getMembersOfRoom(roomId);
+		if (!members.length) {
+			throw new Error(`No members found in room ${roomId}`);
+		}
+		return members.map((member) => {
+			const server = member.split(':').pop();
+			if (!server) {
+				throw new Error(`Invalid member format of room ${roomId}: ${member}`);
+			}
+			return server;
+		});
 	}
 }
