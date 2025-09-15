@@ -319,12 +319,46 @@ describe('Canonical json serialization', () => {
 				input: { '\bbackspace': 'bs', '\fformfeed': 'ff', '\rcarriage': 'cr' },
 				expected: '{"\\bbackspace":"bs","\\fformfeed":"ff","\\rcarriage":"cr"}',
 			},
+			// In arrays, JSON.stringify converts undefined/function/symbol to null.
+			{
+				input: { a: [undefined, () => {}, Symbol('sym'), 1] },
+				expected: '{"a":[null,null,null,1]}',
+			},
+			// invalid value should be removed in objects
+			{
+				input: { a: undefined, b: () => {}, c: Symbol('sym'), d: 1 },
+				expected: '{"d":1}',
+			},
+			// mix those previous two
+			{
+				input: {
+					a: undefined,
+					b: () => {},
+					c: Symbol('sym'),
+					d: 1,
+					e: [undefined, () => {}, Symbol('sym'), 2],
+				},
+				expected: '{"d":1,"e":[null,null,null,2]}',
+			},
 		];
 
 	testCases.forEach(({ input, expected }, index) => {
 		it(`should serialize correctly for test case #${index + 1}`, () => {
 			const serialized = encodeCanonicalJson(input);
 			expect(serialized).toBe(expected);
+		});
+
+		it(`should behave the same way as JSON.stringify for valid JSON #${index + 1}`, () => {
+			// ensure our implementation doesn't deviate from standard JSON.stringify for valid JSON inputs
+			// encode then parse to build final object of ours
+			const ourVersion = encodeCanonicalJson(input);
+			const ourParsedObject = JSON.parse(ourVersion);
+
+			// do the same for standard
+			const parsedObject = JSON.parse(JSON.stringify(input)); // removes undefined, functions, symbols from objects
+
+			// should be the same
+			expect(ourParsedObject).toEqual(parsedObject);
 		});
 	});
 });

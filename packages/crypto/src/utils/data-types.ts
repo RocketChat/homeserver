@@ -68,16 +68,34 @@ export function encodeCanonicalJson(value: unknown): string {
 
 	if (Array.isArray(value)) {
 		// Handle arrays recursively
-		const serializedArray = value.map(encodeCanonicalJson);
+		const serializedArray = value.map((value) => {
+			// can't be in top level since encodeCanonicalJson(function() {}) should be undefined, just not as part of an array
+			if (
+				value === undefined ||
+				typeof value === 'function' ||
+				typeof value === 'symbol'
+			) {
+				return 'null';
+			}
+			return encodeCanonicalJson(value);
+		});
 		return `[${serializedArray.join(',')}]`;
 	}
 
 	// Handle objects: sort keys lexicographically
 	const sortedKeys = Object.keys(value).sort();
-	const serializedEntries = sortedKeys.map(
-		(key) =>
-			`${JSON.stringify(key)}:${encodeCanonicalJson((value as Record<string, unknown>)[key])}`,
-	);
+	const serializedEntries = sortedKeys.reduce((accum, key) => {
+		const encodedValue = encodeCanonicalJson(
+			(value as Record<string, unknown>)[key],
+		);
+		if (encodedValue === undefined) {
+			return accum;
+		}
+
+		accum.push(`${JSON.stringify(key)}:${encodedValue}`);
+		return accum;
+	}, [] as string[]);
+
 	return `{${serializedEntries.join(',')}}`;
 }
 
