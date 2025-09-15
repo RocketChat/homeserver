@@ -85,8 +85,15 @@ export interface EventStore {
 	getEvents(eventIds: string[]): Promise<PersistentEventBase[]>;
 }
 
-/*
- *The auth chain of an event E is the set containing all of E’s auth events, all of their auth events, and so on recursively, stretching back to the start of the room. Put differently, these are the events reachable by walking the graph induced by an event’s auth_events links.
+/**
+ * Compute the authentication-chain for a given event.
+ *
+ * The returned set contains the event IDs of all events reachable by following
+ * `auth_events` links recursively (auth events, their auth events, etc.).
+ * The input event's own ID is not included unless it is reachable via those links.
+ *
+ * @param event - The starting event whose auth chain will be traversed.
+ * @returns A set of EventIDs representing the auth chain reachable from `event`.
  */
 export async function getAuthChain(
 	event: PersistentEventBase,
@@ -133,7 +140,24 @@ export async function getAuthChain(
 }
 
 // Auth difference
-// NOTE: https://github.com/element-hq/synapse/blob/a25a37002c851ef419d12925a11dd8bf2233470e/docs/auth_chain_difference_algorithm.md
+/**
+ * Compute the auth-chain difference across multiple room state partitions.
+ *
+ * For each provided state (an iterable of event IDs) this function builds a set
+ * containing every event in that state's auth chain plus the state's events
+ * themselves. It then returns the set difference between the union of all such
+ * sets and their intersection — i.e. events present in some state-auth-chains
+ * but not in all. If there is no intersection, the union is returned.
+ *
+ * This function queries the provided EventStore for each state event and calls
+ * getAuthChain for each fetched event. If an event ID from a state cannot be
+ * found in the store, a warning is logged and that ID is skipped.
+ *
+ * @param states - An iterable of states; each state should yield event IDs
+ *                 representing the state's events.
+ * @returns A Set of EventIDs representing the auth-chain difference (union minus
+ *          intersection, or union if no intersection exists).
+ */
 export async function getAuthChainDifference(
 	states: Readonly<Iterable<State>>,
 	store: EventStore,

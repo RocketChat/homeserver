@@ -36,6 +36,19 @@ export interface HomeserverSetupOptions {
 	containerOptions?: FederationContainerOptions;
 }
 
+/**
+ * Initialize and configure the Matrix homeserver app and its federation container.
+ *
+ * Loads a local .env file (if present), builds runtime configuration from environment
+ * variables (with sensible defaults), creates the federation container, and returns
+ * a ready-to-use Elysia HTTP app with federation and internal plugins registered.
+ *
+ * @param options - Optional setup overrides.
+ *   - emitter: an optional event emitter to attach to the federation container.
+ * @returns A promise resolving to an object with:
+ *   - app: the configured Elysia application instance.
+ *   - container: the initialized federation container.
+ */
 export async function setup(options?: HomeserverSetupOptions) {
 	const envPath = path.resolve(process.cwd(), '.env');
 	if (fs.existsSync(envPath)) {
