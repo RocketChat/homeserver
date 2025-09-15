@@ -160,7 +160,7 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 			ok: response.statusCode
 				? response.statusCode >= 200 && response.statusCode < 300
 				: false,
-			buffer: () => Promise.resolve(response.body),
+			buffer: () => response.body,
 			json: () => handleJson<T>(contentType, response.body),
 			text: () => handleText(contentType, response.body),
 			multipart: () => handleMultipart(contentType, response.body),
@@ -172,7 +172,7 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 			ok: false,
 			status: undefined,
 			headers: {},
-			buffer: () => Promise.resolve(Buffer.from('')),
+			buffer: () => Buffer.from(''),
 			json: () => Promise.resolve(null),
 			text: () =>
 				Promise.resolve(err instanceof Error ? err.message : String(err)),
