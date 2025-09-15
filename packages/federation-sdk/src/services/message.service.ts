@@ -26,6 +26,27 @@ import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
 
+// File message content type
+export type FileMessageContent = {
+	body: string;
+	msgtype: 'm.image' | 'm.file' | 'm.video' | 'm.audio';
+	url: string;
+	info?: {
+		size?: number;
+		mimetype?: string;
+		w?: number;
+		h?: number;
+		duration?: number;
+		thumbnail_url?: string;
+		thumbnail_info?: {
+			w?: number;
+			h?: number;
+			mimetype?: string;
+			size?: number;
+		};
+	};
+};
+
 @singleton()
 export class MessageService {
 	private readonly logger = createLogger('MessageService');
@@ -121,25 +142,7 @@ export class MessageService {
 
 	async sendFileMessage(
 		roomId: string,
-		content: {
-			body: string;
-			msgtype: 'm.image' | 'm.file' | 'm.video' | 'm.audio';
-			url: string;
-			info?: {
-				size?: number;
-				mimetype?: string;
-				w?: number;
-				h?: number;
-				duration?: number;
-				thumbnail_url?: string;
-				thumbnail_info?: {
-					w?: number;
-					h?: number;
-					mimetype?: string;
-					size?: number;
-				};
-			};
-		},
+		content: FileMessageContent,
 		senderUserId: string,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
