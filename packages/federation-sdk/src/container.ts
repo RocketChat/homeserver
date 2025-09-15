@@ -67,7 +67,7 @@ export async function createFederationContainer(
 	});
 
 	container.register<Collection<Key>>('KeyCollection', {
-		useValue: db.collection<Key>('rocketchat_federationkeys'),
+		useValue: db.collection<Key>('rocketchat_federation_keys'),
 	});
 
 	container.register<Collection<Lock>>('LockCollection', {
