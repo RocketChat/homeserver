@@ -65,7 +65,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				};
 			},
 			{
-				beforeHandle: canAccessEvent(eventAuthService),
+				use: canAccessEvent(eventAuthService),
 				params: GetEventParamsDto,
 				response: {
 					200: GetEventResponseDto,
