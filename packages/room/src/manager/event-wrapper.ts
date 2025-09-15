@@ -118,7 +118,7 @@ export abstract class PersistentEventBase<
 	// v1 should have this already, others, generates it
 	abstract get eventId(): string;
 
-	getContent<T extends PduContent>(): T {
+	getContent<T extends PduContent<Type>>(): T {
 		return this.rawEvent.content as T;
 	}
 
@@ -151,36 +151,54 @@ export abstract class PersistentEventBase<
 		return !this.isState();
 	}
 
-	isPowerLevelEvent() {
+	isTopicEvent(): this is PersistentEventBase<T, 'm.room.topic'> {
+		return this.isState() && this.type === 'm.room.topic';
+	}
+
+	isPowerLevelEvent(): this is PersistentEventBase<T, 'm.room.power_levels'> {
 		return this.isState() && this.type === 'm.room.power_levels';
 	}
 
-	isJoinRuleEvent() {
+	isNameEvent(): this is PersistentEventBase<T, 'm.room.name'> {
+		return this.isState() && this.type === 'm.room.name';
+	}
+
+	isJoinRuleEvent(): this is PersistentEventBase<T, 'm.room.join_rules'> {
 		return this.isState() && this.type === 'm.room.join_rules';
 	}
 
-	isMembershipEvent() {
+	isMembershipEvent(): this is PersistentEventBase<T, 'm.room.member'> {
 		return this.isState() && this.type === 'm.room.member';
 	}
 
-	isCreateEvent() {
+	isCreateEvent(): this is PersistentEventBase<T, 'm.room.create'> {
 		return this.isState() && this.type === 'm.room.create';
 	}
 
-	isCanonicalAliasEvent() {
+	isCanonicalAliasEvent(): this is PersistentEventBase<
+		T,
+		'm.room.canonical_alias'
+	> {
 		return this.isState() && this.type === 'm.room.canonical_alias';
 	}
 
-	isAliasEvent() {
+	isAliasEvent(): this is PersistentEventBase<T, 'm.room.aliases'> {
 		return this.isState() && this.type === 'm.room.aliases';
 	}
 
 	getMembership() {
-		return this.getContent<PduMembershipEventContent>().membership;
+		if (!this.isMembershipEvent())
+			throw new Error('Event is not a membership event');
+
+		return (this.getContent() as PduMembershipEventContent).membership;
 	}
 
 	getJoinRule() {
-		return this.getContent<PduJoinRuleEventContent>().join_rule;
+		if (!this.isJoinRuleEvent()) {
+			throw new Error('Event is not a join rule event');
+		}
+
+		return (this.getContent() as PduJoinRuleEventContent).join_rule;
 	}
 
 	getUniqueStateIdentifier(): StateMapKey {
