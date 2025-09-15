@@ -16,6 +16,14 @@ export class Ed25519VerifierKeyImpl implements VerifierKey {
 		return `${this.algorithm}:${this.version}` as const;
 	}
 
+	public getPublicKey(): Uint8Array {
+		return this.publicKey;
+	}
+
+	public getPublicKeyPem(): string {
+		return this._publicKeyPem;
+	}
+
 	constructor(
 		public version: string,
 		public readonly publicKey: Uint8Array,
@@ -67,5 +75,13 @@ export class Ed25519SigningKeyImpl
 	) {
 		super(version, publicKey);
 		this._privateKeyPem = ed25519PrivateKeyRawToPem(privateKey);
+	}
+
+	getPrivateKey(): Uint8Array {
+		return this.privateKey;
+	}
+
+	getPrivateKeyPem(): string {
+		return this._privateKeyPem;
 	}
 }

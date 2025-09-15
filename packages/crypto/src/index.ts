@@ -16,4 +16,5 @@ export {
 	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
 	signJson,
+	verifyJsonSignature,
 } from './utils/keys';

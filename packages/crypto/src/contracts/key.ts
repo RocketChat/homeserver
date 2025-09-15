@@ -15,7 +15,9 @@ export interface VerifierKey {
 
 	id: KeyId;
 
-	publicKey: Uint8Array; // non pem
+	getPublicKey(): Uint8Array;
+
+	getPublicKeyPem(): string;
 
 	verify(data: DataType, signature: SignatureType): Promise<void>; // throws if invalid
 }
@@ -23,7 +25,8 @@ export interface VerifierKey {
 // if we have a private key, we should also have a public key
 // this interface is for both signing and verifying payloads
 export interface Signer extends VerifierKey {
-	privateKey: Uint8Array; // non pem
+	getPrivateKey(): Uint8Array;
+	getPrivateKeyPem(): string;
 
 	sign(data: DataType): Promise<SignatureType>;
 }
