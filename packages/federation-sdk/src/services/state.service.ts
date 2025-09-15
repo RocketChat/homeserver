@@ -444,7 +444,7 @@ export class StateService {
 		);
 	}
 
-	async signEvent(event: PersistentEventBase) {
+	async signEvent<E extends PersistentEventBase>(event: E) {
 		const signingKey = await this.configService.getSigningKey();
 
 		const origin = this.configService.serverName;
