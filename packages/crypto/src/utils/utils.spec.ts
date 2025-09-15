@@ -82,7 +82,7 @@ describe('Signing and verifying payloads', async () => {
 		const signature = await signJson({}, signer);
 
 		// now use the public key to verify
-		await verifyJsonSignature({}, signature, signer);
+		expect(verifyJsonSignature({}, signature, signer)).resolves;
 	});
 
 	it('should throw an error if the signature is invalid', async () => {
@@ -99,7 +99,9 @@ describe('Signing and verifying payloads', async () => {
 			'0',
 		);
 
-		expect(() => verifyJsonSignature({}, signature, verifier)).rejects;
+		expect(verifyJsonSignature({}, signature, verifier)).rejects.toThrowError(
+			'Invalid signature',
+		);
 	});
 });
 
