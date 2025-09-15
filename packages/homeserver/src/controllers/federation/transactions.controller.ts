@@ -73,6 +73,4 @@ export const transactionsPlugin = (app: Elysia) => {
 				},
 			},
 		);
-
-	return app;
 };
