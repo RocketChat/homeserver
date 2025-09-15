@@ -110,112 +110,11 @@ export class StateService {
 		this.logger.debug({ state: printableState }, label);
 	}
 
+	/**
+	 * Returns the state used to validate the event
+	 * This is the state prior to the event
+	 */
 	async findStateAtEvent(eventId: string): Promise<State> {
-		this.logger.debug({ eventId }, 'finding state at event');
-
-		const state = await this.findStateAroundEvent(eventId, true);
-
-		return state;
-	}
-
-	private async findStateAroundEvent(
-		eventId: string,
-		includeEvent = false,
-	): Promise<State> {
-		this.logger.debug({ eventId }, 'finding state before event');
-		const event = await this.eventRepository.findById(eventId);
-
-		if (!event) {
-			this.logger.error({ eventId }, 'event not found');
-			throw new Error(`Event ${eventId} not found`);
-		}
-
-		const roomVersion = await this.getRoomVersion(event.event.room_id);
-		if (!roomVersion) {
-			this.logger.error({ eventId }, 'room version not found');
-			throw new Error('Room version not found');
-		}
-
-		const { stateId } = event;
-
-		if (!stateId) {
-			this.logger.error({ eventId }, 'state id not found');
-			throw new Error('State id not found');
-		}
-
-		const { delta: lastStateDelta, prevStateIds = [] } =
-			(await this.stateRepository.getStateById(stateId)) ?? {};
-
-		this.logger.debug({ delta: lastStateDelta, prevStateIds }, 'last state');
-
-		if (!lastStateDelta) {
-			this.logger.error(eventId, 'last state delta not found');
-			throw new Error(`State at event ${eventId} not found`);
-		}
-
-		if (prevStateIds.length === 0) {
-			const state = new Map<StateMapKey, PersistentEventBase>();
-			const { identifier: stateKey, eventId: _lastStateEventId } =
-				lastStateDelta;
-			const event = await this.eventRepository.findById(eventId);
-			if (!event) {
-				throw new Error(`Event ${eventId} not found`);
-			}
-
-			state.set(
-				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
-			);
-
-			return state;
-		}
-
-		const stateMappings = await this.stateRepository
-			.getStateMappingsByStateIdsOrdered(prevStateIds)
-			.toArray();
-
-		const state = new Map<StateMapKey, PersistentEventBase>();
-
-		for await (const { delta } of stateMappings) {
-			const { identifier: stateKey, eventId } = delta;
-			const event = await this.eventRepository.findById(eventId);
-			if (!event) {
-				throw new Error(`Event ${eventId} not found`);
-			}
-
-			state.set(
-				stateKey as StateMapKey,
-				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
-			);
-		}
-
-		if (!includeEvent) {
-			return state;
-		}
-
-		this.logger.debug({ eventId }, 'including event in state');
-
-		// update the last state
-		const { identifier: lastStateKey, eventId: lastStateEventId } =
-			lastStateDelta;
-
-		const lastEvent = await this.eventRepository.findById(lastStateEventId);
-		if (!lastEvent) {
-			throw new Error(`Event ${lastStateEventId} not found`);
-		}
-
-		state.set(
-			lastStateKey,
-			PersistentEventFactory.createFromRawEvent(lastEvent.event, roomVersion),
-		);
-
-		return state;
-	}
-
-	async findStateBeforeEvent(
-		eventId: string,
-		includeEvent = false,
-	): Promise<State> {
 		this.logger.debug({ eventId }, 'finding state before event');
 
 		const event = await this.eventRepository.findById(eventId);
@@ -275,6 +174,14 @@ export class StateService {
 			return state;
 		}
 
+		const includeEvent = !pdu.isState();
+
+		/**
+		 * If the event is a state event, we don't include the event in the state, otherwise the state would be the new state
+		 * computed because of the event
+		 *
+		 * If the event is a timeline event, we include the event in the state
+		 */
 		const eventsToFetch = [
 			includeEvent && storedState._id.toString(),
 			...storedState.prevStateIds,
@@ -292,7 +199,7 @@ export class StateService {
 			}
 
 			state.set(
-				stateKey as StateMapKey,
+				stateKey,
 				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
 			);
 		}
@@ -451,7 +358,7 @@ export class StateService {
 	}
 
 	async getFullRoomStateBeforeEvent2(eventId: string): Promise<RoomState> {
-		const state = await this.findStateAroundEvent(eventId);
+		const state = await this.findStateAtEvent(eventId);
 		return new RoomState(state);
 	}
 

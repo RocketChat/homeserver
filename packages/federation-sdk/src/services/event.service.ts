@@ -692,7 +692,7 @@ export class EventService {
 				throw new Error('M_NOT_FOUND');
 			}
 
-			const state = await this.stateService.findStateBeforeEvent(eventId);
+			const state = await this.stateService.findStateAtEvent(eventId);
 
 			const pduIds: string[] = [];
 			const authChainIds = new Set<string>();
@@ -751,7 +751,7 @@ export class EventService {
 			let state: Map<string, any>;
 
 			// Get state at a specific event
-			state = await this.stateService.findStateBeforeEvent(eventId);
+			state = await this.stateService.findStateAtEvent(eventId);
 
 			const pdus: Record<string, unknown>[] = [];
 			const authChainIds = new Set<string>();
