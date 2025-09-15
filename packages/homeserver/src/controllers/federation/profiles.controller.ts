@@ -1,6 +1,6 @@
 import { ProfilesService } from '@hs/federation-sdk';
 import { type RoomVersion } from '@hs/room';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
@@ -71,19 +71,21 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query }) => {
+			async ({ params, query }: any) => {
 				const { roomId, userId } = params;
 
 				const { ver } = query;
 
-				return profilesService.makeJoin(roomId, userId, ver ?? ['1']) as any;
+				console.log(ver);
+
+				return profilesService.makeJoin(roomId, userId, ['10']) as any;
 			},
 			{
-				params: MakeJoinParamsDto,
-				query: MakeJoinQueryDto,
+				params: t.Any(),
+				query: t.Any(),
 				response: {
-					200: MakeJoinResponseDto,
-					400: ErrorResponseDto,
+					200: t.Any(),
+					400: t.Any(),
 				},
 				detail: {
 					tags: ['Federation'],

@@ -366,7 +366,7 @@ export class StateService {
 
 		const origin = this.configService.serverName;
 
-		const { signatures, ...toSign } = event.redactedEvent;
+		const { signatures, unsigned, ...toSign } = event.redactedEvent;
 
 		const signature = await signJson(
 			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.

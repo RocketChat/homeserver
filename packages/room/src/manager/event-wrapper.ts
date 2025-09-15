@@ -1,4 +1,9 @@
-import { computeHashBuffer, toUnpaddedBase64 } from '@hs/crypto';
+import crypto from 'node:crypto';
+import {
+	computeHashBuffer,
+	toUnpaddedBase64,
+	encodeCanonicalJson,
+} from '@hs/crypto';
 import {
 	type EventStore,
 	getStateMapKey,
