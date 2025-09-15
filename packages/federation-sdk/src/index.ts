@@ -52,7 +52,6 @@ export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
 export { MediaService } from './services/media.service';
-
 // Repository interfaces and implementations
 
 // Queue implementations
@@ -67,6 +66,7 @@ export {
 	roomV10Schemas,
 	type BaseEventType,
 } from './utils/event-schemas';
+export { errCodes } from './utils/response-codes';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
