@@ -365,7 +365,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 
 				const createEvent = room.get('m.room.create:');
 
-				if (!createEvent) {
+				if (!createEvent || !createEvent.isCreateEvent()) {
 					throw new Error('Room create event not found');
 				}
 
@@ -382,7 +382,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 							origin_server_ts: Date.now(),
 							sender: senderUserId,
 						},
-						createEvent.getContent<PduCreateEventContent>().room_version,
+						createEvent.getContent().room_version,
 					);
 
 				const statesNeeded = membershipEvent.getAuthEventStateKeys();

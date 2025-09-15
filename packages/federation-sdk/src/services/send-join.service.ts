@@ -76,14 +76,9 @@ export class SendJoinService {
 			sender: signedJoinEvent.sender,
 			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
-				avatar_url:
-					signedJoinEvent.getContent<PduMembershipEventContent>().avatar_url ||
-					null,
-				displayname:
-					signedJoinEvent.getContent<PduMembershipEventContent>().displayname ||
-					'',
-				membership:
-					signedJoinEvent.getContent<PduMembershipEventContent>().membership,
+				avatar_url: signedJoinEvent.getContent().avatar_url || null,
+				displayname: signedJoinEvent.getContent().displayname || '',
+				membership: signedJoinEvent.getContent().membership,
 			},
 		});
 

@@ -471,7 +471,7 @@ export class StateService {
 		state: State,
 	): Promise<void> {
 		const roomVersion = event.isCreateEvent()
-			? event.getContent<PduCreateEventContent>().room_version
+			? event.getContent().room_version
 			: await this.getRoomVersion(event.roomId);
 
 		if (!roomVersion) {
@@ -587,7 +587,7 @@ export class StateService {
 		}
 
 		const roomVersion = event.isCreateEvent()
-			? event.getContent<PduCreateEventContent>().room_version
+			? event.getContent().room_version
 			: await this.getRoomVersion(event.roomId);
 
 		if (!roomVersion) {

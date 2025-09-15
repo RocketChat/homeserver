@@ -22,11 +22,11 @@ export class RoomState {
 		const createEvent = this.stateMap.get(
 			getStateMapKey({ type: 'm.room.create' }),
 		);
-		if (!createEvent) {
+		if (!createEvent || !createEvent.isCreateEvent()) {
 			throw new Error('Room create event not found');
 		}
 
-		return createEvent.getContent<PduCreateEventContent>().creator;
+		return createEvent.getContent().creator;
 	}
 
 	getUserMembership(
@@ -35,11 +35,11 @@ export class RoomState {
 		const membershipEvent = this.stateMap.get(
 			getStateMapKey({ type: 'm.room.member', state_key: userId }),
 		);
-		if (!membershipEvent) {
+		if (!membershipEvent || !membershipEvent.isMembershipEvent()) {
 			return undefined; // never been a member
 		}
 
-		return membershipEvent.getContent<PduMembershipEventContent>().membership;
+		return membershipEvent.getContent().membership;
 	}
 
 	isUserInRoom(userId: string): boolean {
@@ -68,11 +68,11 @@ export class RoomState {
 		const nameEvent = this.stateMap.get(
 			getStateMapKey({ type: 'm.room.name' }),
 		);
-		if (!nameEvent) {
+		if (!nameEvent || !nameEvent.isNameEvent()) {
 			throw new Error('Room name event not found');
 		}
 
-		return nameEvent.getContent<PduRoomNameEventContent>().name;
+		return nameEvent.getContent().name;
 	}
 
 	// room privacy
@@ -80,11 +80,11 @@ export class RoomState {
 		const joinRuleEvent = this.stateMap.get(
 			getStateMapKey({ type: 'm.room.join_rules' }),
 		);
-		if (!joinRuleEvent) {
+		if (!joinRuleEvent || !joinRuleEvent.isJoinRuleEvent()) {
 			return 'public'; // default TODO: check this if is correct
 		}
 
-		return joinRuleEvent.getContent<PduJoinRuleEventContent>().join_rule;
+		return joinRuleEvent.getContent().join_rule;
 	}
 
 	isInviteOnly() {
@@ -104,11 +104,11 @@ export class RoomState {
 		const topicEvent = this.stateMap.get(
 			getStateMapKey({ type: 'm.room.topic' }),
 		);
-		if (!topicEvent) {
+		if (!topicEvent || !topicEvent.isTopicEvent()) {
 			return '';
 		}
 
-		return topicEvent.getContent<PduRoomTopicEventContent>().topic;
+		return topicEvent.getContent().topic;
 	}
 
 	// origin is the origin of the room gotten from the room id
@@ -134,21 +134,21 @@ export class RoomState {
 			getStateMapKey({ type: 'm.room.power_levels' }),
 		);
 
-		if (!powerLevelsEvent) {
+		if (!powerLevelsEvent || !powerLevelsEvent.isPowerLevelEvent()) {
 			return undefined;
 		}
 
-		return powerLevelsEvent.getContent<PduPowerLevelsEventContent>();
+		return powerLevelsEvent.getContent();
 	}
 
 	get version() {
 		const createEvent = this.stateMap.get(
 			getStateMapKey({ type: 'm.room.create' }),
 		);
-		if (!createEvent) {
+		if (!createEvent || !createEvent.isCreateEvent()) {
 			throw new Error('Room create event not found');
 		}
 
-		return createEvent.getContent<PduCreateEventContent>().room_version;
+		return createEvent.getContent().room_version;
 	}
 }

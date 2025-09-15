@@ -32,6 +32,11 @@ function extractDomain(identifier: string) {
 }
 
 function isCreateAllowed(createEvent: PersistentEventBase) {
+	if (!createEvent.isCreateEvent()) {
+		throw new StateResolverAuthorizationError('m.room.create event not found', {
+			eventFailed: createEvent,
+		});
+	}
 	// If it has any prev_events, reject.
 	if (createEvent.event.prev_events.length > 0) {
 		throw new StateResolverAuthorizationError(
@@ -52,7 +57,7 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 		);
 	}
 
-	const content = createEvent.getContent<PduCreateEventContent>();
+	const content = createEvent.getContent();
 
 	// If content.room_version is assert(verifier(event as V2Pdu, authEvents), "not allowed"present and is not a recognised version, reject.
 	if (
@@ -113,7 +118,7 @@ async function isMembershipChangeAllowed(
 	// If there is no state_key property, or no membership property in content, reject.
 	if (
 		!membershipEventToCheck.stateKey ||
-		!membershipEventToCheck.getMembership()
+		!membershipEventToCheck.isMembershipEvent()
 	) {
 		throw new StateResolverAuthorizationError(
 			'm.room.member event has no state_key or membership property',
@@ -160,8 +165,7 @@ async function isMembershipChangeAllowed(
 
 	assert(roomCreateEvent, 'room create event not found'); // must exist
 
-	const content =
-		membershipEventToCheck.getContent<PduMembershipEventContent>();
+	const content = membershipEventToCheck.getContent();
 
 	const previousEvents = await membershipEventToCheck.getPreviousEvents(store);
 
@@ -182,8 +186,7 @@ async function isMembershipChangeAllowed(
 
 				if (
 					event.isCreateEvent() &&
-					event.getContent<PduCreateEventContent>().creator ===
-						membershipEventToCheck.stateKey
+					event.getContent().creator === membershipEventToCheck.stateKey
 				) {
 					return;
 				}
@@ -516,12 +519,8 @@ export function validatePowerLevelEvent(
 		}
 	}
 
-	const existingContent = existingPowerLevel
-		.toEventBase()
-		?.getContent<PduPowerLevelsEventContent>();
-	const newContent = newPowerLevel
-		.toEventBase()
-		?.getContent<PduPowerLevelsEventContent>();
+	const existingContent = existingPowerLevel.toEventBase()?.getContent();
+	const newContent = newPowerLevel.toEventBase()?.getContent();
 
 	// 4. For each entry being changed in, or removed from, the events property:
 	const existingEvents = Object.keys(existingContent?.events ?? {});
@@ -709,10 +708,15 @@ export async function checkEventAuthWithState(
 
 	assert(roomCreateEvent, 'missing m.room.create event');
 
+	if (!roomCreateEvent.isCreateEvent()) {
+		throw new StateResolverAuthorizationError('m.room.create event not found', {
+			eventFailed: event,
+		});
+	}
+
 	// If the content of the m.room.create event in the room state has the property m.federate set to false, and the sender domain of the event does not match the sender domain of the create event, reject.
 	if (
-		roomCreateEvent.getContent<PduCreateEventContent>()['m.federate'] ===
-			false &&
+		roomCreateEvent.getContent()['m.federate'] === false &&
 		event.origin !== roomCreateEvent.origin
 	) {
 		throw new StateResolverAuthorizationError(
