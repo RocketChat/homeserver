@@ -71,7 +71,7 @@ export async function createFederationContainer(
 	});
 
 	container.register<Collection<Lock>>('LockCollection', {
-		useValue: db.collection<Lock>('rocketchat_federation_lock'),
+		useValue: db.collection<Lock>('rocketchat_federation_locks'),
 	});
 
 	container.register<Collection<Room>>('RoomCollection', {
