@@ -64,7 +64,6 @@ export class ServerService {
 		const response = {
 			old_verify_keys: {},
 			server_name: this.configService.serverName,
-			signatures: {},
 			// TODO: what should this actually be and how to handle the expiration
 			valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
 			verify_keys: keys,
@@ -72,12 +71,15 @@ export class ServerService {
 
 		const responseSignature = await signJson(response, signer);
 
-		response.signatures = {
+		const signatures = {
 			[this.configService.serverName]: {
 				[signer.id]: responseSignature,
 			},
 		};
 
-		return response;
+		return {
+			...response,
+			signatures,
+		};
 	}
 }

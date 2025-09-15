@@ -45,6 +45,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 	}
 
 	const config = new ConfigService({
+		signingKey: process.env.SIGNING_KEY || undefined,
 		instanceId: crypto.randomUUID(),
 		serverName: process.env.SERVER_NAME || 'rc1',
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
