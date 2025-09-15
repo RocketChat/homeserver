@@ -11,7 +11,7 @@ import {
 	GetStateResponseDto,
 } from '../../dtos';
 
-export const eventPlugin = (app: Elysia) => {
+export const statePlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
 
 	return app
