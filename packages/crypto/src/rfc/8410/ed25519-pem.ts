@@ -14,7 +14,7 @@ enum KeyType {
 export function toPem(base64: string, type: KeyType): string {
 	const lines = [`-----BEGIN ${type}-----`];
 	for (let i = 0; i < base64.length; i += 64) {
-		lines.push(base64.substring(i, 64));
+		lines.push(base64.substring(i, i + 64));
 	}
 	lines.push(`-----END ${type}-----`);
 	return lines.join('\n');
