@@ -1,30 +1,58 @@
-import { Collection } from 'mongodb';
+import { ServerKey } from '@hs/core';
+import { Collection, Filter, FindOptions } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
-
-export type Key = {
-	origin: string;
-	key_id: string;
-	public_key: string;
-	valid_until: Date;
-};
 
 @singleton()
 export class KeyRepository {
 	constructor(
-		@inject('KeyCollection') private readonly collection: Collection<Key>,
+		@inject('KeyCollection') private readonly collection: Collection<ServerKey>,
 	) {}
 
-	async getValidPublicKeyFromLocal(
-		origin: string,
-		keyId: string,
-	): Promise<string | undefined> {
-		const key = await this.collection.findOne({
-			origin,
-			key_id: keyId,
-			valid_until: { $gt: new Date() },
+	async findByServerName(
+		serverName: string,
+		validUntil?: number,
+	): Promise<ServerKey | null> {
+		return this.collection.findOne({
+			serverName,
+			...(validUntil ? { 'keys.expiresAt': { $gt: validUntil } } : {}),
 		});
+	}
 
-		return key?.public_key;
+	async findByServerNameAndKeyId(
+		serverName: string,
+		keyId: string,
+		validUntil?: number,
+	): Promise<ServerKey | null> {
+		return this.collection.findOne({
+			serverName,
+			[`keys.${keyId}`]: { $exists: true },
+			...(validUntil
+				? { [`keys.${keyId}.expiresAt`]: { $gte: validUntil } }
+				: {}),
+		});
+	}
+
+	async findAllByServerNameAndKeyIds(
+		serverName: string,
+		keyIds: string[],
+	): Promise<ServerKey | null> {
+		const query: Filter<ServerKey> = {
+			serverName,
+		};
+
+		for (const keyId of keyIds) {
+			query[`keys.${keyId}`] = { $exists: true };
+		}
+
+		return this.collection.findOne(query);
+	}
+
+	async storeKeys(serverKey: ServerKey): Promise<void> {
+		await this.collection.updateOne(
+			{ serverName: serverKey.serverName },
+			{ $set: serverKey },
+			{ upsert: true },
+		);
 	}
 
 	async storePublicKey(
@@ -46,5 +74,19 @@ export class KeyRepository {
 			},
 			{ upsert: true },
 		);
+	}
+
+	async getValidPublicKeyFromLocal(
+		origin: string,
+		keyId: string,
+	): Promise<string | undefined> {
+		const key = await this.collection.findOne({
+			origin,
+			key_id: keyId,
+			valid_until: { $gt: new Date() },
+		});
+
+		// @ts-ignore
+		return key?.public_key;
 	}
 }
