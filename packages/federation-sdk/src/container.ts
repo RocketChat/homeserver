@@ -57,8 +57,7 @@ export async function createFederationContainer(
 	container.registerSingleton(StagingAreaQueue);
 
 	container.register<Collection<EventStore>>('EventCollection', {
-		// TODO change collection name to include at least the "rocketchat_" prefix
-		useValue: db.collection<EventStore>('events'),
+		useValue: db.collection<EventStore>('rocketchat_federation_events'),
 	});
 
 	container.register<Collection<EventStagingStore>>('EventStagingCollection', {
@@ -68,27 +67,23 @@ export async function createFederationContainer(
 	});
 
 	container.register<Collection<Key>>('KeyCollection', {
-		// TODO change collection name to include at least the "rocketchat_" prefix
-		useValue: db.collection<Key>('keys'),
+		useValue: db.collection<Key>('rocketchat_federation_keys'),
 	});
 
 	container.register<Collection<Lock>>('LockCollection', {
-		useValue: db.collection<Lock>('rocketchat_federation_lock'),
+		useValue: db.collection<Lock>('rocketchat_federation_locks'),
 	});
 
 	container.register<Collection<Room>>('RoomCollection', {
-		// TODO change collection name to include at least the "rocketchat_" prefix
-		useValue: db.collection<Room>('rooms'),
+		useValue: db.collection<Room>('rocketchat_federation_rooms'),
 	});
 
 	container.register<Collection<WithId<StateStore>>>('StateCollection', {
-		// TODO change collection name to include at least the "rocketchat_" prefix
-		useValue: db.collection<WithId<StateStore>>('states'),
+		useValue: db.collection<WithId<StateStore>>('rocketchat_federation_states'),
 	});
 
 	container.register<Collection<Server>>('ServerCollection', {
-		// TODO change collection name to include at least the "rocketchat_" prefix
-		useValue: db.collection<Server>('servers'),
+		useValue: db.collection<Server>('rocketchat_federation_servers'),
 	});
 
 	container.registerSingleton(EventRepository);
