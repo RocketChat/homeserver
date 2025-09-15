@@ -305,11 +305,7 @@ export class EventAuthorizationService {
 			return true;
 		}
 
-		const serverAclContent = aclEvent.getContent() as {
-			allow?: string[];
-			deny?: string[];
-			allow_ip_literals?: boolean;
-		};
+		const serverAclContent = aclEvent.getContent();
 		const {
 			allow = [],
 			deny = [],

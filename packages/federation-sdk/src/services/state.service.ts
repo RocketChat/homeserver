@@ -352,15 +352,15 @@ export class StateService {
 		return new RoomState(state);
 	}
 
-	async getStateEventsByType(
+	async getStateEventsByType<P extends PduType>(
 		roomId: string,
-		type: PduType,
-	): Promise<PersistentEventBase[]> {
+		type: P,
+	): Promise<PersistentEventBase<RoomVersion, P>[]> {
 		const state = await this.getFullRoomState(roomId);
 		const events = [];
 		for (const [, event] of state) {
 			if (event.type === type) {
-				events.push(event);
+				events.push(event as PersistentEventBase<RoomVersion, P>);
 			}
 		}
 		return events;
