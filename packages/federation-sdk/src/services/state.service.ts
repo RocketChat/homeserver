@@ -157,23 +157,6 @@ export class StateService {
 
 		const state = new Map<StateMapKey, PersistentEventBase>();
 
-		// TODO: not sure which case is this
-		if (storedState.prevStateIds.length === 0) {
-			const previous = await this.eventRepository.findById(
-				storedState.delta.eventId,
-			);
-			if (!previous) {
-				throw new Error(`Event ${eventId} not found`);
-			}
-
-			state.set(
-				storedState.delta.identifier,
-				PersistentEventFactory.createFromRawEvent(previous.event, roomVersion),
-			);
-
-			return state;
-		}
-
 		const includeEvent = !pdu.isState();
 
 		/**
