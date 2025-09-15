@@ -21,59 +21,58 @@ export const transactionsPlugin = (app: Elysia) => {
 			// biome-ignore lint/suspicious/noExplicitAny:
 			await eventService.processIncomingTransaction(body as any);
 
-			return {
-				pdus: {},
-				edus: {},
-			};
-		},
-		{
-			body: SendTransactionBodyDto,
-			response: {
-				200: SendTransactionResponseDto,
-				400: ErrorResponseDto,
-			},
-			detail: {
-				tags: ['Federation'],
-				summary: 'Send transaction',
-				description: 'Send a transaction',
-			},
-		},
-	);
-
-	app.get(
-		'/_matrix/federation/v1/event/:eventId',
-		async ({ params, set }) => {
-			const eventData = await eventService.getEventById(params.eventId);
-			if (!eventData) {
-				set.status = 404;
 				return {
-					errcode: 'M_NOT_FOUND',
-					error: 'Event not found',
+					pdus: {},
+					edus: {},
 				};
-			}
+			},
+			{
+				body: SendTransactionBodyDto,
+				response: {
+					200: SendTransactionResponseDto,
+					400: ErrorResponseDto,
+				},
+				detail: {
+					tags: ['Federation'],
+					summary: 'Send transaction',
+					description: 'Send a transaction',
+				},
+			},
+		)
+		.get(
+			'/_matrix/federation/v1/event/:eventId',
+			async ({ params, set }) => {
+				const eventData = await eventService.getEventById(params.eventId);
+				if (!eventData) {
+					set.status = 404;
+					return {
+						errcode: 'M_NOT_FOUND',
+						error: 'Event not found',
+					};
+				}
 
-			return {
-				origin_server_ts: eventData.event.origin_server_ts,
-				origin: configService.serverName,
-				pdus: [{ ...eventData.event, origin: configService.serverName }],
-			};
-		},
-		{
-			params: GetEventParamsDto,
-			response: {
-				200: GetEventResponseDto,
-				401: GetEventErrorResponseDto,
-				403: GetEventErrorResponseDto,
-				404: GetEventErrorResponseDto,
-				500: GetEventErrorResponseDto,
+				return {
+					origin_server_ts: eventData.event.origin_server_ts,
+					origin: configService.serverName,
+					pdus: [{ ...eventData.event, origin: configService.serverName }],
+				};
 			},
-			detail: {
-				tags: ['Federation'],
-				summary: 'Get event',
-				description: 'Get an event',
+			{
+				params: GetEventParamsDto,
+				response: {
+					200: GetEventResponseDto,
+					401: GetEventErrorResponseDto,
+					403: GetEventErrorResponseDto,
+					404: GetEventErrorResponseDto,
+					500: GetEventErrorResponseDto,
+				},
+				detail: {
+					tags: ['Federation'],
+					summary: 'Get event',
+					description: 'Get an event',
+				},
 			},
-		},
-	);
+		);
 
 	return app;
 };
