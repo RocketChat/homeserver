@@ -304,10 +304,10 @@ export abstract class PersistentEventBase<
 		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
 		const { unsigned, signatures, hashes, ...toHash } = rawEvent; // must not use this.event as it can potentially call getContentHash again
 
-		const encoded = encodeCanonicalJson(toHash);
-
-		console.log('encoded', encoded);
-		return crypto.createHash('sha256').update(encoded).digest();
+		return crypto
+			.createHash('sha256')
+			.update(encodeCanonicalJson(toHash))
+			.digest();
 	}
 
 	static getContentHashString(rawEvent: PduWithHashesAndSignaturesOptional) {
