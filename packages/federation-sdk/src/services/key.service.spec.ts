@@ -9,26 +9,25 @@ import { config } from '../__mocks__/config.service.spec';
 
 describe('KeyService', async () => {
 	// fetch mocking
-	let originalFetch: typeof globalThis.fetch;
+	const { fetch } = await import('@hs/core');
+
 	let inboundServer = ''; // skips server discovery
 
-	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-		globalThis.fetch = Object.assign(
-			async (_url: string, _options?: RequestInit) => {
+	beforeEach(async () => {
+		await mock.module('@hs/core', () => ({
+			fetch: async (..._args: any[]) => {
 				return {
 					ok: true,
 					status: 200,
 					json: fetchJsonMock as unknown as FetchJson,
 				} as Response;
 			},
-			{ preconnect: () => {} },
-		) as typeof fetch;
+		}));
 		inboundServer = `localhost:${Math.floor(Math.random() * 10000)}`;
 	});
 
-	afterEach(() => {
-		globalThis.fetch = originalFetch;
+	afterEach(async () => {
+		await mock.module('@hs/core', () => ({ fetch }));
 		mock.restore();
 	});
 
@@ -130,17 +129,6 @@ describe('KeyService', async () => {
 				},
 			},
 		});
-
-		// FIXME: don't do it here
-		globalThis.fetch = Object.assign(
-			async (_url: string, _options?: RequestInit) => {
-				return {
-					ok: false,
-					status: 400,
-				} as Response;
-			},
-			{ preconnect: () => {} },
-		) as typeof fetch;
 
 		const { server_keys: serverKeys } = await keyService.handleQuery({
 			server_keys: {
