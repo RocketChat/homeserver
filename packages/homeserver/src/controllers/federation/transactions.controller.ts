@@ -1,4 +1,5 @@
 import { ConfigService, EventService } from '@hs/federation-sdk';
+import { EventID } from '@hs/room';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -43,7 +44,9 @@ export const transactionsPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/event/:eventId',
 			async ({ params, set }) => {
-				const eventData = await eventService.getEventById(params.eventId);
+				const eventData = await eventService.getEventById(
+					params.eventId as EventID,
+				);
 				if (!eventData) {
 					set.status = 404;
 					return {

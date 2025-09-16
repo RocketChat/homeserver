@@ -1,5 +1,6 @@
 import { signEvent } from '@hs/core';
 import {
+	type EventID,
 	type PduContent,
 	type PduType,
 	RoomState,
@@ -115,7 +116,7 @@ export class StateService {
 	 * This is the state prior to the event
 	 */
 	async findStateAtEvent(
-		eventId: string,
+		eventId: EventID,
 		include: 'always' | 'event' = 'event',
 	): Promise<State> {
 		this.logger.debug({ eventId }, 'finding state before event');
@@ -252,8 +253,8 @@ export class StateService {
 
 	private async buildFullRoomStateFromEvents(
 		stateMappings: StateStore[],
-	): Promise<Map<StateMapKey, string>> {
-		const state = new Map<StateMapKey, string>();
+	): Promise<Map<StateMapKey, EventID>> {
+		const state = new Map<StateMapKey, EventID>();
 		// first reconstruct the final state
 		for await (const stateMapping of stateMappings) {
 			if (!stateMapping.delta) {
@@ -267,7 +268,7 @@ export class StateService {
 	}
 
 	private async buildFullRoomStateStoredEvents(
-		events: Map<StateMapKey, string>,
+		events: Map<StateMapKey, EventID>,
 		roomVersion: RoomVersion,
 	): Promise<Map<StateMapKey, PersistentEventBase>> {
 		const finalState = new Map<StateMapKey, PersistentEventBase>();
@@ -344,7 +345,7 @@ export class StateService {
 		return new RoomState(state);
 	}
 
-	async getFullRoomStateBeforeEvent2(eventId: string): Promise<RoomState> {
+	async getFullRoomStateBeforeEvent2(eventId: EventID): Promise<RoomState> {
 		const state = await this.findStateAtEvent(eventId);
 		return new RoomState(state);
 	}
@@ -372,7 +373,9 @@ export class StateService {
 		const cache = new Map<string, PersistentEventBase>();
 
 		return {
-			getEvents: async (eventIds: string[]): Promise<PersistentEventBase[]> => {
+			getEvents: async (
+				eventIds: EventID[],
+			): Promise<PersistentEventBase[]> => {
 				const events = [];
 				const toFind = [];
 
@@ -772,7 +775,7 @@ export class StateService {
 		// auth events referenced in the message
 		const store = this._getStore(roomVersion);
 		const authEventsReferencedInMessage = await store.getEvents(
-			event.event.auth_events as string[],
+			event.event.auth_events,
 		);
 		const authEventsReferencedMap = new Map<string, PersistentEventBase>();
 		for (const authEvent of authEventsReferencedInMessage) {

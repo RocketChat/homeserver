@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PduForType } from './_common';
+import { PduForType, eventIdSchema } from './_common';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -197,7 +197,7 @@ export type PduRoomTopicEventContent = z.infer<
 
 export const PduRoomRedactionContentSchema = z.object({
 	reason: z.string().optional(),
-	redacts: z.string().describe('event id'),
+	redacts: eventIdSchema.describe('event id'),
 });
 
 export type PduRoomRedactionContent = z.infer<
@@ -531,7 +531,7 @@ export type PduMessageReactionEventContent = z.infer<
 // SPEC: https://spec.matrix.org/v1.12/rooms/v1/#event-format
 export const PduNoContentTimelineEventSchema = {
 	auth_events: z
-		.array(z.string())
+		.array(eventIdSchema)
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),
@@ -549,7 +549,7 @@ export const PduNoContentTimelineEventSchema = {
 			'The timestamp of the event. This is a number that is the number of milliseconds since the Unix epoch.',
 		),
 	prev_events: z
-		.array(z.string())
+		.array(eventIdSchema)
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),

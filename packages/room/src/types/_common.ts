@@ -1,8 +1,11 @@
+import z from 'zod';
 import type { Pdu, PduType } from './v3-11';
 
-export type EventID = string;
-
 export type StateKey = string;
+
+export const eventIdSchema = z.string().brand('EventID');
+
+export type EventID = z.infer<typeof eventIdSchema>;
 
 export type StateMapKey = `${PduType}:${StateKey}`;
 

@@ -18,6 +18,7 @@ import { pruneEventDict } from '@hs/core';
 import { checkSignAndHashes } from '@hs/core';
 import { createLogger } from '@hs/core';
 import {
+	type EventID,
 	type Pdu,
 	type PduForType,
 	type PduType,
@@ -66,7 +67,7 @@ export class EventService {
 	}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
-		eventId: string,
+		eventId: EventID,
 		type?: T,
 	): Promise<P | null> {
 		if (type) {
@@ -77,13 +78,13 @@ export class EventService {
 	}
 
 	async checkIfEventsExists(
-		eventIds: string[],
-	): Promise<{ missing: string[]; found: string[] }> {
+		eventIds: EventID[],
+	): Promise<{ missing: EventID[]; found: EventID[] }> {
 		const eventsCursor = this.eventRepository.findByIds(eventIds);
 		const events = await eventsCursor.toArray();
 
 		return eventIds.reduce(
-			(acc: { missing: string[]; found: string[] }, id) => {
+			(acc: { missing: EventID[]; found: EventID[] }, id) => {
 				const event = events.find((event) => event._id === id);
 
 				if (event) {
@@ -470,8 +471,8 @@ export class EventService {
 
 	async getMissingEvents(
 		roomId: string,
-		earliestEventsId: string[],
-		latestEventsId: string[],
+		earliestEventsId: EventID[],
+		latestEventsId: EventID[],
 		limit: number,
 		minDepth: number,
 	): Promise<{ events: Pdu[] }> {
@@ -497,8 +498,8 @@ export class EventService {
 	}
 
 	async getEventsByIds(
-		eventIds: string[],
-	): Promise<{ _id: string; event: Pdu }[]> {
+		eventIds: EventID[],
+	): Promise<{ _id: EventID; event: Pdu }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
@@ -618,7 +619,7 @@ export class EventService {
 	}
 
 	async checkUserPermission(
-		powerLevelsEventId: string,
+		powerLevelsEventId: EventID,
 		userId: string,
 		actionType: PduType,
 	): Promise<boolean> {
@@ -683,7 +684,7 @@ export class EventService {
 
 	async getStateIds(
 		roomId: string,
-		eventId: string,
+		eventId: EventID,
 	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
 		try {
 			// Ensure the event exists and belongs to the requested room
@@ -736,7 +737,7 @@ export class EventService {
 
 	async getState(
 		roomId: string,
-		eventId: string,
+		eventId: EventID,
 	): Promise<{
 		pdus: Record<string, unknown>[];
 		auth_chain: Record<string, unknown>[];
@@ -754,7 +755,7 @@ export class EventService {
 			state = await this.stateService.findStateAtEvent(eventId);
 
 			const pdus: Record<string, unknown>[] = [];
-			const authChainIds = new Set<string>();
+			const authChainIds = new Set<EventID>();
 
 			// Get room version for the store
 			const roomVersion = await this.stateService.getRoomVersion(roomId);

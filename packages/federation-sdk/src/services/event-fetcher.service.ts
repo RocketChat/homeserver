@@ -1,7 +1,7 @@
 import { isFederationEventWithPDUs } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { generateId } from '@hs/core';
-import { Pdu } from '@hs/room';
+import { EventID, Pdu } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
@@ -25,7 +25,7 @@ export class EventFetcherService {
 	) {}
 
 	public async fetchEventsByIds(
-		eventIds: string[],
+		eventIds: EventID[],
 		roomId: string,
 		originServer: string,
 	): Promise<FetchedEvents> {

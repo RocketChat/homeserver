@@ -1,5 +1,6 @@
 import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
 import {
+	type EventID,
 	type PduMembershipEventContent,
 	PersistentEventFactory,
 	getAuthChain,
@@ -20,7 +21,7 @@ export class SendJoinService {
 		private readonly configService: ConfigService,
 	) {}
 
-	async sendJoin(roomId: string, eventId: string, event: RoomMemberEvent) {
+	async sendJoin(roomId: string, eventId: EventID, event: RoomMemberEvent) {
 		const stateService = this.stateService;
 
 		const roomVersion = await stateService.getRoomVersion(roomId);

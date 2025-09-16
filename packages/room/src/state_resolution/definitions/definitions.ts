@@ -81,7 +81,7 @@ export function partitionState(
 // Auth chain
 
 export interface EventStore {
-	getEvents(eventIds: string[]): Promise<PersistentEventBase[]>;
+	getEvents(eventIds: EventID[]): Promise<PersistentEventBase[]>;
 }
 
 /*

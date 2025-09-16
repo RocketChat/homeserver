@@ -1,8 +1,9 @@
 import { Pdu, PduForType } from '@hs/room';
+import type { EventID } from '@hs/room';
 
 export type EventBase = {
-	auth_events: string[];
-	prev_events: string[];
+	auth_events: EventID[];
+	prev_events: EventID[];
 	type:
 		| 'm.room.member'
 		| 'm.room.create'
@@ -32,7 +33,7 @@ export type EventBase = {
 };
 
 export type RedactedEvent = EventBase & {
-	redacts: string;
+	redacts: EventID;
 	type: 'm.room.redaction';
 };
 
@@ -51,8 +52,8 @@ export const createEventBase = <T extends KeyEvent>(
 	props: {
 		roomId: string;
 		sender: string;
-		auth_events?: string[];
-		prev_events?: string[];
+		auth_events?: EventID[];
+		prev_events?: EventID[];
 		depth: number;
 		content: Events[T]['content'];
 		state_key?: string;
@@ -92,8 +93,8 @@ const _createEventBase = <
 }: {
 	roomId: string;
 	sender: string;
-	auth_events?: string[];
-	prev_events?: string[];
+	auth_events?: EventID[];
+	prev_events?: EventID[];
 	depth: number;
 	type: string;
 	content?: TContent;

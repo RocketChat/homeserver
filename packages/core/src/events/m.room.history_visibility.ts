@@ -1,3 +1,4 @@
+import { EventID } from '@hs/room';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -26,8 +27,8 @@ export const roomHistoryVisibilityEvent = ({
 }: {
 	roomId: string;
 	sender: string;
-	auth_events: string[];
-	prev_events: string[];
+	auth_events: EventID[];
+	prev_events: EventID[];
 	depth: number;
 	ts?: number;
 }) => {

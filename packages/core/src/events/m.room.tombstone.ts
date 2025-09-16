@@ -1,3 +1,4 @@
+import { EventID } from '@hs/room';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -20,9 +21,9 @@ declare module './eventBase' {
 }
 
 export type TombstoneAuthEvents = {
-	'm.room.create': string;
-	'm.room.power_levels': string;
-	'm.room.member': string;
+	'm.room.create': EventID | undefined;
+	'm.room.power_levels': EventID | undefined;
+	'm.room.member': EventID | undefined;
 };
 
 type RoomTombstoneEventProps = {
@@ -31,7 +32,7 @@ type RoomTombstoneEventProps = {
 	body: string;
 	replacementRoom?: string;
 	auth_events: TombstoneAuthEvents;
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	ts?: number;
 	origin?: string;

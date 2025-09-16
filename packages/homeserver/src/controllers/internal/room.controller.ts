@@ -1,7 +1,11 @@
 import { RoomService } from '@hs/federation-sdk';
 import { StateService } from '@hs/federation-sdk';
 import { InviteService } from '@hs/federation-sdk';
-import { type PduCreateEventContent, PersistentEventFactory } from '@hs/room';
+import {
+	EventID,
+	type PduCreateEventContent,
+	PersistentEventFactory,
+} from '@hs/room';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -185,7 +189,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 			async ({ params, query }) => {
 				const eventId = query.event_id;
 				if (eventId) {
-					const room = await stateService.findStateAtEvent(eventId);
+					const room = await stateService.findStateAtEvent(eventId as EventID);
 					const state: Record<string, any> = {};
 					for (const [key, value] of room.entries()) {
 						state[key] = value.event;

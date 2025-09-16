@@ -1,12 +1,13 @@
 import { createLogger } from '@hs/core';
 
+import { EventID } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
 import { StateService } from './state.service';
 
 type MissingEventType = {
-	eventId: string;
+	eventId: EventID;
 	roomId: string;
 	origin: string;
 };

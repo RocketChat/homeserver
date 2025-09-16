@@ -21,6 +21,7 @@ import { type SigningKey } from '@hs/core';
 
 import { logger } from '@hs/core';
 import {
+	type EventID,
 	PduCreateEventContent,
 	PduForType,
 	PduJoinRuleEventContent,
@@ -1036,17 +1037,21 @@ export class RoomService {
 		const depth = currentDepth + 1;
 
 		const authEventsMap: TombstoneAuthEvents = {
-			'm.room.create':
-				authEvents.find((event) => event.event.type === 'm.room.create')?._id ||
-				'',
-			'm.room.power_levels':
-				authEvents.find((event) => event.event.type === 'm.room.power_levels')
-					?._id || '',
-			'm.room.member':
-				authEvents.find((event) => event.event.type === 'm.room.member')?._id ||
-				'',
+			'm.room.create': authEvents.find(
+				(event) => event.event.type === 'm.room.create',
+			)?._id,
+			'm.room.power_levels': authEvents.find(
+				(event) => event.event.type === 'm.room.power_levels',
+			)?._id,
+			'm.room.member': authEvents.find(
+				(event) => event.event.type === 'm.room.member',
+			)?._id,
 		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
+
+		const authEventsArray = Object.values(authEventsMap).filter(
+			(event) => event !== undefined,
+		) as EventID[];
 
 		const event = await this.stateService.buildEvent<'m.room.tombstone'>(
 			{
@@ -1056,7 +1061,7 @@ export class RoomService {
 					body: reason,
 					replacement_room: replacementRoomId,
 				},
-				auth_events: [...Object.values(authEventsMap)],
+				auth_events: authEventsArray,
 				prev_events: prevEvents,
 				depth,
 				origin_server_ts: Date.now(),

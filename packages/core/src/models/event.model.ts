@@ -1,10 +1,10 @@
-import { Pdu, PduForType } from '@hs/room';
+import { EventID, Pdu, PduForType } from '@hs/room';
 import type { EventBase as CoreEventBase } from '../events/eventBase';
 
 // TODO: use room package
 
 interface PersistentEventBase<E = Pdu> {
-	_id: string;
+	_id: EventID;
 	event: E;
 
 	origin: string;
