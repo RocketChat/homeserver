@@ -122,7 +122,8 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(internalRoomPlugin)
 		.use(serverKeyPlugin)
 		.use(wellKnownPlugin)
-		.use(roomPlugin);
+		.use(roomPlugin)
+		.use(mediaPlugin);
 
 	return { app, container };
 }
