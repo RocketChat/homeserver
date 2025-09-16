@@ -46,43 +46,43 @@ function parseMultipart(buffer: Buffer, boundary: string): MultipartResult {
 	return { content };
 }
 
-function handleJson<T>(contentType: string, body: Buffer): Promise<T | null> {
+async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): Promise<T | null> {
 	if (!contentType.includes('application/json')) {
-		return Promise.resolve(null);
+		return null;
 	}
 
 	try {
-		return Promise.resolve(JSON.parse(body.toString()));
+		return JSON.parse((await body()).toString());
 	} catch {
-		return Promise.resolve(null);
+		return null;
 	}
 }
 
-function handleText(contentType: string, body: Buffer): Promise<string> {
+async function handleText(contentType: string, body: () => Promise<Buffer>): Promise<string> {
 	if (!contentType.includes('text/')) {
-		return Promise.resolve('');
+		return '';
 	}
 
-	return Promise.resolve(body.toString());
+	return (await body()).toString();
 }
 
-function handleMultipart(
+async function handleMultipart(
 	contentType: string,
-	body: Buffer,
+	body: () => Promise<Buffer>,
 ): Promise<MultipartResult | null> {
 	if (!/\bmultipart\b/i.test(contentType)) {
-		return Promise.resolve(null);
+		return null;
 	}
 
 	// extract boundary from content-type header
 	const boundaryMatch = contentType.match(/boundary=([^;,\s]+)/i);
 	if (!boundaryMatch) {
-		return Promise.resolve(null);
+		return null;
 	}
 
 	// remove quotes if present
 	const boundary = boundaryMatch[1].replace(/^["']|["']$/g, '');
-	return Promise.resolve(parseMultipart(body, boundary));
+	return parseMultipart(await body(), boundary);
 }
 
 // this fetch is used when connecting to a multihome server, same server hosting multiple homeservers, and we need to verify the cert with the right SNI (hostname), or else, cert check will fail due to connecting through ip and not hostname (due to matrix spec).
@@ -103,33 +103,47 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 	try {
 		const response: {
 			statusCode: number | undefined;
-			body: Buffer;
+			body: () => Promise<Buffer>;
 			headers: IncomingHttpHeaders;
 		} = await new Promise((resolve, reject) => {
 			const request = https.request(requestParams, (res) => {
 				const chunks: Buffer[] = [];
 
 				res.once('error', reject);
+				
+				res.pause();
+				
+				let body: Promise<Buffer>;
+				
+				resolve({
+					statusCode: res.statusCode,
+					headers: res.headers,
+					body() {
+						if (!body) {
+							body = new Promise<Buffer>((resBody) => {
+								// TODO: Make @hs/core fetch size limit configurable
+								let total = 0;
+								const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
 
-				// TODO: Make @hs/core fetch size limit configurable
-				let total = 0;
-				const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
+								res.on('data', (chunk) => {
+									total += chunk.length;
+									if (total > MAX_RESPONSE_BYTES) {
+										request.destroy(new Error('Response exceeds size limit'));
+										return;
+									}
+									chunks.push(chunk);
+								});
 
-				res.on('data', (chunk) => {
-					total += chunk.length;
-					if (total > MAX_RESPONSE_BYTES) {
-						request.destroy(new Error('Response exceeds size limit'));
-						return;
+								res.on('end', () => {
+									resBody(Buffer.concat(chunks));
+								});
+
+								res.resume();
+							});
+						}
+						
+						return body;
 					}
-					chunks.push(chunk);
-				});
-
-				res.on('end', () => {
-					resolve({
-						statusCode: res.statusCode,
-						body: Buffer.concat(chunks),
-						headers: res.headers,
-					});
 				});
 			});
 
@@ -160,7 +174,7 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 			ok: response.statusCode
 				? response.statusCode >= 200 && response.statusCode < 300
 				: false,
-			buffer: () => response.body,
+			buffer: () => response.body(),
 			json: () => handleJson<T>(contentType, response.body),
 			text: () => handleText(contentType, response.body),
 			multipart: () => handleMultipart(contentType, response.body),
@@ -172,7 +186,7 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 			ok: false,
 			status: undefined,
 			headers: {},
-			buffer: () => Buffer.from(''),
+			buffer: () => Promise.resolve(Buffer.from('')),
 			json: () => Promise.resolve(null),
 			text: () =>
 				Promise.resolve(err instanceof Error ? err.message : String(err)),
