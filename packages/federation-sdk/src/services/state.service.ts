@@ -24,7 +24,7 @@ import { StateRepository, StateStore } from '../repositories/state.repository';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 
-export type State = Map<StateMapKey, PersistentEventBase>;
+type State = Map<StateMapKey, PersistentEventBase>;
 
 type StrippedRoomState = {
 	content: PduContent;
@@ -350,20 +350,6 @@ export class StateService {
 	async getFullRoomStateBeforeEvent2(eventId: EventID): Promise<RoomState> {
 		const state = await this.findStateAtEvent(eventId);
 		return new RoomState(state);
-	}
-
-	async getStateEventsByType<P extends PduType>(
-		roomId: string,
-		type: P,
-	): Promise<PersistentEventBase<RoomVersion, P>[]> {
-		const state = await this.getFullRoomState(roomId);
-		const events = [];
-		for (const [, event] of state) {
-			if (event.type === type) {
-				events.push(event as PersistentEventBase<RoomVersion, P>);
-			}
-		}
-		return events;
 	}
 
 	public async getStrippedRoomState(

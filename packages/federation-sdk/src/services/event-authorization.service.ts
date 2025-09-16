@@ -6,7 +6,7 @@ import {
 	makeGetPublicKeyFromServerProcedure,
 	validateAuthorizationHeader,
 } from '@hs/core';
-import type { EventID, Pdu } from '@hs/room';
+import type { EventID, Pdu, PersistentEventBase } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
 import { ConfigService } from './config.service';
@@ -193,8 +193,10 @@ export class EventAuthorizationService {
 			}
 
 			const roomId = event.event.room_id;
+			const state = await this.stateService.getFullRoomState(roomId);
 
-			const isServerAllowed = await this.checkServerAcl(roomId, serverName);
+			const aclEvent = state.get('m.room.server_acl:');
+			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
 			if (!isServerAllowed) {
 				this.logger.warn(
 					`Server ${serverName} is denied by room ACL for room ${roomId}`,
@@ -208,9 +210,12 @@ export class EventAuthorizationService {
 				return true;
 			}
 
-			const roomState = await this.stateService.getFullRoomState(roomId);
-			const historyVisibility = this.getHistoryVisibility(roomState);
-			if (historyVisibility === 'world_readable') {
+			const historyVisibilityEvent = state.get('m.room.history_visibility:');
+			if (
+				historyVisibilityEvent?.isHistoryVisibilityEvent() &&
+				historyVisibilityEvent.getContent().history_visibility ===
+					'world_readable'
+			) {
 				this.logger.debug(
 					`Event ${eventId} is world_readable, allowing ${serverName}`,
 				);
@@ -228,18 +233,6 @@ export class EventAuthorizationService {
 			);
 			return false;
 		}
-	}
-
-	private getHistoryVisibility(roomState: Map<any, any>): string {
-		for (const [, stateEvent] of roomState) {
-			if (stateEvent.type === 'm.room.history_visibility') {
-				const content = stateEvent.getContent() as {
-					history_visibility?: string;
-				};
-				return content?.history_visibility || 'joined';
-			}
-		}
-		return 'joined'; // default per Matrix spec
 	}
 
 	async canAccessEventFromAuthorizationHeader(
@@ -294,14 +287,10 @@ export class EventAuthorizationService {
 
 	// as per Matrix spec: https://spec.matrix.org/v1.15/client-server-api/#mroomserver_acl
 	private async checkServerAcl(
-		roomId: string,
+		aclEvent: PersistentEventBase | undefined,
 		serverName: string,
 	): Promise<boolean> {
-		const [aclEvent] = await this.stateService.getStateEventsByType(
-			roomId,
-			'm.room.server_acl',
-		);
-		if (!aclEvent) {
+		if (!aclEvent || !aclEvent.isServerAclEvent()) {
 			return true;
 		}
 
