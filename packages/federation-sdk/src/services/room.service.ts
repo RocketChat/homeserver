@@ -221,21 +221,8 @@ export class RoomService {
 			`Creating room for ${username} with ${name} join_rule: ${joinRule}`,
 		);
 
-		const roomCreateEvent = PersistentEventFactory.newEvent<'m.room.create'>(
-			{
-				type: 'm.room.create',
-				content: {
-					room_version: PersistentEventFactory.defaultRoomVersion,
-					creator: username,
-				},
-				room_id: '',
-				state_key: '',
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: username,
-			},
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			username,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
