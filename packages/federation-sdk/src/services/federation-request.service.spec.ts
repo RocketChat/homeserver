@@ -86,7 +86,9 @@ describe('FederationRequestService', async () => {
 		spyOn(core, 'extractURIfromURL').mockReturnValue('/test/path?query=value');
 		spyOn(core, 'authorizationHeaders').mockResolvedValue(mockAuthHeaders);
 		spyOn(core, 'signJson').mockResolvedValue(mockSignedJson);
-		spyOn(core, 'computeAndMergeHash').mockImplementation((obj: any) => obj);
+		spyOn(core, 'computeAndMergeHash').mockImplementation(
+			(obj: unknown) => obj,
+		);
 
 		configService = {
 			serverName: mockServerName,
@@ -131,7 +133,9 @@ describe('FederationRequestService', async () => {
 				}),
 			);
 
-			expect(result).toEqual({ result: 'success' });
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe(200);
+			expect(await result.json()).toEqual({ result: 'success' });
 		});
 
 		it('should make a successful signed request with body', async () => {
@@ -169,7 +173,9 @@ describe('FederationRequestService', async () => {
 				}),
 			);
 
-			expect(result).toEqual({ result: 'success' });
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe(200);
+			expect(await result.json()).toEqual({ result: 'success' });
 		});
 
 		it('should make a signed request with query parameters', async () => {
@@ -189,7 +195,9 @@ describe('FederationRequestService', async () => {
 				expect.any(Object),
 			);
 
-			expect(result).toEqual({ result: 'success' });
+			expect(result.ok).toBe(true);
+			expect(result.status).toBe(200);
+			expect(await result.json()).toEqual({ result: 'success' });
 		});
 
 		it('should handle fetch errors properly', async () => {
@@ -282,7 +290,13 @@ describe('FederationRequestService', async () => {
 			const makeSignedRequestSpy = spyOn(
 				service,
 				'makeSignedRequest',
-			).mockResolvedValue({ result: 'success' });
+			).mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: async () => ({ result: 'success' }),
+				text: async () => '{"result":"success"}',
+				multipart: async () => null,
+			});
 
 			await service.get('target.example.com', '/api/resource', {
 				filter: 'active',
@@ -300,7 +314,13 @@ describe('FederationRequestService', async () => {
 			const makeSignedRequestSpy = spyOn(
 				service,
 				'makeSignedRequest',
-			).mockResolvedValue({ result: 'success' });
+			).mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: async () => ({ result: 'success' }),
+				text: async () => '{"result":"success"}',
+				multipart: async () => null,
+			});
 
 			const body = { data: 'example' };
 			await service.post('target.example.com', '/api/resource', body, {
@@ -320,7 +340,13 @@ describe('FederationRequestService', async () => {
 			const makeSignedRequestSpy = spyOn(
 				service,
 				'makeSignedRequest',
-			).mockResolvedValue({ result: 'success' });
+			).mockResolvedValue({
+				ok: true,
+				status: 200,
+				json: async () => ({ result: 'success' }),
+				text: async () => '{"result":"success"}',
+				multipart: async () => null,
+			});
 
 			const body = { data: 'updated' };
 			await service.put('target.example.com', '/api/resource/123', body);
@@ -341,7 +367,11 @@ describe('FederationRequestService', async () => {
 			const makeSignedRequestSpy = spyOn(
 				service,
 				'makeSignedRequest',
-			).mockResolvedValue(mockBuffer);
+			).mockResolvedValue({
+				ok: true,
+				status: 200,
+				multipart: async () => ({ content: mockBuffer }),
+			});
 
 			const result = await service.requestBinaryData(
 				'GET',
@@ -355,7 +385,7 @@ describe('FederationRequestService', async () => {
 				uri: '/media/download',
 				queryString: '',
 			});
-			expect(result).toEqual(mockBuffer);
+			expect(result).toEqual({ content: mockBuffer });
 		});
 
 		it('should call makeSignedRequest for binary data with query params', async () => {
@@ -363,7 +393,11 @@ describe('FederationRequestService', async () => {
 			const makeSignedRequestSpy = spyOn(
 				service,
 				'makeSignedRequest',
-			).mockResolvedValue(mockBuffer);
+			).mockResolvedValue({
+				ok: true,
+				status: 200,
+				multipart: async () => ({ content: mockBuffer }),
+			});
 
 			const result = await service.requestBinaryData(
 				'GET',
@@ -378,7 +412,7 @@ describe('FederationRequestService', async () => {
 				uri: '/media/download',
 				queryString: 'width=100&height=100',
 			});
-			expect(result).toEqual(mockBuffer);
+			expect(result).toEqual({ content: mockBuffer });
 		});
 	});
 });
