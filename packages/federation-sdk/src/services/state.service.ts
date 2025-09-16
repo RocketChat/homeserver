@@ -416,7 +416,7 @@ export class StateService {
 		return instance;
 	}
 
-	private async addAuthEvents(event: PersistentEventBase) {
+	async addAuthEvents(event: PersistentEventBase) {
 		const state = await this.getFullRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();

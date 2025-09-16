@@ -29,13 +29,14 @@ export class SendJoinService {
 			throw new Error('Room version not found');
 		}
 
-		// delete existing auth events and refill them
-		event.auth_events = [];
+		const joinEvent =
+			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				// delete existing auth events and refill them
+				{ ...event, auth_events: [] },
+				roomVersion,
+			);
 
-		const joinEvent = await stateService.buildEvent<'m.room.member'>(
-			event,
-			roomVersion,
-		);
+		await stateService.addAuthEvents(joinEvent);
 
 		// now check the calculated id if it matches what is passed in param
 		if (joinEvent.eventId !== eventId) {
