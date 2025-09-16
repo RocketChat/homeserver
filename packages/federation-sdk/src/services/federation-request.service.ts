@@ -1,4 +1,4 @@
-import type { SigningKey } from '@hs/core';
+import type { SigningKey, FetchResponse } from '@hs/core';
 import {
 	EncryptionValidAlgorithm,
 	authorizationHeaders,
@@ -29,28 +29,13 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
-	// the redirect URL should be fetched without Matrix auth
-	// and will only occur for media downloads as per Matrix spec
-	private async handleRedirect(redirect: string): Promise<Buffer> {
-		const redirectResponse = await fetch(new URL(redirect), {
-			method: 'GET',
-			headers: {},
-		});
-
-		if (!redirectResponse.ok) {
-			throw new Error(`Failed to fetch media from redirect: ${redirect}`);
-		}
-
-		return await redirectResponse.buffer();
-	}
-
 	async makeSignedRequest<T>({
 		method,
 		domain,
 		uri,
 		body,
 		queryString,
-	}: SignedRequest): Promise<T | Buffer | null> {
+	}: SignedRequest): Promise<FetchResponse<T>> {
 		try {
 			const serverName = this.configService.serverName;
 			const signingKeyBase64 = await this.configService.getSigningKeyBase64();
@@ -122,15 +107,7 @@ export class FederationRequestService {
 				);
 			}
 
-			const multipart = await response.multipart();
-			if (multipart?.redirect) {
-				return this.handleRedirect(multipart.redirect);
-			}
-			if (multipart !== null) {
-				return multipart.content;
-			}
-
-			return response.json();
+			return response;
 		} catch (err) {
 			this.logger.error(
 				`Federation request failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -156,13 +133,13 @@ export class FederationRequestService {
 			queryString = params.toString();
 		}
 
-		return this.makeSignedRequest<T>({
+		return (await this.makeSignedRequest<T>({
 			method,
 			domain: targetServer,
 			uri: endpoint,
 			body,
 			queryString,
-		}) as Promise<T>;
+		})).json();
 	}
 
 	async get<T>(
@@ -203,13 +180,15 @@ export class FederationRequestService {
 		endpoint: string,
 		queryParams?: Record<string, string>,
 	) {
-		return this.makeSignedRequest({
+		const response = await this.makeSignedRequest({
 			method,
 			domain: targetServer,
 			uri: endpoint,
 			queryString: queryParams
 				? new URLSearchParams(queryParams).toString()
 				: '',
-		}) as Promise<Buffer>;
+		});
+		
+		return response.multipart();
 	}
 }

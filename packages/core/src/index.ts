@@ -86,4 +86,6 @@ export * from './url';
 
 export { makeUnsignedRequest } from './utils/makeRequest';
 
+export type { FetchResponse } from './utils/fetch';
+
 export { fetch } from './utils/fetch';

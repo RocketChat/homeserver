@@ -46,18 +46,15 @@ function parseMultipart(buffer: Buffer, boundary: string): MultipartResult {
 	return { content };
 }
 
-async function handleJson<T>(
-	contentType: string,
-	body: () => Promise<Buffer>,
-): Promise<T | null> {
+async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): Promise<T> {
 	if (!contentType.includes('application/json')) {
-		return null;
+		throw new Error('Content-Type is not application/json');
 	}
 
 	try {
 		return JSON.parse((await body()).toString());
 	} catch {
-		return null;
+		throw new Error('Failed to parse JSON response');
 	}
 }
 
@@ -72,27 +69,65 @@ async function handleText(
 	return (await body()).toString();
 }
 
-async function handleMultipart(
+// the redirect URL should be fetched without Matrix auth
+// and will only occur for media downloads as per Matrix spec
+async function handleMultipartRedirect<T>(redirect: string): Promise<FetchResponse<T>> {
+	const redirectResponse = await fetch<T>(new URL(redirect), {
+		method: 'GET',
+		headers: {},
+	});
+
+	if (!redirectResponse.ok) {
+		throw new Error(`Failed to fetch media from redirect: ${redirect}`);
+	}
+
+	return redirectResponse;
+}
+
+async function handleMultipart<T>(
 	contentType: string,
 	body: () => Promise<Buffer>,
-): Promise<MultipartResult | null> {
+	depth: number = 0,
+): Promise<MultipartResult> {
 	if (!/\bmultipart\b/i.test(contentType)) {
-		return null;
+		throw new Error('Content-Type is not multipart');
 	}
 
 	// extract boundary from content-type header
 	const boundaryMatch = contentType.match(/boundary=([^;,\s]+)/i);
 	if (!boundaryMatch) {
-		return null;
+		throw new Error('Boundary not found in Content-Type header');
 	}
 
 	// remove quotes if present
 	const boundary = boundaryMatch[1].replace(/^["']|["']$/g, '');
-	return parseMultipart(await body(), boundary);
+	const multipart = parseMultipart(await body(), boundary);
+	
+	if (multipart.redirect) {
+		if (depth >= 5) {
+			throw new Error('Too many redirects in multipart response');
+		}
+
+		const redirectResponse = await handleMultipartRedirect<T>(multipart.redirect);
+		return handleMultipart(redirectResponse.headers['content-type'] || '', redirectResponse.body, depth + 1);
+	}
+
+	return multipart;
+}
+
+export type FetchResponse<T> = {
+	ok: boolean;
+	status: number | undefined;
+	headers: IncomingHttpHeaders;
+	buffer: () => Promise<Buffer>;
+	json: () => Promise<T>;
+	text: () => Promise<string>;
+	multipart: () => Promise<MultipartResult>;
+	body: () => Promise<Buffer>;
 }
 
 // this fetch is used when connecting to a multihome server, same server hosting multiple homeservers, and we need to verify the cert with the right SNI (hostname), or else, cert check will fail due to connecting through ip and not hostname (due to matrix spec).
-export async function fetch<T>(url: URL, options: RequestInit) {
+export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchResponse<T>> {
 	const serverName = new URL(
 		`http://${(options.headers as IncomingHttpHeaders).Host}` as string,
 	).hostname;
@@ -201,19 +236,22 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 			json: () => handleJson<T>(contentType, response.body),
 			text: () => handleText(contentType, response.body),
 			multipart: () => handleMultipart(contentType, response.body),
+			body: response.body,
 			status: response.statusCode,
 			headers: response.headers,
 		};
 	} catch (err) {
+		const reason = err instanceof Error ? err.message : String(err);
+
 		return {
 			ok: false,
 			status: undefined,
 			headers: {},
-			buffer: () => Promise.resolve(Buffer.from('')),
-			json: () => Promise.resolve(null),
-			text: () =>
-				Promise.resolve(err instanceof Error ? err.message : String(err)),
-			multipart: () => Promise.resolve(null),
+			buffer: () => Promise.reject(reason),
+			json: () => Promise.reject(reason),
+			text: () => Promise.reject(reason),
+			multipart: () => Promise.reject(reason),
+			body: () => Promise.reject(reason),
 		};
 	}
 }

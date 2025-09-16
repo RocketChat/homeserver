@@ -31,7 +31,7 @@ export class MediaService {
 					endpoint,
 				);
 
-				return response;
+				return response.content;
 			} catch (err) {
 				this.logger.debug(
 					`Endpoint ${endpoint} failed: ${err instanceof Error ? err.message : String(err)}`,
