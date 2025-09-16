@@ -46,7 +46,10 @@ function parseMultipart(buffer: Buffer, boundary: string): MultipartResult {
 	return { content };
 }
 
-async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): Promise<T> {
+async function handleJson<T>(
+	contentType: string,
+	body: () => Promise<Buffer>,
+): Promise<T> {
 	if (!contentType.includes('application/json')) {
 		throw new Error('Content-Type is not application/json');
 	}
@@ -71,7 +74,9 @@ async function handleText(
 
 // the redirect URL should be fetched without Matrix auth
 // and will only occur for media downloads as per Matrix spec
-async function handleMultipartRedirect<T>(redirect: string): Promise<FetchResponse<T>> {
+async function handleMultipartRedirect<T>(
+	redirect: string,
+): Promise<FetchResponse<T>> {
 	const redirectResponse = await fetch<T>(new URL(redirect), {
 		method: 'GET',
 		headers: {},
@@ -87,7 +92,7 @@ async function handleMultipartRedirect<T>(redirect: string): Promise<FetchRespon
 async function handleMultipart<T>(
 	contentType: string,
 	body: () => Promise<Buffer>,
-	depth: number = 0,
+	depth = 0,
 ): Promise<MultipartResult> {
 	if (!/\bmultipart\b/i.test(contentType)) {
 		throw new Error('Content-Type is not multipart');
@@ -102,14 +107,20 @@ async function handleMultipart<T>(
 	// remove quotes if present
 	const boundary = boundaryMatch[1].replace(/^["']|["']$/g, '');
 	const multipart = parseMultipart(await body(), boundary);
-	
+
 	if (multipart.redirect) {
 		if (depth >= 5) {
 			throw new Error('Too many redirects in multipart response');
 		}
 
-		const redirectResponse = await handleMultipartRedirect<T>(multipart.redirect);
-		return handleMultipart(redirectResponse.headers['content-type'] || '', redirectResponse.body, depth + 1);
+		const redirectResponse = await handleMultipartRedirect<T>(
+			multipart.redirect,
+		);
+		return handleMultipart(
+			redirectResponse.headers['content-type'] || '',
+			redirectResponse.body,
+			depth + 1,
+		);
 	}
 
 	return multipart;
@@ -124,10 +135,13 @@ export type FetchResponse<T> = {
 	text: () => Promise<string>;
 	multipart: () => Promise<MultipartResult>;
 	body: () => Promise<Buffer>;
-}
+};
 
 // this fetch is used when connecting to a multihome server, same server hosting multiple homeservers, and we need to verify the cert with the right SNI (hostname), or else, cert check will fail due to connecting through ip and not hostname (due to matrix spec).
-export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchResponse<T>> {
+export async function fetch<T>(
+	url: URL,
+	options: RequestInit,
+): Promise<FetchResponse<T>> {
 	const serverName = new URL(
 		`http://${(options.headers as IncomingHttpHeaders).Host}` as string,
 	).hostname;

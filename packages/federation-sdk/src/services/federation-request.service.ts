@@ -1,4 +1,4 @@
-import type { SigningKey, FetchResponse } from '@hs/core';
+import type { FetchResponse, SigningKey } from '@hs/core';
 import {
 	EncryptionValidAlgorithm,
 	authorizationHeaders,
@@ -133,13 +133,15 @@ export class FederationRequestService {
 			queryString = params.toString();
 		}
 
-		return (await this.makeSignedRequest<T>({
-			method,
-			domain: targetServer,
-			uri: endpoint,
-			body,
-			queryString,
-		})).json();
+		return (
+			await this.makeSignedRequest<T>({
+				method,
+				domain: targetServer,
+				uri: endpoint,
+				body,
+				queryString,
+			})
+		).json();
 	}
 
 	async get<T>(
@@ -188,7 +190,7 @@ export class FederationRequestService {
 				? new URLSearchParams(queryParams).toString()
 				: '',
 		});
-		
+
 		return response.multipart();
 	}
 }
