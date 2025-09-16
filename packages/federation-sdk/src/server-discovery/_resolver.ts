@@ -20,7 +20,7 @@ class _Resolver extends Resolver {
 		const result = await lookup(hostname, {
 			all: true,
 			family: 0,
-			order: 'ipv4first', //'ipv6first',
+			order: 'ipv6first',
 		});
 
 		return result.map((r) => r.address);

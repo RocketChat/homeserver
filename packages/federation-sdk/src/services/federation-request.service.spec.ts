@@ -9,7 +9,6 @@ import {
 	spyOn,
 } from 'bun:test';
 import * as core from '@hs/core';
-import * as nacl from 'tweetnacl';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';

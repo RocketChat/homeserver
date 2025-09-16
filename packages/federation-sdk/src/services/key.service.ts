@@ -111,11 +111,9 @@ export class KeyService {
 		);
 
 		// TODO: move this to federation service??
-		const keyV2ServerUrl = Bun
-			? new URL(`https://${serverName}/_matrix/key/v2/server`)
-			: new URL(`${address}/_matrix/key/v2/server`);
+		const keyV2ServerUrl = new URL(`${address}/_matrix/key/v2/server`);
 
-		const response = await (Bun ? fetch : coreFetch)(keyV2ServerUrl, {
+		const response = await coreFetch(keyV2ServerUrl, {
 			headers: hostHeaders,
 			method: 'GET',
 			signal: AbortSignal.timeout(10_000),
