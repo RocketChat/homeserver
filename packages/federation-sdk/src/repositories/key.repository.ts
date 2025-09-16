@@ -1,5 +1,5 @@
 import { ServerKey } from '@hs/core';
-import { Collection, Filter, FindOptions } from 'mongodb';
+import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 @singleton()
@@ -8,49 +8,65 @@ export class KeyRepository {
 		@inject('KeyCollection') private readonly collection: Collection<ServerKey>,
 	) {}
 
-	async findByServerName(
+	findByServerName(
 		serverName: string,
-		validUntil?: number,
-	): Promise<ServerKey | null> {
-		return this.collection.findOne({
-			serverName,
-			...(validUntil ? { 'keys.expiresAt': { $gt: validUntil } } : {}),
-		});
+		validUntil?: Date,
+		options?: FindOptions<ServerKey>,
+	): FindCursor<ServerKey> {
+		return this.collection.find(
+			{
+				serverName,
+				...(validUntil && { expiresAt: { $gt: validUntil } }),
+			},
+			options ?? {},
+		);
 	}
 
 	async findByServerNameAndKeyId(
 		serverName: string,
 		keyId: string,
-		validUntil?: number,
+		validUntil?: Date,
+		options?: FindOptions<ServerKey>,
 	): Promise<ServerKey | null> {
-		return this.collection.findOne({
-			serverName,
-			[`keys.${keyId}`]: { $exists: true },
-			...(validUntil
-				? { [`keys.${keyId}.expiresAt`]: { $gte: validUntil } }
-				: {}),
-		});
+		return this.collection.findOne(
+			{
+				serverName,
+				keyId,
+				...(validUntil && { expiresAt: { $gte: validUntil } }),
+			},
+			options ?? {},
+		);
 	}
 
-	async findAllByServerNameAndKeyIds(
+	findAllByServerNameAndKeyIds(
 		serverName: string,
 		keyIds: string[],
-	): Promise<ServerKey | null> {
+		options?: FindOptions<ServerKey>,
+	): FindCursor<ServerKey> {
 		const query: Filter<ServerKey> = {
 			serverName,
+			keyId: { $in: keyIds },
 		};
 
-		for (const keyId of keyIds) {
-			query[`keys.${keyId}`] = { $exists: true };
-		}
-
-		return this.collection.findOne(query);
+		return this.collection.find(query, options ?? {});
 	}
 
-	async storeKeys(serverKey: ServerKey): Promise<void> {
+	// cache can be refreshed
+	async insertOrUpdateKey(serverKey: ServerKey): Promise<void> {
 		await this.collection.updateOne(
-			{ serverName: serverKey.serverName },
-			{ $set: serverKey },
+			{ serverName: serverKey.serverName, keyId: serverKey.keyId },
+			{
+				$setOnInsert: {
+					_createdAt: new Date(),
+					// following shouldn't change along with keyId
+					key: serverKey.key,
+					pem: serverKey.pem,
+				},
+				$set: {
+					expiresAt: serverKey.expiresAt,
+					_updatedAt: new Date(),
+				},
+			},
 			{ upsert: true },
 		);
 	}

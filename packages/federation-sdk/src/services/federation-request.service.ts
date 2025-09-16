@@ -19,7 +19,6 @@ import { EncryptionValidAlgorithm } from '@hs/core';
 import { createLogger } from '@hs/core';
 import { fetch } from '@hs/core';
 import { singleton } from 'tsyringe';
-import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { ConfigService } from './config.service';
 import { signJson } from '@hs/crypto';

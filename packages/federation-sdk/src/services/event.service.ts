@@ -10,19 +10,27 @@ import type { RedactionEvent } from '@rocket.chat/federation-core';
 import { generateId } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-core';
 import { pruneEventDict } from '@rocket.chat/federation-core';
+} from '@hs/core'
+import { isPresenceEDU, isTypingEDU } from '@hs/core';
+import type { RedactionEvent } from '@hs/core';
+import { generateId } from '@hs/core';
+import type { EventStore } from '@hs/core';
+import { pruneEventDict } from '@hs/core';
 
-import { checkSignAndHashes } from '@rocket.chat/federation-core';
-import { createLogger } from '@rocket.chat/federation-core';
+import { createLogger } from '@hs/core';
 import {
 	type EventID,
 	type Pdu,
 	type PduForType,
 	type PduType,
+	PersistentEventBase,
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
+RoomVersion,
+} from '@hs/room'
 import { singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
@@ -34,6 +42,8 @@ import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { ServerService } from './server.service';
 import { StateService } from './state.service';
+import { KeyService, OldVerifierKey } from './key.service';
+import { SignatureVerificationService } from './signature-verification.service';
 
 export interface AuthEventParams {
 	roomId: string;
@@ -57,6 +67,9 @@ export class EventService {
 		private readonly serverService: ServerService,
 
 		private readonly eventEmitterService: EventEmitterService,
+
+		private readonly keyService: KeyService,
+		private readonly signatureVerificationService: SignatureVerificationService,
 	) {
 		// on startup we look for old staged events and try to process them
 		setTimeout(() => {
@@ -164,26 +177,33 @@ export class EventService {
 			eventsByRoomId.get(roomId)?.push(event);
 		}
 
-		const roomIdToRoomVersionmap = new Map<string, RoomVersion>();
-		const getRoomVersion = async (roomId: RoomID) => {
-			if (roomIdToRoomVersionmap.has(roomId)) {
-				return roomIdToRoomVersionmap.get(roomId) as RoomVersion;
+		const roomVersionByRoomId = new Map<string, string>();
+		const getRoomVersion = async (roomId: string): Promise<RoomVersion> => {
+			if (roomVersionByRoomId.has(roomId)) {
+				return roomVersionByRoomId.get(roomId) as RoomVersion;
 			}
 
-			const roomVersion = await this.getRoomVersion({ room_id: roomId });
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
+			if (roomVersion) {
+				roomVersionByRoomId.set(roomId, roomVersion);
+				return roomVersion;
+			}
 
-			roomIdToRoomVersionmap.set(roomId, roomVersion);
-
-			return roomVersion;
+			throw new Error('M_UNKNOWN_ROOM_VERSION');
 		};
 
 		// process each room's events in parallel
 		// TODO implement a concurrency limit
 		await Promise.all(
 			Array.from(eventsByRoomId.entries()).map(async ([roomId, events]) => {
+				// TODO: need to validate using zod schemas
+
+				const roomVersion = await getRoomVersion(roomId);
+
 				for await (const event of events) {
+					let pdu: PersistentEventBase;
 					try {
-						await this.validateEvent(event);
+						pdu = await this.validateEvent(event, roomVersion);
 					} catch (err) {
 						this.logger.error({
 							msg: 'Event validation failed',
@@ -194,19 +214,10 @@ export class EventService {
 						continue;
 					}
 
-					const roomVersion = await getRoomVersion(event.room_id);
-
-					const pdu = PersistentEventFactory.createFromRawEvent(
-						event,
-						roomVersion,
-					);
-
-					const eventId = pdu.eventId;
-
-					const existing = await this.eventRepository.findById(eventId);
+					const existing = await this.eventRepository.findById(pdu.eventId);
 					if (existing) {
 						this.logger.info(
-							`Ignoring received event ${eventId} which we have already seen`,
+							`Ignoring received event ${pdu.eventId} which we have already seen`,
 						);
 
 						// TODO we may need to check if an event is an outlier and re-process it
@@ -214,7 +225,7 @@ export class EventService {
 					}
 
 					// save the event as staged to be processed
-					await this.eventStagingRepository.create(eventId, origin, event);
+					await this.eventStagingRepository.create(pdu.eventId, origin, event);
 
 					// acquire a lock for processing the event
 					const lock = await this.lockRepository.getLock(
@@ -234,27 +245,19 @@ export class EventService {
 				}
 			}),
 		);
+
+		// don't want the cache to indefinitely grow, nor cause stale keys to stay
+		// once a transaction is dfone, we can clear the cache
+		this.cachedVerifierKey.clear();
 	}
 
-	private async validateEvent(event: Pdu): Promise<void> {
-		const roomVersion = await this.getRoomVersion(event);
-		if (!roomVersion) {
-			throw new Error('M_UNKNOWN_ROOM_VERSION');
-		}
+	private cachedVerifierKey: Map<`${string}:${string}`, OldVerifierKey> =
+		new Map();
 
-		if (
-			event.type === 'm.room.member' &&
-			event.content.membership === 'invite' &&
-			'third_party_invite' in event.content
-		) {
-			throw new Error('Third party invites are not supported');
-		}
-
-		const origin = event.sender.split(':').pop();
-		if (!origin) {
-			throw new Error('Event sender is missing domain');
-		}
-
+	private async validateEvent(
+		event: Pdu,
+		roomVersion: RoomVersion,
+	): Promise<PersistentEventBase> {
 		const eventSchema = this.getEventSchema(roomVersion, event.type);
 
 		const validationResult = eventSchema.safeParse(event);
@@ -282,9 +285,81 @@ export class EventService {
 			throw new Error('M_MISSING_SIGNATURES_OR_HASHES');
 		}
 
-		await checkSignAndHashes(event, origin, (origin, key) => {
-			return this.serverService.getPublicKey(origin, key);
-		});
+		return this.validateHashAndSignatures(event, roomVersion);
+	}
+
+	public async validateHashAndSignatures(
+		event: Pdu,
+		roomVersion: RoomVersion,
+	): Promise<PersistentEventBase> {
+		const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
+
+		const expectedHash = event.hashes.sha256;
+
+		const hash = pdu.getContentHashString();
+
+		if (expectedHash !== hash) {
+			this.logger.error(
+				{ event: pdu.event, expectedHash, hash },
+				'content hash validation failed',
+			);
+			throw new Error('M_INVALID_HASH');
+		}
+
+		const keysRequired = pdu.getOriginKeys();
+
+		this.logger.debug(
+			{ keys: keysRequired, eventId: pdu.eventId },
+			'Keys required to verify event',
+		);
+
+		for (const keyId of keysRequired) {
+			const cacheKey = `${pdu.roomId}:${keyId}` as const;
+			const verifier = this.cachedVerifierKey.get(cacheKey);
+			if (verifier) {
+				if (this.keyService.isVerifierAllowedToCheckEvent(pdu, verifier)) {
+					this.logger.debug(
+						{
+							id: verifier.key.id,
+						},
+						'using cached verifier',
+					);
+					await this.signatureVerificationService.verifyEventSignature(
+						pdu,
+						verifier.key,
+					);
+
+					return pdu;
+				}
+			}
+		}
+
+		this.logger.info(
+			{ eventId: pdu.eventId },
+			'keys not in cache, fetching from KeyService',
+		);
+
+		const requiredVerifier =
+			await this.keyService.getRequiredVerifierForEvent(pdu);
+
+		this.logger.debug(
+			{
+				eventId: pdu.eventId,
+				verifier: {
+					id: requiredVerifier.key.id,
+					expiredAt: requiredVerifier.expiredAt.toISOString(),
+				},
+			},
+			'verifier required for pdu validation',
+		);
+
+		this.cachedVerifierKey.set(requiredVerifier.key.id, requiredVerifier);
+
+		await this.signatureVerificationService.verifyEventSignature(
+			pdu,
+			requiredVerifier.key,
+		);
+		return pdu;
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
@@ -455,7 +530,7 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: Pick<Pdu, 'room_id'>) {
+	public async getRoomVersion(event: Pdu) {
 		return (
 			this.stateService.getRoomVersion(event.room_id) ||
 			PersistentEventFactory.defaultRoomVersion

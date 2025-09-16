@@ -6,16 +6,17 @@ import {
 	isValidAlgorithm,
 	loadEd25519VerifierFromPublicKey,
 	signJson,
+	VerifierKey,
 	type Signer,
 } from '@hs/crypto';
 import {
-	fetch as _myFetch,
+	fetch as coreFetch,
 	type KeyV2ServerResponse,
 	type ServerKey,
 } from '@hs/core';
 import { createLogger } from '../utils/logger';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
-import { ConnectionCheckOutFailedEvent } from 'mongodb';
+import { PersistentEventBase } from '@hs/room';
 
 type QueryCriteria = {
 	// If not supplied, the current time as determined by the notary server is used.
@@ -44,6 +45,13 @@ function isKeyV2ServerResponse(obj: unknown): obj is KeyV2ServerResponse {
 	return false;
 }
 
+// to help with caching and cehcking if a key can still be used
+// check isVerifierAllowedToCheckEvent
+export type OldVerifierKey = {
+	key: VerifierKey;
+	expiredAt: Date;
+};
+
 @singleton()
 export class KeyService {
 	private signer: Signer | undefined;
@@ -58,17 +66,25 @@ export class KeyService {
 		});
 	}
 
-	private shouldRefetchKey(
-		localKey: ServerKey,
-		keyId: string,
-		validUntil?: number,
-	) {
-		const key = localKey.keys[keyId];
+	public isVerifierAllowedToCheckEvent(
+		event: PersistentEventBase,
+		verifier: OldVerifierKey,
+	): boolean {
+		if (event.originServerTs > verifier.expiredAt.getTime()) {
+			this.logger.warn(
+				`Key ${verifier.key.id} expired at ${verifier.expiredAt.toISOString()} cannot be used to verify event from ${event.origin} with originServerTs ${new Date(event.originServerTs).toISOString()}`,
+			);
+			return false;
+		}
 
-		const { serverName } = localKey;
+		return true;
+	}
+
+	private shouldRefetchKey(key: ServerKey, validUntil?: number) {
+		const { serverName } = key;
 
 		if (validUntil) {
-			if (key.expiresAt < validUntil) {
+			if (key.expiresAt.getTime() < validUntil) {
 				this.logger.warn(
 					`Key for ${serverName} is expired, ${key.expiresAt} < ${validUntil}, refetching keys`,
 				);
@@ -80,31 +96,30 @@ export class KeyService {
 
 		// SPEC: Intermediate notary servers should cache a response for half of its lifetime to avoid serving a stale response.
 		// this could be part of an aggregation, however, the key data stored aren't big enough to justify the complexity right now.
-		if ((key._updatedAt.getTime() + key.expiresAt) / 2 < Date.now()) {
+		if ((key._updatedAt.getTime() + key.expiresAt.getTime()) / 2 < Date.now()) {
 			this.logger.warn(`Half life for key for ${serverName} is expired`);
 			return true;
 		}
 	}
 
-	async fetchKeysFromRemoteServerRaw(
+	async fetchAndSaveKeysFromRemoteServerRaw(
 		serverName: string,
 	): Promise<KeyV2ServerResponse> {
-		// FIXME:
-		// const [address, hostHeaders] = await getHomeserverFinalAddress(
-		// 	serverName,
-		// 	this.logger,
-		// );
+		const [address, hostHeaders] = await getHomeserverFinalAddress(
+			serverName,
+			this.logger,
+		);
 
 		// TODO: move this to federation service??
-		// const keyV2ServerUrl = new URL(`${address}/_matrix/key/v2/server`);
+		const keyV2ServerUrl = Bun
+			? new URL(`https://${serverName}/_matrix/key/v2/server`)
+			: new URL(`${address}/_matrix/key/v2/server`);
 
-		const response = await fetch(
-			`https://${serverName}/_matrix/key/v2/server`,
-			{
-				// headers: hostHeaders,
-				method: 'GET',
-			},
-		);
+		const response = await (Bun ? fetch : coreFetch)(keyV2ServerUrl, {
+			headers: hostHeaders,
+			method: 'GET',
+			signal: AbortSignal.timeout(10_000),
+		});
 
 		if (!response.ok) {
 			this.logger.error(
@@ -145,13 +160,7 @@ export class KeyService {
 	private async storeKeysFromResponse(
 		response: KeyV2ServerResponse,
 	): Promise<void> {
-		const existingKey = await this.keyRepository.findByServerName(
-			response.server_name,
-		);
-		const keys: ServerKey = {
-			serverName: response.server_name,
-			keys: existingKey ? existingKey.keys : {},
-		};
+		const keys: ServerKey[] = [];
 
 		for (const [keyId, keyInfo] of Object.entries(response.verify_keys)) {
 			const { version } = this.parseKeyId(keyId);
@@ -161,14 +170,16 @@ export class KeyService {
 				version,
 			);
 
-			keys.keys[verifier.id] = {
+			keys.push({
+				serverName: response.server_name,
+				keyId: verifier.id,
 				key: keyInfo.key,
 				pem: verifier.getPublicKeyPem(),
 
-				_createdAt: existingKey?.keys?.[verifier.id]?._createdAt ?? new Date(),
+				_createdAt: new Date(),
 				_updatedAt: new Date(),
-				expiresAt: response.valid_until_ts,
-			};
+				expiresAt: new Date(response.valid_until_ts),
+			});
 		}
 
 		for (const [keyId, keyInfo] of Object.entries(response.old_verify_keys)) {
@@ -179,21 +190,26 @@ export class KeyService {
 				version,
 			);
 
-			keys.keys[verifier.id] = {
+			keys.push({
+				serverName: response.server_name,
+				keyId: verifier.id,
 				key: keyInfo.key,
 				pem: verifier.getPublicKeyPem(),
 
-				_createdAt: existingKey?.keys?.[verifier.id]?._createdAt ?? new Date(),
+				_createdAt: new Date(),
 				_updatedAt: new Date(),
-				expiresAt: keyInfo.expired_ts,
-			};
+				expiresAt: new Date(keyInfo.expired_ts),
+			});
 		}
 
-		await this.keyRepository.storeKeys(keys);
+		await Promise.all(
+			keys.map((key) => this.keyRepository.insertOrUpdateKey(key)),
+		);
 	}
 
+	// multiple keys -> single repnse
 	async convertToKeyV2Response(
-		serverKey: ServerKey,
+		serverKeys: ServerKey[],
 		minimumValidUntil = Date.now(),
 	): Promise<KeyV2ServerResponse> {
 		if (!this.signer) {
@@ -206,26 +222,32 @@ export class KeyService {
 
 		let validUntil = 0;
 
-		for (const [keyId, keyInfo] of Object.entries(serverKey.keys)) {
-			if (keyInfo.expiresAt > validUntil) {
-				validUntil = keyInfo.expiresAt;
+		const serverName = serverKeys[0]?.serverName;
+
+		for (const key of serverKeys) {
+			if (key.serverName !== serverName) {
+				throw new Error('All keys must be from the same server');
+			}
+
+			if (key.expiresAt.getTime() > validUntil) {
+				validUntil = key.expiresAt.getTime();
 			}
 
 			// if expired, move to old keys
-			if (keyInfo.expiresAt < minimumValidUntil) {
-				oldVerifyKeys[keyId] = {
-					expired_ts: keyInfo.expiresAt,
-					key: keyInfo.key,
+			if (key.expiresAt.getTime() < minimumValidUntil) {
+				oldVerifyKeys[key.keyId] = {
+					expired_ts: key.expiresAt.getTime(),
+					key: key.key,
 				};
 			} else {
-				verifyKeys[keyId] = {
-					key: keyInfo.key,
+				verifyKeys[key.keyId] = {
+					key: key.key,
 				};
 			}
 		}
 
 		const response = {
-			server_name: serverKey.serverName,
+			server_name: serverName,
 			verify_keys: verifyKeys,
 			old_verify_keys: oldVerifyKeys,
 			valid_until_ts: validUntil,
@@ -252,7 +274,7 @@ export class KeyService {
 
 		const serverKeysResponse = [] as KeyV2ServerResponse[];
 
-		const localKeys = [] as ServerKey[];
+		const localKeysPerServer: Map<string, ServerKey[]> = new Map();
 
 		for (const [serverName, query] of Object.entries(serverKeys)) {
 			const keysAsked = Object.keys(query);
@@ -260,14 +282,16 @@ export class KeyService {
 			this.logger.debug({ serverName, query, keyIds: keysAsked }, 'keys asked');
 
 			if (keysAsked.length === 0) {
-				const keys = await this.keyRepository.findByServerName(serverName);
+				const keys = await this.keyRepository
+					.findByServerName(serverName)
+					.toArray();
 
-				if (!keys) {
+				if (!keys.length) {
 					this.logger.debug({ serverName, keys }, 'no cached keys found');
 					// no cache, fetch from remote and stpre
 					try {
 						const remoteKeys =
-							await this.fetchKeysFromRemoteServerRaw(serverName);
+							await this.fetchAndSaveKeysFromRemoteServerRaw(serverName);
 						serverKeysResponse.push(remoteKeys);
 
 						this.logger.debug(
@@ -290,14 +314,10 @@ export class KeyService {
 				}
 
 				// check if any of the cached keys need refetching
-				if (
-					Object.keys(keys.keys).every((keyId) =>
-						this.shouldRefetchKey(keys, keyId),
-					)
-				) {
+				if (keys.every((key) => this.shouldRefetchKey(key))) {
 					try {
 						const remoteKeys =
-							await this.fetchKeysFromRemoteServerRaw(serverName);
+							await this.fetchAndSaveKeysFromRemoteServerRaw(serverName);
 						serverKeysResponse.push(remoteKeys);
 
 						this.logger.debug(
@@ -314,7 +334,7 @@ export class KeyService {
 							`Failed to fetch keys from remote server ${serverName}, continuing with cached keys if any`,
 						);
 
-						localKeys.push(keys);
+						localKeysPerServer.set(serverName, keys);
 					}
 
 					continue;
@@ -322,7 +342,7 @@ export class KeyService {
 
 				this.logger.debug({ serverName, keys }, 'using cached keys');
 
-				localKeys.push(keys);
+				localKeysPerServer.set(serverName, keys);
 
 				continue;
 			}
@@ -336,11 +356,9 @@ export class KeyService {
 			}
 
 			// intentionally querying for all keys from db, since asked, if we didn't find one, should trigger a refetch
-			const keysForQuery =
-				await this.keyRepository.findAllByServerNameAndKeyIds(
-					serverName,
-					keysAsked,
-				);
+			const keysForQuery = await this.keyRepository
+				.findAllByServerNameAndKeyIds(serverName, keysAsked)
+				.toArray();
 
 			this.logger.debug(
 				{ serverName, query, keysForQuery },
@@ -348,19 +366,16 @@ export class KeyService {
 			);
 
 			if (
-				!keysForQuery ||
-				keysAsked.every((keyId) =>
-					this.shouldRefetchKey(
-						keysForQuery,
-						keyId,
-						query[keyId]?.minimum_valid_until_ts,
-					),
+				keysForQuery.length === 0 ||
+				keysForQuery.every((key) =>
+					this.shouldRefetchKey(key, query[key.keyId]?.minimum_valid_until_ts),
 				)
 			) {
+				this.logger.debug('need to refetch keys');
 				// no valid cache, fetch from remote and stpre
 				try {
 					const remoteKeys =
-						await this.fetchKeysFromRemoteServerRaw(serverName);
+						await this.fetchAndSaveKeysFromRemoteServerRaw(serverName);
 					// TODO: apply actual filter
 					serverKeysResponse.push(remoteKeys);
 
@@ -378,20 +393,22 @@ export class KeyService {
 						`Failed to fetch keys from remote server ${serverName}, continuing with cached keys if any`,
 					);
 
-					if (keysForQuery) {
-						localKeys.push(keysForQuery);
+					if (keysForQuery.length !== 0) {
+						localKeysPerServer.set(serverName, keysForQuery);
 					}
 				}
 
 				continue;
 			}
 
-			localKeys.push(keysForQuery);
+			localKeysPerServer.set(serverName, keysForQuery);
 		}
 
 		const keys = await Promise.all([
 			// convert and sign
-			...localKeys.map(this.convertToKeyV2Response.bind(this)),
+			...localKeysPerServer
+				.values()
+				.map(this.convertToKeyV2Response.bind(this)),
 			// sign with our keys
 			...serverKeysResponse.map(async (key): Promise<KeyV2ServerResponse> => {
 				const { signatures, ...rest } = key;
@@ -412,5 +429,177 @@ export class KeyService {
 		return {
 			server_keys: keys,
 		};
+	}
+
+	// use only for request signature verification
+	// does nto include expired keys
+	async getRequestVerifier(
+		serverName: string,
+		keyId: string,
+	): Promise<VerifierKey> {
+		const { version } = this.parseKeyId(keyId);
+
+		const localKey = await this.keyRepository.findByServerNameAndKeyId(
+			serverName,
+			keyId,
+			new Date(),
+		);
+
+		if (localKey && !this.shouldRefetchKey(localKey)) {
+			const verifier = await loadEd25519VerifierFromPublicKey(
+				fromBase64ToBytes(localKey.key), // TODO: use saved pem here
+				version,
+			);
+
+			return verifier;
+		}
+
+		// either no key saved or needs a refetch
+		const remoteKeys =
+			await this.fetchAndSaveKeysFromRemoteServerRaw(serverName);
+		if (!remoteKeys.verify_keys[keyId]) {
+			throw new Error(`Key ${keyId} not found on server ${serverName}`);
+		}
+
+		if (remoteKeys.valid_until_ts < Date.now()) {
+			throw new Error(`Key ${keyId} from server ${serverName} is expired`);
+		}
+
+		const verifier = await loadEd25519VerifierFromPublicKey(
+			fromBase64ToBytes(remoteKeys.verify_keys[keyId].key),
+			version,
+		);
+
+		return verifier;
+	}
+
+	// use for event signature verification
+	// includes expired keys
+	async getEventVerifier(
+		serverName: string,
+		keyId: string,
+		expiredAt?: Date,
+	): Promise<OldVerifierKey> {
+		const { version } = this.parseKeyId(keyId);
+		const localKey = await this.keyRepository.findByServerNameAndKeyId(
+			serverName,
+			keyId,
+			expiredAt,
+		);
+
+		if (localKey) {
+			this.logger.debug(
+				{ serverName, keyId, expiredAt },
+				'Found local key for event verification',
+			);
+			// we won't check for half life here, since this is for event signature verification, we need to use whatever is available andd is valid
+			const verifier = await loadEd25519VerifierFromPublicKey(
+				fromBase64ToBytes(localKey.key),
+				version,
+			);
+
+			return {
+				key: verifier,
+				expiredAt: localKey.expiresAt,
+			};
+		}
+
+		const expectedExpiry = expiredAt?.getTime() ?? Date.now();
+
+		this.logger.debug(
+			{ serverName, keyId },
+			`expected expiry: ${new Date(expectedExpiry).toISOString()}`,
+		);
+
+		const remoteKeys =
+			await this.fetchAndSaveKeysFromRemoteServerRaw(serverName);
+
+		this.logger.debug({ response: remoteKeys }, 'Remote keys fetched');
+
+		if (remoteKeys.verify_keys[keyId]) {
+			// expired, against the required expiry time
+			if (remoteKeys.valid_until_ts < expectedExpiry) {
+				throw new Error(`Key ${keyId} from server ${serverName} is expired`);
+			}
+
+			const expiredAt_ = new Date(remoteKeys.valid_until_ts);
+			const publicKey = remoteKeys.verify_keys[keyId].key;
+			const verifier = await loadEd25519VerifierFromPublicKey(
+				fromBase64ToBytes(publicKey),
+				version,
+			);
+
+			return {
+				key: verifier,
+				expiredAt: expiredAt_,
+			};
+		}
+
+		// either are valid for event signing
+		const publicKey = remoteKeys.old_verify_keys[keyId];
+		if (!publicKey) {
+			throw new Error(`Key ${keyId} not found on server ${serverName}`);
+		}
+
+		if (publicKey.expired_ts < expectedExpiry) {
+			throw new Error(`Key ${keyId} from server ${serverName} is expired`);
+		}
+
+		const verifier = await loadEd25519VerifierFromPublicKey(
+			fromBase64ToBytes(publicKey.key),
+			version,
+		);
+
+		return {
+			key: verifier,
+			expiredAt: new Date(publicKey.expired_ts),
+		};
+	}
+
+	async getRequiredVerifierForEvent(
+		event: PersistentEventBase,
+	): Promise<OldVerifierKey> {
+		this.logger.debug(
+			{ eventId: event.eventId },
+			'Getting required verifier for event',
+		);
+
+		const signaturesFromOrigin = event.event.signatures[event.origin];
+
+		if (!signaturesFromOrigin) {
+			throw new Error(`No signatures from origin ${event.origin}`);
+		}
+
+		// can be signed by multiple keys
+		for (const keyId of Object.keys(signaturesFromOrigin)) {
+			try {
+				const verifier = await this.getEventVerifier(
+					event.origin,
+					keyId,
+					new Date(event.originServerTs),
+				);
+
+				this.logger.debug(
+					{
+						eventId: event.eventId,
+						keyId,
+						origin: event.origin,
+					},
+					'Found verifier',
+				);
+
+				return verifier;
+			} catch (error) {
+				// if couldn't find, it's ok, try next
+				this.logger.warn(
+					{ error, keyId, origin: event.origin },
+					`Failed to get verifier for event from ${event.origin} with keyId ${keyId}`,
+				);
+			}
+		}
+
+		throw new Error(
+			`No valid signature keys found for origin ${event.origin} with supported algorithms`,
+		);
 	}
 }

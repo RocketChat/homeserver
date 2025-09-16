@@ -10,6 +10,12 @@ import {
 } from 'bun:test';
 import { SignatureVerificationService } from './signature-verification.service';
 import { PersistentEventFactory } from '@hs/room';
+import {
+	VerifierKey,
+	loadEd25519SignerFromSeed,
+	fromBase64ToBytes,
+	loadEd25519VerifierFromPublicKey,
+} from '@hs/crypto';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';
 
@@ -24,6 +30,7 @@ const event = {
 		'$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs',
 	],
 	content: {
+		avatar_url: null,
 		displayname: 'debdut1',
 		membership: 'join' as const,
 	},
@@ -50,10 +57,8 @@ const event = {
 	},
 };
 
-describe('SignatureVerificationService', () => {
+describe('SignatureVerificationService', async () => {
 	let service: SignatureVerificationService;
-
-	let originalFetch: typeof globalThis.fetch;
 
 	const mockKeyData = {
 		old_verify_keys: {},
@@ -70,88 +75,57 @@ describe('SignatureVerificationService', () => {
 		},
 	};
 
-	type FetchJson = Awaited<ReturnType<typeof globalThis.fetch>>['json'];
-
-	const fetchJsonMock: Mock<FetchJson> = mock(() =>
-		Promise.resolve(mockKeyData),
+	const verifier = await loadEd25519VerifierFromPublicKey(
+		fromBase64ToBytes(mockKeyData.verify_keys[keyId].key),
+		'a_FAET',
 	);
 
 	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-
 		service = new SignatureVerificationService(); // invalidates internal cache
-
-		fetchJsonMock.mockReturnValue(Promise.resolve(mockKeyData));
-
-		globalThis.fetch = Object.assign(
-			async (_url: string, _options?: RequestInit) => {
-				return {
-					ok: true,
-					status: 200,
-					json: fetchJsonMock as unknown as FetchJson,
-				} as Response;
-			},
-			{ preconnect: () => {} },
-		) as typeof fetch;
-	});
-
-	afterEach(() => {
-		globalThis.fetch = originalFetch;
-		mock.restore();
 	});
 
 	describe('verifyEventSignature', async () => {
-		it('should verify a valid event signature', async () => {
-			const pdu = PersistentEventFactory.createFromRawEvent(
-				structuredClone(event),
-				'10',
-			);
+		it('01 should verify a valid event signature', async () => {
+			const pdu = PersistentEventFactory.createFromRawEvent(event, '10');
 
-			return expect(service.verifyEventSignature(pdu)).resolves.toBeUndefined();
+			return expect(
+				service.verifyEventSignature(pdu, verifier),
+			).resolves.toBeUndefined();
 		});
 
 		// each step of the spec
-		it('should fail if not signed by the origin server (1)', async () => {
-			const eventClone = structuredClone(event);
-
-			const pdu = PersistentEventFactory.createFromRawEvent({
-				...eventClone,
-				signatures: {}, // no signatures
-			});
-
-			return expect(service.verifyEventSignature(pdu)).rejects.toThrow(
-				`No signature found for origin ${originServer}`,
+		it('02 should fail if not signed by the origin server (1)', async () => {
+			const pdu = PersistentEventFactory.createFromRawEvent(
+				{
+					...event,
+					signatures: {}, // no signatures
+				},
+				'10',
 			);
+
+			return expect(
+				service.verifyEventSignature(pdu, verifier),
+			).rejects.toThrow(`No signature found for origin ${originServer}`);
 		});
 
-		it('should fail if signed by algorithm not supported by us (ed25519) (2)', async () => {
-			const eventClone = structuredClone(event);
-
-			const pdu = PersistentEventFactory.createFromRawEvent({
-				...eventClone,
-				signatures: {
-					[originServer]: {
-						// different algorithm
-						'not-supported:0': event.signatures[originServer][keyId],
+		it('03 should fail if signed by algorithm not supported by us (ed25519) (2)', async () => {
+			const pdu = PersistentEventFactory.createFromRawEvent(
+				{
+					...event,
+					signatures: {
+						[originServer]: {
+							// different algorithm
+							'not-supported:0': event.signatures[originServer][keyId],
+						},
 					},
 				},
-			});
-
-			return expect(service.verifyEventSignature(pdu)).rejects.toThrow(
-				`No valid signature keys found for origin ${originServer} with supported algorithms`,
+				'10',
 			);
-		});
 
-		it('should fail if service could not find the public key from the origin homeserver (3.1)', async () => {
-			const eventClone = structuredClone(event);
-
-			const pdu = PersistentEventFactory.createFromRawEvent(eventClone);
-
-			// making fetch fail
-			fetchJsonMock.mockReturnValue(Promise.reject(new Error('network error')));
-
-			return expect(service.verifyEventSignature(pdu)).rejects.toThrow(
-				`No valid verification key found for origin ${originServer} with supported algorithms`,
+			return expect(
+				service.verifyEventSignature(pdu, verifier),
+			).rejects.toThrow(
+				`No valid signature keys found for origin ${originServer} with supported algorithms`,
 			);
 		});
 
@@ -169,20 +143,21 @@ describe('SignatureVerificationService', () => {
 			},
 		);
 
-		it('should fail if the signature itself is invalid (4.2)', async () => {
-			const eventClone = structuredClone(event);
-
-			const pdu = PersistentEventFactory.createFromRawEvent({
-				...eventClone,
-				signatures: {
-					[originServer]: {
-						[keyId]: '@@@@', // invalid base64
+		it('04 should fail if the signature itself is invalid (4.2)', async () => {
+			const pdu = PersistentEventFactory.createFromRawEvent(
+				{
+					...event,
+					signatures: {
+						[originServer]: {
+							[keyId]: '@@@@', // invalid base64
+						},
 					},
 				},
-			});
+				'10',
+			);
 
 			// should fail because the signature length isn't correct for ed25519
-			await expect(service.verifyEventSignature(pdu)).rejects.toThrow(
+			await expect(service.verifyEventSignature(pdu, verifier)).rejects.toThrow(
 				/Invalid signature length/,
 			);
 
@@ -190,29 +165,84 @@ describe('SignatureVerificationService', () => {
 				MAX_SIGNATURE_LENGTH_FOR_ED25519: 4,
 			}));
 
-			await expect(service.verifyEventSignature(pdu)).rejects.toThrow(
+			await expect(service.verifyEventSignature(pdu, verifier)).rejects.toThrow(
 				/Failed to decode base64 signature /,
 			);
 
 			const anyString = 'abc123';
 			const base64String = btoa(anyString); // valid base64 but not a valid signature
 
-			const pdu2 = PersistentEventFactory.createFromRawEvent({
-				...eventClone,
-				signatures: {
-					[originServer]: {
-						[keyId]: base64String,
+			const pdu2 = PersistentEventFactory.createFromRawEvent(
+				{
+					...event,
+					signatures: {
+						[originServer]: {
+							[keyId]: base64String,
+						},
 					},
 				},
-			});
+				'10',
+			);
 
 			await mock.module('./signature-verification.service', () => ({
 				MAX_SIGNATURE_LENGTH_FOR_ED25519: base64String.length,
 			}));
 
-			await expect(service.verifyEventSignature(pdu2)).rejects.toThrow(
-				'Invalid signature',
-			);
+			await expect(
+				service.verifyEventSignature(pdu2, verifier),
+			).rejects.toThrow('Invalid signature');
+		});
+	});
+
+	describe('verifyRequestSignature', async () => {
+		const seed = 'FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04';
+		const version = 'a_FAET';
+		const signer = await loadEd25519SignerFromSeed(
+			fromBase64ToBytes(seed),
+			version,
+		);
+		const verifier: VerifierKey = signer;
+		it('should successfully validate the request', async () => {
+			const header =
+				'X-Matrix origin="syn1.tunnel.dev.rocket.chat",destination="syn2.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="+MRd0eKdc/3T7mS7ZR+ltpOiN7RBXgfxTWWYLejy5gBRXG717aXHPCDm044D10kgqQvs2HqR3MdPEIx+2a0nDg"';
+
+			const body = {
+				edus: [
+					{
+						content: {
+							push: [
+								{
+									last_active_ago: 561472,
+									presence: 'unavailable',
+									user_id: '@debdut1:syn1.tunnel.dev.rocket.chat',
+								},
+							],
+						},
+						edu_type: 'm.presence',
+					},
+				],
+				origin: 'syn1.tunnel.dev.rocket.chat',
+				origin_server_ts: 1757329414731,
+				pdus: [],
+			};
+
+			// PUT /_matrix/federation/v1/send/1757328278684 HTTP/1.1
+
+			const uri = '/_matrix/federation/v1/send/1757328278684';
+
+			const method = 'PUT';
+
+			await expect(
+				service.verifyRequestSignature(
+					{
+						uri,
+						method,
+						body,
+						authorizationHeader: header,
+					},
+					verifier,
+				),
+			).resolves.toBeUndefined();
 		});
 	});
 });

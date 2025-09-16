@@ -89,7 +89,7 @@ export const PduMembershipTypeSchema = z.enum([
 ]);
 
 export const PduMembershipEventContentSchema = z.object({
-	avatar_url: z.string().url().optional(),
+	avatar_url: z.string().url().nullish(),
 	displayname: z.string().optional(),
 	is_direct: z
 		.boolean()

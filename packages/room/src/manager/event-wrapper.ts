@@ -473,14 +473,8 @@ export abstract class PersistentEventBase<
 		return this;
 	}
 
-	toStrippedJson() {
-		return encodeCanonicalJson({
-			eventId: this.eventId,
-			type: this.type,
-			roomId: this.roomId,
-			sender: this.sender,
-			stateKey: this.stateKey,
-		});
+	getOriginKeys() {
+		return Object.keys(this.signatures[this.origin]);
 	}
 }
 export type { EventStore };

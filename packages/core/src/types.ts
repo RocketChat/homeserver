@@ -48,17 +48,11 @@ export type KeyV2ServerResponse = {
 
 export type ServerKey = {
 	serverName: string;
-	keys: {
-		[keyId: string]: {
-			key: string;
-			pem: string;
+	keyId: string;
+	key: string;
+	pem: string;
 
-			//
-			_createdAt: Date;
-			_updatedAt: Date;
-			expiresAt: number;
-		};
-	};
-	// should this save the responses here?
-	// does the spec dictate the signatures
+	_createdAt: Date;
+	_updatedAt: Date;
+	expiresAt: Date;
 };
