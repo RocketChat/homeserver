@@ -1,6 +1,11 @@
 import type { Pdu, PduType } from './v3-11';
 
-export type EventID = string;
+export declare const __brand: unique symbol;
+
+export type Brand<B> = { [__brand]: B };
+export type Branded<T, B> = T & Brand<B>;
+
+export type EventID = Branded<string, 'EventID'>;
 
 export type StateKey = string;
 

@@ -1,3 +1,4 @@
+import { EventID } from 'packages/room/dist';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -53,11 +54,11 @@ export const roomPowerLevelsEvent = ({
 	roomId: string;
 	members: [sender: string, ...member: string[]];
 	auth_events: {
-		'm.room.create': string;
-		'm.room.power_levels': string;
-		'm.room.member': string; // TODO: Based on the tests, this is optional, based on the code, this is required check this
+		'm.room.create': EventID;
+		'm.room.power_levels': EventID;
+		'm.room.member': EventID; // TODO: Based on the tests, this is optional, based on the code, this is required check this
 	};
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	content?: RoomPowerLevelsEvent['content'];
 	ts?: number;
@@ -70,7 +71,7 @@ export const roomPowerLevelsEvent = ({
 			auth_events['m.room.create'],
 			auth_events['m.room.power_levels'],
 			auth_events['m.room.member'],
-		].filter(Boolean) as string[],
+		].filter(Boolean) as EventID[],
 		prev_events,
 		depth,
 		ts,

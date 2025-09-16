@@ -2,7 +2,13 @@ import { createLogger } from '@hs/core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
-import { Pdu, PduForType, PersistentEventFactory, RoomVersion } from '@hs/room';
+import {
+	EventID,
+	Pdu,
+	PduForType,
+	PersistentEventFactory,
+	RoomVersion,
+} from '@hs/room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateService } from './state.service';
@@ -102,8 +108,8 @@ export class ProfilesService {
 
 	async getMissingEvents(
 		roomId: string,
-		earliestEvents: string[],
-		latestEvents: string[],
+		earliestEvents: EventID[],
+		latestEvents: EventID[],
 		limit = 10,
 		minDepth = 0,
 	): Promise<{ events: Pdu[] }> {

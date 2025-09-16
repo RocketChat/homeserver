@@ -1,6 +1,6 @@
 import { generateId } from '@hs/core';
 import type { EventStagingStore } from '@hs/core';
-import { Pdu } from '@hs/room';
+import { type EventID, Pdu } from '@hs/room';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -14,7 +14,7 @@ export class EventStagingRepository {
 	}
 
 	async create(
-		eventId: string,
+		eventId: EventID,
 		origin: string,
 		event: Pdu,
 	): Promise<UpdateResult> {
@@ -40,7 +40,7 @@ export class EventStagingRepository {
 		);
 	}
 
-	removeByEventId(eventId: string): Promise<DeleteResult> {
+	removeByEventId(eventId: EventID): Promise<DeleteResult> {
 		return this.collection.deleteOne({ _id: eventId });
 	}
 

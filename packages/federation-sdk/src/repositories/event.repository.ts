@@ -1,6 +1,6 @@
 import { generateId } from '@hs/core';
 import type { EventBase, EventStore } from '@hs/core';
-import { Pdu, PduForType, PduType } from '@hs/room';
+import { type EventID, Pdu, PduForType, PduType } from '@hs/room';
 import type {
 	Collection,
 	Filter,
@@ -19,7 +19,7 @@ export class EventRepository {
 		private readonly collection: Collection<EventStore>,
 	) {}
 
-	async findById(eventId: string): Promise<EventStore | null> {
+	async findById(eventId: EventID): Promise<EventStore | null> {
 		return this.collection.findOne({ _id: eventId });
 	}
 
@@ -115,13 +115,13 @@ export class EventRepository {
 	async create(
 		origin: string,
 		event: Pdu,
-		eventId: string,
+		eventId: EventID,
 		stateId = '',
 	): Promise<string | undefined> {
 		return this.persistEvent(origin, event, eventId, stateId);
 	}
 
-	async redactEvent(eventId: string, redactedEvent: Pdu): Promise<void> {
+	async redactEvent(eventId: EventID, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
 			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
@@ -194,7 +194,7 @@ export class EventRepository {
 			});
 	}
 
-	async updateStateId(eventId: string, stateId: string): Promise<void> {
+	async updateStateId(eventId: EventID, stateId: string): Promise<void> {
 		await this.collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 
@@ -202,14 +202,18 @@ export class EventRepository {
 	// more on the respective adr
 	async findPrevEvents(roomId: string) {
 		return this.collection
-			.find({ nextEventId: '', 'event.room_id': roomId, _id: { $ne: '' } })
+			.find({
+				nextEventId: '',
+				'event.room_id': roomId,
+				_id: { $ne: '' as EventID },
+			})
 			.toArray();
 	}
 
 	private async persistEvent(
 		origin: string,
 		event: Pdu,
-		eventId: string,
+		eventId: EventID,
 		stateId: string,
 	) {
 		try {
@@ -262,11 +266,11 @@ export class EventRepository {
 	}
 
 	findByIds<T extends PduType>(
-		eventIds: string[],
+		eventIds: EventID[],
 	): FindCursor<WithId<EventStore<PduForType<T>>>> {
-		return this.collection.find({ _id: { $in: eventIds } }) as FindCursor<
-			WithId<EventStore<PduForType<T>>>
-		>;
+		return this.collection.find({
+			_id: { $in: eventIds },
+		}) as FindCursor<WithId<EventStore<PduForType<T>>>>;
 	}
 
 	findByRoomIdAndTypes(
@@ -280,7 +284,7 @@ export class EventRepository {
 	}
 
 	async setMissingDependencies(
-		eventId: string,
+		eventId: EventID,
 		missingDependencies: EventStore['missing_dependencies'],
 	): Promise<void> {
 		await this.collection.updateOne(
@@ -308,7 +312,7 @@ export class EventRepository {
 
 	findByRoomIdExcludingEventIds(
 		roomId: string,
-		eventIdsToExclude: string[],
+		eventIdsToExclude: EventID[],
 		limit: number,
 	): FindCursor<EventStore> {
 		return this.collection.find(
@@ -347,7 +351,7 @@ export class EventRepository {
 
 	findEventsByIdsWithDepth(
 		roomId: string,
-		eventIds: string[],
+		eventIds: EventID[],
 	): FindCursor<EventStore<Pick<Pdu, 'depth'>>> {
 		return this.collection.find(
 			{

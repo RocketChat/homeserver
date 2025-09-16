@@ -3,6 +3,7 @@ import { singleton } from 'tsyringe';
 
 import { createLogger, isRedactedEvent } from '@hs/core';
 import { Pdu, PduPowerLevelsEventContent } from '@hs/room';
+import type { EventID } from '@hs/room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
@@ -149,7 +150,7 @@ export class StagingAreaService {
 						msgtype: event.event.content?.msgtype as string,
 						'm.relates_to': event.event.content?.['m.relates_to'] as {
 							rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
-							event_id: string;
+							event_id: EventID;
 						},
 						'm.new_content': event.event.content?.['m.new_content'] as {
 							body: string;
@@ -162,14 +163,14 @@ export class StagingAreaService {
 				break;
 			case event.event.type === 'm.reaction': {
 				this.eventEmitterService.emit('homeserver.matrix.reaction', {
-					event_id: eventId,
+					event_id: eventId as EventID,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
 					content: event.event.content as {
 						'm.relates_to': {
 							rel_type: 'm.annotation';
-							event_id: string;
+							event_id: EventID;
 							key: string;
 						};
 					},
@@ -178,7 +179,7 @@ export class StagingAreaService {
 			}
 			case isRedactedEvent(event.event): {
 				this.eventEmitterService.emit('homeserver.matrix.redaction', {
-					event_id: eventId,
+					event_id: eventId as EventID,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
@@ -191,7 +192,7 @@ export class StagingAreaService {
 			}
 			case event.event.type === 'm.room.member': {
 				this.eventEmitterService.emit('homeserver.matrix.membership', {
-					event_id: eventId,
+					event_id: eventId as EventID,
 					room_id: roomId,
 					sender: event.event.sender,
 					state_key: event.event.state_key as string,

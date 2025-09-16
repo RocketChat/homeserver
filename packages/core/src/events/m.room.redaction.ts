@@ -1,3 +1,4 @@
+import { EventID } from 'packages/room/dist';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -8,9 +9,9 @@ declare module './eventBase' {
 }
 
 export type RedactionAuthEvents = {
-	'm.room.create': string | undefined;
-	'm.room.power_levels': string | undefined;
-	'm.room.member'?: string | undefined;
+	'm.room.create': EventID | undefined;
+	'm.room.power_levels': EventID | undefined;
+	'm.room.member'?: EventID | undefined;
 };
 
 export const isRedactionEvent = (event: EventBase): event is RedactionEvent => {
@@ -24,7 +25,7 @@ export interface RedactionEvent extends EventBase {
 	unsigned: {
 		age_ts: number;
 	};
-	redacts: string;
+	redacts: EventID;
 }
 
 const isTruthy = <T>(
@@ -47,10 +48,10 @@ export const redactionEvent = ({
 	roomId: string;
 	sender: string;
 	auth_events: RedactionAuthEvents;
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	content: {
-		redacts: string;
+		redacts: EventID;
 		reason?: string;
 	};
 	origin?: string;

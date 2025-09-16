@@ -1,4 +1,5 @@
 import { toUnpaddedBase64 } from '@hs/crypto';
+import type { EventID } from '../types/_common';
 import {} from '../types/v3-11';
 import {
 	type EventStore,
@@ -9,17 +10,16 @@ import type { RoomVersion3To11 } from './type';
 
 // v3 is where it changes first
 export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
-	private _eventId?: string;
+	private _eventId?: EventID;
 
 	async getAuthorizationEvents(store: EventStore) {
 		return store.getEvents(this.rawEvent.auth_events);
 	}
 
 	async getPreviousEvents(store: EventStore) {
-		return store.getEvents(this.rawEvent.prev_events);
+		return store.getEvents(this.rawEvent.prev_events as EventID[]);
 	}
-	get eventId(): string {
-		// ok to cache since object should be freezed at the time of calculating reference hash
+	get eventId(): EventID {
 		if (this._eventId) {
 			return this._eventId;
 		}
@@ -28,7 +28,8 @@ export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
 		const referenceHash = this.getReferenceHash();
 
 		// The event ID is the reference hash of the event encoded using Unpadded Base64, prefixed with $. A resulting event ID using this approach should look similar to $CD66HAED5npg6074c6pDtLKalHjVfYb2q4Q3LZgrW6o.
-		this._eventId = `\$${toUnpaddedBase64(referenceHash, { urlSafe: true })}`;
+		this._eventId =
+			`\$${toUnpaddedBase64(referenceHash, { urlSafe: true })}` as EventID;
 		return this._eventId;
 	}
 

@@ -4,7 +4,7 @@ import {
 	type EventStore,
 	getStateMapKey,
 } from '../state_resolution/definitions/definitions';
-import type { PduForType, StateMapKey } from '../types/_common';
+import type { EventID, PduForType, StateMapKey } from '../types/_common';
 import {
 	Pdu,
 	PduContent,
@@ -116,7 +116,7 @@ export abstract class PersistentEventBase<
 	}
 
 	// v1 should have this already, others, generates it
-	abstract get eventId(): string;
+	abstract get eventId(): EventID;
 
 	getContent<T extends PduContent<Type>>(): T {
 		return this.rawEvent.content as T;
@@ -304,10 +304,10 @@ export abstract class PersistentEventBase<
 		// First, any existing unsigned, signature, and hashes members are removed. The resulting object is then encoded as Canonical JSON, and the JSON is hashed using SHA-256.
 		const { unsigned, signatures, hashes, ...toHash } = rawEvent; // must not use this.event as it can potentially call getContentHash again
 
-		return crypto
-			.createHash('sha256')
-			.update(encodeCanonicalJson(toHash))
-			.digest();
+		const encoded = encodeCanonicalJson(toHash);
+
+		console.log('encoded', encoded);
+		return crypto.createHash('sha256').update(encoded).digest();
 	}
 
 	static getContentHashString(rawEvent: PduWithHashesAndSignaturesOptional) {

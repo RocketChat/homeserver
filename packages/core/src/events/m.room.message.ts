@@ -1,3 +1,4 @@
+import type { EventID } from '@hs/room';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -74,14 +75,14 @@ declare module './eventBase' {
 
 export type MessageRelation = {
 	rel_type: RelationType;
-	event_id: string;
+	event_id: EventID;
 } & (RelationTypeReplace | Record<string, never>);
 
 export type RelationType = 'm.replace' | 'm.annotation';
 
 export type RelationTypeReplace = {
 	rel_type: 'm.replace';
-	event_id: string;
+	event_id: EventID;
 	'm.new_content'?: {
 		body: string;
 		msgtype: MessageType;
@@ -91,9 +92,9 @@ export type RelationTypeReplace = {
 };
 
 export type MessageAuthEvents = {
-	'm.room.create': string;
-	'm.room.power_levels': string;
-	'm.room.member': string;
+	'm.room.create': EventID;
+	'm.room.power_levels': EventID;
+	'm.room.member': EventID;
 };
 
 export const isRoomMessageEvent = (
@@ -137,7 +138,7 @@ export const roomMessageEvent = ({
 	roomId: string;
 	sender: string;
 	auth_events: MessageAuthEvents;
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	unsigned?: RoomMessageEvent['unsigned'];
 	content: (

@@ -1,3 +1,4 @@
+import { EventID } from 'packages/room/dist';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -16,9 +17,9 @@ declare module './eventBase' {
 }
 
 export type RoomNameAuthEvents = {
-	'm.room.create': string;
-	'm.room.power_levels': string;
-	'm.room.member': string;
+	'm.room.create': EventID;
+	'm.room.power_levels': EventID;
+	'm.room.member': EventID;
 };
 
 export const isRoomNameEvent = (event: EventBase): event is RoomNameEvent => {
@@ -52,7 +53,7 @@ export const roomNameEvent = ({
 	roomId: string;
 	sender: string;
 	auth_events: RoomNameAuthEvents;
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	content: {
 		name: string;

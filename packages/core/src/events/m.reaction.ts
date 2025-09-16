@@ -1,3 +1,4 @@
+import type { EventID } from '@hs/room';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -7,7 +8,7 @@ declare module './eventBase' {
 			content: {
 				'm.relates_to': {
 					rel_type: 'm.annotation';
-					event_id: string;
+					event_id: EventID;
 					key: string;
 				};
 			};
@@ -19,9 +20,9 @@ declare module './eventBase' {
 }
 
 export type ReactionAuthEvents = {
-	'm.room.create': string | undefined;
-	'm.room.power_levels': string | undefined;
-	'm.room.member': string | undefined;
+	'm.room.create': EventID | undefined;
+	'm.room.power_levels': EventID | undefined;
+	'm.room.member': EventID | undefined;
 };
 
 export const isReactionEvent = (event: EventBase): event is ReactionEvent => {
@@ -33,7 +34,7 @@ export interface ReactionEvent extends EventBase {
 	content: {
 		'm.relates_to': {
 			rel_type: 'm.annotation';
-			event_id: string;
+			event_id: EventID;
 			key: string;
 		};
 	};
@@ -62,12 +63,12 @@ export const reactionEvent = ({
 	roomId: string;
 	sender: string;
 	auth_events: ReactionAuthEvents;
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	content: {
 		'm.relates_to': {
 			rel_type: 'm.annotation';
-			event_id: string;
+			event_id: EventID;
 			key: string;
 		};
 	};

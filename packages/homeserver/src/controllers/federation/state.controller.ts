@@ -1,4 +1,5 @@
 import { EventService } from '@hs/federation-sdk';
+import { EventID } from '@hs/room';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -18,7 +19,7 @@ export const statePlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/state_ids/:roomId',
 			({ params, query }) =>
-				eventService.getStateIds(params.roomId, query.event_id),
+				eventService.getStateIds(params.roomId, query.event_id as EventID),
 			{
 				params: GetStateIdsParamsDto,
 				query: GetStateIdsQueryDto,
@@ -36,7 +37,7 @@ export const statePlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/state/:roomId',
 			({ params, query }) =>
-				eventService.getState(params.roomId, query.event_id!),
+				eventService.getState(params.roomId, query.event_id as EventID),
 			{
 				params: GetStateParamsDto,
 				query: GetStateQueryDto,

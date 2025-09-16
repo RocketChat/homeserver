@@ -1,11 +1,12 @@
 import { Pdu } from '@hs/room';
+import type { EventID } from '@hs/room';
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = 'ed25519',
 }
 
 export type SignedEvent<T extends Pdu> = T & {
-	event_id: string;
+	event_id: EventID;
 	hashes: {
 		sha256: string;
 	};

@@ -1,3 +1,4 @@
+import { eventIdSchema } from '@hs/room';
 import { z } from 'zod';
 
 const baseEventSchema = z.object({
@@ -6,7 +7,7 @@ const baseEventSchema = z.object({
 	sender: z.string(),
 	room_id: z.string(),
 	origin_server_ts: z.number().int().positive(),
-	event_id: z.string().optional(),
+	event_id: eventIdSchema.optional(),
 	state_key: z.string().optional(),
 	depth: z.number().int().nonnegative().optional(),
 	prev_events: z
@@ -62,7 +63,7 @@ const reactionEventSchema = baseEventSchema.extend({
 		.object({
 			'm.relates_to': z.object({
 				rel_type: z.literal('m.annotation'),
-				event_id: z.string(),
+				event_id: eventIdSchema,
 				key: z.string(),
 			}),
 		})
@@ -99,7 +100,7 @@ const joinRulesEventSchema = baseEventSchema.extend({
 
 const redactionEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.redaction'),
-	redacts: z.string(),
+	redacts: eventIdSchema,
 	content: z
 		.object({
 			reason: z.string().optional(),

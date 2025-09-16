@@ -1,4 +1,5 @@
 import { MessageService } from '@hs/federation-sdk';
+import { EventID } from '@hs/room';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
@@ -115,7 +116,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 				try {
 					const eventId = await messageService.unsetReaction(
 						roomId,
-						params.messageId,
+						params.messageId as EventID,
 						emoji,
 						senderUserId,
 					);
@@ -154,7 +155,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 				const { roomId, senderUserId } = body;
 				const eventId = await messageService.redactMessage(
 					roomId,
-					params.messageId,
+					params.messageId as EventID,
 					senderUserId,
 				);
 

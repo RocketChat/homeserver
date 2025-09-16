@@ -1,4 +1,5 @@
 import type { Membership } from '@hs/core';
+import type { EventID } from '@hs/room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
@@ -106,7 +107,7 @@ export type HomeserverEventSignatures = {
 		origin?: string;
 	};
 	'homeserver.matrix.message': {
-		event_id: string;
+		event_id: EventID;
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
@@ -115,9 +116,9 @@ export type HomeserverEventSignatures = {
 			msgtype: string;
 			'm.relates_to'?: {
 				rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
-				event_id: string;
+				event_id: EventID;
 				'm.in_reply_to'?: {
-					event_id: string;
+					event_id: EventID;
 					room_id: string;
 					sender: string;
 					origin_server_ts: number;
@@ -132,7 +133,7 @@ export type HomeserverEventSignatures = {
 		};
 	};
 	'homeserver.matrix.accept-invite': {
-		event_id: string;
+		event_id: EventID;
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
@@ -143,30 +144,30 @@ export type HomeserverEventSignatures = {
 		};
 	};
 	'homeserver.matrix.reaction': {
-		event_id: string;
+		event_id: EventID;
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
 		content: {
 			'm.relates_to': {
 				rel_type: 'm.annotation';
-				event_id: string;
+				event_id: EventID;
 				key: string;
 			};
 		};
 	};
 	'homeserver.matrix.redaction': {
-		event_id: string;
+		event_id: EventID;
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
-		redacts: string;
+		redacts: EventID;
 		content: {
 			reason?: string;
 		};
 	};
 	'homeserver.matrix.membership': {
-		event_id: string;
+		event_id: EventID;
 		room_id: string;
 		sender: string;
 		state_key: string;
