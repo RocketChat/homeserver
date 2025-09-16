@@ -4,6 +4,7 @@ import {
 	isTimelineEventType,
 } from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
+import { RoomVersion } from './type';
 
 // centralize all power level values here
 // whether there is an event or not
@@ -20,8 +21,11 @@ class PowerLevelEvent {
 		this._content = event?.getContent();
 	}
 
-	toEventBase() {
-		return this.event;
+	toEventBase(): PersistentEventBase<RoomVersion, 'm.room.power_levels'> {
+		return this.event as PersistentEventBase<
+			RoomVersion,
+			'm.room.power_levels'
+		>;
 	}
 
 	// power level event accessors

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PduForType } from './_common';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -32,6 +33,7 @@ export const PduTypeSchema = z.enum([
 	'm.call.invite',
 	'm.poll.start',
 ]);
+
 export const EduTypeSchema = z.enum([
 	'm.presence',
 	'm.typing',
@@ -222,6 +224,28 @@ export type PduGuestAccessEventContent = z.infer<
 	typeof PduGuestAccessEventContentSchema
 >;
 
+// https://spec.matrix.org/v1.12/client-server-api/#mroomserver_acl
+
+export const PduServerAclEventContentSchema = z.object({
+	allow: z
+		.array(z.string())
+		.describe('A list of server names to allow, including wildcards.')
+		.optional(),
+	deny: z
+		.array(z.string())
+		.describe('A list of server names to deny, including wildcards.')
+		.optional(),
+	allow_ip_literals: z
+		.boolean()
+		.describe('Whether to allow server names that are IP address literals.')
+		.optional()
+		.default(true),
+});
+
+export type PduServerAclEventContent = z.infer<
+	typeof PduServerAclEventContentSchema
+>;
+
 // https://spec.matrix.org/v1.12/client-server-api/#mroompower_levels
 
 // https://spec.matrix.org/v1.12/rooms/v1/#mroompower_levels-events-accept-values-as-strings
@@ -338,10 +362,21 @@ export type PduRoomNameEventContent = z.infer<
 	typeof PduRoomNameEventContentSchema
 >;
 
-export const PduMessageEventContentSchema = z.object({
+// Base message content schema
+const BaseMessageContentSchema = z.object({
 	body: z.string().describe('The body of the message.'),
-	// TODO: add more types
-	msgtype: z.enum(['m.text', 'm.image']).describe('The type of the message.'),
+	msgtype: z
+		.enum([
+			'm.text',
+			'm.image',
+			'm.file',
+			'm.audio',
+			'm.video',
+			'm.emote',
+			'm.notice',
+			'm.location',
+		])
+		.describe('The type of the message.'),
 	// Optional fields for message edits and relations aka threads
 	'm.relates_to': z
 		.object({
@@ -368,23 +403,6 @@ export const PduMessageEventContentSchema = z.object({
 		})
 		.optional()
 		.describe('Relation information for edits, replies, reactions, etc.'),
-	'm.new_content': z
-		.object({
-			body: z.string().describe('The new body of the message for edits.'),
-			msgtype: z
-				.enum(['m.text', 'm.image'])
-				.describe('The type of the new message content.'),
-			format: z
-				.enum(['org.matrix.custom.html'])
-				.describe('The format of the message content.')
-				.optional(),
-			formatted_body: z
-				.string()
-				.describe('The formatted body of the message.')
-				.optional(),
-		})
-		.optional()
-		.describe('The new content for message edits.'),
 	format: z
 		.enum(['org.matrix.custom.html'])
 		.describe('The format of the message content.')
@@ -394,6 +412,102 @@ export const PduMessageEventContentSchema = z.object({
 		.describe('The formatted body of the message.')
 		.optional(),
 });
+
+// File info schema
+const FileInfoSchema = z.object({
+	size: z.number().describe('The size of the file in bytes.').optional(),
+	mimetype: z.string().describe('The MIME type of the file.').optional(),
+	w: z.number().describe('The width of the image/video in pixels.').optional(),
+	h: z.number().describe('The height of the image/video in pixels.').optional(),
+	duration: z
+		.number()
+		.describe('The duration of the audio/video in milliseconds.')
+		.optional(),
+	thumbnail_url: z
+		.string()
+		.describe('The URL of the thumbnail image.')
+		.optional(),
+	thumbnail_info: z
+		.object({
+			w: z
+				.number()
+				.describe('The width of the thumbnail in pixels.')
+				.optional(),
+			h: z
+				.number()
+				.describe('The height of the thumbnail in pixels.')
+				.optional(),
+			mimetype: z
+				.string()
+				.describe('The MIME type of the thumbnail.')
+				.optional(),
+			size: z
+				.number()
+				.describe('The size of the thumbnail in bytes.')
+				.optional(),
+		})
+		.describe('Information about the thumbnail.')
+		.optional(),
+});
+
+// Text message content (m.text, m.emote, m.notice)
+const TextMessageContentSchema = BaseMessageContentSchema.extend({
+	msgtype: z.enum(['m.text', 'm.emote', 'm.notice']),
+});
+
+// File message content (m.image, m.file, m.audio, m.video)
+const FileMessageContentSchema = BaseMessageContentSchema.extend({
+	msgtype: z.enum(['m.image', 'm.file', 'm.audio', 'm.video']),
+	url: z.string().describe('The URL of the file.'),
+	info: FileInfoSchema.describe('Information about the file.').optional(),
+});
+
+// Location message content (m.location)
+const LocationMessageContentSchema = BaseMessageContentSchema.extend({
+	msgtype: z.literal('m.location'),
+	geo_uri: z.string().describe('The geo URI of the location.'),
+	// Additional location fields can be added here
+});
+
+// New content schema for edits
+const NewContentSchema = z.discriminatedUnion('msgtype', [
+	TextMessageContentSchema.pick({
+		body: true,
+		msgtype: true,
+		format: true,
+		formatted_body: true,
+	}),
+	FileMessageContentSchema.pick({
+		body: true,
+		msgtype: true,
+		url: true,
+		info: true,
+	}),
+	LocationMessageContentSchema.pick({
+		body: true,
+		msgtype: true,
+		geo_uri: true,
+	}),
+]);
+
+// Main message content schema using discriminated union
+export const PduMessageEventContentSchema = z.union([
+	TextMessageContentSchema.extend({
+		'm.new_content': NewContentSchema.optional().describe(
+			'The new content for message edits.',
+		),
+	}),
+	FileMessageContentSchema.extend({
+		'm.new_content': NewContentSchema.optional().describe(
+			'The new content for message edits.',
+		),
+	}),
+	LocationMessageContentSchema.extend({
+		'm.new_content': NewContentSchema.optional().describe(
+			'The new content for message edits.',
+		),
+	}),
+]);
 
 export type PduMessageEventContent = z.infer<
 	typeof PduMessageEventContentSchema
@@ -473,8 +587,13 @@ export const PduNoContentStateEventSchema = {
 		.describe('The state key of the event. This is an optional field.'),
 };
 
+export const PduNoContentEmptyStateKeyStateEventSchema = {
+	...PduNoContentTimelineEventSchema,
+	state_key: z.literal(''),
+};
+
 const EventPduTypeRoomCreate = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.create'),
 	content: PduCreateEventContentSchema,
 });
@@ -486,13 +605,13 @@ const EventPduTypeRoomMember = z.object({
 });
 
 const EventPduTypeRoomJoinRules = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.join_rules'),
 	content: PduJoinRuleEventContentSchema,
 });
 
 const EventPduTypeRoomPowerLevels = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.power_levels'),
 	content: PduPowerLevelsEventContentSchema,
 });
@@ -531,6 +650,12 @@ const EventPduTypeRoomGuestAccess = z.object({
 	...PduNoContentStateEventSchema,
 	type: z.literal('m.room.guest_access'),
 	content: PduGuestAccessEventContentSchema,
+});
+
+const EventPduTypeRoomServerAcl = z.object({
+	...PduNoContentEmptyStateKeyStateEventSchema,
+	type: z.literal('m.room.server_acl'),
+	content: PduServerAclEventContentSchema,
 });
 
 export const PduRoomTombstoneEventContentSchema = z.object({
@@ -590,6 +715,8 @@ export const PduSchema = z.discriminatedUnion('type', [
 
 	EventPduTypeRoomGuestAccess,
 
+	EventPduTypeRoomServerAcl,
+
 	EventPduTypeRoomMessage,
 
 	EventPduTypeRoomReaction,
@@ -601,7 +728,7 @@ export const PduSchema = z.discriminatedUnion('type', [
 
 export type Pdu = z.infer<typeof PduSchema> & {};
 
-export type PduContent = Pick<Pdu, 'content'>['content'];
+export type PduContent<T extends PduType = PduType> = PduForType<T>['content'];
 
 export function isTimelineEventType(type: PduType) {
 	return (

@@ -26,6 +26,27 @@ import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
 
+// File message content type
+export type FileMessageContent = {
+	body: string;
+	msgtype: 'm.image' | 'm.file' | 'm.video' | 'm.audio';
+	url: string;
+	info?: {
+		size?: number;
+		mimetype?: string;
+		w?: number;
+		h?: number;
+		duration?: number;
+		thumbnail_url?: string;
+		thumbnail_info?: {
+			w?: number;
+			h?: number;
+			mimetype?: string;
+			size?: number;
+		};
+	};
+};
+
 @singleton()
 export class MessageService {
 	private readonly logger = createLogger('MessageService');
@@ -54,20 +75,24 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newRichTextMessageEvent(
-			roomId,
-			senderUserId,
-			rawMessage,
-			formattedMessage,
+		const event = await this.stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				content: {
+					msgtype: 'm.text',
+					body: rawMessage,
+					format: 'org.matrix.custom.html',
+					formatted_body: formattedMessage,
+				},
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomVersion,
 		);
-
-		await Promise.all([
-			this.stateService.addAuthEvents(event),
-			this.stateService.addPrevEvents(event),
-		]);
-
-		await this.stateService.signEvent(event);
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
@@ -93,21 +118,29 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newReplyToRichTextMessageEvent(
-			roomId,
-			senderUserId,
-			rawMessage,
-			formattedMessage,
-			eventToReplyTo,
+		const event = await this.stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				content: {
+					msgtype: 'm.text',
+					body: rawMessage,
+					format: 'org.matrix.custom.html',
+					formatted_body: formattedMessage,
+					'm.relates_to': {
+						'm.in_reply_to': {
+							event_id: eventToReplyTo,
+						},
+					},
+				},
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomVersion,
 		);
-
-		await Promise.all([
-			this.stateService.addAuthEvents(event),
-			this.stateService.addPrevEvents(event),
-		]);
-
-		await this.stateService.signEvent(event);
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
@@ -121,25 +154,7 @@ export class MessageService {
 
 	async sendFileMessage(
 		roomId: string,
-		content: {
-			body: string;
-			msgtype: 'm.image' | 'm.file' | 'm.video' | 'm.audio';
-			url: string;
-			info?: {
-				size?: number;
-				mimetype?: string;
-				w?: number;
-				h?: number;
-				duration?: number;
-				thumbnail_url?: string;
-				thumbnail_info?: {
-					w?: number;
-					h?: number;
-					mimetype?: string;
-					size?: number;
-				};
-			};
-		},
+		content: FileMessageContent,
 		senderUserId: string,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
@@ -149,19 +164,19 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newFileMessageEvent(
-			roomId,
-			senderUserId,
-			content,
+		const event = await this.stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				content: content,
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomVersion,
 		);
-
-		await Promise.all([
-			this.stateService.addAuthEvents(event),
-			this.stateService.addPrevEvents(event),
-		]);
-
-		await this.stateService.signEvent(event);
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
@@ -188,22 +203,29 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newRichTextThreadMessageEvent(
-			roomId,
-			senderUserId,
-			rawMessage,
-			formattedMessage,
-			threadRootEventId,
-			latestThreadEventId,
+		const event = await this.stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				content: {
+					msgtype: 'm.text',
+					body: rawMessage,
+					format: 'org.matrix.custom.html',
+					formatted_body: formattedMessage,
+					'm.relates_to': {
+						rel_type: 'm.thread',
+						event_id: threadRootEventId,
+						...(latestThreadEventId && { is_falling_back_thread_reply: true }),
+					},
+				},
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomVersion,
 		);
-
-		await Promise.all([
-			this.stateService.addAuthEvents(event),
-			this.stateService.addPrevEvents(event),
-		]);
-
-		await this.stateService.signEvent(event);
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
@@ -230,22 +252,31 @@ export class MessageService {
 			);
 		}
 
-		const event = PersistentEventFactory.newReplyToRichTextThreadMessageEvent(
-			roomId,
-			senderUserId,
-			rawMessage,
-			formattedMessage,
-			threadRootEventId,
-			eventToReplyTo,
+		const event = await this.stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				content: {
+					msgtype: 'm.text',
+					body: rawMessage,
+					format: 'org.matrix.custom.html',
+					formatted_body: formattedMessage,
+					'm.relates_to': {
+						rel_type: 'm.thread',
+						event_id: threadRootEventId,
+						'm.in_reply_to': {
+							event_id: eventToReplyTo,
+						},
+					},
+				},
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomVersion,
 		);
-
-		await Promise.all([
-			this.stateService.addAuthEvents(event),
-			this.stateService.addPrevEvents(event),
-		]);
-
-		await this.stateService.signEvent(event);
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
@@ -275,19 +306,25 @@ export class MessageService {
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const reactionEvent = PersistentEventFactory.newReactionEvent(
-			roomId,
-			senderUserId,
-			eventId,
-			emoji,
+		const reactionEvent = await this.stateService.buildEvent<'m.reaction'>(
+			{
+				type: 'm.reaction',
+				content: {
+					'm.relates_to': {
+						rel_type: 'm.annotation',
+						event_id: eventId,
+						key: emoji,
+					},
+				},
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomInfo.room_version,
 		);
-
-		await this.stateService.addAuthEvents(reactionEvent);
-
-		await this.stateService.addPrevEvents(reactionEvent);
-
-		await this.stateService.signEvent(reactionEvent);
 
 		await this.stateService.persistTimelineEvent(reactionEvent);
 
@@ -304,19 +341,23 @@ export class MessageService {
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = PersistentEventFactory.newRedactionEvent(
-			roomId,
-			senderUserId,
-			eventIdReactedTo,
-			'Unsetting reaction',
-			roomInfo.room_version,
-		);
-
-		await this.stateService.addAuthEvents(redactionEvent);
-
-		await this.stateService.addPrevEvents(redactionEvent);
-
-		await this.stateService.signEvent(redactionEvent);
+		const redactionEvent =
+			await this.stateService.buildEvent<'m.room.redaction'>(
+				{
+					type: 'm.room.redaction',
+					content: {
+						reason: 'Unsetting reaction',
+						redacts: eventIdReactedTo,
+					},
+					room_id: roomId,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: senderUserId,
+				},
+				roomInfo.room_version,
+			);
 
 		await this.stateService.persistTimelineEvent(redactionEvent);
 
@@ -334,20 +375,34 @@ export class MessageService {
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = PersistentEventFactory.newRichTextMessageUpdateEvent(
-			roomId,
-			senderUserId,
-			rawMessage,
-			formattedMessage,
-			eventIdToReplace,
+		const redactionEvent = await this.stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				content: {
+					msgtype: 'm.text',
+					body: rawMessage,
+					format: 'org.matrix.custom.html',
+					formatted_body: formattedMessage,
+					'm.new_content': {
+						msgtype: 'm.text',
+						body: rawMessage,
+						format: 'org.matrix.custom.html',
+						formatted_body: formattedMessage,
+					},
+					'm.relates_to': {
+						rel_type: 'm.replace',
+						event_id: eventIdToReplace,
+					},
+				},
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
 			roomInfo.room_version,
 		);
-
-		await this.stateService.addAuthEvents(redactionEvent);
-
-		await this.stateService.addPrevEvents(redactionEvent);
-
-		await this.stateService.signEvent(redactionEvent);
 
 		await this.stateService.persistTimelineEvent(redactionEvent);
 
@@ -371,19 +426,23 @@ export class MessageService {
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = PersistentEventFactory.newRedactionEvent(
-			roomId,
-			senderUserId,
-			eventIdToRedact,
-			`Deleting message: ${eventIdToRedact}`,
-			roomInfo.room_version,
-		);
-
-		await this.stateService.addAuthEvents(redactionEvent);
-
-		await this.stateService.addPrevEvents(redactionEvent);
-
-		await this.stateService.signEvent(redactionEvent);
+		const redactionEvent =
+			await this.stateService.buildEvent<'m.room.redaction'>(
+				{
+					type: 'm.room.redaction',
+					content: {
+						reason: `Deleting message: ${eventIdToRedact}`,
+						redacts: eventIdToRedact,
+					},
+					room_id: roomId,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: senderUserId,
+				},
+				roomInfo.room_version,
+			);
 
 		await this.stateService.persistTimelineEvent(redactionEvent);
 

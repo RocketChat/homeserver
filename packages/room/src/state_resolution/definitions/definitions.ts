@@ -17,14 +17,13 @@ export function getStateMapKey(event: {
 // https://spec.matrix.org/v1.12/rooms/v2/#definitions
 //  Power events
 export function isPowerEvent(event: PersistentEventBase): boolean {
-	const membership = event.getMembership();
 	return (
 		// A power event is a state event with type m.room.power_levels or m.room.join_rules
 		event.isPowerLevelEvent() ||
 		event.isJoinRuleEvent() ||
 		// or a state event with type m.room.member where the membership is leave or ban and the sender does not match the state_key
 		(event.isMembershipEvent() &&
-			(membership === 'leave' || membership === 'ban') &&
+			(event.getMembership() === 'leave' || event.getMembership() === 'ban') &&
 			event.sender !== event.stateKey)
 	);
 }
@@ -102,11 +101,10 @@ export async function getAuthChain(
 		const eventId = event.eventId;
 
 		if (eventIdToAuthChainMap.has(eventId)) {
-			return eventIdToAuthChainMap.get(eventId);
+			return eventIdToAuthChainMap.get(eventId)!;
 		}
 
 		const authEvents = await event.getAuthorizationEvents(store);
-
 		if (authEvents.length === 0) {
 			eventIdToAuthChainMap.set(eventId, existingAuthChainPart);
 			return existingAuthChainPart;
@@ -130,8 +128,7 @@ export async function getAuthChain(
 		return newAuthChainPart;
 	};
 
-	const result = await _getAuthChain(event, new Set([event.eventId]));
-	return result || new Set<EventID>([event.eventId]);
+	return _getAuthChain(event, new Set([]));
 }
 
 // Auth difference
@@ -151,8 +148,11 @@ export async function getAuthChainDifference(
 				console.warn('event not found in store or remote', eventid);
 				continue;
 			}
-
-			for (const authChainEventId of await getAuthChain(event, store)) {
+			// TODO: deb check this I changed to keep the function behaving as the spec
+			for (const authChainEventId of [
+				...(await getAuthChain(event, store)),
+				event.eventId,
+			]) {
 				authChainForState.add(authChainEventId);
 			}
 		}

@@ -32,16 +32,23 @@ export const internalInvitePlugin = (app: Elysia) => {
 
 			const createEvent = room.get('m.room.create:');
 
-			if (!createEvent) {
+			if (!createEvent || !createEvent.isCreateEvent()) {
 				throw new Error('Room create event not found');
 			}
 
-			const membershipEvent = PersistentEventFactory.newMembershipEvent(
-				roomId,
-				sender,
-				username,
-				'invite',
-				createEvent.getContent<PduCreateEventContent>(),
+			const membershipEvent = PersistentEventFactory.newEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'invite' },
+					room_id: roomId,
+					state_key: username,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: sender,
+				},
+				createEvent.getContent().room_version,
 			);
 
 			const statesNeeded = membershipEvent.getAuthEventStateKeys();

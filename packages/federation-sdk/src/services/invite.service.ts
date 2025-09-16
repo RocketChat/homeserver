@@ -41,27 +41,32 @@ export class InviteService {
 
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
-		const inviteEvent = isDirectMessage
-			? PersistentEventFactory.newDirectMessageMembershipEvent(
-					roomId,
-					sender,
-					userId,
-					'invite',
-					roomInformation,
-				)
-			: PersistentEventFactory.newMembershipEvent(
-					roomId,
-					sender,
-					userId,
-					'invite',
-					roomInformation,
-				);
+		// Extract displayname from userId for direct messages
+		const displayname = isDirectMessage
+			? userId.split(':').shift()?.slice(1)
+			: undefined;
 
-		await stateService.addAuthEvents(inviteEvent);
+		const inviteEvent = await stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'invite',
+					...(isDirectMessage && {
+						is_direct: true,
+						displayname: displayname,
+					}),
+				},
+				room_id: roomId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: sender,
+			},
 
-		await stateService.addPrevEvents(inviteEvent);
-
-		await stateService.signEvent(inviteEvent);
+			roomInformation.room_version,
+		);
 
 		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
 

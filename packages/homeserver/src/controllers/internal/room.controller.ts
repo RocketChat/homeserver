@@ -365,17 +365,25 @@ export const internalRoomPlugin = (app: Elysia) => {
 
 				const createEvent = room.get('m.room.create:');
 
-				if (!createEvent) {
+				if (!createEvent || !createEvent.isCreateEvent()) {
 					throw new Error('Room create event not found');
 				}
 
-				const membershipEvent = PersistentEventFactory.newMembershipEvent(
-					roomId,
-					senderUserId,
-					userIdToBan,
-					'ban',
-					createEvent.getContent<PduCreateEventContent>(),
-				);
+				const membershipEvent =
+					PersistentEventFactory.newEvent<'m.room.member'>(
+						{
+							type: 'm.room.member',
+							content: { membership: 'ban' },
+							room_id: roomId,
+							state_key: userIdToBan,
+							auth_events: [],
+							depth: 0,
+							prev_events: [],
+							origin_server_ts: Date.now(),
+							sender: senderUserId,
+						},
+						createEvent.getContent().room_version,
+					);
 
 				const statesNeeded = membershipEvent.getAuthEventStateKeys();
 

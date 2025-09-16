@@ -9,7 +9,7 @@
 				"pino-pretty": "^13.0.0",
 				"reflect-metadata": "^0.2.2",
 				"tsyringe": "^4.10.0",
-				"tweetnacl": "^1.0.3",
+				"tweetnacl": "^1.0.3"
 			},
 			"devDependencies": {
 				"@biomejs/biome": "^1.9.4",
@@ -22,32 +22,32 @@
 				"sinon": "^20.0.0",
 				"tsconfig-paths": "^4.2.0",
 				"turbo": "~2.5.6",
-				"typescript": "~5.9.2",
-			},
+				"typescript": "~5.9.2"
+			}
 		},
 		"packages/core": {
 			"name": "@hs/core",
 			"version": "1.0.50",
 			"dependencies": {
 				"@hs/crypto": "workspace:*",
-				"@hs/room": "workspace:*",
+				"@hs/room": "workspace:*"
 			},
 			"devDependencies": {
 				"bun-types": "latest",
 				"ts-node": "^10.9.2",
 				"ts-patch": "^3.1.2",
-				"typescript": "~5.9.2",
-			},
+				"typescript": "~5.9.2"
+			}
 		},
 		"packages/crypto": {
 			"name": "@hs/crypto",
 			"version": "0.0.1",
 			"dependencies": {
-				"@noble/ed25519": "^3.0.0",
+				"@noble/ed25519": "^3.0.0"
 			},
 			"devDependencies": {
-				"bun-types": "latest",
-			},
+				"bun-types": "latest"
+			}
 		},
 		"packages/federation-sdk": {
 			"name": "@hs/federation-sdk",
@@ -60,11 +60,11 @@
 				"reflect-metadata": "^0.2.2",
 				"tsyringe": "^4.10.0",
 				"tweetnacl": "^1.0.3",
-				"zod": "^3.22.4",
+				"zod": "^3.22.4"
 			},
 			"peerDependencies": {
-				"typescript": "~5.9.2",
-			},
+				"typescript": "~5.9.2"
+			}
 		},
 		"packages/homeserver": {
 			"name": "@hs/homeserver",
@@ -79,11 +79,11 @@
 				"@rocket.chat/emitter": "^0.31.25",
 				"elysia": "^1.1.26",
 				"mongodb": "^6.16.0",
-				"tsyringe": "^4.10.0",
+				"tsyringe": "^4.10.0"
 			},
 			"devDependencies": {
-				"bun-types": "latest",
-			},
+				"bun-types": "latest"
+			}
 		},
 		"packages/room": {
 			"name": "@hs/room",
@@ -91,12 +91,12 @@
 			"dependencies": {
 				"@datastructures-js/priority-queue": "^6.3.3",
 				"@hs/crypto": "workspace:*",
-				"zod": "^3.22.4",
+				"zod": "^3.22.4"
 			},
 			"devDependencies": {
-				"bun-types": "latest",
-			},
-		},
+				"bun-types": "latest"
+			}
+		}
 	},
 	"packages": {
 		"@biomejs/biome": [
@@ -256,21 +256,13 @@
 			},
 			"sha512-LcbLHa0zE6FJKWPWKsIC/f+62wbDv3aXydqcNPVPyqNcaUgwvCajIi+5kHEU6GO3oXUCpzKaMsb3gsjt8sLzFQ=="
 		],
-		"@hs/core": [
-			"@hs/core@workspace:packages/core"
-		],
-		"@hs/crypto": [
-			"@hs/crypto@workspace:packages/crypto"
-		],
+		"@hs/core": ["@hs/core@workspace:packages/core"],
+		"@hs/crypto": ["@hs/crypto@workspace:packages/crypto"],
 		"@hs/federation-sdk": [
 			"@hs/federation-sdk@workspace:packages/federation-sdk"
 		],
-		"@hs/homeserver": [
-			"@hs/homeserver@workspace:packages/homeserver"
-		],
-		"@hs/room": [
-			"@hs/room@workspace:packages/room"
-		],
+		"@hs/homeserver": ["@hs/homeserver@workspace:packages/homeserver"],
+		"@hs/room": ["@hs/room@workspace:packages/room"],
 		"@jridgewell/resolve-uri": [
 			"@jridgewell/resolve-uri@3.1.2",
 			"",
@@ -832,9 +824,7 @@
 				"peerDependencies": {
 					"@sinclair/typebox": "^0.34.15"
 				},
-				"optionalPeers": [
-					"@sinclair/typebox"
-				]
+				"optionalPeers": ["@sinclair/typebox"]
 			},
 			"sha512-wFCPCDLmHbKGUb8TOi/IS7jLsgR8WVDGtDK3CzcB4Guf/weq7G+I+DkXiRSZfbemBFOxOINKpraM6ml78vo8Zw=="
 		],
@@ -1584,10 +1574,7 @@
 					"@types/node": "*",
 					"typescript": ">=2.7"
 				},
-				"optionalPeers": [
-					"@swc/core",
-					"@swc/wasm"
-				],
+				"optionalPeers": ["@swc/core", "@swc/wasm"],
 				"bin": {
 					"ts-node": "dist/bin.js",
 					"ts-script": "dist/bin-script-deprecated.js",
@@ -2000,6 +1987,6 @@
 			"",
 			{},
 			"sha512-7HSX4QQb4CspciLpVFwyRe79O3xsIZDDLER21kERQ71oaPodF8jL725AgJMFAYbooIqolJoRLuM81SpeUkpkvA=="
-		],
+		]
 	}
 }

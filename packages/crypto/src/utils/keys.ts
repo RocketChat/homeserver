@@ -41,7 +41,6 @@ export async function verifyJsonSignature<T extends object>(
 	signature: string,
 	key: VerifierKey,
 ): Promise<void> {
-	console.log(jsonObject);
 	const sortedSerializedForm = encodeCanonicalJson(jsonObject);
 
 	const signatureBuffer = fromBase64ToBytes(signature);

@@ -225,8 +225,16 @@ export async function resolveStateV2Plus(
 	// 2. Apply the iterative auth checks algorithm, starting from the unconflicted state map, to the list of events from the previous step to get a partially resolved state.
 	const initialState = new Map<StateMapKey, PersistentEventBase>();
 	for (const [key, eventId] of unconflicted) {
-		// self explanatory
-		const [event] = await wrappedStore.getEvents([eventId]);
+		// in layman's terms:
+		// FULL conflicted set = conflicted events + auth difference
+		// unconflicted already excludes conflicted events
+		// if initial state has an event that is in auth difference set, at the time of validating the events from auth difference,
+		// they will be allowed because they are already in the initial state.
+		// so initial state can only be unconflicted - authDifference
+		if (authChainDifference.has(eventId)) {
+			continue;
+		}
+		const event = eventIdToEventMap.get(eventId);
 		assert(event, `event should not be null ${eventId}`);
 		initialState.set(key, event);
 	}

@@ -11,6 +11,12 @@ import {
 	GetMissingEventsBodyDto,
 	GetMissingEventsParamsDto,
 	GetMissingEventsResponseDto,
+	GetStateIdsParamsDto,
+	GetStateIdsQueryDto,
+	GetStateIdsResponseDto,
+	GetStateParamsDto,
+	GetStateQueryDto,
+	GetStateResponseDto,
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
@@ -76,9 +82,7 @@ export const profilesPlugin = (app: Elysia) => {
 
 				const { ver } = query;
 
-				console.log(ver);
-
-				return profilesService.makeJoin(roomId, userId, ['10']) as any;
+				return profilesService.makeJoin(roomId, userId, ver ?? ['1']);
 			},
 			{
 				params: t.Any(),

@@ -29,13 +29,12 @@ export class SendJoinService {
 			throw new Error('Room version not found');
 		}
 
-		// delete existing auth events and refill them
-		event.auth_events = [];
-
-		const joinEvent = PersistentEventFactory.createFromRawEvent(
-			event,
-			roomVersion,
-		);
+		const joinEvent =
+			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				// delete existing auth events and refill them
+				{ ...event, auth_events: [] },
+				roomVersion,
+			);
 
 		await stateService.addAuthEvents(joinEvent);
 
@@ -48,7 +47,6 @@ export class SendJoinService {
 
 		// fetch state before allowing join here - TODO: don't just persist the membership like this
 		const state = await stateService.getFullRoomState(roomId);
-
 		await stateService.persistStateEvent(joinEvent);
 
 		if (joinEvent.rejected) {
@@ -79,14 +77,9 @@ export class SendJoinService {
 			sender: signedJoinEvent.sender,
 			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
-				avatar_url:
-					signedJoinEvent.getContent<PduMembershipEventContent>().avatar_url ||
-					null,
-				displayname:
-					signedJoinEvent.getContent<PduMembershipEventContent>().displayname ||
-					'',
-				membership:
-					signedJoinEvent.getContent<PduMembershipEventContent>().membership,
+				avatar_url: signedJoinEvent.getContent().avatar_url || null,
+				displayname: signedJoinEvent.getContent().displayname || '',
+				membership: signedJoinEvent.getContent().membership,
 			},
 		});
 

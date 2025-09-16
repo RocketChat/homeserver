@@ -76,11 +76,19 @@ export const MakeJoinQueryDto = t.Object({
 	),
 });
 
+const MembershipDto = t.Union([
+	t.Literal('join'),
+	t.Literal('leave'),
+	t.Literal('invite'),
+	t.Literal('ban'),
+	t.Literal('knock'),
+]);
+
 export const MakeJoinResponseDto = t.Object({
 	room_version: t.String({ description: 'Room version' }),
 	event: t.Object({
 		content: t.Object({
-			membership: t.Literal('join'),
+			membership: MembershipDto,
 			join_authorised_via_users_server: t.Optional(t.String()),
 		}),
 		room_id: RoomIdDto,
@@ -88,7 +96,6 @@ export const MakeJoinResponseDto = t.Object({
 		state_key: UsernameDto,
 		type: t.Literal('m.room.member'),
 		origin_server_ts: TimestampDto,
-		origin: ServerNameDto,
 		depth: t.Optional(
 			t.Number({ description: 'Depth of the event in the DAG' }),
 		),
