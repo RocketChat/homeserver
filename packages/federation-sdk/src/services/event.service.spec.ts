@@ -1,5 +1,4 @@
 import {
-	afterAll,
 	afterEach,
 	beforeEach,
 	describe,
@@ -7,17 +6,15 @@ import {
 	it,
 	Mock,
 	mock,
-	test,
 } from 'bun:test';
 import { eventService } from '../__mocks__/services.spec';
 import { Pdu, PersistentEventFactory } from '@hs/room';
 import { BaseEDU } from '@hs/core';
 import { StateService } from './state.service';
-import { collections, repositories } from '../__mocks__/repositories.spec';
+import { repositories } from '../__mocks__/repositories.spec';
 import { config } from '../__mocks__/config.service.spec';
 import { loadEd25519SignerFromSeed } from '../../../crypto/dist/utils/keys';
 import { fromBase64ToBytes } from '../../../crypto/dist/utils/data-types';
-import { prettyFactory } from 'pino-pretty';
 
 const event = {
 	auth_events: [
@@ -65,40 +62,41 @@ describe('EventService', async () => {
 		'../server-discovery/discovery'
 	);
 
-	await mock.module('../server-discovery/discovery', () => ({
-		// this mock doesn't matter, or doesn't change, we just need to skip actual server discovery
-		// and mock the /key/v2/server responses
-		getHomeserverFinalAddress: async (..._args: any[]) => [
-			'https://127.0.0.1',
-			{},
-		],
-	}));
+	const { fetch } = await import('@hs/core');
 
 	// random server name for each run
 	let inboundServer = `localhost${Math.floor(Math.random() * 10000).toString()}`;
-
-	let originalFetch: typeof globalThis.fetch;
 
 	type FetchJson = Awaited<ReturnType<typeof globalThis.fetch>>['json'];
 
 	const fetchJsonMock: Mock<FetchJson> = mock(() => Promise.resolve());
 
-	beforeEach(() => {
-		originalFetch = globalThis.fetch;
-		globalThis.fetch = Object.assign(
-			async (_url: string, _options?: RequestInit) => {
+	beforeEach(async () => {
+		await mock.module('../server-discovery/discovery', () => ({
+			// this mock doesn't matter, or doesn't change, we just need to skip actual server discovery
+			// and mock the /key/v2/server responses
+			getHomeserverFinalAddress: async (..._args: any[]) => [
+				'https://127.0.0.1',
+				{},
+			],
+		}));
+
+		await mock.module('@hs/core', () => ({
+			fetch: async (..._args: any[]) => {
 				return {
 					ok: true,
 					status: 200,
 					json: fetchJsonMock as unknown as FetchJson,
 				} as Response;
 			},
-			{ preconnect: () => {} },
-		) as typeof fetch;
+		}));
 	});
 
-	afterEach(() => {
-		globalThis.fetch = originalFetch;
+	afterEach(async () => {
+		await mock.module('@hs/core', () => ({ fetch }));
+		await mock.module('../server-discovery/discovery', () => ({
+			getHomeserverFinalAddress: originalServerDiscovery,
+		}));
 		mock.restore();
 	});
 
@@ -180,13 +178,6 @@ describe('EventService', async () => {
 			valid_until_ts: Date.now() + 100000,
 		};
 
-		afterAll(async () => {
-			await mock.restore();
-			await mock.module('../server-discovery/discovery', () => ({
-				getHomeserverFinalAddress: originalServerDiscovery,
-			}));
-		});
-
 		// sanity check
 		it('should sign events with new keys', async () => {
 			const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
@@ -216,6 +207,8 @@ describe('EventService', async () => {
 				`@creator:${inboundServer}`,
 				roomVersion,
 			);
+
+			console.log('PDU', pdu.eventId);
 
 			await stateService.signEvent(pdu);
 

@@ -6,7 +6,6 @@ import {
 	it,
 	mock,
 	test,
-	type Mock,
 } from 'bun:test';
 import { SignatureVerificationService } from './signature-verification.service';
 import { PersistentEventFactory } from '@hs/room';
@@ -16,6 +15,7 @@ import {
 	fromBase64ToBytes,
 	loadEd25519VerifierFromPublicKey,
 } from '@hs/crypto';
+import { after } from 'node:test';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';
 
@@ -80,8 +80,71 @@ describe('SignatureVerificationService', async () => {
 		'a_FAET',
 	);
 
+	const { MAX_SIGNATURE_LENGTH_FOR_ED25519 } = await import(
+		'./signature-verification.service'
+	);
+
 	beforeEach(() => {
 		service = new SignatureVerificationService(); // invalidates internal cache
+	});
+
+	afterEach(async () => {
+		await mock.module('./signature-verification.service', () => ({
+			MAX_SIGNATURE_LENGTH_FOR_ED25519,
+		}));
+	});
+
+	describe('verifyRequestSignature', async () => {
+		const seed = 'FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04';
+		const version = 'a_FAET';
+		const signer = await loadEd25519SignerFromSeed(
+			fromBase64ToBytes(seed),
+			version,
+		);
+		const thisVerifier: VerifierKey = signer;
+
+		it('should successfully validate the request', async () => {
+			const header =
+				'X-Matrix origin="syn1.tunnel.dev.rocket.chat",destination="syn2.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="+MRd0eKdc/3T7mS7ZR+ltpOiN7RBXgfxTWWYLejy5gBRXG717aXHPCDm044D10kgqQvs2HqR3MdPEIx+2a0nDg"';
+
+			const body = {
+				edus: [
+					{
+						content: {
+							push: [
+								{
+									last_active_ago: 561472,
+									presence: 'unavailable',
+									user_id: '@debdut1:syn1.tunnel.dev.rocket.chat',
+								},
+							],
+						},
+						edu_type: 'm.presence',
+					},
+				],
+				origin: 'syn1.tunnel.dev.rocket.chat',
+				origin_server_ts: 1757329414731,
+				pdus: [],
+			};
+
+			// PUT /_matrix/federation/v1/send/1757328278684 HTTP/1.1
+
+			const uri = '/_matrix/federation/v1/send/1757328278684';
+
+			const method = 'PUT';
+
+			await expect(
+				service.verifyRequestSignature(
+					{
+						uri,
+						method,
+						body,
+						authorizationHeader: header,
+					},
+					thisVerifier,
+				),
+			).resolves.toBeUndefined();
+		});
 	});
 
 	describe('verifyEventSignature', async () => {
@@ -191,58 +254,6 @@ describe('SignatureVerificationService', async () => {
 			await expect(
 				service.verifyEventSignature(pdu2, verifier),
 			).rejects.toThrow('Invalid signature');
-		});
-	});
-
-	describe('verifyRequestSignature', async () => {
-		const seed = 'FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04';
-		const version = 'a_FAET';
-		const signer = await loadEd25519SignerFromSeed(
-			fromBase64ToBytes(seed),
-			version,
-		);
-		const verifier: VerifierKey = signer;
-		it('should successfully validate the request', async () => {
-			const header =
-				'X-Matrix origin="syn1.tunnel.dev.rocket.chat",destination="syn2.tunnel.dev.rocket.chat",key="ed25519:a_FAET",sig="+MRd0eKdc/3T7mS7ZR+ltpOiN7RBXgfxTWWYLejy5gBRXG717aXHPCDm044D10kgqQvs2HqR3MdPEIx+2a0nDg"';
-
-			const body = {
-				edus: [
-					{
-						content: {
-							push: [
-								{
-									last_active_ago: 561472,
-									presence: 'unavailable',
-									user_id: '@debdut1:syn1.tunnel.dev.rocket.chat',
-								},
-							],
-						},
-						edu_type: 'm.presence',
-					},
-				],
-				origin: 'syn1.tunnel.dev.rocket.chat',
-				origin_server_ts: 1757329414731,
-				pdus: [],
-			};
-
-			// PUT /_matrix/federation/v1/send/1757328278684 HTTP/1.1
-
-			const uri = '/_matrix/federation/v1/send/1757328278684';
-
-			const method = 'PUT';
-
-			await expect(
-				service.verifyRequestSignature(
-					{
-						uri,
-						method,
-						body,
-						authorizationHeader: header,
-					},
-					verifier,
-				),
-			).resolves.toBeUndefined();
 		});
 	});
 });
