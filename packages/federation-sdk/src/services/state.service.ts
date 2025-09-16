@@ -775,7 +775,7 @@ export class StateService {
 		// auth events referenced in the message
 		const store = this._getStore(roomVersion);
 		const authEventsReferencedInMessage = await store.getEvents(
-			event.event.auth_events as EventID[],
+			event.event.auth_events,
 		);
 		const authEventsReferencedMap = new Map<string, PersistentEventBase>();
 		for (const authEvent of authEventsReferencedInMessage) {

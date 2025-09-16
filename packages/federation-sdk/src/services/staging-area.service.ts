@@ -163,7 +163,7 @@ export class StagingAreaService {
 				break;
 			case event.event.type === 'm.reaction': {
 				this.eventEmitterService.emit('homeserver.matrix.reaction', {
-					event_id: eventId as EventID,
+					event_id: eventId,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
@@ -179,7 +179,7 @@ export class StagingAreaService {
 			}
 			case isRedactedEvent(event.event): {
 				this.eventEmitterService.emit('homeserver.matrix.redaction', {
-					event_id: eventId as EventID,
+					event_id: eventId,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
@@ -192,7 +192,7 @@ export class StagingAreaService {
 			}
 			case event.event.type === 'm.room.member': {
 				this.eventEmitterService.emit('homeserver.matrix.membership', {
-					event_id: eventId as EventID,
+					event_id: eventId,
 					room_id: roomId,
 					sender: event.event.sender,
 					state_key: event.event.state_key as string,

@@ -17,7 +17,7 @@ export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
 	}
 
 	async getPreviousEvents(store: EventStore) {
-		return store.getEvents(this.rawEvent.prev_events as EventID[]);
+		return store.getEvents(this.rawEvent.prev_events);
 	}
 	get eventId(): EventID {
 		if (this._eventId) {
