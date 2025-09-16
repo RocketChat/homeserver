@@ -100,6 +100,8 @@ export class KeyService {
 			this.logger.warn(`Half life for key for ${serverName} is expired`);
 			return true;
 		}
+
+		return false;
 	}
 
 	async fetchAndSaveKeysFromRemoteServerRaw(
