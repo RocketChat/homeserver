@@ -1,9 +1,9 @@
-import { EventID } from '@hs/room';
 import {
 	ConfigService,
 	EventAuthorizationService,
 	EventService,
 } from '@hs/federation-sdk';
+import { EventID } from '@hs/room';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
