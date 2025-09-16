@@ -1,3 +1,4 @@
+import z from 'zod';
 import type { Pdu, PduType } from './v3-11';
 
 export declare const __brand: unique symbol;
@@ -5,9 +6,11 @@ export declare const __brand: unique symbol;
 export type Brand<B> = { [__brand]: B };
 export type Branded<T, B> = T & Brand<B>;
 
-export type EventID = Branded<string, 'EventID'>;
-
 export type StateKey = string;
+
+export const eventIdSchema = z.string().brand('EventID');
+
+export type EventID = z.infer<typeof eventIdSchema>;
 
 export type StateMapKey = `${PduType}:${StateKey}`;
 

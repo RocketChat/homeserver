@@ -1,7 +1,5 @@
 import { z } from 'zod';
-import { EventID, PduForType } from './_common';
-
-export const eventIdSchema = z.string().transform((val) => val as EventID);
+import { PduForType, eventIdSchema } from './_common';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -536,8 +534,7 @@ export const PduNoContentTimelineEventSchema = {
 		.array(eventIdSchema)
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
-		)
-		.transform((val) => val as EventID[]),
+		),
 	depth: z
 		.number()
 		.describe(
