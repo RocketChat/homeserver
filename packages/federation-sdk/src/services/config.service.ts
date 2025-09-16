@@ -2,8 +2,7 @@ import { createLogger } from '@hs/core';
 import { type Signer } from '@hs/crypto';
 
 import { z } from 'zod';
-import { loadEd25519SignerFromSeed } from '../../../crypto/dist/utils/keys';
-import { fromBase64ToBytes } from '../../../crypto/dist/utils/data-types';
+import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';
 
 export interface AppConfig {
 	serverName: string;
