@@ -1,20 +1,19 @@
 import {
+	Mock,
 	afterEach,
 	beforeEach,
 	describe,
 	expect,
 	it,
-	Mock,
 	mock,
 } from 'bun:test';
-import { eventService } from '../__mocks__/services.spec';
-import { Pdu, PersistentEventFactory } from '@hs/room';
 import { BaseEDU } from '@hs/core';
-import { StateService } from './state.service';
-import { repositories } from '../__mocks__/repositories.spec';
+import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
+import { Pdu, PersistentEventFactory } from '@hs/room';
 import { config } from '../__mocks__/config.service.spec';
-import { loadEd25519SignerFromSeed } from '../../../crypto/dist/utils/keys';
-import { fromBase64ToBytes } from '../../../crypto/dist/utils/data-types';
+import { repositories } from '../__mocks__/repositories.spec';
+import { eventService } from '../__mocks__/services.spec';
+import { StateService } from './state.service';
 
 const event = {
 	auth_events: [

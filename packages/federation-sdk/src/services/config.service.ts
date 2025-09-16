@@ -1,8 +1,8 @@
 import { createLogger } from '@hs/core';
 import { type Signer } from '@hs/crypto';
 
+import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
 import { z } from 'zod';
-import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';
 
 export interface AppConfig {
 	serverName: string;

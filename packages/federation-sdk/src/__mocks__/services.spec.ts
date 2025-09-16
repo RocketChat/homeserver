@@ -1,11 +1,11 @@
+import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { EventEmitterService } from '../services/event-emitter.service';
+import { EventService } from '../services/event.service';
 import { KeyService } from '../services/key.service';
+import { SignatureVerificationService } from '../services/signature-verification.service';
+import { StateService } from '../services/state.service';
 import { config } from './config.service.spec';
 import { repositories } from './repositories.spec';
-import { StagingAreaQueue } from '../queues/staging-area.queue';
-import { StateService } from '../services/state.service';
-import { EventEmitterService } from '../services/event-emitter.service';
-import { SignatureVerificationService } from '../services/signature-verification.service';
-import { EventService } from '../services/event.service';
 
 const keyService = new KeyService(config, repositories.keys);
 

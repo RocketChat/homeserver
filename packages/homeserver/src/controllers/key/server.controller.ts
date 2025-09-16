@@ -1,8 +1,8 @@
-import { ConfigService, ServerService } from '@hs/federation-sdk';
-import { t, type Elysia } from 'elysia';
+import { ServerService } from '@hs/federation-sdk';
+import { KeyService } from '@hs/federation-sdk';
+import { type Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { ServerKeyResponseDto } from '../../dtos';
-import { KeyService } from '@hs/federation-sdk';
 
 export const serverKeyPlugin = (app: Elysia) => {
 	const serverService = container.resolve(ServerService);

@@ -7,15 +7,14 @@ import {
 	mock,
 	test,
 } from 'bun:test';
-import { SignatureVerificationService } from './signature-verification.service';
-import { PersistentEventFactory } from '@hs/room';
 import {
 	VerifierKey,
-	loadEd25519SignerFromSeed,
 	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
 } from '@hs/crypto';
-import { after } from 'node:test';
+import { PersistentEventFactory } from '@hs/room';
+import { SignatureVerificationService } from './signature-verification.service';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';
 

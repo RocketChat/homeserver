@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import {
 	computeHashBuffer,
-	toUnpaddedBase64,
 	encodeCanonicalJson,
+	toUnpaddedBase64,
 } from '@hs/crypto';
 import {
 	type EventStore,

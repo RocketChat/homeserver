@@ -1,22 +1,22 @@
-import { singleton } from 'tsyringe';
-import { ConfigService } from './config.service';
-import { KeyRepository } from '../repositories/key.repository';
 import {
+	type KeyV2ServerResponse,
+	type ServerKey,
+	fetch as coreFetch,
+} from '@hs/core';
+import {
+	type Signer,
+	VerifierKey,
 	fromBase64ToBytes,
 	isValidAlgorithm,
 	loadEd25519VerifierFromPublicKey,
 	signJson,
-	VerifierKey,
-	type Signer,
 } from '@hs/crypto';
-import {
-	fetch as coreFetch,
-	type KeyV2ServerResponse,
-	type ServerKey,
-} from '@hs/core';
-import { createLogger } from '../utils/logger';
-import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { PersistentEventBase } from '@hs/room';
+import { singleton } from 'tsyringe';
+import { KeyRepository } from '../repositories/key.repository';
+import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+import { createLogger } from '../utils/logger';
+import { ConfigService } from './config.service';
 
 type QueryCriteria = {
 	// If not supplied, the current time as determined by the notary server is used.
