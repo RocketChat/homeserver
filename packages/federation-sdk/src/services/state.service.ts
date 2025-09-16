@@ -284,7 +284,9 @@ export class StateService {
 			);
 
 			if (pdu.eventId !== eventId) {
-				throw new Error('Event id mismatch while building room state');
+				throw new Error(
+					`Event id mismatch while building room state ${pdu.eventId} !== ${eventId}`,
+				);
 			}
 
 			finalState.set(stateKey, pdu);
@@ -420,7 +422,7 @@ export class StateService {
 		return instance;
 	}
 
-	async addAuthEvents(event: PersistentEventBase) {
+	private async addAuthEvents(event: PersistentEventBase) {
 		const state = await this.getFullRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();

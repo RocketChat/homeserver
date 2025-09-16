@@ -100,15 +100,23 @@ export abstract class PersistentEventBase<
 	// if we are accessing the inner event, the event itself should be frozen immediately to not change the reference hash any longer, affecting the id
 	// if anywhere the code still tries to, we will throw an error, which is why "lock" isn't just a flag in the class.
 	get event(): Readonly<PduForType<Type>> {
-		this.rawEvent.hashes = {
-			sha256: toUnpaddedBase64(this.getContentHash()),
-		};
-
 		return {
-			...this.rawEvent,
+			...this.getEventWithoutHashes(),
+			hashes: {
+				sha256: toUnpaddedBase64(this.getContentHash()),
+			},
 			signatures: this.signatures,
 			unsigned: this.rawEvent.unsigned ?? {},
 		} as PduForType<Type>;
+	}
+
+	private getEventWithoutHashes() {
+		const { hashes, signatures, ...event } = this.rawEvent;
+		return {
+			...event,
+			auth_events: Array.from(new Set([...this.rawEvent.auth_events])),
+			prev_events: Array.from(new Set([...this.rawEvent.prev_events])),
+		};
 	}
 
 	get depth() {
@@ -315,7 +323,10 @@ export abstract class PersistentEventBase<
 	}
 
 	getContentHash() {
-		return PersistentEventBase.getContentHash(this.rawEvent);
+		return PersistentEventBase.getContentHash({
+			...this.rawEvent,
+			...this.getEventWithoutHashes(), // basically make sure the prev and auth events are not duplicated
+		});
 	}
 
 	getContentHashString() {
