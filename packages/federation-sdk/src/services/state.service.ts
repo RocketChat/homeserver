@@ -114,7 +114,10 @@ export class StateService {
 	 * Returns the state used to validate the event
 	 * This is the state prior to the event
 	 */
-	async findStateAtEvent(eventId: string): Promise<State> {
+	async findStateAtEvent(
+		eventId: string,
+		include: 'always' | 'event' = 'event',
+	): Promise<State> {
 		this.logger.debug({ eventId }, 'finding state before event');
 
 		const event = await this.eventRepository.findById(eventId);
@@ -136,7 +139,10 @@ export class StateService {
 
 		// The fully resolved state for the room, prior to considering any state changes induced by the requested event. Includes the authorization chain for the events.
 
-		if (pdu.type === 'm.room.create') {
+		const includeEvent =
+			include === 'always' || (include === 'event' && !pdu.isState());
+
+		if (pdu.isCreateEvent() && !includeEvent) {
 			return new Map();
 		}
 
@@ -156,8 +162,6 @@ export class StateService {
 		);
 
 		const state = new Map<StateMapKey, PersistentEventBase>();
-
-		const includeEvent = !pdu.isState();
 
 		/**
 		 * If the event is a state event, we don't include the event in the state, otherwise the state would be the new state
@@ -621,7 +625,7 @@ export class StateService {
 			lastState?._id?.toString(),
 		);
 
-		const state = await this.findStateAtEvent(lastEvent._id);
+		const state = await this.findStateAtEvent(lastEvent._id, 'always');
 
 		this.logState('state at last event seen:', state);
 
