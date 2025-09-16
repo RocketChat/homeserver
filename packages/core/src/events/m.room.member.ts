@@ -1,4 +1,4 @@
-import { EventID } from 'packages/room/dist';
+import { EventID } from '@hs/room';
 import { createEventBase } from './eventBase';
 import type { Membership, RoomMemberEvent } from './isRoomMemberEvent';
 import { createEventWithId } from './utils/createSignedEvent';

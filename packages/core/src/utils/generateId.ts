@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { EventID } from 'packages/room/dist';
+import { EventID } from '@hs/room';
 import { toUnpaddedBase64 } from './binaryData';
 import { pruneEventDict } from './pruneEventDict';
 import { encodeCanonicalJson } from './signJson';
