@@ -46,7 +46,10 @@ function parseMultipart(buffer: Buffer, boundary: string): MultipartResult {
 	return { content };
 }
 
-async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): Promise<T | null> {
+async function handleJson<T>(
+	contentType: string,
+	body: () => Promise<Buffer>,
+): Promise<T | null> {
 	if (!contentType.includes('application/json')) {
 		return null;
 	}
@@ -58,7 +61,10 @@ async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): 
 	}
 }
 
-async function handleText(contentType: string, body: () => Promise<Buffer>): Promise<string> {
+async function handleText(
+	contentType: string,
+	body: () => Promise<Buffer>,
+): Promise<string> {
 	if (!contentType.includes('text/')) {
 		return '';
 	}
@@ -110,11 +116,11 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 				const chunks: Buffer[] = [];
 
 				res.once('error', reject);
-				
+
 				res.pause();
-				
+
 				let body: Promise<Buffer>;
-				
+
 				resolve({
 					statusCode: res.statusCode,
 					headers: res.headers,
@@ -158,9 +164,9 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 								res.resume();
 							});
 						}
-						
+
 						return body;
-					}
+					},
 				});
 			});
 
