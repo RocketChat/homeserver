@@ -120,24 +120,41 @@ export async function fetch<T>(url: URL, options: RequestInit) {
 					headers: res.headers,
 					body() {
 						if (!body) {
-							body = new Promise<Buffer>((resBody) => {
+							body = new Promise<Buffer>((resBody, rejBody) => {
 								// TODO: Make @hs/core fetch size limit configurable
 								let total = 0;
 								const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
 
-								res.on('data', (chunk) => {
+								const onData = (chunk: Buffer) => {
 									total += chunk.length;
 									if (total > MAX_RESPONSE_BYTES) {
-										request.destroy(new Error('Response exceeds size limit'));
+										const err = new Error('Response exceeds size limit');
+										res.destroy(err);
+										cleanup();
+										rejBody(err);
 										return;
 									}
 									chunks.push(chunk);
-								});
-
-								res.on('end', () => {
+								};
+								const onEnd = () => {
+									cleanup();
 									resBody(Buffer.concat(chunks));
-								});
-
+								};
+								const onErr = (err: Error) => {
+									cleanup();
+									rejBody(err);
+								};
+								const onAborted = () => onErr(new Error('Response aborted'));
+								const cleanup = () => {
+									res.off('data', onData);
+									res.off('end', onEnd);
+									res.off('error', onErr);
+									res.off('aborted', onAborted);
+								};
+								res.on('data', onData);
+								res.once('end', onEnd);
+								res.once('error', onErr);
+								res.once('aborted', onAborted);
 								res.resume();
 							});
 						}
