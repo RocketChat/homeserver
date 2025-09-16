@@ -376,10 +376,10 @@ export class EventAuthorizationService {
 				return false;
 			}
 
-			const isServerAllowed = await this.checkServerAcl(
-				matrixRoomId,
-				serverName,
-			);
+			const state = await this.stateService.getFullRoomState(matrixRoomId);
+
+			const aclEvent = state.get('m.room.server_acl:');
+			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
 			if (!isServerAllowed) {
 				this.logger.warn(
 					`Server ${serverName} is denied by room ACL for media in room ${matrixRoomId}`,
@@ -396,9 +396,12 @@ export class EventAuthorizationService {
 				return true;
 			}
 
-			const roomState = await this.stateService.getFullRoomState(matrixRoomId);
-			const historyVisibility = this.getHistoryVisibility(roomState);
-			if (historyVisibility === 'world_readable') {
+			const historyVisibilityEvent = state.get('m.room.history_visibility:');
+			if (
+				historyVisibilityEvent?.isHistoryVisibilityEvent() &&
+				historyVisibilityEvent.getContent().history_visibility ===
+					'world_readable'
+			) {
 				this.logger.debug(
 					`Room ${matrixRoomId} is world_readable, allowing media access to ${serverName}`,
 				);
