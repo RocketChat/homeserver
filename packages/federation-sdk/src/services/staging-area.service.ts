@@ -3,6 +3,7 @@ import { singleton } from 'tsyringe';
 
 import { createLogger, isRedactedEvent } from '@hs/core';
 import { Pdu, PduPowerLevelsEventContent } from '@hs/room';
+import type { EventID } from '@hs/room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
@@ -149,7 +150,7 @@ export class StagingAreaService {
 						msgtype: event.event.content?.msgtype as string,
 						'm.relates_to': event.event.content?.['m.relates_to'] as {
 							rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
-							event_id: string;
+							event_id: EventID;
 						},
 						'm.new_content': event.event.content?.['m.new_content'] as {
 							body: string;
@@ -169,7 +170,7 @@ export class StagingAreaService {
 					content: event.event.content as {
 						'm.relates_to': {
 							rel_type: 'm.annotation';
-							event_id: string;
+							event_id: EventID;
 							key: string;
 						};
 					},

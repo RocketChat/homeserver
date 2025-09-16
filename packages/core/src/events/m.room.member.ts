@@ -1,3 +1,4 @@
+import { EventID } from '@hs/room';
 import { createEventBase } from './eventBase';
 import type { Membership, RoomMemberEvent } from './isRoomMemberEvent';
 import { createEventWithId } from './utils/createSignedEvent';
@@ -18,12 +19,12 @@ declare module './eventBase' {
 }
 
 export type AuthEvents = {
-	'm.room.create': string;
-	'm.room.power_levels'?: string;
-	'm.room.join_rules'?: string;
-	'm.room.history_visibility'?: string;
+	'm.room.create': EventID;
+	'm.room.power_levels'?: EventID;
+	'm.room.join_rules'?: EventID;
+	'm.room.history_visibility'?: EventID;
 } & {
-	[K in `m.room.member:${string}`]?: string;
+	[K in `m.room.member:${string}`]?: EventID;
 };
 
 const isTruthy = <T>(
@@ -50,7 +51,7 @@ export const roomMemberEvent = ({
 	sender: string;
 	state_key: string;
 	auth_events: AuthEvents;
-	prev_events: string[];
+	prev_events: EventID[];
 	depth: number;
 	unsigned?: RoomMemberEvent['unsigned'];
 	content?: Record<string, any>;

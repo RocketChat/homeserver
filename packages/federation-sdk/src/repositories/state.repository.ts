@@ -8,14 +8,14 @@ import {
 } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
-import type { StateMapKey } from '@hs/room';
+import type { EventID, StateMapKey } from '@hs/room';
 import type { PersistentEventBase } from '@hs/room';
 
 export type StateStore = {
 	_id: ObjectId;
 	delta: {
 		identifier: StateMapKey;
-		eventId: string;
+		eventId: EventID;
 	};
 
 	createdAt: Date;

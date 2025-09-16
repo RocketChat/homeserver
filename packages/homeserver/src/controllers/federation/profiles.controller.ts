@@ -1,5 +1,5 @@
 import { ProfilesService } from '@hs/federation-sdk';
-import { type RoomVersion } from '@hs/room';
+import { EventID, type RoomVersion } from '@hs/room';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -103,8 +103,8 @@ export const profilesPlugin = (app: Elysia) => {
 			async ({ params, body }) =>
 				profilesService.getMissingEvents(
 					params.roomId,
-					body.earliest_events,
-					body.latest_events,
+					body.earliest_events as EventID[],
+					body.latest_events as EventID[],
 					body.limit,
 					body.min_depth,
 				),

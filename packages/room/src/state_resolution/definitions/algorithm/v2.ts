@@ -104,7 +104,7 @@ export async function resolveStateV2Plus(
 		async getEvents(eventIds) {
 			const resultEvents = [] as PersistentEventBase[];
 
-			const eventIdsToFind = [] as string[];
+			const eventIdsToFind = [] as EventID[];
 
 			for (const eventId of eventIds) {
 				const event = eventIdToEventMap.get(eventId);

@@ -4,7 +4,7 @@ import {
 	type EventStore,
 	getStateMapKey,
 } from '../state_resolution/definitions/definitions';
-import type { PduForType, StateMapKey } from '../types/_common';
+import type { EventID, PduForType, StateMapKey } from '../types/_common';
 import {
 	Pdu,
 	PduContent,
@@ -124,7 +124,7 @@ export abstract class PersistentEventBase<
 	}
 
 	// v1 should have this already, others, generates it
-	abstract get eventId(): string;
+	abstract get eventId(): EventID;
 
 	getContent<T extends PduContent<Type>>(): T {
 		return this.rawEvent.content as T;

@@ -1,4 +1,4 @@
-import { type StateMapKey } from '../../../types/_common';
+import { type EventID, type StateMapKey } from '../../../types/_common';
 import {} from '../../../types/v3-11';
 import {
 	type EventStore,
@@ -54,7 +54,7 @@ class FakeEvent {
 	content: Record<string, any>;
 	room_id: string;
 	event_dict: any;
-	_event_id: string;
+	_event_id: EventID;
 	constructor(
 		id: string,
 		sender: string,

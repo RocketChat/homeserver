@@ -1,4 +1,5 @@
 import type { EventBase } from '@hs/core';
+import type { EventID } from '@hs/room';
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -11,7 +12,7 @@ export type Room = {
 		alias?: string;
 		canonical_alias?: string;
 		deleted?: boolean;
-		tombstone_event_id?: string;
+		tombstone_event_id?: EventID;
 	};
 };
 

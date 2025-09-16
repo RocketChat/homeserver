@@ -1,4 +1,5 @@
 import { SendJoinService } from '@hs/federation-sdk';
+import type { EventID } from '@hs/room';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -19,7 +20,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 		}) => {
 			const { roomId, eventId } = params;
 
-			return sendJoinService.sendJoin(roomId, eventId, body as any);
+			return sendJoinService.sendJoin(roomId, eventId as EventID, body as any);
 		},
 		{
 			params: t.Object({

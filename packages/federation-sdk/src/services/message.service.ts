@@ -14,6 +14,7 @@ import {
 import { createLogger } from '@hs/core';
 import { signEvent } from '@hs/core';
 import {
+	type EventID,
 	type PersistentEventBase,
 	PersistentEventFactory,
 	type RoomVersion,
@@ -335,7 +336,7 @@ export class MessageService {
 
 	async unsetReaction(
 		roomId: string,
-		eventIdReactedTo: string,
+		eventIdReactedTo: EventID,
 		_emoji: string,
 		senderUserId: string,
 	): Promise<string> {
@@ -413,7 +414,7 @@ export class MessageService {
 
 	async redactMessage(
 		roomId: string,
-		eventIdToRedact: string,
+		eventIdToRedact: EventID,
 		senderUserId: string,
 	): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
