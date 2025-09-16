@@ -33,6 +33,9 @@ jobs:
       - run: bun run build
       - run: bun lint:ci
       - run: bun tsc --noEmit
+      - uses: supercharge/mongodb-github-action@1.12.0
+        with:
+          mongodb-version: '6.0.0'
       - run: bun test:coverage
 
       - name: Upload coverage reports to Codecov
