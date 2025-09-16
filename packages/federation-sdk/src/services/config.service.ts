@@ -6,6 +6,7 @@ import {
 } from '@rocket.chat/federation-core';
 
 import { z } from 'zod';
+import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';
 
 export interface AppConfig {
 	serverName: string;
