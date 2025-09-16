@@ -40,10 +40,9 @@ import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
-import { ServerService } from './server.service';
-import { StateService } from './state.service';
 import { KeyService, OldVerifierKey } from './key.service';
 import { SignatureVerificationService } from './signature-verification.service';
+import { StateService } from './state.service';
 
 export interface AuthEventParams {
 	roomId: string;

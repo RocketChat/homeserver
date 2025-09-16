@@ -33,6 +33,7 @@ import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
+import { KeyService } from './services/key.service';
 import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { MissingEventService } from './services/missing-event.service';
@@ -43,7 +44,6 @@ import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { KeyService } from './services/key.service';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;

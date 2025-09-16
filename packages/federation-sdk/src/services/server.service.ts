@@ -1,4 +1,4 @@
-import { toUnpaddedBase64, signJson } from '@hs/crypto';
+import { signJson, toUnpaddedBase64 } from '@hs/crypto';
 import { singleton } from 'tsyringe';
 import { ServerRepository } from '../repositories/server.repository';
 import { ConfigService } from './config.service';

@@ -1,11 +1,11 @@
 import { verifyJsonSignature } from '@hs/crypto';
 
-import { describe, expect, it, Mock, mock } from 'bun:test';
+import { Mock, describe, expect, it, mock } from 'bun:test';
 import { afterEach, beforeEach } from 'node:test';
 
-import { signer } from '../__mocks__/singer.spec';
-import { keyService } from '../__mocks__/services.spec';
 import { config } from '../__mocks__/config.service.spec';
+import { keyService } from '../__mocks__/services.spec';
+import { signer } from '../__mocks__/singer.spec';
 
 describe('KeyService', async () => {
 	// fetch mocking

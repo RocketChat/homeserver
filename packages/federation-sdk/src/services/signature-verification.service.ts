@@ -1,10 +1,9 @@
 import { createLogger } from '@hs/core';
 import {
+	VerifierKey,
 	encodeCanonicalJson,
 	fromBase64ToBytes,
 	isValidAlgorithm,
-	loadEd25519VerifierFromPublicKey,
-	VerifierKey,
 } from '@hs/crypto';
 import type { PersistentEventBase } from '@hs/room';
 

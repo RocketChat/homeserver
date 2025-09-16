@@ -1,10 +1,10 @@
 import { EventStagingStore, EventStore, ServerKey } from '@hs/core';
-import { db } from './config.service.spec';
+import { EventStagingRepository } from '../repositories/event-staging.repository';
+import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
 import { Lock, LockRepository } from '../repositories/lock.repository';
-import { EventStagingRepository } from '../repositories/event-staging.repository';
-import { StateStore, StateRepository } from '../repositories/state.repository';
-import { EventRepository } from '../repositories/event.repository';
+import { StateRepository, StateStore } from '../repositories/state.repository';
+import { db } from './config.service.spec';
 
 const keysCollection = db.collection<ServerKey>('test_keys');
 const eventsCollection = db.collection<EventStore>('test_events');

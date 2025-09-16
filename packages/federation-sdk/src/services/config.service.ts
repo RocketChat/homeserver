@@ -5,8 +5,8 @@ import {
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
 
+import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
 import { z } from 'zod';
-import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';
 
 export interface AppConfig {
 	serverName: string;

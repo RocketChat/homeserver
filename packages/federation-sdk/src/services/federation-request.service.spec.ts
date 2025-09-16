@@ -9,9 +9,9 @@ import {
 	spyOn,
 } from 'bun:test';
 import * as core from '@hs/core';
+import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
-import { loadEd25519SignerFromSeed, fromBase64ToBytes } from '@hs/crypto';
 
 const signingKeyContent =
 	'ed25519 a_FAET FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04';

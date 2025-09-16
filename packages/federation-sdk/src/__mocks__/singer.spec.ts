@@ -1,7 +1,7 @@
 import {
-	loadEd25519SignerFromSeed,
-	fromBase64ToBytes,
 	VerifierKey,
+	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
 } from '@hs/crypto';
 
 const seed = 'zSkmr713LnEDbxlkYq2ZqIiKTQNsyMOU0T2CEeC44C4';

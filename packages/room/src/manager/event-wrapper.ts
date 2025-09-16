@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 import {
+	computeHashBuffer,
 	encodeCanonicalJson,
 	toUnpaddedBase64,
-} from '@rocket.chat/federation-crypto';
+} from '@hs/crypto';
+toUnpaddedBase64,
+} from '@rocket.chat/federation-crypto'
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
