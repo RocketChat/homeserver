@@ -394,5 +394,9 @@ export abstract class PersistentEventBase<
 
 		return this;
 	}
+
+	getOriginKeys() {
+		return Object.keys(this.signatures[this.origin]);
+	}
 }
 export type { EventStore };

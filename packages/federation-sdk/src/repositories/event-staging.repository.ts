@@ -1,4 +1,3 @@
-import { generateId } from '@hs/core';
 import type { EventStagingStore } from '@hs/core';
 import { Pdu } from '@hs/room';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';

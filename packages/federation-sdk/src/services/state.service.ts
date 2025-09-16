@@ -77,15 +77,27 @@ export class StateService {
 	}
 
 	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
-		const createEvent = await this.eventRepository.findByRoomIdAndType(
-			roomId,
-			'm.room.create',
+		const createEntry =
+			await this.stateRepository.findCreateEventByRoomId(roomId);
+		if (!createEntry) {
+			throw new Error(
+				'Create event not found for room version maybe event hasn;t been processed yet',
+			);
+		}
+
+		const createEvent = await this.eventRepository.findById(
+			createEntry.delta.eventId,
 		);
 		if (!createEvent) {
 			throw new Error('Create event not found for room version');
 		}
 
-		return createEvent.event.content?.room_version;
+		if (createEvent.event.type === 'm.room.create') {
+			return createEvent.event.content.room_version;
+		}
+
+		// should be unreachable
+		throw new Error('Create event content malformed for room version');
 	}
 
 	private logState(label: string, state: State) {

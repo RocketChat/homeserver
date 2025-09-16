@@ -8,28 +8,6 @@ import {
 } from '@hs/crypto';
 import type { PersistentEventBase } from '@hs/room';
 
-interface KeyData {
-	server_name: string;
-	verify_keys: {
-		[keyId: string]: {
-			key: string;
-		};
-	};
-	old_verify_keys?: {
-		[keyId: string]: {
-			key: string;
-			expired_ts: number;
-		};
-	};
-}
-
-// this is to not process the keyid string multiple times
-type KeyId = {
-	alg: string;
-	ver: string;
-	id: string;
-};
-
 // low cost optimization in case of bad implementations
 // ed25519 signatures in unpaddedbase64 are always 86 characters long (doing math here for future reference)
 // 64 bytes in general, base64 => 21*3 = 63 + 1 padding "==" => 21 * 4 = 84 + 2 padding "==" (each char one byte) => 88 characters
@@ -53,17 +31,20 @@ export type FederationRequest<Content extends object> =
 			signature: Record<string, Record<string, string>>;
 	  };
 
+// Signature verification service, wihtout dependency on anything just implements the parts of spec that validates json signatures, from requyests and events
 export class SignatureVerificationService {
 	private get logger() {
 		return createLogger('SignatureVerificationService');
 	}
-	private cachedKeys = new Map<string, KeyData>();
 
 	/**
 	 * Implements part of SPEC: https://spec.matrix.org/v1.12/server-server-api/#validating-hashes-and-signatures-on-received-events
 	 * The event structure should be verifier by the time this method is utilized, thus justifying the use of PersistentEventBase.
 	 */
-	async verifyEventSignature(event: PersistentEventBase): Promise<void> {
+	async verifyEventSignature(
+		event: PersistentEventBase,
+		verifier: VerifierKey,
+	): Promise<void> {
 		// SPEC: First the signature is checked. The event is redacted following the redaction algorithm
 		const { redactedEvent, origin } = event;
 
@@ -75,10 +56,74 @@ export class SignatureVerificationService {
 
 		const { unsigned, ...toCheck } = redactedEvent;
 
-		await this.verifySignature(toCheck, origin);
+		await this.verifySignature(toCheck, origin, verifier);
 	}
 
-	async verifyRequestSignature() {}
+	async verifyRequestSignature(
+		{
+			authorizationHeader,
+			method,
+			body,
+			uri,
+		}: {
+			authorizationHeader: string;
+			method: string; // TODO: type better
+			body: object | undefined;
+			uri: string;
+		},
+		verifier: VerifierKey,
+	) {
+		// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
+
+		const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
+		const {
+			origin,
+			destination,
+			key,
+			sig: signature,
+			...rest
+		} = Object.fromEntries(
+			[...authorizationHeader.matchAll(regex)].map(
+				([, key, value]) => [key, value] as const,
+			),
+		);
+
+		if (Object.keys(rest).length) {
+			// it should never happen since the regex should match all the parameters
+			throw new Error('Invalid authorization header, unexpected parameters');
+		}
+
+		if ([origin, destination, key, signature].some((value) => !value)) {
+			throw new Error('Invalid authorization header');
+		}
+
+		/*
+			{
+				"method": "POST",
+				"uri": "/target",
+				"origin": "origin.hs.example.com",
+				"destination": "destination.hs.example.com",
+				"content": <JSON-parsed request body>,
+				"signatures": {
+					"origin.hs.example.com": {
+						"ed25519:key1": "ABCDEF..."
+					}
+				}
+			}
+		*/
+		const toVerify = {
+			method,
+			uri,
+			origin,
+			destination,
+			...(body && { content: body }),
+			signatures: {
+				[origin]: { [key]: signature },
+			},
+		};
+
+		await this.verifySignature(toVerify, origin, verifier);
+	}
 
 	/**
 	 * Implements SPEC: https://spec.matrix.org/v1.12/appendices/#checking-for-a-signature
@@ -87,7 +132,7 @@ export class SignatureVerificationService {
 		T extends {
 			signatures: Record<string, Record<string, string>>;
 		},
-	>(data: T, origin: string) {
+	>(data: T, origin: string, verifier: VerifierKey) {
 		// 1. Checks if the signatures member of the object contains an entry with the name of the entity. If the entry is missing then the check fails.
 		const originSignature = data.signatures?.[origin];
 		if (!originSignature) {
@@ -96,7 +141,7 @@ export class SignatureVerificationService {
 
 		// 2. Removes any signing key identifiers from the entry with algorithms it doesn’t understand. If there are no signing key identifiers left then the check fails.
 		const signatureEntries = Object.entries(originSignature);
-		const validSignatureEntries = [] as Array<[KeyId, string /* signature */]>;
+		const validSignatureEntries = new Map<string, string>();
 		for (const [keyId, signature] of signatureEntries) {
 			const parts = keyId.split(':');
 			if (parts.length < 2) {
@@ -105,19 +150,15 @@ export class SignatureVerificationService {
 			}
 
 			const algorithm = parts[0];
-			const version = parts[1];
 
 			if (!isValidAlgorithm(algorithm)) {
 				this.logger.warn(`Unsupported algorithm: ${algorithm}`);
 				continue; // we discard this entry but we do not fail yet
 			}
 
-			validSignatureEntries.push([
-				{ alg: algorithm, ver: version, id: keyId },
-				signature as string,
-			]);
+			validSignatureEntries.set(keyId, signature);
 		}
-		if (validSignatureEntries.length === 0) {
+		if (validSignatureEntries.size === 0) {
 			throw new Error(
 				`No valid signature keys found for origin ${origin} with supported algorithms`,
 			);
@@ -126,19 +167,7 @@ export class SignatureVerificationService {
 		// 3. Looks up verification keys for the remaining signing key identifiers either from a local cache or by consulting a trusted key server. If it cannot find a verification key then the check fails.
 		// one origin can sign with multiple keys - given how the spec AND the schema structures it.
 		// we do NOT need all though, one is enough, one that we can fetch first
-		let verifier: VerifierKey | undefined;
-		for (const [keyId] of validSignatureEntries) {
-			try {
-				verifier = await this.getSignatureVerifierForServer(origin, keyId);
-				break; // found one, should be enough
-			} catch (error) {
-				this.logger.warn(
-					`Failed to get verifier for ${origin} with keyId ${keyId.id}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
-		}
-
-		if (!verifier) {
+		if (!validSignatureEntries.has(verifier.id)) {
 			throw new Error(
 				`No valid verification key found for origin ${origin} with supported algorithms`,
 			);
@@ -159,12 +188,10 @@ export class SignatureVerificationService {
 			);
 		}
 
-		let signatureBytes: Uint8Array;
-		try {
-			signatureBytes = fromBase64ToBytes(signatureEntry);
-		} catch (error) {
+		const signatureBytes = fromBase64ToBytes(signatureEntry);
+		if (signatureBytes.byteLength === 0) {
 			throw new Error(
-				`Failed to decode base64 signature for keyId ${verifier.id} from origin ${origin}: ${error instanceof Error ? error.message : String(error)}`,
+				`Failed to decode base64 signature for keyId ${verifier.id} from origin ${origin}`,
 			);
 		}
 
@@ -176,64 +203,5 @@ export class SignatureVerificationService {
 
 		// 7. Checks the signature bytes against the encoded object using the verification key. If this fails then the check fails. Otherwise the check succeeds.
 		await verifier.verify(canonicalJson, signatureBytes);
-	}
-
-	// throws if no key
-	async getSignatureVerifierForServer(
-		serverName: string,
-		keyId: KeyId,
-	): Promise<VerifierKey> {
-		const keyData = await this.getOrFetchPublicKey(serverName, keyId.id);
-		if (!keyData || !keyData.verify_keys[keyId.id]) {
-			throw new Error(`Public key not found for ${serverName}:${keyId.id}`);
-		}
-
-		const publicKey = keyData.verify_keys[keyId.id].key;
-
-		const verifier = await loadEd25519VerifierFromPublicKey(
-			fromBase64ToBytes(publicKey),
-			keyId.ver,
-		);
-
-		return verifier;
-	}
-
-	/**
-	 * Get public key from cache or fetch it from the server
-	 */
-	private async getOrFetchPublicKey(
-		serverName: string,
-		keyId: string,
-	): Promise<KeyData | null | undefined> {
-		const cacheKey = `${serverName}:${keyId}`;
-
-		if (this.cachedKeys.has(cacheKey)) {
-			return this.cachedKeys.get(cacheKey);
-		}
-
-		try {
-			const response = await fetch(
-				`https://${serverName}/_matrix/key/v2/server`,
-			);
-
-			if (!response.ok) {
-				this.logger.error(
-					`Failed to fetch keys from ${serverName}: ${response.status}`,
-				);
-				return null;
-			}
-
-			const keyData = (await response.json()) as KeyData;
-
-			this.cachedKeys.set(cacheKey, keyData);
-
-			return keyData;
-		} catch (error: any) {
-			this.logger.error(
-				`Error fetching public key: ${error.message}`,
-				error.stack,
-			);
-			return null;
-		}
 	}
 }
