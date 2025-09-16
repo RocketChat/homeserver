@@ -1,5 +1,9 @@
 import crypto from 'node:crypto';
-import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/crypto';
+import {
+	computeHashBuffer,
+	encodeCanonicalJson,
+	toUnpaddedBase64,
+} from '@hs/crypto';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -17,7 +21,12 @@ import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 
 function extractDomain(identifier: string) {
-	return identifier.split(':').pop();
+	const idx = identifier.indexOf(':');
+	if (idx === -1) {
+		throw new Error(`Invalid identifier, missing domain part: ${identifier}`);
+	}
+
+	return identifier.substring(idx + 1); // return everything after the first colon, can have port in there which is also0 valid
 }
 
 type MakeOptional<T, K extends keyof T> = {
@@ -289,12 +298,8 @@ export abstract class PersistentEventBase<
 		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
-		const canonicalJson = encodeCanonicalJson(toHash);
 		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = crypto
-			.createHash('sha256')
-			.update(canonicalJson)
-			.digest();
+		const referenceHash = computeHashBuffer(toHash);
 
 		return referenceHash;
 	}
@@ -406,6 +411,10 @@ export abstract class PersistentEventBase<
 		};
 
 		return this;
+	}
+
+	getOriginKeys() {
+		return Object.keys(this.signatures[this.origin]);
 	}
 }
 export type { EventStore };

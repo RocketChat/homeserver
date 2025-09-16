@@ -1,4 +1,4 @@
-import { signEvent } from '@hs/core';
+import { signJson } from '@hs/crypto';
 import {
 	type PduContent,
 	type PduType,
@@ -83,15 +83,27 @@ export class StateService {
 	}
 
 	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
-		const createEvent = await this.eventRepository.findByRoomIdAndType(
-			roomId,
-			'm.room.create',
+		const createEntry =
+			await this.stateRepository.findCreateEventByRoomId(roomId);
+		if (!createEntry) {
+			throw new Error(
+				'Create event not found for room version maybe event hasn;t been processed yet',
+			);
+		}
+
+		const createEvent = await this.eventRepository.findById(
+			createEntry.delta.eventId,
 		);
 		if (!createEvent) {
 			throw new Error('Create event not found for room version');
 		}
 
-		return createEvent.event.content?.room_version;
+		if (createEvent.event.type === 'm.room.create') {
+			return createEvent.event.content.room_version;
+		}
+
+		// should be unreachable
+		throw new Error('Create event content malformed for room version');
 	}
 
 	private logState(label: string, state: State) {
@@ -453,19 +465,17 @@ export class StateService {
 
 		const origin = this.configService.serverName;
 
-		const result = await signEvent(
+		const { signatures, unsigned, ...toSign } = event.redactedEvent;
+
+		const signature = await signJson(
 			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.
 			// ^^ is done already through redactedEvent fgetter
 			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server’s signing key (see also Retrieving server keys).
-			event.redactedEvent as any,
-			signingKey[0],
-			origin,
-			false, // already passed through redactedEvent, hash is already part of this
+			toSign,
+			signingKey,
 		);
 
-		const keyId = `${signingKey[0].algorithm}:${signingKey[0].version}`;
-
-		event.addSignature(origin, keyId, result.signatures[origin][keyId]);
+		event.addSignature(origin, signingKey.id, signature);
 
 		return event;
 	}

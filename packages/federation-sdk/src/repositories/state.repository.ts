@@ -34,6 +34,15 @@ export class StateRepository {
 		return this.collection.findOne({ _id: new ObjectId(stateId) });
 	}
 
+	async findCreateEventByRoomId(
+		roomId: string,
+	): Promise<WithId<StateStore> | null> {
+		return this.collection.findOne({
+			roomId,
+			'delta.identifier': 'm.room.create:',
+		});
+	}
+
 	async getLatestStateMapping(
 		roomId: string,
 	): Promise<WithId<StateStore> | null> {

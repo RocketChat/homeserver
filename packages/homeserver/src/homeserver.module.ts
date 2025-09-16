@@ -43,6 +43,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 	}
 
 	const config = new ConfigService({
+		signingKey: process.env.SIGNING_KEY || undefined,
 		instanceId: crypto.randomUUID(),
 		serverName: process.env.SERVER_NAME || 'rc1',
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
@@ -56,7 +57,6 @@ export async function setup(options?: HomeserverSetupOptions) {
 			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
 			10,
 		),
-		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
 		media: {
 			maxFileSize: process.env.MEDIA_MAX_FILE_SIZE
