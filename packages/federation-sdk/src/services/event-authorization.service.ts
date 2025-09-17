@@ -1,11 +1,28 @@
-import { createLogger, generateId } from '@hs/core';
-import type { EventBase } from '@hs/core';
-import { Pdu } from '@hs/room';
+import {
+	createLogger,
+	extractSignaturesFromHeader,
+	generateId,
+	getPublicKeyFromRemoteServer,
+	makeGetPublicKeyFromServerProcedure,
+	validateAuthorizationHeader,
+} from '@hs/core';
+import type { EventID, Pdu, PersistentEventBase } from '@hs/room';
 import { singleton } from 'tsyringe';
+import { KeyRepository } from '../repositories/key.repository';
+import { ConfigService } from './config.service';
+import { EventService } from './event.service';
+import { StateService } from './state.service';
 
 @singleton()
 export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
+
+	constructor(
+		private readonly stateService: StateService,
+		private readonly eventService: EventService,
+		private readonly configService: ConfigService,
+		private readonly keyRepository: KeyRepository,
+	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
 		this.logger.debug(
@@ -92,5 +109,253 @@ export class EventAuthorizationService {
 	private authorizeJoinRulesEvent(_event: Pdu, _authEvents: Pdu[]): boolean {
 		// TODO: Check sender has permission to change join rules
 		return true;
+	}
+
+	private async verifyRequestSignature(
+		method: string,
+		uri: string,
+		authorizationHeader: string,
+		body?: Record<string, unknown>,
+	): Promise<string | undefined> {
+		if (!authorizationHeader?.startsWith('X-Matrix')) {
+			this.logger.debug('Missing or invalid X-Matrix authorization header');
+			return;
+		}
+
+		try {
+			const { origin, destination, key, signature } =
+				extractSignaturesFromHeader(authorizationHeader);
+
+			if (
+				!origin ||
+				!key ||
+				!signature ||
+				(destination && destination !== this.configService.serverName)
+			) {
+				return;
+			}
+
+			const [algorithm] = key.split(':');
+			if (algorithm !== 'ed25519') {
+				return;
+			}
+
+			// TODO: move makeGetPublicKeyFromServerProcedure procedure to a proper service
+			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
+				(origin, keyId) =>
+					this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
+				(origin, key) =>
+					getPublicKeyFromRemoteServer(
+						origin,
+						this.configService.serverName,
+						key,
+					),
+				(origin, keyId, publicKey) =>
+					this.keyRepository.storePublicKey(origin, keyId, publicKey),
+			);
+			const publicKey = await getPublicKeyFromServer(origin, key);
+			if (!publicKey) {
+				this.logger.warn(`Could not fetch public key for ${origin}:${key}`);
+				return;
+			}
+
+			const actualDestination = destination || this.configService.serverName;
+			const isValid = await validateAuthorizationHeader(
+				origin,
+				publicKey,
+				actualDestination,
+				method,
+				uri,
+				signature,
+				body,
+			);
+			if (!isValid) {
+				this.logger.warn(`Invalid signature from ${origin}`);
+				return;
+			}
+
+			return origin;
+		} catch (error) {
+			this.logger.error(error, 'Error verifying request signature');
+			return;
+		}
+	}
+
+	private async canAccessEvent(
+		eventId: EventID,
+		serverName: string,
+	): Promise<boolean> {
+		try {
+			const event = await this.eventService.getEventById(eventId);
+			if (!event) {
+				this.logger.debug(`Event ${eventId} not found`);
+				return false;
+			}
+
+			const roomId = event.event.room_id;
+			const state = await this.stateService.getFullRoomState(roomId);
+
+			const aclEvent = state.get('m.room.server_acl:');
+			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
+			if (!isServerAllowed) {
+				this.logger.warn(
+					`Server ${serverName} is denied by room ACL for room ${roomId}`,
+				);
+				return false;
+			}
+
+			const serversInRoom = await this.stateService.getServersInRoom(roomId);
+			if (serversInRoom.includes(serverName)) {
+				this.logger.debug(`Server ${serverName} is in room, allowing access`);
+				return true;
+			}
+
+			const historyVisibilityEvent = state.get('m.room.history_visibility:');
+			if (
+				historyVisibilityEvent?.isHistoryVisibilityEvent() &&
+				historyVisibilityEvent.getContent().history_visibility ===
+					'world_readable'
+			) {
+				this.logger.debug(
+					`Event ${eventId} is world_readable, allowing ${serverName}`,
+				);
+				return true;
+			}
+
+			this.logger.debug(
+				`Server ${serverName} not authorized: not in room and event not world_readable`,
+			);
+			return false;
+		} catch (error) {
+			this.logger.error(
+				{ error, eventId, serverName },
+				'Error checking event access',
+			);
+			return false;
+		}
+	}
+
+	async canAccessEventFromAuthorizationHeader(
+		eventId: EventID,
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
+	): Promise<
+		| { authorized: true }
+		| {
+				authorized: false;
+				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
+		  }
+	> {
+		try {
+			const signatureResult = await this.verifyRequestSignature(
+				method,
+				uri,
+				authorizationHeader,
+				body, // keep body due to canonical json validation
+			);
+			if (!signatureResult) {
+				return {
+					authorized: false,
+					errorCode: 'M_UNAUTHORIZED',
+				};
+			}
+
+			const authorized = await this.canAccessEvent(eventId, signatureResult);
+			if (!authorized) {
+				return {
+					authorized: false,
+					errorCode: 'M_FORBIDDEN',
+				};
+			}
+
+			return {
+				authorized: true,
+			};
+		} catch (error) {
+			this.logger.error(
+				{ error, eventId, authorizationHeader, method, uri, body },
+				'Error checking event access',
+			);
+			return {
+				authorized: false,
+				errorCode: 'M_UNKNOWN',
+			};
+		}
+	}
+
+	// as per Matrix spec: https://spec.matrix.org/v1.15/client-server-api/#mroomserver_acl
+	private async checkServerAcl(
+		aclEvent: PersistentEventBase | undefined,
+		serverName: string,
+	): Promise<boolean> {
+		if (!aclEvent || !aclEvent.isServerAclEvent()) {
+			return true;
+		}
+
+		const serverAclContent = aclEvent.getContent();
+		const {
+			allow = [],
+			deny = [],
+			allow_ip_literals = true,
+		} = serverAclContent;
+
+		const isIpLiteral =
+			/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(serverName) ||
+			/^\[.*\](:\d+)?$/.test(serverName); // IPv6
+		if (isIpLiteral && !allow_ip_literals) {
+			this.logger.debug(`Server ${serverName} denied: IP literals not allowed`);
+			return false;
+		}
+
+		for (const pattern of deny) {
+			if (this.matchesServerPattern(serverName, pattern)) {
+				this.logger.debug(
+					`Server ${serverName} matches deny pattern: ${pattern}`,
+				);
+				return false;
+			}
+		}
+
+		// if allow list is empty, deny all servers (as per Matrix spec)
+		// empty allow list means no servers are allowed
+		if (allow.length === 0) {
+			this.logger.debug(`Server ${serverName} denied: allow list is empty`);
+			return false;
+		}
+
+		for (const pattern of allow) {
+			if (this.matchesServerPattern(serverName, pattern)) {
+				this.logger.debug(
+					`Server ${serverName} matches allow pattern: ${pattern}`,
+				);
+				return true;
+			}
+		}
+
+		this.logger.debug(`Server ${serverName} not in allow list`);
+		return false;
+	}
+
+	private matchesServerPattern(serverName: string, pattern: string): boolean {
+		if (serverName === pattern) {
+			return true;
+		}
+
+		let regexPattern = pattern
+			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+			.replace(/\*/g, '.*')
+			.replace(/\?/g, '.');
+
+		regexPattern = `^${regexPattern}$`;
+
+		try {
+			const regex = new RegExp(regexPattern);
+			return regex.test(serverName);
+		} catch (error) {
+			this.logger.warn(`Invalid ACL pattern: ${pattern}`, error);
+			return false;
+		}
 	}
 }

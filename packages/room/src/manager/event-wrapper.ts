@@ -183,6 +183,17 @@ export abstract class PersistentEventBase<
 		return this.isState() && this.type === 'm.room.create';
 	}
 
+	isServerAclEvent(): this is PersistentEventBase<T, 'm.room.server_acl'> {
+		return this.isState() && this.type === 'm.room.server_acl';
+	}
+
+	isHistoryVisibilityEvent(): this is PersistentEventBase<
+		T,
+		'm.room.history_visibility'
+	> {
+		return this.isState() && this.type === 'm.room.history_visibility';
+	}
+
 	isCanonicalAliasEvent(): this is PersistentEventBase<
 		T,
 		'm.room.canonical_alias'

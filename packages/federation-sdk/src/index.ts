@@ -3,6 +3,7 @@ import type { EventID } from '@hs/room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
+import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
@@ -52,7 +53,6 @@ export { StagingAreaService } from './services/staging-area.service';
 export { SendJoinService } from './services/send-join.service';
 export { EventEmitterService } from './services/event-emitter.service';
 export { MediaService } from './services/media.service';
-
 // Repository interfaces and implementations
 
 // Queue implementations
@@ -67,6 +67,7 @@ export {
 	roomV10Schemas,
 	type BaseEventType,
 } from './utils/event-schemas';
+export { errCodes } from './utils/response-codes';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
@@ -88,6 +89,7 @@ export interface HomeserverServices {
 	edu: EduService;
 	media: MediaService;
 	request: FederationRequestService;
+	federationAuth: EventAuthorizationService;
 }
 
 export type HomeserverEventSignatures = {
@@ -212,6 +214,7 @@ export function getAllServices(): HomeserverServices {
 		edu: container.resolve(EduService),
 		media: container.resolve(MediaService),
 		request: container.resolve(FederationRequestService),
+		federationAuth: container.resolve(EventAuthorizationService),
 	};
 }
 
