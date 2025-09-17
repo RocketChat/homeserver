@@ -360,6 +360,7 @@ export class EventAuthorizationService {
 		}
 	}
 
+	// TODO duplicated from canAccessEvent. need to refactor into a common method
 	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
 		try {
 			const rcRoomId =
@@ -421,6 +422,7 @@ export class EventAuthorizationService {
 		}
 	}
 
+	// TODO duplicated from canAccessEventFromAuthorizationHeader. need to refactor into a common method
 	async canAccessMediaFromAuthorizationHeader(
 		mediaId: string,
 		authorizationHeader: string,
