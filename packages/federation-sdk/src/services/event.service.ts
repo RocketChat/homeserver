@@ -352,7 +352,9 @@ export class EventService {
 			'verifier required for pdu validation',
 		);
 
-		this.cachedVerifierKey.set(requiredVerifier.key.id, requiredVerifier);
+		const cacheKey = `${pdu.roomId}:${requiredVerifier.key.id}` as const;
+
+		this.cachedVerifierKey.set(cacheKey, requiredVerifier);
 
 		await this.signatureVerificationService.verifyEventSignature(
 			pdu,
