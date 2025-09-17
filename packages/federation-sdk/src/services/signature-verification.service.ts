@@ -32,9 +32,7 @@ export type FederationRequest<Content extends object> =
 
 // Signature verification service, wihtout dependency on anything just implements the parts of spec that validates json signatures, from requyests and events
 export class SignatureVerificationService {
-	private get logger() {
-		return createLogger('SignatureVerificationService');
-	}
+	private readonly logger = createLogger('SignatureVerificationService');
 
 	/**
 	 * Implements part of SPEC: https://spec.matrix.org/v1.12/server-server-api/#validating-hashes-and-signatures-on-received-events
