@@ -100,7 +100,6 @@ export async function createFederationContainer(
 	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton('EventFetcherService', EventFetcherService);
 	container.registerSingleton(EventService);
-	container.registerSingleton(EventAuthorizationService);
 	container.registerSingleton(EventEmitterService);
 	container.registerSingleton(InviteService);
 	container.registerSingleton(MediaService);
