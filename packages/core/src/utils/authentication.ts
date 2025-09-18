@@ -85,18 +85,24 @@ export const validateAuthorizationHeader = async <T extends object>(
 		destination,
 		...(content && { content }),
 	});
+
 	const signature = Uint8Array.from(atob(hash as string), (c) =>
 		c.charCodeAt(0),
 	);
+	const signingKeyBytes = Uint8Array.from(atob(signingKey as string), (c) =>
+		c.charCodeAt(0),
+	);
+	const messageBytes = new TextEncoder().encode(canonicalJson);
+	const isValid = nacl.sign.detached.verify(
+		messageBytes,
+		signature,
+		signingKeyBytes,
+	);
 
-	if (
-		!nacl.sign.detached.verify(
-			new TextEncoder().encode(canonicalJson),
-			signature,
-			Uint8Array.from(atob(signingKey as string), (c) => c.charCodeAt(0)),
-		)
-	) {
-		throw new Error(`Invalid signature for ${destination}`);
+	if (!isValid) {
+		throw new Error(
+			`Invalid signature from ${origin} for request to ${destination}`,
+		);
 	}
 
 	return true;

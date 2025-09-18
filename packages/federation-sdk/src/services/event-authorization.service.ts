@@ -9,6 +9,8 @@ import {
 import type { EventID, Pdu, PersistentEventBase } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
+import { MatrixBridgedRoomRepository } from '../repositories/matrix-bridged-room.repository';
+import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { StateService } from './state.service';
@@ -21,6 +23,8 @@ export class EventAuthorizationService {
 		private readonly stateService: StateService,
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
+		private readonly uploadRepository: UploadRepository,
+		private readonly matrixBridgedRoomRepository: MatrixBridgedRoomRepository,
 		private readonly keyRepository: KeyRepository,
 	) {}
 
@@ -226,11 +230,8 @@ export class EventAuthorizationService {
 				`Server ${serverName} not authorized: not in room and event not world_readable`,
 			);
 			return false;
-		} catch (error) {
-			this.logger.error(
-				{ error, eventId, serverName },
-				'Error checking event access',
-			);
+		} catch (err) {
+			this.logger.error('Error checking event access', err);
 			return false;
 		}
 	}
@@ -356,6 +357,119 @@ export class EventAuthorizationService {
 		} catch (error) {
 			this.logger.warn(`Invalid ACL pattern: ${pattern}`, error);
 			return false;
+		}
+	}
+
+	// TODO duplicated from canAccessEvent. need to refactor into a common method
+	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
+		try {
+			const rcRoomId =
+				await this.uploadRepository.findRocketChatRoomIdByMediaId(mediaId);
+			if (!rcRoomId) {
+				this.logger.debug(`Media ${mediaId} not found in any room`);
+				return false;
+			}
+
+			const matrixRoomId =
+				await this.matrixBridgedRoomRepository.findMatrixRoomId(rcRoomId);
+			if (!matrixRoomId) {
+				this.logger.debug(`Media ${mediaId} not found in any room`);
+				return false;
+			}
+
+			const state = await this.stateService.getFullRoomState(matrixRoomId);
+
+			const aclEvent = state.get('m.room.server_acl:');
+			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
+			if (!isServerAllowed) {
+				this.logger.warn(
+					`Server ${serverName} is denied by room ACL for media in room ${matrixRoomId}`,
+				);
+				return false;
+			}
+
+			const serversInRoom =
+				await this.stateService.getServersInRoom(matrixRoomId);
+			if (serversInRoom.includes(serverName)) {
+				this.logger.debug(
+					`Server ${serverName} is in room ${matrixRoomId}, allowing media access`,
+				);
+				return true;
+			}
+
+			const historyVisibilityEvent = state.get('m.room.history_visibility:');
+			if (
+				historyVisibilityEvent?.isHistoryVisibilityEvent() &&
+				historyVisibilityEvent.getContent().history_visibility ===
+					'world_readable'
+			) {
+				this.logger.debug(
+					`Room ${matrixRoomId} is world_readable, allowing media access to ${serverName}`,
+				);
+				return true;
+			}
+
+			this.logger.debug(
+				`Server ${serverName} not authorized for media ${mediaId}: not in room and room not world_readable`,
+			);
+			return false;
+		} catch (error) {
+			this.logger.error(
+				{ error, mediaId, serverName },
+				'Error checking media access',
+			);
+			return false;
+		}
+	}
+
+	// TODO duplicated from canAccessEventFromAuthorizationHeader. need to refactor into a common method
+	async canAccessMediaFromAuthorizationHeader(
+		mediaId: string,
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
+	): Promise<
+		| { authorized: true }
+		| {
+				authorized: false;
+				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
+		  }
+	> {
+		try {
+			const signatureResult = await this.verifyRequestSignature(
+				method,
+				uri,
+				authorizationHeader,
+				body,
+			);
+			if (!signatureResult) {
+				return {
+					authorized: false,
+					errorCode: 'M_UNAUTHORIZED',
+				};
+			}
+
+			const authorized = await this.canAccessMedia(mediaId, signatureResult);
+			if (!authorized) {
+				return {
+					authorized: false,
+					errorCode: 'M_FORBIDDEN',
+				};
+			}
+
+			return {
+				authorized: true,
+			};
+		} catch (error) {
+			this.logger.error(
+				{ error, mediaId, authorizationHeader, method, uri },
+				'Error checking media access',
+			);
+			return {
+				authorized: false,
+				errorCode: 'M_UNKNOWN',
+			};
 		}
 	}
 }
