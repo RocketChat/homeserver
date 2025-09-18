@@ -212,11 +212,18 @@ export class MessageService {
 					body: rawMessage,
 					format: 'org.matrix.custom.html',
 					formatted_body: formattedMessage,
-					'm.relates_to': {
-						rel_type: 'm.thread',
-						event_id: threadRootEventId,
-						...(latestThreadEventId && { is_falling_back_thread_reply: true }),
-					},
+					'm.relates_to': !latestThreadEventId
+						? {
+								rel_type: 'm.thread',
+								event_id: threadRootEventId,
+								is_falling_back: true,
+							}
+						: {
+								rel_type: 'm.thread',
+								event_id: threadRootEventId,
+								is_falling_back: true,
+								'm.in_reply_to': { event_id: latestThreadEventId },
+							},
 				},
 				room_id: roomId,
 				auth_events: [],
