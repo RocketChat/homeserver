@@ -1194,21 +1194,8 @@ export class RoomService {
 
 		const stateService = this.stateService;
 
-		const roomCreateEvent = PersistentEventFactory.newEvent<'m.room.create'>(
-			{
-				type: 'm.room.create',
-				content: {
-					room_version: PersistentEventFactory.defaultRoomVersion,
-					creator: creatorUserId,
-				},
-				room_id: '',
-				state_key: '',
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: creatorUserId,
-			},
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+			creatorUserId,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
