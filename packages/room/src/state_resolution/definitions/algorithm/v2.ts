@@ -72,6 +72,7 @@ import {
 	partitionState,
 	reverseTopologicalPowerSort,
 } from '../definitions';
+import { PowerLevelEvent } from '@hs/room/manager/power-level-event-wrapper';
 
 export const isTruthy = <T>(
 	value: T | null | undefined | false | 0 | '',
@@ -268,9 +269,7 @@ export async function resolveStateV2Plus(
 
 	const powerLevelEvent = partiallyResolvedState.get(
 		getStateMapKey({ type: 'm.room.power_levels' }),
-	);
-
-	assert(powerLevelEvent, 'power level event should not be null');
+	) ?? (new PowerLevelEvent()).toEventBase();
 
 	// mainline ordering essentially sorts the rest of the events
 	// by their place in the history of the room's power levels.
