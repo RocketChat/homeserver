@@ -1,5 +1,9 @@
 import { EventBase, HttpException, HttpStatus } from '@hs/core';
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
+import {
+	PersistentEventBase,
+	PersistentEventFactory,
+	RoomVersion,
+} from '@hs/room';
 import { singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
@@ -122,11 +126,7 @@ export class InviteService {
 	}
 
 	async processInvite<
-		T extends Omit<EventBase, 'origin'> & {
-			origin?: string | undefined;
-			room_id: string;
-			state_key: string;
-		},
+		T extends PersistentEventBase<RoomVersion, 'm.room.member'>,
 	>(event: T, roomId: string, eventId: string, roomVersion: RoomVersion) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 
@@ -135,12 +135,13 @@ export class InviteService {
 			throw new Error(`Invalid roomId ${roomId}`);
 		}
 
-		const inviteEvent = PersistentEventFactory.createFromRawEvent(
-			event as unknown as Parameters<
-				typeof PersistentEventFactory.createFromRawEvent
-			>[0],
-			roomVersion,
-		);
+		const inviteEvent =
+			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				event as unknown as Parameters<
+					typeof PersistentEventFactory.createFromRawEvent
+				>[0],
+				roomVersion,
+			);
 
 		if (inviteEvent.eventId !== eventId) {
 			throw new Error(`Invalid eventId ${eventId}`);
