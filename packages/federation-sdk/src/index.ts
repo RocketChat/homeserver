@@ -144,6 +144,33 @@ export type HomeserverEventSignatures = {
 				'm.mentions'?: Record<string, string>;
 			};
 			formatted_body?: string;
+			info?: {
+				mimetype?: string;
+				w?: number;
+				h?: number;
+				size?: number;
+				thumbnail_file?: {
+					hashes: {
+						sha256: string;
+					};
+					iv: string;
+					key: {
+						alg: string;
+						ext: boolean;
+						k: string;
+						key_ops: ['encrypt' | 'decrypt'];
+						kty: string;
+					};
+					url: string;
+					v: 'v2';
+				};
+				thumbnail_info?: {
+					w?: number;
+					h?: number;
+					size?: number;
+					mimetype?: string;
+				};
+			};
 		};
 	};
 	'homeserver.matrix.accept-invite': {
