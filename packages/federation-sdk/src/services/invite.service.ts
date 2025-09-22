@@ -1,5 +1,6 @@
 import { EventBase, HttpException, HttpStatus } from '@hs/core';
 import {
+	PduForType,
 	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
@@ -125,9 +126,12 @@ export class InviteService {
 		};
 	}
 
-	async processInvite<
-		T extends PersistentEventBase<RoomVersion, 'm.room.member'>,
-	>(event: T, roomId: string, eventId: string, roomVersion: RoomVersion) {
+	async processInvite(
+		event: PduForType<'m.room.member'>,
+		roomId: string,
+		eventId: string,
+		roomVersion: RoomVersion,
+	) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 
 		const residentServer = roomId.split(':').pop();
@@ -137,9 +141,7 @@ export class InviteService {
 
 		const inviteEvent =
 			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
-				event as unknown as Parameters<
-					typeof PersistentEventFactory.createFromRawEvent
-				>[0],
+				event,
 				roomVersion,
 			);
 
