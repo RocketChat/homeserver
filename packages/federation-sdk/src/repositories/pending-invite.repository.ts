@@ -5,6 +5,7 @@ import { inject, singleton } from 'tsyringe';
 export type PendingInvite = {
 	event: Pdu;
 	_id: EventID;
+	createdAt: Date;
 };
 
 @singleton()
@@ -18,6 +19,7 @@ export class PendingInviteRepository {
 		await this.collection.insertOne({
 			_id: eventId,
 			event,
+			createdAt: new Date(),
 		});
 	}
 
