@@ -26,6 +26,8 @@ export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
 
 export interface EventStagingStore extends PersistentEventBase {
 	roomId: string;
+
+	pendingInvite: boolean;
 }
 
 export interface FetchedEvents {

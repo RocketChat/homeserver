@@ -16,6 +16,10 @@ import {
 	MatrixBridgedRoom,
 	MatrixBridgedRoomRepository,
 } from './repositories/matrix-bridged-room.repository';
+import {
+	PendingInvite,
+	PendingInviteRepository,
+} from './repositories/pending-invite.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
 import { StateRepository, StateStore } from './repositories/state.repository';
@@ -104,6 +108,12 @@ export async function createFederationContainer(
 		},
 	);
 
+	container.register<Collection<PendingInvite>>('PendingInviteCollection', {
+		useValue: db.collection<PendingInvite>(
+			'rocketchat_federation_pending_invites',
+		),
+	});
+
 	container.registerSingleton(EventRepository);
 	container.registerSingleton(EventStagingRepository);
 	container.registerSingleton(KeyRepository);
@@ -117,6 +127,7 @@ export async function createFederationContainer(
 	container.registerSingleton(FederationRequestService);
 	container.registerSingleton(FederationService);
 	container.registerSingleton(StateService);
+	container.registerSingleton(PendingInviteRepository);
 	container.registerSingleton(EventService);
 	container.registerSingleton(EventFetcherService);
 	container.registerSingleton(EventAuthorizationService);

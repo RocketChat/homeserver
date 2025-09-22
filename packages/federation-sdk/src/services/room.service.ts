@@ -989,6 +989,11 @@ export class RoomService {
 			throw new Error(joinEventFinal.rejectedReason);
 		}
 
+		await this.eventService.removePendingInvite(
+			joinEventFinal.eventId,
+			joinEventFinal.roomId,
+		);
+
 		return joinEventFinal.eventId;
 	}
 

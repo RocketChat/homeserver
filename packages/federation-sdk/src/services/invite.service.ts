@@ -1,10 +1,5 @@
 import { EventBase, HttpException, HttpStatus } from '@hs/core';
-import {
-	PduForType,
-	PersistentEventBase,
-	PersistentEventFactory,
-	RoomVersion,
-} from '@hs/room';
+import { PduForType, PersistentEventFactory, RoomVersion } from '@hs/room';
 import { singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
@@ -70,7 +65,7 @@ export class InviteService {
 				sender: sender,
 			},
 
-			roomInformation.room_version,
+			roomInformation.room_version as RoomVersion,
 		);
 
 		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
@@ -113,7 +108,7 @@ export class InviteService {
 		await stateService.persistStateEvent(
 			PersistentEventFactory.createFromRawEvent(
 				inviteResponse.event,
-				roomInformation.room_version,
+				roomInformation.room_version as RoomVersion,
 			),
 		);
 
@@ -185,7 +180,11 @@ export class InviteService {
 		}
 
 		// we are not the host of the server
-		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
+		// nor are we part of the room now.
+
+		await this.eventService.addPendingInvite(inviteEvent);
+
+		// being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
 		return inviteEvent;
 	}
 }

@@ -22,6 +22,7 @@ import {
 	type Pdu,
 	type PduForType,
 	type PduType,
+	PersistentEventBase,
 	PersistentEventFactory,
 	getAuthChain,
 } from '@hs/room';
@@ -32,6 +33,7 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
 import { LockRepository } from '../repositories/lock.repository';
+import { PendingInviteRepository } from '../repositories/pending-invite.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -59,6 +61,8 @@ export class EventService {
 		private readonly stateService: StateService,
 
 		private readonly eventEmitterService: EventEmitterService,
+
+		private readonly pendingInviteRepository: PendingInviteRepository,
 	) {
 		// on startup we look for old staged events and try to process them
 		setTimeout(() => {
@@ -196,8 +200,22 @@ export class EventService {
 						continue;
 					}
 
+					const pendingInvite = await this.isSenderInvitePending(
+						event.sender,
+						event.room_id,
+					);
+
 					// save the event as staged to be processed
-					await this.eventStagingRepository.create(eventId, origin, event);
+					await this.eventStagingRepository.create(
+						eventId,
+						origin,
+						event,
+						pendingInvite,
+					);
+
+					if (pendingInvite) {
+						continue;
+					}
 
 					// acquire a lock for processing the event
 					const lock = await this.lockRepository.getLock(
@@ -805,5 +823,38 @@ export class EventService {
 			this.logger.error(`Failed to get state for room ${roomId}:`, error);
 			throw error;
 		}
+	}
+
+	async addPendingInvite(event: PersistentEventBase): Promise<void> {
+		await this.pendingInviteRepository.add(event.eventId, event.event as Pdu);
+	}
+
+	async removePendingInvite(eventId: EventID, roomId: string): Promise<void> {
+		await Promise.all([
+			this.pendingInviteRepository.remove(eventId),
+			this.eventStagingRepository.unmarkInvitePending(eventId),
+		]);
+
+		// acquire a lock for processing the event
+		const lock = await this.lockRepository.getLock(
+			roomId,
+			this.configService.instanceId,
+		);
+		if (!lock) {
+			this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
+			return;
+		}
+
+		// TODO change this to call stagingAreaService directly
+		this.stagingAreaQueue.enqueue(roomId);
+	}
+
+	async isSenderInvitePending(sender: string, roomId: string) {
+		const invite = await this.pendingInviteRepository.findByUserIdAndRoomId(
+			sender,
+			roomId,
+		);
+
+		return !!invite;
 	}
 }
