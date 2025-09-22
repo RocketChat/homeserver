@@ -1,8 +1,8 @@
 import type { EventBase, EventStagingStore, Membership } from '@hs/core';
 import { singleton } from 'tsyringe';
 
-import { createLogger, isRedactedEvent } from '@hs/core';
-import { Pdu, PduPowerLevelsEventContent } from '@hs/room';
+import { MessageType, createLogger, isRedactedEvent } from '@hs/core';
+import { PduPowerLevelsEventContent } from '@hs/room';
 import type { EventID } from '@hs/room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -148,14 +148,24 @@ export class StagingAreaService {
 					content: {
 						...event.event.content,
 						body: event.event.content?.body as string,
-						msgtype: event.event.content?.msgtype as string,
-						'm.relates_to': event.event.content?.['m.relates_to'] as {
-							rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
-							event_id: EventID;
-						},
+						msgtype: event.event.content?.msgtype as MessageType,
+						'm.relates_to': event.event.content?.['m.relates_to'] as
+							| {
+									rel_type: 'm.replace';
+									event_id: EventID;
+							  }
+							| {
+									rel_type: 'm.annotation';
+									event_id: EventID;
+									key: string;
+							  }
+							| {
+									rel_type: 'm.thread';
+									event_id: EventID;
+							  },
 						'm.new_content': event.event.content?.['m.new_content'] as {
 							body: string;
-							msgtype: string;
+							msgtype: MessageType;
 						},
 						formatted_body: (event.event.content?.formatted_body ||
 							'') as string,

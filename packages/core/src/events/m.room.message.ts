@@ -76,9 +76,14 @@ declare module './eventBase' {
 export type MessageRelation = {
 	rel_type: RelationType;
 	event_id: EventID;
-} & (RelationTypeReplace | Record<string, never>);
+} & (
+	| RelationTypeReplace
+	| RelationTypeAnnotation
+	| RelationTypeThread
+	| Record<string, never>
+);
 
-export type RelationType = 'm.replace' | 'm.annotation';
+export type RelationType = 'm.replace' | 'm.annotation' | 'm.thread';
 
 export type RelationTypeReplace = {
 	rel_type: 'm.replace';
@@ -89,6 +94,24 @@ export type RelationTypeReplace = {
 		format?: string;
 		formatted_body?: string;
 	};
+};
+
+export type RelationTypeAnnotation = {
+	rel_type: 'm.annotation';
+	event_id: EventID;
+	key: string;
+};
+
+export type RelationTypeThread = {
+	rel_type: 'm.thread';
+	event_id: EventID;
+	'm.in_reply_to'?: {
+		event_id: EventID;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+	};
+	is_falling_back?: boolean;
 };
 
 export type MessageAuthEvents = {

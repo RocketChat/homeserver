@@ -1,4 +1,4 @@
-import type { Membership } from '@hs/core';
+import type { Membership, MessageType } from '@hs/core';
 import type { EventID } from '@hs/room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
@@ -115,23 +115,62 @@ export type HomeserverEventSignatures = {
 		origin_server_ts: number;
 		content: {
 			body: string;
-			msgtype: string;
-			'm.relates_to'?: {
-				rel_type: 'm.replace' | 'm.annotation' | 'm.thread';
-				event_id: EventID;
-				'm.in_reply_to'?: {
-					event_id: EventID;
-					room_id: string;
-					sender: string;
-					origin_server_ts: number;
-				};
-			};
+			msgtype: MessageType;
+			url?: string;
+			'm.relates_to'?:
+				| {
+						rel_type: 'm.replace';
+						event_id: EventID;
+				  }
+				| {
+						rel_type: 'm.annotation';
+						event_id: EventID;
+						key: string;
+				  }
+				| {
+						rel_type: 'm.thread';
+						event_id: EventID;
+						'm.in_reply_to'?: {
+							event_id: EventID;
+							room_id: string;
+							sender: string;
+							origin_server_ts: number;
+						};
+						is_falling_back?: boolean;
+				  };
 			'm.new_content'?: {
 				body: string;
-				msgtype: string;
+				msgtype: MessageType;
 				'm.mentions'?: Record<string, string>;
 			};
 			formatted_body?: string;
+			info?: {
+				mimetype?: string;
+				w?: number;
+				h?: number;
+				size?: number;
+				thumbnail_file?: {
+					hashes: {
+						sha256: string;
+					};
+					iv: string;
+					key: {
+						alg: string;
+						ext: boolean;
+						k: string;
+						key_ops: ['encrypt' | 'decrypt'];
+						kty: string;
+					};
+					url: string;
+					v: 'v2';
+				};
+				thumbnail_info?: {
+					w?: number;
+					h?: number;
+					size?: number;
+					mimetype?: string;
+				};
+			};
 		};
 	};
 	'homeserver.matrix.accept-invite': {
