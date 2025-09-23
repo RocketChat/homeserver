@@ -1,6 +1,6 @@
 {
 	"name": "@rocket.chat/federation-sdk",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Matrix Federation SDK for server-to-server communication",
 	"main": "./dist/bundle.js",
 	"types": "./dist/index.d.ts",
@@ -26,6 +26,7 @@
 		"tweetnacl": "^1.0.3",
 		"zod": "^3.22.4"
 	},
+	"license": "SEE LICENSE IN LICENSE",
 	"files": ["dist"],
 	"peerDependencies": {
 		"typescript": "~5.9.2"
