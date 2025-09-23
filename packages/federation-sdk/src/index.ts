@@ -16,6 +16,20 @@ import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 
+export type {
+	PduMembershipEventContent,
+	PersistentEventBase,
+	RoomVersion,
+	EventID,
+} from '@hs/room';
+export type {
+	FileMessageType,
+	PresenceState,
+	FileMessageContent,
+	MessageType,
+	Membership,
+} from '@hs/core';
+
 export { FederationEndpoints } from './specs/federation-api';
 export type {
 	MakeJoinResponse,

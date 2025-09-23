@@ -1,4 +1,4 @@
-import { ServerService } from '@hs/federation-sdk';
+import { ServerService } from '@rocket.chat/federation-sdk';
 import type { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { ServerKeyResponseDto } from '../../dtos';

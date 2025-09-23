@@ -1,7 +1,5 @@
-import { InviteService } from '@hs/federation-sdk';
-import { StateService } from '@hs/federation-sdk';
 import { PersistentEventFactory } from '@hs/room';
-import type { PduCreateEventContent } from '@hs/room';
+import { InviteService, StateService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';

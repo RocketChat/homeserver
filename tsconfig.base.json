@@ -43,7 +43,7 @@
 			"@hs/crypto/*": [
 				"packages/crypto/src/*"
 			],
-			"@hs/federation-sdk/*": [
+			"@rocket.chat/federation-sdk/*": [
 				"packages/federation-sdk/src/*"
 			],
 			"@hs/homeserver/*": [

@@ -1,4 +1,4 @@
-import { ConfigService } from '@hs/federation-sdk';
+import { ConfigService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { GetVersionsResponseDto } from '../../dtos';

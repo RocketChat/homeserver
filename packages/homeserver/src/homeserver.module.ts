@@ -8,7 +8,7 @@ import {
 	type FederationContainerOptions,
 	type HomeserverEventSignatures,
 	createFederationContainer,
-} from '@hs/federation-sdk';
+} from '@rocket.chat/federation-sdk';
 import * as dotenv from 'dotenv';
 
 import { swagger } from '@elysiajs/swagger';

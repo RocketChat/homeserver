@@ -1,4 +1,4 @@
-import { InviteService } from '@hs/federation-sdk';
+import { InviteService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { ProcessInviteParamsDto, RoomVersionDto } from '../../dtos';

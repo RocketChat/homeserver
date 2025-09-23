@@ -1,5 +1,5 @@
-import { SendJoinService } from '@hs/federation-sdk';
 import type { EventID } from '@hs/room';
+import { SendJoinService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {

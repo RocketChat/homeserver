@@ -1,6 +1,6 @@
-import type { EventAuthorizationService } from '@hs/federation-sdk';
-import { errCodes } from '@hs/federation-sdk';
 import type { EventID } from '@hs/room';
+import type { EventAuthorizationService } from '@rocket.chat/federation-sdk';
+import { errCodes } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';
 
 export const canAccessEvent = (federationAuth: EventAuthorizationService) => {
