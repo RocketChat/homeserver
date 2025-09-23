@@ -1,4 +1,8 @@
-import { EventBase, HttpException, HttpStatus } from '@hs/core';
+import {
+	EventBase,
+	HttpException,
+	HttpStatus,
+} from '@rocket.chat/federation-core';
 import {
 	PduForType,
 	PersistentEventBase,

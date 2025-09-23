@@ -1,4 +1,7 @@
-import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
+import {
+	type RoomMemberEvent,
+	isRoomMemberEvent,
+} from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PduMembershipEventContent,

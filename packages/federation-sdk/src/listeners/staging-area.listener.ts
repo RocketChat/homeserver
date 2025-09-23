@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { StagingAreaService } from '../services/staging-area.service';

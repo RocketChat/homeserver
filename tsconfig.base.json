@@ -37,7 +37,7 @@
 		// Monorepo configuration
 		"baseUrl": ".",
 		"paths": {
-			"@hs/core/*": [
+			"@rocket.chat/federation-core/*": [
 				"packages/core/src/*"
 			],
 			"@rocket.chat/federation-crypto/*": [

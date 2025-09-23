@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';

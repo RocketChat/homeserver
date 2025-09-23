@@ -1,4 +1,4 @@
-import { logger } from '@hs/core';
+import { logger } from '@rocket.chat/federation-core';
 
 export type QueueHandler<T> = (item: T) => Promise<void> | void;
 

@@ -1,4 +1,4 @@
-import type { Membership, MessageType } from '@hs/core';
+import type { Membership, MessageType } from '@rocket.chat/federation-core';
 import type { EventID } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
@@ -28,7 +28,7 @@ export type {
 	FileMessageContent,
 	MessageType,
 	Membership,
-} from '@hs/core';
+} from '@rocket.chat/federation-core';
 
 export { FederationEndpoints } from './specs/federation-api';
 export type {

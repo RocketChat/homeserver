@@ -1,7 +1,10 @@
 import 'reflect-metadata';
 
-import type { EventStagingStore, EventStore } from '@hs/core';
 import type { Emitter } from '@rocket.chat/emitter';
+import type {
+	EventStagingStore,
+	EventStore,
+} from '@rocket.chat/federation-core';
 import type { Collection, WithId } from 'mongodb';
 import { container } from 'tsyringe';
 

@@ -4,8 +4,8 @@ import {
 	type EventStore,
 	IncompatibleRoomVersionError,
 	NotFoundError,
-} from '@hs/core';
-import type { AuthEvents } from '@hs/core';
+} from '@rocket.chat/federation-core';
+import type { AuthEvents } from '@rocket.chat/federation-core';
 import { makeJoinEventBuilder } from './makeJoin';
 
 describe('makeJoinEventBuilder', () => {

@@ -2,17 +2,17 @@ import {
 	type MessageAuthEvents,
 	type RoomMessageEvent,
 	roomMessageEvent,
-} from '@hs/core';
-import { type SignedEvent } from '@hs/core';
+} from '@rocket.chat/federation-core';
+import { type SignedEvent } from '@rocket.chat/federation-core';
 
-import { ForbiddenError } from '@hs/core';
+import { ForbiddenError } from '@rocket.chat/federation-core';
 import {
 	type RedactionAuthEvents,
 	type RedactionEvent,
 	redactionEvent,
-} from '@hs/core';
-import { createLogger } from '@hs/core';
-import { signEvent } from '@hs/core';
+} from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
+import { signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PersistentEventBase,

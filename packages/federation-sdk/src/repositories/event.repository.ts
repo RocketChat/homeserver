@@ -1,5 +1,5 @@
-import { generateId } from '@hs/core';
-import type { EventBase, EventStore } from '@hs/core';
+import { generateId } from '@rocket.chat/federation-core';
+import type { EventBase, EventStore } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	Pdu,

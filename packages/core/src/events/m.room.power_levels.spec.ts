@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { generateId } from '@hs/core';
+import { generateId } from '@rocket.chat/federation-core';
 import type { SignedEvent } from '../types';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';

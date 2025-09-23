@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 

@@ -1,4 +1,4 @@
-import { signEvent } from '@hs/core';
+import { signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PduContent,

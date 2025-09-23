@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 
 import { EventID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';

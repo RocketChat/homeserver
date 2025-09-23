@@ -1,4 +1,4 @@
-import type { EventBase } from '@hs/core';
+import type { EventBase } from '@rocket.chat/federation-core';
 import type { EventID } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';

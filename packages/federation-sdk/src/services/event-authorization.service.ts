@@ -5,7 +5,7 @@ import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
 	validateAuthorizationHeader,
-} from '@hs/core';
+} from '@rocket.chat/federation-core';
 import type {
 	EventID,
 	Pdu,

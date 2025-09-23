@@ -1,4 +1,8 @@
-import { type SigningKey, signJson, toUnpaddedBase64 } from '@hs/core';
+import {
+	type SigningKey,
+	signJson,
+	toUnpaddedBase64,
+} from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { ServerRepository } from '../repositories/server.repository';
 import { ConfigService } from './config.service';

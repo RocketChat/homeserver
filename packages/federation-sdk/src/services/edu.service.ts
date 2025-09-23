@@ -1,6 +1,9 @@
-import type { PresenceUpdate } from '@hs/core';
-import { createPresenceEDU, createTypingEDU } from '@hs/core';
-import { createLogger } from '@hs/core';
+import type { PresenceUpdate } from '@rocket.chat/federation-core';
+import {
+	createPresenceEDU,
+	createTypingEDU,
+} from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';

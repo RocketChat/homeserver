@@ -1,4 +1,4 @@
-import type { FetchResponse, SigningKey } from '@hs/core';
+import type { FetchResponse, SigningKey } from '@rocket.chat/federation-core';
 import {
 	EncryptionValidAlgorithm,
 	authorizationHeaders,
@@ -7,7 +7,7 @@ import {
 	extractURIfromURL,
 	fetch,
 	signJson,
-} from '@hs/core';
+} from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';

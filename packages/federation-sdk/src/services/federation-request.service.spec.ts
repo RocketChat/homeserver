@@ -8,7 +8,7 @@ import {
 	mock,
 	spyOn,
 } from 'bun:test';
-import * as core from '@hs/core';
+import * as core from '@rocket.chat/federation-core';
 import * as nacl from 'tweetnacl';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
@@ -37,13 +37,13 @@ describe('FederationRequestService', async () => {
 		'../server-discovery/discovery'
 	);
 
-	const { fetch: originalFetch } = await import('@hs/core');
+	const { fetch: originalFetch } = await import('@rocket.chat/federation-core');
 
 	await mock.module('../server-discovery/discovery', () => ({
 		getHomeserverFinalAddress: () => mockDiscoveryResult,
 	}));
 
-	await mock.module('@hs/core', () => ({
+	await mock.module('@rocket.chat/federation-core', () => ({
 		fetch: async (_url: string, _options?: RequestInit) => {
 			return {
 				ok: true,
@@ -60,7 +60,7 @@ describe('FederationRequestService', async () => {
 		mock.module('../server-discovery/discovery', () => ({
 			getHomeserverFinalAddress,
 		}));
-		mock.module('@hs/core', () => ({
+		mock.module('@rocket.chat/federation-core', () => ({
 			fetch: originalFetch,
 		}));
 	});
