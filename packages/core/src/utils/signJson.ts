@@ -1,4 +1,4 @@
-import { encodeCanonicalJson as encodeCanonicalJsonCrypto } from '@hs/crypto';
+import { encodeCanonicalJson as encodeCanonicalJsonCrypto } from '@rocket.chat/federation-crypto';
 import nacl from 'tweetnacl';
 import type { SigningKey } from '../types';
 import { EncryptionValidAlgorithm } from '../types';

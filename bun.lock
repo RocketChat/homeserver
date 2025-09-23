@@ -29,7 +29,7 @@
       "name": "@hs/core",
       "version": "1.0.50",
       "dependencies": {
-        "@hs/crypto": "workspace:*",
+        "@rocket.chat/federation-crypto": "workspace:*",
         "@rocket.chat/federation-room": "workspace:*",
       },
       "devDependencies": {
@@ -40,7 +40,7 @@
       },
     },
     "packages/crypto": {
-      "name": "@hs/crypto",
+      "name": "@rocket.chat/federation-crypto",
       "version": "0.0.1",
       "dependencies": {
         "@noble/ed25519": "^3.0.0",
@@ -90,7 +90,7 @@
       "version": "1.0.50",
       "dependencies": {
         "@datastructures-js/priority-queue": "^6.3.3",
-        "@hs/crypto": "workspace:*",
+        "@rocket.chat/federation-crypto": "workspace:*",
         "zod": "^3.22.4",
       },
       "devDependencies": {
@@ -131,8 +131,6 @@
 
     "@hs/core": ["@hs/core@workspace:packages/core"],
 
-    "@hs/crypto": ["@hs/crypto@workspace:packages/crypto"],
-
     "@hs/homeserver": ["@hs/homeserver@workspace:packages/homeserver"],
 
     "@jridgewell/resolve-uri": ["@jridgewell/resolve-uri@3.1.2", "", {}, "sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw=="],
@@ -146,6 +144,8 @@
     "@noble/ed25519": ["@noble/ed25519@3.0.0", "", {}, "sha512-QyteqMNm0GLqfa5SoYbSC3+Pvykwpn95Zgth4MFVSMKBB75ELl9tX1LAVsN4c3HXOrakHsF2gL4zWDAYCcsnzg=="],
 
     "@rocket.chat/emitter": ["@rocket.chat/emitter@0.31.25", "", {}, "sha512-hw5BpDlNwpYSb+K5X3DNMNUVEVXxmXugUPetGZGCWvntSVFsOjYuVEypoKW6vBBXSfqCBb0kN1npYcKEb4NFBw=="],
+
+    "@rocket.chat/federation-crypto": ["@rocket.chat/federation-crypto@workspace:packages/crypto"],
 
     "@rocket.chat/federation-room": ["@rocket.chat/federation-room@workspace:packages/room"],
 

@@ -17,7 +17,7 @@
 	},
 	"files": ["./src", "./dist"],
 	"dependencies": {
-		"@hs/crypto": "workspace:*",
+		"@rocket.chat/federation-crypto": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*"
 	},
 	"devDependencies": {
