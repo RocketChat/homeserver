@@ -47,3 +47,7 @@ export async function verifyJsonSignature<T extends object>(
 
 	return key.verify(toBinaryData(sortedSerializedForm), signatureBuffer);
 }
+
+export function generateEd25519RandomSecretKey(): Buffer<ArrayBuffer> {
+	return Buffer.from(ed25519.utils.randomSecretKey());
+}
