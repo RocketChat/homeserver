@@ -1,6 +1,9 @@
 import { expect, test } from 'bun:test';
 
-import { PersistentEventFactory, RoomVersion } from '@hs/room';
+import {
+	PersistentEventFactory,
+	RoomVersion,
+} from '@rocket.chat/federation-room';
 import type { SignedEvent } from '../types';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';

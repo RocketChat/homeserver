@@ -1,7 +1,7 @@
-import { isFederationEventWithPDUs } from '@hs/core';
-import { createLogger } from '@hs/core';
-import { generateId } from '@hs/core';
-import { EventID, Pdu } from '@hs/room';
+import { isFederationEventWithPDUs } from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
+import { generateId } from '@rocket.chat/federation-core';
+import { EventID, Pdu } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';

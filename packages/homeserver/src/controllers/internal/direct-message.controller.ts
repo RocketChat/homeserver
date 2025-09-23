@@ -1,4 +1,4 @@
-import { RoomService } from '@hs/federation-sdk';
+import { RoomService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';

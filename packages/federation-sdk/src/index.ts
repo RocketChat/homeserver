@@ -1,5 +1,5 @@
-import type { Membership, MessageType } from '@hs/core';
-import type { EventID } from '@hs/room';
+import type { Membership, MessageType } from '@rocket.chat/federation-core';
+import type { EventID } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
@@ -15,6 +15,21 @@ import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
+
+export type {
+	PduMembershipEventContent,
+	PersistentEventBase,
+	RoomVersion,
+	EventID,
+} from '@rocket.chat/federation-room';
+export type {
+	FileMessageType,
+	PresenceState,
+	FileMessageContent,
+	MessageType,
+	Membership,
+} from '@rocket.chat/federation-core';
+export { generateEd25519RandomSecretKey } from '@rocket.chat/federation-crypto';
 
 export { FederationEndpoints } from './specs/federation-api';
 export type {

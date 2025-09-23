@@ -1,4 +1,4 @@
-import { eventIdSchema } from '@hs/room';
+import { eventIdSchema } from '@rocket.chat/federation-room';
 import { z } from 'zod';
 
 const baseEventSchema = z.object({

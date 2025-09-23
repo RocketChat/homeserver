@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { Db, MongoClient, type MongoClientOptions } from 'mongodb';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';

@@ -8,8 +8,8 @@ import {
 } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
-import type { EventID, StateMapKey } from '@hs/room';
-import type { PersistentEventBase } from '@hs/room';
+import type { EventID, StateMapKey } from '@rocket.chat/federation-room';
+import type { PersistentEventBase } from '@rocket.chat/federation-room';
 
 export type StateStore = {
 	_id: ObjectId;

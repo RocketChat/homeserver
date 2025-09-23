@@ -5,7 +5,7 @@ import {
 	pruneEventDict,
 	signJson,
 	verifySignaturesFromRemote,
-} from '@hs/core';
+} from '@rocket.chat/federation-core';
 
 describe('verifySignaturesFromRemote', async () => {
 	test('it should verify a valid signature', async () => {

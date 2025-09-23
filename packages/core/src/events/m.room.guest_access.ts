@@ -1,4 +1,4 @@
-import { EventID } from '@hs/room';
+import { EventID } from '@rocket.chat/federation-room';
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 

@@ -1,6 +1,11 @@
-import { generateId } from '@hs/core';
-import type { EventBase, EventStore } from '@hs/core';
-import { type EventID, Pdu, PduForType, PduType } from '@hs/room';
+import { generateId } from '@rocket.chat/federation-core';
+import type { EventBase, EventStore } from '@rocket.chat/federation-core';
+import {
+	type EventID,
+	Pdu,
+	PduForType,
+	PduType,
+} from '@rocket.chat/federation-room';
 import type {
 	Collection,
 	Filter,

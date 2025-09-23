@@ -1,4 +1,4 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
@@ -8,7 +8,7 @@ import {
 	PduForType,
 	PersistentEventFactory,
 	RoomVersion,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateService } from './state.service';

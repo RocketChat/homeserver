@@ -1,5 +1,5 @@
-import { Pdu, PduForType } from '@hs/room';
-import type { EventID } from '@hs/room';
+import { Pdu, PduForType } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
 
 export type EventBase = {
 	auth_events: EventID[];

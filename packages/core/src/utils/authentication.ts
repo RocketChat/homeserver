@@ -2,7 +2,7 @@ import {
 	type Pdu,
 	PersistentEventBase,
 	PersistentEventFactory,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
 import { encodeCanonicalJson, signJson } from './signJson';

@@ -1,10 +1,13 @@
-import { type RoomMemberEvent, isRoomMemberEvent } from '@hs/core';
+import {
+	type RoomMemberEvent,
+	isRoomMemberEvent,
+} from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PduMembershipEventContent,
 	PersistentEventFactory,
 	getAuthChain,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';

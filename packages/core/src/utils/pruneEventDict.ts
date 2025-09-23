@@ -1,6 +1,6 @@
 import { isRoomMemberEvent } from '../events/isRoomMemberEvent';
 
-import { Pdu } from '@hs/room';
+import { Pdu } from '@rocket.chat/federation-room';
 import type { EventBase } from '../events/eventBase';
 
 interface RoomVersion {

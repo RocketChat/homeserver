@@ -1,4 +1,4 @@
-import { StateService } from '@hs/federation-sdk';
+import { StateService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 

@@ -1,4 +1,4 @@
-import { WellKnownService } from '@hs/federation-sdk';
+import { WellKnownService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { WellKnownServerResponseDto } from '../../dtos';

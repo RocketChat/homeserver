@@ -1,5 +1,5 @@
 {
-	"name": "@hs/core",
+	"name": "@rocket.chat/federation-core",
 	"version": "1.0.50",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
@@ -17,8 +17,8 @@
 	},
 	"files": ["./src", "./dist"],
 	"dependencies": {
-		"@hs/crypto": "workspace:*",
-		"@hs/room": "workspace:*"
+		"@rocket.chat/federation-crypto": "workspace:*",
+		"@rocket.chat/federation-room": "workspace:*"
 	},
 	"devDependencies": {
 		"bun-types": "latest",

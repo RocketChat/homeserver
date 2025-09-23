@@ -1,9 +1,9 @@
+import { EventID } from '@rocket.chat/federation-room';
 import {
 	ConfigService,
 	EventAuthorizationService,
 	EventService,
-} from '@hs/federation-sdk';
-import { EventID } from '@hs/room';
+} from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {

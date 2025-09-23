@@ -1,11 +1,13 @@
-import { RoomService } from '@hs/federation-sdk';
-import { StateService } from '@hs/federation-sdk';
-import { InviteService } from '@hs/federation-sdk';
 import {
 	EventID,
 	type PduCreateEventContent,
 	PersistentEventFactory,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
+import {
+	InviteService,
+	RoomService,
+	StateService,
+} from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {

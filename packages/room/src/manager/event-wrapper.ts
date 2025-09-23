@@ -1,5 +1,8 @@
 import crypto from 'node:crypto';
-import { encodeCanonicalJson, toUnpaddedBase64 } from '@hs/crypto';
+import {
+	encodeCanonicalJson,
+	toUnpaddedBase64,
+} from '@rocket.chat/federation-crypto';
 import {
 	type EventStore,
 	getStateMapKey,

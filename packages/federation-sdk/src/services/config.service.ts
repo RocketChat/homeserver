@@ -3,7 +3,7 @@ import {
 	generateKeyPairsFromString,
 	getKeyPair,
 	toUnpaddedBase64,
-} from '@hs/core';
+} from '@rocket.chat/federation-core';
 
 import { z } from 'zod';
 

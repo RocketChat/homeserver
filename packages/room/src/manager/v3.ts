@@ -1,4 +1,4 @@
-import { toUnpaddedBase64 } from '@hs/crypto';
+import { toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 import type { EventID } from '../types/_common';
 import {} from '../types/v3-11';
 import {

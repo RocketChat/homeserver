@@ -4,19 +4,19 @@ import type {
 	PresenceEDU,
 	RoomPowerLevelsEvent,
 	TypingEDU,
-} from '@hs/core';
-import { isPresenceEDU, isTypingEDU } from '@hs/core';
-import type { RedactionEvent } from '@hs/core';
-import { generateId } from '@hs/core';
-import type { EventStore } from '@hs/core';
+} from '@rocket.chat/federation-core';
+import { isPresenceEDU, isTypingEDU } from '@rocket.chat/federation-core';
+import type { RedactionEvent } from '@rocket.chat/federation-core';
+import { generateId } from '@rocket.chat/federation-core';
+import type { EventStore } from '@rocket.chat/federation-core';
 import {
 	getPublicKeyFromRemoteServer,
 	makeGetPublicKeyFromServerProcedure,
-} from '@hs/core';
-import { pruneEventDict } from '@hs/core';
+} from '@rocket.chat/federation-core';
+import { pruneEventDict } from '@rocket.chat/federation-core';
 
-import { checkSignAndHashes } from '@hs/core';
-import { createLogger } from '@hs/core';
+import { checkSignAndHashes } from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type Pdu,
@@ -24,7 +24,7 @@ import {
 	type PduType,
 	PersistentEventFactory,
 	getAuthChain,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
