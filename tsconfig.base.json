@@ -46,7 +46,7 @@
 			"@rocket.chat/federation-sdk/*": [
 				"packages/federation-sdk/src/*"
 			],
-			"@hs/homeserver/*": [
+			"@rocket.chat/homeserver/*": [
 				"packages/homeserver/src/*"
 			],
 			"@rocket.chat/federation-room/*": [
