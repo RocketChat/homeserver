@@ -29,6 +29,7 @@ export type {
 	MessageType,
 	Membership,
 } from '@rocket.chat/federation-core';
+export { generateEd25519RandomSecretKey } from '@rocket.chat/federation-crypto';
 
 export { FederationEndpoints } from './specs/federation-api';
 export type {
