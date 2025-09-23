@@ -1,4 +1,4 @@
-import { Pdu } from '@hs/room';
+import { Pdu } from '@rocket.chat/federation-room';
 import type { SignedEvent } from '../types';
 import type { SigningKey } from '../types';
 import { computeAndMergeHash } from './authentication';

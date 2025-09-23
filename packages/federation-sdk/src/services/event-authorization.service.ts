@@ -6,7 +6,11 @@ import {
 	makeGetPublicKeyFromServerProcedure,
 	validateAuthorizationHeader,
 } from '@hs/core';
-import type { EventID, Pdu, PersistentEventBase } from '@hs/room';
+import type {
+	EventID,
+	Pdu,
+	PersistentEventBase,
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
 import { MatrixBridgedRoomRepository } from '../repositories/matrix-bridged-room.repository';

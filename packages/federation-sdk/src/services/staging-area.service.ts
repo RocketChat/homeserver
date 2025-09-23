@@ -2,8 +2,8 @@ import type { EventBase, EventStagingStore, Membership } from '@hs/core';
 import { singleton } from 'tsyringe';
 
 import { MessageType, createLogger, isRedactedEvent } from '@hs/core';
-import { PduPowerLevelsEventContent } from '@hs/room';
-import type { EventID } from '@hs/room';
+import { PduPowerLevelsEventContent } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';

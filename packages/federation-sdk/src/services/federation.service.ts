@@ -2,7 +2,11 @@ import type { EventBase } from '@hs/core';
 import type { BaseEDU } from '@hs/core';
 import type { ProtocolVersionKey } from '@hs/core';
 import { createLogger } from '@hs/core';
-import { Pdu, PduForType, PersistentEventBase } from '@hs/room';
+import {
+	Pdu,
+	PduForType,
+	PersistentEventBase,
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import {
 	FederationEndpoints,

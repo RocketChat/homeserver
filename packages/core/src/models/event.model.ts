@@ -1,4 +1,4 @@
-import { EventID, Pdu, PduForType } from '@hs/room';
+import { EventID, Pdu, PduForType } from '@rocket.chat/federation-room';
 import type { EventBase as CoreEventBase } from '../events/eventBase';
 
 // TODO: use room package

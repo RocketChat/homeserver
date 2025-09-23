@@ -4,7 +4,7 @@ import {
 	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';

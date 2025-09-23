@@ -24,7 +24,7 @@ import {
 	type PduType,
 	PersistentEventFactory,
 	getAuthChain,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';

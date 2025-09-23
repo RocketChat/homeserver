@@ -5,19 +5,19 @@ import {
 	type PduType,
 	RoomState,
 	type StateMapKey,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import type {
 	EventStore,
 	Pdu,
 	PduForType,
 	PduWithHashesAndSignaturesOptional,
 	PersistentEventBase,
-} from '@hs/room';
-import { PersistentEventFactory } from '@hs/room';
-import type { RoomVersion } from '@hs/room';
-import { resolveStateV2Plus } from '@hs/room';
-import type { PduCreateEventContent } from '@hs/room';
-import { checkEventAuthWithState } from '@hs/room';
+} from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+import type { RoomVersion } from '@rocket.chat/federation-room';
+import { resolveStateV2Plus } from '@rocket.chat/federation-room';
+import type { PduCreateEventContent } from '@rocket.chat/federation-room';
+import { checkEventAuthWithState } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateRepository, StateStore } from '../repositories/state.repository';

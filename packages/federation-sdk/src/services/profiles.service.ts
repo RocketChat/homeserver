@@ -8,7 +8,7 @@ import {
 	PduForType,
 	PersistentEventFactory,
 	RoomVersion,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateService } from './state.service';

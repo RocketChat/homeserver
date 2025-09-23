@@ -1,4 +1,4 @@
-import type { EventID } from '@hs/room';
+import type { EventID } from '@rocket.chat/federation-room';
 import type { EventAuthorizationService } from '@rocket.chat/federation-sdk';
 import { errCodes } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';

@@ -1,4 +1,4 @@
-import { EventID, type RoomVersion } from '@hs/room';
+import { EventID, type RoomVersion } from '@rocket.chat/federation-room';
 import { ProfilesService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';

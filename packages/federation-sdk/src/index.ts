@@ -1,5 +1,5 @@
 import type { Membership, MessageType } from '@hs/core';
-import type { EventID } from '@hs/room';
+import type { EventID } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
@@ -21,7 +21,7 @@ export type {
 	PersistentEventBase,
 	RoomVersion,
 	EventID,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 export type {
 	FileMessageType,
 	PresenceState,

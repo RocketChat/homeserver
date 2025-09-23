@@ -49,7 +49,7 @@
 			"@hs/homeserver/*": [
 				"packages/homeserver/src/*"
 			],
-			"@hs/room/*": [
+			"@rocket.chat/federation-room/*": [
 				"packages/room/src/*"
 			]
 		}

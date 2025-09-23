@@ -2,7 +2,7 @@ import {
 	EventID,
 	type PduCreateEventContent,
 	PersistentEventFactory,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import {
 	InviteService,
 	RoomService,

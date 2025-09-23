@@ -18,7 +18,7 @@ import {
 	type PersistentEventBase,
 	PersistentEventFactory,
 	type RoomVersion,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';

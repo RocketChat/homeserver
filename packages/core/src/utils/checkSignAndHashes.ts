@@ -1,4 +1,4 @@
-import { Pdu } from '@hs/room';
+import { Pdu } from '@rocket.chat/federation-room';
 import { type HashedEvent, computeHash } from './authentication';
 import { MatrixError } from './errors';
 import { logger } from './logger';

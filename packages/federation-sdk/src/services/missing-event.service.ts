@@ -1,6 +1,6 @@
 import { createLogger } from '@hs/core';
 
-import { EventID } from '@hs/room';
+import { EventID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';

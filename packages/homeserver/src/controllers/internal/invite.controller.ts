@@ -1,4 +1,4 @@
-import { PersistentEventFactory } from '@hs/room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { InviteService, StateService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
