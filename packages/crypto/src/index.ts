@@ -17,4 +17,5 @@ export {
 	loadEd25519VerifierFromPublicKey,
 	signJson,
 	verifyJsonSignature,
+	generateEd25519RandomSecretKey,
 } from './utils/keys';
