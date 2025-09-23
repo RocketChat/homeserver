@@ -59,8 +59,8 @@
 
 import assert from 'node:assert';
 import { PersistentEventBase } from '../../../manager/event-wrapper';
+import { PowerLevelEvent } from '../../../manager/power-level-event-wrapper';
 import type { EventID, StateMapKey } from '../../../types/_common';
-import {} from '../../../types/v3-11';
 import {
 	type EventStore,
 	getAuthChain,
@@ -266,11 +266,10 @@ export async function resolveStateV2Plus(
 	// ^^ non power events, since we should have power events figured out already, i.e. having single resolved power level event, single resolved join rules event, etc.
 	// we can validate if the rest of the events are "allowed" or not
 
-	const powerLevelEvent = partiallyResolvedState.get(
-		getStateMapKey({ type: 'm.room.power_levels' }),
-	);
-
-	assert(powerLevelEvent, 'power level event should not be null');
+	const powerLevelEvent =
+		partiallyResolvedState.get(
+			getStateMapKey({ type: 'm.room.power_levels' }),
+		) ?? new PowerLevelEvent().toEventBase();
 
 	// mainline ordering essentially sorts the rest of the events
 	// by their place in the history of the room's power levels.
