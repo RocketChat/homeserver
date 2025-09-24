@@ -32,7 +32,10 @@ export abstract class BaseQueue<T> {
 
 				await this.handler(item);
 			} catch (err) {
-				logger.error(`${this.constructor.name}: Error processing item`, err);
+				logger.error({
+					msg: `${this.constructor.name}: Error processing item`,
+					err,
+				});
 			}
 		}
 		this.processing = false;

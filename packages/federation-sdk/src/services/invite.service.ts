@@ -1,8 +1,4 @@
-import {
-	EventBase,
-	HttpException,
-	HttpStatus,
-} from '@rocket.chat/federation-core';
+import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
 	PduForType,
 	PersistentEventBase,
@@ -10,7 +6,6 @@ import {
 	RoomVersion,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
-import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';

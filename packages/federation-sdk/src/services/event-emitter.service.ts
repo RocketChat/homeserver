@@ -3,10 +3,10 @@ import {
 	type EventHandlerOf,
 	type EventOf,
 } from '@rocket.chat/emitter';
+import { logger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from '..';
-import logger from '../utils/logger';
 
 @singleton()
 export class EventEmitterService {
@@ -30,7 +30,7 @@ export class EventEmitterService {
 			: [EventOf<HomeserverEventSignatures, K>]
 	): void {
 		this.emitter.emit(event, ...([data] as any));
-		logger.debug(`Event emitted: ${event}`, { event, data });
+		logger.debug({ msg: `Event emitted: ${event}`, event, data });
 	}
 
 	public on<K extends keyof HomeserverEventSignatures>(

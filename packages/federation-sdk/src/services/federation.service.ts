@@ -275,10 +275,10 @@ export class FederationService {
 			try {
 				await this.sendTransaction(server, txn);
 			} catch (error) {
-				this.logger.error(
-					`Failed to send event ${event.eventId} to server: ${server}`,
-					error,
-				);
+				this.logger.error({
+					msg: `Failed to send event ${event.eventId} to server: ${server}`,
+					err: error,
+				});
 			}
 		}
 	}
@@ -312,7 +312,10 @@ export class FederationService {
 				try {
 					await this.sendTransaction(server, txn);
 				} catch (error) {
-					this.logger.error(`Failed to send EDUs to server: ${server}`, error);
+					this.logger.error({
+						msg: `Failed to send EDUs to server: ${server}`,
+						err: error,
+					});
 					// Continue with next batch/server even if one fails
 				}
 			}

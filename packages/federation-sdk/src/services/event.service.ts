@@ -718,10 +718,10 @@ export class EventService {
 						authChainIds.add(authEventId);
 					}
 				} catch (error) {
-					this.logger.warn(
-						`Failed to get auth chain for event ${event.eventId}:`,
-						error,
-					);
+					this.logger.warn({
+						msg: `Failed to get auth chain for event ${event.eventId}:`,
+						err: error,
+					});
 				}
 			}
 
@@ -730,7 +730,10 @@ export class EventService {
 				auth_chain_ids: Array.from(authChainIds),
 			};
 		} catch (error) {
-			this.logger.error(`Failed to get state IDs for room ${roomId}:`, error);
+			this.logger.error({
+				msg: `Failed to get state IDs for room ${roomId}:`,
+				err: error,
+			});
 			throw error;
 		}
 	}
@@ -777,10 +780,10 @@ export class EventService {
 						authChainIds.add(authEventId);
 					}
 				} catch (error) {
-					this.logger.warn(
-						`Failed to get auth chain for event ${event.eventId}:`,
-						error,
-					);
+					this.logger.warn({
+						msg: `Failed to get auth chain for event ${event.eventId}:`,
+						err: error,
+					});
 				}
 			}
 
@@ -793,7 +796,10 @@ export class EventService {
 						authChain.push(authEvent.event);
 					}
 				} catch (error) {
-					this.logger.warn('Failed to fetch auth event objects:', error);
+					this.logger.warn({
+						msg: 'Failed to fetch auth event objects:',
+						err: error,
+					});
 				}
 			}
 
@@ -802,7 +808,10 @@ export class EventService {
 				auth_chain: authChain,
 			};
 		} catch (error) {
-			this.logger.error(`Failed to get state for room ${roomId}:`, error);
+			this.logger.error({
+				msg: `Failed to get state for room ${roomId}:`,
+				err: error,
+			});
 			throw error;
 		}
 	}

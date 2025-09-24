@@ -40,7 +40,7 @@ export async function checkSignAndHashes<T extends SignedJson<Pdu>>(
 	const [, hash] = computeHash(pdu);
 
 	if (hash !== expectedHash) {
-		logger.error('Invalid hash', hash, expectedHash);
+		logger.error({ msg: 'Invalid hash', hash, expectedHash });
 		throw new MatrixError('400', 'Invalid hash');
 	}
 

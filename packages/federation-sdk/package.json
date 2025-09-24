@@ -16,10 +16,10 @@
 		"test": "bun test"
 	},
 	"dependencies": {
+		"@rocket.chat/emitter": "^0.31.25",
 		"@rocket.chat/federation-core": "workspace:*",
 		"@rocket.chat/federation-crypto": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*",
-		"@rocket.chat/emitter": "^0.31.25",
 		"mongodb": "^6.16.0",
 		"reflect-metadata": "^0.2.2",
 		"tsyringe": "^4.10.0",
