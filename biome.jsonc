@@ -46,6 +46,7 @@
 			"**/node_modules",
 			".vscode",
 			"dist",
+			"link",
 			".turbo",
 			"tsconfig.*.json"
 		]
