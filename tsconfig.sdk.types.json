@@ -1,0 +1,15 @@
+{
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"outDir": "./federation-bundle/dist",
+		"rootDir": "./packages/federation-sdk/src",
+		"composite": false,
+		"verbatimModuleSyntax": false,
+		"declarationMap": true,
+		"noEmit": false,
+		"tsBuildInfoFile": null,
+		"incremental": false
+	},
+	"include": ["./packages/federation-sdk/src/**/*"],
+	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
+}
