@@ -1,7 +1,7 @@
 {
 	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
-		"outDir": "./packages/federation-bundle/dist",
+		"outDir": "./federation-bundle/dist",
 		"rootDir": "./packages/federation-sdk/src",
 		"composite": false,
 		"verbatimModuleSyntax": false,
