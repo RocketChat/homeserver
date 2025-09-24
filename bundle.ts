@@ -27,6 +27,7 @@ function getAllDependencies() {
 async function main() {
 	await $`rm -rf ${outputDir}/dist`;
 	await $`mkdir -p ${outputDir}/dist`;
+	await $`touch ${outputDir}/yarn.lock`;
 
 	const dependencies = getAllDependencies();
 
