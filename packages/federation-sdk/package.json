@@ -2,13 +2,13 @@
 	"name": "@rocket.chat/federation-sdk",
 	"version": "0.1.3",
 	"description": "Matrix Federation SDK for server-to-server communication",
-	"main": "./dist/bundle.js",
+	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/bundle.js",
-			"require": "./dist/bundle.js"
+			"import": "./dist/index.js",
+			"require": "./dist/index.js"
 		}
 	},
 	"scripts": {
