@@ -1,4 +1,4 @@
-import { signEvent } from '@rocket.chat/federation-core';
+import { createLogger, signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PduContent,
@@ -21,7 +21,6 @@ import { checkEventAuthWithState } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateRepository, StateStore } from '../repositories/state.repository';
-import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;

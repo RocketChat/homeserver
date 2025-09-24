@@ -3,10 +3,10 @@ import {
 	type EventHandlerOf,
 	type EventOf,
 } from '@rocket.chat/emitter';
+import { logger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from '..';
-import logger from '../utils/logger';
 
 @singleton()
 export class EventEmitterService {

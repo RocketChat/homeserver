@@ -1,4 +1,5 @@
 import {
+	createLogger,
 	EventBase,
 	HttpException,
 	HttpStatus,
@@ -10,7 +11,6 @@ import {
 	RoomVersion,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
-import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
