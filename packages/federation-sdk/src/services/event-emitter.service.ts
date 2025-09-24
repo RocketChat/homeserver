@@ -30,7 +30,7 @@ export class EventEmitterService {
 			: [EventOf<HomeserverEventSignatures, K>]
 	): void {
 		this.emitter.emit(event, ...([data] as any));
-		logger.debug(`Event emitted: ${event}`, { event, data });
+		logger.debug({ msg: `Event emitted: ${event}`, event, data });
 	}
 
 	public on<K extends keyof HomeserverEventSignatures>(

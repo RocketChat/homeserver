@@ -152,7 +152,7 @@ export class StateService {
 		const storedState = await this.stateRepository.getStateById(stateId);
 
 		if (!storedState) {
-			this.logger.error(eventId, 'last state delta not found');
+			this.logger.error({ msg: 'last state delta not found', eventId });
 			throw new Error(`State at event ${eventId} not found`);
 		}
 
@@ -637,10 +637,10 @@ export class StateService {
 
 		// if event was not rejected, update local copy
 		if (!event.rejected) {
-			this.logger.debug(
-				event.eventId,
-				'event was accepted against the state at the time of the event creation',
-			);
+			this.logger.debug({
+				msg: 'event was accepted against the state at the time of the event creation',
+				eventId: event.eventId,
+			});
 			state.set(event.getUniqueStateIdentifier(), event);
 		}
 

@@ -235,7 +235,7 @@ export class EventAuthorizationService {
 			);
 			return false;
 		} catch (err) {
-			this.logger.error('Error checking event access', err);
+			this.logger.error({ msg: 'Error checking event access', err });
 			return false;
 		}
 	}
@@ -359,7 +359,7 @@ export class EventAuthorizationService {
 			const regex = new RegExp(regexPattern);
 			return regex.test(serverName);
 		} catch (error) {
-			this.logger.warn(`Invalid ACL pattern: ${pattern}`, error);
+			this.logger.warn({ msg: `Invalid ACL pattern: ${pattern}`, error });
 			return false;
 		}
 	}

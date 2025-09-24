@@ -1,9 +1,4 @@
-import {
-	createLogger,
-	EventBase,
-	HttpException,
-	HttpStatus,
-} from '@rocket.chat/federation-core';
+import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
 	PduForType,
 	PersistentEventBase,

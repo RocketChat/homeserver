@@ -82,7 +82,10 @@ export class ConfigService {
 			this.config = AppConfigSchema.parse(values);
 		} catch (error) {
 			if (error instanceof z.ZodError) {
-				this.logger.error('Configuration validation failed:', error.errors);
+				this.logger.error({
+					msg: 'Configuration validation failed:',
+					details: error.errors,
+				});
 				throw new Error(
 					`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
 				);
