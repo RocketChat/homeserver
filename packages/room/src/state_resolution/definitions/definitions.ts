@@ -464,9 +464,11 @@ export async function mainlineOrdering(
 	};
 
 	// this is how we get the mainline of an event
-	let mainline: Awaited<ReturnType<typeof getMainline>> = [];
+	const mainline: PersistentEventBase<RoomVersion, 'm.room.power_levels'>[] =
+		[];
+
 	if (powerLevelEvent?.isPowerLevelEvent()) {
-		mainline = await getMainline(powerLevelEvent);
+		mainline.push(...(await getMainline(powerLevelEvent)));
 		mainline.unshift(powerLevelEvent); // add the power level event to the mainline
 	}
 
