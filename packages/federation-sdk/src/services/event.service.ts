@@ -154,10 +154,7 @@ export class EventService {
 		}
 	}
 
-	async processIncomingPDUs(
-		origin: string,
-		pdus: Pdu[],
-	): Promise<void> {
+	async processIncomingPDUs(origin: string, pdus: Pdu[]): Promise<void> {
 		// organize events by room id
 		const eventsByRoomId = new Map<string, Pdu[]>();
 		for (const event of pdus) {
