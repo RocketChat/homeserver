@@ -65,7 +65,7 @@ import {
 	type EventStore,
 	getAuthChain,
 	getAuthChainDifference,
-	getStateMapKey,
+	getStateByMapKey,
 	isPowerEvent,
 	iterativeAuthChecks,
 	mainlineOrdering,
@@ -267,9 +267,9 @@ export async function resolveStateV2Plus(
 	// we can validate if the rest of the events are "allowed" or not
 
 	const powerLevelEvent =
-		partiallyResolvedState.get(
-			getStateMapKey({ type: 'm.room.power_levels' }),
-		) ?? new PowerLevelEvent().toEventBase();
+		getStateByMapKey(partiallyResolvedState, {
+			type: 'm.room.power_levels',
+		}) ?? new PowerLevelEvent().toEventBase();
 
 	// mainline ordering essentially sorts the rest of the events
 	// by their place in the history of the room's power levels.

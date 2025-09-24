@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { PersistentEventBase } from '../manager/event-wrapper';
 import { PersistentEventFactory } from '../manager/factory';
-import type { EventStore } from '../state_resolution/definitions/definitions';
+import {
+	type EventStore,
+	getStateMapKey,
+} from '../state_resolution/definitions/definitions';
 import { type StateMapKey } from '../types/_common';
 import { Pdu, PduContent, type PduType } from '../types/v3-11';
 import { checkEventAuthWithState, checkEventAuthWithoutState } from './rules';
-
-function getStateMapKey(event: PersistentEventBase): StateMapKey {
-	return `${event.type}:${event.stateKey ?? ''}`;
-}
 
 class MockStore implements EventStore {
 	events: Map<string, PersistentEventBase> = new Map();
@@ -164,7 +163,7 @@ function getInitialEvents(
 
 function getStateMap(events: PersistentEventBase[]) {
 	return new Map<StateMapKey, PersistentEventBase>(
-		events.map((event) => [getStateMapKey(event), event]),
+		events.map((event) => [getStateMapKey(event.event), event]),
 	);
 }
 
