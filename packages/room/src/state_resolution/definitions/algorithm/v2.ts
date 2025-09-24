@@ -266,10 +266,9 @@ export async function resolveStateV2Plus(
 	// ^^ non power events, since we should have power events figured out already, i.e. having single resolved power level event, single resolved join rules event, etc.
 	// we can validate if the rest of the events are "allowed" or not
 
-	const powerLevelEvent =
-		getStateByMapKey(partiallyResolvedState, {
-			type: 'm.room.power_levels',
-		}) ?? new PowerLevelEvent().toEventBase();
+	const powerLevelEvent = getStateByMapKey(partiallyResolvedState, {
+		type: 'm.room.power_levels',
+	});
 
 	// mainline ordering essentially sorts the rest of the events
 	// by their place in the history of the room's power levels.
@@ -285,9 +284,8 @@ export async function resolveStateV2Plus(
 
 	const orderedRemainingEvents = await mainlineOrdering(
 		sanitizedRemainingEvents,
-		powerLevelEvent,
-		initialState,
 		wrappedStore,
+		powerLevelEvent,
 	);
 
 	// 4. Apply the iterative auth checks algorithm on the partial resolved state and the list of events from the previous step.

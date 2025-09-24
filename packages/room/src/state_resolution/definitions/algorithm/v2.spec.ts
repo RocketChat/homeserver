@@ -4,6 +4,7 @@ import {
 	type EventStore,
 	_kahnsOrder,
 	getAuthChainDifference,
+	mainlineOrdering,
 } from '../definitions';
 
 import { resolveStateV2Plus } from './v2';
@@ -524,6 +525,68 @@ describe('Definitions', () => {
 			'eventId',
 			'PA2:example.com',
 		);
+	});
+
+	it('successful mainline sort with no existing power level event', async () => {
+		const createEvent = new FakeEvent('CREATE2', ALICE, 'm.room.create', '', {
+			creator: ALICE,
+		}).toEvent([], []);
+
+		const aliceMemberEvent = new FakeEvent(
+			'IMA2',
+			ALICE,
+			'm.room.member',
+			ALICE,
+			MEMBERSHIP_CONTENT_JOIN,
+		).toEvent([createEvent.eventId], [createEvent.eventId]);
+
+		const joinRuleEvent = new FakeEvent(
+			'IJR2',
+			ALICE,
+			'm.room.join_rules',
+			'',
+			{ join_rule: 'public' },
+		).toEvent(
+			[createEvent.eventId, aliceMemberEvent.eventId],
+			[aliceMemberEvent.eventId],
+		);
+
+		const bobJoinEvent = new FakeEvent(
+			'IMB2',
+			BOB,
+			'm.room.member',
+			BOB,
+			MEMBERSHIP_CONTENT_JOIN,
+		).toEvent(
+			[createEvent.eventId, joinRuleEvent.eventId],
+			[joinRuleEvent.eventId],
+		);
+
+		const events = [bobJoinEvent, joinRuleEvent, aliceMemberEvent, createEvent];
+
+		for (const event of events) {
+			eventStore.events.push(event);
+		}
+
+		const sortedEvents = events
+			.sort((e1, e2) => {
+				if (e1.originServerTs !== e2.originServerTs) {
+					return e1.originServerTs - e2.originServerTs;
+				}
+
+				return e1.eventId.localeCompare(e2.eventId);
+			})
+			.map((e) => {
+				return e.eventId;
+			});
+
+		const mainlineSorted = (await mainlineOrdering(events, eventStore)).map(
+			(e) => {
+				return e.eventId;
+			},
+		);
+
+		expect(mainlineSorted).toEqual(sortedEvents);
 	});
 
 	it('kahns', () => {

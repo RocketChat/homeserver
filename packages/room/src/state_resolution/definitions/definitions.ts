@@ -369,10 +369,10 @@ export async function reverseTopologicalPowerSort(
 		}
 
 		if (!eventToPowerLevelMap.has(event.eventId)) {
-			// insert a fake power level event for the power event
+			// use default power level
 			eventToPowerLevelMap.set(
 				event.eventId,
-				new PowerLevelEvent().getPowerLevelForUser(
+				PowerLevelEvent.fromDefault().getPowerLevelForUser(
 					event.sender,
 					roomCreateEvent,
 				),
@@ -400,8 +400,8 @@ export async function reverseTopologicalPowerSort(
 		const sender2PowerLevel = eventToPowerLevelMap.get(event2Id);
 
 		if (
-			sender1PowerLevel &&
-			sender2PowerLevel &&
+			sender1PowerLevel !== undefined &&
+			sender2PowerLevel !== undefined &&
 			sender1PowerLevel !== sender2PowerLevel
 		) {
 			return sender2PowerLevel - sender1PowerLevel;
@@ -422,18 +422,23 @@ export async function reverseTopologicalPowerSort(
 	});
 }
 
-// FIXME:
 export async function mainlineOrdering(
 	events: PersistentEventBase[], // TODO: or take event ids
-	// Let P = P0 be an m.room.power_levels event
-	powerLevelEvent: PersistentEventBase, // of which we will calculate the mainline
-	_authEventMap: Map<StateMapKey, PersistentEventBase>,
 	store: EventStore,
+	// Let P = P0 be an m.room.power_levels event
+	powerLevelEvent?: PersistentEventBase, // of which we will calculate the mainline
 ): Promise<PersistentEventBase[]> {
-	const getMainline = async (event: PersistentEventBase) => {
-		const mainline = [] as PersistentEventBase[];
+	const getMainline = async (
+		event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
+	) => {
+		const mainline = [] as PersistentEventBase<
+			RoomVersion,
+			'm.room.power_levels'
+		>[];
 
-		const fn = async (event: PersistentEventBase) => {
+		const fn = async (
+			event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
+		) => {
 			const authEvents = await event.getAuthorizationEvents(store);
 
 			// await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -459,11 +464,13 @@ export async function mainlineOrdering(
 	};
 
 	// this is how we get the mainline of an event
-	const mainline = await getMainline(powerLevelEvent);
+	const mainline: PersistentEventBase<RoomVersion, 'm.room.power_levels'>[] =
+		[];
 
-	mainline.unshift(powerLevelEvent); // add the power level event to the mainline
-
-	assert(mainline && mainline.length > 0, 'mainline should not be empty');
+	if (powerLevelEvent?.isPowerLevelEvent()) {
+		mainline.push(...(await getMainline(powerLevelEvent)));
+		mainline.unshift(powerLevelEvent); // add the power level event to the mainline
+	}
 
 	const mainlinePositions = new Map<EventID, number>(); // NOTE: see comment in the loop
 
@@ -534,19 +541,20 @@ export async function mainlineOrdering(
 		// the mainline position of x is greater than the mainline position of y
 		const e1Position = mainlinePositions.get(e1.eventId);
 		const e2Position = mainlinePositions.get(e2.eventId);
-		if (e1Position && e2Position && e1Position < e2Position) return -1;
+		if (
+			e1Position !== undefined &&
+			e2Position !== undefined &&
+			e1Position < e2Position
+		)
+			return -1;
 
 		// x’s origin_server_ts is less than y’s origin_server_ts
-		if (e1.originServerTs < e2.originServerTs) {
-			return -1;
+		if (e1.originServerTs !== e2.originServerTs) {
+			return e1.originServerTs - e2.originServerTs;
 		}
 
 		// x’s event_id is less than y’s event_id.ents: V2Pd
-		if (e1.eventId < e2.eventId) {
-			return -1;
-		}
-
-		return 1;
+		return e1.eventId.localeCompare(e2.eventId);
 	};
 
 	return events.sort(comparisonFn);
