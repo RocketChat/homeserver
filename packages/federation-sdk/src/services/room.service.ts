@@ -987,7 +987,7 @@ export class RoomService {
 		);
 
 		// try to persist the join event now, should succeed with state in place
-		await this.eventService.processIncomingPDUs(joinEventFinal.origin, [joinEventFinal.event]);
+		await this.eventService.processIncomingPDUs(residentServer || joinEventFinal.origin, [joinEventFinal.event]);
 
 		if (joinEventFinal.rejected) {
 			throw new Error(joinEventFinal.rejectedReason);
