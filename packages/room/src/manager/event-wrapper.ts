@@ -68,8 +68,8 @@ export abstract class PersistentEventBase<
 		return this.rawEvent.hashes.sha256;
 	}
 
-	get type() {
-		return this.rawEvent.type;
+	get type(): Type {
+		return this.rawEvent.type as Type;
 	}
 
 	get roomId() {
@@ -135,7 +135,7 @@ export abstract class PersistentEventBase<
 
 	toPowerLevelEvent() {
 		if (this.isPowerLevelEvent()) {
-			return new PowerLevelEvent(this);
+			return PowerLevelEvent.fromEvent(this);
 		}
 
 		throw new Error('Event is not a power level event');

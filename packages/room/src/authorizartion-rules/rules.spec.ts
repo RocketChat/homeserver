@@ -1143,4 +1143,76 @@ describe('authorization rules', () => {
 		).not.toThrow();
 	});
 	// TODO: restricted rooms
+
+	it('should tolerate missing power level event for membership change', async () => {
+		const { create, join, joinRules, powerLevel } = getInitialEvents({
+			joinRule: 'public',
+		});
+
+		store.events.delete(powerLevel.eventId);
+
+		const state = getStateMap([create, join, joinRules]);
+
+		// try to join
+		const bob = '@bob:example.com';
+
+		const joinBob = new FakeStateEventCreator()
+			.asRoomMember()
+			.withRoomId(roomId)
+			.withSender(bob)
+			.withContent({ membership: 'join' })
+			.withStateKey(bob)
+			.build();
+
+		expect(() => checkEventAuthWithState(joinBob, state, store)).not.toThrow();
+	});
+
+	it('should tolerate missing power level event for power level change', async () => {
+		const { create, join, joinRules, powerLevel } = getInitialEvents({
+			joinRule: 'public',
+		});
+
+		store.events.delete(powerLevel.eventId);
+
+		const state = getStateMap([create, join, joinRules]);
+
+		// try to join
+		const pl2 = new FakeStateEventCreator()
+			.asPowerLevel()
+			.withRoomId(roomId)
+			.withSender(creator)
+			.withContent({
+				events: {},
+				users: {
+					[creator]: 100,
+				},
+				users_default: 0,
+				state_default: 50,
+			})
+			.build();
+
+		// should allow since no existing is there
+		expect(() => checkEventAuthWithState(pl2, state, store)).not.toThrow();
+
+		const state2 = getStateMap([create, join, joinRules, pl2]);
+
+		store.events.set(pl2.eventId, pl2);
+
+		const pl3 = new FakeStateEventCreator()
+			.asPowerLevel()
+			.withRoomId(roomId)
+			.withSender(creator)
+			.withContent({
+				events: {},
+				users: {
+					[creator]: 100,
+				},
+				users_default: 0,
+				state_default: 100, // trying to increase
+			})
+			.build();
+
+		// should still allow
+		expect(() => checkEventAuthWithState(pl3, state2, store)).not.toThrow();
+	});
 });

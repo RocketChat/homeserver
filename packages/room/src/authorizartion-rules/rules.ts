@@ -157,9 +157,13 @@ async function isMembershipChangeAllowed(
 		? joinRuleEvent.getJoinRule()
 		: undefined;
 
-	const powerLevelEvent = PowerLevelEvent.fromEvent(
-		getStateByMapKey(authEventStateMap, { type: 'm.room.power_levels' }),
-	);
+	const powerLevelEventInAuthStateMap = getStateByMapKey(authEventStateMap, {
+		type: 'm.room.power_levels',
+	});
+
+	const powerLevelEvent = powerLevelEventInAuthStateMap?.isPowerLevelEvent()
+		? PowerLevelEvent.fromEvent(powerLevelEventInAuthStateMap)
+		: PowerLevelEvent.fromDefault();
 
 	const roomCreateEvent = getStateByMapKey(authEventStateMap, {
 		type: 'm.room.create',
@@ -354,16 +358,17 @@ export function validatePowerLevelEvent(
 ) {
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
 	// If there is no previous m.room.power_levels event in the room, allow.
-	const existingPowerLevel = PowerLevelEvent.fromEvent(
-		getStateByMapKey(authEventMap, { type: 'm.room.power_levels' }),
-	);
-
-	const newPowerLevel = powerLevelEvent;
-
-	if (!existingPowerLevel.exists()) {
+	const existinPowerLevelEvent = getStateByMapKey(authEventMap, {
+		type: 'm.room.power_levels',
+	});
+	if (!existinPowerLevelEvent?.isPowerLevelEvent()) {
 		// allow if no previous power level event
 		return;
 	}
+
+	const existingPowerLevel = PowerLevelEvent.fromEvent(existinPowerLevelEvent);
+
+	const newPowerLevel = powerLevelEvent;
 
 	const senderCurrentPowerLevel = existingPowerLevel.getPowerLevelForUser(
 		newPowerLevel.sender,
@@ -767,9 +772,13 @@ export async function checkEventAuthWithState(
 		);
 	}
 
-	const powerLevelEvent = PowerLevelEvent.fromEvent(
-		getStateByMapKey(state, { type: 'm.room.power_levels' }),
-	);
+	const existingPowerLevelEvent = getStateByMapKey(state, {
+		type: 'm.room.power_levels',
+	});
+
+	const powerLevelEvent = existingPowerLevelEvent?.isPowerLevelEvent()
+		? PowerLevelEvent.fromEvent(existingPowerLevelEvent)
+		: PowerLevelEvent.fromDefault();
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.
 	const eventRequiredPowerLevel = powerLevelEvent.getRequiredPowerLevelForEvent(

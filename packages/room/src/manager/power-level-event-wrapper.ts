@@ -10,22 +10,29 @@ import { RoomVersion } from './type';
 // whether there is an event or not
 // all defaults and transformations according to diff versions of pdus
 
-class PowerLevelEvent {
+class PowerLevelEvent<
+	PowerLevelEventType extends
+		| PersistentEventBase<RoomVersion, 'm.room.power_levels'>
+		| undefined = PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
+> {
 	private readonly _content?: PduPowerLevelsEventContent;
 
-	static fromEvent(event?: PersistentEventBase) {
+	static fromEvent(
+		event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
+	) {
 		return new PowerLevelEvent(event);
 	}
 
-	constructor(private readonly event?: PersistentEventBase) {
+	static fromDefault() {
+		return new PowerLevelEvent(undefined);
+	}
+
+	private constructor(private readonly event: PowerLevelEventType) {
 		this._content = event?.getContent();
 	}
 
-	toEventBase(): PersistentEventBase<RoomVersion, 'm.room.power_levels'> {
-		return this.event as PersistentEventBase<
-			RoomVersion,
-			'm.room.power_levels'
-		>;
+	toEventBase() {
+		return this.event;
 	}
 
 	// power level event accessors
@@ -175,10 +182,6 @@ class PowerLevelEvent {
 		}
 
 		return this._content.users?.[userId];
-	}
-
-	exists() {
-		return !!this._content;
 	}
 
 	get sender() {
