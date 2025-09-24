@@ -5,12 +5,17 @@ const outputDir = './federation-bundle';
 
 // get dependencies from all packages
 function getAllDependencies() {
+	// TODO change to read folders from packages folder
 	const packages = ['core', 'crypto', 'federation-sdk', 'room'];
 
 	const allDependencies = new Set<string>();
 
+	const localPackages = new Set();
+
 	for (const pkg of packages) {
 		const packageJson = require(`./packages/${pkg}/package.json`);
+
+		localPackages.add(packageJson.name);
 
 		const dependencies = packageJson.dependencies
 			? Object.keys(packageJson.dependencies)
@@ -21,7 +26,7 @@ function getAllDependencies() {
 		}
 	}
 
-	return Array.from(allDependencies);
+	return Array.from(allDependencies).filter((dep) => !localPackages.has(dep));
 }
 
 async function main() {
