@@ -263,16 +263,23 @@ export class EventService {
 		}
 
 		let originToValidateSignatures = origin;
-		
+
 		// If the event does not have a signature for the origin server,
 		// but has a signature for our server, we validate using our server name.
 		// This happens on sendJoin process, where the join event is signed by our server,
 		// but the origin is the remote server since it just returns the event as we sent it.
-		if (!event.signatures[origin] && event.signatures[this.configService.serverName]) {
+		if (
+			!event.signatures[origin] &&
+			event.signatures[this.configService.serverName]
+		) {
 			originToValidateSignatures = this.configService.serverName;
 		}
-		
-		await checkSignAndHashes(event, originToValidateSignatures, getPublicKeyFromServer);
+
+		await checkSignAndHashes(
+			event,
+			originToValidateSignatures,
+			getPublicKeyFromServer,
+		);
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
