@@ -99,6 +99,12 @@ export class EventService {
 		);
 	}
 
+	async getLeastDepthEventForRoom(
+		roomId: string,
+	): Promise<EventStagingStore | null> {
+		return this.eventStagingRepository.getLeastDepthEventForRoom(roomId);
+	}
+
 	async getNextStagedEventForRoom(
 		roomId: string,
 	): Promise<EventStagingStore | null> {
