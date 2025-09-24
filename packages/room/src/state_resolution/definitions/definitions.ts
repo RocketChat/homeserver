@@ -6,12 +6,23 @@ import assert from 'node:assert';
 import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
 import type { PersistentEventBase } from '../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../manager/power-level-event-wrapper';
+import { RoomVersion } from '../../manager/type';
 
 export function getStateMapKey(event: {
 	type: PduType;
 	state_key?: string;
 }): StateMapKey {
 	return `${event.type}:${event.state_key ?? ''}`;
+}
+
+export function getStateByMapKey<T extends PduType>(
+	map: Map<StateMapKey, PersistentEventBase>,
+	filter: {
+		type: T;
+		state_key?: string;
+	},
+): PersistentEventBase<RoomVersion, T> | undefined {
+	return map.get(getStateMapKey(filter)) as PersistentEventBase<RoomVersion, T>;
 }
 
 // https://spec.matrix.org/v1.12/rooms/v2/#definitions
@@ -308,9 +319,9 @@ export async function reverseTopologicalPowerSort(
 
 	const eventToPowerLevelMap = new Map<EventID, number>();
 
-	const roomCreateEvent = stateMap.get(
-		getStateMapKey({ type: 'm.room.create' }),
-	);
+	const roomCreateEvent = getStateByMapKey(stateMap, {
+		type: 'm.room.create',
+	});
 
 	if (!roomCreateEvent) {
 		throw new Error('room create event not found');

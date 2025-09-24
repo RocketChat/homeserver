@@ -10,7 +10,7 @@ import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
 import {
 	type EventStore,
-	getStateMapKey,
+	getStateByMapKey,
 } from '../state_resolution/definitions/definitions';
 import { type StateMapKey } from '../types/_common';
 import { StateResolverAuthorizationError } from './errors';
@@ -133,35 +133,37 @@ async function isMembershipChangeAllowed(
 
 	// sender information, like does this user have permission?
 	const sender = membershipEventToCheck.sender;
-	const senderMembershipEvent = authEventStateMap.get(
-		getStateMapKey({ type: 'm.room.member', state_key: sender }),
-	);
+	const senderMembershipEvent = getStateByMapKey(authEventStateMap, {
+		type: 'm.room.member',
+		state_key: sender,
+	});
 
 	const senderMembership = senderMembershipEvent?.getMembership();
 
 	// user to be invited
 	const invitee = membershipEventToCheck.stateKey;
-	const inviteeMembershipEvent = authEventStateMap.get(
-		getStateMapKey({ type: 'm.room.member', state_key: invitee }),
-	);
+	const inviteeMembershipEvent = getStateByMapKey(authEventStateMap, {
+		type: 'm.room.member',
+		state_key: invitee,
+	});
 
 	const inviteeMembership = inviteeMembershipEvent?.getMembership();
 
-	const joinRuleEvent = authEventStateMap.get(
-		getStateMapKey({ type: 'm.room.join_rules' }),
-	);
+	const joinRuleEvent = getStateByMapKey(authEventStateMap, {
+		type: 'm.room.join_rules',
+	});
 
 	const joinRule = joinRuleEvent?.isJoinRuleEvent()
 		? joinRuleEvent.getJoinRule()
 		: undefined;
 
 	const powerLevelEvent = PowerLevelEvent.fromEvent(
-		authEventStateMap.get(getStateMapKey({ type: 'm.room.power_levels' })),
+		getStateByMapKey(authEventStateMap, { type: 'm.room.power_levels' }),
 	);
 
-	const roomCreateEvent = authEventStateMap.get(
-		getStateMapKey({ type: 'm.room.create' }),
-	);
+	const roomCreateEvent = getStateByMapKey(authEventStateMap, {
+		type: 'm.room.create',
+	});
 
 	assert(roomCreateEvent, 'room create event not found'); // must exist
 
@@ -353,7 +355,7 @@ export function validatePowerLevelEvent(
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
 	// If there is no previous m.room.power_levels event in the room, allow.
 	const existingPowerLevel = PowerLevelEvent.fromEvent(
-		authEventMap.get(getStateMapKey({ type: 'm.room.power_levels' })),
+		getStateByMapKey(authEventMap, { type: 'm.room.power_levels' }),
 	);
 
 	const newPowerLevel = powerLevelEvent;
@@ -681,9 +683,9 @@ export function checkEventAuthWithoutState(
 		authEventStateMap.set(stateKey, authEvent);
 	}
 
-	const roomCreateEvent = authEventStateMap.get(
-		getStateMapKey({ type: 'm.room.create' }),
-	);
+	const roomCreateEvent = getStateByMapKey(authEventStateMap, {
+		type: 'm.room.create',
+	});
 
 	if (!roomCreateEvent) {
 		throw new StateResolverAuthorizationError('missing m.room.create event', {
@@ -704,7 +706,9 @@ export async function checkEventAuthWithState(
 		return;
 	}
 
-	const roomCreateEvent = state.get(getStateMapKey({ type: 'm.room.create' }));
+	const roomCreateEvent = getStateByMapKey(state, {
+		type: 'm.room.create',
+	});
 
 	assert(roomCreateEvent, 'missing m.room.create event');
 
@@ -737,9 +741,10 @@ export async function checkEventAuthWithState(
 	}
 
 	// If the sender’s current membership state is not join, reject.
-	const senderMembership = state.get(
-		getStateMapKey({ type: 'm.room.member', state_key: event.sender }),
-	);
+	const senderMembership = getStateByMapKey(state, {
+		type: 'm.room.member',
+		state_key: event.sender,
+	});
 	if (senderMembership?.getMembership() !== 'join') {
 		throw new StateResolverAuthorizationError(
 			"sender's membership is not join",
@@ -763,7 +768,7 @@ export async function checkEventAuthWithState(
 	}
 
 	const powerLevelEvent = PowerLevelEvent.fromEvent(
-		state.get(getStateMapKey({ type: 'm.room.power_levels' })),
+		getStateByMapKey(state, { type: 'm.room.power_levels' }),
 	);
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.
