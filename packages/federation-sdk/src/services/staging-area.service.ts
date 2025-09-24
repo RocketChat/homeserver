@@ -143,7 +143,7 @@ export class StagingAreaService {
 
 		// if the auth events are missing, the authorization stage will fail anyway,
 		// so to save some time we throw an error here, and the event processing will be postponed
-		if (authEvents.some(missing.includes)) {
+		if (authEvents.some((e) => missing.includes(e))) {
 			throw new MissingAuthorizationEventsError('Missing authorization events');
 		}
 	}
