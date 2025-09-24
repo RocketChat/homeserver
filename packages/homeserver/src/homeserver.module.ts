@@ -29,6 +29,7 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
+import { internalRequestPlugin } from './controllers/internal/external-federation-request.controller';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {
@@ -43,6 +44,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 	}
 
 	const config = new ConfigService({
+		signingKey: process.env.SIGNING_KEY || undefined,
 		instanceId: crypto.randomUUID(),
 		serverName: process.env.SERVER_NAME || 'rc1',
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
@@ -123,7 +125,8 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(serverKeyPlugin)
 		.use(wellKnownPlugin)
 		.use(roomPlugin)
-		.use(mediaPlugin);
+		.use(mediaPlugin)
+		.use(internalRequestPlugin);
 
 	return { app, container };
 }
