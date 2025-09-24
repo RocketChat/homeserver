@@ -23,7 +23,11 @@ export class MissingEventService {
 	) {}
 
 	async fetchMissingEvent(data: MissingEventType) {
-		const { eventId, roomId, origin } = data;
+		const { eventId, roomId } = data;
+		
+		// TODO: check how to do this properly. This fixes the fist message of a DM not being fetched
+		// Get origin from roomId since the origin of the event may be self
+		const origin = roomId.split(':').pop() || data.origin;
 
 		const exists = await this.eventService.getEventById(eventId);
 		if (exists) {
