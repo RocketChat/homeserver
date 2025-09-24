@@ -50,7 +50,6 @@
 		"lint:ci": "bunx @biomejs/biome ci --diagnostic-level=error",
 		"lint:fix": "bunx @biomejs/biome lint --fix",
 		"tsc": "tsc --noEmit",
-		"bundle:sdk": "bun run bundle.ts",
-		"bundle:watch": "bun build --watch ./packages/federation-sdk/src/index.ts --outdir ./federation-bundle/dist --target node --format=cjs -e pino -e mongodb -e zod -e pino-pretty -e @rocket.chat/emitter -e reflect-metadata -e tsyringe -e tweetnacl --production --sourcemap=inline"
+		"bundle:sdk": "bun run bundle.ts"
 	}
 }
