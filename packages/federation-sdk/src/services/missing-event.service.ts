@@ -50,7 +50,7 @@ export class MissingEventService {
 				this.logger.debug(`Persisting fetched missing event ${eventId}`);
 
 				// TODO is there anything else we need to do with missing dependencies from received event?
-				await this.stateService.persistEvent(event);
+				await this.eventService.processIncomingPDUs(origin, [event]);
 			}
 		} catch (err: unknown) {
 			this.logger.error(

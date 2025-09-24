@@ -154,7 +154,7 @@ export class EventService {
 		}
 	}
 
-	private async processIncomingPDUs(
+	async processIncomingPDUs(
 		origin: string,
 		pdus: Pdu[],
 	): Promise<void> {
