@@ -21,6 +21,13 @@ import { ConfigService } from './config.service';
 import { MissingEventService } from './missing-event.service';
 import { StateService } from './state.service';
 
+class MissingAuthorizationEventsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'MissingAuthorizationEventsError';
+	}
+}
+
 @singleton()
 export class StagingAreaService {
 	private readonly logger = createLogger('StagingAreaService');
@@ -38,11 +45,11 @@ export class StagingAreaService {
 	extractEventsFromIncomingPDU(pdu: EventBase) {
 		const authEvents = pdu.auth_events || [];
 		const prevEvents = pdu.prev_events || [];
-		return [...authEvents, ...prevEvents];
+		return [authEvents, prevEvents];
 	}
 
 	async processEventForRoom(roomId: string) {
-		let event = await this.eventService.getNextStagedEventForRoom(roomId);
+		let event = await this.eventService.getLeastDepthEventForRoom(roomId);
 		if (!event) {
 			this.logger.debug({ msg: 'No staged event found for room', roomId });
 			await this.lockRepository.releaseLock(
@@ -65,13 +72,23 @@ export class StagingAreaService {
 
 				// TODO add missing logic from synapse: Prune the event queue if it's getting large.
 			} catch (err: unknown) {
-				this.logger.error({
-					msg: 'Error processing event',
-					err,
-				});
+				if (err instanceof MissingAuthorizationEventsError) {
+					this.logger.info({
+						msg: 'Missing events, postponing event processing',
+						eventId: event._id,
+						err,
+					});
+				} else {
+					this.logger.error({
+						msg: 'Error processing event',
+						err,
+					});
+				}
 			}
 
-			event = await this.eventService.getNextStagedEventForRoom(roomId);
+			// TODO: what should we do to avoid infinite loops in case the next event is always the same event
+
+			event = await this.eventService.getLeastDepthEventForRoom(roomId);
 
 			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
 			// and acquired by another instance while we're processing a batch of events for this room
@@ -93,7 +110,11 @@ export class StagingAreaService {
 	private async processDependencyStage(event: EventStagingStore) {
 		const eventId = event._id;
 
-		const eventIds = this.extractEventsFromIncomingPDU(event.event);
+		const [authEvents, prevEvents] = this.extractEventsFromIncomingPDU(
+			event.event,
+		);
+
+		const eventIds = [...authEvents, ...prevEvents];
 		this.logger.debug(
 			`Checking dependencies for event ${eventId}: ${eventIds.length} references`,
 		);
@@ -119,12 +140,18 @@ export class StagingAreaService {
 				origin: event.origin,
 			});
 		}
+
+		// if the auth events are missing, the authorization stage will fail anyway,
+		// so to save some time we throw an error here, and the event processing will be postponed
+		if (authEvents.some(missing.includes)) {
+			throw new MissingAuthorizationEventsError('Missing authorization events');
+		}
 	}
 
 	private async processAuthorizationStage(event: EventStagingStore) {
 		this.logger.debug(`Authorizing event ${event._id}`);
 		const authEvents = await this.eventService.getAuthEventIds(
-			'm.room.message',
+			event.event.type,
 			{ roomId: event.event.room_id, senderId: event.event.sender },
 		);
 

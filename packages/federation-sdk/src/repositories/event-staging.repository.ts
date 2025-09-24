@@ -40,6 +40,13 @@ export class EventStagingRepository {
 		);
 	}
 
+	getLeastDepthEventForRoom(roomId: string): Promise<EventStagingStore | null> {
+		return this.collection.findOne(
+			{ roomId },
+			{ sort: { 'event.depth': 1, createdAt: 1 } },
+		);
+	}
+
 	removeByEventId(eventId: EventID): Promise<DeleteResult> {
 		return this.collection.deleteOne({ _id: eventId });
 	}
