@@ -5,6 +5,7 @@ export type Upload = {
 	rid: string;
 	federation: {
 		mxcUri: string;
+		mrid: string;
 		serverName: string;
 		mediaId: string;
 	};
@@ -16,11 +17,9 @@ export class UploadRepository {
 		@inject('UploadCollection') private readonly collection: Collection<Upload>,
 	) {}
 
-	async findRocketChatRoomIdByMediaId(mediaId: string): Promise<string | null> {
-		const upload = await this.collection.findOne({
+	async findByMediaId(mediaId: string): Promise<Upload | null> {
+		return this.collection.findOne({
 			'federation.mediaId': mediaId,
 		});
-
-		return upload?.rid || null;
 	}
 }

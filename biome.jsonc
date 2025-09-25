@@ -46,6 +46,7 @@
 			"**/node_modules",
 			".vscode",
 			"dist",
+			"federation-bundle",
 			"link",
 			".turbo",
 			"tsconfig.*.json"
