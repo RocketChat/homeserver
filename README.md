@@ -20,7 +20,7 @@ This project was created using `bun init` in bun v1.0.30. [Bun](https://bun.sh) 
 ### Run at homeserver side
 
 ```shell
-bun build bundle:sdk
+bun run bundle:sdk
 ```
 
 ### Run at Rocket.Chat side
