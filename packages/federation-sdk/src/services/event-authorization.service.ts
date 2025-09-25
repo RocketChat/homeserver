@@ -115,10 +115,10 @@ export class EventAuthorizationService {
 		return true;
 	}
 
-	private async verifyRequestSignature(
+	async verifyRequestSignature(
+		authorizationHeader: string,
 		method: string,
 		uri: string,
-		authorizationHeader: string,
 		body?: Record<string, unknown>,
 	): Promise<string | undefined> {
 		if (!authorizationHeader?.startsWith('X-Matrix')) {
@@ -172,104 +172,24 @@ export class EventAuthorizationService {
 		}
 	}
 
-	private async canAccessEvent(
-		eventId: EventID,
-		serverName: string,
-	): Promise<boolean> {
-		try {
-			const event = await this.eventService.getEventById(eventId);
-			if (!event) {
-				this.logger.debug(`Event ${eventId} not found`);
-				return false;
-			}
-
-			const roomId = event.event.room_id;
-			const state = await this.stateService.getLatestRoomState(roomId);
-
-			const aclEvent = state.get('m.room.server_acl:');
-			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
-			if (!isServerAllowed) {
-				this.logger.warn(
-					`Server ${serverName} is denied by room ACL for room ${roomId}`,
-				);
-				return false;
-			}
-
-			const serversInRoom = await this.stateService.getServersInRoom(roomId);
-			if (serversInRoom.includes(serverName)) {
-				this.logger.debug(`Server ${serverName} is in room, allowing access`);
-				return true;
-			}
-
-			const historyVisibilityEvent = state.get('m.room.history_visibility:');
-			if (
-				historyVisibilityEvent?.isHistoryVisibilityEvent() &&
-				historyVisibilityEvent.getContent().history_visibility ===
-					'world_readable'
-			) {
-				this.logger.debug(
-					`Event ${eventId} is world_readable, allowing ${serverName}`,
-				);
-				return true;
-			}
-
-			this.logger.debug(
-				`Server ${serverName} not authorized: not in room and event not world_readable`,
-			);
-			return false;
-		} catch (err) {
-			this.logger.error({ msg: 'Error checking event access', err });
-			return false;
+	private matchesServerPattern(serverName: string, pattern: string): boolean {
+		if (serverName === pattern) {
+			return true;
 		}
-	}
 
-	async canAccessEventFromAuthorizationHeader(
-		eventId: EventID,
-		authorizationHeader: string,
-		method: string,
-		uri: string,
-		body?: Record<string, unknown>,
-	): Promise<
-		| { authorized: true }
-		| {
-				authorized: false;
-				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
-		  }
-	> {
+		let regexPattern = pattern
+			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+			.replace(/\*/g, '.*')
+			.replace(/\?/g, '.');
+
+		regexPattern = `^${regexPattern}$`;
+
 		try {
-			const signatureResult = await this.verifyRequestSignature(
-				method,
-				uri,
-				authorizationHeader,
-				body, // keep body due to canonical json validation
-			);
-			if (!signatureResult) {
-				return {
-					authorized: false,
-					errorCode: 'M_UNAUTHORIZED',
-				};
-			}
-
-			const authorized = await this.canAccessEvent(eventId, signatureResult);
-			if (!authorized) {
-				return {
-					authorized: false,
-					errorCode: 'M_FORBIDDEN',
-				};
-			}
-
-			return {
-				authorized: true,
-			};
+			const regex = new RegExp(regexPattern);
+			return regex.test(serverName);
 		} catch (error) {
-			this.logger.error(
-				{ error, eventId, authorizationHeader, method, uri, body },
-				'Error checking event access',
-			);
-			return {
-				authorized: false,
-				errorCode: 'M_UNKNOWN',
-			};
+			this.logger.warn({ msg: `Invalid ACL pattern: ${pattern}`, error });
+			return false;
 		}
 	}
 
@@ -326,131 +246,86 @@ export class EventAuthorizationService {
 		return false;
 	}
 
-	private matchesServerPattern(serverName: string, pattern: string): boolean {
-		if (serverName === pattern) {
+	async serverHasAccessToResource(
+		roomId: string,
+		serverName: string,
+	): Promise<boolean> {
+		const state = await this.stateService.getFullRoomState(roomId);
+
+		const aclEvent = state.get('m.room.server_acl:');
+		const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
+		if (!isServerAllowed) {
+			this.logger.warn(
+				`Server ${serverName} is denied by room ACL for room ${roomId}`,
+			);
+			return false;
+		}
+
+		const serversInRoom = await this.stateService.getServersInRoom(roomId);
+		if (serversInRoom.includes(serverName)) {
+			this.logger.debug(`Server ${serverName} is in room, allowing access`);
 			return true;
 		}
 
-		let regexPattern = pattern
-			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
-			.replace(/\*/g, '.*')
-			.replace(/\?/g, '.');
-
-		regexPattern = `^${regexPattern}$`;
-
-		try {
-			const regex = new RegExp(regexPattern);
-			return regex.test(serverName);
-		} catch (error) {
-			this.logger.warn({ msg: `Invalid ACL pattern: ${pattern}`, error });
-			return false;
-		}
-	}
-
-	// TODO duplicated from canAccessEvent. need to refactor into a common method
-	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
-		try {
-			const rcUpload = await this.uploadRepository.findByMediaId(mediaId);
-			if (!rcUpload) {
-				this.logger.debug(`Media ${mediaId} not found in any room`);
-				return false;
-			}
-
-			const matrixRoomId = rcUpload.federation.mrid;
-
-			const state = await this.stateService.getLatestRoomState(matrixRoomId);
-
-			const aclEvent = state.get('m.room.server_acl:');
-			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
-			if (!isServerAllowed) {
-				this.logger.warn(
-					`Server ${serverName} is denied by room ACL for media in room ${matrixRoomId}`,
-				);
-				return false;
-			}
-
-			const serversInRoom =
-				await this.stateService.getServersInRoom(matrixRoomId);
-			if (serversInRoom.includes(serverName)) {
-				this.logger.debug(
-					`Server ${serverName} is in room ${matrixRoomId}, allowing media access`,
-				);
-				return true;
-			}
-
-			const historyVisibilityEvent = state.get('m.room.history_visibility:');
-			if (
-				historyVisibilityEvent?.isHistoryVisibilityEvent() &&
-				historyVisibilityEvent.getContent().history_visibility ===
-					'world_readable'
-			) {
-				this.logger.debug(
-					`Room ${matrixRoomId} is world_readable, allowing media access to ${serverName}`,
-				);
-				return true;
-			}
-
+		const historyVisibilityEvent = state.get('m.room.history_visibility:');
+		if (
+			historyVisibilityEvent?.isHistoryVisibilityEvent() &&
+			historyVisibilityEvent.getContent().history_visibility ===
+				'world_readable'
+		) {
 			this.logger.debug(
-				`Server ${serverName} not authorized for media ${mediaId}: not in room and room not world_readable`,
+				`Room ${roomId} is world_readable, allowing ${serverName}`,
 			);
-			return false;
-		} catch (error) {
-			this.logger.error(
-				{ error, mediaId, serverName },
-				'Error checking media access',
-			);
-			return false;
+			return true;
 		}
+
+		this.logger.debug(
+			`Server ${serverName} not authorized: not in room and room not world_readable`,
+		);
+		return false;
 	}
 
-	// TODO duplicated from canAccessEventFromAuthorizationHeader. need to refactor into a common method
-	async canAccessMediaFromAuthorizationHeader(
-		mediaId: string,
-		authorizationHeader: string,
-		method: string,
-		uri: string,
-		body?: Record<string, unknown>,
-	): Promise<
-		| { authorized: true }
-		| {
-				authorized: false;
-				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
-		  }
-	> {
-		try {
-			const signatureResult = await this.verifyRequestSignature(
-				method,
-				uri,
-				authorizationHeader,
-				body,
-			);
-			if (!signatureResult) {
-				return {
-					authorized: false,
-					errorCode: 'M_UNAUTHORIZED',
-				};
-			}
-
-			const authorized = await this.canAccessMedia(mediaId, signatureResult);
-			if (!authorized) {
-				return {
-					authorized: false,
-					errorCode: 'M_FORBIDDEN',
-				};
-			}
-
-			return {
-				authorized: true,
-			};
-		} catch (error) {
-			this.logger.error(
-				{ error, mediaId, authorizationHeader, method, uri },
-				'Error checking media access',
-			);
-			return {
-				authorized: false,
-				errorCode: 'M_UNKNOWN',
-			};
+	async canAccessEvent(eventId: EventID, serverName: string): Promise<boolean> {
+		const event = await this.eventService.getEventById(eventId);
+		if (!event) {
+			this.logger.debug(`Event ${eventId} not found`);
+			return false;
 		}
+
+		return this.serverHasAccessToResource(event.event.room_id, serverName);
+	}
+
+	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
+		const rcUpload = await this.uploadRepository.findByMediaId(mediaId);
+		if (!rcUpload) {
+			this.logger.debug(`Media ${mediaId} not found in any room`);
+			return false;
+		}
+
+		return this.serverHasAccessToResource(rcUpload.federation.mrid, serverName);
+	}
+
+	async canAccessRoom(roomId: string, serverName: string): Promise<boolean> {
+		return this.serverHasAccessToResource(roomId, serverName);
+	}
+
+	async canAccessResource(
+		entityType: 'event' | 'room' | 'media',
+		entityId: string,
+		serverName: string,
+	): Promise<boolean> {
+		if (entityType === 'event') {
+			return this.canAccessEvent(entityId as EventID, serverName);
+		}
+
+		if (entityType === 'room') {
+			return this.canAccessRoom(entityId, serverName);
+		}
+
+		if (entityType === 'media') {
+			return this.canAccessMedia(entityId, serverName);
+		}
+
+		return false;
 	}
 }

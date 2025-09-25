@@ -1,11 +1,17 @@
 import {
 	EventID,
 	RoomID,
-	type RoomVersion,
 	UserID,
 } from '@rocket.chat/federation-room';
-import { ProfilesService } from '@rocket.chat/federation-sdk';
-import { Elysia, t } from 'elysia';
+import {
+	EventAuthorizationService,
+	ProfilesService,
+} from '@rocket.chat/federation-sdk';
+import {
+	canAccessResource,
+	isAuthenticated,
+} from '@rocket.chat/homeserver/middlewares';
+import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
@@ -16,12 +22,6 @@ import {
 	GetMissingEventsBodyDto,
 	GetMissingEventsParamsDto,
 	GetMissingEventsResponseDto,
-	GetStateIdsParamsDto,
-	GetStateIdsQueryDto,
-	GetStateIdsResponseDto,
-	GetStateParamsDto,
-	GetStateQueryDto,
-	GetStateResponseDto,
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
@@ -33,8 +33,11 @@ import {
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
+	const eventAuthService = container.resolve(EventAuthorizationService);
 
 	return app
+		.use(isAuthenticated(eventAuthService))
+		.use(canAccessResource(eventAuthService))
 		.get(
 			'/_matrix/federation/v1/query/profile',
 			({ query: { user_id } }) =>
