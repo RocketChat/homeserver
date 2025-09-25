@@ -75,7 +75,7 @@ export class SendJoinService {
 			event_id: eventId,
 			room_id: roomId,
 			sender: signedJoinEvent.sender,
-			state_key: signedJoinEvent.sender,
+			state_key: signedJoinEvent.event.state_key,
 			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
 				avatar_url: signedJoinEvent.getContent().avatar_url,
