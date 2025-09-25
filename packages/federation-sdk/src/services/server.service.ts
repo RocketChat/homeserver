@@ -1,5 +1,6 @@
 import {
 	type SigningKey,
+	getPublicKeyFromRemoteServer,
 	signJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
@@ -28,6 +29,32 @@ export class ServerService {
 		validUntil: number,
 	): Promise<void> {
 		await this.serverRepository.storePublicKey(origin, key, value, validUntil);
+	}
+
+	async getPublicKey(origin: string, key: string): Promise<string> {
+		if (origin === this.configService.serverName) {
+			return this.configService.getPublicSigningKeyBase64();
+		}
+
+		const localPublicKey =
+			await this.serverRepository.getValidPublicKeyFromLocal(origin, key);
+		if (localPublicKey) {
+			return localPublicKey;
+		}
+
+		const { key: remotePublicKey, validUntil } =
+			await getPublicKeyFromRemoteServer(
+				origin,
+				this.configService.serverName,
+				key,
+			);
+
+		if (!remotePublicKey) {
+			throw new Error('Could not get public key from remote server');
+		}
+
+		await this.storePublicKey(origin, key, remotePublicKey, validUntil);
+		return remotePublicKey;
 	}
 
 	async getSignedServerKey() {

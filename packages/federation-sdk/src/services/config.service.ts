@@ -1,13 +1,11 @@
 import {
+	SigningKey,
 	createLogger,
 	generateKeyPairsFromString,
-	getKeyPair,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
 
 import { z } from 'zod';
-
-const CONFIG_FOLDER = process.env.CONFIG_FOLDER || '.';
 
 export interface AppConfig {
 	serverName: string;
@@ -76,6 +74,7 @@ export const AppConfigSchema = z.object({
 export class ConfigService {
 	private config: AppConfig;
 	private logger = createLogger('ConfigService');
+	private serverKeys: SigningKey[] = [];
 
 	constructor(values: AppConfig) {
 		try {
@@ -116,14 +115,18 @@ export class ConfigService {
 
 	async getSigningKey() {
 		// If config contains a signing key, use it
-		if (this.config.signingKey) {
+		if (!this.config.signingKey) {
+			throw new Error('Signing key is not configured');
+		}
+
+		if (!this.serverKeys.length) {
 			const signingKey = await generateKeyPairsFromString(
 				this.config.signingKey,
 			);
-			return [signingKey];
+			this.serverKeys = [signingKey];
 		}
-		// Otherwise load from file
-		return this.loadSigningKey();
+
+		return this.serverKeys;
 	}
 
 	async getSigningKeyId(): Promise<string> {
@@ -137,20 +140,8 @@ export class ConfigService {
 		return toUnpaddedBase64(signingKeys[0].privateKey);
 	}
 
-	async loadSigningKey() {
-		try {
-			const signingKeyPath = `${CONFIG_FOLDER}/${this.config.serverName}.signing.key`;
-			this.logger.info(`Loading signing key from ${signingKeyPath}`);
-			const keys = await getKeyPair({ signingKeyPath });
-			this.logger.info(
-				`Successfully loaded signing key for server ${this.config.serverName}`,
-			);
-			return keys;
-		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : 'Unknown error';
-			this.logger.error(`Failed to load signing key: ${errorMessage}`);
-			throw error;
-		}
+	async getPublicSigningKeyBase64(): Promise<string> {
+		const signingKeys = await this.getSigningKey();
+		return toUnpaddedBase64(signingKeys[0].publicKey);
 	}
 }

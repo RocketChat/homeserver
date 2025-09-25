@@ -2,8 +2,6 @@ import {
 	createLogger,
 	extractSignaturesFromHeader,
 	generateId,
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
 	validateAuthorizationHeader,
 } from '@rocket.chat/federation-core';
 import type {
@@ -12,10 +10,10 @@ import type {
 	PersistentEventBase,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
-import { KeyRepository } from '../repositories/key.repository';
 import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
+import { ServerService } from './server.service';
 import { StateService } from './state.service';
 
 @singleton()
@@ -27,7 +25,7 @@ export class EventAuthorizationService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly uploadRepository: UploadRepository,
-		private readonly keyRepository: KeyRepository,
+		private readonly serverService: ServerService,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -146,20 +144,7 @@ export class EventAuthorizationService {
 				return;
 			}
 
-			// TODO: move makeGetPublicKeyFromServerProcedure procedure to a proper service
-			const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-				(origin, keyId) =>
-					this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
-				(origin, key) =>
-					getPublicKeyFromRemoteServer(
-						origin,
-						this.configService.serverName,
-						key,
-					),
-				(origin, keyId, publicKey) =>
-					this.keyRepository.storePublicKey(origin, keyId, publicKey),
-			);
-			const publicKey = await getPublicKeyFromServer(origin, key);
+			const publicKey = await this.serverService.getPublicKey(origin, key);
 			if (!publicKey) {
 				this.logger.warn(`Could not fetch public key for ${origin}:${key}`);
 				return;

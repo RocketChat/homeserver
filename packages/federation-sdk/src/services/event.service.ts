@@ -9,10 +9,6 @@ import { isPresenceEDU, isTypingEDU } from '@rocket.chat/federation-core';
 import type { RedactionEvent } from '@rocket.chat/federation-core';
 import { generateId } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-core';
-import {
-	getPublicKeyFromRemoteServer,
-	makeGetPublicKeyFromServerProcedure,
-} from '@rocket.chat/federation-core';
 import { pruneEventDict } from '@rocket.chat/federation-core';
 
 import { checkSignAndHashes } from '@rocket.chat/federation-core';
@@ -35,6 +31,7 @@ import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
+import { ServerService } from './server.service';
 import { StateService } from './state.service';
 
 export interface AuthEventParams {
@@ -57,6 +54,7 @@ export class EventService {
 
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly stateService: StateService,
+		private readonly serverService: ServerService,
 
 		private readonly eventEmitterService: EventEmitterService,
 	) {
@@ -181,8 +179,9 @@ export class EventService {
 					} catch (err) {
 						this.logger.error({
 							msg: 'Event validation failed',
+							origin,
 							event,
-							error: err,
+							err,
 						});
 						continue;
 					}
@@ -251,41 +250,13 @@ export class EventService {
 			throw new Error('M_INVALID_EVENT');
 		}
 
-		const getPublicKeyFromServer = makeGetPublicKeyFromServerProcedure(
-			(origin, keyId) =>
-				this.keyRepository.getValidPublicKeyFromLocal(origin, keyId),
-			(origin, key) =>
-				getPublicKeyFromRemoteServer(
-					origin,
-					this.configService.serverName,
-					key,
-				),
-			(origin, keyId, publicKey) =>
-				this.keyRepository.storePublicKey(origin, keyId, publicKey),
-		);
-
 		if (!event.hashes && !event.signatures) {
 			throw new Error('M_MISSING_SIGNATURES_OR_HASHES');
 		}
 
-		let originToValidateSignatures = origin;
-
-		// If the event does not have a signature for the origin server,
-		// but has a signature for our server, we validate using our server name.
-		// This happens on sendJoin process, where the join event is signed by our server,
-		// but the origin is the remote server since it just returns the event as we sent it.
-		if (
-			!event.signatures[origin] &&
-			event.signatures[this.configService.serverName]
-		) {
-			originToValidateSignatures = this.configService.serverName;
-		}
-
-		await checkSignAndHashes(
-			event,
-			originToValidateSignatures,
-			getPublicKeyFromServer,
-		);
+		await checkSignAndHashes(event, origin, (origin, key) => {
+			return this.serverService.getPublicKey(origin, key);
+		});
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {

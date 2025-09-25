@@ -74,10 +74,7 @@ export * from './models/event.model';
 // Procedures
 export { makeJoinEventBuilder } from './procedures/makeJoin';
 export { makeGetMissingEventsProcedure } from './procedures/getMissingEvents';
-export {
-	makeGetPublicKeyFromServerProcedure,
-	getPublicKeyFromRemoteServer,
-} from './procedures/getPublicKeyFromServer';
+export { getPublicKeyFromRemoteServer } from './procedures/getPublicKeyFromServer';
 
 export { createLogger, logger } from './utils/logger';
 
