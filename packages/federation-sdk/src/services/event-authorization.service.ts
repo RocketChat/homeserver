@@ -13,7 +13,6 @@ import type {
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
-import { MatrixBridgedRoomRepository } from '../repositories/matrix-bridged-room.repository';
 import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -28,7 +27,6 @@ export class EventAuthorizationService {
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly uploadRepository: UploadRepository,
-		private readonly matrixBridgedRoomRepository: MatrixBridgedRoomRepository,
 		private readonly keyRepository: KeyRepository,
 	) {}
 
@@ -367,19 +365,13 @@ export class EventAuthorizationService {
 	// TODO duplicated from canAccessEvent. need to refactor into a common method
 	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
 		try {
-			const rcRoomId =
-				await this.uploadRepository.findRocketChatRoomIdByMediaId(mediaId);
-			if (!rcRoomId) {
+			const rcUpload = await this.uploadRepository.findByMediaId(mediaId);
+			if (!rcUpload) {
 				this.logger.debug(`Media ${mediaId} not found in any room`);
 				return false;
 			}
 
-			const matrixRoomId =
-				await this.matrixBridgedRoomRepository.findMatrixRoomId(rcRoomId);
-			if (!matrixRoomId) {
-				this.logger.debug(`Media ${mediaId} not found in any room`);
-				return false;
-			}
+			const matrixRoomId = rcUpload.federation.mrid;
 
 			const state = await this.stateService.getFullRoomState(matrixRoomId);
 
