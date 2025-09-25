@@ -175,7 +175,7 @@ export class EventService {
 			Array.from(eventsByRoomId.entries()).map(async ([roomId, events]) => {
 				for await (const event of events) {
 					try {
-						await this.validateEvent(origin, event);
+						await this.validateEvent(event);
 					} catch (err) {
 						this.logger.error({
 							msg: 'Event validation failed',
@@ -221,10 +221,23 @@ export class EventService {
 		);
 	}
 
-	private async validateEvent(origin: string, event: Pdu): Promise<void> {
+	private async validateEvent(event: Pdu): Promise<void> {
 		const roomVersion = await this.getRoomVersion(event);
 		if (!roomVersion) {
 			throw new Error('M_UNKNOWN_ROOM_VERSION');
+		}
+
+		if (
+			event.type === 'm.room.member' &&
+			event.content.membership === 'invite' &&
+			'third_party_invite' in event.content
+		) {
+			throw new Error('Third party invites are not supported');
+		}
+
+		const origin = event.sender.split(':').pop();
+		if (!origin) {
+			throw new Error('Event sender is missing domain');
 		}
 
 		const eventSchema = this.getEventSchema(roomVersion, event.type);
