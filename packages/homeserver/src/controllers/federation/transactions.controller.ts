@@ -18,7 +18,7 @@ import {
 	SendTransactionBodyDto,
 	SendTransactionResponseDto,
 } from '../../dtos';
-import { canAccessEvent } from '../../middlewares/acl.middleware';
+import { canAccessResource, isAuthenticated } from '../../middlewares';
 
 export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
@@ -26,6 +26,8 @@ export const transactionsPlugin = (app: Elysia) => {
 	const eventAuthService = container.resolve(EventAuthorizationService);
 
 	return app
+		.use(isAuthenticated(eventAuthService))
+		.use(canAccessResource(eventAuthService))
 		.put(
 			'/_matrix/federation/v1/send/:txnId',
 			async ({ body }) => {
@@ -72,7 +74,6 @@ export const transactionsPlugin = (app: Elysia) => {
 				};
 			},
 			{
-				use: canAccessEvent(eventAuthService),
 				params: GetEventParamsDto,
 				response: {
 					200: GetEventResponseDto,
