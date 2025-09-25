@@ -38,14 +38,14 @@ const filterWorkspace = (deps: Record<string, unknown>) =>
 		),
 	);
 
+// TODO get list of packages programmatically
 const packages = ['core', 'crypto', 'federation-sdk', 'room'];
+
 const localPackagesNames = getLocalPackages(packages);
 
 const packageJson = JSON.parse(
 	await Bun.file(`${inputDir}/package.json`).text(),
 );
-
-// get dependencies from all packages
 
 async function main() {
 	await $`rm -rf ${outputDir}/dist`;
