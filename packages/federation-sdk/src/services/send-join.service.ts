@@ -71,13 +71,14 @@ export class SendJoinService {
 
 		const signedJoinEvent = await stateService.signEvent(joinEvent);
 
-		this.emitterService.emit('homeserver.matrix.accept-invite', {
+		this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: eventId,
 			room_id: roomId,
 			sender: signedJoinEvent.sender,
+			state_key: signedJoinEvent.sender,
 			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
-				avatar_url: signedJoinEvent.getContent().avatar_url || null,
+				avatar_url: signedJoinEvent.getContent().avatar_url,
 				displayname: signedJoinEvent.getContent().displayname || '',
 				membership: signedJoinEvent.getContent().membership,
 			},
