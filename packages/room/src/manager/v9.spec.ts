@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 
-import { PersistentEventV9 } from './v9';
 import { EventID } from '../types/_common';
+import { PersistentEventV9 } from './v9';
 
 test('event without origin', async () => {
 	const event = new PersistentEventV9(
