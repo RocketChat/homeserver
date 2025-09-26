@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
@@ -42,7 +41,7 @@ export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<
-	T extends RoomVersion = '11',
+	Version extends RoomVersion = RoomVersion,
 	Type extends PduType = PduType,
 > {
 	private _rejectedReason?: string;
@@ -51,7 +50,10 @@ export abstract class PersistentEventBase<
 
 	protected rawEvent: PduWithHashesAndSignaturesOptional;
 
-	constructor(event: PduWithHashesAndSignaturesOptional) {
+	constructor(
+		event: PduWithHashesAndSignaturesOptional,
+		public readonly version: Version,
+	) {
 		this.rawEvent = JSON.parse(JSON.stringify(event));
 		if (this.rawEvent.signatures) {
 			this.signatures = this.rawEvent.signatures;

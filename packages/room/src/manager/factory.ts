@@ -1,11 +1,4 @@
-import {
-	Pdu,
-	type PduCreateEventContent,
-	type PduJoinRuleEventContent,
-	type PduMembershipEventContent,
-	PduPowerLevelsEventContent,
-	PduType,
-} from '../types/v3-11';
+import { Pdu, type PduCreateEventContent, PduType } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
 
@@ -15,10 +8,10 @@ import type {
 	PersistentEventBase,
 } from './event-wrapper';
 import type { RoomVersion } from './type';
+import { PersistentEventV11 } from './v11';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
-import { PersistentEventV11 } from './v11';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -69,17 +62,17 @@ export class PersistentEventFactory {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event);
+				return new PersistentEventV3(event, roomVersion);
 			case '6':
 			case '7':
-				return new PersistentEventV6(event);
+				return new PersistentEventV6(event, roomVersion);
 			case '8':
-				return new PersistentEventV8(event);
+				return new PersistentEventV8(event, roomVersion);
 			case '9':
 			case '10':
-				return new PersistentEventV9(event);
+				return new PersistentEventV9(event, roomVersion);
 			case '11':
-				return new PersistentEventV11(event);
+				return new PersistentEventV11(event, roomVersion);
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
