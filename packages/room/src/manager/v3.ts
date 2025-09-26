@@ -1,6 +1,6 @@
 import { toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 import type { EventID } from '../types/_common';
-import {} from '../types/v3-11';
+import { PduType } from '../types/v3-11';
 import {
 	type EventStore,
 	PersistentEventBase,
@@ -9,16 +9,11 @@ import {
 import type { RoomVersion3To11 } from './type';
 
 // v3 is where it changes first
-export class PersistentEventV3 extends PersistentEventBase<RoomVersion3To11> {
+export class PersistentEventV3<
+	Type extends PduType = PduType,
+> extends PersistentEventBase<RoomVersion3To11, Type> {
 	private _eventId?: EventID;
 
-	async getAuthorizationEvents(store: EventStore) {
-		return store.getEvents(this.rawEvent.auth_events);
-	}
-
-	async getPreviousEvents(store: EventStore) {
-		return store.getEvents(this.rawEvent.prev_events);
-	}
 	get eventId(): EventID {
 		if (this._eventId) {
 			return this._eventId;

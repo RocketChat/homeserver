@@ -1,7 +1,9 @@
-import {} from '../types/v3-11';
+import { PduType } from '../types/v3-11';
 import { PersistentEventV8 } from './v8';
 
-export class PersistentEventV9 extends PersistentEventV8 {
+export class PersistentEventV9<
+	Type extends PduType = PduType,
+> extends PersistentEventV8<Type> {
 	getAllowedContentKeys() {
 		const resp = super.getAllowedContentKeys();
 

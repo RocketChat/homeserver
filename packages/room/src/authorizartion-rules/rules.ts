@@ -1,13 +1,9 @@
 import assert from 'node:assert';
-import {
-	type PduCreateEventContent,
-	type PduMembershipEventContent,
-	type PduPowerLevelsEventContent,
-	type PduType,
-} from '../types/v3-11';
+import { type PduType } from '../types/v3-11';
 
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
+import { RoomVersion } from '../manager/type';
 import {
 	type EventStore,
 	getStateByMapKey,
@@ -173,7 +169,9 @@ async function isMembershipChangeAllowed(
 
 	const content = membershipEventToCheck.getContent();
 
-	const previousEvents = await membershipEventToCheck.getPreviousEvents(store);
+	const previousEvents = await store.getEvents(
+		membershipEventToCheck.getPreviousEventIds(),
+	);
 
 	switch (content.membership) {
 		case 'join': {
@@ -353,7 +351,7 @@ async function isMembershipChangeAllowed(
 
 export function validatePowerLevelEvent(
 	powerLevelEvent: PowerLevelEvent,
-	roomCreateEvent: PersistentEventBase,
+	roomCreateEvent: PersistentEventBase<RoomVersion, 'm.room.create'>,
 	authEventMap: Map<StateMapKey, PersistentEventBase>,
 ) {
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.

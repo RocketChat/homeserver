@@ -41,7 +41,7 @@ export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<
-	T extends RoomVersion = '11',
+	Version extends RoomVersion = RoomVersion,
 	Type extends PduType = PduType,
 > {
 	private _rejectedReason?: string;
@@ -50,7 +50,10 @@ export abstract class PersistentEventBase<
 
 	protected rawEvent: PduWithHashesAndSignaturesOptional;
 
-	constructor(event: PduWithHashesAndSignaturesOptional) {
+	constructor(
+		event: PduWithHashesAndSignaturesOptional,
+		public readonly version: Version,
+	) {
 		this.rawEvent = JSON.parse(JSON.stringify(event));
 		if (this.rawEvent.signatures) {
 			this.signatures = this.rawEvent.signatures;
@@ -141,14 +144,13 @@ export abstract class PersistentEventBase<
 		throw new Error('Event is not a power level event');
 	}
 
-	// room version dependent
-	abstract getAuthorizationEvents(
-		store: EventStore,
-	): Promise<PersistentEventBase<T>[]>;
+	getAuthEventIds() {
+		return this.rawEvent.auth_events;
+	}
 
-	abstract getPreviousEvents(
-		store: EventStore,
-	): Promise<PersistentEventBase<T>[]>;
+	getPreviousEventIds() {
+		return this.rawEvent.prev_events;
+	}
 
 	isState() {
 		// spec wise this is the right way to check if an event is a state event
@@ -162,49 +164,55 @@ export abstract class PersistentEventBase<
 		return !this.isState();
 	}
 
-	isTopicEvent(): this is PersistentEventBase<T, 'm.room.topic'> {
+	isTopicEvent(): this is PersistentEventBase<Version, 'm.room.topic'> {
 		return this.isState() && this.type === 'm.room.topic';
 	}
 
-	isPowerLevelEvent(): this is PersistentEventBase<T, 'm.room.power_levels'> {
+	isPowerLevelEvent(): this is PersistentEventBase<
+		Version,
+		'm.room.power_levels'
+	> {
 		return this.isState() && this.type === 'm.room.power_levels';
 	}
 
-	isNameEvent(): this is PersistentEventBase<T, 'm.room.name'> {
+	isNameEvent(): this is PersistentEventBase<Version, 'm.room.name'> {
 		return this.isState() && this.type === 'm.room.name';
 	}
 
-	isJoinRuleEvent(): this is PersistentEventBase<T, 'm.room.join_rules'> {
+	isJoinRuleEvent(): this is PersistentEventBase<Version, 'm.room.join_rules'> {
 		return this.isState() && this.type === 'm.room.join_rules';
 	}
 
-	isMembershipEvent(): this is PersistentEventBase<T, 'm.room.member'> {
+	isMembershipEvent(): this is PersistentEventBase<Version, 'm.room.member'> {
 		return this.isState() && this.type === 'm.room.member';
 	}
 
-	isCreateEvent(): this is PersistentEventBase<T, 'm.room.create'> {
+	isCreateEvent(): this is PersistentEventBase<Version, 'm.room.create'> {
 		return this.isState() && this.type === 'm.room.create';
 	}
 
-	isServerAclEvent(): this is PersistentEventBase<T, 'm.room.server_acl'> {
+	isServerAclEvent(): this is PersistentEventBase<
+		Version,
+		'm.room.server_acl'
+	> {
 		return this.isState() && this.type === 'm.room.server_acl';
 	}
 
 	isHistoryVisibilityEvent(): this is PersistentEventBase<
-		T,
+		Version,
 		'm.room.history_visibility'
 	> {
 		return this.isState() && this.type === 'm.room.history_visibility';
 	}
 
 	isCanonicalAliasEvent(): this is PersistentEventBase<
-		T,
+		Version,
 		'm.room.canonical_alias'
 	> {
 		return this.isState() && this.type === 'm.room.canonical_alias';
 	}
 
-	isAliasEvent(): this is PersistentEventBase<T, 'm.room.aliases'> {
+	isAliasEvent(): this is PersistentEventBase<Version, 'm.room.aliases'> {
 		return this.isState() && this.type === 'm.room.aliases';
 	}
 
@@ -412,7 +420,7 @@ export abstract class PersistentEventBase<
 		return this._rejectedReason;
 	}
 
-	addPrevEvents(events: PersistentEventBase<T>[]) {
+	addPrevEvents(events: PersistentEventBase<Version>[]) {
 		this.rawEvent.prev_events.push(...events.map((e) => e.eventId));
 		if (this.rawEvent.depth <= events[events.length - 1].depth) {
 			this.rawEvent.depth = events[events.length - 1].depth + 1;
@@ -420,7 +428,7 @@ export abstract class PersistentEventBase<
 		return this;
 	}
 
-	authedBy(event: PersistentEventBase<T>) {
+	authedBy(event: PersistentEventBase<Version>) {
 		this.rawEvent.auth_events.push(event.eventId);
 		return this;
 	}

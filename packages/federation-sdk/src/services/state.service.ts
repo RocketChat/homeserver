@@ -91,7 +91,7 @@ export class StateService {
 			throw new Error('Create event not found for room version');
 		}
 
-		return createEvent.event.content?.room_version;
+		return createEvent.event.content.room_version;
 	}
 
 	private logState(label: string, state: State) {
@@ -438,7 +438,7 @@ export class StateService {
 	}
 
 	private async addPrevEvents(event: PersistentEventBase) {
-		const roomVersion = await this.getRoomVersion(event.roomId);
+		const roomVersion = event.version;
 		if (!roomVersion) {
 			throw new Error('Room version not found while filling prev events');
 		}
@@ -478,13 +478,7 @@ export class StateService {
 		event: PersistentEventBase,
 		state: State,
 	): Promise<void> {
-		const roomVersion = event.isCreateEvent()
-			? event.getContent().room_version
-			: await this.getRoomVersion(event.roomId);
-
-		if (!roomVersion) {
-			throw new Error('Room version not found');
-		}
+		const roomVersion = event.version;
 
 		// always check for conflicts at the prev_event state
 
@@ -594,9 +588,7 @@ export class StateService {
 			return;
 		}
 
-		const roomVersion = event.isCreateEvent()
-			? event.getContent().room_version
-			: await this.getRoomVersion(event.roomId);
+		const roomVersion = event.version;
 
 		if (!roomVersion) {
 			throw new Error('Room version not found');
@@ -748,12 +740,7 @@ export class StateService {
 			throw new Error('State events are not persisted with this method');
 		}
 
-		const roomVersion = await this.getRoomVersion(event.roomId);
-		if (!roomVersion) {
-			throw new Error(
-				'Room version not found when trying to persist a timeline event',
-			);
-		}
+		const roomVersion = event.version;
 
 		const { state: room, stateId } = await this.getFullRoomStateAndStateId(
 			event.roomId,

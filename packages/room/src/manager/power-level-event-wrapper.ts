@@ -68,7 +68,10 @@ class PowerLevelEvent<
 		return this._content.redact ?? 50;
 	}
 
-	getPowerLevelForUser(userId: string, createEvent?: PersistentEventBase) {
+	getPowerLevelForUser(
+		userId: string,
+		createEvent?: PersistentEventBase<RoomVersion, 'm.room.create'>,
+	) {
 		if (!this._content) {
 			if (createEvent?.sender === userId) {
 				return 100;

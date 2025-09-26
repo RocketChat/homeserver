@@ -1,11 +1,4 @@
-import {
-	Pdu,
-	type PduCreateEventContent,
-	type PduJoinRuleEventContent,
-	type PduMembershipEventContent,
-	PduPowerLevelsEventContent,
-	PduType,
-} from '../types/v3-11';
+import { Pdu, type PduCreateEventContent, PduType } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
 
@@ -59,7 +52,7 @@ export class PersistentEventFactory {
 
 	static createFromRawEvent<Type extends PduType>(
 		event: PduWithHashesAndSignaturesOptional,
-		roomVersion: RoomVersion,
+		roomVersion: string,
 	): PersistentEventBase<RoomVersion, Type> {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
@@ -69,32 +62,17 @@ export class PersistentEventFactory {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event) as PersistentEventBase<
-					RoomVersion,
-					Type
-				>;
+				return new PersistentEventV3(event, roomVersion);
 			case '6':
 			case '7':
-				return new PersistentEventV6(event) as PersistentEventBase<
-					RoomVersion,
-					Type
-				>;
+				return new PersistentEventV6(event, roomVersion);
 			case '8':
-				return new PersistentEventV8(event) as PersistentEventBase<
-					RoomVersion,
-					Type
-				>;
+				return new PersistentEventV8(event, roomVersion);
 			case '9':
 			case '10':
-				return new PersistentEventV9(event) as PersistentEventBase<
-					RoomVersion,
-					Type
-				>;
+				return new PersistentEventV9(event, roomVersion);
 			case '11':
-				return new PersistentEventV11(event) as PersistentEventBase<
-					RoomVersion,
-					Type
-				>;
+				return new PersistentEventV11(event, roomVersion);
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
