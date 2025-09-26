@@ -50,7 +50,7 @@ export class SendJoinService {
 		await stateService.persistStateEvent(joinEvent);
 
 		if (joinEvent.rejected) {
-			throw new Error(joinEvent.rejectedReason);
+			throw new Error(joinEvent.rejectReason);
 		}
 
 		const configService = this.configService;

@@ -1,7 +1,6 @@
 import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
 	PduForType,
-	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
 } from '@rocket.chat/federation-room';
@@ -86,7 +85,7 @@ export class InviteService {
 			await stateService.persistStateEvent(inviteEvent);
 
 			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectedReason);
+				throw new Error(inviteEvent.rejectReason);
 			}
 
 			// let all servers know of this state change
@@ -157,7 +156,7 @@ export class InviteService {
 
 			await this.stateService.persistStateEvent(inviteEvent);
 			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectedReason);
+				throw new Error(inviteEvent.rejectReason);
 			}
 
 			// we do not send transaction here
@@ -174,7 +173,7 @@ export class InviteService {
 			// if we have the state we try to persist the invite event
 			await this.stateService.persistStateEvent(inviteEvent);
 			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectedReason);
+				throw new Error(inviteEvent.rejectReason);
 			}
 		} catch (e) {
 			// don't have state copy yet

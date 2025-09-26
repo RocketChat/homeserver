@@ -1,17 +1,10 @@
 import {
 	EventBase,
 	EventStore,
-	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
-	RoomTombstoneEvent,
 	SignedEvent,
 	TombstoneAuthEvents,
-	generateId,
-	isRoomPowerLevelsEvent,
-	roomNameEvent,
 	roomPowerLevelsEvent,
-	roomTombstoneEvent,
-	signEvent,
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { FederationService } from './federation.service';
@@ -21,18 +14,15 @@ import {
 	HttpException,
 	HttpStatus,
 } from '@rocket.chat/federation-core';
-import { type SigningKey } from '@rocket.chat/federation-core';
 
 import { logger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
-	PduCreateEventContent,
 	PduForType,
 	PduJoinRuleEventContent,
 	PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
-	RoomVersion,
 } from '@rocket.chat/federation-room';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
@@ -810,7 +800,7 @@ export class RoomService {
 			await stateService.persistStateEvent(membershipEvent);
 
 			if (membershipEvent.rejected) {
-				throw new Error(membershipEvent.rejectedReason);
+				throw new Error(membershipEvent.rejectReason);
 			}
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
@@ -993,7 +983,7 @@ export class RoomService {
 		);
 
 		if (joinEventFinal.rejected) {
-			throw new Error(joinEventFinal.rejectedReason);
+			throw new Error(joinEventFinal.rejectReason);
 		}
 
 		return joinEventFinal.eventId;

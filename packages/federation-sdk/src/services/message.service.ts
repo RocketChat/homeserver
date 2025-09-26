@@ -1,23 +1,8 @@
-import {
-	type MessageAuthEvents,
-	type RoomMessageEvent,
-	roomMessageEvent,
-} from '@rocket.chat/federation-core';
-import { type SignedEvent } from '@rocket.chat/federation-core';
-
 import { ForbiddenError } from '@rocket.chat/federation-core';
-import {
-	type RedactionAuthEvents,
-	type RedactionEvent,
-	redactionEvent,
-} from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
-import { signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PersistentEventBase,
-	PersistentEventFactory,
-	type RoomVersion,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
@@ -97,7 +82,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -145,7 +130,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -181,7 +166,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -237,7 +222,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -288,7 +273,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
