@@ -8,10 +8,10 @@ import type {
 	PersistentEventBase,
 } from './event-wrapper';
 import type { RoomVersion } from './type';
+import { PersistentEventV11 } from './v11';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
-import { PersistentEventV11 } from './v11';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
