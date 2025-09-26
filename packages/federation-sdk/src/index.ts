@@ -159,7 +159,7 @@ export type HomeserverEventSignatures = {
 
 						// rich {"body":"quote","m.mentions":{},"m.relates_to":{"is_falling_back":false,"m.in_reply_to":{"event_id":"$0vkvf2Ha_FdWe3zVaoDw3X15VCyZIZRYrHQXuoZDURQ"}},"msgtype":"m.text"}
 
-						'm.in_reply_to'?: {
+						'm.in_reply_to': {
 							event_id: EventID;
 						};
 						is_falling_back?: boolean;
