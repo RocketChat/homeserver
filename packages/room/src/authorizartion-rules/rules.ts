@@ -173,7 +173,9 @@ async function isMembershipChangeAllowed(
 
 	const content = membershipEventToCheck.getContent();
 
-	const previousEvents = await membershipEventToCheck.getPreviousEvents(store);
+	const previousEvents = await store.getEvents(
+		membershipEventToCheck.getPreviousEventIds(),
+	);
 
 	switch (content.membership) {
 		case 'join': {

@@ -14,13 +14,6 @@ export class PersistentEventV3<
 > extends PersistentEventBase<RoomVersion3To11, Type> {
 	private _eventId?: EventID;
 
-	async getAuthorizationEvents(store: EventStore) {
-		return store.getEvents(this.rawEvent.auth_events);
-	}
-
-	async getPreviousEvents(store: EventStore) {
-		return store.getEvents(this.rawEvent.prev_events);
-	}
 	get eventId(): EventID {
 		if (this._eventId) {
 			return this._eventId;

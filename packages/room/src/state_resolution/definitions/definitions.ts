@@ -117,7 +117,7 @@ export async function getAuthChain(
 			return eventIdToAuthChainMap.get(eventId)!;
 		}
 
-		const authEvents = await event.getAuthorizationEvents(store);
+		const authEvents = await store.getEvents(event.getAuthEventIds());
 		if (authEvents.length === 0) {
 			eventIdToAuthChainMap.set(eventId, existingAuthChainPart);
 			return existingAuthChainPart;
@@ -348,7 +348,7 @@ export async function reverseTopologicalPowerSort(
 		}
 
 		// auths are the parents, must be on tiop
-		for (const authEvent of await event.getAuthorizationEvents(store)) {
+		for (const authEvent of await store.getEvents(event.getAuthEventIds())) {
 			eventMap.set(authEvent.eventId, authEvent);
 
 			if (
@@ -441,7 +441,7 @@ export async function mainlineOrdering(
 		const fn = async (
 			event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
 		) => {
-			const authEvents = await event.getAuthorizationEvents(store);
+			const authEvents = await store.getEvents(event.getAuthEventIds());
 
 			// await new Promise((resolve) => setTimeout(resolve, 3000));
 
@@ -497,8 +497,9 @@ export async function mainlineOrdering(
 				return mainlineMap.get(_event.eventId) || 0;
 			}
 
-			const authEvents: PersistentEventBase[] =
-				await _event.getAuthorizationEvents(store);
+			const authEvents: PersistentEventBase[] = await store.getEvents(
+				_event.getAuthEventIds(),
+			);
 
 			_event = null;
 
@@ -574,7 +575,7 @@ export async function iterativeAuthChecks(
 
 	for (const event of events) {
 		const authEventStateMap = new Map<StateMapKey, PersistentEventBase>();
-		for (const authEvent of await event.getAuthorizationEvents(store)) {
+		for (const authEvent of await store.getEvents(event.getAuthEventIds())) {
 			authEventStateMap.set(authEvent.getUniqueStateIdentifier(), authEvent);
 		}
 

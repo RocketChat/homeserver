@@ -141,14 +141,13 @@ export abstract class PersistentEventBase<
 		throw new Error('Event is not a power level event');
 	}
 
-	// room version dependent
-	abstract getAuthorizationEvents(
-		store: EventStore,
-	): Promise<PersistentEventBase<T>[]>;
+	getAuthEventIds() {
+		return this.rawEvent.auth_events;
+	}
 
-	abstract getPreviousEvents(
-		store: EventStore,
-	): Promise<PersistentEventBase<T>[]>;
+	getPreviousEventIds() {
+		return this.rawEvent.prev_events;
+	}
 
 	isState() {
 		// spec wise this is the right way to check if an event is a state event
