@@ -62,52 +62,47 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 			content.room_version,
 		)
 	) {
-		throw new StateResolverAuthorizationError(
-			'm.room.create event content.room_version is not a recognised version',
-			{
-				eventFailed: createEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: createEvent,
+			reason: `m.room.create event content.room_version is not a recognised version ${content.room_version}`,
+		});
 	}
 
 	// If content has no creator property, reject.
 	if (!content.creator) {
-		throw new StateResolverAuthorizationError(
-			'm.room.create event content has no creator property',
-			{
-				eventFailed: createEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: createEvent,
+			reason: 'm.room.create event content has no creator property',
+		});
 	}
 }
 
 // TODO: better typing for alias event
-function isRoomAliasAllowed(roomAliasEvent: PersistentEventBase): void {
+function isRoomAliasAllowed(
+	roomAliasEvent: PersistentEventBase<RoomVersion, 'm.room.aliases'>,
+): void {
 	// If event has no state_key, reject.
 	if (!roomAliasEvent.stateKey) {
-		throw new StateResolverAuthorizationError(
-			'm.room.canonical_alias event has no state_key',
-			{
-				eventFailed: roomAliasEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: roomAliasEvent,
+			reason: 'm.room.canonical_alias event has no state_key',
+		});
 	}
 
 	// If sender’s domain doesn’t matches state_key, reject.
 	if (roomAliasEvent.origin !== roomAliasEvent.stateKey) {
-		throw new StateResolverAuthorizationError(
-			'm.room.canonical_alias event sender domain does not match state_key',
-			{
-				eventFailed: roomAliasEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: roomAliasEvent,
+			reason:
+				'm.room.canonical_alias event sender domain does not match state_key',
+		});
 	}
 
 	return;
 }
 
 async function isMembershipChangeAllowed(
-	membershipEventToCheck: PersistentEventBase,
+	membershipEventToCheck: PersistentEventBase<RoomVersion, 'm.room.member'>,
 	authEventStateMap: Map<StateMapKey, PersistentEventBase>,
 	store: EventStore,
 ): Promise<void> {
@@ -340,12 +335,19 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error('sender power level is less than ban level');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				reason: 'sender power level is less than ban level',
+				rejectedBy: powerLevelEvent.toEventBase(),
+			});
 		}
 
 		default:
 			// unknown
-			throw new Error('unknown membership state');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				reason: `unknown membership state ${content.membership}`,
+			});
 	}
 }
 

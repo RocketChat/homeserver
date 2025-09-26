@@ -750,7 +750,7 @@ export class StateService {
 
 		// we need the auth events required to validate this event from our state
 		const requiredAuthEventsWeHaveSeenMap = new Map<
-			string,
+			EventID,
 			PersistentEventBase
 		>();
 		for (const auth of event.getAuthEventStateKeys()) {

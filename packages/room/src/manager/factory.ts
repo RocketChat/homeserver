@@ -52,7 +52,7 @@ export class PersistentEventFactory {
 
 	static createFromRawEvent<Type extends PduType>(
 		event: PduWithHashesAndSignaturesOptional,
-		roomVersion: string,
+		roomVersion: RoomVersion,
 	): PersistentEventBase<RoomVersion, Type> {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
