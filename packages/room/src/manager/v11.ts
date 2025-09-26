@@ -1,8 +1,10 @@
-import {} from '../types/v3-11';
+import { type PduType } from '../types/v3-11';
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
 import { PersistentEventV9 } from './v9';
 
-export class PersistentEventV11 extends PersistentEventV9 {
+export class PersistentEventV11<
+	Type extends PduType = PduType,
+> extends PersistentEventV9<Type> {
 	getAllowedKeys(): string[] {
 		return [
 			'event_id',

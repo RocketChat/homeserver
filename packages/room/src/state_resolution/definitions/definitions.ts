@@ -21,8 +21,10 @@ export function getStateByMapKey<T extends PduType>(
 		type: T;
 		state_key?: string;
 	},
-): PersistentEventBase<RoomVersion, T> | undefined {
-	return map.get(getStateMapKey(filter)) as PersistentEventBase<RoomVersion, T>;
+) {
+	return map.get(getStateMapKey(filter)) as
+		| PersistentEventBase<RoomVersion, T>
+		| undefined;
 }
 
 // https://spec.matrix.org/v1.12/rooms/v2/#definitions
@@ -426,7 +428,7 @@ export async function mainlineOrdering(
 	events: PersistentEventBase[], // TODO: or take event ids
 	store: EventStore,
 	// Let P = P0 be an m.room.power_levels event
-	powerLevelEvent?: PersistentEventBase, // of which we will calculate the mainline
+	powerLevelEvent?: PersistentEventBase<RoomVersion, 'm.room.power_levels'>, // of which we will calculate the mainline
 ): Promise<PersistentEventBase[]> {
 	const getMainline = async (
 		event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
