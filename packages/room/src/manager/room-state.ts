@@ -151,6 +151,6 @@ export class RoomState {
 			throw new Error('Room create event not found');
 		}
 
-		return createEvent.getContent().room_version;
+		return createEvent.getContent().room_version as RoomVersion;
 	}
 }

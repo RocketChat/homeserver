@@ -3,6 +3,7 @@ import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
+import crypto from 'node:crypto';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -161,49 +162,55 @@ export abstract class PersistentEventBase<
 		return !this.isState();
 	}
 
-	isTopicEvent(): this is PersistentEventBase<T, 'm.room.topic'> {
+	isTopicEvent(): this is PersistentEventBase<Version, 'm.room.topic'> {
 		return this.isState() && this.type === 'm.room.topic';
 	}
 
-	isPowerLevelEvent(): this is PersistentEventBase<T, 'm.room.power_levels'> {
+	isPowerLevelEvent(): this is PersistentEventBase<
+		Version,
+		'm.room.power_levels'
+	> {
 		return this.isState() && this.type === 'm.room.power_levels';
 	}
 
-	isNameEvent(): this is PersistentEventBase<T, 'm.room.name'> {
+	isNameEvent(): this is PersistentEventBase<Version, 'm.room.name'> {
 		return this.isState() && this.type === 'm.room.name';
 	}
 
-	isJoinRuleEvent(): this is PersistentEventBase<T, 'm.room.join_rules'> {
+	isJoinRuleEvent(): this is PersistentEventBase<Version, 'm.room.join_rules'> {
 		return this.isState() && this.type === 'm.room.join_rules';
 	}
 
-	isMembershipEvent(): this is PersistentEventBase<T, 'm.room.member'> {
+	isMembershipEvent(): this is PersistentEventBase<Version, 'm.room.member'> {
 		return this.isState() && this.type === 'm.room.member';
 	}
 
-	isCreateEvent(): this is PersistentEventBase<T, 'm.room.create'> {
+	isCreateEvent(): this is PersistentEventBase<Version, 'm.room.create'> {
 		return this.isState() && this.type === 'm.room.create';
 	}
 
-	isServerAclEvent(): this is PersistentEventBase<T, 'm.room.server_acl'> {
+	isServerAclEvent(): this is PersistentEventBase<
+		Version,
+		'm.room.server_acl'
+	> {
 		return this.isState() && this.type === 'm.room.server_acl';
 	}
 
 	isHistoryVisibilityEvent(): this is PersistentEventBase<
-		T,
+		Version,
 		'm.room.history_visibility'
 	> {
 		return this.isState() && this.type === 'm.room.history_visibility';
 	}
 
 	isCanonicalAliasEvent(): this is PersistentEventBase<
-		T,
+		Version,
 		'm.room.canonical_alias'
 	> {
 		return this.isState() && this.type === 'm.room.canonical_alias';
 	}
 
-	isAliasEvent(): this is PersistentEventBase<T, 'm.room.aliases'> {
+	isAliasEvent(): this is PersistentEventBase<Version, 'm.room.aliases'> {
 		return this.isState() && this.type === 'm.room.aliases';
 	}
 
@@ -411,7 +418,7 @@ export abstract class PersistentEventBase<
 		return this._rejectedReason;
 	}
 
-	addPrevEvents(events: PersistentEventBase<T>[]) {
+	addPrevEvents(events: PersistentEventBase<Version>[]) {
 		this.rawEvent.prev_events.push(...events.map((e) => e.eventId));
 		if (this.rawEvent.depth <= events[events.length - 1].depth) {
 			this.rawEvent.depth = events[events.length - 1].depth + 1;
@@ -419,7 +426,7 @@ export abstract class PersistentEventBase<
 		return this;
 	}
 
-	authedBy(event: PersistentEventBase<T>) {
+	authedBy(event: PersistentEventBase<Version>) {
 		this.rawEvent.auth_events.push(event.eventId);
 		return this;
 	}
