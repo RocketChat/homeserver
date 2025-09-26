@@ -65,7 +65,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 			await stateService.persistStateEvent(membershipEvent);
 
 			if (membershipEvent.rejected) {
-				throw new Error(membershipEvent.rejectedReason);
+				throw new Error(membershipEvent.rejectReason);
 			}
 
 			return {

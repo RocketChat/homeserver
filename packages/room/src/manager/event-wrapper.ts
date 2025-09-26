@@ -3,6 +3,7 @@ import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
+import { RejectCode } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -44,7 +45,11 @@ export abstract class PersistentEventBase<
 	Version extends RoomVersion = RoomVersion,
 	Type extends PduType = PduType,
 > {
-	private _rejectedReason?: string;
+	public rejectCode = '';
+
+	public rejectReason = '';
+
+	public rejectedBy = '' as EventID;
 
 	private signatures: Signature = {};
 
@@ -420,15 +425,13 @@ export abstract class PersistentEventBase<
 	}
 
 	get rejected() {
-		return this._rejectedReason !== undefined;
+		return this.rejectCode !== '';
 	}
 
-	reject(reason: string) {
-		this._rejectedReason = reason;
-	}
-
-	get rejectedReason() {
-		return this._rejectedReason;
+	reject(code: RejectCode, reason: string, rejectedBy?: EventID) {
+		this.rejectCode = code;
+		this.rejectReason = reason;
+		if (rejectedBy) this.rejectedBy = rejectedBy;
 	}
 
 	addPrevEvents(events: PersistentEventBase<Version>[]) {
@@ -452,6 +455,16 @@ export abstract class PersistentEventBase<
 		};
 
 		return this;
+	}
+
+	toStrippedJson() {
+		return encodeCanonicalJson({
+			eventId: this.eventId,
+			type: this.type,
+			roomId: this.roomId,
+			sender: this.sender,
+			stateKey: this.stateKey,
+		});
 	}
 }
 export type { EventStore };
