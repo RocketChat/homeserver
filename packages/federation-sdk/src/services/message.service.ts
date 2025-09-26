@@ -1,18 +1,5 @@
-import {
-	type MessageAuthEvents,
-	type RoomMessageEvent,
-	roomMessageEvent,
-} from '@rocket.chat/federation-core';
-import { type SignedEvent } from '@rocket.chat/federation-core';
-
 import { ForbiddenError } from '@rocket.chat/federation-core';
-import {
-	type RedactionAuthEvents,
-	type RedactionEvent,
-	redactionEvent,
-} from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
-import { signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PersistentEventBase,

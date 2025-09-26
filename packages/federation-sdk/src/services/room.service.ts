@@ -1,17 +1,10 @@
 import {
 	EventBase,
 	EventStore,
-	RoomNameAuthEvents,
 	RoomPowerLevelsEvent,
-	RoomTombstoneEvent,
 	SignedEvent,
 	TombstoneAuthEvents,
-	generateId,
-	isRoomPowerLevelsEvent,
-	roomNameEvent,
 	roomPowerLevelsEvent,
-	roomTombstoneEvent,
-	signEvent,
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { FederationService } from './federation.service';
@@ -21,12 +14,10 @@ import {
 	HttpException,
 	HttpStatus,
 } from '@rocket.chat/federation-core';
-import { type SigningKey } from '@rocket.chat/federation-core';
 
 import { logger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
-	PduCreateEventContent,
 	PduForType,
 	PduJoinRuleEventContent,
 	PduType,
