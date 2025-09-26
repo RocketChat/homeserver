@@ -32,11 +32,13 @@ jobs:
 
       - run: bun install
 
-      - run: bun lint:ci
+      - run: bun run lint:ci
 
-      - run: bun test
+      - run: bun run build
 
-      - run: bun bundle:sdk
+      - run: bun run test
+
+      - run: bun run bundle:sdk
 
       - name: Publish to NPM
         env:
