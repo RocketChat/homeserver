@@ -1,11 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test';
 // Note: Error classes are now generic Error instances in the core package
-import {
-	type EventStore,
-	IncompatibleRoomVersionError,
-	NotFoundError,
-} from '@rocket.chat/federation-core';
-import type { AuthEvents } from '@rocket.chat/federation-core';
+import { IncompatibleRoomVersionError, NotFoundError } from '../errors';
+import type { AuthEvents } from '../events/m.room.member';
+import type { EventStore } from '../models/event.model';
 import { makeJoinEventBuilder } from './makeJoin';
 
 describe('makeJoinEventBuilder', () => {
