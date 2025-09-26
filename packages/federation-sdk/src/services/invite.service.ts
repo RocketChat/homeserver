@@ -1,7 +1,6 @@
 import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
 	PduForType,
-	PersistentEventBase,
 	PersistentEventFactory,
 	RoomVersion,
 } from '@rocket.chat/federation-room';
