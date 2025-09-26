@@ -1,23 +1,47 @@
-import type { PersistentEventBase } from '../manager/event-wrapper';
+import { PersistentEventBase } from '../manager/event-wrapper';
+import { type EventID } from '../types/_common';
+
+export const RejectCodes = {
+	AuthError: 'auth_error',
+	ValidationError: 'validation_error',
+	NotImplemented: 'not_implemented',
+} as const;
+
+export type RejectCode = (typeof RejectCodes)[keyof typeof RejectCodes];
 
 class StateResolverAuthorizationError extends Error {
 	name = 'StateResolverAuthorizationError';
 
+	reason: string;
+
+	rejectedBy?: EventID;
+
 	constructor(
-		message: string,
+		public code: RejectCode,
 		{
-			eventFailed,
+			rejectedEvent,
 			reason,
+			rejectedBy,
 		}: {
-			eventFailed: PersistentEventBase;
-			reason?: PersistentEventBase;
+			rejectedEvent: PersistentEventBase;
+			reason: string;
+			rejectedBy?: PersistentEventBase;
 		},
 	) {
-		let error = `${message} for event ${eventFailed.eventId} in room ${eventFailed.roomId} type ${eventFailed.type} state_key ${eventFailed.stateKey}`;
-		if (reason) {
-			error += `, reason: ${reason.eventId} in room ${reason.roomId} type ${reason.type} state_key ${reason.stateKey}`;
+		// build the message
+		let message = `${code}: ${rejectedEvent.toStrippedJson()} failed authorization check`;
+
+		if (rejectedBy) {
+			message += ` against auth event ${rejectedBy.toStrippedJson()}`;
 		}
-		super(error);
+
+		message += `: ${reason}`;
+
+		super(message);
+
+		this.reason = reason;
+
+		this.rejectedBy = rejectedBy?.eventId;
 	}
 }
 

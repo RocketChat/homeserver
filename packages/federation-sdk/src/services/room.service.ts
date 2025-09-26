@@ -800,7 +800,7 @@ export class RoomService {
 			await stateService.persistStateEvent(membershipEvent);
 
 			if (membershipEvent.rejected) {
-				throw new Error(membershipEvent.rejectedReason);
+				throw new Error(membershipEvent.rejectReason);
 			}
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
@@ -983,7 +983,7 @@ export class RoomService {
 		);
 
 		if (joinEventFinal.rejected) {
-			throw new Error(joinEventFinal.rejectedReason);
+			throw new Error(joinEventFinal.rejectReason);
 		}
 
 		return joinEventFinal.eventId;

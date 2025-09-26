@@ -82,7 +82,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -130,7 +130,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -166,7 +166,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -222,7 +222,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -273,7 +273,7 @@ export class MessageService {
 
 		await this.stateService.persistTimelineEvent(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);

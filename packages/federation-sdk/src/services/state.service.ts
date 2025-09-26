@@ -18,6 +18,7 @@ import type { RoomVersion } from '@rocket.chat/federation-room';
 import { resolveStateV2Plus } from '@rocket.chat/federation-room';
 import type { PduCreateEventContent } from '@rocket.chat/federation-room';
 import { checkEventAuthWithState } from '@rocket.chat/federation-room';
+import { RejectCodes } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateRepository, StateStore } from '../repositories/state.repository';
@@ -53,12 +54,12 @@ export class StateService {
 		if (pdu.isState()) {
 			await this.persistStateEvent(pdu);
 			if (pdu.rejected) {
-				throw new Error(pdu.rejectedReason);
+				throw new Error(pdu.rejectReason);
 			}
 		} else {
 			await this.persistTimelineEvent(pdu);
 			if (pdu.rejected) {
-				throw new Error(pdu.rejectedReason);
+				throw new Error(pdu.rejectReason);
 			}
 		}
 	}
@@ -506,7 +507,7 @@ export class StateService {
 		if (!hasConflict) {
 			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
 			if (event.rejected) {
-				throw new Error(event.rejectedReason);
+				throw new Error(event.rejectReason);
 			}
 
 			// save the state mapping
@@ -777,24 +778,27 @@ export class StateService {
 		if (requiredAuthEventsWeHaveSeenMap.size !== authEventsReferencedMap.size) {
 			// incorrect length may mean either redacted event still referenced or event in state that wasn't referenced, both cases, reject the event
 			event.reject(
+				RejectCodes.AuthError,
 				`Auth events referenced in message do not match, expected ${requiredAuthEventsWeHaveSeenMap.size} but got ${authEventsReferencedMap.size}`,
 			);
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		for (const [eventId] of requiredAuthEventsWeHaveSeenMap) {
 			if (!authEventsReferencedMap.has(eventId)) {
 				event.reject(
+					RejectCodes.AuthError,
 					`wrong auth event in message, expected ${eventId} but not found in event`,
+					eventId,
 				);
-				throw new Error(event.rejectedReason);
+				throw new Error(event.rejectReason);
 			}
 		}
 
 		// now we validate against auth rules
 		await checkEventAuthWithState(event, room, store);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		// TODO: save event still but with mark
