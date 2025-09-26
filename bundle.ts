@@ -50,7 +50,7 @@ const packageJson = JSON.parse(
 async function main() {
 	await $`rm -rf ${outputDir}/dist`;
 	await $`mkdir -p ${outputDir}/dist`;
-	await $`cp LICENSE ${outputDir}/dist`;
+	await $`cp LICENSE ${outputDir}`;
 	await $`touch ${outputDir}/yarn.lock`;
 
 	const dependencies = getDependenciesFromPackages(packages, 'dependencies');
@@ -75,8 +75,8 @@ async function main() {
 		define: {
 			'process.env.NODE_ENV': '"production"',
 		},
-		// minify: true,
-		// sourcemap: true,
+		minify: true,
+		sourcemap: true,
 	});
 
 	packageJson.dependencies = filterWorkspace({
