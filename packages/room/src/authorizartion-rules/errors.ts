@@ -1,4 +1,4 @@
-import { PersistentEventBase } from '../manager/event-wrapper';
+import type { PersistentEventBase } from '../manager/event-wrapper';
 import { type EventID } from '../types/_common';
 
 export const RejectCodes = {
