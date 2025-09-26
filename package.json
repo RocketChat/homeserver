@@ -50,6 +50,6 @@
 		"lint:ci": "bunx @biomejs/biome ci --diagnostic-level=error",
 		"lint:fix": "bunx @biomejs/biome lint --fix",
 		"tsc": "tsc --noEmit",
-		"bundle:sdk": "bun run bundle.ts"
+		"bundle:sdk": "bun run build && bun run bundle.ts"
 	}
 }
