@@ -6,6 +6,7 @@ import {
 	Pdu,
 	PduForType,
 	PersistentEventBase,
+	PersistentEventFactory,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import {
@@ -43,16 +44,12 @@ export class FederationService {
 	): Promise<MakeJoinResponse> {
 		try {
 			const uri = FederationEndpoints.makeJoin(roomId, userId);
-			const queryParams: Record<string, string> = {};
+			const queryParams: Record<string, string | string[]> = {};
 
 			if (version) {
 				queryParams.ver = version;
 			} else {
-				// 3-11 is what we support now
-				// FIXME: this is wrong, for now just passing 10 to check if supported, we need ver=1&ver=2 and so on.
-				for (let ver = 3; ver <= 11; ver++) {
-					queryParams[`ver${ver === 1 ? '' : ver}`] = ver.toString();
-				}
+				queryParams.ver = PersistentEventFactory.supportedRoomVersions;
 			}
 
 			return await this.requestService.get<MakeJoinResponse>(

@@ -121,13 +121,19 @@ export class FederationRequestService {
 		targetServer: string,
 		endpoint: string,
 		body?: Record<string, unknown>,
-		queryParams?: Record<string, string>,
+		queryParams?: Record<string, string | string[]>,
 	) {
 		let queryString = '';
 
 		if (queryParams) {
 			const params = new URLSearchParams();
 			for (const [key, value] of Object.entries(queryParams)) {
+				if (Array.isArray(value)) {
+					for (const v of value) {
+						params.append(key, v);
+					}
+					continue;
+				}
 				params.append(key, value);
 			}
 			queryString = params.toString();
@@ -147,7 +153,7 @@ export class FederationRequestService {
 	async get<T>(
 		targetServer: string,
 		endpoint: string,
-		queryParams?: Record<string, string>,
+		queryParams?: Record<string, string | string[]>,
 	): Promise<T> {
 		return this.request<T>(
 			'GET',
