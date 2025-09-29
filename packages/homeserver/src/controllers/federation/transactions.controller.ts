@@ -102,9 +102,13 @@ export const transactionsPlugin = (app: Elysia) => {
 						};
 					}
 
+					const eventIds = Array.isArray(eventIdParam)
+						? eventIdParam
+						: [eventIdParam];
+
 					return eventService.getBackfillEvents(
 						params.roomId,
-						eventIdParam as EventID,
+						eventIds as EventID[],
 						limit,
 					);
 				} catch {

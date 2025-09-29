@@ -7,7 +7,7 @@ export const BackfillParamsDto = t.Object({
 
 export const BackfillQueryDto = t.Object({
 	limit: t.Number({ minimum: 1, maximum: 100 }),
-	v: t.String(),
+	v: t.Union([t.String(), t.Array(t.String())]),
 });
 
 export const BackfillResponseDto = t.Object({

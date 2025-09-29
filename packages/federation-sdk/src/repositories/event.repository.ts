@@ -384,29 +384,36 @@ export class EventRepository {
 
 	async findEventsForBackfill(
 		roomId: string,
-		eventId: EventID,
+		eventIds: EventID[],
 		limit: number,
 	): Promise<EventStore[]> {
-		const referenceEvent = await this.collection.findOne({
-			_id: eventId,
-			'event.room_id': roomId,
-		});
+		const earliestRef = await this.collection.findOne(
+			{
+				_id: { $in: eventIds },
+				'event.room_id': roomId,
+			},
+			{
+				sort: {
+					'event.depth': 1,
+					'event.origin_server_ts': 1,
+				},
+			},
+		);
 
-		if (!referenceEvent) {
+		if (!earliestRef) {
 			return [];
 		}
-
-		const depth = referenceEvent.event.depth;
-		const timestamp = referenceEvent.event.origin_server_ts;
 
 		return this.collection
 			.find({
 				'event.room_id': roomId,
 				$or: [
-					{ 'event.depth': { $lt: depth } },
+					{ 'event.depth': { $lt: earliestRef.event.depth } },
 					{
-						'event.depth': depth,
-						'event.origin_server_ts': { $lt: timestamp },
+						'event.depth': earliestRef.event.depth,
+						'event.origin_server_ts': {
+							$lte: earliestRef.event.origin_server_ts,
+						},
 					},
 				],
 			})

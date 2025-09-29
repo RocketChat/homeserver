@@ -820,7 +820,7 @@ export class EventService {
 
 	async getBackfillEvents(
 		roomId: string,
-		eventId: EventID,
+		eventIds: EventID[],
 		limit: number,
 	): Promise<{
 		origin: string;
@@ -828,11 +828,11 @@ export class EventService {
 		pdus: Array<Pdu>;
 	}> {
 		try {
-			const parsedLimit = Math.min(Math.max(1, limit), 100); // Cap at 100 events max
+			const parsedLimit = Math.min(Math.max(1, limit), 100);
 
 			const events = await this.eventRepository.findEventsForBackfill(
 				roomId,
-				eventId,
+				eventIds,
 				parsedLimit,
 			);
 
