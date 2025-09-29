@@ -7,6 +7,10 @@ import {
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
+	BackfillErrorResponseDto,
+	BackfillParamsDto,
+	BackfillQueryDto,
+	BackfillResponseDto,
 	ErrorResponseDto,
 	GetEventErrorResponseDto,
 	GetEventParamsDto,
@@ -81,6 +85,52 @@ export const transactionsPlugin = (app: Elysia) => {
 					tags: ['Federation'],
 					summary: 'Get event',
 					description: 'Get an event',
+				},
+			},
+		)
+		.get(
+			'/_matrix/federation/v1/backfill/:roomId',
+			async ({ params, query, set }) => {
+				try {
+					const limit = query.limit;
+					const eventIdParam = query.v;
+					if (!eventIdParam) {
+						set.status = 400;
+						return {
+							errcode: 'M_BAD_REQUEST',
+							error: 'Event ID must be provided in v query parameter',
+						};
+					}
+
+					return eventService.getBackfillEvents(
+						params.roomId,
+						eventIdParam as EventID,
+						limit,
+					);
+				} catch {
+					set.status = 500;
+					return {
+						errcode: 'M_UNKNOWN',
+						error: 'Failed to get backfill events',
+					};
+				}
+			},
+			{
+				params: BackfillParamsDto,
+				query: BackfillQueryDto,
+				response: {
+					200: BackfillResponseDto,
+					400: BackfillErrorResponseDto,
+					401: BackfillErrorResponseDto,
+					403: BackfillErrorResponseDto,
+					404: BackfillErrorResponseDto,
+					500: BackfillErrorResponseDto,
+				},
+				detail: {
+					tags: ['Federation'],
+					summary: 'Backfill room events',
+					description:
+						'Retrieves a sliding-window history of previous PDUs that occurred in the given room',
 				},
 			},
 		);

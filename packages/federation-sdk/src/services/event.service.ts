@@ -26,7 +26,6 @@ import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { KeyRepository } from '../repositories/key.repository';
 import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
@@ -49,7 +48,6 @@ export class EventService {
 		private readonly eventRepository: EventRepository,
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly lockRepository: LockRepository,
-		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 
 		private readonly stagingAreaQueue: StagingAreaQueue,
@@ -814,6 +812,40 @@ export class EventService {
 		} catch (error) {
 			this.logger.error({
 				msg: `Failed to get state for room ${roomId}:`,
+				err: error,
+			});
+			throw error;
+		}
+	}
+
+	async getBackfillEvents(
+		roomId: string,
+		eventId: EventID,
+		limit: number,
+	): Promise<{
+		origin: string;
+		origin_server_ts: number;
+		pdus: Array<Pdu>;
+	}> {
+		try {
+			const parsedLimit = Math.min(Math.max(1, limit), 100); // Cap at 100 events max
+
+			const events = await this.eventRepository.findEventsForBackfill(
+				roomId,
+				eventId,
+				parsedLimit,
+			);
+
+			const pdus = events.map((eventStore) => eventStore.event);
+
+			return {
+				origin: this.configService.serverName,
+				origin_server_ts: Date.now(),
+				pdus,
+			};
+		} catch (error) {
+			this.logger.error({
+				msg: `Failed to get backfill for room ${roomId}:`,
 				err: error,
 			});
 			throw error;

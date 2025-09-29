@@ -27,7 +27,6 @@ export const EventBaseDto = t.Object({
 		description: 'Previous events in the room',
 	}),
 	auth_events: t.Array(t.String(), { description: 'Authorization events' }),
-	origin: t.String({ description: 'Origin server' }),
 	hashes: EventHashDto,
 	signatures: EventSignatureDto,
 	unsigned: t.Optional(

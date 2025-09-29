@@ -4,6 +4,7 @@ export * from './common/event.dto';
 export * from './common/validation.dto';
 
 // Federation DTOs
+export * from './federation/backfill.dto';
 export * from './federation/invite.dto';
 export * from './federation/profiles.dto';
 export * from './federation/send-join.dto';

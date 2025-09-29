@@ -1,19 +1,12 @@
 import { generateId } from '@rocket.chat/federation-core';
-import type { EventBase, EventStore } from '@rocket.chat/federation-core';
+import type { EventStore } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	Pdu,
 	PduForType,
 	PduType,
 } from '@rocket.chat/federation-room';
-import type {
-	Collection,
-	Filter,
-	FindCursor,
-	FindOptions,
-	UpdateResult,
-	WithId,
-} from 'mongodb';
+import type { Collection, FindCursor, WithId } from 'mongodb';
 import { MongoError } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -387,5 +380,38 @@ export class EventRepository {
 			)
 			.sort({ 'event.depth': 1 })
 			.limit(limit);
+	}
+
+	async findEventsForBackfill(
+		roomId: string,
+		eventId: EventID,
+		limit: number,
+	): Promise<EventStore[]> {
+		const referenceEvent = await this.collection.findOne({
+			_id: eventId,
+			'event.room_id': roomId,
+		});
+
+		if (!referenceEvent) {
+			return [];
+		}
+
+		const depth = referenceEvent.event.depth;
+		const timestamp = referenceEvent.event.origin_server_ts;
+
+		return this.collection
+			.find({
+				'event.room_id': roomId,
+				$or: [
+					{ 'event.depth': { $lt: depth } },
+					{
+						'event.depth': depth,
+						'event.origin_server_ts': { $lt: timestamp },
+					},
+				],
+			})
+			.sort({ 'event.depth': -1, 'event.origin_server_ts': -1 })
+			.limit(limit)
+			.toArray();
 	}
 }
