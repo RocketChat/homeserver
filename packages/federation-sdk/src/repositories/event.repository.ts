@@ -394,8 +394,8 @@ export class EventRepository {
 			},
 			{
 				sort: {
-					'event.depth': 1,
-					'event.origin_server_ts': 1,
+					'event.depth': -1,
+					'event.origin_server_ts': -1,
 				},
 			},
 		);
