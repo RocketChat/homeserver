@@ -1,4 +1,4 @@
-import { t } from 'elysia';
+import { t, TSchema } from 'elysia';
 import {
 	DepthDto,
 	RoomIdDto,
@@ -16,6 +16,12 @@ export const EventSignatureDto = t.Record(
 	{ description: 'Event signatures by server and key ID' },
 );
 
+type TOptional = ReturnType<typeof t.Optional>;
+
+function HiddenOptional<T extends TOptional>(schema: T): T {
+	return schema;
+}
+
 export const EventBaseDto = t.Object({
 	type: t.String({ description: 'Event type' }),
 	content: t.Record(t.String(), t.Any(), { description: 'Event content' }),
@@ -26,6 +32,7 @@ export const EventBaseDto = t.Object({
 	prev_events: t.Array(t.String(), {
 		description: 'Previous events in the room',
 	}),
+	origin: HiddenOptional(t.Optional(t.String())),
 	auth_events: t.Array(t.String(), { description: 'Authorization events' }),
 	hashes: EventHashDto,
 	signatures: EventSignatureDto,
