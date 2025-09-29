@@ -1,4 +1,4 @@
-import { t, TSchema } from 'elysia';
+import { TSchema, t } from 'elysia';
 import {
 	DepthDto,
 	RoomIdDto,
