@@ -26,7 +26,6 @@ import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { KeyRepository } from '../repositories/key.repository';
 import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
@@ -49,7 +48,6 @@ export class EventService {
 		private readonly eventRepository: EventRepository,
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly lockRepository: LockRepository,
-		private readonly keyRepository: KeyRepository,
 		private readonly configService: ConfigService,
 
 		private readonly stagingAreaQueue: StagingAreaQueue,
@@ -814,6 +812,59 @@ export class EventService {
 		} catch (error) {
 			this.logger.error({
 				msg: `Failed to get state for room ${roomId}:`,
+				err: error,
+			});
+			throw error;
+		}
+	}
+
+	/**
+	 * A transaction containing the PDUs that preceded the given event(s), including the given event(s), up to the given limit.
+	 * 
+	 * Note: Though the PDU definitions require that prev_events and auth_events be limited in number, the response of backfill MUST NOT be validated on these specific restrictions.
+	 * 
+	 * Due to historical reasons, it is possible that events which were previously accepted would now be rejected by these limitations. The events should be rejected per usual by the /send, /get_missing_events, and remaining endpoints.
+
+	 */
+	async getBackfillEvents(
+		roomId: string,
+		eventIds: EventID[],
+		limit: number,
+	): Promise<{
+		origin: string;
+		origin_server_ts: number;
+		pdus: Array<Pdu>;
+	}> {
+		try {
+			const parsedLimit = Math.min(Math.max(1, limit), 100);
+
+			const newestRef = await this.eventRepository.findNewestEventForBackfill(
+				roomId,
+				eventIds,
+			);
+			if (!newestRef) {
+				throw new Error('No newest event found');
+			}
+
+			const events = await this.eventRepository
+				.findEventsForBackfill(
+					roomId,
+					newestRef.event.depth,
+					newestRef.event.origin_server_ts,
+					parsedLimit,
+				)
+				.toArray();
+
+			const pdus = events.map((eventStore) => eventStore.event);
+
+			return {
+				origin: this.configService.serverName,
+				origin_server_ts: Date.now(),
+				pdus,
+			};
+		} catch (error) {
+			this.logger.error({
+				msg: `Failed to get backfill for room ${roomId}:`,
 				err: error,
 			});
 			throw error;
