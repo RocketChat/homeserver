@@ -147,7 +147,8 @@ export async function fetch<T>(
 	).hostname;
 
 	const requestParams: RequestOptions = {
-		host: url.hostname, // IP
+		// for ipv6 remove square brackets as they come due to url standard
+		host: url.hostname.replace(/^\[|\]$/g, ''), // IP
 		port: url.port,
 		method: options.method,
 		path: url.pathname + url.search,
