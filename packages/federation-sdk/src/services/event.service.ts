@@ -830,11 +830,22 @@ export class EventService {
 		try {
 			const parsedLimit = Math.min(Math.max(1, limit), 100);
 
-			const events = await this.eventRepository.findEventsForBackfill(
+			const newestRef = await this.eventRepository.findNewestEventForBackfill(
 				roomId,
 				eventIds,
-				parsedLimit,
 			);
+			if (!newestRef) {
+				throw new Error('No newest event found');
+			}
+
+			const events = await this.eventRepository
+				.findEventsForBackfill(
+					roomId,
+					newestRef.event.depth,
+					newestRef.event.origin_server_ts,
+					parsedLimit,
+				)
+				.toArray();
 
 			const pdus = events.map((eventStore) => eventStore.event);
 

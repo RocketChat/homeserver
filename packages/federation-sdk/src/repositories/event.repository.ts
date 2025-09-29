@@ -382,12 +382,11 @@ export class EventRepository {
 			.limit(limit);
 	}
 
-	async findEventsForBackfill(
+	async findNewestEventForBackfill(
 		roomId: string,
 		eventIds: EventID[],
-		limit: number,
-	): Promise<EventStore[]> {
-		const earliestRef = await this.collection.findOne(
+	): Promise<EventStore | null> {
+		return this.collection.findOne(
 			{
 				_id: { $in: eventIds },
 				'event.room_id': roomId,
@@ -399,26 +398,28 @@ export class EventRepository {
 				},
 			},
 		);
+	}
 
-		if (!earliestRef) {
-			return [];
-		}
-
+	findEventsForBackfill(
+		roomId: string,
+		depth: number,
+		originServerTs: number,
+		limit: number,
+	) {
 		return this.collection
 			.find({
 				'event.room_id': roomId,
 				$or: [
-					{ 'event.depth': { $lt: earliestRef.event.depth } },
+					{ 'event.depth': { $lt: depth } },
 					{
-						'event.depth': earliestRef.event.depth,
+						'event.depth': depth,
 						'event.origin_server_ts': {
-							$lte: earliestRef.event.origin_server_ts,
+							$lte: originServerTs,
 						},
 					},
 				],
 			})
 			.sort({ 'event.depth': -1, 'event.origin_server_ts': -1 })
-			.limit(limit)
-			.toArray();
+			.limit(limit);
 	}
 }
