@@ -19,8 +19,7 @@ class _Resolver extends Resolver {
 		// spec says v6 first, but there shouldn't be a case where a and aaaa records point to different services. if does, not an application problem.
 		// for systems with no v6 support this still lets allow a fallback to v4 first. without needing to add system level dns filter.
 		// as long as the name has an a record, should be able to communicate.
-		const order = process.env
-			.HOMESERVER_CONFIG_DNS_LOOKUP_ORDER as typeof this.lookupOrder;
+		const order = process.env.HOMESERVER_CONFIG_DNS_LOOKUP_ORDER;
 		if (
 			order === 'ipv4first' ||
 			order === 'ipv6first' ||
