@@ -1,6 +1,6 @@
 import { EventAuthorizationService } from '@rocket.chat/federation-sdk';
-import { canAccessResource } from '@rocket.chat/homeserver/middlewares/canAccessResource';
-import { isAuthenticated } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
@@ -40,8 +40,7 @@ export const mediaPlugin = (app: Elysia) => {
 		)
 		.group('/_matrix', (app) =>
 			app
-				.use(isAuthenticated(eventAuthService))
-				.use(canAccessResource(eventAuthService))
+				.use(canAccessResourceMiddleware(eventAuthService, 'media'))
 				.get(
 					'/federation/v1/media/download/:mediaId',
 					async ({ set }) => {
