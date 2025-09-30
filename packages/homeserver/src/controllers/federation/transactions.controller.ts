@@ -4,6 +4,8 @@ import {
 	EventAuthorizationService,
 	EventService,
 } from '@rocket.chat/federation-sdk';
+import { canAccessResource } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticated } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -18,7 +20,6 @@ import {
 	SendTransactionBodyDto,
 	SendTransactionResponseDto,
 } from '../../dtos';
-import { canAccessResource, isAuthenticated } from '../../middlewares';
 
 export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
