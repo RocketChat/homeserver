@@ -3,8 +3,7 @@ import {
 	EventAuthorizationService,
 	InviteService,
 } from '@rocket.chat/federation-sdk';
-import { canAccessResource } from '@rocket.chat/homeserver/middlewares/canAccessResource';
-import { isAuthenticated } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { ProcessInviteParamsDto, RoomVersionDto } from '../../dtos';
@@ -13,31 +12,28 @@ export const invitePlugin = (app: Elysia) => {
 	const inviteService = container.resolve(InviteService);
 	const eventAuthService = container.resolve(EventAuthorizationService);
 
-	return app
-		.use(isAuthenticated(eventAuthService))
-		.use(canAccessResource(eventAuthService))
-		.put(
-			'/_matrix/federation/v2/invite/:roomId/:eventId',
-			async ({ body, params: { roomId, eventId } }) => {
-				return inviteService.processInvite(
-					body.event,
-					roomId as RoomID,
-					eventId as EventID,
-					body.room_version,
-				);
+	return app.use(canAccessResourceMiddleware(eventAuthService, 'room')).put(
+		'/_matrix/federation/v2/invite/:roomId/:eventId',
+		async ({ body, params: { roomId, eventId } }) => {
+			return inviteService.processInvite(
+				body.event,
+				roomId as RoomID,
+				eventId as EventID,
+				body.room_version,
+			)
+		},
+		{
+			params: ProcessInviteParamsDto,
+			body: t.Object({
+				event: t.Any(),
+				room_version: RoomVersionDto,
+				invite_room_state: t.Any(),
+			}),
+			detail: {
+				tags: ['Federation'],
+				summary: 'Process room invite',
+				description: 'Process an invite event from another Matrix server',
 			},
-			{
-				params: ProcessInviteParamsDto,
-				body: t.Object({
-					event: t.Any(),
-					room_version: RoomVersionDto,
-					invite_room_state: t.Any(),
-				}),
-				detail: {
-					tags: ['Federation'],
-					summary: 'Process room invite',
-					description: 'Process an invite event from another Matrix server',
-				},
-			},
-		);
+		},
+	);
 };

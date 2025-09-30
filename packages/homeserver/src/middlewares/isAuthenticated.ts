@@ -1,7 +1,9 @@
 import type { EventAuthorizationService } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';
 
-export const isAuthenticated = (federationAuth: EventAuthorizationService) => {
+export const isAuthenticatedMiddleware = (
+	federationAuth: EventAuthorizationService,
+) => {
 	return new Elysia({
 		name: 'homeserver/isAuthenticated',
 	})
