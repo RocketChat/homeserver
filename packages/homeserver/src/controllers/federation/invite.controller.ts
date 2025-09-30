@@ -3,10 +3,8 @@ import {
 	EventAuthorizationService,
 	InviteService,
 } from '@rocket.chat/federation-sdk';
-import {
-	canAccessResource,
-	isAuthenticated,
-} from '@rocket.chat/homeserver/middlewares';
+import { canAccessResource } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticated } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { ProcessInviteParamsDto, RoomVersionDto } from '../../dtos';

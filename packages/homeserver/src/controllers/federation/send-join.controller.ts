@@ -1,5 +1,10 @@
 import type { EventID, RoomID } from '@rocket.chat/federation-room';
-import { SendJoinService } from '@rocket.chat/federation-sdk';
+import {
+	EventAuthorizationService,
+	SendJoinService,
+} from '@rocket.chat/federation-sdk';
+import { canAccessResource } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticated } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -10,15 +15,19 @@ import {
 
 export const sendJoinPlugin = (app: Elysia) => {
 	const sendJoinService = container.resolve(SendJoinService);
+	const eventAuthService = container.resolve(EventAuthorizationService);
 
-	return app.put(
-		'/_matrix/federation/v2/send_join/:roomId/:eventId',
-		async ({
-			params,
-			body,
-			query: _query, // not destructuring this breaks the endpoint
-		}) => {
-			const { roomId, eventId } = params;
+	return app
+		.use(isAuthenticated(eventAuthService))
+		.use(canAccessResource(eventAuthService))
+		.put(
+			'/_matrix/federation/v2/send_join/:roomId/:eventId',
+			async ({
+				params,
+				body,
+				query: _query, // not destructuring this breaks the endpoint
+			}) => {
+				const { roomId, eventId } = params;
 
 			return sendJoinService.sendJoin(
 				roomId as RoomID,
