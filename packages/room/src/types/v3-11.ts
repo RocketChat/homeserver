@@ -691,6 +691,7 @@ const EventPduTypeRoomRedaction = z.object({
 	...PduNoContentTimelineEventSchema,
 	type: z.literal('m.room.redaction'),
 	content: PduRoomRedactionContentSchema,
+	redacts: eventIdSchema.describe('event id'),
 });
 
 export const PduSchema = z.discriminatedUnion('type', [
