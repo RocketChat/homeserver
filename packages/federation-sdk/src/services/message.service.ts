@@ -355,8 +355,8 @@ export class MessageService {
 					type: 'm.room.redaction',
 					content: {
 						reason: 'Unsetting reaction',
-						redacts: eventIdReactedTo,
 					},
+					redacts: eventIdReactedTo,
 					room_id: roomId,
 					auth_events: [],
 					depth: 0,
@@ -444,8 +444,8 @@ export class MessageService {
 					type: 'm.room.redaction',
 					content: {
 						reason: `Deleting message: ${eventIdToRedact}`,
-						redacts: eventIdToRedact,
 					},
+					redacts: eventIdToRedact,
 					room_id: roomId,
 					auth_events: [],
 					depth: 0,

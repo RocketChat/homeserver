@@ -229,7 +229,7 @@ export class StagingAreaService {
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
-					redacts: event.event.content.redacts,
+					redacts: event.event.redacts as EventID,
 					content: {
 						reason: event.event.content?.reason as string | undefined,
 					},

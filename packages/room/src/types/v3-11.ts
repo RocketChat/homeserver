@@ -197,7 +197,6 @@ export type PduRoomTopicEventContent = z.infer<
 
 export const PduRoomRedactionContentSchema = z.object({
 	reason: z.string().optional(),
-	redacts: eventIdSchema.describe('event id'),
 });
 
 export type PduRoomRedactionContent = z.infer<

@@ -70,9 +70,9 @@ test('redactionEvent', async () => {
 		prev_events: ['$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA'],
 		depth: 4,
 		content: {
-			redacts: '$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA',
 			reason: 'Inappropriate content',
 		},
+		redacts: '$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA',
 		origin: 'rc1',
 		ts: 1747837631863,
 	});

@@ -41,6 +41,7 @@ export const redactionEvent = ({
 	prev_events,
 	depth,
 	content,
+	redacts,
 	origin,
 	ts = Date.now(),
 	unsigned,
@@ -51,15 +52,14 @@ export const redactionEvent = ({
 	prev_events: EventID[];
 	depth: number;
 	content: {
-		redacts: EventID;
 		reason?: string;
 	};
+	redacts: EventID;
 	origin?: string;
 	ts?: number;
 	unsigned?: { age_ts?: number };
 }): RedactionEvent => {
 	// Extract redacts from content - it must be at top level only
-	const { redacts } = content;
 	const { reason } = content;
 
 	const baseEvent = createEventBase('m.room.redaction', {
