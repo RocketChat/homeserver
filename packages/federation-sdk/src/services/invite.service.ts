@@ -7,9 +7,10 @@ import {
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
+import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
-import { StateService } from './state.service';
+import { RoomInfoNotReadyError, StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
 	event: EventBase;
@@ -27,6 +28,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
+		private readonly emitterService: EventEmitterService,
 	) {}
 
 	/**
@@ -93,6 +95,15 @@ export class InviteService {
 			// without it join events will not be processed if /event/{eventId} causes problems
 			void federationService.sendEventToAllServersInRoom(inviteEvent);
 
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: inviteEvent.eventId,
+				room_id: roomId,
+				sender: inviteEvent.sender,
+				state_key: inviteEvent.event.state_key,
+				origin_server_ts: inviteEvent.originServerTs,
+				content: inviteEvent.getContent(),
+			});
+
 			return {
 				event_id: inviteEvent.eventId,
 				room_id: roomId,
@@ -118,6 +129,15 @@ export class InviteService {
 
 		// let everyone know
 		void federationService.sendEventToAllServersInRoom(inviteEvent);
+
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: inviteEvent.eventId,
+			room_id: roomId,
+			sender: inviteEvent.sender,
+			state_key: inviteEvent.event.state_key,
+			origin_server_ts: inviteEvent.originServerTs,
+			content: inviteEvent.getContent(),
+		});
 
 		return {
 			event_id: inviteEvent.eventId,
@@ -176,9 +196,36 @@ export class InviteService {
 			if (inviteEvent.rejected) {
 				throw new Error(inviteEvent.rejectedReason);
 			}
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: inviteEvent.eventId,
+				room_id: roomId,
+				sender: inviteEvent.sender,
+				state_key: inviteEvent.event.state_key,
+				origin_server_ts: inviteEvent.originServerTs,
+				content: {
+					avatar_url: inviteEvent.getContent().avatar_url,
+					displayname: inviteEvent.getContent().displayname || '',
+					membership: inviteEvent.getContent().membership,
+				},
+			});
 		} catch (e) {
 			// don't have state copy yet
 			console.error(e);
+
+			if (e instanceof RoomInfoNotReadyError) {
+				this.emitterService.emit('homeserver.matrix.membership', {
+					event_id: inviteEvent.eventId,
+					room_id: roomId,
+					sender: inviteEvent.sender,
+					state_key: inviteEvent.event.state_key,
+					origin_server_ts: inviteEvent.originServerTs,
+					content: {
+						avatar_url: inviteEvent.getContent().avatar_url,
+						displayname: inviteEvent.getContent().displayname || '',
+						membership: inviteEvent.getContent().membership,
+					},
+				});
+			}
 
 			// typical noop, we sign and return the event, nothing to do
 		}
