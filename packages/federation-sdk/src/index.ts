@@ -1,5 +1,5 @@
 import type { Membership, MessageType } from '@rocket.chat/federation-core';
-import type { EventID } from '@rocket.chat/federation-room';
+import type { EventID, PduForType } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
@@ -122,6 +122,11 @@ export type HomeserverEventSignatures = {
 		presence: 'online' | 'offline' | 'unavailable';
 		last_active_ago?: number;
 		origin?: string;
+	};
+	'homeserver.matrix.room.create': {
+		room_id: string;
+		event: PduForType<'m.room.create'>;
+		event_id: EventID;
 	};
 	'homeserver.matrix.message': {
 		event_id: EventID;

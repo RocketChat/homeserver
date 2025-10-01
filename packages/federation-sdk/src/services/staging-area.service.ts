@@ -8,6 +8,7 @@ import { singleton } from 'tsyringe';
 import {
 	MessageType,
 	createLogger,
+	isCreateEvent,
 	isRedactedEvent,
 } from '@rocket.chat/federation-core';
 import { PduPowerLevelsEventContent } from '@rocket.chat/federation-room';
@@ -174,6 +175,15 @@ export class StagingAreaService {
 		} = event;
 
 		switch (true) {
+			case isCreateEvent(event.event):
+				{
+					this.eventEmitterService.emit('homeserver.matrix.room.create', {
+						room_id: roomId,
+						event_id: eventId,
+						event: event.event,
+					});
+				}
+				break;
 			case event.event.type === 'm.room.message':
 				this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
