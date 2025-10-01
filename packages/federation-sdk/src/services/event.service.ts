@@ -199,19 +199,6 @@ export class EventService {
 					// save the event as staged to be processed
 					await this.eventStagingRepository.create(eventId, origin, event);
 
-					// acquire a lock for processing the event
-					const lock = await this.lockRepository.getLock(
-						roomId,
-						this.configService.instanceId,
-					);
-					if (!lock) {
-						this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
-						continue;
-					}
-
-					// if we have a lock, we can process the event
-					// void this.stagingAreaService.processEventForRoom(roomId);
-
 					// TODO change this to call stagingAreaService directly (line above)
 					this.stagingAreaQueue.enqueue(roomId);
 				}
@@ -664,18 +651,6 @@ export class EventService {
 
 		// not we try to process one room at a time
 		for await (const roomId of rooms) {
-			const lock = await this.lockRepository.getLock(
-				roomId,
-				this.configService.instanceId,
-			);
-			if (!lock) {
-				this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
-				continue;
-			}
-
-			// if we have a lock, we can process the event
-			// void this.stagingAreaService.processEventForRoom(roomId);
-
 			// TODO change this to call stagingAreaService directly (line above)
 			this.stagingAreaQueue.enqueue(roomId);
 
