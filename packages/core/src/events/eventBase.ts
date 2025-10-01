@@ -37,6 +37,12 @@ export type RedactedEvent = EventBase & {
 	type: 'm.room.redaction';
 };
 
+export const isCreateEvent = (
+	event: Pdu,
+): event is PduForType<'m.room.create'> & {} => {
+	return event.type === 'm.room.create';
+};
+
 export const isRedactedEvent = (
 	event: Pdu,
 ): event is PduForType<'m.room.redaction'> => {
