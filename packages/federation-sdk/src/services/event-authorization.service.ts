@@ -267,6 +267,22 @@ export class EventAuthorizationService {
 			return true;
 		}
 
+		for (const [key, event] of state.entries()) {
+			if (key.startsWith('m.room.member:') && event?.isMembershipEvent()) {
+				const membership = event.getContent().membership;
+				const stateKey = event.stateKey;
+				if (membership === 'invite' && stateKey) {
+					const invitedUserServer = stateKey.split(':').pop();
+					if (invitedUserServer === serverName) {
+						this.logger.debug(
+							`Server ${serverName} has pending invites in room, allowing access`,
+						);
+						return true;
+					}
+				}
+			}
+		}
+
 		const historyVisibilityEvent = state.get('m.room.history_visibility:');
 		if (
 			historyVisibilityEvent?.isHistoryVisibilityEvent() &&
