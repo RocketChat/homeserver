@@ -197,7 +197,6 @@ export type PduRoomTopicEventContent = z.infer<
 
 export const PduRoomRedactionContentSchema = z.object({
 	reason: z.string().optional(),
-	redacts: eventIdSchema.describe('event id'),
 });
 
 export type PduRoomRedactionContent = z.infer<
@@ -692,6 +691,7 @@ const EventPduTypeRoomRedaction = z.object({
 	...PduNoContentTimelineEventSchema,
 	type: z.literal('m.room.redaction'),
 	content: PduRoomRedactionContentSchema,
+	redacts: eventIdSchema.describe('event id'),
 });
 
 export const PduSchema = z.discriminatedUnion('type', [

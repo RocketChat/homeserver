@@ -152,11 +152,10 @@ export const internalMessagePlugin = (app: Elysia) => {
 				params,
 				body,
 			}): Promise<InternalRedactMessageResponse | ErrorResponse> => {
-				const { roomId, senderUserId } = body;
+				const { roomId } = body;
 				const eventId = await messageService.redactMessage(
 					roomId,
 					params.messageId as EventID,
-					senderUserId,
 				);
 
 				return {

@@ -39,6 +39,7 @@ import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
+import { EventEmitterService } from './event-emitter.service';
 import { InviteService } from './invite.service';
 import { StateService } from './state.service';
 
@@ -52,6 +53,7 @@ export class RoomService {
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly inviteService: InviteService,
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -469,7 +471,11 @@ export class RoomService {
 		// Ensure critical auth events were found
 		if (!createAuthResult || !powerLevelsAuthResult || !memberAuthResult) {
 			logger.error(
-				`Critical auth events missing for power level update. Create: ${createAuthResult?._id ?? 'missing'}, PowerLevels: ${powerLevelsAuthResult?._id ?? 'missing'}, Member: ${memberAuthResult?._id ?? 'missing'}`,
+				`Critical auth events missing for power level update. Create: ${
+					createAuthResult?._id ?? 'missing'
+				}, PowerLevels: ${powerLevelsAuthResult?._id ?? 'missing'}, Member: ${
+					memberAuthResult?._id ?? 'missing'
+				}`,
 			);
 			throw new HttpException(
 				'Internal server error: Missing auth events for power level update.',
@@ -617,7 +623,9 @@ export class RoomService {
 		reason?: string,
 	): Promise<string> {
 		logger.info(
-			`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
+			`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${
+				reason || 'No reason specified'
+			}`,
 		);
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
@@ -696,7 +704,9 @@ export class RoomService {
 		reason?: string,
 	): Promise<string> {
 		logger.info(
-			`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`,
+			`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${
+				reason || 'No reason specified'
+			}`,
 		);
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
@@ -809,6 +819,15 @@ export class RoomService {
 
 			await stateService.persistStateEvent(membershipEvent);
 
+			this.eventEmitterService.emit('homeserver.matrix.membership', {
+				room_id: roomId,
+				state_key: userId,
+				content: { membership: 'join' },
+				sender: userId,
+				event_id: membershipEvent.eventId,
+				origin_server_ts: Date.now(),
+			});
+
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectedReason);
 			}
@@ -909,7 +928,11 @@ export class RoomService {
 				if (!authEvent) {
 					for (const stateEvent of eventMap.keys()) {
 						console.log(
-							`${stateEvent} -> ${JSON.stringify(eventMap.get(stateEvent)?.event, null, 2)}`,
+							`${stateEvent} -> ${JSON.stringify(
+								eventMap.get(stateEvent)?.event,
+								null,
+								2,
+							)}`,
 						);
 					}
 					throw new Error(`Auth event ${authEventId} not found`);
@@ -936,11 +959,9 @@ export class RoomService {
 
 			// persist as normal
 			logger.info(
-				`Persisting state event after auth events have been persisted, ${event.eventId}, ${JSON.stringify(
-					event.event,
-					null,
-					2,
-				)}`,
+				`Persisting state event after auth events have been persisted, ${
+					event.eventId
+				}, ${JSON.stringify(event.event, null, 2)}`,
 			);
 
 			const eventToPersist = copyEvent(event);
@@ -983,7 +1004,10 @@ export class RoomService {
 		const state = await stateService.getFullRoomState(roomId);
 
 		logger.info(
-			`State before join event has been persisted, ${state.keys().toArray().join(', ')}`,
+			`State before join event has been persisted, ${state
+				.keys()
+				.toArray()
+				.join(', ')}`,
 		);
 
 		// try to persist the join event now, should succeed with state in place

@@ -39,8 +39,8 @@ export type RedactedEvent = EventBase & {
 
 export const isRedactedEvent = (
 	event: Pdu,
-): event is PduForType<'m.room.redaction'> & {} => {
-	return event.type === 'm.room.redaction';
+): event is PduForType<'m.room.redaction'> => {
+	return event.type === 'm.room.redaction' && 'redacts' in event;
 };
 
 export interface Events {}
