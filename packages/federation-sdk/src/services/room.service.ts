@@ -1274,6 +1274,7 @@ export class RoomService {
 
 		await this.roomRepository.markRoomAsDeleted(roomId, event.eventId);
 
+		// TODO: check if all sendEventToAllServersInRoom should be followed by an emitter
 		void this.federationService.sendEventToAllServersInRoom(event);
 
 		logger.info(`Successfully marked room ${roomId} as tombstone`);
