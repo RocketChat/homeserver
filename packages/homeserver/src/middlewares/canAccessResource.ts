@@ -3,14 +3,8 @@ import { errCodes } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';
 import { isAuthenticatedMiddleware } from './isAuthenticated';
 
-type RoutesParams = {
-	roomId?: string;
-	mediaId?: string;
-	eventId?: string;
-};
-
 function extractEntityId(
-	params: RoutesParams,
+	params: { roomId?: string; mediaId?: string; eventId?: string },
 	entityType: 'event' | 'media' | 'room',
 ): string {
 	if (entityType === 'room') {
