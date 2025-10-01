@@ -37,7 +37,11 @@ export class InviteService {
 		roomId: string,
 		sender: string,
 		isDirectMessage = false,
-	) {
+	): Promise<{
+		event_id: string;
+		event: PersistentEventBase<RoomVersion, 'm.room.member'>;
+		room_id: string;
+	}> {
 		this.logger.debug(`Inviting ${userId} to room ${roomId}`);
 
 		const stateService = this.stateService;
@@ -95,6 +99,10 @@ export class InviteService {
 
 			return {
 				event_id: inviteEvent.eventId,
+				event: PersistentEventFactory.createFromRawEvent(
+					inviteEvent.event,
+					roomInformation.room_version,
+				),
 				room_id: roomId,
 			};
 		}
@@ -121,6 +129,10 @@ export class InviteService {
 
 		return {
 			event_id: inviteEvent.eventId,
+			event: PersistentEventFactory.createFromRawEvent(
+				inviteEvent.event,
+				roomInformation.room_version,
+			),
 			room_id: roomId,
 		};
 	}
