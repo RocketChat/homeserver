@@ -13,7 +13,12 @@ import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { FederationService } from './federation.service';
-import { StateService, UnknownRoomError } from './state.service';
+import {
+	StateService,
+	UnknownRoomError,
+	RoomInfoNotReadyError,
+} from './state.service';
+import { EventEmitterService } from './event-emitter.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
 	event: EventBase;
@@ -37,6 +42,7 @@ export class InviteService {
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
 		private readonly eventAuthorizationService: EventAuthorizationService,
+		private readonly emitterService: EventEmitterService,
 	) {}
 
 	/**
@@ -103,6 +109,11 @@ export class InviteService {
 			// without it join events will not be processed if /event/{eventId} causes problems
 			void federationService.sendEventToAllServersInRoom(inviteEvent);
 
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: inviteEvent.eventId,
+				event: inviteEvent.event,
+			});
+
 			return {
 				event_id: inviteEvent.eventId,
 				event: PersistentEventFactory.createFromRawEvent(
@@ -132,6 +143,11 @@ export class InviteService {
 
 		// let everyone know
 		void federationService.sendEventToAllServersInRoom(inviteEvent);
+
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: inviteEvent.eventId,
+			event: inviteEvent.event,
+		});
 
 		return {
 			event_id: inviteEvent.eventId,
@@ -226,6 +242,11 @@ export class InviteService {
 
 			// we do not send transaction here
 			// the asking server will handle the transactions
+
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: inviteEvent.eventId,
+				event: inviteEvent.event,
+			});
 		}
 
 		// we are not the host of the server

@@ -57,6 +57,7 @@ export class RoomService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
+		private readonly emitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -889,6 +890,11 @@ export class RoomService {
 			}
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
+
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: membershipEvent.eventId,
+				event: membershipEvent.event,
+			});
 
 			return membershipEvent.eventId;
 		}
