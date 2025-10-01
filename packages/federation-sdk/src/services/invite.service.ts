@@ -12,13 +12,14 @@ import {
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
+import { EventEmitterService } from './event-emitter.service';
+import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import {
+	RoomInfoNotReadyError,
 	StateService,
 	UnknownRoomError,
-	RoomInfoNotReadyError,
 } from './state.service';
-import { EventEmitterService } from './event-emitter.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
 	event: EventBase;
