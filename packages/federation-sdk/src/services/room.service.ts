@@ -39,9 +39,9 @@ import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
+import { EventEmitterService } from './event-emitter.service';
 import { InviteService } from './invite.service';
 import { StateService } from './state.service';
-import { EventEmitterService } from './event-emitter.service';
 
 @singleton()
 export class RoomService {
