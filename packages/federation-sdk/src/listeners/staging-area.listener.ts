@@ -13,8 +13,8 @@ export class StagingAreaListener {
 		this.stagingAreaQueue.registerHandler(this.handleQueueItem.bind(this));
 	}
 
-	async handleQueueItem(data: RoomID) {
+	async *handleQueueItem(data: RoomID) {
 		this.logger.debug(`Processing room ${data}`);
-		await this.stagingAreaService.processEventForRoom(data);
+		yield* this.stagingAreaService.processEventForRoom(data);
 	}
 }

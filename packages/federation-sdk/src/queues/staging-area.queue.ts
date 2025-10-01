@@ -2,7 +2,10 @@ import type { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
 import { singleton } from 'tsyringe';
 
-type QueueHandler = (roomId: RoomID) => Promise<void>;
+import { LockRepository } from '../repositories/lock.repository';
+import { ConfigService } from '../services/config.service';
+
+type QueueHandler = (roomId: RoomID) => AsyncGenerator<unknown | undefined>;
 
 @singleton()
 export class StagingAreaQueue {
@@ -11,6 +14,11 @@ export class StagingAreaQueue {
 	private handlers: QueueHandler[] = [];
 
 	private processing = false;
+
+	constructor(
+		private readonly lockRepository: LockRepository,
+		private readonly configService: ConfigService,
+	) {}
 
 	enqueue(roomId: RoomID): void {
 		this.queue.push(roomId);
@@ -34,8 +42,18 @@ export class StagingAreaQueue {
 				if (!roomId) continue;
 
 				for (const handler of this.handlers) {
+					// eslint-disable-next-line no-await-in-loop, prettier/prettier
+					await using lock = await this.lockRepository.lock(
+						roomId,
+						this.configService.instanceId,
+					);
+					if (!lock.success) {
+						continue;
+					}
 					// eslint-disable-next-line no-await-in-loop
-					await handler(roomId);
+					for await (const _ of handler(roomId)) {
+						await lock.update();
+					}
 				}
 			}
 		} finally {

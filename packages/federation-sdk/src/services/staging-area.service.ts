@@ -60,7 +60,7 @@ export class StagingAreaService {
 		return [authEvents, prevEvents];
 	}
 
-	async processEventForRoom(roomId: RoomID) {
+	async *processEventForRoom(roomId: RoomID) {
 		const roomIdToRoomVersion = new Map<string, RoomVersion>();
 		const getRoomVersion = async (roomId: RoomID) => {
 			const version = roomIdToRoomVersion.get(roomId) ?? (await this.stateService.getRoomVersion(roomId));
@@ -143,10 +143,20 @@ export class StagingAreaService {
 					});
 				}
 			}
-		} while (event);
 
-		// release the lock after processing
-		await this.lockRepository.releaseLock(roomId, this.configService.instanceId);
+			// TODO: what should we do to avoid infinite loops in case the next event is always the same event
+
+			// eslint-disable-next-line no-await-in-loop
+			event = await this.eventService.getLeastDepthEventForRoom(roomId);
+
+			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
+			// and acquired by another instance while we're processing a batch of events for this room
+
+			if (event) {
+				yield event;
+			}
+		} while (event);
+		this.logger.debug({ msg: 'No more events to process for room', roomId });
 	}
 
 	private async processDependencyStage(event: EventStagingStore) {
