@@ -41,6 +41,7 @@ import { EventService } from './event.service';
 
 import { InviteService } from './invite.service';
 import { StateService } from './state.service';
+import { EventEmitterService } from './event-emitter.service';
 
 @singleton()
 export class RoomService {
@@ -52,6 +53,7 @@ export class RoomService {
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly inviteService: InviteService,
+		private readonly emitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -814,6 +816,15 @@ export class RoomService {
 			}
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
+
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: membershipEvent.eventId,
+				room_id: roomId,
+				sender: membershipEvent.sender,
+				state_key: membershipEvent.event.state_key,
+				origin_server_ts: membershipEvent.originServerTs,
+				content: membershipEvent.getContent(),
+			});
 
 			return membershipEvent.eventId;
 		}
