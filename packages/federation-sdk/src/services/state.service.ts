@@ -32,6 +32,13 @@ type StrippedRoomState = {
 	type: PduType;
 };
 
+export class RoomInfoNotReadyError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'RoomInfoNotReadyError';
+	}
+}
+
 @singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
@@ -69,14 +76,18 @@ export class StateService {
 			'm.room.create:',
 		);
 		if (!state) {
-			throw new Error('Create event mapping not found for room information');
+			throw new RoomInfoNotReadyError(
+				'Create event mapping not found for room information',
+			);
 		}
 
 		const createEvent = await this.eventRepository.findById(
 			state.delta.eventId,
 		);
 		if (!createEvent) {
-			throw new Error('Create event not found for room information');
+			throw new RoomInfoNotReadyError(
+				'Create event not found for room information',
+			);
 		}
 
 		return createEvent?.event.content as PduCreateEventContent;
