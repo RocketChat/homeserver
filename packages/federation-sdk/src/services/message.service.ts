@@ -422,7 +422,6 @@ export class MessageService {
 	async redactMessage(
 		roomId: string,
 		eventIdToRedact: EventID,
-		senderUserId: string,
 	): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
@@ -433,6 +432,11 @@ export class MessageService {
 		}
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
+
+		const senderUserId = await this.eventService.getEventById(eventIdToRedact);
+		if (!senderUserId?.event.sender) {
+			throw new Error(`Sender user ID not found for event ${eventIdToRedact}`);
+		}
 
 		const redactionEvent =
 			await this.stateService.buildEvent<'m.room.redaction'>(
@@ -447,7 +451,7 @@ export class MessageService {
 					depth: 0,
 					prev_events: [],
 					origin_server_ts: Date.now(),
-					sender: senderUserId,
+					sender: senderUserId.event.sender,
 				},
 				roomInfo.room_version,
 			);

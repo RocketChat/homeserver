@@ -59,7 +59,6 @@ export const InternalRedactMessageParamsDto = t.Object({
 
 export const InternalRedactMessageBodyDto = t.Object({
 	roomId: RoomIdDto,
-	senderUserId: UsernameDto,
 });
 
 export const InternalRedactMessageResponseDto = InternalMessageResponseDto;
