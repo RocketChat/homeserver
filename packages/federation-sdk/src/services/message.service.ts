@@ -17,7 +17,9 @@ import {
 	type EventID,
 	type PersistentEventBase,
 	PersistentEventFactory,
+	RoomID,
 	type RoomVersion,
+	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
@@ -64,10 +66,10 @@ export class MessageService {
 	) {}
 
 	async sendMessage(
-		roomId: string,
+		roomId: RoomID,
 		rawMessage: string,
 		formattedMessage: string,
-		senderUserId: string,
+		senderUserId: UserID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -106,11 +108,11 @@ export class MessageService {
 	}
 
 	async sendReplyToMessage(
-		roomId: string,
+		roomId: RoomID,
 		rawMessage: string,
 		formattedMessage: string,
-		eventToReplyTo: string,
-		senderUserId: string,
+		eventToReplyTo: EventID,
+		senderUserId: UserID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -154,9 +156,9 @@ export class MessageService {
 	}
 
 	async sendFileMessage(
-		roomId: string,
+		roomId: RoomID,
 		content: FileMessageContent,
-		senderUserId: string,
+		senderUserId: UserID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -190,12 +192,12 @@ export class MessageService {
 	}
 
 	async sendThreadMessage(
-		roomId: string,
+		roomId: RoomID,
 		rawMessage: string,
 		formattedMessage: string,
-		senderUserId: string,
-		threadRootEventId: string,
-		latestThreadEventId?: string,
+		senderUserId: UserID,
+		threadRootEventId: EventID,
+		latestThreadEventId?: EventID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -246,12 +248,12 @@ export class MessageService {
 	}
 
 	async sendReplyToInsideThreadMessage(
-		roomId: string,
+		roomId: RoomID,
 		rawMessage: string,
 		formattedMessage: string,
-		senderUserId: string,
-		threadRootEventId: string,
-		eventToReplyTo: string,
+		senderUserId: UserID,
+		threadRootEventId: EventID,
+		eventToReplyTo: EventID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -297,10 +299,10 @@ export class MessageService {
 	}
 
 	async sendReaction(
-		roomId: string,
-		eventId: string,
+		roomId: RoomID,
+		eventId: EventID,
 		emoji: string,
-		senderUserId: string,
+		senderUserId: UserID,
 	): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
@@ -342,10 +344,10 @@ export class MessageService {
 	}
 
 	async unsetReaction(
-		roomId: string,
+		roomId: RoomID,
 		eventIdReactedTo: EventID,
 		_emoji: string,
-		senderUserId: string,
+		senderUserId: UserID,
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
@@ -375,11 +377,11 @@ export class MessageService {
 	}
 
 	async updateMessage(
-		roomId: string,
+		roomId: RoomID,
 		rawMessage: string,
 		formattedMessage: string,
-		senderUserId: string,
-		eventIdToReplace: string,
+		senderUserId: UserID,
+		eventIdToReplace: EventID,
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
@@ -420,7 +422,7 @@ export class MessageService {
 	}
 
 	async redactMessage(
-		roomId: string,
+		roomId: RoomID,
 		eventIdToRedact: EventID,
 	): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);

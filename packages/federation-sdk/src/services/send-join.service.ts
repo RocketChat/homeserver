@@ -4,6 +4,7 @@ import {
 } from '@rocket.chat/federation-core';
 import {
 	type EventID,
+	PduForType,
 	type PduMembershipEventContent,
 	PersistentEventFactory,
 	getAuthChain,
@@ -24,7 +25,11 @@ export class SendJoinService {
 		private readonly configService: ConfigService,
 	) {}
 
-	async sendJoin(roomId: string, eventId: EventID, event: RoomMemberEvent) {
+	async sendJoin(
+		roomId: string,
+		eventId: EventID,
+		event: PduForType<'m.room.member'>,
+	) {
 		const stateService = this.stateService;
 
 		const roomVersion = await stateService.getRoomVersion(roomId);

@@ -65,6 +65,6 @@ export interface RoomMemberEvent extends EventBase {
 	};
 }
 
-export const isRoomMemberEvent = (event: Pdu): event is RoomMemberEvent => {
+export const isRoomMemberEvent = (event: Pdu): boolean => {
 	return event.type === 'm.room.member';
 };

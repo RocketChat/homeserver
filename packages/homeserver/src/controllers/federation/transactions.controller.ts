@@ -1,4 +1,4 @@
-import { EventID } from '@rocket.chat/federation-room';
+import { EventID, RoomID } from '@rocket.chat/federation-room';
 import {
 	ConfigService,
 	EventAuthorizationService,
@@ -107,7 +107,7 @@ export const transactionsPlugin = (app: Elysia) => {
 						: [eventIdParam];
 
 					return eventService.getBackfillEvents(
-						params.roomId,
+						params.roomId as RoomID,
 						eventIds as EventID[],
 						limit,
 					);

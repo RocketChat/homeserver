@@ -1,14 +1,18 @@
-import { eventIdSchema } from '@rocket.chat/federation-room';
+import {
+	eventIdSchema,
+	roomIdSchema,
+	userIdSchema,
+} from '@rocket.chat/federation-room';
 import { z } from 'zod';
 
 const baseEventSchema = z.object({
 	type: z.string(),
 	content: z.record(z.any()).or(z.object({})),
-	sender: z.string(),
-	room_id: z.string(),
+	sender: userIdSchema,
+	room_id: roomIdSchema,
 	origin_server_ts: z.number().int().positive(),
 	event_id: eventIdSchema.optional(),
-	state_key: z.string().optional(),
+	state_key: userIdSchema.or(z.literal('')),
 	depth: z.number().int().nonnegative().optional(),
 	prev_events: z
 		.array(z.string().or(z.tuple([z.string(), z.string()])))
@@ -16,7 +20,7 @@ const baseEventSchema = z.object({
 	auth_events: z
 		.array(z.string().or(z.tuple([z.string(), z.string()])))
 		.optional(),
-	redacts: z.string().optional(),
+	redacts: eventIdSchema.optional(),
 	hashes: z.record(z.string()).optional(),
 	signatures: z.record(z.record(z.string())).optional(),
 	unsigned: z.any().optional(),
@@ -28,7 +32,7 @@ const createEventSchema = baseEventSchema.extend({
 	content: z
 		.object({
 			room_version: z.string(),
-			creator: z.string(),
+			creator: userIdSchema,
 		})
 		.and(z.record(z.any())),
 	prev_events: z.array(z.any()).max(0).optional(),
@@ -37,7 +41,7 @@ const createEventSchema = baseEventSchema.extend({
 
 const memberEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.member'),
-	state_key: z.string(),
+	state_key: userIdSchema,
 	content: z
 		.object({
 			membership: z.enum(['invite', 'join', 'leave', 'ban', 'knock']),
@@ -72,7 +76,7 @@ const reactionEventSchema = baseEventSchema.extend({
 
 const powerLevelsEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.power_levels'),
-	state_key: z.literal(''),
+	state_key: userIdSchema.or(z.literal('')),
 	content: z
 		.object({
 			ban: z.number().int().default(50),
@@ -117,6 +121,9 @@ const roomV10Schemas = {
 	'm.reaction': reactionEventSchema,
 	'm.room.redaction': redactionEventSchema,
 	default: baseEventSchema,
+	eventIdSchema,
+	roomIdSchema,
+	userIdSchema,
 };
 
 export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = {

@@ -2,7 +2,7 @@ import { Pdu, type PduCreateEventContent, PduType } from '../types/v3-11';
 
 import { PersistentEventV3 } from './v3';
 
-import { PduForType } from '../types/_common';
+import { PduForType, RoomID, UserID, roomIdSchema } from '../types/_common';
 import type {
 	PduWithHashesAndSignaturesOptional,
 	PersistentEventBase,
@@ -81,7 +81,7 @@ export class PersistentEventFactory {
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
-	static newCreateEvent(creator: string, roomVersion: RoomVersion) {
+	static newCreateEvent(creator: UserID, roomVersion: RoomVersion) {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
@@ -93,7 +93,7 @@ export class PersistentEventFactory {
 
 		const domain = creator.split(':').pop();
 
-		const roomId = `!${createRoomIdPrefix(8)}:${domain}`;
+		const roomId = roomIdSchema.parse(`!${createRoomIdPrefix(8)}:${domain}`);
 
 		const eventPartial: PartialEvent<PduForType<'m.room.create'>> = {
 			type: 'm.room.create',

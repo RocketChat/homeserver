@@ -1,3 +1,4 @@
+import { RoomID } from '@rocket.chat/federation-room';
 import { StateService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';

@@ -1,3 +1,4 @@
+import { UserID } from '@rocket.chat/federation-room';
 import { RoomService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
@@ -30,8 +31,8 @@ export const internalDirectMessagePlugin = (app: Elysia) => {
 			const { senderUserId, targetUserId } = body;
 			try {
 				const roomId = await roomService.createDirectMessageRoom(
-					senderUserId,
-					targetUserId,
+					senderUserId as UserID,
+					targetUserId as UserID,
 				);
 				return {
 					roomId,

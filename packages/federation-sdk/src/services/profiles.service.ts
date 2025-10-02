@@ -7,7 +7,9 @@ import {
 	Pdu,
 	PduForType,
 	PersistentEventFactory,
+	RoomID,
 	RoomVersion,
+	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
@@ -69,12 +71,12 @@ export class ProfilesService {
 	}
 
 	async makeJoin(
-		roomId: string,
-		userId: string,
+		roomId: RoomID,
+		userId: UserID,
 		versions: RoomVersion[], // asking server supports these
 	): Promise<{
 		event: PduForType<'m.room.member'> & { origin: string };
-		room_version: string;
+		room_version: RoomVersion;
 	}> {
 		const stateService = this.stateService;
 		const roomInformation = await stateService.getRoomInformation(roomId);
@@ -110,7 +112,7 @@ export class ProfilesService {
 	}
 
 	async getMissingEvents(
-		roomId: string,
+		roomId: RoomID,
 		earliestEvents: EventID[],
 		latestEvents: EventID[],
 		limit = 10,
@@ -126,8 +128,8 @@ export class ProfilesService {
 	}
 
 	async eventAuth(
-		_roomId: string,
-		_eventId: string,
+		_roomId: RoomID,
+		_eventId: EventID,
 	): Promise<{ auth_chain: Record<string, string>[] }> {
 		return {
 			auth_chain: [],

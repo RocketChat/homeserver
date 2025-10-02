@@ -1,4 +1,8 @@
-import { PersistentEventFactory } from '@rocket.chat/federation-room';
+import {
+	PersistentEventFactory,
+	RoomID,
+	UserID,
+} from '@rocket.chat/federation-room';
 import { InviteService, StateService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
@@ -26,7 +30,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 			// }
 			const { roomId, username, sender } = body;
 
-			const room = await stateService.getFullRoomState(roomId);
+			const room = await stateService.getFullRoomState(roomId as RoomID);
 
 			const createEvent = room.get('m.room.create:');
 
@@ -38,13 +42,13 @@ export const internalInvitePlugin = (app: Elysia) => {
 				{
 					type: 'm.room.member',
 					content: { membership: 'invite' },
-					room_id: roomId,
-					state_key: username,
+					room_id: roomId as RoomID,
+					state_key: username as UserID,
 					auth_events: [],
 					depth: 0,
 					prev_events: [],
 					origin_server_ts: Date.now(),
-					sender: sender,
+					sender: sender as UserID,
 				},
 				createEvent.getContent().room_version,
 			);
