@@ -297,3 +297,9 @@ export {
 } from './container';
 
 export { DependencyContainer } from 'tsyringe';
+
+export {
+	roomIdSchema,
+	userIdSchema,
+	eventIdSchema,
+} from '@rocket.chat/federation-room';
