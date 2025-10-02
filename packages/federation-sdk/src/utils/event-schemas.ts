@@ -12,7 +12,7 @@ const baseEventSchema = z.object({
 	room_id: roomIdSchema,
 	origin_server_ts: z.number().int().positive(),
 	event_id: eventIdSchema.optional(),
-	state_key: userIdSchema.or(z.literal('')),
+	state_key: userIdSchema.or(z.literal('')).optional(),
 	depth: z.number().int().nonnegative().optional(),
 	prev_events: z
 		.array(z.string().or(z.tuple([z.string(), z.string()])))
