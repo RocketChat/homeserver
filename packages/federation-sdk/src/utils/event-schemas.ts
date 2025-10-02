@@ -76,7 +76,7 @@ const reactionEventSchema = baseEventSchema.extend({
 
 const powerLevelsEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.power_levels'),
-	state_key: userIdSchema.or(z.literal('')),
+	state_key: z.literal(''),
 	content: z
 		.object({
 			ban: z.number().int().default(50),
@@ -121,9 +121,6 @@ const roomV10Schemas = {
 	'm.reaction': reactionEventSchema,
 	'm.room.redaction': redactionEventSchema,
 	default: baseEventSchema,
-	eventIdSchema,
-	roomIdSchema,
-	userIdSchema,
 };
 
 export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = {
