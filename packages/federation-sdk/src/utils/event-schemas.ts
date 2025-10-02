@@ -45,8 +45,8 @@ const memberEventSchema = baseEventSchema.extend({
 	content: z
 		.object({
 			membership: z.enum(['invite', 'join', 'leave', 'ban', 'knock']),
-			displayname: z.string().optional(),
-			avatar_url: z.string().optional(),
+			displayname: z.string().optional().nullable(),
+			avatar_url: z.string().optional().nullable(),
 		})
 		.and(z.record(z.any())),
 });
