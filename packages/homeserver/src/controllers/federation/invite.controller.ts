@@ -1,11 +1,17 @@
-import { InviteService } from '@rocket.chat/federation-sdk';
+import {
+	EventAuthorizationService,
+	InviteService,
+} from '@rocket.chat/federation-sdk';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { ProcessInviteParamsDto, RoomVersionDto } from '../../dtos';
 
 export const invitePlugin = (app: Elysia) => {
 	const inviteService = container.resolve(InviteService);
-	return app.put(
+	const eventAuthService = container.resolve(EventAuthorizationService);
+
+	return app.use(canAccessResourceMiddleware(eventAuthService, 'room')).put(
 		'/_matrix/federation/v2/invite/:roomId/:eventId',
 		async ({ body, params: { roomId, eventId } }) => {
 			return inviteService.processInvite(

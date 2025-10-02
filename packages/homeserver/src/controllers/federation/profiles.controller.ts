@@ -1,6 +1,11 @@
 import { EventID, type RoomVersion } from '@rocket.chat/federation-room';
-import { ProfilesService } from '@rocket.chat/federation-sdk';
-import { Elysia } from 'elysia';
+import {
+	EventAuthorizationService,
+	ProfilesService,
+} from '@rocket.chat/federation-sdk';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
+import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
@@ -11,12 +16,6 @@ import {
 	GetMissingEventsBodyDto,
 	GetMissingEventsParamsDto,
 	GetMissingEventsResponseDto,
-	GetStateIdsParamsDto,
-	GetStateIdsQueryDto,
-	GetStateIdsResponseDto,
-	GetStateParamsDto,
-	GetStateQueryDto,
-	GetStateResponseDto,
 	MakeJoinParamsDto,
 	MakeJoinQueryDto,
 	MakeJoinResponseDto,
@@ -28,53 +27,79 @@ import {
 
 export const profilesPlugin = (app: Elysia) => {
 	const profilesService = container.resolve(ProfilesService);
+	const eventAuthService = container.resolve(EventAuthorizationService);
 
 	return app
-		.get(
-			'/_matrix/federation/v1/query/profile',
-			({ query: { user_id } }) => profilesService.queryProfile(user_id),
-			{
-				query: QueryProfileQueryDto,
-				response: {
-					200: QueryProfileResponseDto,
-				},
-				detail: {
-					tags: ['Federation'],
-					summary: 'Query profile',
-					description: "Query a user's profile",
-				},
-			},
+		.group('/_matrix', (app) =>
+			app
+				.use(isAuthenticatedMiddleware(eventAuthService))
+				.get(
+					'/_matrix/federation/v1/query/profile',
+					({ query: { user_id } }) => profilesService.queryProfile(user_id),
+					{
+						query: QueryProfileQueryDto,
+						response: {
+							200: QueryProfileResponseDto,
+						},
+						detail: {
+							tags: ['Federation'],
+							summary: 'Query profile',
+							description: "Query a user's profile",
+						},
+					},
+				)
+				.post(
+					'/_matrix/federation/v1/user/keys/query',
+					async ({ set }) => {
+						set.status = 501;
+						return {
+							errcode: 'M_UNRECOGNIZED',
+							error: 'E2EE is not implemented yet',
+						};
+					},
+					{
+						body: QueryKeysBodyDto,
+						response: {
+							200: QueryKeysResponseDto,
+							501: t.Object({
+								errcode: t.String(),
+								error: t.String(),
+							}),
+						},
+						detail: {
+							tags: ['Federation'],
+							summary: 'Query keys',
+							description: "Query a user's device keys (E2EE not implemented)",
+						},
+					},
+				)
+				.get(
+					'/_matrix/federation/v1/user/devices/:userId',
+					async ({ set }) => {
+						set.status = 501;
+						return {
+							errcode: 'M_UNRECOGNIZED',
+							error: 'E2EE is not implemented yet',
+						};
+					},
+					{
+						params: GetDevicesParamsDto,
+						response: {
+							200: GetDevicesResponseDto,
+							501: t.Object({
+								errcode: t.String(),
+								error: t.String(),
+							}),
+						},
+						detail: {
+							tags: ['Federation'],
+							summary: 'Get devices',
+							description: "Get a user's devices (E2EE not implemented)",
+						},
+					},
+				),
 		)
-		.post(
-			'/_matrix/federation/v1/user/keys/query',
-			async ({ body }) => profilesService.queryKeys(body.device_keys),
-			{
-				body: QueryKeysBodyDto,
-				response: {
-					200: QueryKeysResponseDto,
-				},
-				detail: {
-					tags: ['Federation'],
-					summary: 'Query keys',
-					description: "Query a user's device keys",
-				},
-			},
-		)
-		.get(
-			'/_matrix/federation/v1/user/devices/:userId',
-			({ params }) => profilesService.getDevices(params.userId),
-			{
-				params: GetDevicesParamsDto,
-				response: {
-					200: GetDevicesResponseDto,
-				},
-				detail: {
-					tags: ['Federation'],
-					summary: 'Get devices',
-					description: "Get a user's devices",
-				},
-			},
-		)
+		.use(canAccessResourceMiddleware(eventAuthService, 'room'))
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
 			async ({ params, query }) => {
