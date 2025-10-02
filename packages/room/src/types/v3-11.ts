@@ -629,6 +629,7 @@ const EventPduTypeRoomName = z.object({
 const EventPduTypeRoomAliases = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.aliases'),
+	state_key: z.string().describe("Sender's domain."),
 	content: PduCanonicalAliasEventContentSchema,
 });
 
