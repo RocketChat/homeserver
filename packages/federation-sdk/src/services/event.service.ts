@@ -101,12 +101,6 @@ export class EventService {
 		return this.eventStagingRepository.getLeastDepthEventForRoom(roomId);
 	}
 
-	async getNextStagedEventForRoom(
-		roomId: string,
-	): Promise<EventStagingStore | null> {
-		return this.eventStagingRepository.getNextStagedEventForRoom(roomId);
-	}
-
 	/**
 	 * Mark an event as no longer staged
 	 */
@@ -820,9 +814,9 @@ export class EventService {
 
 	/**
 	 * A transaction containing the PDUs that preceded the given event(s), including the given event(s), up to the given limit.
-	 * 
+	 *
 	 * Note: Though the PDU definitions require that prev_events and auth_events be limited in number, the response of backfill MUST NOT be validated on these specific restrictions.
-	 * 
+	 *
 	 * Due to historical reasons, it is possible that events which were previously accepted would now be rejected by these limitations. The events should be rejected per usual by the /send, /get_missing_events, and remaining endpoints.
 
 	 */
