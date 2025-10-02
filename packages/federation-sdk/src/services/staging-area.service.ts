@@ -127,23 +127,26 @@ export class StagingAreaService {
 			return;
 		}
 		this.logger.debug(`Missing ${missing.length} events for ${eventId}`);
-		// trackedEvent.missingEvents = missing;
 
-		for (const missingId of missing) {
+		const found = await Promise.all(
+			missing.map((missingId) => {
 			this.logger.debug(
 				`Adding missing event ${missingId} to missing events service`,
 			);
 
-			await this.missingEventsService.fetchMissingEvent({
+				return this.missingEventsService.fetchMissingEvent({
 				eventId: missingId,
 				roomId: event.event.room_id,
 				origin: event.origin,
 			});
-		}
+			}),
+		);
+
+		const addedMissing = found.some((f) => f === true);
 
 		// if the auth events are missing, the authorization stage will fail anyway,
 		// so to save some time we throw an error here, and the event processing will be postponed
-		if (authEvents.some((e) => missing.includes(e))) {
+		if (addedMissing && authEvents.some((e) => missing.includes(e))) {
 			throw new MissingAuthorizationEventsError('Missing authorization events');
 		}
 	}

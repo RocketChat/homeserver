@@ -22,7 +22,7 @@ export class MissingEventService {
 		private readonly eventFetcherService: EventFetcherService,
 	) {}
 
-	async fetchMissingEvent(data: MissingEventType) {
+	async fetchMissingEvent(data: MissingEventType): Promise<boolean> {
 		const { eventId, roomId, origin } = data;
 
 		const exists = await this.eventService.getEventById(eventId);
@@ -30,7 +30,7 @@ export class MissingEventService {
 			this.logger.debug(
 				`Event ${eventId} already exists in database (staged or processed), marking as fetched`,
 			);
-			return;
+			return true;
 		}
 
 		try {
@@ -43,7 +43,7 @@ export class MissingEventService {
 				this.logger.warn(
 					`Failed to fetch missing event ${eventId} from ${origin}`,
 				);
-				return;
+				return false;
 			}
 
 			for (const { event, eventId } of fetchedEvents.events) {
@@ -52,10 +52,13 @@ export class MissingEventService {
 				// TODO is there anything else we need to do with missing dependencies from received event?
 				await this.eventService.processIncomingPDUs(origin, [event]);
 			}
+
+			return true;
 		} catch (err: unknown) {
 			this.logger.error(
 				`Error fetching missing event ${eventId}: ${err instanceof Error ? err.message : String(err)}`,
 			);
+			return false;
 		}
 	}
 }
