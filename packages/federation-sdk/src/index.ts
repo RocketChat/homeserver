@@ -17,12 +17,16 @@ import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 
 export type {
+	Pdu,
+	PduForType,
 	PduMembershipEventContent,
+	PduType,
 	PersistentEventBase,
 	RoomVersion,
 	EventID,
 } from '@rocket.chat/federation-room';
 export type {
+	EventStore,
 	FileMessageType,
 	PresenceState,
 	FileMessageContent,
