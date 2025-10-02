@@ -3,7 +3,7 @@ import { Resolver, lookup } from 'node:dns/promises';
 
 // no caching, depends on system
 class _Resolver extends Resolver {
-	private lookupOrder: LookupAllOptions['order'] = 'ipv6first';
+	private lookupOrder: LookupAllOptions['order'] = 'ipv4first';
 
 	constructor() {
 		super();
