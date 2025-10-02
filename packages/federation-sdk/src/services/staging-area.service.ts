@@ -81,8 +81,11 @@ export class StagingAreaService {
 				} else {
 					this.logger.error({
 						msg: 'Error processing event',
+						event,
 						err,
 					});
+
+					await this.eventService.markEventAsUnstaged(event);
 				}
 			}
 
@@ -130,15 +133,15 @@ export class StagingAreaService {
 
 		const found = await Promise.all(
 			missing.map((missingId) => {
-			this.logger.debug(
-				`Adding missing event ${missingId} to missing events service`,
-			);
+				this.logger.debug(
+					`Adding missing event ${missingId} to missing events service`,
+				);
 
 				return this.missingEventsService.fetchMissingEvent({
-				eventId: missingId,
-				roomId: event.event.room_id,
-				origin: event.origin,
-			});
+					eventId: missingId,
+					roomId: event.event.room_id,
+					origin: event.origin,
+				});
 			}),
 		);
 
