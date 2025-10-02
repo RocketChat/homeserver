@@ -2,6 +2,8 @@ import {
 	EventID,
 	type PduCreateEventContent,
 	PersistentEventFactory,
+	RoomID,
+	UserID,
 } from '@rocket.chat/federation-room';
 import {
 	InviteService,
@@ -51,7 +53,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 			'/internal/rooms/rooms',
 			async ({ body }): Promise<InternalCreateRoomResponse | ErrorResponse> => {
 				const { creator, join_rule, name } = body;
-				return roomService.createRoom(creator, name, join_rule);
+				return roomService.createRoom(creator as UserID, name, join_rule);
 			},
 			{
 				body: t.Object({
@@ -90,7 +92,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 					};
 				}
 				const { name, senderUserId } = bodyParse.data;
-				return roomService.updateRoomName(roomIdParse.data, name, senderUserId);
+				return roomService.updateRoomName(
+					roomIdParse.data as RoomID,
+					name,
+					senderUserId as UserID,
+				);
 			},
 			{
 				params: InternalUpdateRoomNameParamsDto,
@@ -134,10 +140,10 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { senderUserId, powerLevel } = bodyParse.data;
 				try {
 					const eventId = await roomService.updateUserPowerLevel(
-						params.roomId,
-						params.userId,
+						params.roomId as RoomID,
+						params.userId as UserID,
 						powerLevel,
-						senderUserId,
+						senderUserId as UserID,
 					);
 					return { eventId };
 				} catch (error) {
@@ -167,7 +173,10 @@ export const internalRoomPlugin = (app: Elysia) => {
 			async ({ params }) => {
 				const { roomId, userId } = params;
 
-				const eventId = await roomService.joinUser(roomId, userId);
+				const eventId = await roomService.joinUser(
+					roomId as RoomID,
+					userId as UserID,
+				);
 
 				return {
 					eventId,
@@ -200,7 +209,9 @@ export const internalRoomPlugin = (app: Elysia) => {
 						...state,
 					};
 				}
-				const room = await stateService.getFullRoomState(params.roomId);
+				const room = await stateService.getFullRoomState(
+					params.roomId as RoomID,
+				);
 				const state: Record<string, any> = {};
 				for (const [key, value] of room.entries()) {
 					state[key] = value.event;
@@ -239,8 +250,8 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { senderUserId } = bodyParse.data;
 				try {
 					const eventId = await roomService.leaveRoom(
-						roomIdParse.data,
-						senderUserId,
+						roomIdParse.data as RoomID,
+						senderUserId as UserID,
 					);
 					return { eventId };
 				} catch (error) {
@@ -293,9 +304,9 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { /*userIdToKick, */ senderUserId, reason } = bodyParse.data;
 				try {
 					const eventId = await roomService.kickUser(
-						params.roomId,
-						params.memberId,
-						senderUserId,
+						params.roomId as RoomID,
+						params.memberId as UserID,
+						senderUserId as UserID,
 						reason,
 					);
 					return { eventId };
@@ -367,7 +378,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { roomId, userIdToBan } = params;
 				const { senderUserId } = body;
 
-				const room = await stateService.getFullRoomState(roomId);
+				const room = await stateService.getFullRoomState(roomId as RoomID);
 
 				const createEvent = room.get('m.room.create:');
 
@@ -380,13 +391,13 @@ export const internalRoomPlugin = (app: Elysia) => {
 						{
 							type: 'm.room.member',
 							content: { membership: 'ban' },
-							room_id: roomId,
-							state_key: userIdToBan,
+							room_id: roomId as RoomID,
+							state_key: userIdToBan as UserID,
 							auth_events: [],
 							depth: 0,
 							prev_events: [],
 							origin_server_ts: Date.now(),
-							sender: senderUserId,
+							sender: senderUserId as UserID,
 						},
 						createEvent.getContent().room_version,
 					);
@@ -440,10 +451,10 @@ export const internalRoomPlugin = (app: Elysia) => {
 					};
 				}
 				return roomService.markRoomAsTombstone(
-					roomIdParse.data,
-					bodyParse.data.sender,
+					roomIdParse.data as RoomID,
+					bodyParse.data.sender as UserID,
 					bodyParse.data.reason,
-					bodyParse.data.replacementRoomId,
+					bodyParse.data.replacementRoomId as RoomID,
 				);
 			},
 			{
@@ -479,9 +490,9 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { sender } = body;
 
 				const resp = await inviteService.inviteUserToRoom(
-					userId,
-					roomId,
-					sender,
+					userId as UserID,
+					roomId as RoomID,
+					sender as UserID,
 				);
 				return {
 					eventId: resp.event_id,

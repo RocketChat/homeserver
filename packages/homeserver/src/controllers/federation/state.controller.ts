@@ -1,4 +1,4 @@
-import { EventID } from '@rocket.chat/federation-room';
+import { EventID, RoomID } from '@rocket.chat/federation-room';
 import { EventService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
@@ -19,7 +19,10 @@ export const statePlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/state_ids/:roomId',
 			({ params, query }) =>
-				eventService.getStateIds(params.roomId, query.event_id as EventID),
+				eventService.getStateIds(
+					params.roomId as RoomID,
+					query.event_id as EventID,
+				),
 			{
 				params: GetStateIdsParamsDto,
 				query: GetStateIdsQueryDto,
@@ -37,7 +40,10 @@ export const statePlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/state/:roomId',
 			({ params, query }) =>
-				eventService.getState(params.roomId, query.event_id as EventID),
+				eventService.getState(
+					params.roomId as RoomID,
+					query.event_id as EventID,
+				),
 			{
 				params: GetStateParamsDto,
 				query: GetStateQueryDto,

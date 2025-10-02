@@ -1,9 +1,12 @@
 import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
+	EventID,
 	PduForType,
 	PersistentEventBase,
 	PersistentEventFactory,
+	RoomID,
 	RoomVersion,
+	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
@@ -33,14 +36,14 @@ export class InviteService {
 	 * Invite a user to an existing room
 	 */
 	async inviteUserToRoom(
-		userId: string,
-		roomId: string,
-		sender: string,
+		userId: UserID,
+		roomId: RoomID,
+		sender: UserID,
 		isDirectMessage = false,
 	): Promise<{
-		event_id: string;
+		event_id: EventID;
 		event: PersistentEventBase<RoomVersion, 'm.room.member'>;
-		room_id: string;
+		room_id: RoomID;
 	}> {
 		this.logger.debug(`Inviting ${userId} to room ${roomId}`);
 
@@ -139,8 +142,8 @@ export class InviteService {
 
 	async processInvite(
 		event: PduForType<'m.room.member'>,
-		roomId: string,
-		eventId: string,
+		roomId: RoomID,
+		eventId: EventID,
 		roomVersion: RoomVersion,
 	) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made

@@ -1,4 +1,4 @@
-import type { EventID } from '@rocket.chat/federation-room';
+import type { EventID, RoomID } from '@rocket.chat/federation-room';
 import { SendJoinService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
@@ -20,7 +20,11 @@ export const sendJoinPlugin = (app: Elysia) => {
 		}) => {
 			const { roomId, eventId } = params;
 
-			return sendJoinService.sendJoin(roomId, eventId as EventID, body as any);
+			return sendJoinService.sendJoin(
+				roomId as RoomID,
+				eventId as EventID,
+				body as any,
+			);
 		},
 		{
 			params: t.Object({

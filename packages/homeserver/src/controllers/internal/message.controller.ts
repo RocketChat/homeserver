@@ -1,4 +1,4 @@
-import { EventID } from '@rocket.chat/federation-room';
+import { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import { MessageService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
@@ -32,11 +32,11 @@ export const internalMessagePlugin = (app: Elysia) => {
 				const { roomId, message, senderUserId } = body;
 				try {
 					const eventId = await messageService.updateMessage(
-						roomId,
+						roomId as RoomID,
 						message,
 						message,
-						senderUserId,
-						params.messageId,
+						senderUserId as UserID,
+						params.messageId as EventID,
 					);
 					return {
 						event_id: eventId,
@@ -74,10 +74,10 @@ export const internalMessagePlugin = (app: Elysia) => {
 				const { roomId, emoji, senderUserId } = body;
 				try {
 					const eventId = await messageService.sendReaction(
-						roomId,
-						params.messageId,
+						roomId as RoomID,
+						params.messageId as EventID,
 						emoji,
-						senderUserId,
+						senderUserId as UserID,
 					);
 					return {
 						event_id: eventId,
@@ -115,10 +115,10 @@ export const internalMessagePlugin = (app: Elysia) => {
 				const { roomId, emoji, senderUserId } = body;
 				try {
 					const eventId = await messageService.unsetReaction(
-						roomId,
+						roomId as RoomID,
 						params.messageId as EventID,
 						emoji,
-						senderUserId,
+						senderUserId as UserID,
 					);
 					return {
 						event_id: eventId,
@@ -154,7 +154,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 			}): Promise<InternalRedactMessageResponse | ErrorResponse> => {
 				const { roomId } = body;
 				const eventId = await messageService.redactMessage(
-					roomId,
+					roomId as RoomID,
 					params.messageId as EventID,
 				);
 

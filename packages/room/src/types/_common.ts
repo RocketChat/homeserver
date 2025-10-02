@@ -7,6 +7,14 @@ export const eventIdSchema = z.string().brand('EventID');
 
 export type EventID = z.infer<typeof eventIdSchema>;
 
+export const roomIdSchema = z.string().brand('RoomID');
+
+export type RoomID = z.infer<typeof roomIdSchema>;
+
+export const userIdSchema = z.string().brand('UserID');
+
+export type UserID = z.infer<typeof userIdSchema>;
+
 export type StateMapKey = `${PduType}:${StateKey}`;
 
 export type State = Map<StateMapKey, EventID>;

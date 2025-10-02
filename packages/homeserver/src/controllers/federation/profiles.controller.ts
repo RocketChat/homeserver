@@ -1,4 +1,9 @@
-import { EventID, type RoomVersion } from '@rocket.chat/federation-room';
+import {
+	EventID,
+	RoomID,
+	type RoomVersion,
+	UserID,
+} from '@rocket.chat/federation-room';
 import { ProfilesService } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
@@ -32,7 +37,8 @@ export const profilesPlugin = (app: Elysia) => {
 	return app
 		.get(
 			'/_matrix/federation/v1/query/profile',
-			({ query: { user_id } }) => profilesService.queryProfile(user_id),
+			({ query: { user_id } }) =>
+				profilesService.queryProfile(user_id as UserID),
 			{
 				query: QueryProfileQueryDto,
 				response: {
@@ -62,7 +68,7 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/user/devices/:userId',
-			({ params }) => profilesService.getDevices(params.userId),
+			({ params }) => profilesService.getDevices(params.userId as UserID),
 			{
 				params: GetDevicesParamsDto,
 				response: {
@@ -82,7 +88,11 @@ export const profilesPlugin = (app: Elysia) => {
 
 				const { ver } = query;
 
-				return profilesService.makeJoin(roomId, userId, ver ?? ['1']);
+				return profilesService.makeJoin(
+					roomId as RoomID,
+					userId as UserID,
+					ver ?? ['1'],
+				);
 			},
 			{
 				params: MakeJoinParamsDto,
@@ -102,7 +112,7 @@ export const profilesPlugin = (app: Elysia) => {
 			'/_matrix/federation/v1/get_missing_events/:roomId',
 			async ({ params, body }) =>
 				profilesService.getMissingEvents(
-					params.roomId,
+					params.roomId as RoomID,
 					body.earliest_events as EventID[],
 					body.latest_events as EventID[],
 					body.limit,
@@ -123,7 +133,11 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
-			({ params }) => profilesService.eventAuth(params.roomId, params.eventId),
+			({ params }) =>
+				profilesService.eventAuth(
+					params.roomId as RoomID,
+					params.eventId as EventID,
+				),
 			{
 				params: EventAuthParamsDto,
 				response: {

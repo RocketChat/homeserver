@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { PduForType, eventIdSchema } from './_common';
+import {
+	PduForType,
+	eventIdSchema,
+	roomIdSchema,
+	userIdSchema,
+} from './_common';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -383,19 +388,18 @@ const BaseMessageContentSchema = z.object({
 				.enum(['m.replace', 'm.annotation', 'm.thread'])
 				.describe('The type of the relation.')
 				.optional(),
-			event_id: z
-				.string()
-				.optional()
-				.describe('The ID of the event that is being related to.'),
+			event_id: eventIdSchema
+				.describe('The ID of the event that is being related to.')
+				.optional(),
 			is_falling_back: z
 				.boolean()
 				.optional()
 				.describe('Whether this is a fallback for older clients'),
 			'm.in_reply_to': z
 				.object({
-					event_id: z
-						.string()
-						.describe('The ID of the latest event in the thread for fallback'),
+					event_id: eventIdSchema.describe(
+						'The ID of the latest event in the thread for fallback',
+					),
 				})
 				.optional(),
 			key: z.string().optional().describe('The key for reactions (emoji).'),
@@ -552,22 +556,17 @@ export const PduNoContentTimelineEventSchema = {
 		.describe(
 			'A list of event IDs that are required in the room state before this event can be applied. The server will not send this event if it is not satisfied.',
 		),
-	redacts: z
-		.string()
+	redacts: eventIdSchema
 		.describe(
 			'The ID of the event that this event redacts. This is an optional field.',
 		)
 		.optional(),
-	room_id: z
-		.string()
-		.describe(
-			'The ID of the room that the event is in. This is a unique identifier for the room.',
-		),
-	sender: z
-		.string()
-		.describe(
-			'The ID of the user that sent the event. This is a unique identifier for the user.',
-		),
+	room_id: roomIdSchema.describe(
+		'The ID of the room that the event is in. This is a unique identifier for the room.',
+	),
+	sender: userIdSchema.describe(
+		'The ID of the user that sent the event. This is a unique identifier for the user.',
+	),
 	signatures: SignatureSchema.describe(
 		'The signatures of the event. This is an object with arbitrary keys and values.',
 	),
@@ -581,9 +580,9 @@ export const PduNoContentTimelineEventSchema = {
 
 export const PduNoContentStateEventSchema = {
 	...PduNoContentTimelineEventSchema,
-	state_key: z
-		.string()
-		.describe('The state key of the event. This is an optional field.'),
+	state_key: userIdSchema.describe(
+		'The state key of the event. This is an optional field.',
+	),
 };
 
 export const PduNoContentEmptyStateKeyStateEventSchema = {
@@ -616,37 +615,37 @@ const EventPduTypeRoomPowerLevels = z.object({
 });
 
 const EventPduTypeRoomCanonicalAlias = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.canonical_alias'),
 	content: PduCanonicalAliasEventContentSchema,
 });
 
 const EventPduTypeRoomName = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.name'),
 	content: PduRoomNameEventContentSchema,
 });
 
 const EventPduTypeRoomAliases = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.aliases'),
 	content: PduCanonicalAliasEventContentSchema,
 });
 
 const EventPduTypeRoomTopic = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.topic'),
 	content: PduRoomTopicEventContentSchema,
 });
 
 const EventPduTypeRoomHistoryVisibility = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.history_visibility'),
 	content: PduHistoryVisibilityEventContentSchema,
 });
 
 const EventPduTypeRoomGuestAccess = z.object({
-	...PduNoContentStateEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.guest_access'),
 	content: PduGuestAccessEventContentSchema,
 });

@@ -1,3 +1,4 @@
+import { EventID, RoomID } from '@rocket.chat/federation-room';
 import { InviteService } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
@@ -10,8 +11,8 @@ export const invitePlugin = (app: Elysia) => {
 		async ({ body, params: { roomId, eventId } }) => {
 			return inviteService.processInvite(
 				body.event,
-				roomId,
-				eventId,
+				roomId as RoomID,
+				eventId as EventID,
 				body.room_version,
 			);
 		},

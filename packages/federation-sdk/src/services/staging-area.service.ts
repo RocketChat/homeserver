@@ -234,7 +234,7 @@ export class StagingAreaService {
 					origin_server_ts: event.event.origin_server_ts,
 					redacts: event.event.redacts,
 					content: {
-						reason: event.event.content?.reason as string | undefined,
+						reason: event.event.content?.reason,
 					},
 				});
 				break;
@@ -245,14 +245,9 @@ export class StagingAreaService {
 					event: event.event,
 					room_id: roomId,
 					sender: event.event.sender,
-					state_key: event.event.state_key as string,
+					state_key: event.event.state_key,
 					origin_server_ts: event.event.origin_server_ts,
-					content: event.event.content as {
-						membership: Membership;
-						displayname?: string;
-						avatar_url?: string;
-						reason?: string;
-					},
+					content: event.event.content,
 				});
 				break;
 			}
@@ -272,7 +267,7 @@ export class StagingAreaService {
 					event: event.event,
 					room_id: roomId,
 					user_id: event.event.sender,
-					topic: event.event.content?.topic as string,
+					topic: event.event.content.topic,
 				});
 				break;
 			}

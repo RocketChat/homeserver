@@ -93,10 +93,8 @@ export abstract class PersistentEventBase<
 		return domain;
 	}
 
-	get stateKey(): string | undefined {
-		return 'state_key' in this.rawEvent
-			? (this.rawEvent.state_key as string)
-			: undefined;
+	get stateKey() {
+		return 'state_key' in this.rawEvent ? this.rawEvent.state_key : undefined;
 	}
 
 	get originServerTs() {

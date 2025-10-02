@@ -32,7 +32,9 @@ import {
 	PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
+	RoomID,
 	RoomVersion,
+	UserID,
 } from '@rocket.chat/federation-room';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
@@ -220,7 +222,7 @@ export class RoomService {
 	 * Create a new room with the given sender and username
 	 */
 	async createRoom(
-		username: string,
+		username: UserID,
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
 	) {
@@ -346,7 +348,7 @@ export class RoomService {
 		};
 	}
 
-	async updateRoomName(roomId: string, name: string, senderId: string) {
+	async updateRoomName(roomId: RoomID, name: string, senderId: UserID) {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
 		);
@@ -379,7 +381,7 @@ export class RoomService {
 		return roomNameEvent;
 	}
 
-	async setRoomTopic(roomId: string, sender: string, topic: string) {
+	async setRoomTopic(roomId: RoomID, sender: UserID, topic: string) {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while setting room topic');
@@ -419,10 +421,10 @@ export class RoomService {
 	}
 
 	async updateUserPowerLevel(
-		roomId: string,
-		userId: string,
+		roomId: RoomID,
+		userId: UserID,
 		powerLevel: number,
-		senderId: string,
+		senderId: UserID,
 	): Promise<string> {
 		logger.info(
 			`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`,
@@ -547,7 +549,7 @@ export class RoomService {
 		return event.eventId;
 	}
 
-	async leaveRoom(roomId: string, senderId: string): Promise<string> {
+	async leaveRoom(roomId: RoomID, senderId: UserID): Promise<EventID> {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
@@ -617,11 +619,11 @@ export class RoomService {
 	}
 
 	async kickUser(
-		roomId: string,
-		kickedUserId: string,
-		senderId: string,
+		roomId: RoomID,
+		kickedUserId: UserID,
+		senderId: UserID,
 		reason?: string,
-	): Promise<string> {
+	): Promise<EventID> {
 		logger.info(
 			`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${
 				reason || 'No reason specified'
@@ -698,11 +700,11 @@ export class RoomService {
 	}
 
 	async banUser(
-		roomId: string,
-		bannedUserId: string,
-		senderId: string,
+		roomId: RoomID,
+		bannedUserId: UserID,
+		senderId: UserID,
 		reason?: string,
-	): Promise<string> {
+	): Promise<EventID> {
 		logger.info(
 			`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${
 				reason || 'No reason specified'
@@ -781,7 +783,7 @@ export class RoomService {
 
 	// if local room, add the user to the room if allowed.
 	// if remote room, run through the join process
-	async joinUser(roomId: string, userId: string) {
+	async joinUser(roomId: RoomID, userId: UserID) {
 		const configService = this.configService;
 		const stateService = this.stateService;
 		const federationService = this.federationService;
@@ -1025,10 +1027,10 @@ export class RoomService {
 	}
 
 	async markRoomAsTombstone(
-		roomId: string,
-		sender: string,
+		roomId: RoomID,
+		sender: UserID,
 		reason = 'This room has been deleted',
-		replacementRoomId?: string,
+		replacementRoomId?: RoomID,
 	): Promise<SignedEvent<PduForType<'m.room.tombstone'>>> {
 		logger.debug(`Marking room ${roomId} as tombstone by ${sender}`);
 		const serverName = this.configService.serverName;
@@ -1121,7 +1123,7 @@ export class RoomService {
 		};
 	}
 
-	public async isRoomTombstoned(roomId: string): Promise<boolean> {
+	public async isRoomTombstoned(roomId: RoomID): Promise<boolean> {
 		try {
 			const room = await this.roomRepository.findOneById(roomId);
 			if (room?.room.deleted) {
@@ -1142,7 +1144,7 @@ export class RoomService {
 
 	private validatePowerLevelForTombstone(
 		powerLevels: PduForType<'m.room.power_levels'>,
-		sender: string,
+		sender: UserID,
 	): void {
 		const userPowerLevel =
 			powerLevels.content.users?.[sender] ??
@@ -1159,9 +1161,9 @@ export class RoomService {
 	}
 
 	async setPowerLevelForUser(
-		roomId: string,
-		sender: string,
-		userId: string,
+		roomId: RoomID,
+		sender: UserID,
+		userId: UserID,
 		powerLevel: number,
 	) {
 		const state = await this.stateService.getFullRoomState2(roomId);
@@ -1204,9 +1206,9 @@ export class RoomService {
 	}
 
 	async createDirectMessageRoom(
-		creatorUserId: string,
-		targetUserId: string,
-	): Promise<string> {
+		creatorUserId: UserID,
+		targetUserId: UserID,
+	): Promise<RoomID> {
 		logger.debug(
 			`Creating direct message room between ${creatorUserId} and ${targetUserId}`,
 		);
@@ -1380,15 +1382,15 @@ export class RoomService {
 	}
 
 	private async findExistingDirectMessageRoom(
-		userId1: string,
-		userId2: string,
-	): Promise<string | null> {
+		userId1: UserID,
+		userId2: UserID,
+	): Promise<RoomID | null> {
 		try {
 			const membershipEvents = await this.eventRepository
 				.findMembershipEventsFromDirectMessageRooms([userId1, userId2])
 				.toArray();
 
-			const roomMemberCounts = new Map<string, Set<string>>();
+			const roomMemberCounts = new Map<RoomID, Set<string>>();
 
 			for (const event of membershipEvents) {
 				const roomId = event.event.room_id;
