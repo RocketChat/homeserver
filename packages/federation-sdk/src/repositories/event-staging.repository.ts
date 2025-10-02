@@ -51,17 +51,6 @@ export class EventStagingRepository {
 		return this.collection.deleteOne({ _id: eventId });
 	}
 
-	getNextStagedEventForRoom(roomId: string): Promise<EventStagingStore | null> {
-		return this.collection.findOne(
-			{
-				roomId,
-			},
-			{
-				sort: { createdAt: 1 },
-			},
-		);
-	}
-
 	async getDistinctStagedRooms(): Promise<string[]> {
 		return this.collection.distinct('roomId');
 	}
