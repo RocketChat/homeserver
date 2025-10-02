@@ -1,5 +1,5 @@
 import type { Membership, MessageType } from '@rocket.chat/federation-core';
-import type { EventID } from '@rocket.chat/federation-room';
+import type { EventID, PduForType } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
@@ -125,6 +125,8 @@ export type HomeserverEventSignatures = {
 	};
 	'homeserver.matrix.message': {
 		event_id: EventID;
+		event: PduForType<'m.room.message'>;
+
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
@@ -199,19 +201,10 @@ export type HomeserverEventSignatures = {
 			};
 		};
 	};
-	'homeserver.matrix.accept-invite': {
-		event_id: EventID;
-		room_id: string;
-		sender: string;
-		origin_server_ts: number;
-		content: {
-			avatar_url: string | null;
-			displayname: string;
-			membership: Membership;
-		};
-	};
 	'homeserver.matrix.reaction': {
 		event_id: EventID;
+		event: PduForType<'m.reaction'>;
+
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
@@ -225,6 +218,8 @@ export type HomeserverEventSignatures = {
 	};
 	'homeserver.matrix.redaction': {
 		event_id: EventID;
+		event: PduForType<'m.room.redaction'>;
+
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
@@ -235,6 +230,8 @@ export type HomeserverEventSignatures = {
 	};
 	'homeserver.matrix.membership': {
 		event_id: EventID;
+		event: PduForType<'m.room.member'>;
+
 		room_id: string;
 		sender: string;
 		state_key: string;
@@ -247,14 +244,23 @@ export type HomeserverEventSignatures = {
 		};
 	};
 	'homeserver.matrix.room.name': {
+		event_id: EventID;
+		event: PduForType<'m.room.name'>;
 		room_id: string; // name of the room being changed
 		user_id: string; // user who changed the name
 		name: string; // new name of the room
 	};
 	'homeserver.matrix.room.topic': {
+		event_id: EventID;
+		event: PduForType<'m.room.topic'>;
+
 		room_id: string; // topic of the room being changed
 		user_id: string; // user who changed the topic
 		topic: string; // new topic of the room
+	};
+	'homeserver.matrix.room.power_levels': {
+		event_id: EventID;
+		event: PduForType<'m.room.power_levels'>;
 	};
 	'homeserver.matrix.room.role': {
 		sender_id: string; // who changed

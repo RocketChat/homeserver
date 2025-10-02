@@ -177,6 +177,7 @@ export class StagingAreaService {
 			case event.event.type === 'm.room.message':
 				this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
+					event: event.event,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
@@ -210,6 +211,7 @@ export class StagingAreaService {
 			case event.event.type === 'm.reaction': {
 				this.eventEmitterService.emit('homeserver.matrix.reaction', {
 					event_id: eventId,
+					event: event.event,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
@@ -226,6 +228,7 @@ export class StagingAreaService {
 			case isRedactedEvent(event.event): {
 				this.eventEmitterService.emit('homeserver.matrix.redaction', {
 					event_id: eventId,
+					event: event.event,
 					room_id: roomId,
 					sender: event.event.sender,
 					origin_server_ts: event.event.origin_server_ts,
@@ -239,6 +242,7 @@ export class StagingAreaService {
 			case event.event.type === 'm.room.member': {
 				this.eventEmitterService.emit('homeserver.matrix.membership', {
 					event_id: eventId,
+					event: event.event,
 					room_id: roomId,
 					sender: event.event.sender,
 					state_key: event.event.state_key as string,
@@ -254,6 +258,8 @@ export class StagingAreaService {
 			}
 			case event.event.type === 'm.room.name': {
 				this.eventEmitterService.emit('homeserver.matrix.room.name', {
+					event_id: eventId,
+					event: event.event,
 					room_id: roomId,
 					user_id: event.event.sender,
 					name: event.event.content?.name as string,
@@ -262,6 +268,8 @@ export class StagingAreaService {
 			}
 			case event.event.type === 'm.room.topic': {
 				this.eventEmitterService.emit('homeserver.matrix.room.topic', {
+					event_id: eventId,
+					event: event.event,
 					room_id: roomId,
 					user_id: event.event.sender,
 					topic: event.event.content?.topic as string,
@@ -269,6 +277,10 @@ export class StagingAreaService {
 				break;
 			}
 			case event.event.type === 'm.room.power_levels': {
+				this.eventEmitterService.emit('homeserver.matrix.room.power_levels', {
+					event_id: eventId,
+					event: event.event,
+				});
 				const getRole = (powerLevel: number) => {
 					if (powerLevel === 100) {
 						return 'owner';

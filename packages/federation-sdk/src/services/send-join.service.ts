@@ -73,6 +73,7 @@ export class SendJoinService {
 
 		this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: eventId,
+			event: signedJoinEvent.event,
 			room_id: roomId,
 			sender: signedJoinEvent.sender,
 			state_key: signedJoinEvent.event.state_key,

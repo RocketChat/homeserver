@@ -820,11 +820,12 @@ export class RoomService {
 			await stateService.persistStateEvent(membershipEvent);
 
 			this.eventEmitterService.emit('homeserver.matrix.membership', {
+				event_id: membershipEvent.eventId,
+				event: membershipEvent.event,
 				room_id: roomId,
 				state_key: userId,
 				content: { membership: 'join' },
 				sender: userId,
-				event_id: membershipEvent.eventId,
 				origin_server_ts: Date.now(),
 			});
 
