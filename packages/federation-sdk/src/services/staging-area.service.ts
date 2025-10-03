@@ -2,16 +2,15 @@ import type {
 	EventBase,
 	EventStagingStore,
 	Membership,
+	MessageType,
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
+import { createLogger } from '@rocket.chat/federation-core';
 import {
-	MessageType,
-	createLogger,
-	isRedactedEvent,
-} from '@rocket.chat/federation-core';
-import { PduPowerLevelsEventContent } from '@rocket.chat/federation-room';
-import type { EventID } from '@rocket.chat/federation-room';
+	EventID,
+	PduPowerLevelsEventContent,
+} from '@rocket.chat/federation-room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
@@ -48,15 +47,10 @@ export class StagingAreaService {
 		return [authEvents, prevEvents];
 	}
 
-	async processEventForRoom(roomId: string) {
+	async *processEventForRoom(roomId: string) {
 		let event = await this.eventService.getLeastDepthEventForRoom(roomId);
 		if (!event) {
 			this.logger.debug({ msg: 'No staged event found for room', roomId });
-			await this.lockRepository.releaseLock(
-				roomId,
-				this.configService.instanceId,
-			);
-			return;
 		}
 
 		while (event) {
@@ -95,19 +89,12 @@ export class StagingAreaService {
 
 			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
 			// and acquired by another instance while we're processing a batch of events for this room
+
 			if (event) {
-				await this.lockRepository.updateLockTimestamp(
-					roomId,
-					this.configService.instanceId,
-				);
+				yield event;
 			}
 		}
-
-		// release the lock after processing
-		await this.lockRepository.releaseLock(
-			roomId,
-			this.configService.instanceId,
-		);
+		this.logger.debug({ msg: 'No more events to process for room', roomId });
 	}
 
 	private async processDependencyStage(event: EventStagingStore) {
@@ -231,7 +218,7 @@ export class StagingAreaService {
 				});
 				break;
 			}
-			case isRedactedEvent(event.event): {
+			case event.event.type === 'm.room.redaction': {
 				this.eventEmitterService.emit('homeserver.matrix.redaction', {
 					event_id: eventId,
 					event: event.event,

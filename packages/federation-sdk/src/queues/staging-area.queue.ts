@@ -1,13 +1,20 @@
 import 'reflect-metadata';
 import { singleton } from 'tsyringe';
+import { LockRepository } from '../repositories/lock.repository';
+import { ConfigService } from '../services/config.service';
 
-type QueueHandler = (roomId: string) => Promise<void>;
+type QueueHandler = (roomId: string) => AsyncGenerator<unknown | undefined>;
 
 @singleton()
 export class StagingAreaQueue {
 	private queue: string[] = [];
 	private handlers: QueueHandler[] = [];
 	private processing = false;
+
+	constructor(
+		private readonly lockRepository: LockRepository,
+		private readonly configService: ConfigService,
+	) {}
 
 	enqueue(roomId: string): void {
 		this.queue.push(roomId);
@@ -31,7 +38,16 @@ export class StagingAreaQueue {
 				if (!roomId) continue;
 
 				for (const handler of this.handlers) {
-					await handler(roomId);
+					await using lock = await this.lockRepository.lock(
+						roomId,
+						this.configService.instanceId,
+					);
+					if (!lock.success) {
+						continue;
+					}
+					for await (const _ of handler(roomId)) {
+						await lock.update();
+					}
 				}
 			}
 		} finally {

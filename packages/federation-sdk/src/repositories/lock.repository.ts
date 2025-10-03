@@ -16,6 +16,32 @@ export class LockRepository {
 		this.collection.createIndex({ roomId: 1 }, { unique: true });
 	}
 
+	async lock(
+		roomId: string,
+		instanceId: string,
+	): Promise<{
+		success: boolean;
+		update: () => Promise<void>;
+		[Symbol.asyncDispose]: () => Promise<void>;
+	}> {
+		const lock = await this.getLock(roomId, instanceId);
+		return {
+			success: lock,
+			update: async () => {
+				if (!lock) {
+					return;
+				}
+				return this.updateLockTimestamp(roomId, instanceId);
+			},
+			[Symbol.asyncDispose]: async () => {
+				if (!lock) {
+					return;
+				}
+				return this.releaseLock(roomId, instanceId);
+			},
+		};
+	}
+
 	async getLock(roomId: string, instanceId: string): Promise<boolean> {
 		const timedout = new Date();
 		timedout.setTime(timedout.getTime() - 2 * 60 * 1000); // 2 minutes ago

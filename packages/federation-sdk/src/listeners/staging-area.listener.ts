@@ -14,8 +14,8 @@ export class StagingAreaListener {
 		this.stagingAreaQueue.registerHandler(this.handleQueueItem.bind(this));
 	}
 
-	async handleQueueItem(data: string) {
+	async *handleQueueItem(data: string) {
 		this.logger.debug(`Processing event ${data}`);
-		await this.stagingAreaService.processEventForRoom(data);
+		yield* this.stagingAreaService.processEventForRoom(data);
 	}
 }
