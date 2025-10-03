@@ -414,10 +414,9 @@ export class StateService {
 			event,
 			roomVersion,
 		);
-
 		await Promise.all([
-			this.addAuthEvents(instance),
-			this.addPrevEvents(instance),
+			instance.event.auth_events.length === 0 && this.addAuthEvents(instance),
+			instance.event.prev_events.length === 0 && this.addPrevEvents(instance),
 		]);
 		await this.signEvent(instance);
 
