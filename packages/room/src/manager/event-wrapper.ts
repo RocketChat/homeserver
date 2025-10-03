@@ -50,6 +50,9 @@ export abstract class PersistentEventBase<
 
 	protected rawEvent: PduWithHashesAndSignaturesOptional;
 
+	private authEventsIds: Set<EventID> = new Set();
+	private prevEventsIds: Set<EventID> = new Set();
+
 	constructor(
 		event: PduWithHashesAndSignaturesOptional,
 		public readonly version: Version,
@@ -57,6 +60,16 @@ export abstract class PersistentEventBase<
 		this.rawEvent = JSON.parse(JSON.stringify(event));
 		if (this.rawEvent.signatures) {
 			this.signatures = this.rawEvent.signatures;
+		}
+		if (this.rawEvent.auth_events) {
+			for (const id of this.rawEvent.auth_events) {
+				this.authEventsIds.add(id);
+			}
+		}
+		if (this.rawEvent.prev_events) {
+			for (const id of this.rawEvent.prev_events) {
+				this.prevEventsIds.add(id);
+			}
 		}
 	}
 
@@ -118,8 +131,8 @@ export abstract class PersistentEventBase<
 		const { hashes, signatures, ...event } = this.rawEvent;
 		return {
 			...event,
-			auth_events: Array.from(new Set([...this.rawEvent.auth_events])),
-			prev_events: Array.from(new Set([...this.rawEvent.prev_events])),
+			auth_events: Array.from(this.authEventsIds),
+			prev_events: Array.from(this.prevEventsIds),
 		};
 	}
 
@@ -143,11 +156,11 @@ export abstract class PersistentEventBase<
 	}
 
 	getAuthEventIds() {
-		return this.rawEvent.auth_events;
+		return Array.from(this.authEventsIds);
 	}
 
 	getPreviousEventIds() {
-		return this.rawEvent.prev_events;
+		return Array.from(this.prevEventsIds);
 	}
 
 	isState() {
@@ -419,7 +432,9 @@ export abstract class PersistentEventBase<
 	}
 
 	addPrevEvents(events: PersistentEventBase<Version>[]) {
-		this.rawEvent.prev_events.push(...events.map((e) => e.eventId));
+		for (const event of events) {
+			this.prevEventsIds.add(event.eventId);
+		}
 		if (this.rawEvent.depth <= events[events.length - 1].depth) {
 			this.rawEvent.depth = events[events.length - 1].depth + 1;
 		}
@@ -427,7 +442,7 @@ export abstract class PersistentEventBase<
 	}
 
 	authedBy(event: PersistentEventBase<Version>) {
-		this.rawEvent.auth_events.push(event.eventId);
+		this.authEventsIds.add(event.eventId);
 		return this;
 	}
 
