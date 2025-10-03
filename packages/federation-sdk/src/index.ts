@@ -24,15 +24,10 @@ export type {
 	PersistentEventBase,
 	RoomVersion,
 	EventID,
+	UserID,
+	RoomID,
 } from '@rocket.chat/federation-room';
-export type {
-	EventStore,
-	FileMessageType,
-	PresenceState,
-	FileMessageContent,
-	MessageType,
-	Membership,
-} from '@rocket.chat/federation-core';
+export type * from '@rocket.chat/federation-core';
 export { generateEd25519RandomSecretKey } from '@rocket.chat/federation-crypto';
 
 export { FederationEndpoints } from './specs/federation-api';
