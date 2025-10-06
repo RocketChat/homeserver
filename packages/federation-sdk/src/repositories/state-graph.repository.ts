@@ -1,12 +1,12 @@
 import {
-	EventID,
+	type EventID,
+	type PduType,
+	type PersistentEventBase,
+	type StateID,
+	type StateMapKey,
 	getStateMapKey,
-	PduType,
-	PersistentEventBase,
-	StateID,
-	StateMapKey,
 } from '@rocket.chat/federation-room';
-import { Collection, ObjectId } from 'mongodb';
+import { type Collection, ObjectId } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 export type StateGraphStore = {

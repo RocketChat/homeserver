@@ -1,10 +1,7 @@
 import { createLogger, signEvent } from '@rocket.chat/federation-core';
 import {
-	checkEventAuthWithState,
-	EventID,
-	EventStore,
-	extractDomainFromId,
-	Pdu,
+	type EventID,
+	type EventStore,
 	type PduContent,
 	PduCreateEventContent,
 	PduForType,
@@ -13,17 +10,19 @@ import {
 	type PersistentEventBase,
 	PersistentEventFactory,
 	RejectCode,
-	resolveStateV2Plus,
 	RoomState,
 	RoomVersion,
 	type StateID,
 	type StateMapKey,
 	StateResolverAuthorizationError,
+	checkEventAuthWithState,
+	extractDomainFromId,
+	resolveStateV2Plus,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
-import { ConfigService } from './config.service';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
+import { ConfigService } from './config.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 

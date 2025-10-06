@@ -1,14 +1,6 @@
 import { describe, expect, it, spyOn, test } from 'bun:test';
-import { type ConfigService } from './config.service';
-import { DatabaseConnectionService } from './database-connection.service';
-import { StateRepository, StateStore } from '../repositories/state.repository';
-import { EventRepository } from '../repositories/event.repository';
-import { type WithId } from 'mongodb';
-import {
-	createRoomNameEvent,
-	type EventStore,
-} from '@rocket.chat/federation-core';
-import { StateService } from './state.service';
+import { type EventStore } from '@rocket.chat/federation-core';
+import * as room from '@rocket.chat/federation-room';
 import {
 	EventID,
 	PduCreateEventContent,
@@ -21,11 +13,15 @@ import {
 	RoomVersion,
 	StateMapKey,
 } from '@rocket.chat/federation-room';
-import * as room from '@rocket.chat/federation-room';
+import { type WithId } from 'mongodb';
+import { EventRepository } from '../repositories/event.repository';
 import {
 	StateGraphRepository,
 	StateGraphStore,
 } from '../repositories/state-graph.repository';
+import { type ConfigService } from './config.service';
+import { DatabaseConnectionService } from './database-connection.service';
+import { StateService } from './state.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 

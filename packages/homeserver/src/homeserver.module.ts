@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
 import {
 	ConfigService,
 	type FederationContainerOptions,
@@ -23,13 +24,13 @@ import { statePlugin } from './controllers/federation/state.controller';
 import { transactionsPlugin } from './controllers/federation/transactions.controller';
 import { versionsPlugin } from './controllers/federation/versions.controller';
 import { internalDirectMessagePlugin } from './controllers/internal/direct-message.controller';
+import { internalRequestPlugin } from './controllers/internal/external-federation-request.controller';
 import { internalInvitePlugin } from './controllers/internal/invite.controller';
 import { internalMessagePlugin } from './controllers/internal/message.controller';
 import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
-import { internalRequestPlugin } from './controllers/internal/external-federation-request.controller';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {

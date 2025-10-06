@@ -5,7 +5,7 @@ import type {
 	EventStagingStore,
 	EventStore,
 } from '@rocket.chat/federation-core';
-import type { Collection, WithId } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from './index';
@@ -17,6 +17,10 @@ import { Key, KeyRepository } from './repositories/key.repository';
 import { Lock, LockRepository } from './repositories/lock.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
+import {
+	StateGraphRepository,
+	StateGraphStore,
+} from './repositories/state-graph.repository';
 import { Upload, UploadRepository } from './repositories/upload.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
@@ -38,10 +42,6 @@ import { ServerService } from './services/server.service';
 import { StagingAreaService } from './services/staging-area.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import {
-	StateGraphRepository,
-	StateGraphStore,
-} from './repositories/state-graph.repository';
 
 export interface FederationContainerOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;

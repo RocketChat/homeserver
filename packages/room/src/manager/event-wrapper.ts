@@ -3,7 +3,7 @@ import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
-import { RejectCodes, type RejectCode } from '../authorizartion-rules/errors';
+import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
 	getStateMapKey,
