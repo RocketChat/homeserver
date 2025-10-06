@@ -58,7 +58,7 @@ export class FederationService {
 				queryParams,
 			);
 		} catch (error: any) {
-			this.logger.error(`makeJoin failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'makeJoin failed', err: error });
 			throw error;
 		}
 	}
@@ -82,7 +82,7 @@ export class FederationService {
 			const residentServer = joinEvent.roomId.split(':').pop();
 
 			if (!residentServer) {
-				this.logger.debug(joinEvent.event, 'invalid room_id');
+				this.logger.debug({ msg: 'invalid room_id', event: joinEvent.event });
 				throw new Error(
 					`invalid room_id ${joinEvent.roomId}, no server_name part`,
 				);
@@ -95,7 +95,7 @@ export class FederationService {
 				queryParams,
 			);
 		} catch (error: any) {
-			this.logger.error(`sendJoin failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'sendJoin failed', err: error });
 			throw error;
 		}
 	}
@@ -117,10 +117,7 @@ export class FederationService {
 				transaction,
 			);
 		} catch (error: any) {
-			this.logger.error(
-				`sendTransaction failed: ${error?.message}`,
-				error?.stack,
-			);
+			this.logger.error({ msg: 'sendTransaction failed', err: error });
 			throw error;
 		}
 	}
@@ -141,7 +138,7 @@ export class FederationService {
 
 			return await this.sendTransaction(domain, transaction);
 		} catch (error: any) {
-			this.logger.error(`sendEvent failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'sendEvent failed', err: error });
 			throw error;
 		}
 	}
@@ -154,7 +151,7 @@ export class FederationService {
 			const uri = FederationEndpoints.getEvent(eventId);
 			return await this.requestService.get<Pdu>(domain, uri);
 		} catch (error: any) {
-			this.logger.error(`getEvent failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'getEvent failed', err: error });
 			throw error;
 		}
 	}
@@ -173,7 +170,7 @@ export class FederationService {
 
 			return await this.requestService.get<EventBase>(domain, uri, queryParams);
 		} catch (error: any) {
-			this.logger.error(`getState failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'getState failed', err: error });
 			throw error;
 		}
 	}
@@ -186,7 +183,7 @@ export class FederationService {
 			const uri = FederationEndpoints.getStateIds(roomId);
 			return await this.requestService.get<EventBase[]>(domain, uri);
 		} catch (error: any) {
-			this.logger.error(`getStateIds failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'getStateIds failed', err: error });
 			throw error;
 		}
 	}
@@ -201,7 +198,7 @@ export class FederationService {
 				FederationEndpoints.version,
 			);
 		} catch (error: any) {
-			this.logger.error(`getVersion failed: ${error?.message}`, error?.stack);
+			this.logger.error({ msg: 'getVersion failed', err: error });
 			throw error;
 		}
 	}
@@ -214,7 +211,7 @@ export class FederationService {
 		);
 
 		if (!inviteEvent.stateKey) {
-			this.logger.debug(inviteEvent.event, 'invalid state_key');
+			this.logger.debug({ msg: 'invalid state_key', event: inviteEvent.event });
 			throw new Error(
 				'failed to send invite request, invite has invalid state_key',
 			);
@@ -264,10 +261,10 @@ export class FederationService {
 				edus: [],
 			};
 
-			this.logger.info(
-				{ transaction: txn },
-				`Sending event ${event.eventId} to server: ${server}`,
-			);
+			this.logger.info({
+				transaction: txn,
+				msg: `Sending event ${event.eventId} to server: ${server}`,
+			});
 
 			try {
 				await this.sendTransaction(server, txn);

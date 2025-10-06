@@ -211,9 +211,9 @@ export class RoomService {
 
 		try {
 			await this.roomRepository.upsert(roomId, state);
-			logger.info(`Successfully upserted room ${roomId}`);
+			logger.info({ msg: 'Successfully upserted room', roomId });
 		} catch (error) {
-			logger.error(`Failed to upsert room ${roomId}: ${error}`);
+			logger.error({ msg: 'Failed to upsert room', roomId, err: error });
 			throw error;
 		}
 	}
@@ -909,13 +909,11 @@ export class RoomService {
 		const persistEvent = async (event: Readonly<PersistentEventBase>) => {
 			if (!persisted.has(event.eventId) && event.isCreateEvent()) {
 				// persist as normal, m.room.create :)
-				logger.info(
-					`Persisting create event ${event.eventId}, ${JSON.stringify(
-						event.event,
-						null,
-						2,
-					)}`,
-				);
+				logger.info({
+					msg: 'Persisting create event',
+					eventId: event.eventId,
+					event: event.event,
+				});
 
 				const eventToPersist = copyEvent(event);
 
@@ -930,26 +928,23 @@ export class RoomService {
 				const authEvent = eventMap.get(authEventId as string);
 				if (!authEvent) {
 					for (const stateEvent of eventMap.keys()) {
-						console.log(
-							`${stateEvent} -> ${JSON.stringify(
-								eventMap.get(stateEvent)?.event,
-								null,
-								2,
-							)}`,
-						);
+						// TODO is this just suppose to log things?
+						logger.info({
+							msg: 'Auth event not found in event map',
+							stateEvent,
+							event: eventMap.get(stateEvent)?.event,
+						});
 					}
 					throw new Error(`Auth event ${authEventId} not found`);
 				}
 
 				if (!persisted.has(authEventId as string)) {
 					// persist all the auth events of this authEvent
-					logger.info(
-						`Persisting auth event ${authEventId} because not persisted already, ${JSON.stringify(
-							authEvent.event,
-							null,
-							2,
-						)}`,
-					);
+					logger.info({
+						msg: 'Persisting auth event because not persisted already',
+						authEventId,
+						event: authEvent.event,
+					});
 
 					// recursively persist this and all it's auth events
 					await persistEvent(authEvent); // pl
@@ -961,11 +956,11 @@ export class RoomService {
 			// ^^ all auth events of this event have been persisted
 
 			// persist as normal
-			logger.info(
-				`Persisting state event after auth events have been persisted, ${
-					event.eventId
-				}, ${JSON.stringify(event.event, null, 2)}`,
-			);
+			logger.info({
+				msg: 'Persisting state event after auth events have been persisted',
+				eventId: event.eventId,
+				event: event.event,
+			});
 
 			const eventToPersist = copyEvent(event);
 
@@ -979,13 +974,11 @@ export class RoomService {
 				continue;
 			}
 
-			logger.info(
-				`Persisting state event ${stateEvent.eventId}, ${JSON.stringify(
-					stateEvent.event,
-					null,
-					2,
-				)}`,
-			);
+			logger.info({
+				msg: 'Persisting state event',
+				eventId: stateEvent.eventId,
+				event: stateEvent.event,
+			});
 			await persistEvent(stateEvent);
 		}
 
@@ -996,22 +989,18 @@ export class RoomService {
 			makeJoinResponse.room_version,
 		);
 
-		logger.info(
-			`Persisting join event ${joinEventFinal.eventId}, ${JSON.stringify(
-				joinEventFinal.event,
-				null,
-				2,
-			)}`,
-		);
+		logger.info({
+			msg: 'Persisting join event',
+			eventId: joinEventFinal.eventId,
+			event: joinEventFinal.event,
+		});
 
 		const state = await stateService.getFullRoomState(roomId);
 
-		logger.info(
-			`State before join event has been persisted, ${state
-				.keys()
-				.toArray()
-				.join(', ')}`,
-		);
+		logger.info({
+			msg: 'State before join event has been persisted',
+			state: state.keys().toArray().join(', '),
+		});
 
 		// try to persist the join event now, should succeed with state in place
 		await this.eventService.processIncomingPDUs(
@@ -1137,7 +1126,11 @@ export class RoomService {
 				this.eventRepository.findTombstoneEventsByRoomId(roomId);
 			return (await tombstoneEvents.toArray()).length > 0;
 		} catch (error) {
-			logger.error(`Error checking if room ${roomId} is tombstoned: ${error}`);
+			logger.error({
+				msg: 'Error checking if room is tombstoned',
+				roomId,
+				err: error,
+			});
 			return false;
 		}
 	}
@@ -1433,9 +1426,12 @@ export class RoomService {
 
 			return null;
 		} catch (error) {
-			logger.error(
-				`Error finding existing DM room between ${userId1} and ${userId2}: ${error}`,
-			);
+			logger.error({
+				msg: 'Error finding existing DM room between users',
+				userId1,
+				userId2,
+				err: error,
+			});
 			return null;
 		}
 	}
