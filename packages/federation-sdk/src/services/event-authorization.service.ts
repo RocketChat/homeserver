@@ -251,6 +251,10 @@ export class EventAuthorizationService {
 		serverName: string,
 	): Promise<boolean> {
 		const state = await this.stateService.getFullRoomState(roomId);
+		if (!state) {
+			this.logger.debug(`Room ${roomId} not found`);
+			return false;
+		}
 
 		const aclEvent = state.get('m.room.server_acl:');
 		const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
