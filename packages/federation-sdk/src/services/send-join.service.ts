@@ -51,12 +51,8 @@ export class SendJoinService {
 		}
 
 		// fetch state before allowing join here - TODO: don't just persist the membership like this
-		const state = await stateService.getFullRoomState(roomId);
-		await stateService.persistStateEvent(joinEvent);
-
-		if (joinEvent.rejected) {
-			throw new Error(joinEvent.rejectReason);
-		}
+		const state = await stateService.getLatestRoomState(roomId);
+		await stateService.handlePdu(joinEvent);
 
 		const configService = this.configService;
 
@@ -81,7 +77,7 @@ export class SendJoinService {
 			event: signedJoinEvent.event,
 			room_id: roomId,
 			sender: signedJoinEvent.sender,
-			state_key: signedJoinEvent.event.state_key,
+			state_key: signedJoinEvent.stateKey as string,
 			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
 				avatar_url: signedJoinEvent.getContent().avatar_url,

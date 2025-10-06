@@ -209,9 +209,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 						...state,
 					};
 				}
-				const room = await stateService.getFullRoomState(
-					params.roomId as RoomID,
-				);
+				const room = await stateService.getLatestRoomState(params.roomId);
 				const state: Record<string, any> = {};
 				for (const [key, value] of room.entries()) {
 					state[key] = value.event;
@@ -378,7 +376,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { roomId, userIdToBan } = params;
 				const { senderUserId } = body;
 
-				const room = await stateService.getFullRoomState(roomId as RoomID);
+				const room = await stateService.getLatestRoomState(roomId);
 
 				const createEvent = room.get('m.room.create:');
 
@@ -411,7 +409,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 					}
 				}
 
-				await stateService.persistStateEvent(membershipEvent);
+				await stateService.handlePdu(membershipEvent);
 
 				return {
 					eventId: membershipEvent.eventId,
@@ -472,13 +470,13 @@ export const internalRoomPlugin = (app: Elysia) => {
 			},
 		)
 		.get('/internal/rooms/all', async () => {
-			const roomIds = await stateService.getAllRoomIds();
+			const roomIds = [] as string[]; //await stateService.getAllRoomIds();
 			return {
 				roomIds,
 			};
 		})
 		.get('/internal/rooms/all/public', async () => {
-			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
+			const publicRooms = [] as any; // await stateService.getAllPublicRoomIdsAndNames();
 			return {
 				publicRooms,
 			};

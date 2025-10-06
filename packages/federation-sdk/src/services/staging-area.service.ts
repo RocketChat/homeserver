@@ -10,8 +10,12 @@ import {
 	createLogger,
 	isRedactedEvent,
 } from '@rocket.chat/federation-core';
-import { PduPowerLevelsEventContent } from '@rocket.chat/federation-room';
-import type { EventID } from '@rocket.chat/federation-room';
+import {
+	PduPowerLevelsEventContent,
+	PersistentEventFactory,
+	RoomState,
+} from '@rocket.chat/federation-room';
+import type { EventID, Pdu, RoomVersion } from '@rocket.chat/federation-room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
@@ -59,13 +63,29 @@ export class StagingAreaService {
 			return;
 		}
 
+		const roomIdToRoomVersion = new Map<string, RoomVersion>();
+		const getRoomVersion = async (roomId: string) => {
+			if (roomIdToRoomVersion.has(roomId)) {
+				return roomIdToRoomVersion.get(roomId) as RoomVersion;
+			}
+
+			const version = await this.stateService.getRoomVersion(roomId);
+			roomIdToRoomVersion.set(roomId, version);
+			return version;
+		};
+
+		const toEventBase = async (pdu: Pdu) => {
+			const version = await getRoomVersion(pdu.room_id);
+			return PersistentEventFactory.createFromRawEvent(pdu, version);
+		};
+
 		while (event) {
 			this.logger.info({ msg: 'Processing event', eventId: event._id });
 
 			try {
 				await this.processDependencyStage(event);
 				await this.processAuthorizationStage(event);
-				await this.stateService.persistEvent(event.event);
+				await this.stateService.handlePdu(await toEventBase(event.event));
 				await this.processNotificationStage(event);
 
 				await this.eventService.markEventAsUnstaged(event);
@@ -293,9 +313,15 @@ export class StagingAreaService {
 					return 'user';
 				};
 
+				const plEvent = await this.stateService.getEvent(eventId);
+				if (!plEvent) {
+					throw new Error(`Power level event ${eventId} not found in db`);
+				}
+
 				// at this point we potentially have the new power level event
-				const oldRoomState =
-					await this.stateService.getFullRoomStateBeforeEvent2(eventId);
+				const oldRoomState = new RoomState(
+					await this.stateService.getStateBeforeEvent(plEvent),
+				);
 
 				const oldPowerLevels = oldRoomState.powerLevels?.users;
 

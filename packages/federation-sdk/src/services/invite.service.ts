@@ -2,6 +2,7 @@ import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
 	EventID,
 	PduForType,
+	PersistentEventBase,
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
@@ -89,7 +90,7 @@ export class InviteService {
 
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.serverName) {
-			await stateService.persistStateEvent(inviteEvent);
+			await stateService.handlePdu(inviteEvent);
 
 			if (inviteEvent.rejected) {
 				throw new Error(inviteEvent.rejectReason);
@@ -119,7 +120,7 @@ export class InviteService {
 
 		// try to save
 		// can only invite if already part of the room
-		await stateService.persistStateEvent(
+		await stateService.handlePdu(
 			PersistentEventFactory.createFromRawEvent(
 				inviteResponse.event,
 				roomInformation.room_version,
@@ -169,7 +170,7 @@ export class InviteService {
 
 			// attempt to persist the invite event as we already have the state
 
-			await this.stateService.persistStateEvent(inviteEvent);
+			await this.stateService.handlePdu(inviteEvent);
 			if (inviteEvent.rejected) {
 				throw new Error(inviteEvent.rejectReason);
 			}
@@ -186,7 +187,7 @@ export class InviteService {
 			await this.stateService.getRoomInformation(roomId);
 
 			// if we have the state we try to persist the invite event
-			await this.stateService.persistStateEvent(inviteEvent);
+			await this.stateService.handlePdu(inviteEvent);
 			if (inviteEvent.rejected) {
 				throw new Error(inviteEvent.rejectReason);
 			}

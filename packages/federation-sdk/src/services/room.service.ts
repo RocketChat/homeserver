@@ -228,7 +228,9 @@ export class RoomService {
 
 		const stateService = this.stateService;
 
-		await stateService.persistStateEvent(roomCreateEvent);
+		await stateService.signEvent(roomCreateEvent);
+
+		await stateService.handlePdu(roomCreateEvent);
 
 		const creatorMembershipEvent =
 			await stateService.buildEvent<'m.room.member'>(
@@ -246,7 +248,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(creatorMembershipEvent);
+		await stateService.handlePdu(creatorMembershipEvent);
 
 		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
 			{
@@ -263,7 +265,7 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.persistStateEvent(roomNameEvent);
+		await stateService.handlePdu(roomNameEvent);
 
 		const powerLevelEvent =
 			await stateService.buildEvent<'m.room.power_levels'>(
@@ -293,7 +295,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(powerLevelEvent);
+		await stateService.handlePdu(powerLevelEvent);
 
 		const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
 			{
@@ -310,7 +312,7 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.persistStateEvent(joinRuleEvent);
+		await stateService.handlePdu(joinRuleEvent);
 
 		const canonicalAliasEvent =
 			await stateService.buildEvent<'m.room.canonical_alias'>(
@@ -331,7 +333,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(canonicalAliasEvent);
+		await stateService.handlePdu(canonicalAliasEvent);
 
 		return {
 			room_id: roomCreateEvent.roomId,
@@ -365,7 +367,7 @@ export class RoomService {
 			roomversion,
 		);
 
-		await stateService.persistStateEvent(roomNameEvent);
+		await stateService.handlePdu(roomNameEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(roomNameEvent);
 
@@ -393,7 +395,7 @@ export class RoomService {
 			roomVersion,
 		);
 
-		await this.stateService.persistStateEvent(topicEvent);
+		await this.stateService.handlePdu(topicEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(topicEvent);
 	}
@@ -529,7 +531,7 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await this.stateService.persistStateEvent(event);
+		await this.stateService.handlePdu(event);
 
 		logger.info(
 			`Successfully created and stored m.room.power_levels event ${event.eventId} for room ${roomId}`,
@@ -598,7 +600,7 @@ export class RoomService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistStateEvent(leaveEvent);
+		await this.stateService.handlePdu(leaveEvent);
 
 		logger.info(
 			`Successfully created and stored m.room.member (leave) event ${leaveEvent.eventId} for user ${senderId} in room ${roomId}`,
@@ -679,7 +681,7 @@ export class RoomService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistStateEvent(kickEvent);
+		await this.stateService.handlePdu(kickEvent);
 
 		logger.info(
 			`Successfully created and stored m.room.member (kick) event ${kickEvent.eventId} for user ${kickedUserId} in room ${roomId}`,
@@ -761,7 +763,7 @@ export class RoomService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistStateEvent(banEvent);
+		await this.stateService.handlePdu(banEvent);
 
 		logger.info(
 			`Successfully created and stored m.room.member (ban) event ${banEvent.eventId} for user ${bannedUserId} in room ${roomId}`,
@@ -785,7 +787,7 @@ export class RoomService {
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
 		if (residentServer === configService.serverName) {
-			const room = await stateService.getFullRoomState(roomId);
+			const room = await stateService.getLatestRoomState(roomId);
 
 			const createEvent = room.get('m.room.create:');
 
@@ -810,7 +812,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-			await stateService.persistStateEvent(membershipEvent);
+			await stateService.handlePdu(membershipEvent);
 
 			this.eventEmitterService.emit('homeserver.matrix.membership', {
 				event_id: membershipEvent.eventId,
@@ -908,7 +910,7 @@ export class RoomService {
 
 				const eventToPersist = copyEvent(event);
 
-				await stateService.persistStateEvent(eventToPersist);
+				await stateService.handlePdu(eventToPersist);
 
 				persisted.add(event.eventId);
 
@@ -955,7 +957,7 @@ export class RoomService {
 
 			const eventToPersist = copyEvent(event);
 
-			await stateService.persistStateEvent(eventToPersist);
+			await stateService.handlePdu(eventToPersist);
 
 			persisted.add(event.eventId);
 		};
@@ -986,7 +988,7 @@ export class RoomService {
 			event: joinEventFinal.event,
 		});
 
-		const state = await stateService.getFullRoomState(roomId);
+		const state = await stateService.getLatestRoomState(roomId);
 
 		logger.info({
 			msg: 'State before join event has been persisted',
@@ -1087,7 +1089,7 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		const _stateId = await this.stateService.persistStateEvent(event);
+		const _stateId = await this.stateService.handlePdu(event);
 
 		await this.roomRepository.markRoomAsDeleted(roomId, event.eventId);
 
@@ -1150,7 +1152,7 @@ export class RoomService {
 		userId: UserID,
 		powerLevel: number,
 	) {
-		const state = await this.stateService.getFullRoomState2(roomId);
+		const state = await this.stateService.getLatestRoomState2(roomId);
 
 		const existing = state.powerLevels;
 
@@ -1184,7 +1186,7 @@ export class RoomService {
 			state.version,
 		);
 
-		await this.stateService.persistStateEvent(event);
+		await this.stateService.handlePdu(event);
 
 		void this.federationService.sendEventToAllServersInRoom(event);
 	}
@@ -1217,7 +1219,7 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.persistStateEvent(roomCreateEvent);
+		await stateService.handlePdu(roomCreateEvent);
 
 		// Extract displayname from userId for direct messages
 		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
@@ -1242,7 +1244,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(creatorMembershipEvent);
+		await stateService.handlePdu(creatorMembershipEvent);
 
 		const powerLevelsEvent =
 			await stateService.buildEvent<'m.room.power_levels'>(
@@ -1273,7 +1275,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(powerLevelsEvent);
+		await stateService.handlePdu(powerLevelsEvent);
 
 		const joinRulesEvent = await stateService.buildEvent<'m.room.join_rules'>(
 			{
@@ -1290,7 +1292,7 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await stateService.persistStateEvent(joinRulesEvent);
+		await stateService.handlePdu(joinRulesEvent);
 
 		const historyVisibilityEvent =
 			await stateService.buildEvent<'m.room.history_visibility'>(
@@ -1308,7 +1310,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(historyVisibilityEvent);
+		await stateService.handlePdu(historyVisibilityEvent);
 
 		const guestAccessEvent =
 			await stateService.buildEvent<'m.room.guest_access'>(
@@ -1326,7 +1328,7 @@ export class RoomService {
 				PersistentEventFactory.defaultRoomVersion,
 			);
 
-		await stateService.persistStateEvent(guestAccessEvent);
+		await stateService.handlePdu(guestAccessEvent);
 
 		if (isExternalUser) {
 			await this.inviteService.inviteUserToRoom(
@@ -1359,7 +1361,7 @@ export class RoomService {
 					PersistentEventFactory.defaultRoomVersion,
 				);
 
-			await stateService.persistStateEvent(targetMembershipEvent);
+			await stateService.handlePdu(targetMembershipEvent);
 		}
 
 		return roomCreateEvent.roomId;

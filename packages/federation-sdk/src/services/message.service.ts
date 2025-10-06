@@ -84,7 +84,7 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
 		}
@@ -132,7 +132,7 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
 		}
@@ -168,7 +168,7 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
 		}
@@ -224,7 +224,7 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
 		}
@@ -275,7 +275,7 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
 		}
@@ -323,7 +323,7 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistTimelineEvent(reactionEvent);
+		await this.stateService.handlePdu(reactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
 
@@ -356,7 +356,7 @@ export class MessageService {
 				roomInfo.room_version,
 			);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 
@@ -401,7 +401,7 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 
@@ -445,7 +445,7 @@ export class MessageService {
 				roomInfo.room_version,
 			);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 

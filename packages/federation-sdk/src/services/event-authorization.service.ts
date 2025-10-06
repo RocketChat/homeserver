@@ -184,7 +184,7 @@ export class EventAuthorizationService {
 			}
 
 			const roomId = event.event.room_id;
-			const state = await this.stateService.getFullRoomState(roomId);
+			const state = await this.stateService.getLatestRoomState(roomId);
 
 			const aclEvent = state.get('m.room.server_acl:');
 			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
@@ -358,7 +358,7 @@ export class EventAuthorizationService {
 
 			const matrixRoomId = rcUpload.federation.mrid;
 
-			const state = await this.stateService.getFullRoomState(matrixRoomId);
+			const state = await this.stateService.getLatestRoomState(matrixRoomId);
 
 			const aclEvent = state.get('m.room.server_acl:');
 			const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);

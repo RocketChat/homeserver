@@ -19,6 +19,8 @@ import {
 	type PduForType,
 	type PduType,
 	PersistentEventFactory,
+	RoomID,
+	RoomVersion,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -161,6 +163,19 @@ export class EventService {
 			eventsByRoomId.get(roomId)?.push(event);
 		}
 
+		const roomIdToRoomVersionmap = new Map<string, RoomVersion>();
+		const getRoomVersion = async (roomId: RoomID) => {
+			if (roomIdToRoomVersionmap.has(roomId)) {
+				return roomIdToRoomVersionmap.get(roomId) as RoomVersion;
+			}
+
+			const roomVersion = await this.getRoomVersion({ room_id: roomId });
+
+			roomIdToRoomVersionmap.set(roomId, roomVersion);
+
+			return roomVersion;
+		};
+
 		// process each room's events in parallel
 		// TODO implement a concurrency limit
 		await Promise.all(
@@ -178,7 +193,14 @@ export class EventService {
 						continue;
 					}
 
-					const eventId = generateId(event);
+					const roomVersion = await getRoomVersion(event.room_id);
+
+					const pdu = PersistentEventFactory.createFromRawEvent(
+						event,
+						roomVersion,
+					);
+
+					const eventId = pdu.eventId;
 
 					const existing = await this.eventRepository.findById(eventId);
 					if (existing) {
@@ -430,7 +452,7 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: Pdu) {
+	private async getRoomVersion(event: Pick<Pdu, 'room_id'>) {
 		return (
 			this.stateService.getRoomVersion(event.room_id) ||
 			PersistentEventFactory.defaultRoomVersion
@@ -684,29 +706,24 @@ export class EventService {
 	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
 		try {
 			// Ensure the event exists and belongs to the requested room
-			const persisted = await this.eventRepository.findById(eventId);
-			if (!persisted || persisted.event.room_id !== roomId) {
+			const event = await this.stateService.getEvent(eventId);
+			if (!event || event.roomId !== roomId) {
 				throw new Error('M_NOT_FOUND');
 			}
 
-			const state = await this.stateService.findStateAtEvent(eventId);
+			const state = await this.stateService.getStateBeforeEvent(event);
 
-			const pduIds: string[] = [];
+			const pduIds: EventID[] = state
+				.values()
+				.map((e) => e.eventId)
+				.toArray();
 			const authChainIds = new Set<string>();
 
-			// Get room version for the store
-			const roomVersion = await this.stateService.getRoomVersion(roomId);
-			if (!roomVersion) {
-				throw new Error('Room version not found');
-			}
-
 			// Get the event store
-			const store = this.stateService._getStore(roomVersion);
+			const store = this.stateService._getStore(event.version);
 
 			// Extract state event IDs and collect auth chain IDs
 			for (const [, event] of state.entries()) {
-				// PersistentEventBase has an eventId getter
-				pduIds.push(event.eventId);
 				// Get the complete auth chain for this event
 				try {
 					const authChain = await getAuthChain(event, store);
@@ -743,15 +760,15 @@ export class EventService {
 	}> {
 		try {
 			// Ensure the event exists and belongs to the requested room
-			const persisted = await this.eventRepository.findById(eventId);
-			if (!persisted || persisted.event.room_id !== roomId) {
+			const event = await this.stateService.getEvent(eventId);
+			if (!event || event.event.room_id !== roomId) {
 				throw new Error('M_NOT_FOUND');
 			}
 
 			let state: Map<string, any>;
 
 			// Get state at a specific event
-			state = await this.stateService.findStateAtEvent(eventId);
+			state = await this.stateService.getStateBeforeEvent(event);
 
 			const pdus: Record<string, unknown>[] = [];
 			const authChainIds = new Set<EventID>();
