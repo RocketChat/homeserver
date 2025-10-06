@@ -1,8 +1,4 @@
-import {
-	EventID,
-	RoomID,
-	UserID,
-} from '@rocket.chat/federation-room';
+import { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import {
 	EventAuthorizationService,
 	ProfilesService,
@@ -39,7 +35,8 @@ export const profilesPlugin = (app: Elysia) => {
 				.use(isAuthenticatedMiddleware(eventAuthService))
 				.get(
 					'/_matrix/federation/v1/query/profile',
-					({ query: { user_id } }) => profilesService.queryProfile(user_id as UserID),
+					({ query: { user_id } }) =>
+						profilesService.queryProfile(user_id as UserID),
 					{
 						query: QueryProfileQueryDto,
 						response: {

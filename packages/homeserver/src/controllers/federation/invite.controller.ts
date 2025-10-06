@@ -20,7 +20,7 @@ export const invitePlugin = (app: Elysia) => {
 				roomId as RoomID,
 				eventId as EventID,
 				body.room_version,
-			)
+			);
 		},
 		{
 			params: ProcessInviteParamsDto,
