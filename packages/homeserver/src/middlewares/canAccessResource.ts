@@ -6,35 +6,20 @@ import { isAuthenticatedMiddleware } from './isAuthenticated';
 function extractEntityId(
 	params: { roomId?: string; mediaId?: string; eventId?: string },
 	entityType: 'event' | 'media' | 'room',
-): string {
+): string | null {
 	if (entityType === 'room') {
-		const roomId = params.roomId;
-		if (!roomId) {
-			throw new Error('Room ID is required');
-		}
-
-		return roomId;
+		return params.roomId ?? null;
 	}
 
 	if (entityType === 'media') {
-		const mediaId = params.mediaId;
-		if (!mediaId) {
-			throw new Error('Media ID is required');
-		}
-
-		return mediaId;
+		return params.mediaId ?? null;
 	}
 
 	if (entityType === 'event') {
-		const eventId = params.eventId;
-		if (!eventId) {
-			throw new Error('Event ID is required');
-		}
-
-		return eventId;
+		return params.eventId ?? null;
 	}
 
-	throw new Error('Invalid entity type');
+	return null;
 }
 
 export const canAccessResourceMiddleware = (
@@ -53,9 +38,18 @@ export const canAccessResourceMiddleware = (
 					};
 				}
 
+				const resourceId = extractEntityId(params, entityType);
+				if (!resourceId) {
+					set.status = 400;
+					return {
+						errcode: 'M_INVALID_PARAM',
+						error: `Missing required ${entityType} identifier`,
+					};
+				}
+
 				const resourceAccess = await federationAuth.canAccessResource(
 					entityType,
-					extractEntityId(params, entityType),
+					resourceId,
 					authenticatedServer,
 				);
 				if (!resourceAccess) {
