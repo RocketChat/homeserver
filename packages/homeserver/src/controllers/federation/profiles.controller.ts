@@ -34,7 +34,7 @@ export const profilesPlugin = (app: Elysia) => {
 			app
 				.use(isAuthenticatedMiddleware(eventAuthService))
 				.get(
-					'/_matrix/federation/v1/query/profile',
+					'/federation/v1/query/profile',
 					({ query: { user_id } }) =>
 						profilesService.queryProfile(user_id as UserID),
 					{
@@ -50,7 +50,7 @@ export const profilesPlugin = (app: Elysia) => {
 					},
 				)
 				.post(
-					'/_matrix/federation/v1/user/keys/query',
+					'/federation/v1/user/keys/query',
 					async ({ set }) => {
 						set.status = 501;
 						return {
@@ -75,7 +75,7 @@ export const profilesPlugin = (app: Elysia) => {
 					},
 				)
 				.get(
-					'/_matrix/federation/v1/user/devices/:userId',
+					'/federation/v1/user/devices/:userId',
 					async ({ set }) => {
 						set.status = 501;
 						return {
