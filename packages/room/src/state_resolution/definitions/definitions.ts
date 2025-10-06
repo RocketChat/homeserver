@@ -564,12 +564,17 @@ export async function mainlineOrdering(
 	return events.sort(comparisonFn);
 }
 
+export type ResolvedState = {
+	state: Map<StateMapKey, PersistentEventBase>;
+	failedEvents: PersistentEventBase[];
+};
+
 // The iterative auth checks algorithm takes as input an initial room state and a sorted list of state events
 export async function iterativeAuthChecks(
 	events: PersistentEventBase[],
 	stateMap: ReadonlyMap<StateMapKey, PersistentEventBase>,
 	store: EventStore,
-) {
+): Promise<Map<StateMapKey, PersistentEventBase>> {
 	const newState = new Map<StateMapKey, PersistentEventBase>(
 		stateMap.entries(),
 	);

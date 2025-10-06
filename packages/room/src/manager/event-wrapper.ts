@@ -3,7 +3,7 @@ import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
-import type { RejectCode } from '../authorizartion-rules/errors';
+import { RejectCodes, type RejectCode } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -20,8 +20,12 @@ import {
 import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 
-function extractDomain(identifier: string) {
-	return identifier.split(':').pop();
+export function extractDomainFromId(identifier: string) {
+	const idx = identifier.indexOf(':');
+	if (idx === -1) {
+		throw new Error(`Invalid identifier ${identifier}, no domain found`);
+	}
+	return identifier.substring(idx + 1);
 }
 
 type MakeOptional<T, K extends keyof T> = {
@@ -104,7 +108,7 @@ export abstract class PersistentEventBase<
 	// TODO: This should be removed or different name used instead?
 
 	get origin() {
-		const domain = extractDomain(this.rawEvent.sender);
+		const domain = extractDomainFromId(this.rawEvent.sender);
 		if (!domain) {
 			throw new Error('Invalid sender, no domain found');
 		}
@@ -426,6 +430,10 @@ export abstract class PersistentEventBase<
 
 	get rejected() {
 		return this.rejectCode !== '';
+	}
+
+	isAuthRejected() {
+		return this.rejectCode === RejectCodes.AuthError;
 	}
 
 	reject(code: RejectCode, reason: string, rejectedBy?: EventID) {

@@ -729,7 +729,7 @@ export function checkEventAuthWithoutState(
 
 	for (const authEvent of authEvents) {
 		// if rejected, reject this event
-		if (authEvent.rejected) {
+		if (authEvent.isAuthRejected()) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: event,
 				reason: 'auth event required to authorize this event was rejected',

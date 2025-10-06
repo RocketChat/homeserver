@@ -7,6 +7,10 @@ export const eventIdSchema = z.string().brand('EventID');
 
 export type EventID = z.infer<typeof eventIdSchema>;
 
+const stateIdSchema = z.string().brand('StateID');
+
+export type StateID = z.infer<typeof stateIdSchema>;
+
 export const roomIdSchema = z.string().brand('RoomID');
 
 export type RoomID = z.infer<typeof roomIdSchema>;
