@@ -185,7 +185,20 @@ export class StateService {
 
 		const roomVersion = await this.getRoomVersion(event.event.room_id);
 
-		return PersistentEventFactory.createFromRawEvent(event.event, roomVersion);
+		const pdu = PersistentEventFactory.createFromRawEvent(
+			event.event,
+			roomVersion,
+		);
+
+		if (event.rejectCode !== undefined) {
+			pdu.reject(
+				event.rejectCode,
+				event.rejectDetail?.reason ?? '',
+				event.rejectDetail?.rejectedBy,
+			);
+		}
+
+		return pdu;
 	}
 
 	public _getStore(roomVersion: RoomVersion): EventStore {
