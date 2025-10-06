@@ -1639,4 +1639,43 @@ describe('StateService', async () => {
 			.sort();
 		expect(newPduIds).toStrictEqual(expectedAfterMessageSent.pdu_ids);
 	});
+
+	it('should handle concurrent joins fairly and build correct final state', async () => {
+		const users = [];
+		for (let i = 0; i < 20; i++) {
+			users.push(`@user${i}:example.com`);
+		}
+
+		const { roomCreateEvent } = await createRoom('public');
+		const roomId = roomCreateEvent.roomId;
+		const version = roomCreateEvent.getContent().room_version;
+
+		await Promise.all(users.map((u) => joinUser(roomId, u)));
+
+		const state = await stateService.getLatestRoomState2(roomId);
+
+		for (const user of users) {
+			expect(state.isUserInRoom(user)).toBeTrue();
+		}
+
+		// all users should also be able to send a message
+		for (const user of users) {
+			const message = await stateService.buildEvent<'m.room.message'>(
+				{
+					type: 'm.room.message',
+					sender: user as room.UserID,
+					content: { msgtype: 'm.text', body: 'hello world' },
+					room_id: roomId,
+					...getDefaultFields(),
+				},
+				version,
+			);
+
+			await stateService.handlePdu(message);
+
+			const event = await stateService.getEvent(message.eventId);
+
+			expect(event?.isAuthRejected()).toBeFalse();
+		}
+	});
 });
