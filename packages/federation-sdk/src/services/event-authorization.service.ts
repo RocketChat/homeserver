@@ -278,9 +278,14 @@ export class EventAuthorizationService {
 
 		for (const [key, event] of state.entries()) {
 			if (key.startsWith('m.room.member:') && event?.isMembershipEvent()) {
-				const membership = event.getContent().membership;
+				const membership = event.getContent()?.membership;
 				const stateKey = event.stateKey;
-				if (membership === 'invite' && stateKey) {
+
+				if (!membership || !stateKey || !stateKey.includes(':')) {
+					continue;
+				}
+
+				if (membership === 'invite') {
 					const invitedUserServer = stateKey.split(':').pop();
 					if (invitedUserServer === serverName) {
 						this.logger.debug(
