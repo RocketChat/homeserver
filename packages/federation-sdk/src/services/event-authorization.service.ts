@@ -177,6 +177,11 @@ export class EventAuthorizationService {
 			return true;
 		}
 
+		if (pattern.length > 200 || (pattern.match(/[*?]/g) || []).length > 20) {
+			this.logger.warn(`ACL pattern too complex, rejecting: ${pattern}`);
+			return false;
+		}
+
 		let regexPattern = pattern
 			.replace(/[.+^${}()|[\]\\]/g, '\\$&')
 			.replace(/\*/g, '.*')
