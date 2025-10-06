@@ -29,6 +29,7 @@ import { pingPlugin } from './controllers/internal/ping.controller';
 import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
+import { internalRequestPlugin } from './controllers/internal/external-federation-request.controller';
 
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {
@@ -56,6 +57,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
 			10,
 		),
+		signingKey: process.env.SIGNING_KEY,
 		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
 		media: {
@@ -123,7 +125,8 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(serverKeyPlugin)
 		.use(wellKnownPlugin)
 		.use(roomPlugin)
-		.use(mediaPlugin);
+		.use(mediaPlugin)
+		.use(internalRequestPlugin);
 
 	return { app, container };
 }
