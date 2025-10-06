@@ -1,17 +1,17 @@
 import {
+	type Pdu,
+	type PduPowerLevelsEventContent,
+	type PduType,
+	PersistentEventFactory,
+	type RoomID,
+	type RoomVersion,
+	type UserID,
+} from '@rocket.chat/federation-room';
+import {
 	FederationRequestService,
 	FederationService,
 	StateService,
 } from '@rocket.chat/federation-sdk';
-import {
-	Pdu,
-	PduPowerLevelsEventContent,
-	PduType,
-	PersistentEventFactory,
-	RoomID,
-	RoomVersion,
-	UserID,
-} from '@rocket.chat/federation-room';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
