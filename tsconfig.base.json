@@ -13,7 +13,7 @@
 		"composite": true,
 		// Bundler mode
 		"moduleResolution": "bundler",
-		"verbatimModuleSyntax": true,
+		"verbatimModuleSyntax": false,
 		// Best practices
 		"strict": true,
 		"skipLibCheck": true,

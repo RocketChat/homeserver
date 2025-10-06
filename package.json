@@ -9,6 +9,7 @@
 		"@types/express": "^5.0.1",
 		"@types/node": "^22.15.18",
 		"@types/sinon": "^17.0.4",
+		"bun-plugin-dts": "^0.3.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^16.1.2",
 		"sinon": "^20.0.0",

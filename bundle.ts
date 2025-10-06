@@ -1,4 +1,5 @@
 import Bun, { $ } from 'bun';
+import dts from 'bun-plugin-dts';
 
 const inputDir = './packages/federation-sdk';
 const outputDir = './federation-bundle';
@@ -63,6 +64,10 @@ async function main() {
 		'peerDependencies',
 	);
 
+	const local = Object.keys(dependencies).filter((dep) =>
+		localPackagesNames.has(dep),
+	);
+
 	await Bun.build({
 		entrypoints: [`${inputDir}/src/index.ts`],
 		outdir: `${outputDir}/dist`,
@@ -75,6 +80,13 @@ async function main() {
 		define: {
 			'process.env.NODE_ENV': '"production"',
 		},
+		plugins: [
+			dts({
+				libraries: {
+					importedLibraries: local,
+				},
+			}),
+		],
 		minify: true,
 		sourcemap: true,
 	});
@@ -96,7 +108,7 @@ async function main() {
 		`${JSON.stringify(packageJson, null, 2)}\n`,
 	);
 
-	await $`tsc --emitDeclarationOnly -p tsconfig.sdk.types.json`;
+	// await $`tsc --emitDeclarationOnly -p tsconfig.sdk.types.json`;
 
 	console.log('Bundle complete!');
 }
