@@ -41,7 +41,7 @@ export const canAccessResourceMiddleware = (
 	federationAuth: EventAuthorizationService,
 	entityType: 'event' | 'media' | 'room',
 ) => {
-	return new Elysia({ name: 'homeserver/canAccessEvent' })
+	return new Elysia({ name: 'homeserver/canAccessResource' })
 		.use(isAuthenticatedMiddleware(federationAuth))
 		.onBeforeHandle(async ({ params, authenticatedServer, set }) => {
 			try {
