@@ -24,7 +24,8 @@ export const isAuthenticatedMiddleware = (
 				let body: Record<string, unknown> | undefined;
 				if (request.body) {
 					try {
-						const text = await request.text();
+						const clone = request.clone();
+						const text = await clone.text();
 						body = text ? JSON.parse(text) : undefined;
 					} catch {
 						body = undefined;
