@@ -2,7 +2,7 @@ import {
 	FederationRequestService,
 	FederationService,
 	StateService,
-} from '@hs/federation-sdk';
+} from '@rocket.chat/federation-sdk';
 import {
 	Pdu,
 	PduPowerLevelsEventContent,
@@ -11,7 +11,7 @@ import {
 	RoomID,
 	RoomVersion,
 	UserID,
-} from '@hs/room';
+} from '@rocket.chat/federation-room';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
