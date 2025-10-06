@@ -1,11 +1,17 @@
-import { StateService } from '@rocket.chat/federation-sdk';
+import {
+	EventAuthorizationService,
+	StateService,
+} from '@rocket.chat/federation-sdk';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
 export const roomPlugin = (app: Elysia) => {
 	const stateService = container.resolve(StateService);
+	const eventAuthService = container.resolve(EventAuthorizationService);
 
 	return app
+		.use(isAuthenticatedMiddleware(eventAuthService))
 		.get(
 			'/_matrix/federation/v1/publicRooms',
 			async ({ query }) => {
