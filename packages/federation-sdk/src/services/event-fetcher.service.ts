@@ -120,14 +120,15 @@ export class EventFetcherService {
 
 			return eventsToReturn;
 		} catch (error: unknown) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			this.logger.error(
-				`Error fetching events from federation: ${errorMessage}`,
-			);
-			this.logger.debug(
-				`Failed federation request details: ${JSON.stringify({ eventIds, targetServerName })}`,
-			);
+			this.logger.error({
+				msg: 'Error fetching events from federation',
+				err: error,
+			});
+			this.logger.debug({
+				msg: 'Failed federation request details',
+				eventIds,
+				targetServerName,
+			});
 			return eventsToReturn;
 		}
 	}
