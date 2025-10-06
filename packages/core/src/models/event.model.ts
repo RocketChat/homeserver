@@ -1,4 +1,9 @@
-import { EventID, Pdu, PduForType } from '@rocket.chat/federation-room';
+import type {
+	EventID,
+	Pdu,
+	RejectCode,
+	StateID,
+} from '@rocket.chat/federation-room';
 import type { EventBase as CoreEventBase } from '../events/eventBase';
 
 // TODO: use room package
@@ -19,9 +24,15 @@ interface PersistentEventBase<E = Pdu> {
 
 // TODO: Merge with StagedEvent from event.service.ts
 export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
-	stateId: string;
+	stateId: StateID;
 	// for prev_events
-	nextEventId: string;
+	nextEventId: EventID;
+
+	rejectCode?: RejectCode;
+	rejectDetail?: {
+		reason: string;
+		rejectedBy?: EventID;
+	};
 }
 
 export interface EventStagingStore extends PersistentEventBase {
