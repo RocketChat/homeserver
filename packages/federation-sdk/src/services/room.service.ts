@@ -885,94 +885,21 @@ export class RoomService {
 			eventMap.set(authEvent.eventId, authEvent);
 		}
 
-		// TODO: 1 room version handling, related to request type
-		// TODO: 2 have state service do this or not modify our event
-		const copyEvent = (event: Readonly<PersistentEventBase>) => {
-			return PersistentEventFactory.createFromRawEvent(
-				structuredClone(event.event),
-				roomVersion,
-			);
-		};
-
-		const persisted = new Set<string>();
-
-		// persistEvent walks auth_events, and recursively calls itself with each auth event
-		// persists until it reaches the first event it was called with.
-		// makes sure all auth events are persisted before the state event
-		const persistEvent = async (event: Readonly<PersistentEventBase>) => {
-			if (!persisted.has(event.eventId) && event.isCreateEvent()) {
-				// persist as normal, m.room.create :)
-				logger.info({
-					msg: 'Persisting create event',
-					eventId: event.eventId,
-					event: event.event,
-				});
-
-				const eventToPersist = copyEvent(event);
-
-				await stateService.handlePdu(eventToPersist);
-
-				persisted.add(event.eventId);
-
-				return;
+		const sorted = Array.from(eventMap.values()).sort((a, b) => {
+			if (a.depth !== b.depth) {
+				return a.depth - b.depth;
 			}
 
-			for (const authEventId of event.event.auth_events) {
-				const authEvent = eventMap.get(authEventId as string);
-				if (!authEvent) {
-					for (const stateEvent of eventMap.keys()) {
-						// TODO is this just suppose to log things?
-						logger.info({
-							msg: 'Auth event not found in event map',
-							stateEvent,
-							event: eventMap.get(stateEvent)?.event,
-						});
-					}
-					throw new Error(`Auth event ${authEventId} not found`);
-				}
-
-				if (!persisted.has(authEventId as string)) {
-					// persist all the auth events of this authEvent
-					logger.info({
-						msg: 'Persisting auth event because not persisted already',
-						authEventId,
-						event: authEvent.event,
-					});
-
-					// recursively persist this and all it's auth events
-					await persistEvent(authEvent); // pl
-
-					persisted.add(authEvent.eventId);
-				}
+			if (a.originServerTs !== b.originServerTs) {
+				return a.originServerTs - b.originServerTs;
 			}
 
-			// ^^ all auth events of this event have been persisted
+			return a.eventId.localeCompare(b.eventId);
+		});
 
-			// persist as normal
-			logger.info({
-				msg: 'Persisting state event after auth events have been persisted',
-				eventId: event.eventId,
-				event: event.event,
-			});
-
-			const eventToPersist = copyEvent(event);
-
-			await stateService.handlePdu(eventToPersist);
-
-			persisted.add(event.eventId);
-		};
-
-		for (const stateEvent of eventMap.values()) {
-			if (persisted.has(stateEvent.eventId)) {
-				continue;
-			}
-
-			logger.info({
-				msg: 'Persisting state event',
-				eventId: stateEvent.eventId,
-				event: stateEvent.event,
-			});
-			await persistEvent(stateEvent);
+		for (const event of sorted) {
+			console.log('persisting', event.toStrippedJson());
+			await stateService.handlePdu(event);
 		}
 
 		const joinEventFinal = PersistentEventFactory.createFromRawEvent(

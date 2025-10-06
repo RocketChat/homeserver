@@ -14,6 +14,7 @@ import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
 import { StateService } from './state.service';
+import { FederationService } from './federation.service';
 
 @singleton()
 export class SendJoinService {
@@ -23,6 +24,8 @@ export class SendJoinService {
 		private readonly emitterService: EventEmitterService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
+
+		private readonly federationService: FederationService,
 	) {}
 
 	async sendJoin(
@@ -53,6 +56,9 @@ export class SendJoinService {
 		// fetch state before allowing join here - TODO: don't just persist the membership like this
 		const state = await stateService.getLatestRoomState(roomId);
 		await stateService.handlePdu(joinEvent);
+
+		// accepted? allow other servers to start processing already
+		void this.federationService.sendEventToAllServersInRoom(joinEvent);
 
 		const configService = this.configService;
 

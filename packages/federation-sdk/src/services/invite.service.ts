@@ -191,10 +191,9 @@ export class InviteService {
 			if (inviteEvent.rejected) {
 				throw new Error(inviteEvent.rejectReason);
 			}
-		} catch (e) {
+		} catch {
 			// don't have state copy yet
-			console.error(e);
-
+			// console.error(e);
 			// typical noop, we sign and return the event, nothing to do
 		}
 
