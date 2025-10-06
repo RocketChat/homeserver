@@ -5,8 +5,16 @@ import {
 	Pdu,
 	PduForType,
 	PduType,
+	RejectCode,
+	StateID,
 } from '@rocket.chat/federation-room';
-import type { Collection, FindCursor, WithId } from 'mongodb';
+import type {
+	Collection,
+	FindCursor,
+	FindOptions,
+	UpdateResult,
+	WithId,
+} from 'mongodb';
 import { MongoError } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -114,7 +122,7 @@ export class EventRepository {
 		origin: string,
 		event: Pdu,
 		eventId: EventID,
-		stateId = '',
+		stateId = '' as StateID,
 	): Promise<string | undefined> {
 		return this.persistEvent(origin, event, eventId, stateId);
 	}
@@ -168,7 +176,7 @@ export class EventRepository {
 			{
 				'event.room_id': roomId,
 				'event.origin_server_ts': { $lt: timestamp }, // events before passed timestamp
-				stateId: { $ne: '' },
+				stateId: { $ne: '' as StateID },
 			},
 			{
 				sort: {
@@ -192,19 +200,21 @@ export class EventRepository {
 			});
 	}
 
-	async updateStateId(eventId: EventID, stateId: string): Promise<void> {
+	async updateStateId(eventId: EventID, stateId: StateID): Promise<void> {
 		await this.collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 
 	// finds events not yet referenced by other events
 	// more on the respective adr
-	async findPrevEvents(roomId: string) {
+	async findLatestEvents(roomId: string) {
 		return this.collection
-			.find({
-				nextEventId: '',
-				'event.room_id': roomId,
-				_id: { $ne: '' as EventID },
-			})
+			.find(
+				{
+					nextEventId: '' as EventID,
+					'event.room_id': roomId,
+				},
+				{ sort: { 'event.depth': 1, createdAt: 1 } },
+			)
 			.toArray();
 	}
 
@@ -212,7 +222,7 @@ export class EventRepository {
 		origin: string,
 		event: Pdu,
 		eventId: EventID,
-		stateId: string,
+		stateId: StateID,
 	) {
 		try {
 			await this.collection.insertOne({
@@ -221,7 +231,7 @@ export class EventRepository {
 				event: event,
 				stateId: stateId,
 				createdAt: new Date(),
-				nextEventId: '', // new events are not expected to have forward edges
+				nextEventId: '' as EventID, // new events are not expected to have forward edges
 			});
 		} catch (e) {
 			if (e instanceof MongoError) {
@@ -266,9 +276,23 @@ export class EventRepository {
 	findByIds<T extends PduType>(
 		eventIds: EventID[],
 	): FindCursor<WithId<EventStore<PduForType<T>>>> {
-		return this.collection.find({
-			_id: { $in: eventIds },
-		}) as FindCursor<WithId<EventStore<PduForType<T>>>>;
+		return this.collection.find(
+			{
+				_id: { $in: eventIds },
+			},
+			{ sort: { depth: -1, createdAt: -1 } },
+		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
+	}
+
+	findByIdsOrderedDescending<T extends PduType>(
+		eventIds: EventID[],
+	): FindCursor<WithId<EventStore<PduForType<T>>>> {
+		return this.collection.find(
+			{
+				_id: { $in: eventIds },
+			},
+			{ sort: { depth: -1, createdAt: -1 } },
+		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
 	}
 
 	findByRoomIdAndTypes(
@@ -421,5 +445,107 @@ export class EventRepository {
 			})
 			.sort({ 'event.depth': -1, 'event.origin_server_ts': -1 })
 			.limit(limit);
+	}
+
+	// new ones
+	// -------------------
+
+	insertOrUpdateEventWithStateId(
+		eventId: EventID,
+		event: Pdu,
+		stateId: StateID,
+	): Promise<UpdateResult> {
+		return this.collection.updateOne(
+			{ _id: eventId },
+			{
+				$setOnInsert: {
+					event,
+					nextEventId: '' as EventID,
+					createdAt: new Date(),
+				},
+				$set: {
+					stateId,
+				},
+			},
+			{ upsert: true },
+		);
+	}
+
+	async updateNextEventReferences(
+		newEventId: EventID,
+		previousEventIds: EventID[],
+	): Promise<UpdateResult> {
+		return this.collection.updateMany(
+			{ _id: { $in: previousEventIds } },
+			{ $set: { nextEventId: newEventId } },
+		);
+	}
+
+	async findStateIdByEventId(eventId: EventID): Promise<StateID | undefined> {
+		const result = await this.collection.findOne<Pick<EventStore, 'stateId'>>(
+			{ _id: eventId },
+			{ projection: { stateId: 1 } },
+		);
+
+		return result?.stateId;
+	}
+
+	findLatestPreviousEventByRoomId<T = EventStore>(
+		roomId: string,
+		options?: FindOptions<EventStore>,
+	) {
+		return this.collection.findOne<T>(
+			{
+				'event.room_id': roomId,
+				$or: [
+					// non rejected previos event
+					{ nextEventId: '' as EventID, rejectCode: { $exists: false } },
+					// non rejected latest event
+					{ rejectCode: { $exists: false } },
+				],
+			},
+			{ ...options, sort: { 'event.depth': -1, createdAt: -1 } },
+		);
+	}
+
+	async findLatestStateIdByRoomId(
+		roomId: string,
+	): Promise<StateID | undefined> {
+		const { stateId } =
+			(await this.findLatestPreviousEventByRoomId<Pick<EventStore, 'stateId'>>(
+				roomId,
+				{ projection: { stateId: 1 } },
+			)) ?? {};
+
+		return stateId;
+	}
+
+	async rejectEvent(
+		eventId: EventID,
+		event: Pdu,
+		stateId: StateID,
+		code: RejectCode,
+		reason: string,
+		rejectedBy?: EventID,
+	): Promise<UpdateResult> {
+		return this.collection.updateOne(
+			{
+				_id: eventId,
+			},
+			{
+				$setOnInsert: {
+					event,
+					stateId,
+					nextEventId: '' as EventID,
+				},
+				$set: {
+					rejectCode: code,
+					rejectDetail: {
+						reason,
+						rejectedBy,
+					},
+				},
+			},
+		);
 	}
 }
