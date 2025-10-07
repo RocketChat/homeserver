@@ -470,13 +470,13 @@ export const internalRoomPlugin = (app: Elysia) => {
 			},
 		)
 		.get('/internal/rooms/all', async () => {
-			const roomIds = [] as string[]; //await stateService.getAllRoomIds();
+			const roomIds = await stateService.getAllRoomIds();
 			return {
 				roomIds,
 			};
 		})
 		.get('/internal/rooms/all/public', async () => {
-			const publicRooms = [] as any; // await stateService.getAllPublicRoomIdsAndNames();
+			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
 			return {
 				publicRooms,
 			};

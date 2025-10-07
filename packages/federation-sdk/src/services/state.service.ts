@@ -920,4 +920,16 @@ export class StateService {
 
 		return result;
 	}
+
+	async getAllRoomIds() {
+		const createEvents = await this.eventRepository.findByType('m.room.create');
+
+		const result = [] as RoomID[];
+
+		for await (const create of createEvents) {
+			result.push(create.event.room_id);
+		}
+
+		return result;
+	}
 }
