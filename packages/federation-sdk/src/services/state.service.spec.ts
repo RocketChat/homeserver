@@ -112,7 +112,7 @@ async function copyDepth<
 }
 
 describe('StateService', async () => {
-	if (process.env.NODE_ENV !== 'test') {
+	if (!process.env.RUN_MONGO_TESTS) {
 		console.warn('Skipping tests that require a database');
 		return;
 	}
@@ -157,7 +157,7 @@ describe('StateService', async () => {
 		const name = 'Test Room';
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
-			username,
+			username as room.UserID,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 		await stateService.handlePdu(roomCreateEvent);
@@ -170,8 +170,8 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.member',
 					room_id: roomCreateEvent.roomId,
-					sender: username,
-					state_key: username,
+					sender: username as room.UserID,
+					state_key: username as room.UserID,
 					content: { membership: 'join' },
 					...getDefaultFields(),
 				},
@@ -183,7 +183,7 @@ describe('StateService', async () => {
 		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomCreateEvent.roomId,
-				sender: username,
+				sender: username as room.UserID,
 				content: { name },
 				state_key: '',
 				type: 'm.room.name',
@@ -199,7 +199,7 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.power_levels',
 					room_id: roomCreateEvent.roomId,
-					sender: username,
+					sender: username as room.UserID,
 					state_key: '',
 					content: {
 						users: {
@@ -225,7 +225,7 @@ describe('StateService', async () => {
 		const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
 			{
 				room_id: roomCreateEvent.roomId,
-				sender: username,
+				sender: username as room.UserID,
 				content: { join_rule: joinRule },
 				type: 'm.room.join_rules',
 				state_key: '',
@@ -264,17 +264,17 @@ describe('StateService', async () => {
 	const _setUserMembership = async (
 		roomId: string,
 		userId: string,
-		membership: string,
+		membership: room.PduMembershipEventContent['membership'],
 		sender?: string,
 	) => {
 		const roomVersion = await stateService.getRoomVersion(roomId);
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
-				room_id: roomId,
-				sender: sender || userId,
-				state_key: userId,
-				content: { membership: membership as any },
+				room_id: roomId as room.RoomID,
+				sender: (sender || userId) as room.UserID,
+				state_key: userId as room.UserID,
+				content: { membership: membership },
 				...getDefaultFields(),
 			},
 			roomVersion,
@@ -297,7 +297,7 @@ describe('StateService', async () => {
 		const stateAtEvent = new Map<EventID, State>();
 
 		const roomId = roomCreateEvent.roomId;
-		const creator = roomCreateEvent.getContent().creator;
+		const creator = roomCreateEvent.getContent().creator as room.UserID;
 
 		const state = await stateService.getLatestRoomState(roomId);
 
@@ -369,7 +369,8 @@ describe('StateService', async () => {
 		const roomNameEvent2 = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomId,
-				sender: roomCreateEvent.getContent<PduCreateEventContent>().creator,
+				sender: roomCreateEvent.getContent<PduCreateEventContent>()
+					.creator as room.UserID,
 				content: { name: newRoomName },
 				state_key: '',
 				type: 'm.room.name',
@@ -401,7 +402,7 @@ describe('StateService', async () => {
 		const roomNameEvent3 = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomId,
-				sender: random3,
+				sender: random3 as room.UserID,
 				content: { name: 'Hacked Name' },
 				state_key: '',
 				type: 'm.room.name',
@@ -561,7 +562,7 @@ describe('StateService', async () => {
 
 	it('08 should not allow joining if room is imenvite only', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
-		const newUser = '@bob:example.com';
+		const newUser = '@bob:example.com' as room.UserID;
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -582,7 +583,7 @@ describe('StateService', async () => {
 
 	it('09 should allow joining if invited in invite only room', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
-		const newUser = '@bob:example.com';
+		const newUser = '@bob:example.com' as room.UserID;
 
 		await inviteUser(
 			roomCreateEvent.roomId,
@@ -606,7 +607,7 @@ describe('StateService', async () => {
 
 	it('10 should not allow joining if banned', async () => {
 		const { roomCreateEvent } = await createRoom('public');
-		const newUser = '@bob:example.com';
+		const newUser = '@bob:example.com' as room.UserID;
 		// join first
 		await joinUser(roomCreateEvent.roomId, newUser);
 
@@ -649,7 +650,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 
 		// add a user
-		const bob = '@bob:example.com';
+		const bob = '@bob:example.com' as room.UserID;
 		await joinUser(roomCreateEvent.roomId, bob);
 		// ban bob now
 		const banBobEvent = await banUser(
@@ -709,7 +710,7 @@ describe('StateService', async () => {
 		const roomId = roomCreateEvent.roomId;
 
 		// add a user
-		const bob = '@bob:example.com';
+		const bob = '@bob:example.com' as room.UserID;
 		await joinUser(roomCreateEvent.roomId, bob);
 
 		const powerLevelContent = structuredClone(powerLevelEvent.getContent());
@@ -723,7 +724,8 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.power_levels',
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator,
+					sender: roomCreateEvent.getContent<PduCreateEventContent>()
+						.creator as room.UserID,
 					state_key: '',
 					content: powerLevelContent,
 					...getDefaultFields(),
@@ -770,7 +772,8 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.member',
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator,
+					sender: roomCreateEvent.getContent<PduCreateEventContent>()
+						.creator as room.UserID,
 					state_key: bob,
 					content: { membership: 'ban' },
 					...getDefaultFields(),
@@ -818,7 +821,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 
 		// add a user
-		const bob = '@bob:example.com';
+		const bob = '@bob:example.com' as room.UserID;
 		await joinUser(roomCreateEvent.roomId, bob);
 
 		const diego = '@diego:example.com';
@@ -828,7 +831,8 @@ describe('StateService', async () => {
 			await stateService.buildEvent<'m.room.join_rules'>(
 				{
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator,
+					sender: roomCreateEvent.getContent<PduCreateEventContent>()
+						.creator as room.UserID,
 					content: { join_rule: 'invite' },
 					type: 'm.room.join_rules',
 					state_key: '',
@@ -1024,7 +1028,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const roomId = roomCreateEvent.roomId;
 		const roomVersion = roomCreateEvent.getContent().room_version;
-		const creator = roomCreateEvent.getContent().creator;
+		const creator = roomCreateEvent.getContent().creator as room.UserID;
 
 		const referenceDepthEvent = await joinUser(roomId, '@dummy:example.com');
 
@@ -1082,7 +1086,7 @@ describe('StateService', async () => {
 	it('should consider previously rejected event as part of state if new out of order event allows it', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const roomId = roomCreateEvent.roomId;
-		const creator = roomCreateEvent.getContent().creator;
+		const creator = roomCreateEvent.getContent().creator as room.UserID;
 		const roomVersion = roomCreateEvent.version;
 
 		// make bob join
@@ -1139,7 +1143,7 @@ describe('StateService', async () => {
 	});
 
 	it('should build the correct latest state even if event is not accepted', async () => {
-		const don = '@don:example.com';
+		const don = '@don:example.com' as room.UserID;
 
 		const { roomCreateEvent, roomNameEvent } = await createRoom('public', {
 			[don]: 50,
@@ -1147,7 +1151,7 @@ describe('StateService', async () => {
 
 		const roomId = roomCreateEvent.roomId;
 		const roomVersion = roomCreateEvent.version;
-		const creator = roomCreateEvent.getContent().creator;
+		const creator = roomCreateEvent.getContent().creator as room.UserID;
 
 		await joinUser(roomId, don);
 
@@ -1228,9 +1232,9 @@ describe('StateService', async () => {
 				room_version: '10',
 				creator: '@debdut:rc1.tunnel.dev.rocket.chat',
 			},
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			origin_server_ts: 1759757583361,
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			prev_events: [],
 			auth_events: [],
 			depth: 0,
@@ -1253,8 +1257,8 @@ describe('StateService', async () => {
 			content: {
 				membership: 'join',
 			},
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
-			state_key: '@debdut:rc1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
+			state_key: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			auth_events: [
 				'$N6KEZQ-ClhVa9P4_MgGmtnR32zZk-W-y7IebNjdoKqI',
 			] as EventID[],
@@ -1263,7 +1267,7 @@ describe('StateService', async () => {
 				'$N6KEZQ-ClhVa9P4_MgGmtnR32zZk-W-y7IebNjdoKqI',
 			] as EventID[],
 			origin_server_ts: 1759757583403,
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'xxHM8Wz5s70Z24XGVlQuQlP6wu4WKHKrWJkX+VZsN7Y',
 			},
@@ -1283,7 +1287,7 @@ describe('StateService', async () => {
 			content: {
 				name: 'a',
 			},
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			state_key: '',
 			auth_events: [
 				'$_YhqI7eEy5XRK2FEtU1QjWAStEVfDhBiKbUmVh_ML_U',
@@ -1294,7 +1298,7 @@ describe('StateService', async () => {
 				'$_YhqI7eEy5XRK2FEtU1QjWAStEVfDhBiKbUmVh_ML_U',
 			] as EventID[],
 			origin_server_ts: 1759757583427,
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'kSKUQ1qEW1kMBFFT8T738BJRpgKQaZoeX9K/RcgOxx8',
 			},
@@ -1324,7 +1328,7 @@ describe('StateService', async () => {
 				redact: 50,
 				invite: 50,
 			},
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			state_key: '',
 			auth_events: [
 				'$_YhqI7eEy5XRK2FEtU1QjWAStEVfDhBiKbUmVh_ML_U',
@@ -1335,7 +1339,7 @@ describe('StateService', async () => {
 				'$yvGHQAk_VvuInS5WsW3_w-mi5zLSC_ZWz724wSla_z4',
 			] as EventID[],
 			origin_server_ts: 1759757583446,
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'tyTsDppTjJWviE4U2dU5SIhofkWOg1mM50m43dmJUWk',
 			},
@@ -1355,7 +1359,7 @@ describe('StateService', async () => {
 			content: {
 				join_rule: 'public',
 			},
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			state_key: '',
 			auth_events: [
 				'$gmoi4PDtLFJO_M4zHK0rGm-1zJePpApcfyNnXwSf5zM',
@@ -1367,7 +1371,7 @@ describe('StateService', async () => {
 				'$gmoi4PDtLFJO_M4zHK0rGm-1zJePpApcfyNnXwSf5zM',
 			] as EventID[],
 			origin_server_ts: 1759757583461,
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'jt3bItyFElVVoEOJWaqtNf93dzpWi4D8kx6+ApABA6c',
 			},
@@ -1388,7 +1392,7 @@ describe('StateService', async () => {
 				alias: '#a:rc1.tunnel.dev.rocket.chat',
 				alt_aliases: [],
 			},
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			state_key: '',
 			auth_events: [
 				'$gmoi4PDtLFJO_M4zHK0rGm-1zJePpApcfyNnXwSf5zM',
@@ -1400,7 +1404,7 @@ describe('StateService', async () => {
 				'$wWJBjUdHzAds-ZjpgwLQdDKpA3lQQLPkJuQCq-yUHQc',
 			] as EventID[],
 			origin_server_ts: 1759757583476,
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'hvUo6j/yFIjhst7AJSgeMFKGtk4MuPAROKDdDv/Eb5c',
 			},
@@ -1420,8 +1424,8 @@ describe('StateService', async () => {
 			content: {
 				membership: 'invite',
 			},
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
-			state_key: '@ah:syn1.tunnel.dev.rocket.chat',
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
+			state_key: '@ah:syn1.tunnel.dev.rocket.chat' as room.UserID,
 			auth_events: [
 				'$gmoi4PDtLFJO_M4zHK0rGm-1zJePpApcfyNnXwSf5zM',
 				'$_YhqI7eEy5XRK2FEtU1QjWAStEVfDhBiKbUmVh_ML_U',
@@ -1433,7 +1437,7 @@ describe('StateService', async () => {
 				'$3Ttw6n2x6EALDnf4Cm5BKtYrIfzlyuE0VMmfXI2j680',
 			] as EventID[],
 			origin_server_ts: 1759757778902,
-			sender: '@debdut:rc1.tunnel.dev.rocket.chat',
+			sender: '@debdut:rc1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'fcw6kOo6W9yufNeeLB9QI+WLz78ED/QvMNbSut0sXMM',
 			},
@@ -1523,8 +1527,8 @@ describe('StateService', async () => {
 				// @ts-ignore this has been fixed by rodrigo already in zod
 				avatar_url: null as unknown as undefined,
 			},
-			sender: '@ah:syn1.tunnel.dev.rocket.chat',
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			sender: '@ah:syn1.tunnel.dev.rocket.chat' as room.UserID,
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			origin_server_ts: 1759757909955,
 			depth: 7,
 			prev_events: [
@@ -1541,7 +1545,7 @@ describe('StateService', async () => {
 			unsigned: {
 				age: 2,
 			},
-			state_key: '@ah:syn1.tunnel.dev.rocket.chat',
+			state_key: '@ah:syn1.tunnel.dev.rocket.chat' as room.UserID,
 			hashes: {
 				sha256: 'Hm9e72/DXfNsXJHoS/rGhIyBuNBnp3KcCEtuukMUrUk',
 			},
@@ -1601,11 +1605,12 @@ describe('StateService', async () => {
 			type: 'm.room.message',
 			content: {
 				body: '1',
+				// @ts-ignore are we missing this ? TODO:
 				'm.mentions': {},
 				msgtype: 'm.text',
 			},
-			sender: '@ah:syn1.tunnel.dev.rocket.chat',
-			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat',
+			sender: '@ah:syn1.tunnel.dev.rocket.chat' as room.UserID,
+			room_id: '!xZbhusWZ:rc1.tunnel.dev.rocket.chat' as room.RoomID,
 			origin_server_ts: 1759760138291,
 			depth: 8,
 			prev_events: [
