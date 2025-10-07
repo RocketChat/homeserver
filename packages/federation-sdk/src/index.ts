@@ -15,6 +15,7 @@ import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
+import { EventEmitterService } from './services/event-emitter.service';
 
 export type {
 	Pdu,
@@ -110,6 +111,7 @@ export interface HomeserverServices {
 	media: MediaService;
 	request: FederationRequestService;
 	federationAuth: EventAuthorizationService;
+	emitter: EventEmitterService;
 }
 
 export type HomeserverEventSignatures = {
@@ -291,6 +293,7 @@ export function getAllServices(): HomeserverServices {
 		media: container.resolve(MediaService),
 		request: container.resolve(FederationRequestService),
 		federationAuth: container.resolve(EventAuthorizationService),
+		emitter: container.resolve(EventEmitterService),
 	};
 }
 

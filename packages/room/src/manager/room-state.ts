@@ -1,12 +1,8 @@
 import { getStateByMapKey } from '../state_resolution/definitions/definitions';
-import { StateMapKey } from '../types/_common';
+import { StateMapKey, UserID } from '../types/_common';
 import {
-	PduCreateEventContent,
 	PduJoinRuleEventContent,
 	PduMembershipEventContent,
-	PduPowerLevelsEventContent,
-	PduRoomNameEventContent,
-	PduRoomTopicEventContent,
 } from '../types/v3-11';
 import { type PersistentEventBase } from './event-wrapper';
 import { RoomVersion } from './type';
@@ -152,5 +148,32 @@ export class RoomState {
 		}
 
 		return createEvent.getContent().room_version as RoomVersion;
+	}
+
+	get members() {
+		const users = [] as UserID[];
+
+		for (const event of this.stateMap.values()) {
+			if (event.isMembershipEvent()) {
+				if (event.getMembership() === 'join') {
+					users.push(event.stateKey as UserID);
+				}
+			}
+		}
+
+		return users;
+	}
+
+	getMemberJoinEvents() {
+		const events = [] as PersistentEventBase<RoomVersion, 'm.room.member'>[];
+		for (const event of this.stateMap.values()) {
+			if (event.isMembershipEvent()) {
+				if (event.getMembership() === 'join') {
+					events.push(event);
+				}
+			}
+		}
+
+		return events;
 	}
 }
