@@ -4,6 +4,7 @@ import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
+import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
@@ -15,7 +16,6 @@ import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { EventEmitterService } from './services/event-emitter.service';
 
 export type {
 	Pdu,

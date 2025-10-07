@@ -13,8 +13,8 @@ import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
-import { StateService } from './state.service';
 import { FederationService } from './federation.service';
+import { StateService } from './state.service';
 
 @singleton()
 export class SendJoinService {
