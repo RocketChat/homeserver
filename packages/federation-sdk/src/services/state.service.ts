@@ -712,6 +712,18 @@ export class StateService {
 			stateIds.add(record.stateId);
 		}
 
+		if (stateIds.size === 0) {
+			this.logger.debug(
+				{
+					eventId: event.eventId,
+					previousEvents: event.getPreviousEventIds(),
+					events: events,
+				},
+				'previous events',
+			);
+			throw new Error(`no state at event ${event.eventId}`);
+		}
+
 		// different stateids, may need to run state resolution
 		if (stateIds.size > 1) {
 			const { stateId, state } = await this._resolveAndSaveState(
@@ -774,7 +786,9 @@ export class StateService {
 		) {
 			this.logger.debug(
 				{
-					authEventsWeHaveSeen: Array.from(authState.values()),
+					authEventsWeHaveSeen: Array.from(authState.values()).map(
+						(e) => e.eventId,
+					),
 					auithEventsInEvent: Array.from(authEventIdsInEvent.values()),
 				},
 				'auth events differ from event to our state, checking against state',
