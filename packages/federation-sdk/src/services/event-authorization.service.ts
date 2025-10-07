@@ -255,7 +255,7 @@ export class EventAuthorizationService {
 		roomId: string,
 		serverName: string,
 	): Promise<boolean> {
-		const state = await this.stateService.getFullRoomState(roomId);
+		const state = await this.stateService.getLatestRoomState(roomId);
 		if (!state) {
 			this.logger.debug(`Room ${roomId} not found`);
 			return false;
