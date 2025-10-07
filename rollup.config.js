@@ -39,7 +39,7 @@ const isExternal = (id) => {
 
 	// Pacotes internos do monorepo - devem ser incluídos no bundle
 	if (id.startsWith('@rocket.chat/') || id.startsWith('packages/')) {
-		return false;
+		return ['@rocket.chat/emitter'].includes(id);
 	}
 
 	// Imports relativos - devem ser incluídos no bundle
