@@ -195,10 +195,6 @@ export class StateGraphRepository {
 		return stateId;
 	}
 
-	async updateStateIdByEventId(eventId: EventID, stateId: StateID) {
-		await this.collection.updateOne({ _id: eventId }, { $set: { stateId } });
-	}
-
 	findByStateIds(stateIds: StateID[]) {
 		return this.collection.find({ _id: { $in: stateIds } });
 	}

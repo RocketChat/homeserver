@@ -756,10 +756,7 @@ export class StateService {
 			// move pointer forward for state events
 			if (event.isState()) {
 				const deltaId = await this.stateRepository.createDelta(event, stateId);
-				await this.stateRepository.updateStateIdByEventId(
-					event.eventId,
-					deltaId,
-				);
+				await this.eventRepository.updateStateId(event.eventId, deltaId);
 			}
 
 			return;
