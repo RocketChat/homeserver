@@ -79,7 +79,7 @@ export class RoomState {
 			type: 'm.room.join_rules',
 		});
 		if (!joinRuleEvent || !joinRuleEvent.isJoinRuleEvent()) {
-			return 'public'; // default TODO: check this if is correct
+			return 'public'; // default
 		}
 
 		return joinRuleEvent.getContent().join_rule;

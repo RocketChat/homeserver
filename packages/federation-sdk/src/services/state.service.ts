@@ -10,6 +10,7 @@ import {
 	type PersistentEventBase,
 	PersistentEventFactory,
 	RejectCode,
+	RoomID,
 	RoomState,
 	RoomVersion,
 	type StateID,
@@ -902,5 +903,24 @@ export class StateService {
 		}
 
 		return this.getStateAtEvent(event);
+	}
+
+	async getAllPublicRoomIdsAndNames() {
+		const createEvents = await this.eventRepository.findByType('m.room.create');
+
+		const result = [] as { name: string; room_id: RoomID }[];
+
+		for await (const create of createEvents) {
+			const roomId = create.event.room_id;
+			// TODO: exclude memberships here
+			const state = await this.getLatestRoomState2(roomId);
+			if (!state.isPublic()) {
+				continue;
+			}
+
+			result.push({ name: state.name, room_id: roomId });
+		}
+
+		return result;
 	}
 }

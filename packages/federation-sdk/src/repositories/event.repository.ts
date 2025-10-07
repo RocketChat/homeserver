@@ -481,4 +481,8 @@ export class EventRepository {
 			{ projection: { stateId: 1 } },
 		);
 	}
+
+	findByType(type: PduType) {
+		return this.collection.find({ 'event.type': type });
+	}
 }

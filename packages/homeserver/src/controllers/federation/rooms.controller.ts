@@ -3,7 +3,7 @@ import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 
 export const roomPlugin = (app: Elysia) => {
-	// const stateService = container.resolve(StateService);
+	const stateService = container.resolve(StateService);
 
 	app.get(
 		'/_matrix/federation/v1/publicRooms',
@@ -17,7 +17,7 @@ export const roomPlugin = (app: Elysia) => {
 
 			const { limit: _limit } = query;
 
-			const publicRooms = [] as any; //await stateService.getAllPublicRoomIdsAndNames();
+			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
 
 			return {
 				chunk: publicRooms.map((room: any) => ({
@@ -62,11 +62,11 @@ export const roomPlugin = (app: Elysia) => {
 
 			const { filter } = body;
 
-			const publicRooms = [] as any; //await stateService.getAllPublicRoomIdsAndNames();
+			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
 
 			return {
 				chunk: publicRooms
-					.filter((r: any) => {
+					.filter((r) => {
 						if (filter.generic_search_term) {
 							return r.name
 								.toLowerCase()
