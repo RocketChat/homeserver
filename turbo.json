@@ -10,5 +10,9 @@
 			"cache": false
 		}
 	},
-	"globalDependencies": ["tsconfig.json"]
+	"globalDependencies": [
+		"tsconfig.json",
+		"tsconfig.sdk.types.json",
+		"tsconfig.base.json"
+	]
 }

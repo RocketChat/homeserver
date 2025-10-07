@@ -1,4 +1,8 @@
-import type { FetchResponse, SigningKey } from '@rocket.chat/federation-core';
+import type {
+	FetchResponse,
+	MultipartResult,
+	SigningKey,
+} from '@rocket.chat/federation-core';
 import {
 	EncryptionValidAlgorithm,
 	authorizationHeaders,
@@ -187,7 +191,7 @@ export class FederationRequestService {
 		targetServer: string,
 		endpoint: string,
 		queryParams?: Record<string, string>,
-	) {
+	): Promise<MultipartResult> {
 		const response = await this.makeSignedRequest({
 			method,
 			domain: targetServer,

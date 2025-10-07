@@ -96,7 +96,7 @@ async function main() {
 		`${JSON.stringify(packageJson, null, 2)}\n`,
 	);
 
-	await $`tsc --emitDeclarationOnly -p tsconfig.sdk.types.json`;
+	await $`bun run rollup -c`;
 
 	console.log('Bundle complete!');
 }
