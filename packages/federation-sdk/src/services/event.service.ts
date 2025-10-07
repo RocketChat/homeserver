@@ -69,7 +69,7 @@ export class EventService {
 		type?: T,
 	): Promise<P | null> {
 		if (type) {
-			return (this.eventRepository.findByRoomIdAndType(eventId, type) ??
+			return (this.eventRepository.findByIdAndType(eventId, type) ??
 				null) as Promise<P>;
 		}
 		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;

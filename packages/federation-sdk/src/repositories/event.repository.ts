@@ -27,6 +27,15 @@ export class EventRepository {
 	async findById(eventId: EventID): Promise<EventStore | null> {
 		return this.collection.findOne({ _id: eventId });
 	}
+	async findByIdAndType<T extends PduType>(
+		eventId: EventID,
+		type: PduType,
+	): Promise<EventStore<PduForType<T>> | null> {
+		return this.collection.findOne({
+			_id: eventId,
+			'event.type': type,
+		}) as unknown as EventStore<PduForType<T>> | null;
+	}
 
 	findAuthEvents(
 		eventType: string,
