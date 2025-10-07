@@ -201,7 +201,7 @@ export class EventRepository {
 		return this.collection
 			.find(
 				{
-					nextEventId: '' as EventID,
+					nextEventId: '',
 					'event.room_id': roomId,
 				},
 				{ sort: { 'event.depth': 1, createdAt: 1 } },
@@ -415,7 +415,7 @@ export class EventRepository {
 			{
 				$setOnInsert: {
 					event,
-					nextEventId: '' as EventID,
+					nextEventId: '',
 					createdAt: new Date(),
 				},
 				$set: {
@@ -452,7 +452,7 @@ export class EventRepository {
 		return this.collection.findOne<T>(
 			{
 				'event.room_id': roomId,
-				nextEventId: '' as EventID,
+				nextEventId: '',
 				rejectCode: { $exists: false },
 			},
 			{ ...options, sort: { 'event.depth': -1, createdAt: -1 } },
@@ -487,7 +487,7 @@ export class EventRepository {
 				$setOnInsert: {
 					event,
 					stateId,
-					nextEventId: '' as EventID,
+					nextEventId: '',
 				},
 				$set: {
 					rejectCode: code,

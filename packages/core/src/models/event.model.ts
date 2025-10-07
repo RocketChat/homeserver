@@ -26,7 +26,7 @@ interface PersistentEventBase<E = Pdu> {
 export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
 	stateId: StateID;
 	// for prev_events
-	nextEventId: EventID;
+	nextEventId: EventID | '';
 
 	rejectCode?: RejectCode;
 	rejectDetail?: {
