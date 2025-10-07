@@ -17,13 +17,11 @@ export type StateGraphStore = {
 	eventId: EventID;
 
 	previousNode: StateID;
-	chainId: `chain__${string}`;
+	chainId: string;
 	depth: number;
 
 	createdAt: Date;
 };
-
-export type ChainID = `chain__${string}`;
 
 @singleton()
 export class StateGraphRepository {
@@ -218,7 +216,7 @@ export class StateGraphRepository {
 		return this.collection.find({ eventId: { $in: eventIds } });
 	}
 
-	findLatestByChainIdAndEventIds(chainId: ChainID, eventIds: EventID[]) {
+	findLatestByChainIdAndEventIds(chainId: string, eventIds: EventID[]) {
 		return this.collection.findOne(
 			{ chainId, eventId: { $in: eventIds } },
 			{ sort: { depth: -1 } },
