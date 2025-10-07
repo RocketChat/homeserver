@@ -559,13 +559,14 @@ export class EventService {
 			if (
 				type &&
 				[
+					'm.reaction',
 					'm.room.create',
 					'm.room.member',
 					'm.room.message',
 					'm.room.redaction',
-					'm.reaction',
 					'm.room.name',
 					'm.room.power_levels',
+					'm.room.topic',
 				].includes(type)
 			) {
 				authEvents.push(storeEvent);
