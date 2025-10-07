@@ -94,7 +94,9 @@ export async function createFederationContainer(
 	});
 
 	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
-		useValue: db.collection<StateGraphStore>('rocketchat_state_graphs'),
+		useValue: db.collection<StateGraphStore>(
+			'rocketchat_federation_state_graphs',
+		),
 	});
 
 	container.registerSingleton(EventRepository);
