@@ -15,7 +15,6 @@ import type {
 	UpdateResult,
 	WithId,
 } from 'mongodb';
-import { MongoError } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 @singleton()
@@ -203,6 +202,7 @@ export class EventRepository {
 				{
 					nextEventId: '',
 					'event.room_id': roomId,
+					rejectCode: { $exists: false },
 				},
 				{ sort: { 'event.depth': 1, createdAt: 1 } },
 			)
@@ -445,32 +445,6 @@ export class EventRepository {
 		return result?.stateId;
 	}
 
-	findLatestPreviousEventByRoomId<T = EventStore>(
-		roomId: string,
-		options?: FindOptions<EventStore>,
-	) {
-		return this.collection.findOne<T>(
-			{
-				'event.room_id': roomId,
-				nextEventId: '',
-				rejectCode: { $exists: false },
-			},
-			{ ...options, sort: { 'event.depth': -1, createdAt: -1 } },
-		);
-	}
-
-	async findLatestStateIdByRoomId(
-		roomId: string,
-	): Promise<StateID | undefined> {
-		const { stateId } =
-			(await this.findLatestPreviousEventByRoomId<Pick<EventStore, 'stateId'>>(
-				roomId,
-				{ projection: { stateId: 1 } },
-			)) ?? {};
-
-		return stateId;
-	}
-
 	async rejectEvent(
 		eventId: EventID,
 		event: Pdu,
@@ -498,6 +472,13 @@ export class EventRepository {
 				},
 			},
 			{ upsert: true },
+		);
+	}
+
+	findStateIdsByEventIds(eventIds: EventID[]) {
+		return this.collection.find<Pick<EventStore, 'stateId'>>(
+			{ _id: { $in: eventIds }, stateId: { $ne: '' as StateID } },
+			{ projection: { stateId: 1 } },
 		);
 	}
 }
