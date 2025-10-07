@@ -175,11 +175,9 @@ export class StateGraphRepository {
 		let chainId = '' as StateGraphStore['chainId'];
 		if (previousDelta) {
 			// new chain or use existing
-			chainId = nextDelta
-				? `chain__${new ObjectId().toString()}`
-				: previousDelta.chainId;
+			chainId = nextDelta ? new ObjectId().toString() : previousDelta.chainId;
 		} else {
-			chainId = `chain__${new ObjectId().toString()}`;
+			chainId = new ObjectId().toString();
 		}
 
 		await this.collection.insertOne({
