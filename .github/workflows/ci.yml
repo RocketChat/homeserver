@@ -1,40 +1,40 @@
 on:
-    release:
-        types: [published]
-    pull_request:
-        branches: "**"
-        paths-ignore:
-            - "**.md"
-    push:
-        branches:
-            - main
-        paths-ignore:
-            - "**.md"
+  release:
+    types: [published]
+  pull_request:
+    branches: "**"
+    paths-ignore:
+      - "**.md"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
 
 name: my-workflow
 jobs:
-    unit-tests:
-        name: Code Quality Checks(lint, test, tsc)
-        runs-on: ubuntu-latest
-        steps:
-            # ...
-            - uses: actions/checkout@v4
-            - name: Cache turbo build setup
-              uses: actions/cache@v4
-              with:
-                  path: .turbo
-                  key: ${{ runner.os }}-turbo-${{ github.sha }}
-                  restore-keys: |
-                      ${{ runner.os }}-turbo-
-            - uses: oven-sh/setup-bun@v2
-            - run: bun install
-            - run: bun run build
-            - run: bun lint:ci
-            - run: bun tsc --noEmit
-            - uses: supercharge/mongodb-github-action@1.12.0
-            - run: LOG_LEVEL=debug bun test packages/federation-sdk/src/services/state.service.spec.ts
-            - run: LOG_LEVEL=debug bun test:coverage
-            - name: Upload coverage reports to Codecov
-              uses: codecov/codecov-action@v5
-              with:
-                  token: ${{ secrets.CODECOV_TOKEN }}
+  unit-tests:
+    name: Code Quality Checks(lint, test, tsc)
+    runs-on: ubuntu-latest
+    steps:
+      # ...
+      - uses: actions/checkout@v4
+      - name: Cache turbo build setup
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build
+      - run: bun lint:ci
+      - run: bun tsc --noEmit
+      - uses: supercharge/mongodb-github-action@1.12.0
+      - run: LOG_LEVEL=debug bun test packages/federation-sdk/src/services/state.service.spec.ts
+      - run: LOG_LEVEL=debug bun test:coverage
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
