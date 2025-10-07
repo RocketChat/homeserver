@@ -427,7 +427,6 @@ export class StateService {
 				// latest events filter out rejected events anyway, therefore no need to be afraid of having no state id associated with an event here
 
 				await this.saveRejectedEvent(event, '' as StateID);
-				return;
 			}
 
 			throw error;
