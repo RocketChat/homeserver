@@ -654,7 +654,7 @@ export class StateService {
 		const stateResRequired = [] as typeof states;
 		if (rest.every((state) => state.size === state1.size)) {
 			// determine first which ones truely diverge
-			const keys = Object.keys(state1) as StateMapKey[];
+			const keys = state1.keys().toArray();
 			const paired = yieldPairs(states);
 			const firstPair = paired.shift();
 			if (!firstPair) {
