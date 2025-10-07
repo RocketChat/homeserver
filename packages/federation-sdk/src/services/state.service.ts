@@ -1,88 +1,83 @@
 import { createLogger, signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
+	type EventStore,
 	type PduContent,
-	type PduType,
-	RoomState,
-	type StateMapKey,
-} from '@rocket.chat/federation-room';
-import type {
-	EventStore,
-	Pdu,
+	PduCreateEventContent,
 	PduForType,
+	type PduType,
 	PduWithHashesAndSignaturesOptional,
-	PersistentEventBase,
+	type PersistentEventBase,
+	PersistentEventFactory,
+	RejectCode,
+	RoomID,
+	RoomState,
+	RoomVersion,
+	type StateID,
+	type StateMapKey,
+	StateResolverAuthorizationError,
+	checkEventAuthWithState,
+	extractDomainFromId,
+	resolveStateV2Plus,
 } from '@rocket.chat/federation-room';
-import { PersistentEventFactory } from '@rocket.chat/federation-room';
-import type { RoomVersion } from '@rocket.chat/federation-room';
-import { resolveStateV2Plus } from '@rocket.chat/federation-room';
-import type { PduCreateEventContent } from '@rocket.chat/federation-room';
-import { checkEventAuthWithState } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
-import { StateRepository, StateStore } from '../repositories/state.repository';
+import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
-type StrippedRoomState = {
+type StrippedEvent = {
 	content: PduContent;
 	sender: string;
-	state_key: string;
+	state_key?: string;
 	type: PduType;
 };
+
+/*
+ * event -> state id -> state map -> state service
+ */
+
+function yieldPairs<T>(list: T[]): [T, T][] {
+	const pairs = [] as [T, T][];
+	for (let i = 1; i < list.length; i++) {
+		pairs.push([list[i - 1], list[i]]);
+	}
+
+	return pairs;
+}
 
 @singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(
-		private readonly stateRepository: StateRepository,
+		private readonly stateRepository: StateGraphRepository,
 
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
 	) {}
 
-	async persistEvent(event: Pdu) {
-		const roomVersion = await this.getRoomVersion(event.room_id);
-		if (!roomVersion) {
-			throw new Error('processStateResolutionStage: Room version not found');
-		}
-
-		const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
-
-		if (pdu.isState()) {
-			await this.persistStateEvent(pdu);
-			if (pdu.rejected) {
-				throw new Error(pdu.rejectedReason);
-			}
-		} else {
-			await this.persistTimelineEvent(pdu);
-			if (pdu.rejected) {
-				throw new Error(pdu.rejectedReason);
-			}
-		}
-	}
-
+	// TODO: this is a very vague method, better would be to use exactly what needed,
+	// or getCreateEvent.
+	// currently AFAIK mostly is used for just room version
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
-		const state = await this.stateRepository.getByRoomIdAndIdentifier(
-			roomId,
-			'm.room.create:',
-		);
-		if (!state) {
+		const { event, stateId } =
+			(await this.eventRepository.findByRoomIdAndType(
+				roomId,
+				'm.room.create',
+			)) ?? {};
+		if (event?.type !== 'm.room.create') {
 			throw new Error('Create event mapping not found for room information');
 		}
 
-		const createEvent = await this.eventRepository.findById(
-			state.delta.eventId,
-		);
-		if (!createEvent) {
-			throw new Error('Create event not found for room information');
+		if (!stateId) {
+			throw new Error('Create event has no state id, something is very wrong');
 		}
 
-		return createEvent?.event.content as PduCreateEventContent;
+		return event.content;
 	}
 
-	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
+	async getRoomVersion(roomId: string): Promise<RoomVersion> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
 			roomId,
 			'm.room.create',
@@ -91,9 +86,10 @@ export class StateService {
 			throw new Error('Create event not found for room version');
 		}
 
-		return createEvent.event.content.room_version;
+		return createEvent.event.content?.room_version as RoomVersion;
 	}
 
+	// helps with logging state
 	private logState(label: string, state: State) {
 		const printableState = Array.from(state.entries()).map(([key, value]) => {
 			return {
@@ -107,267 +103,103 @@ export class StateService {
 			};
 		});
 
-		this.logger.debug({ state: printableState }, label);
+		// TODO: change to debug later
+		this.logger.info({ state: printableState }, label);
 	}
 
-	/**
-	 * Returns the state used to validate the event
-	 * This is the state prior to the event
-	 */
-	async findStateAtEvent(
-		eventId: EventID,
-		include: 'always' | 'event' = 'event',
-	): Promise<State> {
-		this.logger.debug({ eventId }, 'finding state before event');
+	private async updateNextEventReferencesWithEvent(event: PersistentEventBase) {
+		await this.eventRepository.updateNextEventReferences(
+			event.eventId,
+			event.getPreviousEventIds(),
+		);
+	}
 
+	// addToRoomGraph does two things
+	// 1. persists the event if not already persisted
+	// 2. marks the event as forward extremity for the room
+	private async addToRoomGraph(event: PersistentEventBase, stateId: StateID) {
+		await this.eventRepository.insertOrUpdateEventWithStateId(
+			event.eventId,
+			event.event,
+			stateId,
+		);
+
+		await this.updateNextEventReferencesWithEvent(event);
+	}
+
+	// at event isalways the stateId referenced for that event
+	private async getStateIdAtEvent(event: PersistentEventBase) {
+		const stateId = await this.eventRepository.findStateIdByEventId(
+			event.eventId,
+		);
+		if (!stateId) {
+			throw new Error(
+				`Event ${event.eventId} not found in db, failed to fidn associated state id`,
+			);
+		}
+
+		return stateId;
+	}
+
+	async getLatestRoomState(roomId: string): Promise<State> {
+		const roomVersion = await this.getRoomVersion(roomId);
+
+		const state = await this._mergeDivergentBranches(roomId, roomVersion);
+		if (!state) {
+			throw new Error(`No state found for room ${roomId}`);
+		}
+
+		return state;
+	}
+
+	async getLatestRoomState2(roomId: string) {
+		const state = await this.getLatestRoomState(roomId);
+		return new RoomState(state);
+	}
+
+	public async getStrippedRoomState(roomId: string): Promise<StrippedEvent[]> {
+		const state = await this.getLatestRoomState(roomId);
+
+		const strippedState: StrippedEvent[] = [];
+
+		for (const event of state.values()) {
+			strippedState.push(this.stripEvent(event));
+		}
+
+		return strippedState;
+	}
+
+	private stripEvent(event: PersistentEventBase): StrippedEvent {
+		return {
+			content: event.getContent(),
+			sender: event.sender,
+			state_key: event.stateKey,
+			type: event.type,
+		};
+	}
+
+	async getEvent(eventId: EventID) {
 		const event = await this.eventRepository.findById(eventId);
 		if (!event) {
-			this.logger.error({ eventId }, 'event not found');
-			throw new Error(`Event ${eventId} not found`);
+			return null;
 		}
 
 		const roomVersion = await this.getRoomVersion(event.event.room_id);
-		if (!roomVersion) {
-			this.logger.error({ eventId }, 'room version not found');
-			throw new Error('Room version not found');
-		}
 
 		const pdu = PersistentEventFactory.createFromRawEvent(
 			event.event,
 			roomVersion,
 		);
 
-		// The fully resolved state for the room, prior to considering any state changes induced by the requested event. Includes the authorization chain for the events.
-
-		const includeEvent =
-			include === 'always' || (include === 'event' && !pdu.isState());
-
-		if (pdu.isCreateEvent() && !includeEvent) {
-			return new Map();
-		}
-
-		// Retrieves a snapshot of a room's state at a given event, in the form of event IDs. This performs the same function as calling /state/{roomId}, however this returns just the event IDs rather than the full events.
-		const { stateId } = event;
-
-		const storedState = await this.stateRepository.getStateById(stateId);
-
-		if (!storedState) {
-			this.logger.error({ msg: 'last state delta not found', eventId });
-			throw new Error(`State at event ${eventId} not found`);
-		}
-
-		this.logger.debug(
-			{ delta: storedState?.delta, prevStateIds: storedState.prevStateIds },
-			'last state',
-		);
-
-		const state = new Map<StateMapKey, PersistentEventBase>();
-
-		/**
-		 * If the event is a state event, we don't include the event in the state, otherwise the state would be the new state
-		 * computed because of the event
-		 *
-		 * If the event is a timeline event, we include the event in the state
-		 */
-		const eventsToFetch = [
-			includeEvent && storedState._id.toString(),
-			...storedState.prevStateIds,
-		].filter(Boolean) as string[];
-
-		const stateMappings = await this.stateRepository
-			.getStateMappingsByStateIdsOrdered(eventsToFetch)
-			.toArray();
-
-		for await (const { delta } of stateMappings) {
-			const { identifier: stateKey, eventId } = delta;
-			const event = await this.eventRepository.findById(eventId);
-			if (!event) {
-				throw new Error(`Event ${eventId} not found`);
-			}
-
-			state.set(
-				stateKey,
-				PersistentEventFactory.createFromRawEvent(event.event, roomVersion),
+		if (event.rejectCode !== undefined) {
+			pdu.reject(
+				event.rejectCode,
+				event.rejectDetail?.reason ?? '',
+				event.rejectDetail?.rejectedBy,
 			);
 		}
 
-		return state;
-	}
-
-	// the final state id of a room
-	// always use this to persist an event with it's respective stateId unless the event is rejected
-	async getStateIdForRoom(roomId: string): Promise<string> {
-		const stateMapping =
-			await this.stateRepository.getLatestStateMapping(roomId);
-
-		if (!stateMapping) {
-			throw new Error('State mapping not found');
-		}
-
-		return stateMapping._id.toString();
-	}
-
-	private async buildLastRoomState(roomId: string): Promise<State> {
-		const roomVersion = await this.getRoomVersion(roomId);
-		if (!roomVersion) {
-			throw new Error('Room version not found, there is no state');
-		}
-
-		const stateMappings = await this.stateRepository
-			.getStateMappingsByRoomIdOrderedAscending(roomId)
-			.toArray();
-
-		return this.buildFullRoomStateFromStateMappings(stateMappings, roomVersion);
-	}
-
-	private async buildFullRoomStateFromStateMapping(
-		state: StateStore,
-		roomVersion: RoomVersion,
-	): Promise<Map<StateMapKey, PersistentEventBase>> {
-		const stateMappings = await this.stateRepository
-			.getStateMappingsByStateIdsOrdered([
-				state._id.toString(),
-				...state.prevStateIds,
-			])
-			.toArray();
-		return this.buildFullRoomStateStoredEvents(
-			await this.buildFullRoomStateFromEvents(stateMappings),
-			roomVersion,
-		);
-	}
-
-	private async buildFullRoomStateFromStateMappings(
-		stateMappings: StateStore[],
-		roomVersion: RoomVersion,
-	): Promise<Map<StateMapKey, PersistentEventBase>> {
-		const state = await this.buildFullRoomStateFromEvents(stateMappings);
-
-		const finalState = await this.buildFullRoomStateStoredEvents(
-			state,
-			roomVersion,
-		);
-
-		return finalState;
-	}
-
-	private async buildFullRoomStateFromEvents(
-		stateMappings: StateStore[],
-	): Promise<Map<StateMapKey, EventID>> {
-		const state = new Map<StateMapKey, EventID>();
-		// first reconstruct the final state
-		for await (const stateMapping of stateMappings) {
-			if (!stateMapping.delta) {
-				throw new Error('State mapping has no delta');
-			}
-			const { identifier: stateKey, eventId } = stateMapping.delta;
-			state.set(stateKey, eventId);
-		}
-
-		return state;
-	}
-
-	private async buildFullRoomStateStoredEvents(
-		events: Map<StateMapKey, EventID>,
-		roomVersion: RoomVersion,
-	): Promise<Map<StateMapKey, PersistentEventBase>> {
-		const finalState = new Map<StateMapKey, PersistentEventBase>();
-
-		for (const [stateKey, eventId] of events) {
-			const event = await this.eventRepository.findById(eventId);
-			if (!event) {
-				throw new Error('Event not found');
-			}
-
-			const pdu = PersistentEventFactory.createFromRawEvent(
-				event.event,
-				roomVersion,
-			);
-
-			if (pdu.eventId !== eventId) {
-				throw new Error(
-					`Event id mismatch while building room state ${pdu.eventId} !== ${eventId}`,
-				);
-			}
-
-			finalState.set(stateKey, pdu);
-		}
-
-		return finalState;
-	}
-
-	async getFullRoomState(
-		roomId: string,
-	): Promise<Map<StateMapKey, PersistentEventBase>> {
-		return (await this.getFullRoomStateAndStateId(roomId)).state;
-	}
-
-	async getFullRoomStateAndStateId(roomId: string): Promise<{
-		stateId: string;
-		state: Map<StateMapKey, PersistentEventBase>;
-	}> {
-		const roomVersion = await this.getRoomVersion(roomId);
-		if (!roomVersion) {
-			throw new Error('Room version not found, there is no state');
-		}
-
-		const storedState =
-			await this.stateRepository.getLastStateMappingByRoomId(roomId);
-
-		const fullStoredState =
-			storedState &&
-			this.buildFullRoomStateFromStateMapping(storedState, roomVersion);
-
-		if (fullStoredState) {
-			return {
-				stateId: storedState._id.toString(),
-				state: await fullStoredState,
-			};
-		}
-
-		// TODO: we should be ok to remove the fallback scenario for production, but since we are already running in some places I wanted to keep it for now
-
-		// if (process.env.NODE_ENV === 'development') {
-		// 	throw new Error('No stored state found, and we are in production');
-		// }
-
-		this.logger.info(
-			{ roomId },
-			'no stored state, building last state, that should be a fallback scenario',
-		);
-		const lastStateId = await this.getStateIdForRoom(roomId);
-		return {
-			state: await this.buildLastRoomState(roomId),
-			stateId: lastStateId,
-		};
-	}
-
-	async getFullRoomState2(roomId: string): Promise<RoomState> {
-		const state = await this.getFullRoomState(roomId);
-		return new RoomState(state);
-	}
-
-	async getFullRoomStateBeforeEvent2(eventId: EventID): Promise<RoomState> {
-		const state = await this.findStateAtEvent(eventId);
-		return new RoomState(state);
-	}
-
-	public async getStrippedRoomState(
-		roomId: string,
-	): Promise<StrippedRoomState[]> {
-		const state = await this.getFullRoomState(roomId);
-
-		const strippedState: StrippedRoomState[] = [];
-
-		for (const event of state.values()) {
-			strippedState.push({
-				content: event.getContent(),
-				sender: event.sender,
-				state_key: event.stateKey as string, // state event
-				type: event.type,
-			});
-		}
-
-		return strippedState;
+		return pdu;
 	}
 
 	public _getStore(roomVersion: RoomVersion): EventStore {
@@ -377,8 +209,13 @@ export class StateService {
 			getEvents: async (
 				eventIds: EventID[],
 			): Promise<PersistentEventBase[]> => {
+				if (eventIds.length === 0) {
+					return [];
+				}
+
+				this.logger.debug({ eventIds }, 'fetching from db or cache');
 				const events = [];
-				const toFind = [];
+				const toFind: EventID[] = [];
 
 				for (const eventId of eventIds) {
 					const event = cache.get(eventId);
@@ -397,6 +234,13 @@ export class StateService {
 						event.event,
 						roomVersion,
 					);
+					if (event.rejectCode) {
+						e.reject(
+							event.rejectCode,
+							event.rejectDetail?.reason ?? '',
+							event.rejectDetail?.rejectedBy ?? ('' as EventID),
+						);
+					}
 					cache.set(e.eventId, e);
 					return e;
 				});
@@ -424,7 +268,7 @@ export class StateService {
 	}
 
 	private async addAuthEvents(event: PersistentEventBase) {
-		const state = await this.getFullRoomState(event.roomId);
+		const state = await this.getLatestRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();
 
@@ -436,22 +280,28 @@ export class StateService {
 		}
 	}
 
-	private async addPrevEvents(event: PersistentEventBase) {
-		const roomVersion = event.version;
+	async addPrevEvents(event: PersistentEventBase) {
+		const roomVersion = await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while filling prev events');
 		}
 
-		const prevEvents = await this.eventRepository.findPrevEvents(event.roomId);
-
-		event.addPrevEvents(
-			prevEvents.map((e) =>
-				PersistentEventFactory.createFromRawEvent(e.event, roomVersion),
-			),
+		const prevEvents = await this.eventRepository.findLatestEvents(
+			event.roomId,
 		);
+
+		for (const prevEvent of prevEvents) {
+			const e = PersistentEventFactory.createFromRawEvent(
+				prevEvent.event,
+				roomVersion,
+			);
+			event.addPrevEvents([e]);
+		}
 	}
 
-	async signEvent<E extends PersistentEventBase>(event: E) {
+	public async signEvent<T extends PersistentEventBase>(event: T) {
+		if (process.env.NODE_ENV === 'test') return event;
+
 		const signingKey = await this.configService.getSigningKey();
 
 		const origin = this.configService.serverName;
@@ -473,439 +323,612 @@ export class StateService {
 		return event;
 	}
 
-	private async _persistEventAgainstState(
-		event: PersistentEventBase,
-		state: State,
-	): Promise<void> {
-		const roomVersion = event.version;
-
-		// always check for conflicts at the prev_event state
-
-		// check if has conflicts
-		// ^ now we could avoid full state reconstruction with something like "dropped" prop inside the state mapping
-
-		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
-			event.roomId,
-		);
-
-		this.logger.debug(
-			{
-				stateMappingId: lastState?._id.toString(),
-				eventId: lastState?.delta?.eventId,
-			},
-			'last state mapping',
-		);
-
-		const prevStateIds = lastState?.prevStateIds?.concat(
-			lastState?._id?.toString(),
-		);
-
-		const hasConflict = state.has(event.getUniqueStateIdentifier());
-
-		if (!hasConflict) {
-			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
-			if (event.rejected) {
-				throw new Error(event.rejectedReason);
-			}
-
-			// save the state mapping
-			const { insertedId: stateMappingId } =
-				await this.stateRepository.createStateMapping(event, prevStateIds);
-
-			const signedEvent = await this.signEvent(event);
-
-			await this.eventRepository.create(
-				event.origin,
-				signedEvent.event,
-				event.eventId,
-				stateMappingId.toString(),
-			);
-
-			return;
-		}
-
-		const conflictedState = new Map(state.entries());
-		conflictedState.set(event.getUniqueStateIdentifier(), event);
-
-		this.logState('conflicted state', conflictedState);
-
-		const resolvedState = await resolveStateV2Plus(
-			[state, conflictedState],
-			this._getStore(roomVersion),
-		);
-
-		const resolvedEvent = resolvedState.get(event.getUniqueStateIdentifier());
-
-		if (!resolvedEvent) {
-			this.logger.error({ msg: 'resolved event not found' });
-			throw new Error('Resolved event not found, something is wrong');
-		}
-
-		this.logger.debug(
-			{
-				resolvedEvent: resolvedEvent?.event,
-			},
-			'resolved event',
-		);
-
-		if (resolvedEvent.eventId !== event.eventId) {
-			// state did not change, resolvedEvent is an older event
-			// just persist the event
-			// TODO: mark rejected, although no code yet uses it so let it go
-			await this.eventRepository.create(
-				resolvedEvent.origin,
-				resolvedEvent.event,
-				resolvedEvent.eventId,
-				'',
-			);
-			return;
-		}
-
-		// new state
-
-		const { insertedId: stateMappingId } =
-			await this.stateRepository.createStateMapping(
-				resolvedEvent,
-				prevStateIds,
-			);
-
-		const signedEvent = await this.signEvent(resolvedEvent);
-
-		await this.eventRepository.create(
-			resolvedEvent.origin,
-			signedEvent.event,
-			resolvedEvent.eventId,
-			stateMappingId.toString(),
-		);
-	}
-
-	// checks for conflicts, saves the event along with the new state
-	async persistStateEvent(event: PersistentEventBase): Promise<void> {
-		const exists = await this.eventRepository.findById(event.eventId);
-		if (exists) {
-			this.logger.debug({ eventId: event.eventId }, 'event already exists');
-			return;
-		}
-
-		const roomVersion = event.version;
-
-		if (!roomVersion) {
-			throw new Error('Room version not found');
-		}
-
-		const lastEvent =
-			await this.eventRepository.findLatestEventByRoomIdBeforeTimestampWithAssociatedState(
-				event.roomId,
-				event.originServerTs,
-			);
-
-		this.logger.debug(
-			{
-				eventId: lastEvent?._id,
-				event: lastEvent?.event,
-			},
-			'last event seen before current event',
-		);
-
-		if (!lastEvent) {
-			// create
-			return this._persistEventAgainstState(event, new Map());
-		}
-
-		const lastState = await this.stateRepository.getLastStateMappingByRoomId(
-			event.roomId,
-		);
-
-		const prevStateIds = lastState?.prevStateIds?.concat(
-			lastState?._id?.toString(),
-		);
-
-		const state = await this.findStateAtEvent(lastEvent._id, 'always');
-
-		this.logState('state at last event seen:', state);
-
-		await this._persistEventAgainstState(event, state);
-
-		// if event was not rejected, update local copy
-		if (!event.rejected) {
-			this.logger.debug({
-				msg: 'event was accepted against the state at the time of the event creation',
-				eventId: event.eventId,
-			});
+	private buildStateFromEvents(events: PersistentEventBase[]): State {
+		const state = new Map<StateMapKey, PersistentEventBase>();
+		for (const event of events) {
 			state.set(event.getUniqueStateIdentifier(), event);
 		}
+		return state;
+	}
 
-		this.logState('new state', state);
+	private async buildStateFromStateMap(
+		stateMap: Map<StateMapKey, EventID>,
+		roomVersion: RoomVersion,
+	) {
+		if (stateMap.size === 0) {
+			throw new Error('State map is empty, cannot build state');
+		}
 
-		const restOfTheEvents = await this.eventRepository
-			.findEventsByRoomIdAfterTimestamp(event.roomId, event.originServerTs)
-			.toArray();
+		const eventIds = stateMap.values().toArray();
 
-		this.logger.debug(
-			{
-				events: restOfTheEvents,
-			},
-			'events seen after passed event',
-		);
-
-		const conflictedStates = [];
-
-		const conflicts = [];
-
-		for await (const event of restOfTheEvents) {
+		const events = await this.eventRepository.findByIds(eventIds).toArray();
+		const state = new Map<StateMapKey, PersistentEventBase>();
+		for (const event of events) {
 			const e = PersistentEventFactory.createFromRawEvent(
 				event.event,
 				roomVersion,
 			);
-
-			if (state.has(e.getUniqueStateIdentifier())) {
-				conflicts.push(e.getUniqueStateIdentifier());
-				const conflictedState = new Map(state.entries());
-				conflictedState.set(e.getUniqueStateIdentifier(), e);
-				conflictedStates.push(conflictedState);
-			}
+			state.set(e.getUniqueStateIdentifier(), e);
 		}
-
-		this.logger.debug({ conflicts }, 'conflicts');
-
-		// if we have any conflicts now, resolve all at once
-		if (conflictedStates.length > 0) {
-			const resolvedState = await resolveStateV2Plus(
-				conflictedStates,
-				this._getStore(roomVersion),
-			);
-
-			for (const stateKey of conflicts) {
-				const resolvedEvent = resolvedState.get(stateKey as StateMapKey);
-
-				this.logger.debug(
-					{
-						resolvedEvent: resolvedEvent?.event,
-					},
-					'resolved event',
-				);
-
-				if (!resolvedEvent) {
-					throw new Error('Resolved event not found, something is wrong');
-				}
-
-				const lastStateEvent = state.get(stateKey as StateMapKey);
-
-				if (resolvedEvent.eventId === lastStateEvent?.eventId) {
-					// state did not change
-					// just persist the event
-					// TODO: mark rejected, although no code yet uses it so let it go
-					const signedEvent = await this.signEvent(resolvedEvent);
-
-					await this.eventRepository.create(
-						resolvedEvent.origin,
-						signedEvent.event,
-						resolvedEvent.eventId,
-						'',
-					);
-
-					continue;
-				}
-
-				// state changed
-				const { insertedId: stateMappingId } =
-					await this.stateRepository.createStateMapping(
-						resolvedEvent,
-						prevStateIds,
-					);
-
-				await this.eventRepository.updateStateId(
-					resolvedEvent.eventId,
-					stateMappingId.toString(),
-				);
-			}
-		}
+		return state;
 	}
 
-	async getAllRoomIds() {
-		const stateMappingsCursor =
-			this.stateRepository.getStateMappingsByIdentifier('m.room.create:');
-		const stateMappings = await stateMappingsCursor.toArray();
-		return stateMappings.map((stateMapping) => stateMapping.roomId);
+	async saveRejectedEvent(event: PersistentEventBase, stateId: StateID) {
+		if (!event.rejectCode) {
+			throw new Error('Event is not rejected, no reject reason found in pdu');
+		}
+
+		await this.eventRepository.rejectEvent(
+			event.eventId,
+			event.event,
+			stateId,
+			event.rejectCode as RejectCode,
+			event.rejectReason ?? 'unknown',
+			event.rejectedBy,
+		);
 	}
 
-	async persistTimelineEvent(event: PersistentEventBase) {
+	// handle received pdu from transaction
+	// implements spec:https://spec.matrix.org/v1.12/server-server-api/#checks-performed-on-receipt-of-a-pdu
+	// TODO: this is not state related, can and should accept timeline events too, move to event service?
+	async handlePdu(event: PersistentEventBase): Promise<void> {
 		const exists = await this.eventRepository.findById(event.eventId);
 		if (exists) {
+			this.logger.debug(
+				{ eventId: event.eventId },
+				'event exists but attempted to persist again, should not happen',
+			);
 			return;
 		}
 
-		if (event.isState()) {
-			throw new Error('State events are not persisted with this method');
+		this.logger.debug(
+			{ eventId: event.eventId, ...this.stripEvent(event) },
+			'handling pdu',
+		);
+
+		// handle create events separately
+		if (event.isCreateEvent()) {
+			this.logger.debug({ eventId: event.eventId }, 'handling create event');
+			const stateId = await this.stateRepository.createDelta(
+				event,
+				'' as StateID,
+			);
+
+			await this.addToRoomGraph(event, stateId);
+
+			return;
 		}
+
+		// TODO: 1. Is a valid event, otherwise it is dropped. For an event to be valid, it must contain a room_id, and it must comply with the event format of that room version.
+		// 2. Passes signature checks, otherwise it is dropped.
+		// ^ done someplace else. move here? TODO:
+		// 3. Passes hash checks, otherwise it is redacted before being processed further. same as 2
+		// 4. Passes authorization rules based on the event’s auth events, otherwise it is rejected.
+
+		const store = this._getStore(event.version);
+
+		const authEvents = await store.getEvents(event.getAuthEventIds());
+
+		try {
+			await checkEventAuthWithState(
+				event,
+				this.buildStateFromEvents(authEvents),
+				this._getStore(event.version),
+			);
+		} catch (error) {
+			if (error instanceof StateResolverAuthorizationError) {
+				this.logger.warn({ error: error }, 'event not authorized');
+				event.reject(error.code, error.reason, error.rejectedBy);
+
+				// at this point potentially there is no state for this event, logic same
+				// as for any state at event.
+				// since auth events reject this event, it is also pointless to increase state chains
+				// for a state that doesn't NEED to have state
+				// latest events filter out rejected events anyway, therefore no need to be afraid of having no state id associated with an event here
+
+				await this.saveRejectedEvent(event, '' as StateID);
+			}
+
+			throw error;
+		}
+
+		this.logger.debug(
+			{ eventId: event.eventId },
+			'event authorized against auth events',
+		);
+
+		// 5. Passes authorization rules based on the state before the event, otherwise it is rejected.
+		await this._resolveStateAtEvent(event); // it is the assumption that this point forwards this event WILL have a state associated with it
+
+		/*
+		 * NOTE(Debdut):
+		 * At this point the event was allowed in state AT THE TIME OF IT'S CREATION.
+		 * which could make you think why not update the state with this event?
+		 * I can not. Because it's not just about THIS part of the state needing change, this change can propagate
+		 * a whole lot of changes down the road for all states.
+		 * State resolution algorithm is SUPPOSED to handle this. Having two branches, merging them and giving the final correct state.
+		 *
+		 * When we receive an event out of order, instead of just accepting it, we later pass it through state resoltion,
+		 * and this event becomes a new forward extrmity for the state graph.
+		 *
+		 * Spec does not dictate us having to have consistent state at all times, not to mention the complexity of doing so.
+		 * If we try to , this would mean having to replay every single event from the point of this event until the end.
+		 *
+		 * Given that all events are always checked against latest state, we need to make sure the newest state is correct.
+		 */
+
+		// indicates the event was allowed at the state, we should save it as part of that state
+
+		// 6. Passes authorization rules based on the current state of the room, otherwise it is “soft failed”.
+
+		// if event already rejected, can skip soft fail check
+		// if we are here, means the event is technically "valid", in other words when the event came into existence, nothing was wrong with it, possibly we received it much later.
+		// soft fail check is about if the event even passes auth rules based on current state, if not means, again, event valid, but doesn't matter because current state doesn't allow it, something changed in between, no need to worry about it.
 
 		const roomVersion = event.version;
 
-		const { state: room, stateId } = await this.getFullRoomStateAndStateId(
-			event.roomId,
+		this.logger.debug(
+			{ eventId: event.eventId },
+			'validating against latest state',
 		);
 
-		this.logState('state at saving message', room);
+		// 6. Passes authorization rules based on the current state of the room, otherwise it is “soft failed”.
 
-		// we need the auth events required to validate this event from our state
-		const requiredAuthEventsWeHaveSeenMap = new Map<
-			string,
-			PersistentEventBase
-		>();
-		for (const auth of event.getAuthEventStateKeys()) {
-			const authEvent = room.get(auth);
-			if (authEvent) {
-				requiredAuthEventsWeHaveSeenMap.set(authEvent.eventId, authEvent);
+		// we in memory figure out what the state is NOW
+		const state = await this.getLatestRoomState(event.roomId);
+
+		if (
+			state.get(event.getUniqueStateIdentifier())?.eventId === event.eventId
+		) {
+			// linear, already accepted
+			return;
+		}
+
+		try {
+			await checkEventAuthWithState(event, state, this._getStore(roomVersion));
+		} catch (error) {
+			if (error instanceof StateResolverAuthorizationError) {
+				// soft fail
+				// TODO: separate flag for soft fail?
+				this.logger.warn({ error }, 'event soft failed');
+				event.reject(error.code, error.reason, error.rejectedBy);
+				// event must have a state id by this point
+				const stateId = await this.getStateIdAtEvent(event);
+				await this.saveRejectedEvent(event, stateId);
 			}
+
+			throw error;
 		}
+	}
 
-		// auth events referenced in the message
-		const store = this._getStore(roomVersion);
-		const authEventsReferencedInMessage = await store.getEvents(
-			event.event.auth_events,
-		);
-		const authEventsReferencedMap = new Map<string, PersistentEventBase>();
-		for (const authEvent of authEventsReferencedInMessage) {
-			authEventsReferencedMap.set(authEvent.eventId, authEvent);
-		}
+	// // privating because want to limit events loaded in memory at once for large rooms
+	// private async *getMembersOfRoom(roomId: string) {
+	// 	const membersFromStateId = await this.getLatestStateIdForRoom(roomId);
 
-		// While auth_events in this timeline event may not be wrong and ones we have seen, they can still point to old state events, and validating against them will fail.
-		// by doing this precheck we allow the method to exit quicker.
+	// 	const stateMappingsCursor =
+	// 		await this.stateRepository.findByRoomIdAndIdentifiersAndStateId(
+	// 			roomId,
+	// 			// TODO: why it must to end whit `:` ?
+	// 			/^m\.room\.member:/,
+	// 			membersFromStateId,
+	// 		);
 
-		// both auth events set must match
-		if (requiredAuthEventsWeHaveSeenMap.size !== authEventsReferencedMap.size) {
-			// incorrect length may mean either redacted event still referenced or event in state that wasn't referenced, both cases, reject the event
-			event.reject(
-				`Auth events referenced in message do not match, expected ${requiredAuthEventsWeHaveSeenMap.size} but got ${authEventsReferencedMap.size}`,
+	// 	for await (const stateMapping of stateMappingsCursor) {
+	// 		const event = await this.eventRepository.findById(
+	// 			stateMapping.delta.eventId,
+	// 		);
+	// 		if (!event) {
+	// 			this.logger.warn(
+	// 				{
+	// 					eventId: stateMapping.delta.eventId,
+	// 					roomId: roomId,
+	// 				},
+	// 				'event not found for member state mapping, possibly a bug',
+	// 			);
+	// 			continue;
+	// 		}
+
+	// 		const rawEvent = event.event;
+
+	// 		if (
+	// 			rawEvent.type === 'm.room.member' &&
+	// 			rawEvent.content.membership === 'join'
+	// 		) {
+	// 			yield rawEvent.state_key;
+	// 		}
+	// 	}
+	// }
+
+	// async getServersInRoom(roomId: string) {
+	// 	const servers = new Set<string>();
+	// 	for await (const member of this.getMembersOfRoom(roomId)) {
+	// 		const server = extractDomainFromId(member);
+	// 		if (server) {
+	// 			servers.add(server);
+	// 		}
+	// 	}
+
+	// 	return servers.values().toArray();
+	// }
+
+	async getStateAtStateId(stateId: StateID, roomVersion: RoomVersion) {
+		const stateMap = await this.stateRepository.buildStateMapById(stateId);
+		if (!stateMap) {
+			throw new Error(
+				`getStateAtStateId: no state map found for state id ${stateId}`,
 			);
-			throw new Error(event.rejectedReason);
 		}
 
-		for (const [eventId] of requiredAuthEventsWeHaveSeenMap) {
-			if (!authEventsReferencedMap.has(eventId)) {
-				event.reject(
-					`wrong auth event in message, expected ${eventId} but not found in event`,
+		return this.buildStateFromStateMap(stateMap, roomVersion);
+	}
+
+	// async getStateBeforeEvent(event: PersistentEventBase): Promise<State> {
+	// 	const stateId = await this.getStateIdBeforeEvent(event);
+	// 	return this.getStateAtStateId(stateId, event.version);
+	// }
+
+	// TODO: i think moving this to repo will help with schema change diff
+	async getServersInRoom(roomId: string) {
+		const state = await this.getLatestRoomState(roomId);
+
+		const servers = new Set<string>();
+
+		for (const event of state.values()) {
+			if (!event.isMembershipEvent() || event.getMembership() !== 'join') {
+				continue;
+			}
+
+			try {
+				const server = extractDomainFromId(event.stateKey as string);
+				if (server) {
+					servers.add(server);
+				}
+			} catch (error) {
+				this.logger.error(
+					{ error, eventId: event.eventId },
+					'error extracting server',
 				);
-				throw new Error(event.rejectedReason);
 			}
 		}
 
-		// now we validate against auth rules
-		await checkEventAuthWithState(event, room, store);
-		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+		return Array.from(servers);
+	}
+
+	private async _isSameChain(stateIds: StateID[]) {
+		const stateDocs = await this.stateRepository
+			.findByStateIds(stateIds)
+			.toArray();
+
+		const chainIds = new Set<string>();
+		const depths = new Set<number>();
+
+		for (const stateDoc of stateDocs) {
+			chainIds.add(stateDoc.chainId);
+			depths.add(stateDoc.depth);
 		}
 
-		// TODO: save event still but with mark
+		return (
+			chainIds.size === 1 /* same chain */ &&
+			depths.size === stateIds.length /* no branches */
+		);
+	}
 
-		// now we persist the event
-		await this.eventRepository.create(
-			event.origin,
-			event.event,
-			event.eventId,
-			stateId,
+	private async _resolveState(
+		stateIds: StateID[],
+		roomVersion: RoomVersion,
+	): Promise<Map<StateMapKey, PersistentEventBase>> {
+		if (await this._isSameChain(stateIds)) {
+			// pick the latest id from the chain, that's the state to use
+			const latestDelta =
+				await this.stateRepository.findLatestByStateIds(stateIds);
+			if (!latestDelta) {
+				throw new Error(`Failed to find latest state id from list ${stateIds}`);
+			}
+
+			const state = await this.getStateAtStateId(latestDelta._id, roomVersion);
+
+			return state;
+		}
+
+		const stateLists = (
+			await Promise.all(
+				stateIds
+					.values()
+					.map((stateId) => this.stateRepository.buildStateMapById(stateId)),
+			)
+		).reduce(
+			(accum, curr) => {
+				if (curr) accum.push(curr);
+				return accum;
+			},
+			[] as Map<StateMapKey, EventID>[],
 		);
 
-		// transactions not handled here, since we can use this method as part of a "transaction receive"
+		const states = await Promise.all(
+			stateLists.map((eventIdList) =>
+				this.buildStateFromStateMap(eventIdList, roomVersion),
+			),
+		);
+
+		const [state1, ...rest] = states;
+		const stateResRequired = [] as typeof states;
+		if (rest.every((state) => state.size === state1.size)) {
+			// determine first which ones truely diverge
+			const keys = state1.keys().toArray();
+			const paired = yieldPairs(states);
+			const firstPair = paired.shift();
+			if (!firstPair) {
+				// no state?
+				throw new Error('unreachable');
+			}
+
+			const [first, second] = firstPair;
+			if (
+				!keys.every(
+					(key) => first.get(key)?.eventId === second.get(key)?.eventId,
+				)
+			) {
+				// need resolution
+				stateResRequired.push(first, second);
+			}
+
+			for (const [first, second] of paired) {
+				if (
+					!keys.every(
+						(key) => first.get(key)?.eventId === second.get(key)?.eventId,
+					)
+				) {
+					// need resolution
+					stateResRequired.push(second);
+				}
+			}
+		}
+
+		const state = await resolveStateV2Plus(
+			states, // FIXME: use required
+			this._getStore(roomVersion),
+		);
+
+		return state;
+	}
+
+	private async _resolveAndSaveState(
+		stateIds: StateID[],
+		roomVersion: RoomVersion,
+	) {
+		const state = await this._resolveState(stateIds, roomVersion);
+
+		const stateId = await this.stateRepository.createSnapshot(
+			state.values().toArray(),
+		);
+
+		return { stateId, state };
+	}
+
+	private async _resolveStateAtEvent(event: PersistentEventBase) {
+		const stateIdList = this.eventRepository.findStateIdsByEventIds(
+			event.getPreviousEventIds(),
+		);
+		const stateIds = new Set<StateID>();
+		for await (const record of stateIdList) {
+			stateIds.add(record.stateId);
+		}
+
+		if (stateIds.size === 0) {
+			this.logger.debug(
+				{
+					eventId: event.eventId,
+					previousEvents: event.getPreviousEventIds(),
+				},
+				'previous events',
+			);
+			throw new Error(`no state at event ${event.eventId}`);
+		}
+
+		// different stateids, may need to run state resolution
+		if (stateIds.size > 1) {
+			const { stateId, state } = await this._resolveAndSaveState(
+				stateIds.values().toArray(),
+				event.version,
+			);
+
+			// save the event with this state
+			// this is more like "state before event"
+			// but for timeline events, it's all the same
+			await this.addToRoomGraph(event, stateId);
+			try {
+				await checkEventAuthWithState(
+					event,
+					state,
+					this._getStore(event.version),
+				);
+			} catch (error) {
+				if (error instanceof StateResolverAuthorizationError) {
+					event.reject(error.code, error.reason, error.rejectedBy);
+					// reject the event but save with the stateid already set, technically not needed anymore
+					await this.saveRejectedEvent(event, stateId);
+				}
+
+				throw error;
+			}
+
+			// move pointer forward for state events
+			if (event.isState()) {
+				const deltaId = await this.stateRepository.createDelta(event, stateId);
+				await this.eventRepository.updateStateId(event.eventId, deltaId);
+			}
+
+			return;
+		}
+
+		// one state, check auth against it
+
+		const [stateId] = stateIds.values().toArray();
+		if (!stateId) {
+			throw new Error('unreachable');
+		}
+		const state = await this.getStateAtStateId(stateId, event.version);
+		const authState = new Map<StateMapKey, PersistentEventBase>();
+		for (const key of event.getAuthEventStateKeys()) {
+			const authEvent = state.get(key);
+			if (authEvent) {
+				authState.set(authEvent.getUniqueStateIdentifier(), authEvent);
+			}
+		}
+
+		const authEventIdsInEvent = new Set(event.getAuthEventIds());
+
+		if (
+			authEventIdsInEvent.size !== authState.size ||
+			authEventIdsInEvent.difference(new Set(authState.values())).size !== 0
+		) {
+			this.logger.debug(
+				{
+					authEventsWeHaveSeen: Array.from(authState.values()).map(
+						(e) => e.eventId,
+					),
+					auithEventsInEvent: Array.from(authEventIdsInEvent.values()),
+				},
+				'auth events differ from event to our state, checking against state',
+			);
+			try {
+				await checkEventAuthWithState(
+					event,
+					authState,
+					this._getStore(event.version),
+				);
+			} catch (error) {
+				if (error instanceof StateResolverAuthorizationError) {
+					this.logger.warn({ error }, 'event not authorized against state');
+					event.reject(error.code, error.reason, error.rejectedBy);
+					// same state, save against it
+					await this.saveRejectedEvent(event, stateId);
+				}
+
+				throw error;
+			}
+		}
+
+		this.logger.debug(
+			{ eventId: event.eventId, stateId },
+			"event authorized against event's state",
+		);
+
+		if (event.isTimelineEvent()) {
+			// associate the event with the "previous state"
+			await this.addToRoomGraph(event, stateId);
+		}
+
+		if (event.isState()) {
+			// forward the pointer
+			const deltaId = await this.stateRepository.createDelta(event, stateId);
+			await this.addToRoomGraph(event, deltaId);
+		}
+	}
+
+	async _mergeDivergentBranches(roomId: string, roomVersion_?: RoomVersion) {
+		const roomVersion = roomVersion_
+			? roomVersion_
+			: await this.getRoomVersion(roomId);
+		const records = await this.eventRepository.findLatestEvents(roomId);
+		const stateIds = new Set<StateID>();
+		for (const record of records) {
+			stateIds.add(record.stateId);
+		}
+
+		if (stateIds.size === 1) {
+			// all pointing to the same state, no need to merge
+			const stateId = stateIds.values().toArray()[0]!;
+			const stateMap = await this.stateRepository.buildStateMapById(stateId);
+
+			if (!stateMap) {
+				throw new Error(`StateService: no state asccociated with ${stateId}`);
+			}
+
+			return this.buildStateFromStateMap(stateMap, roomVersion);
+		}
+
+		const state = await this._resolveState(
+			stateIds.values().toArray(),
+			roomVersion,
+		);
+
+		// if a new event says any of these events to be a previous event, we need the correct state for the event.
+		// can not just update the state each events point to here, we must do it when a new event actually merges these branches
+		// this state is not saved
+
+		return state;
+	}
+
+	async getStateBeforeEvent(event: PersistentEventBase) {
+		const stateId = await this.getStateIdAtEvent(event);
+
+		if (event.isTimelineEvent()) {
+			// same as state at event
+			const stateMap = await this.stateRepository.buildStateMapById(stateId);
+			if (!stateMap) {
+				throw new Error(`No state found for event ${event.eventId}`);
+			}
+			return this.buildStateFromStateMap(stateMap, event.version);
+		}
+
+		if (!event.isState()) {
+			throw new Error('invalid event type');
+		}
+
+		const stateMap =
+			await this.stateRepository.buildPreviousStateMapById(stateId);
+		if (!stateMap) {
+			throw new Error(`No state found for event ${event.eventId}`);
+		}
+
+		return this.buildStateFromStateMap(stateMap, event.version);
+	}
+
+	async getStateAtEvent(event: PersistentEventBase) {
+		const stateId = await this.getStateIdAtEvent(event);
+
+		return this.getStateAtStateId(stateId, event.version);
+	}
+
+	// TODO: remove this
+	async findStateAtEvent(eventId: EventID) {
+		const event = await this.getEvent(eventId);
+		if (!event) {
+			throw new Error(`EVent ${eventId} not found`);
+		}
+
+		return this.getStateAtEvent(event);
 	}
 
 	async getAllPublicRoomIdsAndNames() {
-		// all types
-		const roomIds = await this.getAllRoomIds();
-		const stateMappingsCursor =
-			this.stateRepository.getStateMappingsByIdentifier('m.room.join_rules:');
-		const stateMappings = await stateMappingsCursor.toArray();
-		const eventsToFetch = stateMappings.map(
-			(stateMapping) => stateMapping.delta.eventId,
-		);
+		const createEvents = await this.eventRepository.findByType('m.room.create');
 
-		if (eventsToFetch.length === 0) {
-			const publicRoomsWithNamesCursor =
-				this.stateRepository.getByRoomIdsAndIdentifier(roomIds, 'm.room.name:');
-			const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
+		const result = [] as { name: string; room_id: RoomID }[];
 
-			const eventIds = publicRoomsWithNames.map(
-				(stateMapping) => stateMapping.delta.eventId,
-			);
-			const publicRoomsWithNamesEventsCursor =
-				this.eventRepository.findByIds<'m.room.name'>(eventIds);
-			const publicRoomsWithNamesEvents =
-				await publicRoomsWithNamesEventsCursor.toArray();
-
-			return publicRoomsWithNamesEvents.map((event) => ({
-				room_id: event.event.room_id,
-				name: (event.event.content?.name as string) ?? '',
-			}));
-		}
-
-		// TODO: i know thisd is overcomplicated
-		//but writing this comment while not remembering what exactkly it does while not wanting to get my brain to do it either
-
-		const nonPublicRoomsCursor =
-			this.eventRepository.findFromNonPublicRooms(eventsToFetch);
-		const nonPublicRooms = await nonPublicRoomsCursor.toArray();
-
-		// since no join_rule == public
-
-		const publicRooms = roomIds.filter(
-			(roomId) =>
-				!nonPublicRooms.some((event) => event.event.room_id === roomId),
-		);
-
-		const publicRoomsWithNamesCursor =
-			this.stateRepository.getByRoomIdsAndIdentifier(
-				publicRooms,
-				'm.room.name:',
-			);
-		const publicRoomsWithNames = await publicRoomsWithNamesCursor.toArray();
-
-		const eventIds = publicRoomsWithNames.map(
-			(stateMapping) => stateMapping.delta.eventId,
-		);
-		const publicRoomsWithNamesEventsCursor =
-			this.eventRepository.findByIds<'m.room.name'>(eventIds);
-		const publicRoomsWithNamesEvents =
-			await publicRoomsWithNamesEventsCursor.toArray();
-
-		return publicRoomsWithNamesEvents.map((event) => ({
-			room_id: event.event.room_id,
-			name: (event.event.content?.name as string) ?? '',
-		}));
-	}
-
-	async getMembersOfRoom(roomId: string) {
-		const stateMappingsCursor = this.stateRepository.getByRoomIdsAndIdentifier(
-			[roomId],
-			// TODO: why it must to end whit `:` ?
-			/^m\.room\.member:/,
-		);
-		const stateMappings = await stateMappingsCursor.toArray();
-
-		const eventIds = stateMappings.map(
-			(stateMapping) => stateMapping.delta.eventId,
-		);
-		const eventsCursor =
-			this.eventRepository.findByIds<'m.room.member'>(eventIds);
-		const events = await eventsCursor.toArray();
-
-		const members = events
-			.filter((event) => event.event.content?.membership === 'join')
-			.map((event) => event.event.state_key as string);
-
-		return members;
-	}
-
-	async getServersInRoom(roomId: string) {
-		const members = await this.getMembersOfRoom(roomId);
-		if (!members.length) {
-			throw new Error(`No members found in room ${roomId}`);
-		}
-		return members.map((member) => {
-			const server = member.split(':').pop();
-			if (!server) {
-				throw new Error(`Invalid member format of room ${roomId}: ${member}`);
+		for await (const create of createEvents) {
+			const roomId = create.event.room_id;
+			// TODO: exclude memberships here
+			const state = await this.getLatestRoomState2(roomId);
+			if (!state.isPublic()) {
+				continue;
 			}
-			return server;
-		});
+
+			result.push({ name: state.name, room_id: roomId });
+		}
+
+		return result;
+	}
+
+	async getAllRoomIds() {
+		const createEvents = await this.eventRepository.findByType('m.room.create');
+
+		const result = [] as RoomID[];
+
+		for await (const create of createEvents) {
+			result.push(create.event.room_id);
+		}
+
+		return result;
 	}
 }

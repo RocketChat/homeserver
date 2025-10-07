@@ -1,18 +1,5 @@
-import {
-	type MessageAuthEvents,
-	type RoomMessageEvent,
-	roomMessageEvent,
-} from '@rocket.chat/federation-core';
-import { type SignedEvent } from '@rocket.chat/federation-core';
-
 import { ForbiddenError } from '@rocket.chat/federation-core';
-import {
-	type RedactionAuthEvents,
-	type RedactionEvent,
-	redactionEvent,
-} from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
-import { signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PersistentEventBase,
@@ -97,9 +84,9 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -145,9 +132,9 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -181,9 +168,9 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -237,9 +224,9 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -288,9 +275,9 @@ export class MessageService {
 			roomVersion,
 		);
 
-		await this.stateService.persistTimelineEvent(event);
+		await this.stateService.handlePdu(event);
 		if (event.rejected) {
-			throw new Error(event.rejectedReason);
+			throw new Error(event.rejectReason);
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
@@ -336,7 +323,7 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistTimelineEvent(reactionEvent);
+		await this.stateService.handlePdu(reactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
 
@@ -369,7 +356,7 @@ export class MessageService {
 				roomInfo.room_version,
 			);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 
@@ -414,7 +401,7 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 
@@ -458,7 +445,7 @@ export class MessageService {
 				roomInfo.room_version,
 			);
 
-		await this.stateService.persistTimelineEvent(redactionEvent);
+		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
 

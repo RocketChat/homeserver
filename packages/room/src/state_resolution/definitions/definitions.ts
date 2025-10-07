@@ -3,8 +3,9 @@ import type { EventID, State, StateMapKey } from '../../types/_common';
 import { type PduType } from '../../types/v3-11';
 
 import assert from 'node:assert';
+import { StateResolverAuthorizationError } from '../../authorizartion-rules/errors';
 import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
-import type { PersistentEventBase } from '../../manager/event-wrapper';
+import { PersistentEventBase } from '../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../manager/power-level-event-wrapper';
 import { RoomVersion } from '../../manager/type';
 
@@ -563,12 +564,17 @@ export async function mainlineOrdering(
 	return events.sort(comparisonFn);
 }
 
+export type ResolvedState = {
+	state: Map<StateMapKey, PersistentEventBase>;
+	failedEvents: PersistentEventBase[];
+};
+
 // The iterative auth checks algorithm takes as input an initial room state and a sorted list of state events
 export async function iterativeAuthChecks(
 	events: PersistentEventBase[],
 	stateMap: ReadonlyMap<StateMapKey, PersistentEventBase>,
 	store: EventStore,
-) {
+): Promise<Map<StateMapKey, PersistentEventBase>> {
 	const newState = new Map<StateMapKey, PersistentEventBase>(
 		stateMap.entries(),
 	);
@@ -591,10 +597,15 @@ export async function iterativeAuthChecks(
 
 		try {
 			await checkEventAuthWithState(event, authEventStateMap, store);
-		} catch (e) {
-			console.warn('event not allowed', event.eventId, e);
-			event.reject((e as Error).message);
-			continue;
+		} catch (error) {
+			console.warn('event not allowed', error);
+			if (error instanceof StateResolverAuthorizationError) {
+				event.reject(error.code, error.reason, error.rejectedBy);
+				continue;
+			}
+
+			// if unknown error we halt building new state
+			throw error;
 		}
 
 		newState.set(event.getUniqueStateIdentifier(), event);

@@ -13,6 +13,7 @@ import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 
 @singleton()
@@ -23,6 +24,8 @@ export class SendJoinService {
 		private readonly emitterService: EventEmitterService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
+
+		private readonly federationService: FederationService,
 	) {}
 
 	async sendJoin(
@@ -51,12 +54,11 @@ export class SendJoinService {
 		}
 
 		// fetch state before allowing join here - TODO: don't just persist the membership like this
-		const state = await stateService.getFullRoomState(roomId);
-		await stateService.persistStateEvent(joinEvent);
+		const state = await stateService.getLatestRoomState(roomId);
+		await stateService.handlePdu(joinEvent);
 
-		if (joinEvent.rejected) {
-			throw new Error(joinEvent.rejectedReason);
-		}
+		// accepted? allow other servers to start processing already
+		void this.federationService.sendEventToAllServersInRoom(joinEvent);
 
 		const configService = this.configService;
 
@@ -81,7 +83,7 @@ export class SendJoinService {
 			event: signedJoinEvent.event,
 			room_id: roomId,
 			sender: signedJoinEvent.sender,
-			state_key: signedJoinEvent.event.state_key,
+			state_key: signedJoinEvent.stateKey as string,
 			origin_server_ts: signedJoinEvent.originServerTs,
 			content: {
 				avatar_url: signedJoinEvent.getContent().avatar_url,

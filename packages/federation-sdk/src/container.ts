@@ -5,7 +5,7 @@ import type {
 	EventStagingStore,
 	EventStore,
 } from '@rocket.chat/federation-core';
-import type { Collection, WithId } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from './index';
@@ -17,7 +17,10 @@ import { Key, KeyRepository } from './repositories/key.repository';
 import { Lock, LockRepository } from './repositories/lock.repository';
 import { Room, RoomRepository } from './repositories/room.repository';
 import { Server, ServerRepository } from './repositories/server.repository';
-import { StateRepository, StateStore } from './repositories/state.repository';
+import {
+	StateGraphRepository,
+	StateGraphStore,
+} from './repositories/state-graph.repository';
 import { Upload, UploadRepository } from './repositories/upload.repository';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
@@ -82,10 +85,6 @@ export async function createFederationContainer(
 		useValue: db.collection<Room>('rocketchat_federation_rooms'),
 	});
 
-	container.register<Collection<WithId<StateStore>>>('StateCollection', {
-		useValue: db.collection<WithId<StateStore>>('rocketchat_federation_states'),
-	});
-
 	container.register<Collection<Server>>('ServerCollection', {
 		useValue: db.collection<Server>('rocketchat_federation_servers'),
 	});
@@ -94,14 +93,20 @@ export async function createFederationContainer(
 		useValue: db.collection<Upload>('rocketchat_uploads'),
 	});
 
+	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
+		useValue: db.collection<StateGraphStore>(
+			'rocketchat_federation_state_graphs',
+		),
+	});
+
 	container.registerSingleton(EventRepository);
 	container.registerSingleton(EventStagingRepository);
 	container.registerSingleton(KeyRepository);
 	container.registerSingleton(LockRepository);
 	container.registerSingleton(RoomRepository);
-	container.registerSingleton(StateRepository);
 	container.registerSingleton(ServerRepository);
 	container.registerSingleton(UploadRepository);
+	container.registerSingleton(StateGraphRepository);
 
 	container.registerSingleton(FederationRequestService);
 	container.registerSingleton(FederationService);

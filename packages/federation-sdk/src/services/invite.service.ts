@@ -90,10 +90,10 @@ export class InviteService {
 
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.serverName) {
-			await stateService.persistStateEvent(inviteEvent);
+			await stateService.handlePdu(inviteEvent);
 
 			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectedReason);
+				throw new Error(inviteEvent.rejectReason);
 			}
 
 			// let all servers know of this state change
@@ -120,7 +120,7 @@ export class InviteService {
 
 		// try to save
 		// can only invite if already part of the room
-		await stateService.persistStateEvent(
+		await stateService.handlePdu(
 			PersistentEventFactory.createFromRawEvent(
 				inviteResponse.event,
 				roomInformation.room_version,
@@ -170,9 +170,9 @@ export class InviteService {
 
 			// attempt to persist the invite event as we already have the state
 
-			await this.stateService.persistStateEvent(inviteEvent);
+			await this.stateService.handlePdu(inviteEvent);
 			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectedReason);
+				throw new Error(inviteEvent.rejectReason);
 			}
 
 			// we do not send transaction here
@@ -187,14 +187,13 @@ export class InviteService {
 			await this.stateService.getRoomInformation(roomId);
 
 			// if we have the state we try to persist the invite event
-			await this.stateService.persistStateEvent(inviteEvent);
+			await this.stateService.handlePdu(inviteEvent);
 			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectedReason);
+				throw new Error(inviteEvent.rejectReason);
 			}
-		} catch (e) {
+		} catch {
 			// don't have state copy yet
-			console.error(e);
-
+			// console.error(e);
 			// typical noop, we sign and return the event, nothing to do
 		}
 

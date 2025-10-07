@@ -4,6 +4,7 @@ import { container } from 'tsyringe';
 import { ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
+import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { InviteService } from './services/invite.service';
@@ -94,7 +95,6 @@ export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
 export { ServerRepository } from './repositories/server.repository';
 export { KeyRepository } from './repositories/key.repository';
-export { StateRepository } from './repositories/state.repository';
 
 export interface HomeserverServices {
 	room: RoomService;
@@ -111,6 +111,7 @@ export interface HomeserverServices {
 	media: MediaService;
 	request: FederationRequestService;
 	federationAuth: EventAuthorizationService;
+	emitter: EventEmitterService;
 }
 
 export type HomeserverEventSignatures = {
@@ -292,6 +293,7 @@ export function getAllServices(): HomeserverServices {
 		media: container.resolve(MediaService),
 		request: container.resolve(FederationRequestService),
 		federationAuth: container.resolve(EventAuthorizationService),
+		emitter: container.resolve(EventEmitterService),
 	};
 }
 

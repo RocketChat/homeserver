@@ -30,7 +30,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 			// }
 			const { roomId, username, sender } = body;
 
-			const room = await stateService.getFullRoomState(roomId as RoomID);
+			const room = await stateService.getLatestRoomState(roomId);
 
 			const createEvent = room.get('m.room.create:');
 
@@ -62,10 +62,10 @@ export const internalInvitePlugin = (app: Elysia) => {
 				}
 			}
 
-			await stateService.persistStateEvent(membershipEvent);
+			await stateService.handlePdu(membershipEvent);
 
 			if (membershipEvent.rejected) {
-				throw new Error(membershipEvent.rejectedReason);
+				throw new Error(membershipEvent.rejectReason);
 			}
 
 			return {

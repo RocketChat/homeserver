@@ -5,9 +5,16 @@ import {
 	Pdu,
 	PduForType,
 	PduType,
+	RejectCode,
+	StateID,
 } from '@rocket.chat/federation-room';
-import type { Collection, FindCursor, WithId } from 'mongodb';
-import { MongoError } from 'mongodb';
+import type {
+	Collection,
+	FindCursor,
+	FindOptions,
+	UpdateResult,
+	WithId,
+} from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 @singleton()
@@ -110,15 +117,6 @@ export class EventRepository {
 		);
 	}
 
-	async create(
-		origin: string,
-		event: Pdu,
-		eventId: EventID,
-		stateId = '',
-	): Promise<string | undefined> {
-		return this.persistEvent(origin, event, eventId, stateId);
-	}
-
 	async redactEvent(eventId: EventID, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
@@ -168,7 +166,7 @@ export class EventRepository {
 			{
 				'event.room_id': roomId,
 				'event.origin_server_ts': { $lt: timestamp }, // events before passed timestamp
-				stateId: { $ne: '' },
+				stateId: { $ne: '' as StateID },
 			},
 			{
 				sort: {
@@ -192,56 +190,23 @@ export class EventRepository {
 			});
 	}
 
-	async updateStateId(eventId: EventID, stateId: string): Promise<void> {
+	async updateStateId(eventId: EventID, stateId: StateID): Promise<void> {
 		await this.collection.updateOne({ _id: eventId }, { $set: { stateId } });
 	}
 
 	// finds events not yet referenced by other events
 	// more on the respective adr
-	async findPrevEvents(roomId: string) {
+	async findLatestEvents(roomId: string) {
 		return this.collection
-			.find({
-				nextEventId: '',
-				'event.room_id': roomId,
-				_id: { $ne: '' as EventID },
-			})
+			.find(
+				{
+					nextEventId: '',
+					'event.room_id': roomId,
+					rejectCode: { $exists: false },
+				},
+				{ sort: { 'event.depth': 1, createdAt: 1 } },
+			)
 			.toArray();
-	}
-
-	private async persistEvent(
-		origin: string,
-		event: Pdu,
-		eventId: EventID,
-		stateId: string,
-	) {
-		try {
-			await this.collection.insertOne({
-				_id: eventId,
-				origin,
-				event: event,
-				stateId: stateId,
-				createdAt: new Date(),
-				nextEventId: '', // new events are not expected to have forward edges
-			});
-		} catch (e) {
-			if (e instanceof MongoError) {
-				if (e.code === 11000) {
-					// duplicate key error
-					// this is expected, if the same intentional event is attempted to be persisted again
-					return;
-				}
-			}
-
-			throw e;
-		}
-
-		// this must happen later to as to avoid finding 0 prev_events on a parallel request
-		await this.collection.updateMany(
-			{ _id: { $in: event.prev_events } },
-			{ $set: { nextEventId: eventId } },
-		);
-
-		return eventId;
 	}
 
 	findMembershipEventsFromDirectMessageRooms(
@@ -266,9 +231,23 @@ export class EventRepository {
 	findByIds<T extends PduType>(
 		eventIds: EventID[],
 	): FindCursor<WithId<EventStore<PduForType<T>>>> {
-		return this.collection.find({
-			_id: { $in: eventIds },
-		}) as FindCursor<WithId<EventStore<PduForType<T>>>>;
+		return this.collection.find(
+			{
+				_id: { $in: eventIds },
+			},
+			{ sort: { 'event.depth': -1, createdAt: -1 } },
+		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
+	}
+
+	findByIdsOrderedDescending<T extends PduType>(
+		eventIds: EventID[],
+	): FindCursor<WithId<EventStore<PduForType<T>>>> {
+		return this.collection.find(
+			{
+				_id: { $in: eventIds },
+			},
+			{ sort: { 'event.depth': -1, createdAt: -1 } },
+		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
 	}
 
 	findByRoomIdAndTypes(
@@ -421,5 +400,89 @@ export class EventRepository {
 			})
 			.sort({ 'event.depth': -1, 'event.origin_server_ts': -1 })
 			.limit(limit);
+	}
+
+	// new ones
+	// -------------------
+
+	insertOrUpdateEventWithStateId(
+		eventId: EventID,
+		event: Pdu,
+		stateId: StateID,
+	): Promise<UpdateResult> {
+		return this.collection.updateOne(
+			{ _id: eventId },
+			{
+				$setOnInsert: {
+					event,
+					nextEventId: '',
+					createdAt: new Date(),
+				},
+				$set: {
+					stateId,
+				},
+			},
+			{ upsert: true },
+		);
+	}
+
+	async updateNextEventReferences(
+		newEventId: EventID,
+		previousEventIds: EventID[],
+	): Promise<UpdateResult> {
+		return this.collection.updateMany(
+			{ _id: { $in: previousEventIds }, nextEventId: '' as EventID },
+			{ $set: { nextEventId: newEventId } },
+		);
+	}
+
+	async findStateIdByEventId(eventId: EventID): Promise<StateID | undefined> {
+		const result = await this.collection.findOne<Pick<EventStore, 'stateId'>>(
+			{ _id: eventId },
+			{ projection: { stateId: 1 } },
+		);
+
+		return result?.stateId;
+	}
+
+	async rejectEvent(
+		eventId: EventID,
+		event: Pdu,
+		stateId: StateID,
+		code: RejectCode,
+		reason: string,
+		rejectedBy?: EventID,
+	): Promise<UpdateResult> {
+		return this.collection.updateOne(
+			{
+				_id: eventId,
+			},
+			{
+				$setOnInsert: {
+					event,
+					stateId,
+					nextEventId: '',
+				},
+				$set: {
+					rejectCode: code,
+					rejectDetail: {
+						reason,
+						rejectedBy,
+					},
+				},
+			},
+			{ upsert: true },
+		);
+	}
+
+	findStateIdsByEventIds(eventIds: EventID[]) {
+		return this.collection.find<Pick<EventStore, 'stateId'>>(
+			{ _id: { $in: eventIds }, stateId: { $ne: '' as StateID } },
+			{ projection: { stateId: 1 } },
+		);
+	}
+
+	findByType(type: PduType) {
+		return this.collection.find({ 'event.type': type });
 	}
 }

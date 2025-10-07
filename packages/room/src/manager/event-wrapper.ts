@@ -3,6 +3,7 @@ import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
+import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
 	getStateMapKey,
@@ -19,8 +20,12 @@ import {
 import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 
-function extractDomain(identifier: string) {
-	return identifier.split(':').pop();
+export function extractDomainFromId(identifier: string) {
+	const idx = identifier.indexOf(':');
+	if (idx === -1) {
+		throw new Error(`Invalid identifier ${identifier}, no domain found`);
+	}
+	return identifier.substring(idx + 1);
 }
 
 type MakeOptional<T, K extends keyof T> = {
@@ -44,7 +49,11 @@ export abstract class PersistentEventBase<
 	Version extends RoomVersion = RoomVersion,
 	Type extends PduType = PduType,
 > {
-	private _rejectedReason?: string;
+	public rejectCode = '';
+
+	public rejectReason = '';
+
+	public rejectedBy = '' as EventID;
 
 	private signatures: Signature = {};
 
@@ -99,7 +108,7 @@ export abstract class PersistentEventBase<
 	// TODO: This should be removed or different name used instead?
 
 	get origin() {
-		const domain = extractDomain(this.rawEvent.sender);
+		const domain = extractDomainFromId(this.rawEvent.sender);
 		if (!domain) {
 			throw new Error('Invalid sender, no domain found');
 		}
@@ -420,15 +429,17 @@ export abstract class PersistentEventBase<
 	}
 
 	get rejected() {
-		return this._rejectedReason !== undefined;
+		return this.rejectCode !== '';
 	}
 
-	reject(reason: string) {
-		this._rejectedReason = reason;
+	isAuthRejected() {
+		return this.rejectCode === RejectCodes.AuthError;
 	}
 
-	get rejectedReason() {
-		return this._rejectedReason;
+	reject(code: RejectCode, reason: string, rejectedBy?: EventID) {
+		this.rejectCode = code;
+		this.rejectReason = reason;
+		if (rejectedBy) this.rejectedBy = rejectedBy;
 	}
 
 	addPrevEvents(events: PersistentEventBase<Version>[]) {
@@ -452,6 +463,16 @@ export abstract class PersistentEventBase<
 		};
 
 		return this;
+	}
+
+	toStrippedJson() {
+		return encodeCanonicalJson({
+			eventId: this.eventId,
+			type: this.type,
+			roomId: this.roomId,
+			sender: this.sender,
+			stateKey: this.stateKey,
+		});
 	}
 }
 export type { EventStore };

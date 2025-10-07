@@ -20,7 +20,7 @@ export const roomPlugin = (app: Elysia) => {
 			const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
 
 			return {
-				chunk: publicRooms.map((room) => ({
+				chunk: publicRooms.map((room: any) => ({
 					...defaultObj,
 					...room,
 				})),
@@ -79,7 +79,7 @@ export const roomPlugin = (app: Elysia) => {
 
 						return true;
 					})
-					.map((room) => ({
+					.map((room: any) => ({
 						...defaultObj,
 						...room,
 					})),

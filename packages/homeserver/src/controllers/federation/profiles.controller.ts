@@ -5,7 +5,7 @@ import {
 	UserID,
 } from '@rocket.chat/federation-room';
 import { ProfilesService } from '@rocket.chat/federation-sdk';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
@@ -83,20 +83,18 @@ export const profilesPlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query }) => {
+			async ({ params, query: _query }) => {
 				const { roomId, userId } = params;
 
-				const { ver } = query;
+				// const { ver } = query;
 
-				return profilesService.makeJoin(
-					roomId as RoomID,
-					userId as UserID,
-					ver ?? ['1'],
-				);
+				return profilesService.makeJoin(roomId as RoomID, userId as UserID, [
+					'10',
+				]);
 			},
 			{
 				params: MakeJoinParamsDto,
-				query: MakeJoinQueryDto,
+				query: t.Any(),
 				response: {
 					200: MakeJoinResponseDto,
 					400: ErrorResponseDto,

@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
 import {
 	ConfigService,
 	type FederationContainerOptions,
@@ -23,6 +24,7 @@ import { statePlugin } from './controllers/federation/state.controller';
 import { transactionsPlugin } from './controllers/federation/transactions.controller';
 import { versionsPlugin } from './controllers/federation/versions.controller';
 import { internalDirectMessagePlugin } from './controllers/internal/direct-message.controller';
+import { internalRequestPlugin } from './controllers/internal/external-federation-request.controller';
 import { internalInvitePlugin } from './controllers/internal/invite.controller';
 import { internalMessagePlugin } from './controllers/internal/message.controller';
 import { pingPlugin } from './controllers/internal/ping.controller';
@@ -56,6 +58,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
 			10,
 		),
+		signingKey: process.env.SIGNING_KEY,
 		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
 		media: {
@@ -123,7 +126,8 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(serverKeyPlugin)
 		.use(wellKnownPlugin)
 		.use(roomPlugin)
-		.use(mediaPlugin);
+		.use(mediaPlugin)
+		.use(internalRequestPlugin);
 
 	return { app, container };
 }

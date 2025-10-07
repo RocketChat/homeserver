@@ -9,7 +9,7 @@ import {
 	getStateByMapKey,
 } from '../state_resolution/definitions/definitions';
 import { type StateMapKey } from '../types/_common';
-import { StateResolverAuthorizationError } from './errors';
+import { RejectCodes, StateResolverAuthorizationError } from './errors';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events
@@ -27,30 +27,23 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
-function isCreateAllowed(createEvent: PersistentEventBase) {
-	if (!createEvent.isCreateEvent()) {
-		throw new StateResolverAuthorizationError('m.room.create event not found', {
-			eventFailed: createEvent,
-		});
-	}
+function isCreateAllowed(
+	createEvent: PersistentEventBase<RoomVersion, 'm.room.create'>,
+) {
 	// If it has any prev_events, reject.
 	if (createEvent.event.prev_events.length > 0) {
-		throw new StateResolverAuthorizationError(
-			'm.room.create event has prev_events',
-			{
-				eventFailed: createEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: createEvent,
+			reason: 'm.room.create event has prev_events',
+		});
 	}
 
 	// If the domain of the room_id does not match the domain of the sender, reject.
 	if (extractDomain(createEvent.roomId) !== extractDomain(createEvent.sender)) {
-		throw new StateResolverAuthorizationError(
-			'm.room.create event sender domain does not match room_id domain',
-			{
-				eventFailed: createEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: createEvent,
+			reason: 'm.room.create event sender domain does not match room_id domain',
+		});
 	}
 
 	const content = createEvent.getContent();
@@ -62,52 +55,47 @@ function isCreateAllowed(createEvent: PersistentEventBase) {
 			content.room_version,
 		)
 	) {
-		throw new StateResolverAuthorizationError(
-			'm.room.create event content.room_version is not a recognised version',
-			{
-				eventFailed: createEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: createEvent,
+			reason: `m.room.create event content.room_version is not a recognised version ${content.room_version}`,
+		});
 	}
 
 	// If content has no creator property, reject.
 	if (!content.creator) {
-		throw new StateResolverAuthorizationError(
-			'm.room.create event content has no creator property',
-			{
-				eventFailed: createEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: createEvent,
+			reason: 'm.room.create event content has no creator property',
+		});
 	}
 }
 
 // TODO: better typing for alias event
-function isRoomAliasAllowed(roomAliasEvent: PersistentEventBase): void {
+function isRoomAliasAllowed(
+	roomAliasEvent: PersistentEventBase<RoomVersion, 'm.room.aliases'>,
+): void {
 	// If event has no state_key, reject.
 	if (!roomAliasEvent.stateKey) {
-		throw new StateResolverAuthorizationError(
-			'm.room.canonical_alias event has no state_key',
-			{
-				eventFailed: roomAliasEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: roomAliasEvent,
+			reason: 'm.room.canonical_alias event has no state_key',
+		});
 	}
 
 	// If sender’s domain doesn’t matches state_key, reject.
 	if (roomAliasEvent.origin !== roomAliasEvent.stateKey) {
-		throw new StateResolverAuthorizationError(
-			'm.room.canonical_alias event sender domain does not match state_key',
-			{
-				eventFailed: roomAliasEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: roomAliasEvent,
+			reason:
+				'm.room.canonical_alias event sender domain does not match state_key',
+		});
 	}
 
 	return;
 }
 
 async function isMembershipChangeAllowed(
-	membershipEventToCheck: PersistentEventBase,
+	membershipEventToCheck: PersistentEventBase<RoomVersion, 'm.room.member'>,
 	authEventStateMap: Map<StateMapKey, PersistentEventBase>,
 	store: EventStore,
 ): Promise<void> {
@@ -116,12 +104,10 @@ async function isMembershipChangeAllowed(
 		!membershipEventToCheck.stateKey ||
 		!membershipEventToCheck.isMembershipEvent()
 	) {
-		throw new StateResolverAuthorizationError(
-			'm.room.member event has no state_key or membership property',
-			{
-				eventFailed: membershipEventToCheck,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: membershipEventToCheck,
+			reason: 'm.room.member event has no state_key or membership property',
+		});
 	}
 
 	// sender -> who asked for the change
@@ -198,12 +184,19 @@ async function isMembershipChangeAllowed(
 
 			// If the sender does not match state_key, reject.
 			if (sender !== invitee) {
-				throw new Error('state_key does not match the sender');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'state_key does not match the sender',
+				});
 			}
 
 			// If the sender is banned, reject.
 			if (senderMembership === 'ban') {
-				throw new Error('sender is banned');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'sender is banned',
+					rejectedBy: senderMembershipEvent,
+				});
 			}
 
 			// If the join_rule is public, allow.
@@ -217,13 +210,19 @@ async function isMembershipChangeAllowed(
 					return;
 				}
 
-				throw new Error(
-					'join_rule is invite but membership is not invite or join',
-				);
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					rejectedBy: joinRuleEvent,
+					reason: 'join_rule is invite but membership is not invite or join',
+				});
 			}
 
 			// otherwise reject
-			throw new Error('join_rule is not public or invite');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				rejectedBy: joinRuleEvent,
+				reason: 'join_rule is not public or invite',
+			});
 		}
 
 		case 'invite': {
@@ -251,17 +250,28 @@ async function isMembershipChangeAllowed(
 
 				// // If there is no m.room.third_party_invite event in the current room state with state_key matching token, reject.
 
-				throw new Error('third_party_invite not implemented');
+				throw new StateResolverAuthorizationError(RejectCodes.NotImplemented, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'third_party_invite not implemented',
+				});
 			}
 
 			// If the sender’s current membership state is not join, reject.
 			if (senderMembership !== 'join') {
-				throw new Error('sender is not part of the room');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'sender is not part of the room',
+					rejectedBy: senderMembershipEvent,
+				});
 			}
 
 			// If target user’s current membership state is join or ban, reject.
 			if (inviteeMembership === 'join' || inviteeMembership === 'ban') {
-				throw new Error('invitee is not join or ban');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'invitee is already join or ban',
+					rejectedBy: inviteeMembershipEvent,
+				});
 			}
 
 			// If the sender’s power level is greater than or equal to the invite level, allow.
@@ -277,7 +287,11 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error('sender power level is less than invite level');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				reason: `sender power level is less than invite level (${senderPowerLevel} < ${inviteLevel})`,
+				rejectedBy: powerLevelEvent.toEventBase(),
+			});
 		} // If the sender does not match state_key,
 
 		case 'leave': {
@@ -291,7 +305,11 @@ async function isMembershipChangeAllowed(
 
 			// If the sender’s current membership state is not join, reject.
 			if (senderMembership !== 'join') {
-				throw new Error('sender is not join');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'sender is not join',
+					rejectedBy: senderMembershipEvent,
+				});
 			}
 
 			// If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
@@ -303,7 +321,11 @@ async function isMembershipChangeAllowed(
 			const banLevel = powerLevelEvent.getRequiredPowerForBan();
 
 			if (inviteeMembership === 'ban' && senderPowerLevel < banLevel) {
-				throw new Error('sender power level is less than ban level');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'sender power level is less than ban level',
+					rejectedBy: powerLevelEvent.toEventBase(),
+				});
 			}
 
 			// If the sender’s power level is greater than or equal to the kick level, and the target user’s power level is less than the sender’s power level, allow.
@@ -316,13 +338,21 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error('sender power level is less than kick level');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				reason: 'sender power level is less than kick level',
+				rejectedBy: powerLevelEvent.toEventBase(),
+			});
 		}
 
 		case 'ban': {
 			// If the sender’s current membership state is not join, reject.
 			if (senderMembership !== 'join') {
-				throw new Error('sender is not join');
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: membershipEventToCheck,
+					reason: 'sender is not join',
+					rejectedBy: senderMembershipEvent,
+				});
 			}
 
 			// If the sender’s power level is greater than or equal to the ban level, and the target user’s power level is less than the sender’s power level, allow.
@@ -340,12 +370,19 @@ async function isMembershipChangeAllowed(
 				return;
 			}
 
-			throw new Error('sender power level is less than ban level');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				reason: 'sender power level is less than ban level',
+				rejectedBy: powerLevelEvent.toEventBase(),
+			});
 		}
 
 		default:
 			// unknown
-			throw new Error('unknown membership state');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: membershipEventToCheck,
+				reason: `unknown membership state ${content.membership}`,
+			});
 	}
 }
 
@@ -389,18 +426,24 @@ export function validatePowerLevelEvent(
 			newUserDefaultPowerLevel &&
 			newUserDefaultPowerLevel > senderCurrentPowerLevel
 		) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason:
+					'new user_default power level is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (
 			existingUserDefaultPowerLevel &&
 			existingUserDefaultPowerLevel > senderCurrentPowerLevel
 		) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason:
+					'existing user_default power level is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -413,18 +456,24 @@ export function validatePowerLevelEvent(
 			newEventsDefaultValue &&
 			newEventsDefaultValue > senderCurrentPowerLevel
 		) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason:
+					'new events_default power level is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (
 			existingEventsDefaultValue &&
 			existingEventsDefaultValue > senderCurrentPowerLevel
 		) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason:
+					'existing events_default power level is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -437,18 +486,24 @@ export function validatePowerLevelEvent(
 			newStateDefaultValue &&
 			newStateDefaultValue > senderCurrentPowerLevel
 		) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason:
+					'new state_default power level is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (
 			existingStateDefaultValue &&
 			existingStateDefaultValue > senderCurrentPowerLevel
 		) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason:
+					'existing state_default power level is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -458,15 +513,19 @@ export function validatePowerLevelEvent(
 	// for ban
 	if (existingBanValue !== newBanValue) {
 		if (newBanValue && newBanValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'new power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (existingBanValue && existingBanValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'existing power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -476,15 +535,19 @@ export function validatePowerLevelEvent(
 	// for kick
 	if (existingKickValue !== newKickValue) {
 		if (newKickValue && newKickValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'new power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (existingKickValue && existingKickValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'existing power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -494,15 +557,19 @@ export function validatePowerLevelEvent(
 
 	if (existingRedactValue !== newRedactValue) {
 		if (newRedactValue && newRedactValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'new power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (existingRedactValue && existingRedactValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'existing power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -512,15 +579,19 @@ export function validatePowerLevelEvent(
 
 	if (existingInviteValue !== newInviteValue) {
 		if (newInviteValue && newInviteValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'new power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'new power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 
 		if (existingInviteValue && existingInviteValue > senderCurrentPowerLevel) {
-			throw new Error(
-				'existing power level value is greater than sender power level',
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				reason: 'existing power level value is greater than sender power level',
+				rejectedBy: existingPowerLevel.toEventBase(),
+			});
 		}
 	}
 
@@ -543,9 +614,12 @@ export function validatePowerLevelEvent(
 				existingPowerLevelValue &&
 				existingPowerLevelValue > senderCurrentPowerLevel
 			) {
-				throw new Error(
-					'existing power level value is greater than sender power level',
-				);
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: powerLevelEvent.toEventBase()!,
+					reason:
+						'existing power level value is greater than sender power level',
+					rejectedBy: existingPowerLevel.toEventBase(),
+				});
 			}
 		}
 	}
@@ -563,9 +637,11 @@ export function validatePowerLevelEvent(
 			// changed or added
 			// If the new value is greater than the sender’s current power level, reject.
 			if (newPowerLevelValue && newPowerLevelValue > senderCurrentPowerLevel) {
-				throw new Error(
-					'new power level value is greater than sender power level',
-				);
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: powerLevelEvent.toEventBase()!,
+					reason: 'new power level value is greater than sender power level',
+					rejectedBy: existingPowerLevel.toEventBase(),
+				});
 			}
 		}
 	}
@@ -587,9 +663,12 @@ export function validatePowerLevelEvent(
 				existingPowerLevelValue &&
 				existingPowerLevelValue > senderCurrentPowerLevel
 			) {
-				throw new Error(
-					'existing power level value is greater than sender power level',
-				);
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: powerLevelEvent.toEventBase()!,
+					reason:
+						'existing power level value is greater than sender power level',
+					rejectedBy: existingPowerLevel.toEventBase(),
+				});
 			}
 		}
 	}
@@ -607,9 +686,11 @@ export function validatePowerLevelEvent(
 			// changed or added
 			// If the new value is greater than the sender’s current power level, reject.
 			if (newPowerLevelValue && newPowerLevelValue > senderCurrentPowerLevel) {
-				throw new Error(
-					'new power level value is greater than sender power level',
-				);
+				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+					rejectedEvent: powerLevelEvent.toEventBase()!,
+					reason: 'new power level value is greater than sender power level',
+					rejectedBy: existingPowerLevel.toEventBase(),
+				});
 			}
 		}
 	}
@@ -621,12 +702,10 @@ export function checkEventAuthWithoutState(
 ) {
 	if (event.isCreateEvent()) {
 		if (authEvents.length > 0) {
-			throw new StateResolverAuthorizationError(
-				'm.room.create event has auth_events',
-				{
-					eventFailed: event,
-				},
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				reason: 'm.room.create event has auth_events',
+			});
 		}
 
 		return isCreateAllowed(event);
@@ -650,37 +729,31 @@ export function checkEventAuthWithoutState(
 
 	for (const authEvent of authEvents) {
 		// if rejected, reject this event
-		if (authEvent.rejected) {
-			throw new StateResolverAuthorizationError(
-				`auth event ${authEvent.eventId} rejected`,
-				{
-					eventFailed: event,
-					reason: authEvent,
-				},
-			);
+		if (authEvent.isAuthRejected()) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				reason: 'auth event required to authorize this event was rejected',
+				rejectedBy: authEvent,
+			});
 		}
 
 		const stateKey = authEvent.getUniqueStateIdentifier();
 
 		// if this is not neeede, throw
 		if (!stateKeysNeeded.has(stateKey)) {
-			throw new StateResolverAuthorizationError(
-				`excess auth event ${authEvent.eventId} with type ${authEvent.type} state_key ${authEvent.stateKey}`,
-				{
-					eventFailed: event,
-					reason: authEvent,
-				},
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				reason: 'excess auth event',
+				rejectedBy: authEvent,
+			});
 		}
 
 		if (authEventStateMap.has(stateKey)) {
-			throw new StateResolverAuthorizationError(
-				`duplicate auth event ${authEvent.eventId} with type ${authEvent.type} state_key ${authEvent.stateKey}`,
-				{
-					eventFailed: event,
-					reason: authEvent,
-				},
-			);
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				rejectedBy: authEvent,
+				reason: 'duplicate auth event',
+			});
 		}
 
 		authEventStateMap.set(stateKey, authEvent);
@@ -691,8 +764,9 @@ export function checkEventAuthWithoutState(
 	});
 
 	if (!roomCreateEvent) {
-		throw new StateResolverAuthorizationError('missing m.room.create event', {
-			eventFailed: event,
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			reason: 'missing m.room.create event',
 		});
 	}
 
@@ -716,8 +790,9 @@ export async function checkEventAuthWithState(
 	assert(roomCreateEvent, 'missing m.room.create event');
 
 	if (!roomCreateEvent.isCreateEvent()) {
-		throw new StateResolverAuthorizationError('m.room.create event not found', {
-			eventFailed: event,
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			reason: 'm.room.create event not found',
 		});
 	}
 
@@ -726,13 +801,11 @@ export async function checkEventAuthWithState(
 		roomCreateEvent.getContent()['m.federate'] === false &&
 		event.origin !== roomCreateEvent.origin
 	) {
-		throw new StateResolverAuthorizationError(
-			'm.federate is false and sender domain does not match',
-			{
-				eventFailed: event,
-				reason: roomCreateEvent,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			rejectedBy: roomCreateEvent,
+			reason: 'm.federate is false and sender domain does not match',
+		});
 	}
 
 	if (event.isAliasEvent()) {
@@ -749,25 +822,21 @@ export async function checkEventAuthWithState(
 		state_key: event.sender,
 	});
 	if (senderMembership?.getMembership() !== 'join') {
-		throw new StateResolverAuthorizationError(
-			"sender's membership is not join",
-			{
-				eventFailed: event,
-				reason: senderMembership,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			reason: "sender's membership is not join",
+			rejectedBy: senderMembership,
+		});
 	}
 
 	// If type is m.room.third_party_invite:
 	// @ts-ignore the pdu union doesn't have this type TODO: add
 	if (event.type === 'm.room.third_party_invite') {
 		console.warn('third_party_invite not implemented');
-		throw new StateResolverAuthorizationError(
-			'third_party_invite not implemented',
-			{
-				eventFailed: event,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.NotImplemented, {
+			rejectedEvent: event,
+			reason: 'third_party_invite not implemented',
+		});
 	}
 
 	const existingPowerLevelEvent = getStateByMapKey(state, {
@@ -789,24 +858,19 @@ export async function checkEventAuthWithState(
 	);
 
 	if (userPowerLevel < eventRequiredPowerLevel) {
-		throw new StateResolverAuthorizationError(
-			'user power level is less than event required power level',
-			{
-				eventFailed: event,
-				reason: powerLevelEvent.toEventBase(),
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			rejectedBy: powerLevelEvent.toEventBase(),
+			reason: `user power level ${userPowerLevel} is less than event required power level ${eventRequiredPowerLevel}`,
+		});
 	}
 
 	// If the event has a state_key that starts with an @ and does not match the sender, reject.
 	if (event.stateKey?.startsWith('@') && event.stateKey !== event.sender) {
-		throw new StateResolverAuthorizationError(
-			'event state key does not match sender',
-			{
-				eventFailed: event,
-				reason: event,
-			},
-		);
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			reason: 'event state_key does not match sender',
+		});
 	}
 
 	// If type is m.room.power_levels:
