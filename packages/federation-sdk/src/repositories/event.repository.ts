@@ -118,15 +118,6 @@ export class EventRepository {
 		);
 	}
 
-	async create(
-		origin: string,
-		event: Pdu,
-		eventId: EventID,
-		stateId = '' as StateID,
-	): Promise<string | undefined> {
-		return this.persistEvent(origin, event, eventId, stateId);
-	}
-
 	async redactEvent(eventId: EventID, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
@@ -216,42 +207,6 @@ export class EventRepository {
 				{ sort: { 'event.depth': 1, createdAt: 1 } },
 			)
 			.toArray();
-	}
-
-	private async persistEvent(
-		origin: string,
-		event: Pdu,
-		eventId: EventID,
-		stateId: StateID,
-	) {
-		try {
-			await this.collection.insertOne({
-				_id: eventId,
-				origin,
-				event: event,
-				stateId: stateId,
-				createdAt: new Date(),
-				nextEventId: '' as EventID, // new events are not expected to have forward edges
-			});
-		} catch (e) {
-			if (e instanceof MongoError) {
-				if (e.code === 11000) {
-					// duplicate key error
-					// this is expected, if the same intentional event is attempted to be persisted again
-					return;
-				}
-			}
-
-			throw e;
-		}
-
-		// this must happen later to as to avoid finding 0 prev_events on a parallel request
-		await this.collection.updateMany(
-			{ _id: { $in: event.prev_events } },
-			{ $set: { nextEventId: eventId } },
-		);
-
-		return eventId;
 	}
 
 	findMembershipEventsFromDirectMessageRooms(
