@@ -706,9 +706,11 @@ export class StateService {
 	}
 
 	private async _resolveStateAtEvent(event: PersistentEventBase) {
-		const events = this.eventRepository.findByIds(event.getPreviousEventIds());
+		const stateIdList = this.eventRepository.findStateIdsByEventIds(
+			event.getPreviousEventIds(),
+		);
 		const stateIds = new Set<StateID>();
-		for await (const record of events) {
+		for await (const record of stateIdList) {
 			stateIds.add(record.stateId);
 		}
 
@@ -717,7 +719,6 @@ export class StateService {
 				{
 					eventId: event.eventId,
 					previousEvents: event.getPreviousEventIds(),
-					events: events,
 				},
 				'previous events',
 			);
