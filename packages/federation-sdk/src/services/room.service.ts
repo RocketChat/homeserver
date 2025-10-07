@@ -1146,6 +1146,8 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
+		await stateService.signEvent(roomCreateEvent);
+
 		await stateService.handlePdu(roomCreateEvent);
 
 		// Extract displayname from userId for direct messages
