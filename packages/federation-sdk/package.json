@@ -1,6 +1,6 @@
 {
 	"name": "@rocket.chat/federation-sdk",
-	"version": "0.1.19",
+	"version": "0.1.20",
 	"description": "Matrix Federation SDK for server-to-server communication",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
