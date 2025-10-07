@@ -1,4 +1,5 @@
 import { isIPv4, isIPv6 } from 'node:net';
+import memoize from 'memoize';
 import type { Logger } from 'pino';
 import { MultiError } from './_multi-error';
 import { resolver } from './_resolver';
@@ -27,6 +28,17 @@ type HostHeaders = {
 };
 
 const DEFAULT_PORT = '8448';
+const SERVER_DISCOVERY_CACHE_MAX_AGE =
+	((maxAge?: string) => {
+		if (!maxAge) return;
+
+		const n = Number.parseInt(maxAge, 10);
+		if (!Number.isNaN(n) && n >= 0) {
+			return n;
+		}
+
+		throw new Error('Invalid SERVER_DISCOVERY_CACHE_MAX_AGE value');
+	})(process.env.SERVER_DISCOVERY_CACHE_MAX_AGE) ?? 3_600_000; // default to 1 hour
 
 // should only be needed if input is from a dns server
 function fix6(addr: string): `[${string}]` {
@@ -74,7 +86,7 @@ export async function resolveHostname(
  */
 
 // TODO remove logger from here. need to convert this into a service (?)
-export async function getHomeserverFinalAddress(
+async function getHomeserverFinalAddressInternal(
 	addr: AddressString,
 	logger?: Logger,
 ): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
@@ -163,6 +175,11 @@ export async function getHomeserverFinalAddress(
 		}
 	}
 }
+
+export const getHomeserverFinalAddress = memoize(
+	getHomeserverFinalAddressInternal,
+	{ maxAge: SERVER_DISCOVERY_CACHE_MAX_AGE },
+);
 
 type WellKnownResponse = {
 	'm.server': string;
