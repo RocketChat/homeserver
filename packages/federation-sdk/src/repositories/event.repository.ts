@@ -497,6 +497,7 @@ export class EventRepository {
 					},
 				},
 			},
+			{ upsert: true },
 		);
 	}
 }
