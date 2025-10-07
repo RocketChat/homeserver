@@ -431,7 +431,7 @@ export class EventRepository {
 		previousEventIds: EventID[],
 	): Promise<UpdateResult> {
 		return this.collection.updateMany(
-			{ _id: { $in: previousEventIds } },
+			{ _id: { $in: previousEventIds }, nextEventId: '' as EventID },
 			{ $set: { nextEventId: newEventId } },
 		);
 	}
@@ -452,12 +452,8 @@ export class EventRepository {
 		return this.collection.findOne<T>(
 			{
 				'event.room_id': roomId,
-				$or: [
-					// non rejected previos event
-					{ nextEventId: '' as EventID, rejectCode: { $exists: false } },
-					// non rejected latest event
-					{ rejectCode: { $exists: false } },
-				],
+				nextEventId: '' as EventID,
+				rejectCode: { $exists: false },
 			},
 			{ ...options, sort: { 'event.depth': -1, createdAt: -1 } },
 		);
