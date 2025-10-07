@@ -387,7 +387,7 @@ describe('StateService', async () => {
 
 		stateAtEvent.set(roomNameEvent2.eventId, state6);
 
-		// ban random1
+		// ban random3
 		const random3 = '@random3:example.com';
 		const banRandom1Event = await banUser(roomId, random3, creator);
 		const state7 = await stateService.getLatestRoomState(roomId);
@@ -410,7 +410,7 @@ describe('StateService', async () => {
 			},
 			roomCreateEvent.getContent().room_version,
 		);
-		await stateService.handlePdu(roomNameEvent3);
+		expect(stateService.handlePdu(roomNameEvent3)).rejects.toThrow();
 		const state8 = await stateService.getLatestRoomState(roomId);
 		expect(state8.size).toBe(9); // same as before, bob was banned can't change name
 		compareStates(state7, state8);
@@ -575,7 +575,7 @@ describe('StateService', async () => {
 			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
 		);
 
-		await stateService.handlePdu(membershipEvent);
+		expect(stateService.handlePdu(membershipEvent)).rejects.toThrow();
 
 		expect(membershipEvent.rejected).toBeTrue();
 		expect(membershipEvent.rejectCode).toBe(RejectCodes.AuthError);
@@ -641,7 +641,7 @@ describe('StateService', async () => {
 			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
 		);
 
-		await stateService.handlePdu(membershipEventJoin2);
+		expect(stateService.handlePdu(membershipEventJoin2)).rejects.toThrow();
 		expect(membershipEventJoin2.rejected).toBeTrue();
 		expect(membershipEventJoin2.rejectCode).toBe(RejectCodes.AuthError);
 	});
