@@ -55,52 +55,25 @@ export class EventRepository {
 
 		let queries: { query: Record<string, unknown> }[] = [];
 		switch (eventType) {
-			case 'm.room.name':
-				queries = [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-				break;
-
-			case 'm.room.message':
-				queries = [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-				break;
-
-			case 'm.reaction':
-				queries = [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-				break;
-
-			case 'm.room.member':
-				queries = [
-					baseQueries.create,
-					baseQueries.powerLevels,
-					baseQueries.membership,
-				];
-				break;
-
 			case 'm.room.create':
 				queries = [baseQueries.create];
 				break;
 
+			case 'm.room.redaction':
+				queries = [baseQueries.create, baseQueries.powerLevels];
+				break;
+
+			case 'm.reaction':
+			case 'm.room.name':
+			case 'm.room.message':
+			case 'm.room.member':
 			case 'm.room.power_levels':
+			case 'm.room.topic':
 				queries = [
 					baseQueries.create,
 					baseQueries.powerLevels,
 					baseQueries.membership,
 				];
-				break;
-
-			case 'm.room.redaction':
-				queries = [baseQueries.create, baseQueries.powerLevels];
 				break;
 
 			default:
