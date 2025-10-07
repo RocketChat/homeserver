@@ -1,7 +1,7 @@
 import type {
 	FetchResponse,
-	SigningKey,
 	MultipartResult,
+	SigningKey,
 } from '@rocket.chat/federation-core';
 import {
 	EncryptionValidAlgorithm,
