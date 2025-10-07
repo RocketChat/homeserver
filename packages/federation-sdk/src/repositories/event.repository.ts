@@ -235,7 +235,7 @@ export class EventRepository {
 			{
 				_id: { $in: eventIds },
 			},
-			{ sort: { depth: -1, createdAt: -1 } },
+			{ sort: { 'event.depth': -1, createdAt: -1 } },
 		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
 	}
 
@@ -246,7 +246,7 @@ export class EventRepository {
 			{
 				_id: { $in: eventIds },
 			},
-			{ sort: { depth: -1, createdAt: -1 } },
+			{ sort: { 'event.depth': -1, createdAt: -1 } },
 		) as FindCursor<WithId<EventStore<PduForType<T>>>>;
 	}
 
