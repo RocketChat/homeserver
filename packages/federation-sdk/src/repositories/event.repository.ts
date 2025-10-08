@@ -339,7 +339,7 @@ export class EventRepository {
 					projection: { event: 1 },
 				},
 			)
-			.sort({ 'event.depth': 1 })
+			.sort({ 'event.depth': -1 })
 			.limit(limit);
 	}
 
