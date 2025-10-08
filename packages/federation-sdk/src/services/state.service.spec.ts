@@ -473,6 +473,24 @@ describe('StateService', async () => {
 				roomVersion,
 			);
 
+			const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username as room.UserID,
+					content: { join_rule: 'public' },
+					type: 'm.room.join_rules',
+					state_key: '',
+					...getDefaultFields(),
+					prev_events: [messageEvent2.eventId],
+					auth_events: [
+						roomCreateEvent.eventId,
+						creatorMembershipEvent.eventId,
+					],
+					depth: 5,
+				},
+				roomVersion,
+			);
+
 			const powerLevelEvent =
 				await stateService.buildEvent<'m.room.power_levels'>(
 					{
@@ -494,12 +512,13 @@ describe('StateService', async () => {
 							invite: 50,
 						},
 						...getDefaultFields(),
-						prev_events: [messageEvent2.eventId],
+						prev_events: [joinRuleEvent.eventId],
 						auth_events: [
 							roomCreateEvent.eventId,
 							creatorMembershipEvent.eventId,
+							joinRuleEvent.eventId,
 						],
-						depth: 5,
+						depth: 6,
 					},
 					roomVersion,
 				);
@@ -513,8 +532,12 @@ describe('StateService', async () => {
 					content: { membership: 'join' },
 					...getDefaultFields(),
 					prev_events: [powerLevelEvent.eventId],
-					auth_events: [roomCreateEvent.eventId, powerLevelEvent.eventId],
-					depth: 6,
+					auth_events: [
+						roomCreateEvent.eventId,
+						powerLevelEvent.eventId,
+						joinRuleEvent.eventId,
+					],
+					depth: 7,
 				},
 				roomVersion,
 			);
@@ -526,6 +549,7 @@ describe('StateService', async () => {
 					creatorMembershipEvent,
 					roomNameEvent,
 					ourUserJoinEvent,
+					joinRuleEvent,
 				},
 				missingEvents: [messageEvent, messageEvent2] as PersistentEventBase[],
 			};
@@ -1975,7 +1999,7 @@ describe('StateService', async () => {
 		return `[${i}] ${label}`;
 	};
 
-	for (let i = 1; i <= 1; i++) {
+	for (let i = 1; i <= partialStateEvents.length; i++) {
 		describe(label('partial states', i), () => {
 			it(label('should not be able to complete the chain', i), async () => {
 				const { state } = await partialStateEvents[i - 1]();
