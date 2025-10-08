@@ -778,16 +778,18 @@ export class StateService {
 
 		const authEventIdsInEvent = new Set(event.getAuthEventIds());
 
+		const authEventsWeHaveSeen = Array.from(authState.values()).map(
+			(e) => e.eventId,
+		);
+
 		if (
-			authEventIdsInEvent.size !== authState.size ||
-			authEventIdsInEvent.difference(new Set(authState.values())).size !== 0
+			authEventIdsInEvent.size !== authEventsWeHaveSeen.length ||
+			authEventIdsInEvent.difference(new Set(authEventsWeHaveSeen)).size !== 0
 		) {
 			this.logger.debug(
 				{
-					authEventsWeHaveSeen: Array.from(authState.values()).map(
-						(e) => e.eventId,
-					),
-					auithEventsInEvent: Array.from(authEventIdsInEvent.values()),
+					authEventsWeHaveSeen,
+					authEventsInEvent: Array.from(authEventIdsInEvent.values()),
 				},
 				'auth events differ from event to our state, checking against state',
 			);
