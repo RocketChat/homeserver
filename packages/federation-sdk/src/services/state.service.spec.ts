@@ -1,4 +1,5 @@
 import { describe, expect, it, spyOn, test } from 'bun:test';
+import { afterEach } from 'node:test';
 import { type EventStore, roomMemberEvent } from '@rocket.chat/federation-core';
 import * as room from '@rocket.chat/federation-room';
 import {
@@ -138,6 +139,13 @@ describe('StateService', async () => {
 	const stateGraphCollection = (
 		await database.getDb()
 	).collection<StateGraphStore>('state_graph_test');
+
+	afterEach(async () => {
+		await Promise.all([
+			eventCollection.deleteMany(),
+			stateGraphCollection.deleteMany(),
+		]);
+	});
 
 	const eventRepository = new EventRepository(eventCollection);
 	const stateGraphRepository = new StateGraphRepository(stateGraphCollection);

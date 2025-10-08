@@ -462,7 +462,7 @@ export class StateService {
 		const stateIds = new Set(events.map((e) => e.stateId));
 		switch (stateIds.size) {
 			case 0:
-				throw new Error(`No room state found for ${roomId}`);
+				return false;
 			case 1: {
 				const stateId = stateIds.values().toArray().pop();
 				const delta =
