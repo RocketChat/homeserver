@@ -554,6 +554,191 @@ describe('StateService', async () => {
 				missingEvents: [messageEvent, messageEvent2] as PersistentEventBase[],
 			};
 		},
+		async () => {
+			const creator = '@alice:anotherserver.com' as room.UserID;
+			const name = 'Test Partial State Room';
+
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+				creator as room.UserID,
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			const roomVersion = roomCreateEvent.version;
+
+			const creatorMembershipEvent =
+				await stateService.buildEvent<'m.room.member'>(
+					{
+						type: 'm.room.member',
+						room_id: roomCreateEvent.roomId,
+						sender: creator as room.UserID,
+						state_key: creator as room.UserID,
+						content: { membership: 'join' },
+						...getDefaultFields(),
+						prev_events: [roomCreateEvent.eventId],
+						auth_events: [roomCreateEvent.eventId],
+						depth: 1,
+					},
+					roomVersion,
+				);
+
+			// insert a random message event to make the tree incomplete
+			const messageEvent = await stateService.buildEvent<'m.room.message'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: creator,
+					content: { body: 'hello world', msgtype: 'm.text' },
+					type: 'm.room.message',
+					...getDefaultFields(),
+					prev_events: [creatorMembershipEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 2,
+				},
+				roomVersion,
+			);
+
+			// this should become an extremity now since no known event will point to this
+			const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: creator as room.UserID,
+					content: { name },
+					state_key: '',
+					type: 'm.room.name',
+					...getDefaultFields(),
+					prev_events: [messageEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 3,
+				},
+				roomVersion,
+			);
+
+			// insert another random message event to make the tree incomplete
+			const messageEvent2 = await stateService.buildEvent<'m.room.message'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: creator,
+					content: { body: 'hello world', msgtype: 'm.text' },
+					type: 'm.room.message',
+					...getDefaultFields(),
+					prev_events: [roomNameEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 4,
+				},
+				roomVersion,
+			);
+
+			const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: creator as room.UserID,
+					content: { join_rule: 'invite' },
+					type: 'm.room.join_rules',
+					state_key: '',
+					...getDefaultFields(),
+					prev_events: [messageEvent2.eventId],
+					auth_events: [
+						roomCreateEvent.eventId,
+						creatorMembershipEvent.eventId,
+					],
+					depth: 5,
+				},
+				roomVersion,
+			);
+
+			const powerLevelEvent =
+				await stateService.buildEvent<'m.room.power_levels'>(
+					{
+						type: 'm.room.power_levels',
+						room_id: roomCreateEvent.roomId,
+						sender: creator as room.UserID,
+						state_key: '',
+						content: {
+							users: {
+								[creator]: 100,
+							},
+							users_default: 0,
+							events: {},
+							events_default: 0,
+							state_default: 50,
+							ban: 50,
+							kick: 50,
+							redact: 50,
+							invite: 50,
+						},
+						...getDefaultFields(),
+						prev_events: [joinRuleEvent.eventId],
+						auth_events: [
+							roomCreateEvent.eventId,
+							creatorMembershipEvent.eventId,
+							joinRuleEvent.eventId,
+						],
+						depth: 6,
+					},
+					roomVersion,
+				);
+
+			const ourUserInviteEvent = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomCreateEvent.roomId,
+					sender: creator,
+					state_key: '@us:example.com' as room.UserID,
+					content: { membership: 'invite' },
+					...getDefaultFields(),
+					prev_events: [powerLevelEvent.eventId],
+					auth_events: [
+						roomCreateEvent.eventId,
+						powerLevelEvent.eventId,
+						joinRuleEvent.eventId,
+						creatorMembershipEvent.eventId,
+					],
+					depth: 7,
+				},
+				roomVersion,
+			);
+
+			const ourUserJoinEvent = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomCreateEvent.roomId,
+					sender: '@us:example.com' as room.UserID,
+					state_key: '@us:example.com' as room.UserID,
+					content: { membership: 'join' },
+					...getDefaultFields(),
+					prev_events: [ourUserInviteEvent.eventId],
+					auth_events: [
+						roomCreateEvent.eventId,
+						powerLevelEvent.eventId,
+						joinRuleEvent.eventId,
+						ourUserInviteEvent.eventId,
+					],
+					depth: 8,
+				},
+				roomVersion,
+			);
+
+			return {
+				state: {
+					roomCreateEvent,
+					powerLevelEvent,
+					creatorMembershipEvent,
+					roomNameEvent,
+					ourUserJoinEvent,
+					ourUserInviteEvent,
+					joinRuleEvent,
+				},
+				missingEvents: [messageEvent, messageEvent2] as PersistentEventBase[],
+			};
+		},
 	]);
 
 	const joinUser = async (roomId: string, userId: string) => {
@@ -2247,7 +2432,7 @@ describe('StateService', async () => {
 
 				for (const event of eventsToWalk) {
 					console.log(`Starting walking ${event.eventId}`);
-					await walk(event);
+					await walk(event).catch(console.error);
 				}
 
 				// now room should state to not be in partial state
