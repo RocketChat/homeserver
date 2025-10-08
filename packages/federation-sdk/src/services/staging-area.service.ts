@@ -331,6 +331,13 @@ export class StagingAreaService {
 				});
 				break;
 			}
+			case event.event.type === 'm.room.server_acl': {
+				this.eventEmitterService.emit('homeserver.matrix.room.server_acl', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
 			case event.event.type === 'm.room.power_levels': {
 				this.eventEmitterService.emit('homeserver.matrix.room.power_levels', {
 					event_id: eventId,

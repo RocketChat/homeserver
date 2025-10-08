@@ -70,6 +70,7 @@ export class EventRepository {
 				break;
 
 			case 'm.room.redaction':
+			case 'm.room.server_acl':
 				queries = [baseQueries.create, baseQueries.powerLevels];
 				break;
 

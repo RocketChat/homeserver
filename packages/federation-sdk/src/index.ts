@@ -283,6 +283,10 @@ export type HomeserverEventSignatures = {
 		user_id: string; // user who changed the topic
 		topic: string; // new topic of the room
 	};
+	'homeserver.matrix.room.server_acl': {
+		event_id: EventID;
+		event: PduForType<'m.room.server_acl'>;
+	};
 	'homeserver.matrix.room.power_levels': {
 		event_id: EventID;
 		event: PduForType<'m.room.power_levels'>;
