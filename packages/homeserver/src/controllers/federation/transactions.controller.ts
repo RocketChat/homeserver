@@ -75,7 +75,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				};
 			},
 			{
-				use: isAuthenticatedMiddleware(eventAuthService),
+				use: canAccessResourceMiddleware(eventAuthService, 'event'),
 				params: GetEventParamsDto,
 				response: {
 					200: GetEventResponseDto,
@@ -124,7 +124,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				}
 			},
 			{
-				use: isAuthenticatedMiddleware(eventAuthService),
+				use: canAccessResourceMiddleware(eventAuthService, 'room'),
 				params: BackfillParamsDto,
 				query: BackfillQueryDto,
 				response: {

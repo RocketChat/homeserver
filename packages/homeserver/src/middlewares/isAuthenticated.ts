@@ -16,7 +16,7 @@ export const isAuthenticatedMiddleware = (
 			if (!authorizationHeader) {
 				set.status = 401;
 				return {
-					authenticatedServer: null,
+					authenticatedServer: undefined,
 				};
 			}
 
@@ -42,7 +42,7 @@ export const isAuthenticatedMiddleware = (
 				if (!isValid) {
 					set.status = 401;
 					return {
-						authenticatedServer: null,
+						authenticatedServer: undefined,
 					};
 				}
 
@@ -53,7 +53,7 @@ export const isAuthenticatedMiddleware = (
 				console.error('Authentication error:', error);
 				set.status = 500;
 				return {
-					authenticatedServer: null,
+					authenticatedServer: undefined,
 				};
 			}
 		})

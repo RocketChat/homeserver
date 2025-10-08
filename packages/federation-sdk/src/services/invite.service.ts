@@ -11,6 +11,10 @@ import {
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
+import {
+	AclDeniedError,
+	EventAuthorizationService,
+} from './event-authorization.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { StateService, UnknownRoomError } from './state.service';
@@ -31,6 +35,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
+		private readonly eventAuthorizationService: EventAuthorizationService,
 	) {}
 
 	/**
@@ -142,6 +147,7 @@ export class InviteService {
 		roomId: RoomID,
 		eventId: EventID,
 		roomVersion: RoomVersion,
+		authenticatedServer: string,
 	) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 
@@ -162,8 +168,12 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
+		// we are the host of the server
 		if (residentServer === this.configService.serverName) {
-			// we are the host of the server
+			await this.eventAuthorizationService.checkAclForInvite(
+				roomId,
+				authenticatedServer,
+			);
 
 			// attempt to persist the invite event as we already have the state
 
@@ -171,9 +181,6 @@ export class InviteService {
 
 			// we do not send transaction here
 			// the asking server will handle the transactions
-
-			// return the signed invite event
-			return inviteEvent;
 		}
 
 		// we are not the host of the server

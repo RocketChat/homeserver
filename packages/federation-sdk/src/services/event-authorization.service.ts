@@ -16,6 +16,13 @@ import { EventService } from './event.service';
 import { ServerService } from './server.service';
 import { StateService } from './state.service';
 
+export class AclDeniedError extends Error {
+	constructor(serverName: string, roomId: string) {
+		super(`Sender server ${serverName} denied by room ACL for room ${roomId}`);
+		this.name = 'AclDeniedError';
+	}
+}
+
 @singleton()
 export class EventAuthorizationService {
 	private readonly logger = createLogger('EventAuthorizationService');
@@ -249,6 +256,21 @@ export class EventAuthorizationService {
 
 		this.logger.debug(`Server ${serverName} not in allow list`);
 		return false;
+	}
+
+	async checkAclForInvite(roomId: string, senderServer: string): Promise<void> {
+		const state = await this.stateService.getLatestRoomState(roomId);
+
+		const aclEvent = state.get('m.room.server_acl:');
+		if (!aclEvent) {
+			return;
+		}
+
+		const isAllowed = await this.checkServerAcl(aclEvent, senderServer);
+		if (!isAllowed) {
+			this.logger.warn(`Sender ${senderServer} denied by room ${roomId} ACL`);
+			throw new AclDeniedError(senderServer, roomId);
+		}
 	}
 
 	async serverHasAccessToResource(

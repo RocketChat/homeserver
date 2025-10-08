@@ -14,12 +14,17 @@ export const invitePlugin = (app: Elysia) => {
 
 	return app.use(isAuthenticatedMiddleware(eventAuthService)).put(
 		'/_matrix/federation/v2/invite/:roomId/:eventId',
-		async ({ body, params: { roomId, eventId } }) => {
+		async ({ body, params: { roomId, eventId }, authenticatedServer }) => {
+			if (!authenticatedServer) {
+				throw new Error('Missing authenticated server from request');
+			}
+
 			return inviteService.processInvite(
 				body.event,
 				roomId as RoomID,
 				eventId as EventID,
 				body.room_version,
+				authenticatedServer,
 			);
 		},
 		{
