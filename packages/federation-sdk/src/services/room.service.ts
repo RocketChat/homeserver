@@ -898,7 +898,11 @@ export class RoomService {
 		});
 
 		for (const event of sorted) {
-			console.log('persisting', event.toStrippedJson());
+			logger.debug({
+				msg: 'Persisting event',
+				eventId: event.eventId,
+				event: event.event,
+			});
 			await stateService.handlePdu(event);
 		}
 
