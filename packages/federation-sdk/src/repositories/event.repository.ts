@@ -6,6 +6,7 @@ import {
 	PduForType,
 	PduType,
 	RejectCode,
+	RoomID,
 	StateID,
 } from '@rocket.chat/federation-room';
 import type {
@@ -391,6 +392,7 @@ export class EventRepository {
 		eventId: EventID,
 		event: Pdu,
 		stateId: StateID,
+		partial = false,
 	): Promise<UpdateResult> {
 		return this.collection.updateOne(
 			{ _id: eventId },
@@ -402,6 +404,7 @@ export class EventRepository {
 				},
 				$set: {
 					stateId,
+					partial,
 				},
 			},
 			{ upsert: true },
@@ -444,6 +447,7 @@ export class EventRepository {
 					event,
 					stateId,
 					nextEventId: '',
+					partial: false,
 				},
 				$set: {
 					rejectCode: code,
@@ -466,5 +470,12 @@ export class EventRepository {
 
 	findByType(type: PduType) {
 		return this.collection.find({ 'event.type': type });
+	}
+
+	findPartialsByRoomId(roomId: RoomID) {
+		return this.collection.find(
+			{ 'event.room_id': roomId, partial: true },
+			{ sort: { 'event.depth': 1, createdAt: 1 } },
+		);
 	}
 }

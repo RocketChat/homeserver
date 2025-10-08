@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn, test } from 'bun:test';
-import { type EventStore } from '@rocket.chat/federation-core';
+import { type EventStore, roomMemberEvent } from '@rocket.chat/federation-core';
 import * as room from '@rocket.chat/federation-room';
 import {
 	EventID,
@@ -21,7 +21,7 @@ import {
 } from '../repositories/state-graph.repository';
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
-import { StateService } from './state.service';
+import { PartialStateResolutionError, StateService } from './state.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -244,6 +244,293 @@ describe('StateService', async () => {
 			roomNameEvent,
 		};
 	};
+
+	const partialStateEvents = await Promise.all([
+		async () => {
+			const username = '@alice:anotherserver.com' as room.UserID;
+			const name = 'Test Partial State Room';
+
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+				username as room.UserID,
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			const roomVersion = roomCreateEvent.version;
+
+			const creatorMembershipEvent =
+				await stateService.buildEvent<'m.room.member'>(
+					{
+						type: 'm.room.member',
+						room_id: roomCreateEvent.roomId,
+						sender: username as room.UserID,
+						state_key: username as room.UserID,
+						content: { membership: 'join' },
+						...getDefaultFields(),
+						prev_events: [roomCreateEvent.eventId],
+						auth_events: [roomCreateEvent.eventId],
+						depth: 1,
+					},
+					roomVersion,
+				);
+
+			// insert a random message event to make the tree incomplete
+			const messageEvent = await stateService.buildEvent<'m.room.message'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username,
+					content: { body: 'hello world', msgtype: 'm.text' },
+					type: 'm.room.message',
+					...getDefaultFields(),
+					prev_events: [creatorMembershipEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 2,
+				},
+				roomVersion,
+			);
+
+			const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username as room.UserID,
+					content: { name },
+					state_key: '',
+					type: 'm.room.name',
+					...getDefaultFields(),
+					prev_events: [messageEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 3,
+				},
+				roomVersion,
+			);
+
+			const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username as room.UserID,
+					content: { join_rule: 'public' },
+					type: 'm.room.join_rules',
+					state_key: '',
+					...getDefaultFields(),
+					prev_events: [roomNameEvent.eventId],
+					auth_events: [
+						roomCreateEvent.eventId,
+						creatorMembershipEvent.eventId,
+					],
+					depth: 4,
+				},
+				roomVersion,
+			);
+
+			const powerLevelEvent =
+				await stateService.buildEvent<'m.room.power_levels'>(
+					{
+						type: 'm.room.power_levels',
+						room_id: roomCreateEvent.roomId,
+						sender: username as room.UserID,
+						state_key: '',
+						content: {
+							users: {
+								[username]: 100,
+							},
+							users_default: 0,
+							events: {},
+							events_default: 0,
+							state_default: 50,
+							ban: 50,
+							kick: 50,
+							redact: 50,
+							invite: 50,
+						},
+						...getDefaultFields(),
+						prev_events: [joinRuleEvent.eventId],
+						auth_events: [
+							roomCreateEvent.eventId,
+							creatorMembershipEvent.eventId,
+							joinRuleEvent.eventId,
+						],
+						depth: 5,
+					},
+					roomVersion,
+				);
+
+			const ourUserJoinEvent = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomCreateEvent.roomId,
+					sender: '@us:example.com' as room.UserID,
+					state_key: '@us:example.com' as room.UserID,
+					content: { membership: 'join' },
+					...getDefaultFields(),
+					prev_events: [powerLevelEvent.eventId],
+					auth_events: [
+						roomCreateEvent.eventId,
+						powerLevelEvent.eventId,
+						joinRuleEvent.eventId,
+					],
+					depth: 6,
+				},
+				roomVersion,
+			);
+
+			return {
+				state: {
+					roomCreateEvent,
+					powerLevelEvent,
+					creatorMembershipEvent,
+					roomNameEvent,
+					ourUserJoinEvent,
+					joinRuleEvent,
+				},
+				missingEvents: [messageEvent] as PersistentEventBase[],
+			};
+		},
+		// multiple missing in the middle
+		async () => {
+			const username = '@alice:anotherserver.com' as room.UserID;
+			const name = 'Test Partial State Room';
+
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(
+				username as room.UserID,
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			const roomVersion = roomCreateEvent.version;
+
+			const creatorMembershipEvent =
+				await stateService.buildEvent<'m.room.member'>(
+					{
+						type: 'm.room.member',
+						room_id: roomCreateEvent.roomId,
+						sender: username as room.UserID,
+						state_key: username as room.UserID,
+						content: { membership: 'join' },
+						...getDefaultFields(),
+						prev_events: [roomCreateEvent.eventId],
+						auth_events: [roomCreateEvent.eventId],
+						depth: 1,
+					},
+					roomVersion,
+				);
+
+			// insert a random message event to make the tree incomplete
+			const messageEvent = await stateService.buildEvent<'m.room.message'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username,
+					content: { body: 'hello world', msgtype: 'm.text' },
+					type: 'm.room.message',
+					...getDefaultFields(),
+					prev_events: [creatorMembershipEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 2,
+				},
+				roomVersion,
+			);
+
+			// this should become an extremity now since no known event will point to this
+			const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username as room.UserID,
+					content: { name },
+					state_key: '',
+					type: 'm.room.name',
+					...getDefaultFields(),
+					prev_events: [messageEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 3,
+				},
+				roomVersion,
+			);
+
+			// insert another random message event to make the tree incomplete
+			const messageEvent2 = await stateService.buildEvent<'m.room.message'>(
+				{
+					room_id: roomCreateEvent.roomId,
+					sender: username,
+					content: { body: 'hello world', msgtype: 'm.text' },
+					type: 'm.room.message',
+					...getDefaultFields(),
+					prev_events: [roomNameEvent.eventId],
+					auth_events: [
+						creatorMembershipEvent.eventId,
+						roomCreateEvent.eventId,
+					],
+					depth: 4,
+				},
+				roomVersion,
+			);
+
+			const powerLevelEvent =
+				await stateService.buildEvent<'m.room.power_levels'>(
+					{
+						type: 'm.room.power_levels',
+						room_id: roomCreateEvent.roomId,
+						sender: username as room.UserID,
+						state_key: '',
+						content: {
+							users: {
+								[username]: 100,
+							},
+							users_default: 0,
+							events: {},
+							events_default: 0,
+							state_default: 50,
+							ban: 50,
+							kick: 50,
+							redact: 50,
+							invite: 50,
+						},
+						...getDefaultFields(),
+						prev_events: [messageEvent2.eventId],
+						auth_events: [
+							roomCreateEvent.eventId,
+							creatorMembershipEvent.eventId,
+						],
+						depth: 5,
+					},
+					roomVersion,
+				);
+
+			const ourUserJoinEvent = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomCreateEvent.roomId,
+					sender: '@us:example.com' as room.UserID,
+					state_key: '@us:example.com' as room.UserID,
+					content: { membership: 'join' },
+					...getDefaultFields(),
+					prev_events: [powerLevelEvent.eventId],
+					auth_events: [roomCreateEvent.eventId, powerLevelEvent.eventId],
+					depth: 6,
+				},
+				roomVersion,
+			);
+
+			return {
+				state: {
+					roomCreateEvent,
+					powerLevelEvent,
+					creatorMembershipEvent,
+					roomNameEvent,
+					ourUserJoinEvent,
+				},
+				missingEvents: [messageEvent, messageEvent2] as PersistentEventBase[],
+			};
+		},
+	]);
 
 	const joinUser = async (roomId: string, userId: string) => {
 		return _setUserMembership(roomId, userId, 'join');
@@ -1683,4 +1970,267 @@ describe('StateService', async () => {
 			expect(event?.isAuthRejected()).toBeFalse();
 		}
 	});
+
+	const label = (label: string, i: number) => {
+		return `[${i}] ${label}`;
+	};
+
+	for (let i = 1; i <= 1; i++) {
+		describe(label('partial states', i), () => {
+			it(label('should not be able to complete the chain', i), async () => {
+				const { state } = await partialStateEvents[i - 1]();
+				const eventMap = new Map<EventID, PersistentEventBase>();
+				const events = Object.values(state);
+
+				for (const event of events) {
+					eventMap.set(event.eventId, event);
+				}
+
+				const hasNoPartial = events.every((event) =>
+					event.getPreviousEventIds().every((prev) => eventMap.has(prev)),
+				);
+
+				expect(hasNoPartial).toBeFalse();
+			});
+
+			it(label('should be able to save partial states', i), async () => {
+				const { state } = await partialStateEvents[i - 1]();
+				const events = Object.values(state);
+
+				const stateId = await stateService.saveState(
+					events.map((e) => e.event),
+				);
+
+				expect(stateId).toBeString();
+
+				const event = await stateService.getEvent(
+					state.ourUserJoinEvent.eventId,
+				);
+				expect(event?.isPartial()).toBeTrue();
+			});
+
+			it(label(
+				'should be able to save and detect partial states',
+				i,
+			), async () => {
+				const { state } = await partialStateEvents[i - 1]();
+				const events = Object.values(state);
+
+				await stateService.saveState(events.map((e) => e.event));
+
+				expect(
+					stateService.isRoomStatePartial(events[0].roomId),
+				).resolves.toBeTrue();
+			});
+
+			it(label(
+				'should drop new state events if state is partial',
+				i,
+			), async () => {
+				const { state } = await partialStateEvents[i - 1]();
+				const events = Object.values(state);
+
+				await stateService.saveState(events.map((e) => e.event));
+
+				expect(
+					stateService.isRoomStatePartial(state.creatorMembershipEvent.roomId),
+				).resolves.toBeTrue();
+
+				// console.log(events[0].roomId);
+
+				const roomVersion = state.roomCreateEvent.version;
+				const roomId = state.roomCreateEvent.roomId;
+
+				const nameEvent = await stateService.buildEvent<'m.room.name'>(
+					{
+						type: 'm.room.name',
+						sender: state.ourUserJoinEvent.sender,
+						state_key: '',
+						content: { name: 'new name' },
+						room_id: roomId,
+						...getDefaultFields(),
+					},
+					roomVersion,
+				);
+
+				expect(stateService.handlePdu(nameEvent)).rejects.toThrowError(
+					PartialStateResolutionError,
+				);
+			});
+
+			it(label(
+				'should drop new message events if state is partial and not using latest forward extremity',
+				i,
+			), async () => {
+				const { state } = await partialStateEvents[i - 1]();
+				const events = Object.values(state);
+
+				await stateService.saveState(events.map((e) => e.event));
+
+				expect(
+					stateService.isRoomStatePartial(state.creatorMembershipEvent.roomId),
+				).resolves.toBeTrue();
+
+				// console.log(events[0].roomId);
+
+				const roomVersion = state.roomCreateEvent.version;
+				// const creator = state.roomCreateEvent.getContent().creator as room.UserID;
+				const roomId = state.roomCreateEvent.roomId;
+
+				const messageEvent1 = await stateService.buildEvent<'m.room.message'>(
+					{
+						type: 'm.room.message',
+						sender: state.ourUserJoinEvent.sender,
+						content: { body: 'hello world', msgtype: 'm.text' },
+						room_id: roomId,
+						...getDefaultFields(),
+						prev_events: [state.roomNameEvent.eventId],
+					},
+					roomVersion,
+				);
+
+				expect(stateService.handlePdu(messageEvent1)).rejects.toThrowError();
+			});
+
+			it(label(
+				'should allow new message events if state is partial and using latest forward extremity',
+				i,
+			), async () => {
+				const { state } = await partialStateEvents[i - 1]();
+				const events = Object.values(state);
+
+				await stateService.saveState(events.map((e) => e.event));
+
+				expect(
+					stateService.isRoomStatePartial(state.creatorMembershipEvent.roomId),
+				).resolves.toBeTrue();
+
+				// console.log(events[0].roomId);
+
+				const roomVersion = state.roomCreateEvent.version;
+				// const creator = state.roomCreateEvent.getContent().creator as room.UserID;
+				const roomId = state.roomCreateEvent.roomId;
+
+				expect(stateService.isRoomStatePartial(roomId)).resolves.toBeTrue();
+
+				const messageEvent1 = await stateService.buildEvent<'m.room.message'>(
+					{
+						type: 'm.room.message',
+						sender: state.ourUserJoinEvent.sender,
+						content: { body: 'hello world', msgtype: 'm.text' },
+						room_id: roomId,
+						...getDefaultFields(),
+						prev_events: [state.ourUserJoinEvent.eventId],
+					},
+					roomVersion,
+				);
+
+				expect(
+					stateService.handlePdu(messageEvent1),
+				).resolves.not.toBeDefined();
+			});
+
+			it(label(
+				'should complete the state as missing events get filled',
+				i,
+			), async () => {
+				const { state, missingEvents } = await partialStateEvents[i - 1]();
+
+				await stateService.saveState(Object.values(state).map((e) => e.event));
+
+				expect(
+					stateService.isRoomStatePartial(state.roomCreateEvent.roomId),
+				).resolves.toBeTrue();
+
+				const eventStore = new Map<EventID, PersistentEventBase>();
+				for (const e of (Object.values(state) as PersistentEventBase[]).concat(
+					missingEvents,
+				)) {
+					eventStore.set(e.eventId, e);
+				}
+
+				const eventsToWalk = await stateService.getPartialEvents(
+					state.creatorMembershipEvent.roomId,
+				);
+
+				const store = stateService._getStore(state.roomCreateEvent.version);
+
+				const remoteFetch = async (eventIds: EventID[]) => {
+					return eventIds.map((e) => eventStore.get(e));
+				};
+
+				const walk = async (event: PersistentEventBase) => {
+					// for each previous event, walk
+					const previousEventsInStore = await store.getEvents(
+						event.getPreviousEventIds(),
+					);
+					if (
+						previousEventsInStore.length === event.getPreviousEventIds().length
+					) {
+						console.log(`All previous events found in store ${event.eventId}`);
+						// start processing this event now
+						await stateService.handlePdu(event);
+						return;
+					}
+
+					const eventIdsToFind = [] as EventID[];
+					for (const previousEventId of event.getPreviousEventIds()) {
+						if (
+							!previousEventsInStore
+								.map((p) => p.eventId)
+								.includes(previousEventId)
+						) {
+							eventIdsToFind.push(previousEventId);
+						}
+					}
+
+					console.log(`Events to find ${eventIdsToFind}`);
+
+					const previousEvents = (await remoteFetch(
+						eventIdsToFind,
+					)) as PersistentEventBase[];
+
+					expect(previousEvents.length).toBe(
+						event.getPreviousEventIds().length,
+					);
+
+					previousEvents
+						.sort((e1, e2) => {
+							if (e1.depth !== e2.depth) {
+								return e1.depth - e2.depth;
+							}
+
+							if (e1.originServerTs !== e2.originServerTs) {
+								return e1.originServerTs - e2.originServerTs;
+							}
+
+							return e1.eventId.localeCompare(e2.eventId);
+						})
+						.reverse();
+
+					for (const previousEvent of previousEvents) {
+						console.log(`Waling ${previousEvent.eventId}`);
+						await walk(previousEvent);
+					}
+
+					console.log(
+						`Finishing saving ${event.eventId}, all [${event.getPreviousEventIds().join(', ')}] events has been saved`,
+					);
+
+					// once all previous events have been walked we process this event
+					await stateService.handlePdu(event);
+				};
+
+				for (const event of eventsToWalk) {
+					console.log(`Starting walking ${event.eventId}`);
+					await walk(event);
+				}
+
+				// now room should state to not be in partial state
+				expect(
+					stateService.isRoomStatePartial(state.roomCreateEvent.roomId),
+				).resolves.toBeFalse();
+			});
+		});
+	}
 });

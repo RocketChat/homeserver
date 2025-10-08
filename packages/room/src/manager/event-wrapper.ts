@@ -65,6 +65,7 @@ export abstract class PersistentEventBase<
 	constructor(
 		event: PduWithHashesAndSignaturesOptional,
 		public readonly version: Version,
+		private partial = false,
 	) {
 		this.rawEvent = JSON.parse(JSON.stringify(event));
 		if (this.rawEvent.signatures) {
@@ -75,7 +76,7 @@ export abstract class PersistentEventBase<
 				this.authEventsIds.add(id);
 			}
 		}
-		if (this.rawEvent.prev_events) {
+		if (this.rawEvent.prev_events?.length) {
 			for (const id of this.rawEvent.prev_events) {
 				this.prevEventsIds.add(id);
 			}
@@ -440,6 +441,14 @@ export abstract class PersistentEventBase<
 		this.rejectCode = code;
 		this.rejectReason = reason;
 		if (rejectedBy) this.rejectedBy = rejectedBy;
+	}
+
+	isPartial() {
+		return this.partial;
+	}
+
+	setPartial(partial: boolean) {
+		this.partial = partial;
 	}
 
 	addPrevEvents(events: PersistentEventBase<Version>[]) {

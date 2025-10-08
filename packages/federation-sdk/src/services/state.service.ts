@@ -2,6 +2,7 @@ import { createLogger, signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type EventStore,
+	Pdu,
 	type PduContent,
 	PduCreateEventContent,
 	PduForType,
@@ -45,6 +46,18 @@ function yieldPairs<T>(list: T[]): [T, T][] {
 	}
 
 	return pairs;
+}
+
+export class PartialStateResolutionError extends Error {
+	readonly message = 'Unable to change room state while still joining';
+
+	private error = '';
+
+	constructor(event: PersistentEventBase) {
+		super();
+
+		this.error = `Event (${event.toStrippedJson()}) dropped since room is still in partial state`;
+	}
 }
 
 @singleton()
@@ -122,6 +135,7 @@ export class StateService {
 			event.eventId,
 			event.event,
 			stateId,
+			event.isPartial(),
 		);
 
 		await this.updateNextEventReferencesWithEvent(event);
@@ -189,6 +203,7 @@ export class StateService {
 		const pdu = PersistentEventFactory.createFromRawEvent(
 			event.event,
 			roomVersion,
+			event.partial,
 		);
 
 		if (event.rejectCode !== undefined) {
@@ -368,15 +383,123 @@ export class StateService {
 		);
 	}
 
+	// saves a full/partial state
+	// returns the final state id
+	async saveState(pdus: Pdu[]) {
+		const create = pdus.find((pdu) => pdu.depth === 0);
+		if (create?.type !== 'm.room.create') {
+			throw new Error('No create event found in state to save');
+		}
+
+		const version = create.content.room_version;
+
+		const createEvent = PersistentEventFactory.createFromRawEvent(
+			create,
+			version,
+		);
+		const stateId = await this.stateRepository.createDelta(
+			createEvent,
+			'' as StateID,
+		);
+		await this.addToRoomGraph(createEvent, stateId);
+
+		const eventCache = new Map<EventID, PersistentEventBase>();
+
+		const [, ...eventBases] = pdus
+			.map((pdu) => {
+				const event = PersistentEventFactory.createFromRawEvent(pdu, version);
+				eventCache.set(event.eventId, event);
+				return event;
+			})
+			.sort((e1, e2) => {
+				if (e1.depth !== e2.depth) {
+					return e1.depth - e2.depth;
+				}
+
+				if (e1.originServerTs !== e2.originServerTs) {
+					return e1.originServerTs - e2.originServerTs;
+				}
+
+				return e1.eventId.localeCompare(e2.eventId);
+			});
+
+		let previousStateId = stateId;
+		for await (const event of eventBases) {
+			event.setPartial(
+				// if some of the previous events are partial this one also needs to be partial
+				event
+					.getPreviousEventIds()
+					.some((id) => !eventCache.has(id) || eventCache.get(id)!.isPartial()),
+			);
+			previousStateId = await this.stateRepository.createDelta(
+				event,
+				previousStateId,
+			);
+			await this.addToRoomGraph(event, previousStateId);
+		}
+
+		return previousStateId;
+	}
+
+	private async _neeedsProcessing(
+		event: PersistentEventBase,
+	): Promise<boolean> {
+		const record = await this.eventRepository.findById(event.eventId);
+
+		// if state at this event is partial, and event itself is a state event, we immediately "drop" the event, not reject, drop
+		event.setPartial(record?.partial ?? false);
+
+		// no record or if is partial run
+		if (!record || record.partial) {
+			return true;
+		}
+
+		return false;
+	}
+
+	async isRoomStatePartial(roomId: RoomID) {
+		const events = await this.eventRepository.findLatestEvents(roomId);
+		const stateIds = new Set(events.map((e) => e.stateId));
+		switch (stateIds.size) {
+			case 0:
+				throw new Error(`No room state found for ${roomId}`);
+			case 1: {
+				const stateId = stateIds.values().toArray().pop();
+				const delta =
+					stateId && (await this.stateRepository.findOneById(stateId));
+				if (!delta) {
+					throw new Error(`No delta found for ${stateId}`);
+				}
+				return delta.partial;
+			}
+			default: {
+				const deltas = await this.stateRepository.findByStateIds(
+					stateIds.values().toArray(),
+				);
+
+				for await (const delta of deltas) {
+					if (delta.partial) {
+						return true;
+					}
+				}
+
+				return false;
+			}
+		}
+	}
+
+	fromOurServer(event: PersistentEventBase) {
+		return event.origin === this.configService.serverName;
+	}
+
 	// handle received pdu from transaction
 	// implements spec:https://spec.matrix.org/v1.12/server-server-api/#checks-performed-on-receipt-of-a-pdu
 	// TODO: this is not state related, can and should accept timeline events too, move to event service?
 	async handlePdu(event: PersistentEventBase): Promise<void> {
-		const exists = await this.eventRepository.findById(event.eventId);
-		if (exists) {
+		if (!(await this._neeedsProcessing(event))) {
 			this.logger.debug(
 				{ eventId: event.eventId },
-				'event exists but attempted to persist again, should not happen',
+				'event saved and not in partial state, skipping processing',
 			);
 			return;
 		}
@@ -385,6 +508,35 @@ export class StateService {
 			{ eventId: event.eventId, ...this.stripEvent(event) },
 			'handling pdu',
 		);
+
+		// in partial state we don't allow state changes originating from our own server
+		if (await this.isRoomStatePartial(event.roomId)) {
+			const latestEvent = (
+				await this.eventRepository.findLatestEvents(event.roomId)
+			).pop();
+			if (this.fromOurServer(event) && event.eventId !== latestEvent?._id) {
+				if (event.isState()) throw new PartialStateResolutionError(event);
+
+				if (event.isTimelineEvent()) {
+					const previousIdsInEvents = event.getPreviousEventIds();
+					// these are internal errors and ideally shouldn't happen
+					// if happens bug with how we build new events
+					if (previousIdsInEvents.length !== 1) {
+						throw new Error(
+							`Event ${event.eventId} doesn't have the expected previous event id, expected 1, got ${previousIdsInEvents.length}`,
+						);
+					}
+					const latestEvent = (
+						await this.eventRepository.findLatestEvents(event.roomId)
+					).pop();
+					if (previousIdsInEvents[0] !== latestEvent?._id) {
+						throw new Error(
+							`Event ${event.eventId} doesn't have the expected previous event id, expected ${latestEvent?._id} got ${previousIdsInEvents[0]}`,
+						);
+					}
+				} else throw new Error(`${event.toStrippedJson()} unknown event type`);
+			}
+		}
 
 		// handle create events separately
 		if (event.isCreateEvent()) {
@@ -722,7 +874,17 @@ export class StateService {
 				},
 				'previous events',
 			);
-			throw new Error(`no state at event ${event.eventId}`);
+			throw new Error(`no previous state for event ${event.eventId}`);
+		}
+
+		if (event.isPartial()) {
+			// walked over to this, since we have the state at this event, toggle event to be not partial any longer
+			this.logger.debug(
+				{ eventId: event.eventId },
+				'completing state at event',
+			);
+			// previous states by this point should NOT be partial
+			event.setPartial(!event.isPartial());
 		}
 
 		// different stateids, may need to run state resolution
@@ -932,5 +1094,19 @@ export class StateService {
 		}
 
 		return result;
+	}
+
+	async getPartialEvents(roomId: RoomID) {
+		const roomVersion = await this.getRoomVersion(roomId);
+		return this.eventRepository
+			.findPartialsByRoomId(roomId)
+			.map((rec) =>
+				PersistentEventFactory.createFromRawEvent(
+					rec.event,
+					roomVersion,
+					rec.partial,
+				),
+			)
+			.toArray();
 	}
 }

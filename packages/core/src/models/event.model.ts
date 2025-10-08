@@ -33,6 +33,8 @@ export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
 		reason: string;
 		rejectedBy?: EventID;
 	};
+
+	partial: boolean;
 }
 
 export interface EventStagingStore extends PersistentEventBase {

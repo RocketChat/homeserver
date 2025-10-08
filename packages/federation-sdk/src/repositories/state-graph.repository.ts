@@ -21,6 +21,8 @@ export type StateGraphStore = {
 	depth: number;
 
 	createdAt: Date;
+
+	partial: boolean;
 };
 
 @singleton()
@@ -180,6 +182,8 @@ export class StateGraphRepository {
 			chainId = new ObjectId().toString();
 		}
 
+		const partial = event.isPartial() || previousDelta?.partial || false;
+
 		await this.collection.insertOne({
 			_id: stateId,
 			createdAt: new Date(),
@@ -190,6 +194,7 @@ export class StateGraphRepository {
 			previousNode: previousStateId,
 			chainId,
 			depth,
+			partial,
 		});
 
 		return stateId;
