@@ -300,13 +300,17 @@ export class StateService {
 			event.roomId,
 		);
 
+		const events = [] as PersistentEventBase[];
+
 		for (const prevEvent of prevEvents) {
 			const e = PersistentEventFactory.createFromRawEvent(
 				prevEvent.event,
 				roomVersion,
 			);
-			event.addPrevEvents([e]);
+			events.push(e);
 		}
+
+		event.addPrevEvents(events);
 	}
 
 	public async signEvent<T extends PersistentEventBase>(event: T) {
@@ -1024,6 +1028,10 @@ export class StateService {
 			? roomVersion_
 			: await this.getRoomVersion(roomId);
 		const records = await this.eventRepository.findLatestEvents(roomId);
+		this.logger.debug(
+			{ roomId, events: records.map((r) => r._id) },
+			'current latest events',
+		);
 		const stateIds = new Set<StateID>();
 		for (const record of records) {
 			stateIds.add(record.stateId);
