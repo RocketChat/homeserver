@@ -590,7 +590,7 @@ export const PduNoContentEmptyStateKeyStateEventSchema = {
 	state_key: z.literal(''),
 };
 
-const EventPduTypeRoomCreate = z.object({
+export const EventPduTypeRoomCreate = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.create'),
 	content: PduCreateEventContentSchema,
@@ -602,56 +602,56 @@ export const EventPduTypeRoomMember = z.object({
 	content: PduMembershipEventContentSchema,
 });
 
-const EventPduTypeRoomJoinRules = z.object({
+export const EventPduTypeRoomJoinRules = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.join_rules'),
 	content: PduJoinRuleEventContentSchema,
 });
 
-const EventPduTypeRoomPowerLevels = z.object({
+export const EventPduTypeRoomPowerLevels = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.power_levels'),
 	content: PduPowerLevelsEventContentSchema,
 });
 
-const EventPduTypeRoomCanonicalAlias = z.object({
+export const EventPduTypeRoomCanonicalAlias = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.canonical_alias'),
 	content: PduCanonicalAliasEventContentSchema,
 });
 
-const EventPduTypeRoomName = z.object({
+export const EventPduTypeRoomName = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.name'),
 	content: PduRoomNameEventContentSchema,
 });
 
-const EventPduTypeRoomAliases = z.object({
+export const EventPduTypeRoomAliases = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.aliases'),
 	state_key: z.string().describe("Sender's domain."),
 	content: PduCanonicalAliasEventContentSchema,
 });
 
-const EventPduTypeRoomTopic = z.object({
+export const EventPduTypeRoomTopic = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.topic'),
 	content: PduRoomTopicEventContentSchema,
 });
 
-const EventPduTypeRoomHistoryVisibility = z.object({
+export const EventPduTypeRoomHistoryVisibility = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.history_visibility'),
 	content: PduHistoryVisibilityEventContentSchema,
 });
 
-const EventPduTypeRoomGuestAccess = z.object({
+export const EventPduTypeRoomGuestAccess = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.guest_access'),
 	content: PduGuestAccessEventContentSchema,
 });
 
-const EventPduTypeRoomServerAcl = z.object({
+export const EventPduTypeRoomServerAcl = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.server_acl'),
 	content: PduServerAclEventContentSchema,
@@ -694,7 +694,7 @@ const EventPduTypeRoomRedaction = z.object({
 	redacts: eventIdSchema.describe('event id'),
 });
 
-export const PduSchema = z.discriminatedUnion('type', [
+export const PduStateEventSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomCreate,
 
 	EventPduTypeRoomMember,
@@ -717,13 +717,20 @@ export const PduSchema = z.discriminatedUnion('type', [
 
 	EventPduTypeRoomServerAcl,
 
+	EventPduTypeRoomTombstone,
+]);
+
+export const PduTimelineSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomMessage,
 
 	EventPduTypeRoomReaction,
 
 	EventPduTypeRoomRedaction,
+]);
 
-	EventPduTypeRoomTombstone,
+export const PduSchema = z.discriminatedUnion('type', [
+	...PduTimelineSchema.options,
+	...PduStateEventSchema.options,
 ]);
 
 export type Pdu = z.infer<typeof PduSchema> & {};

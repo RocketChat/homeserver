@@ -7,7 +7,7 @@ import {
 	PduForType,
 	type PduType,
 	PduWithHashesAndSignaturesOptional,
-	type PersistentEventBase,
+	PersistentEventBase,
 	PersistentEventFactory,
 	RejectCode,
 	RoomID,
@@ -705,7 +705,7 @@ export class StateService {
 		return { stateId, state };
 	}
 
-	private async _resolveStateAtEvent(event: PersistentEventBase) {
+	async _resolveStateAtEvent(event: PersistentEventBase) {
 		const stateIdList = this.eventRepository.findStateIdsByEventIds(
 			event.getPreviousEventIds(),
 		);

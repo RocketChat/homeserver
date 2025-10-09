@@ -6,7 +6,7 @@
 
 import {
 	EventPduTypeRoomMember,
-	PduSchema,
+	PduStateEventSchema,
 } from '@rocket.chat/federation-room';
 import { z } from 'zod';
 
@@ -115,7 +115,7 @@ export const MakeJoinEventSchema = z.object({
 
 export const MakeJoinResponseSchema = z.object({
 	room_version: RoomVersionSchema,
-	event: PduSchema,
+	event: EventPduTypeRoomMember,
 });
 
 export const SendJoinEventSchema = z.object({
@@ -143,8 +143,9 @@ export const SendJoinEventSchema = z.object({
 });
 
 export const SendJoinResponseSchema = z.object({
-	state: z.array(PduSchema),
-	auth_chain: z.array(PduSchema),
+	state: z.array(PduStateEventSchema),
+	auth_chain: z.array(PduStateEventSchema),
+	event_id: EventIdSchema.optional(),
 	event: EventPduTypeRoomMember,
 	members_omitted: z.boolean().optional(),
 	servers_in_room: z.array(z.string()).optional(),
