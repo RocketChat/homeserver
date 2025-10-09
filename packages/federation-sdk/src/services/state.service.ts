@@ -391,7 +391,7 @@ export class StateService {
 	// saves a full/partial state
 	// returns the final state id
 	async processInitialState(pdus: Pdu[], authChain: Pdu[]) {
-		const create = authChain.find((pdu) => pdu.depth === 0);
+		const create = authChain.find((pdu) => pdu.type === 'm.room.create');
 		if (create?.type !== 'm.room.create') {
 			throw new Error('No create event found in auth chain to save');
 		}

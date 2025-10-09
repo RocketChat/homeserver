@@ -105,7 +105,7 @@ export class PersistentEventFactory {
 			room_id: roomId,
 			prev_events: [],
 			auth_events: [],
-			depth: 0,
+			depth: 1,
 		};
 
 		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(
