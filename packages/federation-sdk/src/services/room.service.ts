@@ -4,6 +4,7 @@ import {
 	RoomPowerLevelsEvent,
 	SignedEvent,
 	TombstoneAuthEvents,
+	createLogger,
 	roomPowerLevelsEvent,
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
@@ -23,9 +24,12 @@ import {
 	PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
+	EventStore as RoomEventStore,
 	RoomID,
 	RoomVersion,
 	UserID,
+	checkEventAuthWithState,
+	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
@@ -33,11 +37,13 @@ import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 
 import { EventEmitterService } from './event-emitter.service';
+import { EventFetcherService } from './event-fetcher.service';
 import { InviteService } from './invite.service';
 import { StateService } from './state.service';
 
 @singleton()
 export class RoomService {
+	private readonly logger = createLogger('RoomService');
 	constructor(
 		private readonly roomRepository: RoomRepository,
 		private readonly eventRepository: EventRepository,
@@ -47,6 +53,7 @@ export class RoomService {
 		private readonly stateService: StateService,
 		private readonly inviteService: InviteService,
 		private readonly eventEmitterService: EventEmitterService,
+		private readonly eventFetcherService: EventFetcherService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -782,7 +789,7 @@ export class RoomService {
 		const federationService = this.federationService;
 
 		// where the room is hosted at
-		const residentServer = roomId.split(':').pop();
+		const residentServer = extractDomainFromId(roomId);
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
@@ -846,7 +853,7 @@ export class RoomService {
 		// ^ have the template for the join event now
 
 		const joinEvent = PersistentEventFactory.createFromRawEvent(
-			makeJoinResponse.event, // TODO: using room package types will take care of this
+			makeJoinResponse.event,
 			makeJoinResponse.room_version,
 		);
 
@@ -854,68 +861,110 @@ export class RoomService {
 
 		// TODO: sign the event here vvv
 		// currently makeSignedRequest does the signing
-		const sendJoinResponse = await federationService.sendJoin(joinEvent);
+		const {
+			state,
+			auth_chain: authChain,
+			event,
+			servers_in_room: serversInRoom = [],
+		} = await federationService.sendJoin(joinEvent);
 
 		// TODO: validate hash and sig (item 2)
 
 		// run through state res
 		// validate all auth chain events
-		const eventMap = new Map<string, PersistentEventBase>();
+		await stateService.saveState(state, authChain);
 
-		for (const stateEvent_ of sendJoinResponse.state) {
-			const stateEvent = PersistentEventFactory.createFromRawEvent(
-				stateEvent_,
-				makeJoinResponse.room_version,
+		if (await stateService.isRoomStatePartial(roomId)) {
+			this.logger.info(
+				{ roomId },
+				'received incomplete graph of state from send_join, completing state before processing join',
 			);
 
-			eventMap.set(stateEvent.eventId, stateEvent);
-		}
+			const partialEvents = await stateService.getPartialEvents(roomId);
 
-		for (const authEvent_ of sendJoinResponse.auth_chain) {
-			const authEvent = PersistentEventFactory.createFromRawEvent(
-				authEvent_,
-				makeJoinResponse.room_version,
+			this.logger.info(
+				{ roomId, partialEventIds: partialEvents.map((e) => e.eventId) },
+				'events with incomplete states',
 			);
-			eventMap.set(authEvent.eventId, authEvent);
-		}
 
-		const sorted = Array.from(eventMap.values()).sort((a, b) => {
-			if (a.depth !== b.depth) {
-				return a.depth - b.depth;
+			for (const event of partialEvents) {
+				this.logger.info({ roomId, eventId: event.eventId }, 'walking branch');
+
+				const missingBranchEvents = (
+					await this._fetchFullBranch(
+						event.getPreviousEventIds(),
+						residentServer,
+						serversInRoom,
+						{ event },
+					)
+				).sort((e1, e2) => {
+					if (e1.depth !== e2.depth) {
+						return e1.depth - e2.depth;
+					}
+
+					if (e1.originServerTs !== e2.originServerTs) {
+						return e1.originServerTs - e2.originServerTs;
+					}
+
+					return e1.eventId.localeCompare(e2.eventId);
+				});
+
+				for (const missingEvent of missingBranchEvents) {
+					this.logger.info(
+						{
+							eventId: event.eventId,
+							depth: event.depth,
+							previous: event.getPreviousEventIds(),
+							roomId,
+						},
+						'processing state at event',
+					);
+					await stateService._resolveStateAtEvent(missingEvent);
+				}
+
+				// if partial, join event will also be partial
+				await stateService._resolveStateAtEvent(event);
 			}
 
-			if (a.originServerTs !== b.originServerTs) {
-				return a.originServerTs - b.originServerTs;
+			if (await stateService.isRoomStatePartial(roomId)) {
+				throw new Error(
+					`${roomId} still in partial state after processing all branches`,
+				);
 			}
-
-			return a.eventId.localeCompare(b.eventId);
-		});
-
-		for (const event of sorted) {
-			logger.debug({
-				msg: 'Persisting event',
-				eventId: event.eventId,
-				event: event.event,
-			});
-			await stateService.handlePdu(event);
+		} else {
+			this.logger.info(
+				{ roomId },
+				'received complete graph of state from send_join, nothing to do',
+			);
 		}
 
 		const joinEventFinal = PersistentEventFactory.createFromRawEvent(
-			sendJoinResponse.event,
+			event,
 			makeJoinResponse.room_version,
 		);
+
+		// with the state we have, run auth check
+		const room = await stateService.getLatestRoomState(roomId);
+
+		try {
+			await checkEventAuthWithState(
+				joinEventFinal,
+				room,
+				stateService._getStore(roomVersion),
+			);
+		} catch (error) {
+			this.logger.error(
+				{ error, roomId, eventId: joinEventFinal.eventId },
+				'failed to join room, join event did not pass auth check',
+			);
+
+			throw error;
+		}
 
 		logger.info({
 			msg: 'Persisting join event',
 			eventId: joinEventFinal.eventId,
 			event: joinEventFinal.event,
-		});
-
-		const state = await stateService.getLatestRoomState(roomId);
-
-		logger.info({
-			msg: 'State before join event has been persisted',
-			state: state.keys().toArray().join(', '),
 		});
 
 		// try to persist the join event now, should succeed with state in place
@@ -924,11 +973,138 @@ export class RoomService {
 			[joinEventFinal.event],
 		);
 
-		if (joinEventFinal.rejected) {
-			throw new Error(joinEventFinal.rejectReason);
+		return joinEventFinal.eventId;
+	}
+
+	private async _fetchFullBranch(
+		eventIds: EventID[],
+		residentServer: string,
+		serverList: string[],
+		context: { event: PersistentEventBase },
+	) {
+		if (eventIds.length === 0) {
+			return [];
 		}
 
-		return joinEventFinal.eventId;
+		const previousEvents = [] as PersistentEventBase[];
+		const roomId = context.event.roomId;
+		const roomVersion = context.event.version;
+		const store = this.stateService._getStore(roomVersion);
+
+		let missing = [] as EventID[];
+
+		const { events, missing: stillMissing } = await this._fetchMissingEvents(
+			eventIds,
+			roomVersion,
+			store,
+			residentServer,
+		);
+
+		missing = stillMissing;
+		previousEvents.push(...events);
+
+		if (missing.length === 0) {
+			previousEvents.push(
+				...(await this._fetchFullBranch(
+					previousEvents.flatMap((e) => e.getPreviousEventIds()),
+					residentServer,
+					serverList,
+					context,
+				)),
+			);
+
+			return previousEvents;
+		}
+
+		const logContext = () => ({
+			roomId,
+			branchEventId: context.event.eventId,
+			missing,
+		});
+
+		this.logger.info(logContext(), 'failed to fetch and process some events');
+
+		if (serverList.length === 0) {
+			this.logger.warn(
+				logContext(),
+				'not enough servers participating in the room to retry missing events',
+			);
+
+			throw new Error();
+		}
+
+		for (let i = 0; i < serverList.length && missing.length > 0; i++) {
+			const askingServer = serverList[i];
+
+			this.logger.warn(
+				logContext(),
+				`attempting to fetch events from participating server ${askingServer}`,
+			);
+
+			const { events, missing: stillMissing } = await this._fetchMissingEvents(
+				missing,
+				roomVersion,
+				store,
+				askingServer,
+			);
+
+			missing = stillMissing;
+			previousEvents.push(...events);
+		}
+
+		if (missing.length > 0) {
+			this.logger.error(
+				logContext(),
+				'server list exhausted, we still have missing events',
+			);
+
+			throw new Error();
+		}
+
+		// all found
+		previousEvents.push(
+			...(await this._fetchFullBranch(
+				previousEvents.flatMap((e) => e.getPreviousEventIds()),
+				residentServer,
+				serverList,
+				context,
+			)),
+		);
+
+		return previousEvents;
+	}
+
+	private async _fetchMissingEvents(
+		eventIds: EventID[],
+		roomVersion: RoomVersion,
+		store: RoomEventStore,
+		askedServerName: string,
+	) {
+		const seenEvents = await store.getEvents(eventIds);
+
+		if (seenEvents.length === eventIds.length) {
+			return { missing: [], events: [] };
+		}
+
+		const needsFetching = new Set(eventIds)
+			.difference(new Set(seenEvents.map((e) => e.eventId)))
+			.values()
+			.toArray();
+
+		const remotePdus = await this.eventFetcherService.fetchEventsFromFederation(
+			needsFetching,
+			askedServerName,
+		);
+
+		const cache = new Map<EventID, PersistentEventBase>();
+		for (const pdu of remotePdus) {
+			const base = PersistentEventFactory.createFromRawEvent(pdu, roomVersion);
+			cache.set(base.eventId, base);
+		}
+
+		const stillMissing = needsFetching.filter((id) => !cache.has(id));
+
+		return { missing: stillMissing, events: cache.values() };
 	}
 
 	async markRoomAsTombstone(

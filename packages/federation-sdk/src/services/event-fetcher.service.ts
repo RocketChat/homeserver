@@ -87,7 +87,7 @@ export class EventFetcherService {
 		};
 	}
 
-	private async fetchEventsFromFederation(
+	async fetchEventsFromFederation(
 		eventIds: string[],
 		targetServerName: string,
 	): Promise<Pdu[]> {

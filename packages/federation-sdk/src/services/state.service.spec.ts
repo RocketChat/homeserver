@@ -1,6 +1,5 @@
-import { describe, expect, it, spyOn, test } from 'bun:test';
-import { afterEach } from 'node:test';
-import { type EventStore, roomMemberEvent } from '@rocket.chat/federation-core';
+import { beforeEach, describe, expect, it, spyOn, test } from 'bun:test';
+import { type EventStore } from '@rocket.chat/federation-core';
 import * as room from '@rocket.chat/federation-room';
 import {
 	EventID,
@@ -22,7 +21,7 @@ import {
 } from '../repositories/state-graph.repository';
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
-import { PartialStateResolutionError, StateService } from './state.service';
+import { StateService } from './state.service';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -140,7 +139,7 @@ describe('StateService', async () => {
 		await database.getDb()
 	).collection<StateGraphStore>('state_graph_test');
 
-	afterEach(async () => {
+	beforeEach(async () => {
 		await Promise.all([
 			eventCollection.deleteMany(),
 			stateGraphCollection.deleteMany(),
@@ -252,6 +251,14 @@ describe('StateService', async () => {
 			roomNameEvent,
 		};
 	};
+
+	const getStore = (
+		cache: Map<EventID, PersistentEventBase>,
+	): room.EventStore => ({
+		getEvents: (eventIds: EventID[]) => {
+			return Promise.resolve(eventIds.map((eid) => cache.get(eid)!));
+		},
+	});
 
 	const partialStateEvents = await Promise.all([
 		async () => {
@@ -385,16 +392,36 @@ describe('StateService', async () => {
 				},
 				roomVersion,
 			);
+			const state = {
+				roomCreateEvent,
+				powerLevelEvent,
+				creatorMembershipEvent,
+				roomNameEvent,
+				ourUserJoinEvent,
+				joinRuleEvent,
+			};
+
+			const map = new Map<EventID, PersistentEventBase>();
+			const authChainSet = new Set<EventID>();
+			for (const event of Object.values(state)) {
+				map.set(event.eventId, event);
+			}
+
+			const store = getStore(map);
+
+			for (const event of Object.values(state)) {
+				for (const eventId of await room.getAuthChain(event, store)) {
+					authChainSet.add(eventId);
+				}
+			}
+
+			const authChain = Array.from(authChainSet.values()).map(
+				(eid) => map.get(eid)!,
+			);
 
 			return {
-				state: {
-					roomCreateEvent,
-					powerLevelEvent,
-					creatorMembershipEvent,
-					roomNameEvent,
-					ourUserJoinEvent,
-					joinRuleEvent,
-				},
+				state,
+				authChain,
 				missingEvents: [messageEvent] as PersistentEventBase[],
 			};
 		},
@@ -550,15 +577,37 @@ describe('StateService', async () => {
 				roomVersion,
 			);
 
+			const state = {
+				roomCreateEvent,
+				powerLevelEvent,
+				creatorMembershipEvent,
+				roomNameEvent,
+				ourUserJoinEvent,
+				joinRuleEvent,
+			};
+
+			const map = new Map<EventID, PersistentEventBase>();
+			const authChainSet = new Set<EventID>();
+			for (const event of Object.values(state)) {
+				map.set(event.eventId, event);
+			}
+
+			const store = getStore(map);
+
+			for (const event of Object.values(state)) {
+				for (const eventId of await room.getAuthChain(event, store)) {
+					authChainSet.add(eventId);
+				}
+			}
+
+			const authChain = Array.from(authChainSet.values()).map(
+				(eid) => map.get(eid)!,
+			);
+
 			return {
-				state: {
-					roomCreateEvent,
-					powerLevelEvent,
-					creatorMembershipEvent,
-					roomNameEvent,
-					ourUserJoinEvent,
-					joinRuleEvent,
-				},
+				state,
+				authChain,
+
 				missingEvents: [messageEvent, messageEvent2] as PersistentEventBase[],
 			};
 		},
@@ -734,16 +783,38 @@ describe('StateService', async () => {
 				roomVersion,
 			);
 
+			const state = {
+				roomCreateEvent,
+				powerLevelEvent,
+				creatorMembershipEvent,
+				roomNameEvent,
+				ourUserJoinEvent,
+				ourUserInviteEvent,
+				joinRuleEvent,
+			};
+
+			const map = new Map<EventID, PersistentEventBase>();
+			const authChainSet = new Set<EventID>();
+			for (const event of Object.values(state)) {
+				map.set(event.eventId, event);
+			}
+
+			const store = getStore(map);
+
+			for (const event of Object.values(state)) {
+				for (const eventId of await room.getAuthChain(event, store)) {
+					authChainSet.add(eventId);
+				}
+			}
+
+			const authChain = Array.from(authChainSet.values()).map(
+				(eid) => map.get(eid)!,
+			);
+
 			return {
-				state: {
-					roomCreateEvent,
-					powerLevelEvent,
-					creatorMembershipEvent,
-					roomNameEvent,
-					ourUserJoinEvent,
-					ourUserInviteEvent,
-					joinRuleEvent,
-				},
+				state,
+				authChain,
+
 				missingEvents: [messageEvent, messageEvent2] as PersistentEventBase[],
 			};
 		},
@@ -2211,12 +2282,15 @@ describe('StateService', async () => {
 			});
 
 			it(label('should be able to save partial states', i), async () => {
-				const { state } = await partialStateEvents[i - 1]();
+				const { state, authChain } = await partialStateEvents[i - 1]();
 				const events = Object.values(state);
 
 				const stateId = await stateService.saveState(
 					events.map((e) => e.event),
+					authChain.map((e) => e.event),
 				);
+
+				console.log(state.ourUserJoinEvent.eventId);
 
 				expect(stateId).toBeString();
 
@@ -2230,10 +2304,13 @@ describe('StateService', async () => {
 				'should be able to save and detect partial states',
 				i,
 			), async () => {
-				const { state } = await partialStateEvents[i - 1]();
+				const { state, authChain } = await partialStateEvents[i - 1]();
 				const events = Object.values(state);
 
-				await stateService.saveState(events.map((e) => e.event));
+				await stateService.saveState(
+					events.map((e) => e.event),
+					authChain.map((e) => e.event),
+				);
 
 				expect(
 					stateService.isRoomStatePartial(events[0].roomId),
@@ -2241,119 +2318,16 @@ describe('StateService', async () => {
 			});
 
 			it(label(
-				'should drop new state events if state is partial',
-				i,
-			), async () => {
-				const { state } = await partialStateEvents[i - 1]();
-				const events = Object.values(state);
-
-				await stateService.saveState(events.map((e) => e.event));
-
-				expect(
-					stateService.isRoomStatePartial(state.creatorMembershipEvent.roomId),
-				).resolves.toBeTrue();
-
-				// console.log(events[0].roomId);
-
-				const roomVersion = state.roomCreateEvent.version;
-				const roomId = state.roomCreateEvent.roomId;
-
-				const nameEvent = await stateService.buildEvent<'m.room.name'>(
-					{
-						type: 'm.room.name',
-						sender: state.ourUserJoinEvent.sender,
-						state_key: '',
-						content: { name: 'new name' },
-						room_id: roomId,
-						...getDefaultFields(),
-					},
-					roomVersion,
-				);
-
-				expect(stateService.handlePdu(nameEvent)).rejects.toThrowError(
-					PartialStateResolutionError,
-				);
-			});
-
-			it(label(
-				'should drop new message events if state is partial and not using latest forward extremity',
-				i,
-			), async () => {
-				const { state } = await partialStateEvents[i - 1]();
-				const events = Object.values(state);
-
-				await stateService.saveState(events.map((e) => e.event));
-
-				expect(
-					stateService.isRoomStatePartial(state.creatorMembershipEvent.roomId),
-				).resolves.toBeTrue();
-
-				// console.log(events[0].roomId);
-
-				const roomVersion = state.roomCreateEvent.version;
-				// const creator = state.roomCreateEvent.getContent().creator as room.UserID;
-				const roomId = state.roomCreateEvent.roomId;
-
-				const messageEvent1 = await stateService.buildEvent<'m.room.message'>(
-					{
-						type: 'm.room.message',
-						sender: state.ourUserJoinEvent.sender,
-						content: { body: 'hello world', msgtype: 'm.text' },
-						room_id: roomId,
-						...getDefaultFields(),
-						prev_events: [state.roomNameEvent.eventId],
-					},
-					roomVersion,
-				);
-
-				expect(stateService.handlePdu(messageEvent1)).rejects.toThrowError();
-			});
-
-			it(label(
-				'should allow new message events if state is partial and using latest forward extremity',
-				i,
-			), async () => {
-				const { state } = await partialStateEvents[i - 1]();
-				const events = Object.values(state);
-
-				await stateService.saveState(events.map((e) => e.event));
-
-				expect(
-					stateService.isRoomStatePartial(state.creatorMembershipEvent.roomId),
-				).resolves.toBeTrue();
-
-				// console.log(events[0].roomId);
-
-				const roomVersion = state.roomCreateEvent.version;
-				// const creator = state.roomCreateEvent.getContent().creator as room.UserID;
-				const roomId = state.roomCreateEvent.roomId;
-
-				expect(stateService.isRoomStatePartial(roomId)).resolves.toBeTrue();
-
-				const messageEvent1 = await stateService.buildEvent<'m.room.message'>(
-					{
-						type: 'm.room.message',
-						sender: state.ourUserJoinEvent.sender,
-						content: { body: 'hello world', msgtype: 'm.text' },
-						room_id: roomId,
-						...getDefaultFields(),
-						prev_events: [state.ourUserJoinEvent.eventId],
-					},
-					roomVersion,
-				);
-
-				expect(
-					stateService.handlePdu(messageEvent1),
-				).resolves.not.toBeDefined();
-			});
-
-			it(label(
 				'should complete the state as missing events get filled',
 				i,
 			), async () => {
-				const { state, missingEvents } = await partialStateEvents[i - 1]();
+				const { state, authChain, missingEvents } =
+					await partialStateEvents[i - 1]();
 
-				await stateService.saveState(Object.values(state).map((e) => e.event));
+				await stateService.saveState(
+					Object.values(state).map((e) => e.event),
+					authChain.map((e) => e.event),
+				);
 
 				expect(
 					stateService.isRoomStatePartial(state.roomCreateEvent.roomId),

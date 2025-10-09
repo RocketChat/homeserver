@@ -182,7 +182,7 @@ export class StateGraphRepository {
 			chainId = new ObjectId().toString();
 		}
 
-		const partial = event.isPartial() || previousDelta?.partial || false;
+		const partial = event.isPartial() || (previousDelta?.partial ?? false);
 
 		await this.collection.insertOne({
 			_id: stateId,
