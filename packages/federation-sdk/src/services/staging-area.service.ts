@@ -23,7 +23,7 @@ import { EventService } from './event.service';
 import { LockRepository } from '../repositories/lock.repository';
 import { ConfigService } from './config.service';
 import { MissingEventService } from './missing-event.service';
-import { StateService } from './state.service';
+import { PartialStateResolutionError, StateService } from './state.service';
 
 class MissingAuthorizationEventsError extends Error {
 	constructor(message: string) {
@@ -95,6 +95,12 @@ export class StagingAreaService {
 				if (err instanceof MissingAuthorizationEventsError) {
 					this.logger.info({
 						msg: 'Missing events, postponing event processing',
+						eventId: event._id,
+						err,
+					});
+				} else if (err instanceof PartialStateResolutionError) {
+					this.logger.info({
+						msg: 'Still joining room, postponing event processing',
 						eventId: event._id,
 						err,
 					});

@@ -48,7 +48,12 @@ function yieldPairs<T>(list: T[]): [T, T][] {
 	return pairs;
 }
 
-export class PartialStateResolutionError extends Error {}
+export class PartialStateResolutionError extends Error {
+	constructor(event: PersistentEventBase) {
+		const message = `Unable to process event, we don't have complete state yet (${event.toStrippedJson()})`;
+		super(message);
+	}
+}
 
 @singleton()
 export class StateService {
@@ -557,6 +562,10 @@ export class StateService {
 			{ eventId: event.eventId, ...this.stripEvent(event) },
 			'handling pdu',
 		);
+
+		if (await this.isRoomStatePartial(event.roomId)) {
+			throw new PartialStateResolutionError(event);
+		}
 
 		// handle create events separately
 		if (event.isCreateEvent()) {
