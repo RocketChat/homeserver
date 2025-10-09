@@ -846,9 +846,7 @@ export class RoomService {
 		// ^ have the template for the join event now
 
 		const joinEvent = PersistentEventFactory.createFromRawEvent(
-			makeJoinResponse.event as unknown as Parameters<
-				typeof PersistentEventFactory.createFromRawEvent
-			>[0], // TODO: using room package types will take care of this
+			makeJoinResponse.event, // TODO: using room package types will take care of this
 			makeJoinResponse.room_version,
 		);
 
@@ -866,9 +864,7 @@ export class RoomService {
 
 		for (const stateEvent_ of sendJoinResponse.state) {
 			const stateEvent = PersistentEventFactory.createFromRawEvent(
-				stateEvent_ as unknown as Parameters<
-					typeof PersistentEventFactory.createFromRawEvent
-				>[0],
+				stateEvent_,
 				makeJoinResponse.room_version,
 			);
 
@@ -877,9 +873,7 @@ export class RoomService {
 
 		for (const authEvent_ of sendJoinResponse.auth_chain) {
 			const authEvent = PersistentEventFactory.createFromRawEvent(
-				authEvent_ as unknown as Parameters<
-					typeof PersistentEventFactory.createFromRawEvent
-				>[0],
+				authEvent_,
 				makeJoinResponse.room_version,
 			);
 			eventMap.set(authEvent.eventId, authEvent);
@@ -907,9 +901,7 @@ export class RoomService {
 		}
 
 		const joinEventFinal = PersistentEventFactory.createFromRawEvent(
-			sendJoinResponse.event as unknown as Parameters<
-				typeof PersistentEventFactory.createFromRawEvent
-			>[0],
+			sendJoinResponse.event,
 			makeJoinResponse.room_version,
 		);
 

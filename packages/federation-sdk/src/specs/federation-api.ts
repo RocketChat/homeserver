@@ -4,6 +4,10 @@
  * See: https://spec.matrix.org/v1.7/server-server-api/
  */
 
+import {
+	EventPduTypeRoomMember,
+	PduSchema,
+} from '@rocket.chat/federation-room';
 import { z } from 'zod';
 
 // Common types
@@ -111,7 +115,7 @@ export const MakeJoinEventSchema = z.object({
 
 export const MakeJoinResponseSchema = z.object({
 	room_version: RoomVersionSchema,
-	event: MakeJoinEventSchema,
+	event: PduSchema,
 });
 
 export const SendJoinEventSchema = z.object({
@@ -139,10 +143,9 @@ export const SendJoinEventSchema = z.object({
 });
 
 export const SendJoinResponseSchema = z.object({
-	state: z.array(z.any()),
-	auth_chain: z.array(z.any()),
-	event_id: EventIdSchema.optional(),
-	event: SendJoinEventSchema.optional(),
+	state: z.array(PduSchema),
+	auth_chain: z.array(PduSchema),
+	event: EventPduTypeRoomMember,
 	members_omitted: z.boolean().optional(),
 	servers_in_room: z.array(z.string()).optional(),
 });

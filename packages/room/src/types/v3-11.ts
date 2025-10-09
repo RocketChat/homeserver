@@ -596,7 +596,7 @@ const EventPduTypeRoomCreate = z.object({
 	content: PduCreateEventContentSchema,
 });
 
-const EventPduTypeRoomMember = z.object({
+export const EventPduTypeRoomMember = z.object({
 	...PduNoContentStateEventSchema,
 	type: z.literal('m.room.member'),
 	content: PduMembershipEventContentSchema,
