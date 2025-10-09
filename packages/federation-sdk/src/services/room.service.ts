@@ -872,7 +872,7 @@ export class RoomService {
 
 		// run through state res
 		// validate all auth chain events
-		await stateService.saveState(state, authChain);
+		await stateService.processInitialState(state, authChain);
 
 		if (await stateService.isRoomStatePartial(roomId)) {
 			this.logger.info(

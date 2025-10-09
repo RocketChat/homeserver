@@ -2285,7 +2285,7 @@ describe('StateService', async () => {
 				const { state, authChain } = await partialStateEvents[i - 1]();
 				const events = Object.values(state);
 
-				const stateId = await stateService.saveState(
+				const stateId = await stateService.processInitialState(
 					events.map((e) => e.event),
 					authChain.map((e) => e.event),
 				);
@@ -2307,7 +2307,7 @@ describe('StateService', async () => {
 				const { state, authChain } = await partialStateEvents[i - 1]();
 				const events = Object.values(state);
 
-				await stateService.saveState(
+				await stateService.processInitialState(
 					events.map((e) => e.event),
 					authChain.map((e) => e.event),
 				);
@@ -2324,7 +2324,7 @@ describe('StateService', async () => {
 				const { state, authChain, missingEvents } =
 					await partialStateEvents[i - 1]();
 
-				await stateService.saveState(
+				await stateService.processInitialState(
 					Object.values(state).map((e) => e.event),
 					authChain.map((e) => e.event),
 				);
