@@ -55,6 +55,12 @@ export class PartialStateResolutionError extends Error {
 	}
 }
 
+export class UnknownRoomError extends Error {
+	constructor(roomId: RoomID) {
+		super(`Room ${roomId} does not exist`);
+	}
+}
+
 @singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
@@ -91,7 +97,7 @@ export class StateService {
 			'm.room.create',
 		);
 		if (!createEvent) {
-			throw new Error('Create event not found for room version');
+			throw new UnknownRoomError(roomId as RoomID);
 		}
 
 		return createEvent.event.content?.room_version as RoomVersion;
@@ -506,16 +512,33 @@ export class StateService {
 		event: P,
 	): Promise<P | null> {
 		const record = await this.eventRepository.findById(event.eventId);
-
-		// if state at this event is partial, and event itself is a state event, we immediately "drop" the event, not reject, drop
-		event.setPartial(record?.partial ?? false);
-
-		// no record or if is partial run
-		if (!record || record.partial) {
+		if (record?.partial) {
+			// event is saved and is partial, pass it
+			event.setPartial(true);
 			return event;
 		}
 
-		return null;
+		const previousEvents = await this.eventRepository
+			.findByIds(event.getPreviousEventIds())
+			.toArray();
+		if (previousEvents.length !== event.getPreviousEventIds().length) {
+			// if we don't have all the previous events now, this is a partial state
+			event.setPartial(true);
+			return event;
+		}
+
+		if (previousEvents.some((e) => e.partial)) {
+			// if any of the previouseventsis partial this is too
+			event.setPartial(true);
+			return event;
+		}
+
+		// isn't partial, check if already stored, then skip
+		if (record) {
+			return null;
+		}
+
+		return event;
 	}
 
 	async isRoomStatePartial(roomId: RoomID) {
@@ -553,6 +576,18 @@ export class StateService {
 	// implements spec:https://spec.matrix.org/v1.12/server-server-api/#checks-performed-on-receipt-of-a-pdu
 	// TODO: this is not state related, can and should accept timeline events too, move to event service?
 	async handlePdu<P extends PersistentEventBase>(pdu: P): Promise<void> {
+		if (pdu.isCreateEvent()) {
+			this.logger.debug({ eventId: pdu.eventId }, 'handling create event');
+			const stateId = await this.stateRepository.createDelta(
+				pdu,
+				'' as StateID,
+			);
+
+			await this.addToRoomGraph(pdu, stateId);
+
+			return;
+		}
+
 		const event = await this._neeedsProcessing(pdu);
 		if (!event) {
 			this.logger.debug(
@@ -572,18 +607,6 @@ export class StateService {
 		}
 
 		// handle create events separately
-		if (event.isCreateEvent()) {
-			this.logger.debug({ eventId: event.eventId }, 'handling create event');
-			const stateId = await this.stateRepository.createDelta(
-				event,
-				'' as StateID,
-			);
-
-			await this.addToRoomGraph(event, stateId);
-
-			return;
-		}
-
 		// TODO: 1. Is a valid event, otherwise it is dropped. For an event to be valid, it must contain a room_id, and it must comply with the event format of that room version.
 		// 2. Passes signature checks, otherwise it is dropped.
 		// ^ done someplace else. move here? TODO:
@@ -751,9 +774,7 @@ export class StateService {
 	// 	const stateId = await this.getStateIdBeforeEvent(event);
 	// 	return this.getStateAtStateId(stateId, event.version);
 	// }
-
-	// TODO: i think moving this to repo will help with schema change diff
-	async getServersInRoom(roomId: string) {
+	async getServerSetInRoom(roomId: string) {
 		const state = await this.getLatestRoomState(roomId);
 
 		const servers = new Set<string>();
@@ -776,7 +797,12 @@ export class StateService {
 			}
 		}
 
-		return Array.from(servers);
+		return servers;
+	}
+
+	// @deprecated use getServerSetInRoom
+	async getServersInRoom(roomId: string) {
+		return Array.from(await this.getServerSetInRoom(roomId));
 	}
 
 	private async _isSameChain(stateIds: StateID[]) {

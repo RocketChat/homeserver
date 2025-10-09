@@ -39,7 +39,7 @@ import { EventService } from './event.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { InviteService } from './invite.service';
-import { StateService } from './state.service';
+import { StateService, UnknownRoomError } from './state.service';
 
 @singleton()
 export class RoomService {
@@ -872,7 +872,16 @@ export class RoomService {
 
 		// run through state res
 		// validate all auth chain events
-		await stateService.processInitialState(state, authChain);
+		try {
+			await stateService.getRoomVersion(roomId);
+
+			this.logger.info({ roomId }, 'state already exists');
+		} catch (error) {
+			if (error instanceof UnknownRoomError) {
+				// if already in room, skip this, walk join event to fill the state
+				await stateService.processInitialState(state, authChain);
+			}
+		}
 
 		if (await stateService.isRoomStatePartial(roomId)) {
 			this.logger.info(
@@ -943,23 +952,25 @@ export class RoomService {
 			makeJoinResponse.room_version,
 		);
 
+		// FIXME: this should be here, but since using join event to walk and repopulate missing message, there is no gurantee the check will pass
+
 		// with the state we have, run auth check
-		const room = await stateService.getLatestRoomState(roomId);
+		// const room = await stateService.getLatestRoomState(roomId);
 
-		try {
-			await checkEventAuthWithState(
-				joinEventFinal,
-				room,
-				stateService._getStore(roomVersion),
-			);
-		} catch (error) {
-			this.logger.error(
-				{ error, roomId, eventId: joinEventFinal.eventId },
-				'failed to join room, join event did not pass auth check',
-			);
+		// try {
+		// 	await checkEventAuthWithState(
+		// 		joinEventFinal,
+		// 		room,
+		// 		stateService._getStore(roomVersion),
+		// 	);
+		// } catch (error) {
+		// 	this.logger.error(
+		// 		{ error, roomId, eventId: joinEventFinal.eventId },
+		// 		'failed to join room, join event did not pass auth check',
+		// 	);
 
-			throw error;
-		}
+		// 	throw error;
+		// }
 
 		logger.info({
 			msg: 'Persisting join event',

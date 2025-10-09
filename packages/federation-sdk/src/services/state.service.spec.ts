@@ -2360,7 +2360,7 @@ describe('StateService', async () => {
 					) {
 						console.log(`All previous events found in store ${event.eventId}`);
 						// start processing this event now
-						await stateService.handlePdu(event);
+						await stateService._resolveStateAtEvent(event);
 						return;
 					}
 
@@ -2409,7 +2409,7 @@ describe('StateService', async () => {
 					);
 
 					// once all previous events have been walked we process this event
-					await stateService.handlePdu(event);
+					await stateService._resolveStateAtEvent(event);
 				};
 
 				for (const event of eventsToWalk) {

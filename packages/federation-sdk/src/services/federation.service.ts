@@ -3,6 +3,7 @@ import type { BaseEDU } from '@rocket.chat/federation-core';
 import type { ProtocolVersionKey } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
+	extractDomainFromId,
 	Pdu,
 	PduForType,
 	PersistentEventBase,
@@ -235,7 +236,15 @@ export class FederationService {
 	}
 
 	async sendEventToAllServersInRoom(event: PersistentEventBase) {
-		const servers = await this.stateService.getServersInRoom(event.roomId);
+		const servers = await this.stateService.getServerSetInRoom(event.roomId);
+
+		if (event.stateKey) {
+			const server = extractDomainFromId(event.stateKey);
+			// TODO: fgetser
+			if (!servers.has(server)) {
+				servers.add(server);
+			}
+		}
 
 		for (const server of servers) {
 			if (server === event.origin) {
