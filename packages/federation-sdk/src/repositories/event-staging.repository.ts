@@ -17,6 +17,7 @@ export class EventStagingRepository {
 		eventId: EventID,
 		origin: string,
 		event: Pdu,
+		from: 'join' | 'transaction' = 'transaction',
 	): Promise<UpdateResult> {
 		// We use an upsert here to handle the case where we see the same event
 		// from the same server multiple times.
@@ -32,6 +33,7 @@ export class EventStagingRepository {
 				},
 				$set: {
 					event,
+					from,
 				},
 			},
 			{

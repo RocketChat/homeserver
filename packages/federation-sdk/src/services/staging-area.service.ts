@@ -84,7 +84,9 @@ export class StagingAreaService {
 
 			try {
 				await this.processDependencyStage(event);
-				await this.processAuthorizationStage(event);
+				if ('from' in event && event.from !== 'join') {
+					await this.processAuthorizationStage(event);
+				}
 				await this.stateService.handlePdu(await toEventBase(event.event));
 				await this.processNotificationStage(event);
 

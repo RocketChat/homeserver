@@ -40,6 +40,7 @@ import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { InviteService } from './invite.service';
 import { StateService, UnknownRoomError } from './state.service';
+import { EventStagingRepository } from '../repositories/event-staging.repository';
 
 @singleton()
 export class RoomService {
@@ -54,6 +55,7 @@ export class RoomService {
 		private readonly inviteService: InviteService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly eventFetcherService: EventFetcherService,
+		private readonly eventStagingRepository: EventStagingRepository,
 	) {}
 
 	private validatePowerLevelChange(
@@ -929,6 +931,12 @@ export class RoomService {
 						'processing state at event',
 					);
 					await stateService._resolveStateAtEvent(missingEvent);
+					void this.eventStagingRepository.create(
+						missingEvent.eventId,
+						residentServer,
+						missingEvent.event,
+						'join',
+					);
 				}
 
 				// if partial, join event will also be partial
@@ -979,9 +987,9 @@ export class RoomService {
 		});
 
 		// try to persist the join event now, should succeed with state in place
-		await this.eventService.processIncomingPDUs(
+		void this.eventService.processIncomingPDUs(
 			residentServer || joinEventFinal.origin,
-			[joinEventFinal.event],
+			[...state, joinEventFinal.event],
 		);
 
 		return joinEventFinal.eventId;
