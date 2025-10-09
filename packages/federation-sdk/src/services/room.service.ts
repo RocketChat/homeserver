@@ -31,16 +31,15 @@ import {
 	checkEventAuthWithState,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
+import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
-import { EventService } from './event.service';
-
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
+import { EventService } from './event.service';
 import { InviteService } from './invite.service';
 import { StateService, UnknownRoomError } from './state.service';
-import { EventStagingRepository } from '../repositories/event-staging.repository';
 
 @singleton()
 export class RoomService {
