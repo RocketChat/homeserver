@@ -240,6 +240,32 @@ export class StagingAreaService {
 					},
 				});
 				break;
+			case event.event.type === 'm.room.encrypted':
+				this.eventEmitterService.emit('homeserver.matrix.encrypted', {
+					event_id: eventId,
+					event: event.event,
+					room_id: roomId,
+					sender: event.event.sender,
+					origin_server_ts: event.event.origin_server_ts,
+					content: {
+						...event.event.content,
+						'm.relates_to': event.event.content?.['m.relates_to'] as
+							| {
+									rel_type: 'm.replace';
+									event_id: EventID;
+							  }
+							| {
+									rel_type: 'm.annotation';
+									event_id: EventID;
+									key: string;
+							  }
+							| {
+									rel_type: 'm.thread';
+									event_id: EventID;
+							  },
+					},
+				});
+				break;
 			case event.event.type === 'm.reaction': {
 				this.eventEmitterService.emit('homeserver.matrix.reaction', {
 					event_id: eventId,

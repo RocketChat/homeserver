@@ -114,6 +114,39 @@ export interface HomeserverServices {
 	emitter: EventEmitterService;
 }
 
+type RelatesTo =
+	| {
+			rel_type: 'm.replace';
+			event_id: EventID;
+	  }
+	| {
+			rel_type: 'm.annotation';
+			event_id: EventID;
+			key: string;
+	  }
+	| {
+			rel_type: 'm.thread';
+			event_id: EventID;
+			'm.in_reply_to'?: {
+				event_id: EventID;
+				room_id: string;
+				sender: string;
+				origin_server_ts: number;
+			};
+			is_falling_back?: boolean;
+	  }
+	| {
+			// SPEC: Though rich replies form a relationship to another event, they do not use rel_type to create this relationship.
+			// Instead, a subkey named m.in_reply_to is used to describe the reply’s relationship,
+
+			// rich {"body":"quote","m.mentions":{},"m.relates_to":{"is_falling_back":false,"m.in_reply_to":{"event_id":"$0vkvf2Ha_FdWe3zVaoDw3X15VCyZIZRYrHQXuoZDURQ"}},"msgtype":"m.text"}
+
+			'm.in_reply_to': {
+				event_id: EventID;
+			};
+			is_falling_back?: boolean;
+	  };
+
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
 		message: string;
@@ -130,6 +163,22 @@ export type HomeserverEventSignatures = {
 		last_active_ago?: number;
 		origin?: string;
 	};
+	'homeserver.matrix.encrypted': {
+		event_id: EventID;
+		event: PduForType<'m.room.encrypted'>;
+
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+		content: {
+			algorithm: 'm.megolm.v1.aes-sha2';
+			ciphertext: string;
+			'm.relates_to'?: RelatesTo;
+			device_id?: string;
+			sender_key?: string;
+			session_id?: string;
+		};
+	};
 	'homeserver.matrix.message': {
 		event_id: EventID;
 		event: PduForType<'m.room.message'>;
@@ -141,38 +190,7 @@ export type HomeserverEventSignatures = {
 			body: string;
 			msgtype: MessageType;
 			url?: string;
-			'm.relates_to'?:
-				| {
-						rel_type: 'm.replace';
-						event_id: EventID;
-				  }
-				| {
-						rel_type: 'm.annotation';
-						event_id: EventID;
-						key: string;
-				  }
-				| {
-						rel_type: 'm.thread';
-						event_id: EventID;
-						'm.in_reply_to'?: {
-							event_id: EventID;
-							room_id: string;
-							sender: string;
-							origin_server_ts: number;
-						};
-						is_falling_back?: boolean;
-				  }
-				| {
-						// SPEC: Though rich replies form a relationship to another event, they do not use rel_type to create this relationship.
-						// Instead, a subkey named m.in_reply_to is used to describe the reply’s relationship,
-
-						// rich {"body":"quote","m.mentions":{},"m.relates_to":{"is_falling_back":false,"m.in_reply_to":{"event_id":"$0vkvf2Ha_FdWe3zVaoDw3X15VCyZIZRYrHQXuoZDURQ"}},"msgtype":"m.text"}
-
-						'm.in_reply_to': {
-							event_id: EventID;
-						};
-						is_falling_back?: boolean;
-				  };
+			'm.relates_to'?: RelatesTo;
 			'm.new_content'?: {
 				body: string;
 				msgtype: MessageType;
