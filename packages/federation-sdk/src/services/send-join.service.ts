@@ -42,7 +42,7 @@ export class SendJoinService {
 		}
 
 		const joinEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{ ...event, auth_events: [] },
+			event,
 			roomVersion,
 		);
 
