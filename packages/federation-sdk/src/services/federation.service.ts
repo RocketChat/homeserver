@@ -1,13 +1,11 @@
 import type { EventBase } from '@rocket.chat/federation-core';
 import type { BaseEDU } from '@rocket.chat/federation-core';
-import type { ProtocolVersionKey } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
-	extractDomainFromId,
 	Pdu,
-	PduForType,
 	PersistentEventBase,
 	PersistentEventFactory,
+	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import {
