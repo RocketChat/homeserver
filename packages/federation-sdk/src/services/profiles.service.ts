@@ -87,6 +87,14 @@ export class ProfilesService {
 			throw new Error(`Unsupported room version: ${roomVersion}`);
 		}
 
+		if (
+			!(await this.stateService.getLatestRoomState2(roomId)).isUserInvited(
+				userId,
+			)
+		) {
+			throw new Error(`User ${userId} is not invited`);
+		}
+
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',

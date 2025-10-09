@@ -7,6 +7,7 @@ import {
 	RoomID,
 	RoomVersion,
 	UserID,
+	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
@@ -81,7 +82,7 @@ export class InviteService {
 
 		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
 
-		const invitedServer = inviteEvent.stateKey?.split(':').pop();
+		const invitedServer = extractDomainFromId(inviteEvent.stateKey ?? '');
 		if (!invitedServer) {
 			throw new Error(
 				`invalid state_key ${inviteEvent.stateKey}, no server_name part`,
@@ -171,9 +172,6 @@ export class InviteService {
 			// attempt to persist the invite event as we already have the state
 
 			await this.stateService.handlePdu(inviteEvent);
-			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectReason);
-			}
 
 			// we do not send transaction here
 			// the asking server will handle the transactions
@@ -188,9 +186,6 @@ export class InviteService {
 
 			// if we have the state we try to persist the invite event
 			await this.stateService.handlePdu(inviteEvent);
-			if (inviteEvent.rejected) {
-				throw new Error(inviteEvent.rejectReason);
-			}
 		} catch {
 			// don't have state copy yet
 			// console.error(e);
