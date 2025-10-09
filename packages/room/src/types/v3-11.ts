@@ -366,21 +366,8 @@ export type PduRoomNameEventContent = z.infer<
 	typeof PduRoomNameEventContentSchema
 >;
 
-// Base message content schema
-const BaseMessageContentSchema = z.object({
-	body: z.string().describe('The body of the message.'),
-	msgtype: z
-		.enum([
-			'm.text',
-			'm.image',
-			'm.file',
-			'm.audio',
-			'm.video',
-			'm.emote',
-			'm.notice',
-			'm.location',
-		])
-		.describe('The type of the message.'),
+// Base timeline content schema
+const BaseTimelineContentSchema = z.object({
 	// Optional fields for message edits and relations aka threads
 	'm.relates_to': z
 		.object({
@@ -406,6 +393,24 @@ const BaseMessageContentSchema = z.object({
 		})
 		.optional()
 		.describe('Relation information for edits, replies, reactions, etc.'),
+});
+
+// Base message content schema
+const BaseMessageContentSchema = BaseTimelineContentSchema.extend({
+	body: z.string().describe('The body of the message.'),
+	msgtype: z
+		.enum([
+			'm.text',
+			'm.image',
+			'm.file',
+			'm.audio',
+			'm.video',
+			'm.emote',
+			'm.notice',
+			'm.location',
+		])
+		.describe('The type of the message.'),
+	// Optional fields for message edits and relations aka threads
 	format: z
 		.enum(['org.matrix.custom.html'])
 		.describe('The format of the message content.')
@@ -511,6 +516,26 @@ export const PduMessageEventContentSchema = z.union([
 		),
 	}),
 ]);
+
+const EncryptedContentSchema = BaseTimelineContentSchema.extend({
+	algorithm: z
+		.enum(['m.megolm.v1.aes-sha2'])
+		.describe('The algorithm used to encrypt the content.'),
+	ciphertext: z.string().describe('The encrypted content.'),
+	// Optional fields for message edits and relations aka threads
+	device_id: z
+		.string()
+		.describe('The formatted body of the message.')
+		.optional(),
+	sender_key: z
+		.string()
+		.describe('The formatted body of the message.')
+		.optional(),
+	session_id: z
+		.string()
+		.describe('The formatted body of the message.')
+		.optional(),
+});
 
 export type PduMessageEventContent = z.infer<
 	typeof PduMessageEventContentSchema
@@ -675,6 +700,12 @@ const EventPduTypeRoomTombstone = z.object({
 	content: PduRoomTombstoneEventContentSchema,
 });
 
+const EventPduTypeRoomEncrypted = z.object({
+	...PduNoContentTimelineEventSchema,
+	type: z.literal('m.room.encrypted'),
+	content: EncryptedContentSchema,
+});
+
 const EventPduTypeRoomMessage = z.object({
 	...PduNoContentTimelineEventSchema,
 	type: z.literal('m.room.message'),
@@ -722,6 +753,8 @@ export const PduStateEventSchema = z.discriminatedUnion('type', [
 
 export const PduTimelineSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomMessage,
+
+	EventPduTypeRoomEncrypted,
 
 	EventPduTypeRoomReaction,
 

@@ -75,6 +75,7 @@ export class EventRepository {
 			case 'm.reaction':
 			case 'm.room.name':
 			case 'm.room.message':
+			case 'm.room.encrypted':
 			case 'm.room.member':
 			case 'm.room.power_levels':
 			case 'm.room.topic':
