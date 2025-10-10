@@ -21,6 +21,7 @@
 		"dotenv": "^16.5.0",
 		"memoize": "^10.1.0",
 		"reflect-metadata": "^0.2.2",
+		"rollup": "^4.52.4",
 		"rollup-plugin-dts": "^6.2.3",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3"
