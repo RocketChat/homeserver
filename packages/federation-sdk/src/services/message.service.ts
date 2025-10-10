@@ -16,6 +16,21 @@ import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
 
+type Reply =
+	| {
+			threadEventId: EventID;
+			replyToEventId: EventID;
+			showInMainChat?: boolean;
+	  }
+	| {
+			threadEventId: EventID;
+			latestThreadEventId: EventID;
+			showInMainChat?: boolean;
+	  }
+	| {
+			replyToEventId: EventID;
+	  };
+
 // File message content type
 export type FileMessageContent = {
 	body: string;
@@ -52,11 +67,56 @@ export class MessageService {
 		private readonly eventRepository: EventRepository,
 	) {}
 
+	private buildReplyContent(reply: Reply) {
+		if (
+			'replyToEventId' in reply &&
+			reply?.replyToEventId &&
+			'threadEventId' in reply &&
+			reply?.threadEventId
+		) {
+			return {
+				'm.relates_to': {
+					...(!reply.showInMainChat && { rel_type: 'm.thread' as const }),
+					is_falling_back: false,
+					event_id: reply.threadEventId,
+					'm.in_reply_to': { event_id: reply.replyToEventId },
+				},
+			} as const;
+		}
+
+		if (
+			'threadEventId' in reply &&
+			reply?.threadEventId &&
+			'latestThreadEventId' in reply &&
+			reply?.latestThreadEventId
+		) {
+			return {
+				'm.relates_to': {
+					...(!reply.showInMainChat && { rel_type: 'm.thread' as const }),
+					event_id: reply.threadEventId,
+					is_falling_back: true,
+					'm.in_reply_to': { event_id: reply.latestThreadEventId },
+				},
+			} as const;
+		}
+
+		if ('replyToEventId' in reply && reply?.replyToEventId) {
+			return {
+				'm.relates_to': {
+					'm.in_reply_to': {
+						event_id: reply.replyToEventId,
+					},
+				},
+			} as const;
+		}
+	}
+
 	async sendMessage(
 		roomId: RoomID,
 		rawMessage: string,
 		formattedMessage: string,
 		senderUserId: UserID,
+		reply?: Reply,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -73,6 +133,7 @@ export class MessageService {
 					body: rawMessage,
 					format: 'org.matrix.custom.html',
 					formatted_body: formattedMessage,
+					...(reply && this.buildReplyContent(reply)),
 				},
 				room_id: roomId,
 				auth_events: [],
@@ -94,6 +155,10 @@ export class MessageService {
 		return event;
 	}
 
+	/**
+	 *
+	 * @deprecated Use sendMessage and replyToEventId instead
+	 */
 	async sendReplyToMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -108,44 +173,22 @@ export class MessageService {
 			);
 		}
 
-		const event = await this.stateService.buildEvent<'m.room.message'>(
+		return this.sendMessage(
+			roomId,
+			rawMessage,
+			formattedMessage,
+			senderUserId,
 			{
-				type: 'm.room.message',
-				content: {
-					msgtype: 'm.text',
-					body: rawMessage,
-					format: 'org.matrix.custom.html',
-					formatted_body: formattedMessage,
-					'm.relates_to': {
-						'm.in_reply_to': {
-							event_id: eventToReplyTo,
-						},
-					},
-				},
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderUserId,
+				replyToEventId: eventToReplyTo,
 			},
-			roomVersion,
 		);
-
-		await this.stateService.handlePdu(event);
-		if (event.rejected) {
-			throw new Error(event.rejectReason);
-		}
-
-		void this.federationService.sendEventToAllServersInRoom(event);
-
-		return event;
 	}
 
 	async sendFileMessage(
 		roomId: RoomID,
 		content: FileMessageContent,
 		senderUserId: UserID,
+		reply?: Reply,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -157,62 +200,9 @@ export class MessageService {
 		const event = await this.stateService.buildEvent<'m.room.message'>(
 			{
 				type: 'm.room.message',
-				content: content,
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderUserId,
-			},
-			roomVersion,
-		);
-
-		await this.stateService.handlePdu(event);
-		if (event.rejected) {
-			throw new Error(event.rejectReason);
-		}
-
-		void this.federationService.sendEventToAllServersInRoom(event);
-
-		return event;
-	}
-
-	async sendThreadMessage(
-		roomId: RoomID,
-		rawMessage: string,
-		formattedMessage: string,
-		senderUserId: UserID,
-		threadRootEventId: EventID,
-		latestThreadEventId?: EventID,
-	): Promise<PersistentEventBase> {
-		const roomVersion = await this.stateService.getRoomVersion(roomId);
-		if (!roomVersion) {
-			throw new Error(
-				`Room version not found for room ${roomId} while trying to send thread message`,
-			);
-		}
-
-		const event = await this.stateService.buildEvent<'m.room.message'>(
-			{
-				type: 'm.room.message',
 				content: {
-					msgtype: 'm.text',
-					body: rawMessage,
-					format: 'org.matrix.custom.html',
-					formatted_body: formattedMessage,
-					'm.relates_to': !latestThreadEventId
-						? {
-								rel_type: 'm.thread',
-								event_id: threadRootEventId,
-								is_falling_back: true,
-							}
-						: {
-								rel_type: 'm.thread',
-								event_id: threadRootEventId,
-								is_falling_back: true,
-								'm.in_reply_to': { event_id: latestThreadEventId },
-							},
+					...content,
+					...(reply && this.buildReplyContent(reply)),
 				},
 				room_id: roomId,
 				auth_events: [],
@@ -234,6 +224,39 @@ export class MessageService {
 		return event;
 	}
 
+	/**
+	 * @deprecated Use sendMessage and threadEventId/replyToEventId instead
+	 */
+	async sendThreadMessage(
+		roomId: RoomID,
+		rawMessage: string,
+		formattedMessage: string,
+		senderUserId: UserID,
+		threadRootEventId: EventID,
+		latestThreadEventId: EventID,
+	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error(
+				`Room version not found for room ${roomId} while trying to send thread message`,
+			);
+		}
+
+		return this.sendMessage(
+			roomId,
+			rawMessage,
+			formattedMessage,
+			senderUserId,
+			{
+				threadEventId: threadRootEventId,
+				latestThreadEventId: latestThreadEventId,
+			},
+		);
+	}
+
+	/**
+	 * @deprecated Use sendMessage and threadEventId/replyToEventId instead
+	 */
 	async sendReplyToInsideThreadMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -249,40 +272,16 @@ export class MessageService {
 			);
 		}
 
-		const event = await this.stateService.buildEvent<'m.room.message'>(
+		return this.sendMessage(
+			roomId,
+			rawMessage,
+			formattedMessage,
+			senderUserId,
 			{
-				type: 'm.room.message',
-				content: {
-					msgtype: 'm.text',
-					body: rawMessage,
-					format: 'org.matrix.custom.html',
-					formatted_body: formattedMessage,
-					'm.relates_to': {
-						rel_type: 'm.thread',
-						event_id: threadRootEventId,
-						'm.in_reply_to': {
-							event_id: eventToReplyTo,
-						},
-					},
-				},
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderUserId,
+				threadEventId: threadRootEventId,
+				replyToEventId: eventToReplyTo,
 			},
-			roomVersion,
 		);
-
-		await this.stateService.handlePdu(event);
-		if (event.rejected) {
-			throw new Error(event.rejectReason);
-		}
-
-		void this.federationService.sendEventToAllServersInRoom(event);
-
-		return event;
 	}
 
 	async sendReaction(
