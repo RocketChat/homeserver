@@ -200,7 +200,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 			async ({ params, query }) => {
 				const eventId = query.event_id;
 				if (eventId) {
-					const room = await stateService.findStateAtEvent(eventId as EventID);
+					const event = await stateService.getEvent(eventId as EventID);
+					if (!event) {
+						throw new Error(`Event ${eventId} not found`);
+					}
+					const room = await stateService.getStateAtEvent(event);
 					const state: Record<string, any> = {};
 					for (const [key, value] of room.entries()) {
 						state[key] = value.event;

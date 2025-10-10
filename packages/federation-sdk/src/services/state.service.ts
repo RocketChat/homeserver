@@ -1118,16 +1118,6 @@ export class StateService {
 		return this.getStateAtStateId(stateId, event.version);
 	}
 
-	// TODO: remove this
-	async findStateAtEvent(eventId: EventID) {
-		const event = await this.getEvent(eventId);
-		if (!event) {
-			throw new Error(`EVent ${eventId} not found`);
-		}
-
-		return this.getStateAtEvent(event);
-	}
-
 	async getAllPublicRoomIdsAndNames() {
 		const createEvents = await this.eventRepository.findByType('m.room.create');
 
