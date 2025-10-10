@@ -80,6 +80,7 @@ export class EventRepository {
 			case 'm.room.member':
 			case 'm.room.power_levels':
 			case 'm.room.topic':
+			case 'm.room.server_acl':
 				queries = [
 					baseQueries.create,
 					baseQueries.powerLevels,

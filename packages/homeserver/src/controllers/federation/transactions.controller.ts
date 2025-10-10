@@ -4,6 +4,8 @@ import {
 	EventAuthorizationService,
 	EventService,
 } from '@rocket.chat/federation-sdk';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -18,7 +20,6 @@ import {
 	SendTransactionBodyDto,
 	SendTransactionResponseDto,
 } from '../../dtos';
-import { canAccessEvent } from '../../middlewares/acl.middleware';
 
 export const transactionsPlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
@@ -39,6 +40,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				};
 			},
 			{
+				use: isAuthenticatedMiddleware(eventAuthService),
 				body: SendTransactionBodyDto,
 				response: {
 					200: SendTransactionResponseDto,
@@ -51,6 +53,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				},
 			},
 		)
+
 		.get(
 			'/_matrix/federation/v1/event/:eventId',
 			async ({ params, set }) => {
@@ -72,7 +75,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				};
 			},
 			{
-				use: canAccessEvent(eventAuthService),
+				use: canAccessResourceMiddleware(eventAuthService, 'event'),
 				params: GetEventParamsDto,
 				response: {
 					200: GetEventResponseDto,
@@ -88,6 +91,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				},
 			},
 		)
+
 		.get(
 			'/_matrix/federation/v1/backfill/:roomId',
 			async ({ params, query, set }) => {
@@ -120,6 +124,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				}
 			},
 			{
+				use: canAccessResourceMiddleware(eventAuthService, 'room'),
 				params: BackfillParamsDto,
 				query: BackfillQueryDto,
 				response: {

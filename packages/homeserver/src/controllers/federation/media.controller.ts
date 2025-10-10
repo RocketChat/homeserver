@@ -1,4 +1,8 @@
+import { EventAuthorizationService } from '@rocket.chat/federation-sdk';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
+import { container } from 'tsyringe';
 
 const ErrorResponseSchema = t.Object({
 	errcode: t.Literal('M_UNRECOGNIZED'),
@@ -11,8 +15,32 @@ const ErrorResponseSchema = t.Object({
  * All the medias are being handled by the Rocket.Chat instances.
  */
 export const mediaPlugin = (app: Elysia) => {
+	const eventAuthService = container.resolve(EventAuthorizationService);
+
 	return app.group('/_matrix', (app) =>
 		app
+			.use(isAuthenticatedMiddleware(eventAuthService))
+			.get(
+				'/media/v3/config',
+				async ({ set }) => {
+					set.status = 404;
+					return {
+						errcode: 'M_UNRECOGNIZED',
+						error: 'This endpoint is not implemented on homeserver side',
+					};
+				},
+				{
+					response: {
+						404: ErrorResponseSchema,
+					},
+					detail: {
+						tags: ['Media'],
+						summary: 'Get media configuration',
+						description: 'Get the media configuration for the homeserver',
+					},
+				},
+			)
+			.use(canAccessResourceMiddleware(eventAuthService, 'media'))
 			.get(
 				'/federation/v1/media/download/:mediaId',
 				async ({ set }) => {
@@ -116,27 +144,6 @@ export const mediaPlugin = (app: Elysia) => {
 						tags: ['Media'],
 						summary: 'Get media thumbnail',
 						description: 'Get a thumbnail for a media file',
-					},
-				},
-			)
-
-			.get(
-				'/media/v3/config',
-				async ({ set }) => {
-					set.status = 404;
-					return {
-						errcode: 'M_UNRECOGNIZED',
-						error: 'This endpoint is not implemented on homeserver side',
-					};
-				},
-				{
-					response: {
-						404: ErrorResponseSchema,
-					},
-					detail: {
-						tags: ['Media'],
-						summary: 'Get media configuration',
-						description: 'Get the media configuration for the homeserver',
 					},
 				},
 			),

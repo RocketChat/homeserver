@@ -1,5 +1,9 @@
 import { EventID, RoomID } from '@rocket.chat/federation-room';
-import { EventService } from '@rocket.chat/federation-sdk';
+import {
+	EventAuthorizationService,
+	EventService,
+} from '@rocket.chat/federation-sdk';
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import {
@@ -14,8 +18,10 @@ import {
 
 export const statePlugin = (app: Elysia) => {
 	const eventService = container.resolve(EventService);
+	const eventAuthService = container.resolve(EventAuthorizationService);
 
 	return app
+		.use(canAccessResourceMiddleware(eventAuthService, 'room'))
 		.get(
 			'/_matrix/federation/v1/state_ids/:roomId',
 			({ params, query }) =>

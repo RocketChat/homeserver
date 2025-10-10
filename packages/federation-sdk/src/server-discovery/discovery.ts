@@ -1,6 +1,5 @@
 import { isIPv4, isIPv6 } from 'node:net';
 import memoize from 'memoize';
-import type { Logger } from 'pino';
 import { MultiError } from './_multi-error';
 import { resolver } from './_resolver';
 import { _URL } from './_url';
@@ -85,10 +84,9 @@ export async function resolveHostname(
  * Server names are resolved to an IP address and port to connect to, and have various conditions affecting which certificates and Host headers to send.
  */
 
-// TODO remove logger from here. need to convert this into a service (?)
 async function getHomeserverFinalAddressInternal(
 	addr: AddressString,
-	logger?: Logger,
+	logger?: any, // TODO remove logger from here. need to convert this into a service (?)
 ): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
 	const url = new _URL(addr);
 
