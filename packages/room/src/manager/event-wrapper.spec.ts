@@ -1,9 +1,8 @@
 import { PersistentEventFactory } from './factory';
 
 import { describe, expect, it } from 'bun:test';
+import type { Pdu } from '../types/v3-11';
 import type { RoomVersion } from './type';
-import { factory } from 'typescript';
-import { Pdu } from '../types/v3-11';
 
 function runTest(
 	event: Parameters<typeof PersistentEventFactory.createFromRawEvent>[0],
