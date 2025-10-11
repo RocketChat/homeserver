@@ -1,6 +1,7 @@
 import { PersistentEventFactory } from './factory';
 
 import { describe, expect, it } from 'bun:test';
+import type { Pdu } from '../types/v3-11';
 import type { RoomVersion } from './type';
 
 function runTest(
@@ -365,5 +366,35 @@ describe('[EventWrapper] Redaction', () => {
 		runTest(a, b, '10');
 
 		// rest of the tests not yet part of normal standard
+	});
+
+	it('correctly calculate new depth', () => {
+		const e1 = PersistentEventFactory.createFromRawEvent(
+			{ depth: 1 } as Pdu,
+			'10',
+		);
+		const e2 = PersistentEventFactory.createFromRawEvent(
+			{ depth: 1 } as Pdu,
+			'10',
+		).addPrevEvents([e1]);
+		expect(e2.depth).toBe(2);
+		const e3 = PersistentEventFactory.createFromRawEvent(
+			{ depth: 5 } as Pdu,
+			'10',
+		);
+		e2.addPrevEvents([e3]);
+		expect(e2.depth).toBe(6);
+
+		const e4 = PersistentEventFactory.createFromRawEvent(
+			{ depth: 4 } as Pdu,
+			'10',
+		);
+		const e5 = PersistentEventFactory.createFromRawEvent(
+			{ depth: 7 } as Pdu,
+			'10',
+		);
+
+		e2.addPrevEvents([e5, e4]); // intentional out of order
+		expect(e2.depth).toBe(8);
 	});
 });

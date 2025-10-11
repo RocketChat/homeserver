@@ -455,9 +455,12 @@ export abstract class PersistentEventBase<
 		for (const event of events) {
 			this.prevEventsIds.add(event.eventId);
 		}
-		if (this.rawEvent.depth <= events[events.length - 1].depth) {
-			this.rawEvent.depth = events[events.length - 1].depth + 1;
+		const deepestDepth =
+			events.sort((e1, e2) => e1.depth - e2.depth).pop()?.depth ?? 0;
+		if (this.rawEvent.depth <= deepestDepth) {
+			this.rawEvent.depth = deepestDepth + 1;
 		}
+
 		return this;
 	}
 
