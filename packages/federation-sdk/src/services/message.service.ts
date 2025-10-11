@@ -233,7 +233,7 @@ export class MessageService {
 		formattedMessage: string,
 		senderUserId: UserID,
 		threadRootEventId: EventID,
-		latestThreadEventId: EventID,
+		latestThreadEventId?: EventID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -249,7 +249,7 @@ export class MessageService {
 			senderUserId,
 			{
 				threadEventId: threadRootEventId,
-				latestThreadEventId: latestThreadEventId,
+				latestThreadEventId: latestThreadEventId ?? threadRootEventId,
 			},
 		);
 	}
