@@ -380,4 +380,111 @@ export class EventAuthorizationService {
 
 		return false;
 	}
+
+	/**
+	 * @deprecated Use canAccessEvent instead
+	 */
+	async canAccessEventFromAuthorizationHeader(
+		eventId: EventID,
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
+	): Promise<
+		| { authorized: true }
+		| {
+				authorized: false;
+				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
+		  }
+	> {
+		try {
+			const signatureResult = await this.verifyRequestSignature(
+				method,
+				uri,
+				authorizationHeader,
+				body, // keep body due to canonical json validation
+			);
+			if (!signatureResult) {
+				return {
+					authorized: false,
+					errorCode: 'M_UNAUTHORIZED',
+				};
+			}
+
+			const authorized = await this.canAccessEvent(eventId, signatureResult);
+			if (!authorized) {
+				return {
+					authorized: false,
+					errorCode: 'M_FORBIDDEN',
+				};
+			}
+
+			return {
+				authorized: true,
+			};
+		} catch (error) {
+			this.logger.error(
+				{ error, eventId, authorizationHeader, method, uri, body },
+				'Error checking event access',
+			);
+			return {
+				authorized: false,
+				errorCode: 'M_UNKNOWN',
+			};
+		}
+	}
+
+	/**
+	 * @deprecated Use canAccessMedia instead
+	 */
+
+	async canAccessMediaFromAuthorizationHeader(
+		mediaId: string,
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
+	): Promise<
+		| { authorized: true }
+		| {
+				authorized: false;
+				errorCode: 'M_UNAUTHORIZED' | 'M_FORBIDDEN' | 'M_UNKNOWN';
+		  }
+	> {
+		try {
+			const signatureResult = await this.verifyRequestSignature(
+				method,
+				uri,
+				authorizationHeader,
+				body,
+			);
+			if (!signatureResult) {
+				return {
+					authorized: false,
+					errorCode: 'M_UNAUTHORIZED',
+				};
+			}
+
+			const authorized = await this.canAccessMedia(mediaId, signatureResult);
+			if (!authorized) {
+				return {
+					authorized: false,
+					errorCode: 'M_FORBIDDEN',
+				};
+			}
+
+			return {
+				authorized: true,
+			};
+		} catch (error) {
+			this.logger.error(
+				{ error, mediaId, authorizationHeader, method, uri },
+				'Error checking media access',
+			);
+			return {
+				authorized: false,
+				errorCode: 'M_UNKNOWN',
+			};
+		}
+	}
 }
