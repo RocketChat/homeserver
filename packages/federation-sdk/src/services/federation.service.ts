@@ -2,6 +2,7 @@ import type { EventBase } from '@rocket.chat/federation-core';
 import type { BaseEDU } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
+	EventID,
 	Pdu,
 	PersistentEventBase,
 	PersistentEventFactory,
@@ -149,6 +150,31 @@ export class FederationService {
 		try {
 			const uri = FederationEndpoints.getEvent(eventId);
 			return await this.requestService.get<Pdu>(domain, uri);
+		} catch (error: any) {
+			this.logger.error({ msg: 'getEvent failed', err: error });
+			throw error;
+		}
+	}
+
+	/**
+	 * Get events from a remote server
+	 */
+	async getMissingEvents(
+		domain: string,
+		roomId: string,
+		earliestEvents: EventID[],
+		latestEvents: EventID[],
+		limit = 10,
+		minDepth = 0,
+	): Promise<{ events: Pdu[] }> {
+		try {
+			const uri = FederationEndpoints.getMissingEvents(roomId);
+			return await this.requestService.post<{ events: Pdu[] }>(domain, uri, {
+				earliest_events: earliestEvents,
+				latest_events: latestEvents,
+				limit,
+				min_depth: minDepth,
+			});
 		} catch (error: any) {
 			this.logger.error({ msg: 'getEvent failed', err: error });
 			throw error;

@@ -22,6 +22,7 @@ import { EventService } from './event.service';
 
 import { LockRepository } from '../repositories/lock.repository';
 import { ConfigService } from './config.service';
+import { FederationService } from './federation.service';
 import { MissingEventService } from './missing-event.service';
 import { PartialStateResolutionError, StateService } from './state.service';
 
@@ -29,6 +30,13 @@ class MissingAuthorizationEventsError extends Error {
 	constructor(message: string) {
 		super(message);
 		this.name = 'MissingAuthorizationEventsError';
+	}
+}
+
+class MissingEventsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'MissingEventsError';
 	}
 }
 
@@ -43,6 +51,7 @@ export class StagingAreaService {
 		private readonly eventAuthService: EventAuthorizationService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly stateService: StateService,
+		private readonly federationService: FederationService,
 		private readonly lockRepository: LockRepository,
 	) {}
 
@@ -83,7 +92,13 @@ export class StagingAreaService {
 			this.logger.info({ msg: 'Processing event', eventId: event._id });
 
 			try {
-				await this.processDependencyStage(event);
+				const addedMissing = await this.processDependencyStage(event);
+				if (addedMissing) {
+					// if we added missing events, we postpone the processing of this event
+					// to give time for the missing events to be processed first
+					throw new MissingEventsError('Added missing events');
+				}
+
 				if ('from' in event && event.from !== 'join') {
 					await this.processAuthorizationStage(event);
 				}
@@ -105,6 +120,11 @@ export class StagingAreaService {
 						msg: 'Still joining room, postponing event processing',
 						eventId: event._id,
 						err,
+					});
+				} else if (err instanceof MissingEventsError) {
+					this.logger.info({
+						msg: 'Added missing events, postponing current event processing',
+						eventId: event._id,
 					});
 				} else {
 					this.logger.error({
@@ -155,31 +175,67 @@ export class StagingAreaService {
 		);
 
 		if (missing.length === 0) {
-			return;
+			return false;
 		}
-		this.logger.debug(`Missing ${missing.length} events for ${eventId}`);
-
-		const found = await Promise.all(
-			missing.map((missingId) => {
-				this.logger.debug(
-					`Adding missing event ${missingId} to missing events service`,
-				);
-
-				return this.missingEventsService.fetchMissingEvent({
-					eventId: missingId,
-					roomId: event.event.room_id,
-					origin: event.origin,
-				});
-			}),
+		this.logger.debug(
+			`Missing ${missing.length} events for ${eventId}: ${missing}`,
 		);
 
-		const addedMissing = found.some((f) => f === true);
+		const latestEvent = await this.eventService.getLastEventForRoom(
+			event.event.room_id,
+		);
+
+		let addedMissing = false;
+
+		if (latestEvent) {
+			this.logger.debug(
+				`Fetching missing events between ${latestEvent._id} and ${eventId} for room ${event.event.room_id}`,
+			);
+
+			const missingEvents = await this.federationService.getMissingEvents(
+				event.origin,
+				event.event.room_id,
+				[latestEvent._id],
+				[eventId],
+				10,
+				0,
+			);
+
+			this.logger.debug(
+				`Persisting ${missingEvents.events.length} fetched missing events`,
+			);
+
+			await this.eventService.processIncomingPDUs(
+				event.origin,
+				missingEvents.events,
+			);
+
+			addedMissing = missingEvents.events.length > 0;
+		} else {
+			const found = await Promise.all(
+				missing.map((missingId) => {
+					this.logger.debug(
+						`Adding missing event ${missingId} to missing events service`,
+					);
+
+					return this.missingEventsService.fetchMissingEvent({
+						eventId: missingId,
+						roomId: event.event.room_id,
+						origin: event.origin,
+					});
+				}),
+			);
+
+			addedMissing = found.some((f) => f === true);
+		}
 
 		// if the auth events are missing, the authorization stage will fail anyway,
 		// so to save some time we throw an error here, and the event processing will be postponed
 		if (addedMissing && authEvents.some((e) => missing.includes(e))) {
 			throw new MissingAuthorizationEventsError('Missing authorization events');
 		}
+
+		return addedMissing;
 	}
 
 	private async processAuthorizationStage(event: EventStagingStore) {
