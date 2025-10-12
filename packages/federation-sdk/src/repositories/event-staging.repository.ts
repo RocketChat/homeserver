@@ -10,7 +10,12 @@ export class EventStagingRepository {
 		@inject('EventStagingCollection')
 		private readonly collection: Collection<EventStagingStore>,
 	) {
-		this.collection.createIndex({ roomId: 1, createdAt: 1 });
+		this.collection.createIndex({
+			roomId: 1,
+			got: 1,
+			'event.depth': 1,
+			createdAt: 1,
+		});
 	}
 
 	async create(
@@ -30,6 +35,7 @@ export class EventStagingRepository {
 				$setOnInsert: {
 					roomId: event.room_id,
 					createdAt: new Date(),
+					got: 0,
 				},
 				$set: {
 					event,
@@ -43,9 +49,18 @@ export class EventStagingRepository {
 	}
 
 	getLeastDepthEventForRoom(roomId: string): Promise<EventStagingStore | null> {
-		return this.collection.findOne(
+		return this.collection.findOneAndUpdate(
 			{ roomId },
-			{ sort: { 'event.depth': 1, createdAt: 1 } },
+			{
+				$inc: {
+					got: 1,
+				},
+			},
+			{
+				sort: { got: 1, 'event.depth': 1, createdAt: 1 },
+				upsert: false,
+				returnDocument: 'before',
+			},
 		);
 	}
 

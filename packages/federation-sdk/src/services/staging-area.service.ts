@@ -26,6 +26,18 @@ import { FederationService } from './federation.service';
 import { MissingEventService } from './missing-event.service';
 import { PartialStateResolutionError, StateService } from './state.service';
 
+const MAX_EVENT_RETRY =
+	((maxRetry?: string) => {
+		if (!maxRetry) return;
+
+		const n = Number.parseInt(maxRetry, 10);
+		if (!Number.isNaN(n) && n >= 0) {
+			return n;
+		}
+
+		throw new Error('Invalid MAX_EVENT_RETRY value');
+	})(process.env.MAX_EVENT_RETRY) ?? 10;
+
 class MissingAuthorizationEventsError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -62,16 +74,6 @@ export class StagingAreaService {
 	}
 
 	async processEventForRoom(roomId: string) {
-		let event = await this.eventService.getLeastDepthEventForRoom(roomId);
-		if (!event) {
-			this.logger.debug({ msg: 'No staged event found for room', roomId });
-			await this.lockRepository.releaseLock(
-				roomId,
-				this.configService.instanceId,
-			);
-			return;
-		}
-
 		const roomIdToRoomVersion = new Map<string, RoomVersion>();
 		const getRoomVersion = async (roomId: string) => {
 			if (roomIdToRoomVersion.has(roomId)) {
@@ -88,8 +90,31 @@ export class StagingAreaService {
 			return PersistentEventFactory.createFromRawEvent(pdu, version);
 		};
 
-		while (event) {
+		let event: EventStagingStore | null = null;
+
+		do {
+			event = await this.eventService.getLeastDepthEventForRoom(roomId);
+			if (!event) {
+				this.logger.debug({ msg: 'No staged event found for room', roomId });
+				break;
+			}
+
+			if (event.got > MAX_EVENT_RETRY) {
+				this.logger.warn(
+					`Event ${event._id} has been tried ${MAX_EVENT_RETRY} times, removing from staging area`,
+				);
+				await this.eventService.markEventAsUnstaged(event);
+				continue;
+			}
+
 			this.logger.info({ msg: 'Processing event', eventId: event._id });
+
+			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
+			// and acquired by another instance while we're processing a batch of events for this room
+			await this.lockRepository.updateLockTimestamp(
+				roomId,
+				this.configService.instanceId,
+			);
 
 			try {
 				const addedMissing = await this.processDependencyStage(event);
@@ -123,33 +148,18 @@ export class StagingAreaService {
 					});
 				} else if (err instanceof MissingEventsError) {
 					this.logger.info({
-						msg: 'Added missing events, postponing current event processing',
+						msg: 'Added missing events, postponing event processing',
 						eventId: event._id,
 					});
 				} else {
 					this.logger.error({
-						msg: 'Error processing event',
+						msg: 'Error processing event, postponing event processing',
 						event,
 						err,
 					});
-
-					await this.eventService.markEventAsUnstaged(event);
 				}
 			}
-
-			// TODO: what should we do to avoid infinite loops in case the next event is always the same event
-
-			event = await this.eventService.getLeastDepthEventForRoom(roomId);
-
-			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
-			// and acquired by another instance while we're processing a batch of events for this room
-			if (event) {
-				await this.lockRepository.updateLockTimestamp(
-					roomId,
-					this.configService.instanceId,
-				);
-			}
-		}
+		} while (event);
 
 		// release the lock after processing
 		await this.lockRepository.releaseLock(
