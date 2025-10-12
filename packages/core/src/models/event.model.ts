@@ -39,6 +39,7 @@ export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
 
 export interface EventStagingStore extends PersistentEventBase {
 	roomId: string;
+	got: number;
 	from: 'join' | 'transaction';
 }
 

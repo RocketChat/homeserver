@@ -37,7 +37,7 @@ const SERVER_DISCOVERY_CACHE_MAX_AGE =
 		}
 
 		throw new Error('Invalid SERVER_DISCOVERY_CACHE_MAX_AGE value');
-	})(process.env.SERVER_DISCOVERY_CACHE_MAX_AGE) ?? 3_600_000; // default to 1 hour
+	})(process.env.SERVER_DISCOVERY_CACHE_MAX_AGE) ?? 300_000; // default to 5 minutes
 
 // should only be needed if input is from a dns server
 function fix6(addr: string): `[${string}]` {
