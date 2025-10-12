@@ -645,7 +645,7 @@ export class StateService {
 			'event authorized against auth events',
 		);
 
-		// 5. Passes authorization rules based on the state before the event, otherwise it is rejected.
+		// 5. Passes authorization rules based on the state before the event and store event, otherwise it is rejected.
 		await this._resolveStateAtEvent(event); // it is the assumption that this point forwards this event WILL have a state associated with it
 
 		/*

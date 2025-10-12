@@ -78,6 +78,7 @@ export class EventService {
 	async checkIfEventsExists(
 		eventIds: EventID[],
 	): Promise<{ missing: EventID[]; found: EventID[] }> {
+		// TODO, return only the IDs, not the full events
 		const eventsCursor = this.eventRepository.findByIds(eventIds);
 		const events = await eventsCursor.toArray();
 
