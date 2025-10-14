@@ -163,6 +163,13 @@ export type HomeserverEventSignatures = {
 		last_active_ago?: number;
 		origin?: string;
 	};
+	'homeserver.matrix.encryption': {
+		event_id: EventID;
+		event: PduForType<'m.room.encryption'>;
+		room_id: string;
+		sender: string;
+		origin_server_ts: number;
+	};
 	'homeserver.matrix.encrypted': {
 		event_id: EventID;
 		event: PduForType<'m.room.encrypted'>;
