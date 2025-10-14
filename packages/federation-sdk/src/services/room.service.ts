@@ -845,7 +845,7 @@ export class RoomService {
 
 		// trying to join room from another server
 		const makeJoinResponse = await federationService.makeJoin(
-			residentServer as string,
+			residentServer,
 			roomId,
 			userId,
 			roomVersion, // NOTE: check the comment in the called method

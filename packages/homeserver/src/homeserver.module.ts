@@ -88,6 +88,12 @@ export async function setup(options?: HomeserverSetupOptions) {
 				),
 			},
 		},
+		invite: {
+			allowedEncryptedRooms:
+				process.env.INVITE_ALLOWED_ENCRYPTED_ROOMS === 'true',
+			allowedNonPrivateRooms:
+				process.env.INVITE_ALLOWED_NON_PRIVATE_ROOMS === 'true',
+		},
 	});
 
 	const containerOptions: FederationContainerOptions = {

@@ -25,6 +25,13 @@ export type ProcessInviteEvent = {
 	room_version: string;
 };
 
+export class NotAllowedError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'NotAllowedError';
+	}
+}
+
 @singleton()
 export class InviteService {
 	private readonly logger = createLogger('InviteService');
@@ -142,6 +149,42 @@ export class InviteService {
 		};
 	}
 
+	private async shouldProcessInvite(
+		event: PduForType<'m.room.member'>,
+	): Promise<void> {
+		const isRoomNonPrivate = event.unsigned.invite_room_state.some(
+			(
+				stateEvent: PersistentEventBase<
+					RoomVersion,
+					'm.room.join_rules'
+				>['event'],
+			) =>
+				stateEvent.type === 'm.room.join_rules' &&
+				stateEvent.content.join_rule === 'public',
+		);
+
+		const isRoomEncrypted = event.unsigned.invite_room_state.some(
+			(
+				stateEvent: PersistentEventBase<
+					RoomVersion,
+					'm.room.encryption'
+				>['event'],
+			) => stateEvent.type === 'm.room.encryption',
+		);
+
+		const { allowedEncryptedRooms, allowedNonPrivateRooms } =
+			this.configService.getInviteConfig();
+
+		const shouldRejectInvite =
+			(!allowedEncryptedRooms && isRoomEncrypted) ||
+			(!allowedNonPrivateRooms && isRoomNonPrivate);
+		if (shouldRejectInvite) {
+			throw new NotAllowedError(
+				`Could not process invite due to room being ${isRoomEncrypted ? 'encrypted' : 'public'}`,
+			);
+		}
+	}
+
 	async processInvite(
 		event: PduForType<'m.room.member'>,
 		roomId: RoomID,
@@ -150,6 +193,7 @@ export class InviteService {
 		authenticatedServer: string,
 	) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
+		await this.shouldProcessInvite(event);
 
 		const residentServer = roomId.split(':').pop();
 		if (!residentServer) {

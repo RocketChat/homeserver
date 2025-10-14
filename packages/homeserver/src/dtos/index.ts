@@ -12,6 +12,7 @@ export * from './federation/state-ids.dto';
 export * from './federation/state.dto';
 export * from './federation/transactions.dto';
 export * from './federation/versions.dto';
+export * from './federation/error.dto';
 
 // Internal DTOs
 export * from './internal/invite.dto';

@@ -714,7 +714,7 @@ const EventPduTypeRoomEncrypted = z.object({
 });
 
 const EventPduTypeRoomEncryption = z.object({
-	...PduNoContentTimelineEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.encryption'),
 	content: PduEncryptionEventContentSchema,
 });
@@ -789,7 +789,6 @@ export function isTimelineEventType(type: PduType) {
 	return (
 		type === 'm.room.message' ||
 		type === 'm.room.encrypted' ||
-		type === 'm.room.encryption' ||
 		type === 'm.reaction' ||
 		type === 'm.room.redaction'
 	);
