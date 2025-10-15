@@ -308,6 +308,12 @@ export class StagingAreaService {
 					},
 				});
 				break;
+			case event.event.type === 'm.room.encryption':
+				this.eventEmitterService.emit('homeserver.matrix.encryption', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
 			case event.event.type === 'm.room.encrypted':
 				this.eventEmitterService.emit('homeserver.matrix.encrypted', {
 					event_id: eventId,

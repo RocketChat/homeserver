@@ -90,6 +90,7 @@ export {
 	type BaseEventType,
 } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
+export { NotAllowedError } from './services/invite.service';
 
 export { EventRepository } from './repositories/event.repository';
 export { RoomRepository } from './repositories/room.repository';
@@ -162,6 +163,10 @@ export type HomeserverEventSignatures = {
 		presence: 'online' | 'offline' | 'unavailable';
 		last_active_ago?: number;
 		origin?: string;
+	};
+	'homeserver.matrix.encryption': {
+		event_id: EventID;
+		event: PduForType<'m.room.encryption'>;
 	};
 	'homeserver.matrix.encrypted': {
 		event_id: EventID;

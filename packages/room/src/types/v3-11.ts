@@ -537,6 +537,13 @@ const EncryptedContentSchema = BaseTimelineContentSchema.extend({
 		.optional(),
 });
 
+export const PduEncryptionEventContentSchema = z.object({
+	algorithm: z
+		.enum(['m.megolm.v1.aes-sha2'])
+		.describe('The algorithm used to encrypt the content.'),
+	ciphertext: z.string().describe('The encrypted content.'),
+});
+
 export type PduMessageEventContent = z.infer<
 	typeof PduMessageEventContentSchema
 >;
@@ -706,6 +713,12 @@ const EventPduTypeRoomEncrypted = z.object({
 	content: EncryptedContentSchema,
 });
 
+const EventPduTypeRoomEncryption = z.object({
+	...PduNoContentEmptyStateKeyStateEventSchema,
+	type: z.literal('m.room.encryption'),
+	content: PduEncryptionEventContentSchema,
+});
+
 const EventPduTypeRoomMessage = z.object({
 	...PduNoContentTimelineEventSchema,
 	type: z.literal('m.room.message'),
@@ -749,6 +762,8 @@ export const PduStateEventSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomServerAcl,
 
 	EventPduTypeRoomTombstone,
+
+	EventPduTypeRoomEncryption,
 ]);
 
 export const PduTimelineSchema = z.discriminatedUnion('type', [

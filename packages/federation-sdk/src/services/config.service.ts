@@ -31,6 +31,10 @@ export interface AppConfig {
 			downloadPerMinute: number;
 		};
 	};
+	invite: {
+		allowedEncryptedRooms: boolean;
+		allowedNonPrivateRooms: boolean;
+	};
 }
 
 export const AppConfigSchema = z.object({
@@ -68,6 +72,10 @@ export const AppConfigSchema = z.object({
 				.int()
 				.min(1, 'Download rate limit must be at least 1'),
 		}),
+	}),
+	invite: z.object({
+		allowedEncryptedRooms: z.boolean(),
+		allowedNonPrivateRooms: z.boolean(),
 	}),
 });
 
@@ -111,6 +119,10 @@ export class ConfigService {
 
 	getMediaConfig(): AppConfig['media'] {
 		return this.config.media;
+	}
+
+	getInviteConfig(): AppConfig['invite'] {
+		return this.config.invite;
 	}
 
 	async getSigningKey() {
