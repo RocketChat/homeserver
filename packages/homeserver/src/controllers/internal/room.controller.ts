@@ -168,33 +168,6 @@ export const internalRoomPlugin = (app: Elysia) => {
 				},
 			},
 		)
-		.put(
-			'/internal/rooms/:roomId/join/:userId',
-			async ({ params }) => {
-				const { roomId, userId } = params;
-
-				const eventId = await roomService.joinUser(
-					roomId as RoomID,
-					userId as UserID,
-				);
-
-				return {
-					eventId,
-				};
-			},
-			{
-				// params: InternalJoinRoomParamsDto,
-				// response: {
-				// 	200: InternalRoomEventResponseDto,
-				// 	400: ErrorResponseDto,
-				// },
-				detail: {
-					tags: ['Internal'],
-					summary: 'Join a room',
-					description: 'Join a room',
-				},
-			},
-		)
 		.get(
 			'/internal/rooms/:roomId/state',
 			async ({ params, query }) => {

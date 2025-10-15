@@ -784,13 +784,14 @@ export class RoomService {
 
 	// if local room, add the user to the room if allowed.
 	// if remote room, run through the join process
-	async joinUser(roomId: RoomID, userId: UserID) {
+	async joinUser(invite: PersistentEventBase, userId: UserID) {
 		const configService = this.configService;
 		const stateService = this.stateService;
 		const federationService = this.federationService;
+		const roomId = invite.roomId;
 
 		// where the room is hosted at
-		const residentServer = extractDomainFromId(roomId);
+		const residentServer = extractDomainFromId(invite.sender);
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
