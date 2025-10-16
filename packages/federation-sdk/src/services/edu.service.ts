@@ -43,9 +43,10 @@ export class EduService {
 				`Sent typing notification to ${uniqueServers.length} unique servers for room ${roomId}`,
 			);
 		} catch (error) {
-			this.logger.error(
-				`Failed to send typing notification: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			this.logger.error({
+				msg: 'Failed to send typing notification',
+				err: error,
+			});
 			throw error;
 		}
 	}
@@ -81,9 +82,10 @@ export class EduService {
 				`Sent presence updates to ${uniqueServers.size} unique servers for ${roomIds.length} rooms`,
 			);
 		} catch (error) {
-			this.logger.error(
-				`Failed to send presence update to rooms: ${error instanceof Error ? error.message : String(error)}`,
-			);
+			this.logger.error({
+				msg: 'Failed to send presence update to rooms',
+				err: error,
+			});
 			throw error;
 		}
 	}

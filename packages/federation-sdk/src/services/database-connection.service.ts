@@ -12,7 +12,7 @@ export class DatabaseConnectionService {
 
 	constructor(private readonly configService: ConfigService) {
 		this.connect().catch((err) =>
-			this.logger.error(`Initial database connection failed: ${err.message}`),
+			this.logger.error({ msg: 'Initial database connection failed', err }),
 		);
 	}
 
@@ -53,8 +53,7 @@ export class DatabaseConnectionService {
 
 				resolve();
 			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : String(error);
-				this.logger.error(`Failed to connect to MongoDB: ${message}`);
+				this.logger.error({ msg: 'Failed to connect to MongoDB', err: error });
 				this.connectionPromise = null;
 				reject(new Error('Database connection failed'));
 			}

@@ -113,9 +113,10 @@ export class FederationRequestService {
 
 			return response;
 		} catch (err) {
-			this.logger.error(
-				`Federation request failed: ${err instanceof Error ? err.message : String(err)}`,
-			);
+			this.logger.error({
+				msg: 'Error making signed federation request',
+				err,
+			});
 			throw err;
 		}
 	}

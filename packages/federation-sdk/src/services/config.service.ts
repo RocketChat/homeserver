@@ -91,7 +91,7 @@ export class ConfigService {
 			if (error instanceof z.ZodError) {
 				this.logger.error({
 					msg: 'Configuration validation failed:',
-					details: error.errors,
+					err: error,
 				});
 				throw new Error(
 					`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,

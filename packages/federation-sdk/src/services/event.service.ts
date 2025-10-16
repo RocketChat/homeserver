@@ -294,9 +294,11 @@ export class EventService {
 			try {
 				await this.processEDU(edu);
 			} catch (error) {
-				this.logger.error(
-					`Error processing EDU of type ${edu.edu_type}: ${error instanceof Error ? error.message : String(error)}`,
-				);
+				this.logger.error({
+					msg: 'Error processing incoming EDU',
+					edu,
+					err: error,
+				});
 				// Continue processing other EDUs even if one fails
 			}
 		}
