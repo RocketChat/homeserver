@@ -174,7 +174,10 @@ export class EventAuthorizationService {
 
 			return origin;
 		} catch (error) {
-			this.logger.error(error, 'Error verifying request signature');
+			this.logger.error({
+				msg: 'Error verifying request signature',
+				err: error,
+			});
 			return;
 		}
 	}
@@ -423,10 +426,15 @@ export class EventAuthorizationService {
 				authorized: true,
 			};
 		} catch (error) {
-			this.logger.error(
-				{ error, eventId, authorizationHeader, method, uri, body },
-				'Error checking event access',
-			);
+			this.logger.error({
+				err: error,
+				eventId,
+				authorizationHeader,
+				method,
+				uri,
+				body,
+				msg: 'Error checking event access',
+			});
 			return {
 				authorized: false,
 				errorCode: 'M_UNKNOWN',
@@ -477,10 +485,14 @@ export class EventAuthorizationService {
 				authorized: true,
 			};
 		} catch (error) {
-			this.logger.error(
-				{ error, mediaId, authorizationHeader, method, uri },
-				'Error checking media access',
-			);
+			this.logger.error({
+				err: error,
+				mediaId,
+				authorizationHeader,
+				method,
+				uri,
+				msg: 'Error checking media access',
+			});
 			return {
 				authorized: false,
 				errorCode: 'M_UNKNOWN',

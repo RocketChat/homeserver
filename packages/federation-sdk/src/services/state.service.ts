@@ -470,13 +470,11 @@ export class StateService {
 			try {
 				await checkEventAuthWithState(event, authState, store);
 			} catch (error) {
-				this.logger.error(
-					{
-						eventId: event.eventId,
-						authEvents: event.getAuthEventIds(),
-					},
-					'event failed auth check while saving state, this should not have happened while walking an auth chain, the chain is incorrect',
-				);
+				this.logger.error({
+					eventId: event.eventId,
+					authEvents: event.getAuthEventIds(),
+					msg: 'event failed auth check while saving state, this should not have happened while walking an auth chain, the chain is incorrect',
+				});
 
 				// propagating throw, at this point this is not supposed to fail, something is wrong with the state we received
 				throw error;
@@ -790,10 +788,11 @@ export class StateService {
 					servers.add(server);
 				}
 			} catch (error) {
-				this.logger.error(
-					{ error, eventId: event.eventId },
-					'error extracting server',
-				);
+				this.logger.error({
+					err: error,
+					eventId: event.eventId,
+					msg: 'error extracting server',
+				});
 			}
 		}
 

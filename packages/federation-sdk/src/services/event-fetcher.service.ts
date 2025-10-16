@@ -123,9 +123,6 @@ export class EventFetcherService {
 			this.logger.error({
 				msg: 'Error fetching events from federation',
 				err: error,
-			});
-			this.logger.debug({
-				msg: 'Failed federation request details',
 				eventIds,
 				targetServerName,
 			});

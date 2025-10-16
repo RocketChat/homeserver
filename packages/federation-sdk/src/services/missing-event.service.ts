@@ -55,9 +55,11 @@ export class MissingEventService {
 
 			return true;
 		} catch (err: unknown) {
-			this.logger.error(
-				`Error fetching missing event ${eventId}: ${err instanceof Error ? err.message : String(err)}`,
-			);
+			this.logger.error({
+				msg: 'Error fetching missing event',
+				eventId,
+				err,
+			});
 			return false;
 		}
 	}

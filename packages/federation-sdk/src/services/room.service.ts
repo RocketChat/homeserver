@@ -1035,19 +1035,20 @@ export class RoomService {
 			return previousEvents;
 		}
 
-		const logContext = () => ({
+		this.logger.info({
+			msg: 'failed to fetch and process some events',
 			roomId,
 			branchEventId: context.event.eventId,
 			missing,
 		});
 
-		this.logger.info(logContext(), 'failed to fetch and process some events');
-
 		if (serverList.length === 0) {
-			this.logger.warn(
-				logContext(),
-				'not enough servers participating in the room to retry missing events',
-			);
+			this.logger.warn({
+				msg: 'not enough servers participating in the room to retry missing events',
+				roomId,
+				branchEventId: context.event.eventId,
+				missing,
+			});
 
 			throw new Error();
 		}
@@ -1055,10 +1056,13 @@ export class RoomService {
 		for (let i = 0; i < serverList.length && missing.length > 0; i++) {
 			const askingServer = serverList[i];
 
-			this.logger.warn(
-				logContext(),
-				`attempting to fetch events from participating server ${askingServer}`,
-			);
+			this.logger.warn({
+				msg: 'attempting to fetch events from participating server',
+				askingServer,
+				roomId,
+				branchEventId: context.event.eventId,
+				missing,
+			});
 
 			const { events, missing: stillMissing } = await this._fetchMissingEvents(
 				missing,
@@ -1072,10 +1076,12 @@ export class RoomService {
 		}
 
 		if (missing.length > 0) {
-			this.logger.error(
-				logContext(),
-				'server list exhausted, we still have missing events',
-			);
+			this.logger.error({
+				msg: 'server list exhausted, we still have missing events',
+				roomId,
+				branchEventId: context.event.eventId,
+				missing,
+			});
 
 			throw new Error();
 		}
