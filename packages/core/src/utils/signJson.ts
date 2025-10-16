@@ -172,6 +172,9 @@ export async function verifySignaturesFromRemote<
 	return true;
 }
 
+/**
+ * @deprecated Use encodeCanonicalJsonCrypto instead
+ */
 export function encodeCanonicalJson(value: unknown): string {
 	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
