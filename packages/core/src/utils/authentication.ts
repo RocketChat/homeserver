@@ -1,11 +1,8 @@
-import {
-	type Pdu,
-	PersistentEventBase,
-	PersistentEventFactory,
-} from '@rocket.chat/federation-room';
+import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
+import { type Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
 import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
-import { encodeCanonicalJson, signJson } from './signJson';
+import { signJson } from './signJson';
 
 /**
  * Extracts the origin, destination, key, and signature from the authorization header.

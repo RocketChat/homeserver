@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '../types';
 import { generateKeyPairs } from '../utils/keys';
-import { encodeCanonicalJson } from '../utils/signJson';
 import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
 
 describe('getPublicKeyFromRemoteServer', () => {

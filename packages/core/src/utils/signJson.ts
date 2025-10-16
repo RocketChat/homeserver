@@ -1,4 +1,4 @@
-import { encodeCanonicalJson as encodeCanonicalJsonCrypto } from '@rocket.chat/federation-crypto';
+import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import nacl from 'tweetnacl';
 import type { SigningKey } from '../types';
 import { EncryptionValidAlgorithm } from '../types';
@@ -28,7 +28,7 @@ export async function signJson<
 		`${signingKey.algorithm}:${signingKey.version}` as ProtocolVersionKey;
 	const { signatures = {}, unsigned, ...rest } = jsonObject;
 
-	const data = encodeCanonicalJsonCrypto(rest);
+	const data = encodeCanonicalJson(rest);
 
 	const signed = await signingKey.sign(toBinaryData(data));
 
@@ -170,28 +170,6 @@ export async function verifySignaturesFromRemote<
 	}
 
 	return true;
-}
-
-/**
- * @deprecated Use encodeCanonicalJsonCrypto instead
- */
-export function encodeCanonicalJson(value: unknown): string {
-	if (value === null || typeof value !== 'object') {
-		// Handle primitive types and null
-		return JSON.stringify(value);
-	}
-
-	if (Array.isArray(value)) {
-		return `[${value.map(encodeCanonicalJson).join(',')}]`;
-	}
-
-	// Handle objects
-	const keys = Object.keys(value as Record<string, unknown>).sort();
-	const pairs = keys.map(
-		(key) =>
-			`"${key}":${encodeCanonicalJson((value as Record<string, unknown>)[key])}`,
-	);
-	return `{${pairs.join(',')}}`;
 }
 
 export async function signText(
