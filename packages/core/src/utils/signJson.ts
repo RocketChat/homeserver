@@ -175,10 +175,7 @@ export async function verifySignaturesFromRemote<
 export function encodeCanonicalJson(value: unknown): string {
 	if (value === null || typeof value !== 'object') {
 		// Handle primitive types and null
-		if (typeof value === 'string') {
-			return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-		}
-		return String(value);
+		return JSON.stringify(value);
 	}
 
 	if (Array.isArray(value)) {
