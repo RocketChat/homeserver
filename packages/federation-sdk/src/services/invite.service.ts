@@ -150,26 +150,24 @@ export class InviteService {
 	}
 
 	private async shouldProcessInvite(
-		event: PduForType<'m.room.member'>,
+		strippedStateEvents: PduForType<
+			| 'm.room.create'
+			| 'm.room.name'
+			| 'm.room.avatar'
+			| 'm.room.topic'
+			| 'm.room.join_rules'
+			| 'm.room.canonical_alias'
+			| 'm.room.encryption'
+		>[],
 	): Promise<void> {
-		const isRoomNonPrivate = event.unsigned.invite_room_state.some(
-			(
-				stateEvent: PersistentEventBase<
-					RoomVersion,
-					'm.room.join_rules'
-				>['event'],
-			) =>
+		const isRoomNonPrivate = strippedStateEvents.some(
+			(stateEvent) =>
 				stateEvent.type === 'm.room.join_rules' &&
 				stateEvent.content.join_rule === 'public',
 		);
 
-		const isRoomEncrypted = event.unsigned.invite_room_state.some(
-			(
-				stateEvent: PersistentEventBase<
-					RoomVersion,
-					'm.room.encryption'
-				>['event'],
-			) => stateEvent.type === 'm.room.encryption',
+		const isRoomEncrypted = strippedStateEvents.some(
+			(stateEvent) => stateEvent.type === 'm.room.encryption',
 		);
 
 		const { allowedEncryptedRooms, allowedNonPrivateRooms } =
@@ -191,9 +189,18 @@ export class InviteService {
 		eventId: EventID,
 		roomVersion: RoomVersion,
 		authenticatedServer: string,
+		strippedStateEvents: PduForType<
+			| 'm.room.create'
+			| 'm.room.name'
+			| 'm.room.avatar'
+			| 'm.room.topic'
+			| 'm.room.join_rules'
+			| 'm.room.canonical_alias'
+			| 'm.room.encryption'
+		>[],
 	) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
-		await this.shouldProcessInvite(event);
+		await this.shouldProcessInvite(strippedStateEvents);
 
 		const residentServer = roomId.split(':').pop();
 		if (!residentServer) {
