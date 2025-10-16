@@ -28,7 +28,6 @@ export {
 	verifySignature,
 	verifyJsonSignature,
 	verifySignaturesFromRemote,
-	encodeCanonicalJson,
 	signText,
 	signData,
 } from './utils/signJson';
