@@ -40,85 +40,87 @@ export class FederationRequestService {
 		body,
 		queryString,
 	}: SignedRequest): Promise<FetchResponse<T>> {
-		try {
-			const serverName = this.configService.serverName;
-			const signingKeyBase64 = await this.configService.getSigningKeyBase64();
-			const signingKeyId = await this.configService.getSigningKeyId();
-			const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
-			const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
+		const serverName = this.configService.serverName;
+		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
+		const signingKeyId = await this.configService.getSigningKeyId();
+		const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
+		const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
 
-			const signingKey: SigningKey = {
-				algorithm: EncryptionValidAlgorithm.ed25519,
-				version: signingKeyId.split(':')[1] || '1',
-				privateKey: keyPair.secretKey,
-				publicKey: keyPair.publicKey,
-				sign: async (data: Uint8Array) =>
-					nacl.sign.detached(data, keyPair.secretKey),
-			};
+		const signingKey: SigningKey = {
+			algorithm: EncryptionValidAlgorithm.ed25519,
+			version: signingKeyId.split(':')[1] || '1',
+			privateKey: keyPair.secretKey,
+			publicKey: keyPair.publicKey,
+			sign: async (data: Uint8Array) =>
+				nacl.sign.detached(data, keyPair.secretKey),
+		};
 
-			const [address, discoveryHeaders] = await getHomeserverFinalAddress(
-				domain,
-				this.logger,
-			);
+		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
+			domain,
+			this.logger,
+		);
 
-			const url = new URL(`${address}${uri}`);
-			if (queryString) {
-				url.search = queryString;
-			}
-
-			this.logger.debug(`Making ${method} request to ${url.toString()}`);
-
-			let signedBody: Record<string, unknown> | undefined;
-			if (body) {
-				signedBody = await signJson(
-					body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
-					signingKey,
-					serverName,
-				);
-			}
-
-			const auth = await authorizationHeaders(
-				serverName,
-				signingKey,
-				domain,
-				method,
-				extractURIfromURL(url),
-				signedBody,
-			);
-
-			const headers = {
-				Authorization: auth,
-				...discoveryHeaders,
-				...(signedBody && { 'Content-Type': 'application/json' }),
-			};
-
-			const response = await fetch<T>(url, {
-				method,
-				...(signedBody && { body: JSON.stringify(signedBody) }),
-				headers,
-			});
-
-			if (!response.ok) {
-				const errorText = await response.text();
-				let errorDetail = errorText;
-				try {
-					errorDetail = JSON.stringify(JSON.parse(errorText || ''));
-				} catch {
-					/* use raw text if parsing fails */
-				}
-				throw new Error(
-					`Federation request failed: ${response.status} ${errorDetail}`,
-				);
-			}
-
-			return response;
-		} catch (err) {
-			this.logger.error({
-				msg: 'Error making signed federation request',
-				err,
-			});
-			throw err;
+		const url = new URL(`${address}${uri}`);
+		if (queryString) {
+			url.search = queryString;
 		}
+
+		this.logger.debug(`Making ${method} request to ${url.toString()}`);
+
+		let signedBody: Record<string, unknown> | undefined;
+		if (body) {
+			signedBody = await signJson(
+				body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
+				signingKey,
+				serverName,
+			);
+		}
+
+		const auth = await authorizationHeaders(
+			serverName,
+			signingKey,
+			domain,
+			method,
+			extractURIfromURL(url),
+			signedBody,
+		);
+
+		const headers = {
+			Authorization: auth,
+			...discoveryHeaders,
+			...(signedBody && { 'Content-Type': 'application/json' }),
+		};
+
+		const response = await fetch<T>(url, {
+			method,
+			...(signedBody && { body: JSON.stringify(signedBody) }),
+			headers,
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text();
+
+			this.logger.error({
+				msg: 'Federation request failed',
+				url,
+				status: response.status,
+				errorText,
+				sentHeaders: headers,
+				responseHeaders: response.headers,
+			});
+
+			let errorDetail = errorText;
+			try {
+				errorDetail = JSON.stringify(JSON.parse(errorText || ''));
+			} catch {
+				/* use raw text if parsing fails */
+			}
+			throw new Error(
+				`Federation request failed: ${response.status} ${errorDetail}`,
+			);
+		}
+
+		return response;
 	}
 
 	async request<T>(
