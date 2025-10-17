@@ -26,7 +26,8 @@
 		"tweetnacl": "^1.0.3",
 		"zod": "^3.24.1"
 	},
-	"license": "SEE LICENSE IN LICENSE",
+	"license": "AGPL-3.0",
+	"author": "Rocket.Chat Technologies Corp. <contact@rocket.chat>",
 	"files": ["dist"],
 	"peerDependencies": {
 		"typescript": "~5.9.2"
