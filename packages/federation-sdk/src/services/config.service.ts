@@ -156,4 +156,28 @@ export class ConfigService {
 		const signingKeys = await this.getSigningKey();
 		return toUnpaddedBase64(signingKeys[0].publicKey);
 	}
+
+	updateConfig(values: AppConfig): void {
+		try {
+			const validatedConfig = AppConfigSchema.parse(values);
+			this.config = validatedConfig;
+			this.serverKeys = [];
+			this.logger.debug({
+				msg: 'Configuration updated',
+				serverName: validatedConfig.serverName,
+			});
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				const errorDetails = error.errors
+					.map((e) => `${e.path.join('.')}: ${e.message}`)
+					.join(', ');
+				this.logger.error({
+					msg: 'Configuration validation failed - check your federation settings',
+					errors: errorDetails,
+				});
+				throw new Error(`Invalid federation configuration: ${errorDetails}`);
+			}
+			throw error;
+		}
+	}
 }
