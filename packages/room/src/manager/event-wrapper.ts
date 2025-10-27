@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 import {
+	computeHashBuffer,
 	encodeCanonicalJson,
 	toUnpaddedBase64,
-} from '@rocket.chat/federation-crypto';
+} from '@hs/crypto';
+toUnpaddedBase64,
+} from '@rocket.chat/federation-crypto'
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
@@ -340,12 +343,8 @@ export abstract class PersistentEventBase<
 		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
-		const canonicalJson = encodeCanonicalJson(toHash);
 		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = crypto
-			.createHash('sha256')
-			.update(canonicalJson)
-			.digest();
+		const referenceHash = computeHashBuffer(toHash);
 
 		return referenceHash;
 	}
@@ -477,14 +476,8 @@ export abstract class PersistentEventBase<
 		return this;
 	}
 
-	toStrippedJson() {
-		return encodeCanonicalJson({
-			eventId: this.eventId,
-			type: this.type,
-			roomId: this.roomId,
-			sender: this.sender,
-			stateKey: this.stateKey,
-		});
+	getOriginKeys() {
+		return Object.keys(this.signatures[this.origin]);
 	}
 }
 export type { EventStore };

@@ -1,9 +1,4 @@
-import {
-	type SigningKey,
-	getPublicKeyFromRemoteServer,
-	signJson,
-	toUnpaddedBase64,
-} from '@rocket.chat/federation-core';
+import { signJson, toUnpaddedBase64 } from '@hs/crypto';
 import { singleton } from 'tsyringe';
 import { ServerRepository } from '../repositories/server.repository';
 import { ConfigService } from './config.service';
@@ -58,34 +53,33 @@ export class ServerService {
 	}
 
 	async getSignedServerKey() {
-		const signingKeys = await this.configService.getSigningKey();
+		const signer = await this.configService.getSigningKey();
 
-		const keys = Object.fromEntries(
-			signingKeys.map((signingKey: SigningKey) => [
-				`${signingKey.algorithm}:${signingKey.version}`,
-				{
-					key: toUnpaddedBase64(signingKey.publicKey),
-				},
-			]),
-		);
+		const keys = {
+			[signer.id]: {
+				key: toUnpaddedBase64(signer.getPublicKey()),
+			},
+		};
 
-		const baseResponse = {
+		const response = {
 			old_verify_keys: {},
 			server_name: this.configService.serverName,
-			signatures: {},
+			// TODO: what should this actually be and how to handle the expiration
 			valid_until_ts: new Date().getTime() + 60 * 60 * 24 * 1000, // 1 day
 			verify_keys: keys,
 		};
 
-		let signedResponse = baseResponse;
-		for (const key of signingKeys) {
-			signedResponse = await signJson(
-				signedResponse,
-				key,
-				this.configService.serverName,
-			);
-		}
+		const responseSignature = await signJson(response, signer);
 
-		return signedResponse;
+		const signatures = {
+			[this.configService.serverName]: {
+				[signer.id]: responseSignature,
+			},
+		};
+
+		return {
+			...response,
+			signatures,
+		};
 	}
 }

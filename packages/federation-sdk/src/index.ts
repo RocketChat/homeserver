@@ -97,6 +97,8 @@ export { RoomRepository } from './repositories/room.repository';
 export { ServerRepository } from './repositories/server.repository';
 export { KeyRepository } from './repositories/key.repository';
 
+export { KeyService } from './services/key.service';
+
 export interface HomeserverServices {
 	room: RoomService;
 	message: MessageService;

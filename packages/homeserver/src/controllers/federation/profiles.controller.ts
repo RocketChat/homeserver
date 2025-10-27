@@ -116,8 +116,8 @@ export const profilesPlugin = (app: Elysia) => {
 				params: MakeJoinParamsDto,
 				query: t.Any(),
 				response: {
-					200: MakeJoinResponseDto,
-					400: ErrorResponseDto,
+					200: t.Any(),
+					400: t.Any(),
 				},
 				detail: {
 					tags: ['Federation'],

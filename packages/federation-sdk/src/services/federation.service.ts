@@ -27,7 +27,6 @@ export class FederationService {
 
 	constructor(
 		private readonly configService: ConfigService,
-
 		private readonly requestService: FederationRequestService,
 
 		private readonly stateService: StateService,

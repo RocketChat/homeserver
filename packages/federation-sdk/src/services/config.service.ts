@@ -5,6 +5,7 @@ import {
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
 
+import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
 import { z } from 'zod';
 
 export interface AppConfig {
@@ -16,7 +17,6 @@ export interface AppConfig {
 	keyRefreshInterval: number;
 	signingKey?: string;
 	timeout?: number;
-	signingKeyPath?: string;
 	database: {
 		uri: string;
 		name: string;
@@ -49,7 +49,6 @@ export const AppConfigSchema = z.object({
 		.min(1, 'Key refresh interval must be at least 1'),
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
-	signingKeyPath: z.string(),
 	database: z.object({
 		uri: z.string().min(1, 'Database URI is required'),
 		name: z.string().min(1, 'Database name is required'),
@@ -126,6 +125,10 @@ export class ConfigService {
 	}
 
 	async getSigningKey() {
+		if (this.signer) {
+			return this.signer;
+		}
+
 		// If config contains a signing key, use it
 		if (!this.config.signingKey) {
 			throw new Error('Signing key is not configured');

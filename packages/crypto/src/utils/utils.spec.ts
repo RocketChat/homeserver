@@ -103,6 +103,62 @@ describe('Signing and verifying payloads', async () => {
 			'Invalid signature',
 		);
 	});
+
+	it('should validate signature (paranoid test 2)', async () => {
+		const event = {
+			auth_events: [
+				'$Hvb-xPPDhTvlXZe2kMubgj8J7iUa5W7YvjTqMTffgUA',
+				'$Ulggyo4m1OlI08Z0jJDVeceigjSZP9SdEFVoAn9mEh8',
+				'$G2TzsvetG2YlHr20tZLHCCzOd-yxPa1jeFT8OU4_6kg',
+				'$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs',
+			],
+			content: {
+				// displayname: 'debdut1',
+				membership: 'join' as const,
+			},
+			depth: 10,
+			hashes: { sha256: '6MnKSCFJy1fYf6ukILBEbqx2DkoaD1wRyKXhv689a0A' },
+			origin: 'syn1.tunnel.dev.rocket.chat',
+			origin_server_ts: 1757328411218,
+			prev_events: ['$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs'],
+			room_id: '!VoUasOLSpcdtRbGHdT:syn2.tunnel.dev.rocket.chat',
+			sender: '@debdut1:syn1.tunnel.dev.rocket.chat',
+			state_key: '@debdut1:syn1.tunnel.dev.rocket.chat',
+			type: 'm.room.member' as const,
+			signatures: {
+				'syn1.tunnel.dev.rocket.chat': {
+					'ed25519:a_FAET':
+						'eJlvqxPWPe3u+BM4wOwID9YBlh/ZfVVxGYyA5WgpNs5Fe1+c36qrvCKHuXGGjfQoZFrHmZ3/GJw2pv5EvxCZAA',
+				},
+			},
+			unsigned: {
+				age: 1,
+				replaces_state: '$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs',
+				prev_content: { displayname: 'debdut1', membership: 'invite' },
+				prev_sender: '@debdut:syn2.tunnel.dev.rocket.chat',
+			},
+		};
+
+		const { unsigned, signatures, ...rest } = event;
+
+		const key = 'kryovKVnhHESOdWuZ05ViNotRMVdEh/mG2yJ0npLzEo';
+
+		const verifier = await loadEd25519VerifierFromPublicKey(
+			fromBase64ToBytes(key),
+			'0',
+		);
+
+		const serialized = encodeCanonicalJson(rest);
+
+		console.log({ serialized });
+
+		const signature =
+			signatures['syn1.tunnel.dev.rocket.chat']['ed25519:a_FAET'];
+
+		const signatureBytes = fromBase64ToBytes(signature);
+
+		await verifier.verify(serialized, signatureBytes);
+	});
 });
 
 describe('Canonical json serialization', () => {

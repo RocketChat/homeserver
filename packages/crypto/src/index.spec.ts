@@ -3,6 +3,8 @@ import { fromBase64ToBytes } from './utils/data-types';
 import {
 	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
+	loadEd25519SignerFromSeed,
+	loadEd25519VerifierFromPublicKey,
 	signJson,
 	verifyJsonSignature,
 } from './utils/keys';

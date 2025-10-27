@@ -1,4 +1,4 @@
-import { createLogger, signEvent } from '@rocket.chat/federation-core';
+import { createLogger, signJson } from '@rocket.chat/federation-crypto';
 import {
 	type EventID,
 	type EventStore,
@@ -91,16 +91,28 @@ export class StateService {
 		return event.content;
 	}
 
-	async getRoomVersion(roomId: string): Promise<RoomVersion> {
-		const createEvent = await this.eventRepository.findByRoomIdAndType(
-			roomId,
-			'm.room.create',
+	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
+		const createEntry =
+			await this.stateRepository.findCreateEventByRoomId(roomId);
+		if (!createEntry) {
+			throw new Error(
+				'Create event not found for room version maybe event hasn;t been processed yet',
+			);
+		}
+
+		const createEvent = await this.eventRepository.findById(
+			createEntry.delta.eventId,
 		);
 		if (!createEvent) {
 			throw new UnknownRoomError(roomId as RoomID);
 		}
 
-		return createEvent.event.content?.room_version as RoomVersion;
+		if (createEvent.event.type === 'm.room.create') {
+			return createEvent.event.content.room_version;
+		}
+
+		// should be unreachable
+		throw new Error('Create event content malformed for room version');
 	}
 
 	// helps with logging state
@@ -326,19 +338,17 @@ export class StateService {
 
 		const origin = this.configService.serverName;
 
-		const result = await signEvent(
+		const { signatures, unsigned, ...toSign } = event.redactedEvent;
+
+		const signature = await signJson(
 			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.
 			// ^^ is done already through redactedEvent fgetter
 			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server’s signing key (see also Retrieving server keys).
-			event.redactedEvent as any,
-			signingKey[0],
-			origin,
-			false, // already passed through redactedEvent, hash is already part of this
+			toSign,
+			signingKey,
 		);
 
-		const keyId = `${signingKey[0].algorithm}:${signingKey[0].version}`;
-
-		event.addSignature(origin, keyId, result.signatures[origin][keyId]);
+		event.addSignature(origin, signingKey.id, signature);
 
 		return event;
 	}
