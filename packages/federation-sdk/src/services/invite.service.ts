@@ -160,11 +160,12 @@ export class InviteService {
 			| 'm.room.encryption'
 		>[],
 	): Promise<void> {
-		const isRoomNonPrivate = strippedStateEvents.some(
-			(stateEvent) =>
-				stateEvent.type === 'm.room.join_rules' &&
-				stateEvent.content.join_rule === 'public',
+		const joinRuleEvent = strippedStateEvents.find(
+			(stateEvent) => stateEvent.type === 'm.room.join_rules',
 		);
+		const isRoomNonPrivate = joinRuleEvent
+			? joinRuleEvent.content.join_rule === 'public'
+			: true /* default, if no event */;
 
 		const isRoomEncrypted = strippedStateEvents.some(
 			(stateEvent) => stateEvent.type === 'm.room.encryption',
