@@ -199,6 +199,13 @@ export class InviteService {
 			| 'm.room.encryption'
 		>[],
 	) {
+		// SPEC:  An optional list of stripped state events to help the receiver of the invite identify the room.
+		// https://spec.matrix.org/v1.12/server-server-api/#put_matrixfederationv1inviteroomideventid
+		if (strippedStateEvents.length === 0) {
+			throw new NotAllowedError(
+				'Invite has no room state, disallowing processing',
+			);
+		}
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 		await this.shouldProcessInvite(strippedStateEvents);
 
