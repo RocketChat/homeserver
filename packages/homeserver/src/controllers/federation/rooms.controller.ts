@@ -1,17 +1,10 @@
-import {
-	EventAuthorizationService,
-	StateService,
-} from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 
 export const roomPlugin = (app: Elysia) => {
-	const stateService = container.resolve(StateService);
-	const eventAuthService = container.resolve(EventAuthorizationService);
-
 	return app
-		.use(isAuthenticatedMiddleware(eventAuthService))
+		.use(isAuthenticatedMiddleware())
 		.get(
 			'/_matrix/federation/v1/publicRooms',
 			async ({ query }) => {
@@ -24,7 +17,7 @@ export const roomPlugin = (app: Elysia) => {
 
 				const { limit: _limit } = query;
 
-				const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
+				const publicRooms = await federationSDK.getAllPublicRoomIdsAndNames();
 
 				return {
 					chunk: publicRooms.map((room) => ({
@@ -68,7 +61,7 @@ export const roomPlugin = (app: Elysia) => {
 
 				const { filter } = body;
 
-				const publicRooms = await stateService.getAllPublicRoomIdsAndNames();
+				const publicRooms = await federationSDK.getAllPublicRoomIdsAndNames();
 
 				return {
 					chunk: publicRooms

@@ -1,12 +1,7 @@
 import { EventID, RoomID } from '@rocket.chat/federation-room';
-import {
-	EventAuthorizationService,
-	InviteService,
-	NotAllowedError,
-} from '@rocket.chat/federation-sdk';
+import { federationSDK, NotAllowedError } from '@rocket.chat/federation-sdk';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 import {
 	FederationErrorResponseDto,
 	ProcessInviteParamsDto,
@@ -15,10 +10,7 @@ import {
 } from '../../dtos';
 
 export const invitePlugin = (app: Elysia) => {
-	const inviteService = container.resolve(InviteService);
-	const eventAuthService = container.resolve(EventAuthorizationService);
-
-	return app.use(isAuthenticatedMiddleware(eventAuthService)).put(
+	return app.use(isAuthenticatedMiddleware()).put(
 		'/_matrix/federation/v2/invite/:roomId/:eventId',
 		async ({ body, set, params: { roomId, eventId }, authenticatedServer }) => {
 			if (!authenticatedServer) {
@@ -26,7 +18,7 @@ export const invitePlugin = (app: Elysia) => {
 			}
 
 			try {
-				return await inviteService.processInvite(
+				return await federationSDK.processInvite(
 					body.event,
 					roomId as RoomID,
 					eventId as EventID,

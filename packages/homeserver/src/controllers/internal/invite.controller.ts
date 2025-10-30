@@ -3,7 +3,7 @@ import {
 	RoomID,
 	UserID,
 } from '@rocket.chat/federation-room';
-import { InviteService, StateService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
 import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
@@ -14,8 +14,6 @@ import {
 } from '../../dtos';
 
 export const internalInvitePlugin = (app: Elysia) => {
-	const _inviteService = container.resolve(InviteService);
-	const stateService = container.resolve(StateService);
 	return app.post(
 		'/internal/invites',
 		async ({ body }): Promise<InternalInviteUserResponse | ErrorResponse> => {
@@ -30,7 +28,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 			// }
 			const { roomId, username, sender } = body;
 
-			const room = await stateService.getLatestRoomState(roomId);
+			const room = await federationSDK.getLatestRoomState(roomId);
 
 			const createEvent = room.get('m.room.create:');
 
@@ -62,7 +60,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 				}
 			}
 
-			await stateService.handlePdu(membershipEvent);
+			await federationSDK.handlePdu(membershipEvent);
 
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectReason);

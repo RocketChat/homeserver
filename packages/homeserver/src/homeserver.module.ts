@@ -5,10 +5,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import {
-	ConfigService,
-	type FederationContainerOptions,
 	type HomeserverEventSignatures,
-	createFederationContainer,
+	federationSDK,
+	init,
 } from '@rocket.chat/federation-sdk';
 import * as dotenv from 'dotenv';
 
@@ -35,24 +34,24 @@ import { wellKnownPlugin } from './controllers/well-known/well-known.controller'
 export type { HomeserverEventSignatures };
 export interface HomeserverSetupOptions {
 	emitter?: Emitter<HomeserverEventSignatures>;
-	containerOptions?: FederationContainerOptions;
 }
 
-export async function setup(options?: HomeserverSetupOptions) {
+export async function setup() {
 	const envPath = path.resolve(process.cwd(), '.env');
 	if (fs.existsSync(envPath)) {
 		dotenv.config({ path: envPath });
 	}
 
-	const config = new ConfigService({
+	await init({
+		uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
+		name: process.env.DATABASE_NAME || 'matrix',
+		poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+	});
+
+	federationSDK.setConfig({
 		instanceId: crypto.randomUUID(),
 		serverName: process.env.SERVER_NAME || 'rc1',
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
-		database: {
-			uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
-			name: process.env.DATABASE_NAME || 'matrix',
-			poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
-		},
 		matrixDomain: process.env.MATRIX_DOMAIN || 'rc1',
 		keyRefreshInterval: Number.parseInt(
 			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
@@ -61,6 +60,11 @@ export async function setup(options?: HomeserverSetupOptions) {
 		signingKey: process.env.SIGNING_KEY,
 		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
+		// database: {
+		// 	uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
+		// 	name: process.env.DATABASE_NAME || 'matrix',
+		// 	poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+		// },
 		media: {
 			maxFileSize: process.env.MEDIA_MAX_FILE_SIZE
 				? Number.parseInt(process.env.MEDIA_MAX_FILE_SIZE, 10) * 1024 * 1024
@@ -96,12 +100,6 @@ export async function setup(options?: HomeserverSetupOptions) {
 		},
 	});
 
-	const containerOptions: FederationContainerOptions = {
-		emitter: options?.emitter,
-	};
-
-	const container = await createFederationContainer(containerOptions, config);
-
 	const app = new Elysia();
 
 	app
@@ -135,7 +133,7 @@ export async function setup(options?: HomeserverSetupOptions) {
 		.use(mediaPlugin)
 		.use(internalRequestPlugin);
 
-	return { app, container };
+	return { app };
 }
 
 export const appPromise = setup().then(({ app }) => app);

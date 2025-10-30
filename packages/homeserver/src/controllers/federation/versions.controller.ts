@@ -1,17 +1,17 @@
-import { ConfigService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import { GetVersionsResponseDto } from '../../dtos';
 
 export const versionsPlugin = (app: Elysia) => {
-	const configService = container.resolve(ConfigService);
+	const config = federationSDK.getConfig();
+
 	return app.get(
 		'/_matrix/federation/v1/version',
 		() => {
 			return {
 				server: {
-					name: configService.serverName,
-					version: configService.version,
+					name: config.serverName,
+					version: config.version,
 				},
 			};
 		},

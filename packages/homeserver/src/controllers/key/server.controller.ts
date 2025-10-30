@@ -1,14 +1,12 @@
-import { ServerService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import type { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import { ServerKeyResponseDto } from '../../dtos';
 
 export const serverKeyPlugin = (app: Elysia) => {
-	const serverService = container.resolve(ServerService);
 	return app.get(
 		'/_matrix/key/v2/server',
 		async () => {
-			return serverService.getSignedServerKey();
+			return federationSDK.getSignedServerKey();
 		},
 		{
 			response: {

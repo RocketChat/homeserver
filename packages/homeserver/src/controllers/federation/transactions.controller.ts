@@ -1,13 +1,8 @@
 import { EventID, RoomID } from '@rocket.chat/federation-room';
-import {
-	ConfigService,
-	EventAuthorizationService,
-	EventService,
-} from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import {
 	BackfillErrorResponseDto,
 	BackfillParamsDto,
@@ -22,9 +17,7 @@ import {
 } from '../../dtos';
 
 export const transactionsPlugin = (app: Elysia) => {
-	const eventService = container.resolve(EventService);
-	const configService = container.resolve(ConfigService);
-	const eventAuthService = container.resolve(EventAuthorizationService);
+	const config = federationSDK.getConfig();
 
 	return app
 		.put(
@@ -32,7 +25,7 @@ export const transactionsPlugin = (app: Elysia) => {
 			async ({ body }) => {
 				// TODO need to validate better the payload
 				// biome-ignore lint/suspicious/noExplicitAny:
-				await eventService.processIncomingTransaction(body as any);
+				await federationSDK.processIncomingTransaction(body as any);
 
 				return {
 					pdus: {},
@@ -40,7 +33,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				};
 			},
 			{
-				use: isAuthenticatedMiddleware(eventAuthService),
+				use: isAuthenticatedMiddleware(),
 				body: SendTransactionBodyDto,
 				response: {
 					200: SendTransactionResponseDto,
@@ -57,7 +50,7 @@ export const transactionsPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/event/:eventId',
 			async ({ params, set }) => {
-				const eventData = await eventService.getEventById(
+				const eventData = await federationSDK.getEventById(
 					params.eventId as EventID,
 				);
 				if (!eventData) {
@@ -70,12 +63,12 @@ export const transactionsPlugin = (app: Elysia) => {
 
 				return {
 					origin_server_ts: eventData.event.origin_server_ts,
-					origin: configService.serverName,
-					pdus: [{ ...eventData.event, origin: configService.serverName }],
+					origin: config.serverName,
+					pdus: [{ ...eventData.event, origin: config.serverName }],
 				};
 			},
 			{
-				use: canAccessResourceMiddleware(eventAuthService, 'event'),
+				use: canAccessResourceMiddleware('event'),
 				params: GetEventParamsDto,
 				response: {
 					200: GetEventResponseDto,
@@ -110,7 +103,7 @@ export const transactionsPlugin = (app: Elysia) => {
 						? eventIdParam
 						: [eventIdParam];
 
-					return eventService.getBackfillEvents(
+					return federationSDK.getBackfillEvents(
 						params.roomId as RoomID,
 						eventIds as EventID[],
 						limit,
@@ -124,7 +117,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				}
 			},
 			{
-				use: canAccessResourceMiddleware(eventAuthService, 'room'),
+				use: canAccessResourceMiddleware('room'),
 				params: BackfillParamsDto,
 				query: BackfillQueryDto,
 				response: {
