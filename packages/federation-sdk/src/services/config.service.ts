@@ -88,17 +88,22 @@ export class ConfigService {
 		try {
 			this.config = AppConfigSchema.parse(values);
 		} catch (error) {
-			if (error instanceof z.ZodError) {
-				this.logger.error({
-					msg: 'Configuration validation failed:',
-					err: error,
-				});
-				throw new Error(
-					`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
-				);
-			}
-			throw error;
+			this.handleValidationError(error, 'Configuration validation failed:');
 		}
+	}
+
+	private handleValidationError(err: unknown, contextMsg?: string): never {
+		if (err instanceof z.ZodError) {
+			const errorDetails = err.errors
+				.map((e) => `${e.path.join('.')}: ${e.message}`)
+				.join(', ');
+			this.logger.error({
+				msg: contextMsg || 'Validation failed',
+				errors: errorDetails,
+			});
+			throw new Error(`Invalid configuration: ${errorDetails}`);
+		}
+		throw err;
 	}
 
 	get serverName(): string {
@@ -155,5 +160,22 @@ export class ConfigService {
 	async getPublicSigningKeyBase64(): Promise<string> {
 		const signingKeys = await this.getSigningKey();
 		return toUnpaddedBase64(signingKeys[0].publicKey);
+	}
+
+	updateConfig(values: AppConfig): void {
+		try {
+			const validatedConfig = AppConfigSchema.parse(values);
+			this.config = validatedConfig;
+			this.serverKeys = [];
+			this.logger.debug({
+				msg: 'Configuration updated',
+				serverName: validatedConfig.serverName,
+			});
+		} catch (error) {
+			this.handleValidationError(
+				error,
+				'Configuration validation failed - check your federation settings',
+			);
+		}
 	}
 }
