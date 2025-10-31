@@ -263,10 +263,16 @@ export class FederationService {
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
 		if (event.stateKey) {
-			const server = extractDomainFromId(event.stateKey);
-			// TODO: fgetser
-			if (!servers.has(server)) {
-				servers.add(server);
+			try {
+				const server = extractDomainFromId(event.stateKey);
+				if (server && !servers.has(server)) {
+					servers.add(server);
+				}
+			} catch (error) {
+				this.logger.error(
+					{ error, eventId: event.eventId, stateKey: event.stateKey },
+					'Failed to extract server from stateKey',
+				);
 			}
 		}
 
