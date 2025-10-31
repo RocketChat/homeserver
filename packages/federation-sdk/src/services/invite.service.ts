@@ -160,11 +160,12 @@ export class InviteService {
 			| 'm.room.encryption'
 		>[],
 	): Promise<void> {
-		const isRoomNonPrivate = strippedStateEvents.some(
-			(stateEvent) =>
-				stateEvent.type === 'm.room.join_rules' &&
-				stateEvent.content.join_rule === 'public',
+		const joinRuleEvent = strippedStateEvents.find(
+			(stateEvent) => stateEvent.type === 'm.room.join_rules',
 		);
+		const isRoomNonPrivate = joinRuleEvent
+			? joinRuleEvent.content.join_rule === 'public'
+			: true /* default, if no event */;
 
 		const isRoomEncrypted = strippedStateEvents.some(
 			(stateEvent) => stateEvent.type === 'm.room.encryption',
@@ -199,6 +200,13 @@ export class InviteService {
 			| 'm.room.encryption'
 		>[],
 	) {
+		// SPEC:  An optional list of stripped state events to help the receiver of the invite identify the room.
+		// https://spec.matrix.org/v1.12/server-server-api/#put_matrixfederationv1inviteroomideventid
+		if (strippedStateEvents.length === 0) {
+			throw new NotAllowedError(
+				'Invite has no room state, disallowing processing',
+			);
+		}
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
 		await this.shouldProcessInvite(strippedStateEvents);
 
