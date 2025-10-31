@@ -18,11 +18,6 @@ export interface AppConfig {
 	signingKey?: string;
 	timeout?: number;
 	signingKeyPath?: string;
-	// database: {
-	// 	uri: string;
-	// 	name: string;
-	// 	poolSize: number;
-	// };
 	media: {
 		maxFileSize: number;
 		allowedMimeTypes: string[];
@@ -35,6 +30,10 @@ export interface AppConfig {
 	invite: {
 		allowedEncryptedRooms: boolean;
 		allowedNonPrivateRooms: boolean;
+	};
+	edu: {
+		processTyping: boolean;
+		processPresence: boolean;
 	};
 }
 
@@ -51,11 +50,6 @@ export const AppConfigSchema = z.object({
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
 	signingKeyPath: z.string(),
-	// database: z.object({
-	// 	uri: z.string().min(1, 'Database URI is required'),
-	// 	name: z.string().min(1, 'Database name is required'),
-	// 	poolSize: z.number().int().min(1, 'Pool size must be at least 1'),
-	// }),
 	media: z.object({
 		maxFileSize: z
 			.number()
@@ -77,6 +71,10 @@ export const AppConfigSchema = z.object({
 	invite: z.object({
 		allowedEncryptedRooms: z.boolean(),
 		allowedNonPrivateRooms: z.boolean(),
+	}),
+	edu: z.object({
+		processTyping: z.boolean(),
+		processPresence: z.boolean(),
 	}),
 });
 
