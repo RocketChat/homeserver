@@ -1,5 +1,6 @@
 import { delay, inject, singleton } from 'tsyringe';
-import { type PduType } from '@rocket.chat/federation-room';
+import type { PduType, PduForType } from '@rocket.chat/federation-room';
+import type { EventStore } from '@rocket.chat/federation-core';
 
 import { RoomService } from './services/room.service';
 import { MessageService } from './services/message.service';
@@ -85,7 +86,9 @@ export class FederationSDK {
 		return this.messageService.unsetReaction(...args);
 	}
 
-	getEventById(...args: Parameters<typeof this.eventService.getEventById>) {
+	getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
+		...args: Parameters<typeof this.eventService.getEventById>
+	): Promise<P | null> {
 		return this.eventService.getEventById(...args);
 	}
 
@@ -249,6 +252,17 @@ export class FederationSDK {
 		return this.federationRequestService.makeSignedRequest(...args);
 	}
 
+	queryProfileRemote<T>({
+		homeserverUrl,
+		userId,
+	}: { homeserverUrl: string; userId: string }) {
+		return this.federationRequestService.get<T>(
+			homeserverUrl,
+			'/_matrix/federation/v1/query/profile',
+			{ user_id: userId },
+		);
+	}
+
 	buildEvent<T extends PduType>(
 		...args: Parameters<typeof this.stateService.buildEvent<T>>
 	) {
@@ -279,5 +293,15 @@ export class FederationSDK {
 
 	setConfig(...args: Parameters<typeof this.configService.setConfig>) {
 		return this.configService.setConfig(...args);
+	}
+
+	queryKeys(...args: Parameters<typeof this.profilesService.queryKeys>) {
+		return this.profilesService.queryKeys(...args);
+	}
+
+	sendPresenceUpdateToRooms(
+		...args: Parameters<typeof this.eduService.sendPresenceUpdateToRooms>
+	) {
+		return this.eduService.sendPresenceUpdateToRooms(...args);
 	}
 }

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import type { Emitter } from '@rocket.chat/emitter';
 import type {
 	EventStagingStore,
 	Membership,
@@ -20,6 +21,7 @@ import { Upload } from './repositories/upload.repository';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { Server } from './repositories/server.repository';
 import { Key } from './repositories/key.repository';
+import { EventEmitterService } from './services/event-emitter.service';
 
 export type {
 	Pdu,
@@ -258,10 +260,16 @@ export {
 	eventIdSchema,
 } from '@rocket.chat/federation-room';
 
-export async function init(dbConfig: {
-	uri: string;
-	name: string;
-	poolSize: number;
+export async function init({
+	emitter,
+	dbConfig,
+}: {
+	emitter?: Emitter<HomeserverEventSignatures>;
+	dbConfig: {
+		uri: string;
+		name: string;
+		poolSize: number;
+	};
 }) {
 	const dbConnection = new DatabaseConnectionService(dbConfig);
 	const db = await dbConnection.getDb();
@@ -301,6 +309,13 @@ export async function init(dbConfig: {
 			'rocketchat_federation_state_graphs',
 		),
 	});
+
+	const eventEmitterService = container.resolve(EventEmitterService);
+	if (emitter) {
+		eventEmitterService.setEmitter(emitter);
+	} else {
+		eventEmitterService.initializeStandalone();
+	}
 }
 
 export const federationSDK = container.resolve(FederationSDK);

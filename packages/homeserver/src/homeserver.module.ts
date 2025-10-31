@@ -43,9 +43,11 @@ export async function setup() {
 	}
 
 	await init({
-		uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
-		name: process.env.DATABASE_NAME || 'matrix',
-		poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+		dbConfig: {
+			uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
+			name: process.env.DATABASE_NAME || 'matrix',
+			poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+		},
 	});
 
 	federationSDK.setConfig({
