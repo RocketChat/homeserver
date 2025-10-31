@@ -4,6 +4,7 @@ import {
 	generateKeyPairsFromString,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
+import { singleton } from 'tsyringe';
 
 import { z } from 'zod';
 
@@ -79,6 +80,7 @@ export const AppConfigSchema = z.object({
 	}),
 });
 
+@singleton()
 export class ConfigService {
 	private config: AppConfig = {} as AppConfig;
 	private logger = createLogger('ConfigService');
