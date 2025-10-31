@@ -1,22 +1,22 @@
-import { delay, inject, singleton } from 'tsyringe';
-import type { PduType, PduForType } from '@rocket.chat/federation-room';
 import type { EventStore } from '@rocket.chat/federation-core';
+import type { PduForType, PduType } from '@rocket.chat/federation-room';
+import { delay, inject, singleton } from 'tsyringe';
 
-import { RoomService } from './services/room.service';
-import { MessageService } from './services/message.service';
-import { InviteService } from './services/invite.service';
-import { EventService } from './services/event.service';
-import { EduService } from './services/edu.service';
-import { ServerService } from './services/server.service';
 import { AppConfig, ConfigService } from './services/config.service';
+import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
-import { StateService } from './services/state.service';
-import { MediaService } from './services/media.service';
-import { ProfilesService } from './services/profiles.service';
-import { SendJoinService } from './services/send-join.service';
-import { WellKnownService } from './services/well-known.service';
+import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
+import { InviteService } from './services/invite.service';
+import { MediaService } from './services/media.service';
+import { MessageService } from './services/message.service';
+import { ProfilesService } from './services/profiles.service';
+import { RoomService } from './services/room.service';
+import { SendJoinService } from './services/send-join.service';
+import { ServerService } from './services/server.service';
+import { StateService } from './services/state.service';
+import { WellKnownService } from './services/well-known.service';
 
 // create a federation sdk class to export
 @singleton()

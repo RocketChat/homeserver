@@ -11,18 +11,18 @@ import type {
 	EventStore,
 	PduForType,
 } from '@rocket.chat/federation-room';
-import { FederationSDK } from './sdk';
-import { container } from 'tsyringe';
 import { Collection } from 'mongodb';
+import { container } from 'tsyringe';
+import { StagingAreaListener } from './listeners/staging-area.listener';
+import { Key } from './repositories/key.repository';
 import { Lock } from './repositories/lock.repository';
 import { Room } from './repositories/room.repository';
+import { Server } from './repositories/server.repository';
 import { StateGraphStore } from './repositories/state-graph.repository';
 import { Upload } from './repositories/upload.repository';
+import { FederationSDK } from './sdk';
 import { DatabaseConnectionService } from './services/database-connection.service';
-import { Server } from './repositories/server.repository';
-import { Key } from './repositories/key.repository';
 import { EventEmitterService } from './services/event-emitter.service';
-import { StagingAreaListener } from './listeners/staging-area.listener';
 
 export type {
 	Pdu,

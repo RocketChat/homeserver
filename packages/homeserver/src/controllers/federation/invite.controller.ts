@@ -1,5 +1,5 @@
 import { EventID, RoomID } from '@rocket.chat/federation-room';
-import { federationSDK, NotAllowedError } from '@rocket.chat/federation-sdk';
+import { NotAllowedError, federationSDK } from '@rocket.chat/federation-sdk';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
 import {
