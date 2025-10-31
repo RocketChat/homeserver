@@ -1,9 +1,7 @@
-import type { EventAuthorizationService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';
 
-export const isAuthenticatedMiddleware = (
-	federationAuth: EventAuthorizationService,
-) => {
+export const isAuthenticatedMiddleware = () => {
 	return new Elysia({
 		name: 'homeserver/isAuthenticated',
 	})
@@ -32,7 +30,7 @@ export const isAuthenticatedMiddleware = (
 					}
 				}
 
-				const isValid = await federationAuth.verifyRequestSignature(
+				const isValid = await federationSDK.verifyRequestSignature(
 					authorizationHeader,
 					method,
 					uri,

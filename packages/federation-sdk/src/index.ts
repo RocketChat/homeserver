@@ -1,21 +1,28 @@
-import type { Membership, MessageType } from '@rocket.chat/federation-core';
-import type { EventID, PduForType } from '@rocket.chat/federation-room';
+import 'reflect-metadata';
+
+import type { Emitter } from '@rocket.chat/emitter';
+import type {
+	EventStagingStore,
+	Membership,
+	MessageType,
+} from '@rocket.chat/federation-core';
+import type {
+	EventID,
+	EventStore,
+	PduForType,
+} from '@rocket.chat/federation-room';
+import { Collection } from 'mongodb';
 import { container } from 'tsyringe';
-import { ConfigService } from './services/config.service';
-import { EduService } from './services/edu.service';
-import { EventAuthorizationService } from './services/event-authorization.service';
+import { StagingAreaListener } from './listeners/staging-area.listener';
+import { Key } from './repositories/key.repository';
+import { Lock } from './repositories/lock.repository';
+import { Room } from './repositories/room.repository';
+import { Server } from './repositories/server.repository';
+import { StateGraphStore } from './repositories/state-graph.repository';
+import { Upload } from './repositories/upload.repository';
+import { FederationSDK } from './sdk';
+import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventEmitterService } from './services/event-emitter.service';
-import { EventService } from './services/event.service';
-import { FederationRequestService } from './services/federation-request.service';
-import { InviteService } from './services/invite.service';
-import { MediaService } from './services/media.service';
-import { MessageService } from './services/message.service';
-import { ProfilesService } from './services/profiles.service';
-import { RoomService } from './services/room.service';
-import { SendJoinService } from './services/send-join.service';
-import { ServerService } from './services/server.service';
-import { StateService } from './services/state.service';
-import { WellKnownService } from './services/well-known.service';
 
 export type {
 	Pdu,
@@ -38,7 +45,6 @@ export type {
 } from '@rocket.chat/federation-core';
 export { generateEd25519RandomSecretKey } from '@rocket.chat/federation-crypto';
 
-export { FederationEndpoints } from './specs/federation-api';
 export type {
 	MakeJoinResponse,
 	SendJoinResponse,
@@ -48,38 +54,6 @@ export type {
 	Transaction,
 	Version,
 } from './specs/federation-api';
-
-export { FederationModule } from './federation.module';
-
-export { FederationRequestService } from './services/federation-request.service';
-export { FederationService } from './services/federation.service';
-export { WellKnownService } from './services/well-known.service';
-export { ConfigService } from './services/config.service';
-export type { AppConfig } from './services/config.service';
-export { DatabaseConnectionService } from './services/database-connection.service';
-export { EduService } from './services/edu.service';
-
-export { ServerService } from './services/server.service';
-export { EventAuthorizationService } from './services/event-authorization.service';
-export { MissingEventService } from './services/missing-event.service';
-export { ProfilesService } from './services/profiles.service';
-export { EventFetcherService } from './services/event-fetcher.service';
-export type { FetchedEvents } from './services/event-fetcher.service';
-export { InviteService } from './services/invite.service';
-export type { ProcessInviteEvent } from './services/invite.service';
-export { MessageService } from './services/message.service';
-export { EventService } from './services/event.service';
-export { RoomService } from './services/room.service';
-export { StateService } from './services/state.service';
-export { StagingAreaService } from './services/staging-area.service';
-export { SendJoinService } from './services/send-join.service';
-export { EventEmitterService } from './services/event-emitter.service';
-export { MediaService } from './services/media.service';
-// Repository interfaces and implementations
-
-// Queue implementations
-export { BaseQueue, type QueueHandler } from './queues/base.queue';
-export { StagingAreaQueue } from './queues/staging-area.queue';
 
 // Utility exports
 export { getErrorMessage } from './utils/get-error-message';
@@ -91,29 +65,6 @@ export {
 } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
-
-export { EventRepository } from './repositories/event.repository';
-export { RoomRepository } from './repositories/room.repository';
-export { ServerRepository } from './repositories/server.repository';
-export { KeyRepository } from './repositories/key.repository';
-
-export interface HomeserverServices {
-	room: RoomService;
-	message: MessageService;
-	event: EventService;
-	invite: InviteService;
-	wellKnown: WellKnownService;
-	profile: ProfilesService;
-	state: StateService;
-	sendJoin: SendJoinService;
-	server: ServerService;
-	config: ConfigService;
-	edu: EduService;
-	media: MediaService;
-	request: FederationRequestService;
-	federationAuth: EventAuthorizationService;
-	emitter: EventEmitterService;
-}
 
 type RelatesTo =
 	| {
@@ -304,37 +255,71 @@ export type HomeserverEventSignatures = {
 	};
 };
 
-export function getAllServices(): HomeserverServices {
-	return {
-		room: container.resolve(RoomService),
-		message: container.resolve(MessageService),
-		event: container.resolve(EventService),
-		invite: container.resolve(InviteService),
-		wellKnown: container.resolve(WellKnownService),
-		profile: container.resolve(ProfilesService),
-		state: container.resolve(StateService),
-		sendJoin: container.resolve(SendJoinService),
-		server: container.resolve(ServerService),
-		config: container.resolve(ConfigService),
-		edu: container.resolve(EduService),
-		media: container.resolve(MediaService),
-		request: container.resolve(FederationRequestService),
-		federationAuth: container.resolve(EventAuthorizationService),
-		emitter: container.resolve(EventEmitterService),
-	};
-}
-
-export { StagingAreaListener } from './listeners/staging-area.listener';
-
-export {
-	createFederationContainer,
-	type FederationContainerOptions,
-} from './container';
-
-export { DependencyContainer } from 'tsyringe';
-
 export {
 	roomIdSchema,
 	userIdSchema,
 	eventIdSchema,
 } from '@rocket.chat/federation-room';
+
+export async function init({
+	emitter,
+	dbConfig,
+}: {
+	emitter?: Emitter<HomeserverEventSignatures>;
+	dbConfig: {
+		uri: string;
+		name: string;
+		poolSize: number;
+	};
+}) {
+	const dbConnection = new DatabaseConnectionService(dbConfig);
+	const db = await dbConnection.getDb();
+
+	container.register<Collection<EventStore>>('EventCollection', {
+		useValue: db.collection<EventStore>('rocketchat_federation_events'),
+	});
+
+	container.register<Collection<EventStagingStore>>('EventStagingCollection', {
+		useValue: db.collection<EventStagingStore>(
+			'rocketchat_federation_events_staging',
+		),
+	});
+
+	container.register<Collection<Key>>('KeyCollection', {
+		useValue: db.collection<Key>('rocketchat_federation_keys'),
+	});
+
+	container.register<Collection<Lock>>('LockCollection', {
+		useValue: db.collection<Lock>('rocketchat_federation_locks'),
+	});
+
+	container.register<Collection<Room>>('RoomCollection', {
+		useValue: db.collection<Room>('rocketchat_federation_rooms'),
+	});
+
+	container.register<Collection<Server>>('ServerCollection', {
+		useValue: db.collection<Server>('rocketchat_federation_servers'),
+	});
+
+	container.register<Collection<Upload>>('UploadCollection', {
+		useValue: db.collection<Upload>('rocketchat_uploads'),
+	});
+
+	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
+		useValue: db.collection<StateGraphStore>(
+			'rocketchat_federation_state_graphs',
+		),
+	});
+
+	const eventEmitterService = container.resolve(EventEmitterService);
+	if (emitter) {
+		eventEmitterService.setEmitter(emitter);
+	} else {
+		eventEmitterService.initializeStandalone();
+	}
+
+	// this is required to initialize the listener and register the queue handler
+	container.resolve(StagingAreaListener);
+}
+
+export const federationSDK = container.resolve(FederationSDK);

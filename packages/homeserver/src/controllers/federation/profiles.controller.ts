@@ -1,12 +1,8 @@
 import { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
-import {
-	EventAuthorizationService,
-	ProfilesService,
-} from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 import {
 	ErrorResponseDto,
 	EventAuthParamsDto,
@@ -26,17 +22,14 @@ import {
 } from '../../dtos';
 
 export const profilesPlugin = (app: Elysia) => {
-	const profilesService = container.resolve(ProfilesService);
-	const eventAuthService = container.resolve(EventAuthorizationService);
-
 	return app
 		.group('/_matrix', (app) =>
 			app
-				.use(isAuthenticatedMiddleware(eventAuthService))
+				.use(isAuthenticatedMiddleware())
 				.get(
 					'/federation/v1/query/profile',
 					({ query: { user_id } }) =>
-						profilesService.queryProfile(user_id as UserID),
+						federationSDK.queryProfile(user_id as UserID),
 					{
 						query: QueryProfileQueryDto,
 						response: {
@@ -100,7 +93,7 @@ export const profilesPlugin = (app: Elysia) => {
 					},
 				),
 		)
-		.use(canAccessResourceMiddleware(eventAuthService, 'room'))
+		.use(canAccessResourceMiddleware('room'))
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
 			async ({ params, query: _query }) => {
@@ -108,7 +101,7 @@ export const profilesPlugin = (app: Elysia) => {
 
 				// const { ver } = query;
 
-				return profilesService.makeJoin(roomId as RoomID, userId as UserID, [
+				return federationSDK.makeJoin(roomId as RoomID, userId as UserID, [
 					'10',
 				]);
 			},
@@ -129,7 +122,7 @@ export const profilesPlugin = (app: Elysia) => {
 		.post(
 			'/_matrix/federation/v1/get_missing_events/:roomId',
 			async ({ params, body }) =>
-				profilesService.getMissingEvents(
+				federationSDK.getMissingEvents(
 					params.roomId as RoomID,
 					body.earliest_events as EventID[],
 					body.latest_events as EventID[],
@@ -152,7 +145,7 @@ export const profilesPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/event_auth/:roomId/:eventId',
 			({ params }) =>
-				profilesService.eventAuth(
+				federationSDK.eventAuth(
 					params.roomId as RoomID,
 					params.eventId as EventID,
 				),

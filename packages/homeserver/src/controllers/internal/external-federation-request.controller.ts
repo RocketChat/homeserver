@@ -7,24 +7,15 @@ import {
 	type RoomVersion,
 	type UserID,
 } from '@rocket.chat/federation-room';
-import {
-	FederationRequestService,
-	FederationService,
-	StateService,
-} from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 
 export const internalRequestPlugin = (app: Elysia) => {
-	const requester = container.resolve(FederationRequestService);
-	const state = container.resolve(StateService);
-	const federation = container.resolve(FederationService);
-
 	app.post(
 		'/internal/request',
 		async ({ body }) => {
 			const { method, body: requestBody, uri, serverName, query } = body;
-			const response = await requester.makeSignedRequest({
+			const response = await federationSDK.makeSignedRequest({
 				domain: serverName,
 				uri,
 				method,
@@ -77,7 +68,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 				PersistentEventFactory.defaultRoomVersion;
 			switch (eventType) {
 				case 'm.room.member': {
-					const event = await state.buildEvent<'m.room.member'>(
+					const event = await federationSDK.buildEvent<'m.room.member'>(
 						{
 							type: 'm.room.member',
 							room_id: roomId,
@@ -94,7 +85,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 					return event.event;
 				}
 				case 'm.room.message': {
-					const event = await state.buildEvent<'m.room.message'>(
+					const event = await federationSDK.buildEvent<'m.room.message'>(
 						{
 							type: 'm.room.message',
 							room_id: roomId,
@@ -119,14 +110,14 @@ export const internalRequestPlugin = (app: Elysia) => {
 						state_default: 50,
 					};
 					try {
-						const currState = await state.getLatestRoomState2(roomId);
+						const currState = await federationSDK.getLatestRoomState2(roomId);
 						if (currState.powerLevels) {
 							content = currState.powerLevels;
 						}
 					} catch {
 						// noop
 					}
-					const event = await state.buildEvent<'m.room.power_levels'>(
+					const event = await federationSDK.buildEvent<'m.room.power_levels'>(
 						{
 							type: 'm.room.power_levels',
 							room_id: roomId,
@@ -143,7 +134,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 					return event.event;
 				}
 				case 'm.room.join_rules': {
-					const event = await state.buildEvent<'m.room.join_rules'>(
+					const event = await federationSDK.buildEvent<'m.room.join_rules'>(
 						{
 							type: 'm.room.join_rules',
 							room_id: roomId,
@@ -160,7 +151,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 					return event.event;
 				}
 				case 'm.room.topic': {
-					const event = await state.buildEvent<'m.room.topic'>(
+					const event = await federationSDK.buildEvent<'m.room.topic'>(
 						{
 							type: 'm.room.topic',
 							room_id: roomId,
@@ -177,7 +168,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 					return event.event;
 				}
 				case 'm.room.name': {
-					const event = await state.buildEvent<'m.room.name'>(
+					const event = await federationSDK.buildEvent<'m.room.name'>(
 						{
 							type: 'm.room.name',
 							room_id: roomId,
@@ -229,8 +220,8 @@ export const internalRequestPlugin = (app: Elysia) => {
 			if (!pdu) {
 				throw new Error('Failed to create persistent event from event');
 			}
-			await state.handlePdu(pdu);
-			void federation.sendEventToAllServersInRoom(pdu);
+			await federationSDK.handlePdu(pdu);
+			void federationSDK.sendEventToAllServersInRoom(pdu);
 			return { event_id: pdu.eventId, event: pdu.event };
 		},
 		{

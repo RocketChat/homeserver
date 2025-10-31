@@ -1,8 +1,6 @@
-import { EventAuthorizationService } from '@rocket.chat/federation-sdk';
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import { Elysia, t } from 'elysia';
-import { container } from 'tsyringe';
 
 const ErrorResponseSchema = t.Object({
 	errcode: t.Literal('M_UNRECOGNIZED'),
@@ -15,11 +13,9 @@ const ErrorResponseSchema = t.Object({
  * All the medias are being handled by the Rocket.Chat instances.
  */
 export const mediaPlugin = (app: Elysia) => {
-	const eventAuthService = container.resolve(EventAuthorizationService);
-
 	return app.group('/_matrix', (app) =>
 		app
-			.use(isAuthenticatedMiddleware(eventAuthService))
+			.use(isAuthenticatedMiddleware())
 			.get(
 				'/media/v3/config',
 				async ({ set }) => {
@@ -40,7 +36,7 @@ export const mediaPlugin = (app: Elysia) => {
 					},
 				},
 			)
-			.use(canAccessResourceMiddleware(eventAuthService, 'media'))
+			.use(canAccessResourceMiddleware('media'))
 			.get(
 				'/federation/v1/media/download/:mediaId',
 				async ({ set }) => {
