@@ -171,7 +171,7 @@ export class InviteService {
 		);
 
 		const { allowedEncryptedRooms, allowedNonPrivateRooms } =
-			this.configService.getInviteConfig();
+			this.configService.getConfig('invite');
 
 		const shouldRejectInvite =
 			(!allowedEncryptedRooms && isRoomEncrypted) ||

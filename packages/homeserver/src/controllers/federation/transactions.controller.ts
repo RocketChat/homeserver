@@ -17,8 +17,6 @@ import {
 } from '../../dtos';
 
 export const transactionsPlugin = (app: Elysia) => {
-	const config = federationSDK.getConfig();
-
 	return app
 		.put(
 			'/_matrix/federation/v1/send/:txnId',
@@ -50,6 +48,8 @@ export const transactionsPlugin = (app: Elysia) => {
 		.get(
 			'/_matrix/federation/v1/event/:eventId',
 			async ({ params, set }) => {
+				const serverName = federationSDK.getConfig('serverName');
+
 				const eventData = await federationSDK.getEventById(
 					params.eventId as EventID,
 				);
@@ -63,8 +63,8 @@ export const transactionsPlugin = (app: Elysia) => {
 
 				return {
 					origin_server_ts: eventData.event.origin_server_ts,
-					origin: config.serverName,
-					pdus: [{ ...eventData.event, origin: config.serverName }],
+					origin: serverName,
+					pdus: [{ ...eventData.event, origin: serverName }],
 				};
 			},
 			{

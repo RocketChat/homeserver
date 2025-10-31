@@ -115,16 +115,8 @@ export class ConfigService {
 		return this.config.instanceId;
 	}
 
-	// getDatabaseConfig(): AppConfig['database'] {
-	// 	return this.config.database;
-	// }
-
-	getMediaConfig(): AppConfig['media'] {
-		return this.config.media;
-	}
-
-	getInviteConfig(): AppConfig['invite'] {
-		return this.config.invite;
+	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {
+		return this.config[config];
 	}
 
 	async getSigningKey() {

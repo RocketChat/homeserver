@@ -8,7 +8,7 @@ import { InviteService } from './services/invite.service';
 import { EventService } from './services/event.service';
 import { EduService } from './services/edu.service';
 import { ServerService } from './services/server.service';
-import { ConfigService } from './services/config.service';
+import { AppConfig, ConfigService } from './services/config.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { StateService } from './services/state.service';
 import { MediaService } from './services/media.service';
@@ -130,14 +130,8 @@ export class FederationSDK {
 		return this.serverService.getSignedServerKey(...args);
 	}
 
-	getConfig() {
-		return {
-			serverName: this.configService.serverName,
-			version: this.configService.version,
-			instanceId: this.configService.instanceId,
-			mediaConfig: this.configService.getMediaConfig(),
-			inviteConfig: this.configService.getInviteConfig(),
-		};
+	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {
+		return this.configService.getConfig(config);
 	}
 
 	processInvite(...args: Parameters<typeof this.inviteService.processInvite>) {

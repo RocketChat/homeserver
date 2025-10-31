@@ -3,15 +3,16 @@ import { Elysia } from 'elysia';
 import { GetVersionsResponseDto } from '../../dtos';
 
 export const versionsPlugin = (app: Elysia) => {
-	const config = federationSDK.getConfig();
+	const serverName = federationSDK.getConfig('serverName');
+	const version = federationSDK.getConfig('version');
 
 	return app.get(
 		'/_matrix/federation/v1/version',
 		() => {
 			return {
 				server: {
-					name: config.serverName,
-					version: config.version,
+					name: serverName,
+					version: version,
 				},
 			};
 		},

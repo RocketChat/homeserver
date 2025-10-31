@@ -40,7 +40,7 @@ export class FederationRequestService {
 		body,
 		queryString,
 	}: SignedRequest): Promise<FetchResponse<T>> {
-		const serverName = this.configService.serverName;
+		const serverName = this.configService.getConfig('serverName');
 		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
 		const signingKeyId = await this.configService.getSigningKeyId();
 		const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
