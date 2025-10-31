@@ -22,6 +22,7 @@ import { DatabaseConnectionService } from './services/database-connection.servic
 import { Server } from './repositories/server.repository';
 import { Key } from './repositories/key.repository';
 import { EventEmitterService } from './services/event-emitter.service';
+import { StagingAreaListener } from './listeners/staging-area.listener';
 
 export type {
 	Pdu,
@@ -316,6 +317,9 @@ export async function init({
 	} else {
 		eventEmitterService.initializeStandalone();
 	}
+
+	// this is required to initialize the listener and register the queue handler
+	container.resolve(StagingAreaListener);
 }
 
 export const federationSDK = container.resolve(FederationSDK);
