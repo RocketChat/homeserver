@@ -42,7 +42,7 @@ export class EventRepository {
 		eventType: string,
 		roomId: string,
 		senderId: string,
-	): FindCursor<EventStore> {
+	): FindCursor<EventStore> | [] {
 		const baseQueries = {
 			create: {
 				query: { 'event.room_id': roomId, 'event.type': 'm.room.create' },
@@ -89,7 +89,11 @@ export class EventRepository {
 				break;
 
 			default:
-				throw new Error(`Unsupported event type: ${eventType}`);
+				break;
+		}
+
+		if (queries.length === 0) {
+			return [];
 		}
 
 		return this.collection.find({ $or: queries.map((q) => q.query) });
