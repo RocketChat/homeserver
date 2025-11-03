@@ -58,12 +58,7 @@ export class EventService {
 		private readonly eventStagingRepository: EventStagingRepository,
 		@inject(delay(() => LockRepository))
 		private readonly lockRepository: LockRepository,
-	) {
-		// on startup we look for old staged events and try to process them
-		setTimeout(() => {
-			void this.processOldStagedEvents();
-		}, 5000);
-	}
+	) {}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
 		eventId: EventID,
@@ -671,7 +666,7 @@ export class EventService {
 		return userPowerLevel >= requiredPowerLevel;
 	}
 
-	private async processOldStagedEvents() {
+	async processOldStagedEvents() {
 		this.logger.info('Processing old staged events on startup');
 
 		const rooms = await this.eventStagingRepository.getDistinctStagedRooms();
