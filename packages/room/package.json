@@ -18,7 +18,7 @@
 	"dependencies": {
 		"@datastructures-js/priority-queue": "^6.3.3",
 		"@rocket.chat/federation-crypto": "workspace:*",
-		"zod": "^3.22.4"
+		"zod": "^3.24.1"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
