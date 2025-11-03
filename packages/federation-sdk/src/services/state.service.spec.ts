@@ -126,8 +126,6 @@ describe('StateService', async () => {
 	const configServiceInstance = {
 		getSigningKey: async () => {},
 		serverName: 'example.com',
-		database: databaseConfig,
-		getDatabaseConfig: () => databaseConfig,
 	} as unknown as ConfigService;
 
 	const database = new DatabaseConnectionService(databaseConfig);

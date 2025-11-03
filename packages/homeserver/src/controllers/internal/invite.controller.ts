@@ -5,7 +5,6 @@ import {
 } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
 import {
 	InternalInviteUserBodyDto,

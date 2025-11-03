@@ -31,11 +31,6 @@ import { internalRoomPlugin } from './controllers/internal/room.controller';
 import { serverKeyPlugin } from './controllers/key/server.controller';
 import { wellKnownPlugin } from './controllers/well-known/well-known.controller';
 
-export type { HomeserverEventSignatures };
-export interface HomeserverSetupOptions {
-	emitter?: Emitter<HomeserverEventSignatures>;
-}
-
 export async function setup() {
 	const envPath = path.resolve(process.cwd(), '.env');
 	if (fs.existsSync(envPath)) {
@@ -62,11 +57,6 @@ export async function setup() {
 		signingKey: process.env.SIGNING_KEY,
 		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
-		// database: {
-		// 	uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
-		// 	name: process.env.DATABASE_NAME || 'matrix',
-		// 	poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
-		// },
 		media: {
 			maxFileSize: process.env.MEDIA_MAX_FILE_SIZE
 				? Number.parseInt(process.env.MEDIA_MAX_FILE_SIZE, 10) * 1024 * 1024
