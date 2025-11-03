@@ -365,6 +365,35 @@ export type PduRoomNameEventContent = z.infer<
 	typeof PduRoomNameEventContentSchema
 >;
 
+export const PduRoomAvatarEventContentSchema = z.object({
+	url: z.string().optional().describe('The URL of the avatar image.'),
+	info: z
+		.object({
+			height: z.number().optional(),
+			width: z.number().optional(),
+			mimetype: z.string().optional(),
+			size: z.number().optional(),
+		})
+		.optional()
+		.describe('Metadata about the avatar image.'),
+	thumbnail_url: z.string().optional().describe('The URL of the thumbnail.'),
+});
+
+export type PduRoomAvatarEventContent = z.infer<
+	typeof PduRoomAvatarEventContentSchema
+>;
+
+export const PduRoomPinnedEventsEventContentSchema = z.object({
+	pinned: z
+		.array(eventIdSchema)
+		.optional()
+		.describe('An ordered list of event IDs to pin.'),
+});
+
+export type PduRoomPinnedEventsEventContent = z.infer<
+	typeof PduRoomPinnedEventsEventContentSchema
+>;
+
 // Base timeline content schema
 const BaseTimelineContentSchema = z.object({
 	// Optional fields for message edits and relations aka threads
@@ -737,6 +766,18 @@ const EventPduTypeRoomRedaction = z.object({
 	redacts: eventIdSchema.describe('event id'),
 });
 
+export const EventPduTypeRoomAvatar = z.object({
+	...PduNoContentEmptyStateKeyStateEventSchema,
+	type: z.literal('m.room.avatar'),
+	content: PduRoomAvatarEventContentSchema,
+});
+
+export const EventPduTypeRoomPinnedEvents = z.object({
+	...PduNoContentEmptyStateKeyStateEventSchema,
+	type: z.literal('m.room.pinned_events'),
+	content: PduRoomPinnedEventsEventContentSchema,
+});
+
 export const PduStateEventSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomCreate,
 
@@ -763,6 +804,10 @@ export const PduStateEventSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomTombstone,
 
 	EventPduTypeRoomEncryption,
+
+	EventPduTypeRoomAvatar,
+
+	EventPduTypeRoomPinnedEvents,
 ]);
 
 export const PduTimelineSchema = z.discriminatedUnion('type', [
