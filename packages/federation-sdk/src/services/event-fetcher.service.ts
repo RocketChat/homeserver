@@ -2,7 +2,7 @@ import { isFederationEventWithPDUs } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import { generateId } from '@rocket.chat/federation-core';
 import { EventID, Pdu } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
@@ -17,10 +17,9 @@ export class EventFetcherService {
 	private readonly logger = createLogger('EventFetcherService');
 
 	constructor(
+		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
-
 		private readonly federationService: FederationService,
-
 		private readonly configService: ConfigService,
 	) {}
 

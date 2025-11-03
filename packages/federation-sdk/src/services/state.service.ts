@@ -21,7 +21,7 @@ import {
 	extractDomainFromId,
 	resolveStateV2Plus,
 } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
@@ -65,7 +65,9 @@ export class UnknownRoomError extends Error {
 export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(
+		@inject(delay(() => StateGraphRepository))
 		private readonly stateRepository: StateGraphRepository,
+		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
 	) {}

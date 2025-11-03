@@ -23,6 +23,7 @@ import { Upload } from './repositories/upload.repository';
 import { FederationSDK } from './sdk';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventEmitterService } from './services/event-emitter.service';
+import { EventService } from './services/event.service';
 
 export type {
 	Pdu,
@@ -320,6 +321,12 @@ export async function init({
 
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);
+
+	// once the db is initialized we look for old staged events and try to process them
+	setTimeout(async () => {
+		const eventService = container.resolve(EventService);
+		await eventService.processOldStagedEvents();
+	}, 5000);
 }
 
 export const federationSDK = container.resolve(FederationSDK);

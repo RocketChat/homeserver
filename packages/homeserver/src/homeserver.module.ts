@@ -90,6 +90,10 @@ export async function setup() {
 			allowedNonPrivateRooms:
 				process.env.INVITE_ALLOWED_NON_PRIVATE_ROOMS === 'true',
 		},
+		edu: {
+			processTyping: process.env.EDU_PROCESS_TYPING !== 'false',
+			processPresence: process.env.EDU_PROCESS_PRESENCE === 'true',
+		},
 	});
 
 	const app = new Elysia();

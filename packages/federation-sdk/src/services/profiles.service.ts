@@ -6,13 +6,11 @@ import {
 	EventID,
 	Pdu,
 	PduForType,
-	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
 	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
-import { EventRepository } from '../repositories/event.repository';
 import { StateService } from './state.service';
 
 @singleton()
@@ -22,9 +20,6 @@ export class ProfilesService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
-		// private readonly roomService: RoomService,
-
-		private readonly eventRepository: EventRepository,
 		private readonly stateService: StateService,
 	) {}
 	async queryProfile(userId: string): Promise<{
