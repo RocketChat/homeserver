@@ -91,6 +91,12 @@ describe('FederationRequestService', async () => {
 		);
 
 		configService = {
+			getConfig: (key: string) => {
+				if (key === 'serverName') {
+					return mockServerName;
+				}
+				throw new Error(`Unknown config key: ${key}`);
+			},
 			serverName: mockServerName,
 			getSigningKeyBase64: async () => mockSigningKey,
 			getSigningKeyId: async () => mockSigningKeyId,

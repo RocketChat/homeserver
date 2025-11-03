@@ -1,4 +1,4 @@
-import type { EventAuthorizationService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { errCodes } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';
 import { isAuthenticatedMiddleware } from './isAuthenticated';
@@ -23,11 +23,10 @@ function extractEntityId(
 }
 
 export const canAccessResourceMiddleware = (
-	federationAuth: EventAuthorizationService,
 	entityType: 'event' | 'media' | 'room',
 ) => {
 	return new Elysia({ name: 'homeserver/canAccessResource' })
-		.use(isAuthenticatedMiddleware(federationAuth))
+		.use(isAuthenticatedMiddleware())
 		.onBeforeHandle(async ({ params, authenticatedServer, set }) => {
 			try {
 				if (!authenticatedServer) {
@@ -47,7 +46,7 @@ export const canAccessResourceMiddleware = (
 					};
 				}
 
-				const resourceAccess = await federationAuth.canAccessResource(
+				const resourceAccess = await federationSDK.canAccessResource(
 					entityType,
 					resourceId,
 					authenticatedServer,

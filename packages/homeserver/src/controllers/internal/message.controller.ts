@@ -1,7 +1,6 @@
 import { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
-import { MessageService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
 import {
 	type InternalMessageResponse,
@@ -20,7 +19,6 @@ import {
 } from '../../dtos';
 
 export const internalMessagePlugin = (app: Elysia) => {
-	const messageService = container.resolve(MessageService);
 	return app
 		.patch(
 			'/internal/messages/:messageId',
@@ -31,7 +29,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 			}): Promise<InternalMessageResponse | ErrorResponse> => {
 				const { roomId, message, senderUserId } = body;
 				try {
-					const eventId = await messageService.updateMessage(
+					const eventId = await federationSDK.updateMessage(
 						roomId as RoomID,
 						message,
 						message,
@@ -73,7 +71,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 			}): Promise<InternalReactionResponse | ErrorResponse> => {
 				const { roomId, emoji, senderUserId } = body;
 				try {
-					const eventId = await messageService.sendReaction(
+					const eventId = await federationSDK.sendReaction(
 						roomId as RoomID,
 						params.messageId as EventID,
 						emoji,
@@ -114,7 +112,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 			}): Promise<InternalReactionResponse | ErrorResponse> => {
 				const { roomId, emoji, senderUserId } = body;
 				try {
-					const eventId = await messageService.unsetReaction(
+					const eventId = await federationSDK.unsetReaction(
 						roomId as RoomID,
 						params.messageId as EventID,
 						emoji,
@@ -153,7 +151,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 				body,
 			}): Promise<InternalRedactMessageResponse | ErrorResponse> => {
 				const { roomId } = body;
-				const eventId = await messageService.redactMessage(
+				const eventId = await federationSDK.redactMessage(
 					roomId as RoomID,
 					params.messageId as EventID,
 				);

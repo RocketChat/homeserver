@@ -1,14 +1,12 @@
-import { WellKnownService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
-import { container } from 'tsyringe';
 import { WellKnownServerResponseDto } from '../../dtos';
 
 export const wellKnownPlugin = (app: Elysia) => {
-	const wellKnownService = container.resolve(WellKnownService);
 	return app.get(
 		'/.well-known/matrix/server',
 		({ set }) => {
-			const responseData = wellKnownService.getWellKnownHostData();
+			const responseData = federationSDK.getWellKnownHostData();
 			const etag = new Bun.CryptoHasher('md5')
 				.update(JSON.stringify(responseData))
 				.digest('hex');

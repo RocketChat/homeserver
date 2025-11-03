@@ -66,7 +66,6 @@ export class StateService {
 	private readonly logger = createLogger('StateService');
 	constructor(
 		private readonly stateRepository: StateGraphRepository,
-
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
 	) {}
