@@ -1,12 +1,6 @@
 import {
-	type RoomMemberEvent,
-	isRoomMemberEvent,
-} from '@rocket.chat/federation-core';
-import {
 	type EventID,
 	PduForType,
-	type PduMembershipEventContent,
-	PersistentEventFactory,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -20,11 +14,9 @@ import { StateService } from './state.service';
 export class SendJoinService {
 	constructor(
 		private readonly eventService: EventService,
-
 		private readonly emitterService: EventEmitterService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
-
 		private readonly federationService: FederationService,
 	) {}
 

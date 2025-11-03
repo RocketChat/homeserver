@@ -8,7 +8,7 @@ import {
 	PersistentEventFactory,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
-import { delay, inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -27,10 +27,7 @@ export class FederationService {
 
 	constructor(
 		private readonly configService: ConfigService,
-
 		private readonly requestService: FederationRequestService,
-
-		@inject(delay(() => StateService))
 		private readonly stateService: StateService,
 	) {}
 

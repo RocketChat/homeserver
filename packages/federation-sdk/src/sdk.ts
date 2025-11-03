@@ -1,6 +1,6 @@
 import type { EventStore } from '@rocket.chat/federation-core';
 import type { PduForType, PduType } from '@rocket.chat/federation-room';
-import { delay, inject, singleton } from 'tsyringe';
+import { singleton } from 'tsyringe';
 
 import { AppConfig, ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
@@ -22,29 +22,20 @@ import { WellKnownService } from './services/well-known.service';
 @singleton()
 export class FederationSDK {
 	constructor(
-		@inject(delay(() => RoomService)) private readonly roomService: RoomService,
-		@inject(delay(() => MessageService))
+		private readonly roomService: RoomService,
 		private readonly messageService: MessageService,
-		@inject(delay(() => InviteService))
 		private readonly inviteService: InviteService,
-		@inject(delay(() => EventService))
 		private readonly eventService: EventService,
-		@inject(delay(() => EduService)) private readonly eduService: EduService,
-		@inject(delay(() => ServerService))
+		private readonly eduService: EduService,
 		private readonly serverService: ServerService,
 		private readonly configService: ConfigService,
-		@inject(delay(() => EventAuthorizationService))
 		private readonly eventAuthorizationService: EventAuthorizationService,
-		@inject(delay(() => StateService))
 		private readonly stateService: StateService,
 		private readonly mediaService: MediaService,
-		@inject(delay(() => ProfilesService))
 		private readonly profilesService: ProfilesService,
-		@inject(delay(() => SendJoinService))
 		private readonly sendJoinService: SendJoinService,
 		private readonly wellKnownService: WellKnownService,
 		private readonly federationRequestService: FederationRequestService,
-		@inject(delay(() => FederationService))
 		private readonly federationService: FederationService,
 	) {}
 

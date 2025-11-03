@@ -4,13 +4,14 @@ import {
 	signJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import { ServerRepository } from '../repositories/server.repository';
 import { ConfigService } from './config.service';
 
 @singleton()
 export class ServerService {
 	constructor(
+		@inject(delay(() => ServerRepository))
 		private readonly serverRepository: ServerRepository,
 		private configService: ConfigService,
 	) {}

@@ -7,7 +7,7 @@ import {
 	createLogger,
 	roomPowerLevelsEvent,
 } from '@rocket.chat/federation-core';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import { FederationService } from './federation.service';
 
 import {
@@ -28,7 +28,6 @@ import {
 	RoomID,
 	RoomVersion,
 	UserID,
-	checkEventAuthWithState,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
@@ -45,8 +44,6 @@ import { StateService, UnknownRoomError } from './state.service';
 export class RoomService {
 	private readonly logger = createLogger('RoomService');
 	constructor(
-		private readonly roomRepository: RoomRepository,
-		private readonly eventRepository: EventRepository,
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
@@ -54,6 +51,11 @@ export class RoomService {
 		private readonly inviteService: InviteService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly eventFetcherService: EventFetcherService,
+		@inject(delay(() => RoomRepository))
+		private readonly roomRepository: RoomRepository,
+		@inject(delay(() => EventRepository))
+		private readonly eventRepository: EventRepository,
+		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 	) {}
 

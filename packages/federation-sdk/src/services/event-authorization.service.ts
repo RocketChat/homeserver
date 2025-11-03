@@ -9,7 +9,7 @@ import type {
 	Pdu,
 	PersistentEventBase,
 } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
@@ -31,8 +31,9 @@ export class EventAuthorizationService {
 		private readonly stateService: StateService,
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
-		private readonly uploadRepository: UploadRepository,
 		private readonly serverService: ServerService,
+		@inject(delay(() => UploadRepository))
+		private readonly uploadRepository: UploadRepository,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
