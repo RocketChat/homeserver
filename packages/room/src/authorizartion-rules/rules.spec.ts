@@ -340,7 +340,7 @@ describe('authorization rules', () => {
 		).toThrow();
 	});
 
-	it('06 users below state_default should not be able to send any state', async () => {
+	it('06 users below events_default should not be able to send unknown events', async () => {
 		const alice = '@alice:example.com';
 		const bob = '@bob:example.com';
 
@@ -348,7 +348,8 @@ describe('authorization rules', () => {
 			{},
 			{
 				events: {},
-				state_default: 30,
+				events_default: 30,
+				state_default: 50,
 				users: {
 					[alice]: 29,
 					[bob]: 30,
@@ -374,27 +375,26 @@ describe('authorization rules', () => {
 
 		const state = getStateMap([create, join, powerLevel, joinBob, joinAlice]);
 
-		const randomStateEvent = new FakeStateEventCreator()
+		const randomEvent = new FakeStateEventCreator()
 			.asTest()
 			.withRoomId(roomId)
-			.withSender(alice) // should not be able to send any state
+			.withSender(alice) // should not be able to send (power 29 < events_default 30)
 			.withContent({})
 			.build();
 
-		expect(() =>
-			checkEventAuthWithState(randomStateEvent, state, store),
-		).toThrow();
+		expect(
+			checkEventAuthWithState(randomEvent, state, store),
+		).rejects.toThrow();
 
-		const randomStateEvent2 = new FakeStateEventCreator()
+		const randomEvent2 = new FakeStateEventCreator()
 			.asTest()
 			.withRoomId(roomId)
-			.withSender(bob) // should be able to send state
+			.withSender(bob) // should be able to send (power 30 >= events_default 30)
 			.withContent({})
 			.build();
 
-		expect(() =>
-			checkEventAuthWithState(randomStateEvent2, state, store),
-		).not.toThrow();
+		// Should not throw
+		await checkEventAuthWithState(randomEvent2, state, store);
 	});
 
 	// TODO: alias rooms
@@ -593,7 +593,7 @@ describe('authorization rules', () => {
 		).not.toThrow();
 	});
 
-	it('09 should not allow state event sending if power level is too low', async () => {
+	it('09 should not allow unknown event sending if power level is too low', async () => {
 		const alice = '@alice:example.com';
 
 		const joinAlice = new FakeStateEventCreator()
@@ -620,29 +620,27 @@ describe('authorization rules', () => {
 			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
 		};
 
-		// alice shoould not be able to send a state event if power is lower than 30
-		const state29 = setAlicePower(29);
+		// alice should not be able to send unknown event if power < events_default (50)
+		const state49 = setAlicePower(49);
 
-		const randomStateEvent = new FakeStateEventCreator()
+		const randomEvent = new FakeStateEventCreator()
 			.asTest()
 			.withRoomId(roomId)
 			.withSender(alice)
 			.withContent({})
 			.build();
 
-		expect(() =>
-			checkEventAuthWithState(randomStateEvent, state29, store),
-		).toThrow();
+		expect(
+			checkEventAuthWithState(randomEvent, state49, store),
+		).rejects.toThrow();
 
-		// alice should be able to send a state event if power is 30
-		const state30 = setAlicePower(30);
+		// alice should be able to send unknown event if power >= events_default (50)
+		const state50 = setAlicePower(50);
 
-		expect(() =>
-			checkEventAuthWithState(randomStateEvent, state30, store),
-		).not.toThrow();
+		await checkEventAuthWithState(randomEvent, state50, store);
 
 		// should not be able to send a message if power < 50
-		const state49 = setAlicePower(49);
+		const state49_message = setAlicePower(49);
 
 		const messageEvent = new FakeMessageEventCreator()
 			.withRoomId(roomId)
@@ -650,18 +648,16 @@ describe('authorization rules', () => {
 			.withContent({})
 			.build();
 
-		expect(() =>
-			checkEventAuthWithState(messageEvent, state49, store),
-		).toThrow();
+		expect(
+			checkEventAuthWithState(messageEvent, state49_message, store),
+		).rejects.toThrow();
 
 		const state51 = setAlicePower(51);
 
-		expect(() =>
-			checkEventAuthWithState(messageEvent, state51, store),
-		).not.toThrow();
+		await checkEventAuthWithState(messageEvent, state51, store);
 
 		// setting custom power required for test events
-		const randomStateEvent2 = new FakeStateEventCreator()
+		const randomEvent2 = new FakeStateEventCreator()
 			.asTest()
 			.withRoomId(roomId)
 			.withSender(alice)
@@ -675,10 +671,10 @@ describe('authorization rules', () => {
 				},
 				{
 					events: {
-						[randomStateEvent2.type]: 100,
+						[randomEvent2.type]: 100,
 					},
 					users: {
-						[alice]: 51, // alice should not be able to send randomStateEvent2
+						[alice]: 51, // alice should not be able to send randomEvent2 (requires 100)
 					},
 
 					state_default: 30,
@@ -688,9 +684,9 @@ describe('authorization rules', () => {
 			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
 		})();
 
-		expect(() =>
-			checkEventAuthWithState(randomStateEvent2, stateX, store),
-		).toThrow();
+		expect(
+			checkEventAuthWithState(randomEvent2, stateX, store),
+		).rejects.toThrow();
 
 		// setting custom power required for test events
 		const stateY = (() => {
@@ -700,10 +696,10 @@ describe('authorization rules', () => {
 				},
 				{
 					events: {
-						[randomStateEvent2.type]: 50,
+						[randomEvent2.type]: 50,
 					},
 					users: {
-						[alice]: 51, // alice should not be able to send randomStateEvent2
+						[alice]: 51, // alice should be able to send randomEvent2 (requires 50, has 51)
 					},
 				},
 			);
@@ -711,9 +707,7 @@ describe('authorization rules', () => {
 			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
 		})();
 
-		expect(() =>
-			checkEventAuthWithState(randomStateEvent2, stateY, store),
-		).not.toThrow();
+		await checkEventAuthWithState(randomEvent2, stateY, store);
 	});
 
 	it('10 should resolve power events correctly', async () => {

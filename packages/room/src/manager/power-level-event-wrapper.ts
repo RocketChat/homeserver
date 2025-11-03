@@ -1,6 +1,7 @@
 import {
 	type PduPowerLevelsEventContent,
 	type PduType,
+	isStateEventType,
 	isTimelineEventType,
 } from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
@@ -108,8 +109,12 @@ class PowerLevelEvent<
 			return this._content.events_default ?? 0;
 		}
 
-		// state events
-		return this._content.state_default ?? 50;
+		if (isStateEventType(type)) {
+			return this._content.state_default ?? 50;
+		}
+
+		// unknown event type - use events_default
+		return this._content.events_default ?? 0;
 	}
 
 	// raw transformed values

@@ -36,7 +36,6 @@ export const PduTypeSchema = z.enum([
 	'm.sticker',
 	'm.beacon_info',
 	'm.call.invite',
-	'm.poll.start',
 ]);
 
 export const EduTypeSchema = z.enum([
@@ -791,5 +790,25 @@ export function isTimelineEventType(type: PduType) {
 		type === 'm.room.encrypted' ||
 		type === 'm.reaction' ||
 		type === 'm.room.redaction'
+	);
+}
+
+export function isStateEventType(type: PduType) {
+	return (
+		type === 'm.room.create' ||
+		type === 'm.room.member' ||
+		type === 'm.room.join_rules' ||
+		type === 'm.room.power_levels' ||
+		type === 'm.room.aliases' ||
+		type === 'm.room.history_visibility' ||
+		type === 'm.room.guest_access' ||
+		type === 'm.room.server_acl' ||
+		type === 'm.room.topic' ||
+		type === 'm.room.name' ||
+		type === 'm.room.avatar' ||
+		type === 'm.room.canonical_alias' ||
+		type === 'm.room.encryption' ||
+		type === 'm.room.tombstone' ||
+		type === 'm.room.pinned_events'
 	);
 }
