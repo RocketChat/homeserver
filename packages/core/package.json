@@ -19,7 +19,7 @@
 	"dependencies": {
 		"@rocket.chat/federation-crypto": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*",
-		"pino": "^9.11.0"
+		"pino": "^8.21.0"
 	},
 	"devDependencies": {
 		"bun-types": "latest",
