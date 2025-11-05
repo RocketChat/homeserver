@@ -13,8 +13,14 @@ import {
 	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
 } from '@rocket.chat/federation-crypto';
-import { PersistentEventFactory } from '@rocket.chat/federation-room';
+import {
+	EventID,
+	PersistentEventFactory,
+	RoomID,
+	UserID,
+} from '@rocket.chat/federation-room';
 import { SignatureVerificationService } from './signature-verification.service';
+import { keyService } from '../__mocks__/services.spec';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';
 
@@ -27,7 +33,7 @@ const event = {
 		'$Ulggyo4m1OlI08Z0jJDVeceigjSZP9SdEFVoAn9mEh8',
 		'$G2TzsvetG2YlHr20tZLHCCzOd-yxPa1jeFT8OU4_6kg',
 		'$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs',
-	],
+	] as EventID[],
 	content: {
 		avatar_url: null,
 		displayname: 'debdut1',
@@ -37,10 +43,10 @@ const event = {
 	hashes: { sha256: '6MnKSCFJy1fYf6ukILBEbqx2DkoaD1wRyKXhv689a0A' },
 	origin: 'syn1.tunnel.dev.rocket.chat',
 	origin_server_ts: 1757328411218,
-	prev_events: ['$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs'],
-	room_id: '!VoUasOLSpcdtRbGHdT:syn2.tunnel.dev.rocket.chat',
-	sender: '@debdut1:syn1.tunnel.dev.rocket.chat',
-	state_key: '@debdut1:syn1.tunnel.dev.rocket.chat',
+	prev_events: ['$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs'] as EventID[],
+	room_id: '!VoUasOLSpcdtRbGHdT:syn2.tunnel.dev.rocket.chat' as RoomID,
+	sender: '@debdut1:syn1.tunnel.dev.rocket.chat' as UserID,
+	state_key: '@debdut1:syn1.tunnel.dev.rocket.chat' as UserID,
 	type: 'm.room.member' as const,
 	signatures: {
 		'syn1.tunnel.dev.rocket.chat': {
@@ -84,7 +90,7 @@ describe('SignatureVerificationService', async () => {
 	);
 
 	beforeEach(() => {
-		service = new SignatureVerificationService(); // invalidates internal cache
+		service = new SignatureVerificationService(keyService); // invalidates internal cache
 	});
 
 	afterEach(async () => {
