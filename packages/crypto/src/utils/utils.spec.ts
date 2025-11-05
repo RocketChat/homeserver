@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import { encodeCanonicalJson, fromBase64ToBytes } from './data-types';
+import {
+	InvalidSignatureError,
+	encodeCanonicalJson,
+	fromBase64ToBytes,
+} from './data-types';
 import {
 	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
@@ -99,8 +103,8 @@ describe('Signing and verifying payloads', async () => {
 			'0',
 		);
 
-		expect(verifyJsonSignature({}, signature, verifier)).rejects.toThrowError(
-			'Invalid signature',
+		expect(verifyJsonSignature({}, signature, verifier)).rejects.toThrow(
+			InvalidSignatureError,
 		);
 	});
 
