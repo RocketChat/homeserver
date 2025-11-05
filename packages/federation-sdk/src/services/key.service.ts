@@ -209,7 +209,7 @@ export class KeyService {
 
 	// multiple keys -> single repnse
 	private async convertToKeyV2Response(
-		serverKeys: ServerKey[],
+		serverKeys: Omit<ServerKey, 'pem' | '_createdAt' | '_updatedAt'>[],
 		minimumValidUntil = Date.now(),
 	): Promise<KeyV2ServerResponse> {
 		if (!this.signer) {
@@ -604,10 +604,25 @@ export class KeyService {
 	}
 
 	async getOwnSignedServerKeyResponse() {
-		return this.convertToKeyV2Response(
-			await this.keyRepository
-				.findByServerName(this.configService.serverName)
-				.toArray(),
-		);
+		// TODO: for old keys, should be saved and code below will make more sense
+		// return this.convertToKeyV2Response(
+		// 	await this.keyRepository
+		// 		.findByServerName(this.configService.serverName)
+		// 		.toArray(),
+		// );
+		if (!this.signer) {
+			throw new Error('Signing key not configured');
+		}
+
+		return this.convertToKeyV2Response([
+			{
+				serverName: this.configService.serverName,
+				keyId: this.signer.id,
+				key: this.signer.getPublicKey().toBase64(),
+
+				// TODO: this isn't currently in config, nor do we handle expiration yet
+				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year expiration
+			},
+		]);
 	}
 }
