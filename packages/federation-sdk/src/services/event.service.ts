@@ -29,9 +29,7 @@ import {
 	RoomVersion,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
-RoomVersion,
-} from '@hs/room'
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
@@ -56,25 +54,18 @@ export class EventService {
 	private currentTransactions = new Set<string>();
 
 	constructor(
-		private readonly eventRepository: EventRepository,
-		private readonly eventStagingRepository: EventStagingRepository,
-		private readonly lockRepository: LockRepository,
 		private readonly configService: ConfigService,
-
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly stateService: StateService,
 		private readonly serverService: ServerService,
-
 		private readonly eventEmitterService: EventEmitterService,
-
-		private readonly keyService: KeyService,
-		private readonly signatureVerificationService: SignatureVerificationService,
-	) {
-		// on startup we look for old staged events and try to process them
-		setTimeout(() => {
-			void this.processOldStagedEvents();
-		}, 5000);
-	}
+		@inject(delay(() => EventRepository))
+		private readonly eventRepository: EventRepository,
+		@inject(delay(() => EventStagingRepository))
+		private readonly eventStagingRepository: EventStagingRepository,
+		@inject(delay(() => LockRepository))
+		private readonly lockRepository: LockRepository,
+	) {}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
 		eventId: EventID,
@@ -746,7 +737,7 @@ export class EventService {
 		return userPowerLevel >= requiredPowerLevel;
 	}
 
-	private async processOldStagedEvents() {
+	async processOldStagedEvents() {
 		this.logger.info('Processing old staged events on startup');
 
 		const rooms = await this.eventStagingRepository.getDistinctStagedRooms();

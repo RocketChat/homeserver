@@ -6,7 +6,6 @@ import {
 import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
-import { EventEmitterService } from './event-emitter.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 
@@ -17,7 +16,6 @@ export class EduService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
-		private readonly eventEmitterService: EventEmitterService,
 		private readonly stateService: StateService,
 	) {}
 

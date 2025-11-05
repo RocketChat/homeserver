@@ -1,16 +1,15 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import { Db, MongoClient, type MongoClientOptions } from 'mongodb';
-import { singleton } from 'tsyringe';
-import { ConfigService } from './config.service';
 
-@singleton()
 export class DatabaseConnectionService {
 	private client: MongoClient | null = null;
 	private db: Db | null = null;
 	private connectionPromise: Promise<void> | null = null;
 	private readonly logger = createLogger('DatabaseConnectionService');
 
-	constructor(private readonly configService: ConfigService) {
+	constructor(
+		private readonly config: { uri: string; name: string; poolSize: number },
+	) {
 		this.connect().catch((err) =>
 			this.logger.error({ msg: 'Initial database connection failed', err }),
 		);
@@ -39,7 +38,7 @@ export class DatabaseConnectionService {
 
 		this.connectionPromise = new Promise<void>((resolve, reject) => {
 			try {
-				const dbConfig = this.configService.getDatabaseConfig();
+				const dbConfig = this.config;
 
 				const options: MongoClientOptions = {
 					maxPoolSize: dbConfig.poolSize,

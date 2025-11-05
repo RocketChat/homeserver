@@ -11,11 +11,7 @@ import {
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
-import {
-	AclDeniedError,
-	EventAuthorizationService,
-} from './event-authorization.service';
-import { EventService } from './event.service';
+import { EventAuthorizationService } from './event-authorization.service';
 import { FederationService } from './federation.service';
 import { StateService, UnknownRoomError } from './state.service';
 // TODO: Have better (detailed/specific) event input type
@@ -37,8 +33,6 @@ export class InviteService {
 	private readonly logger = createLogger('InviteService');
 
 	constructor(
-		private readonly eventService: EventService,
-
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
@@ -171,7 +165,7 @@ export class InviteService {
 		);
 
 		const { allowedEncryptedRooms, allowedNonPrivateRooms } =
-			this.configService.getInviteConfig();
+			this.configService.getConfig('invite');
 
 		const shouldRejectInvite =
 			(!allowedEncryptedRooms && isRoomEncrypted) ||

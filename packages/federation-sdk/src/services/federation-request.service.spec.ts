@@ -65,11 +65,15 @@ describe('FederationRequestService', async () => {
 
 	beforeEach(() => {
 		configService = {
-			serverName: origin,
-			getSigningKey: async () => {
-				const [, version, seed] = signingKeyContent.split(' ');
-				return loadEd25519SignerFromSeed(fromBase64ToBytes(seed), version);
+			getConfig: (key: string) => {
+				if (key === 'serverName') {
+					return mockServerName;
+				}
+				throw new Error(`Unknown config key: ${key}`);
 			},
+			serverName: mockServerName,
+			getSigningKeyBase64: async () => mockSigningKey,
+			getSigningKeyId: async () => mockSigningKeyId,
 		} as ConfigService;
 
 		service = new FederationRequestService(configService);

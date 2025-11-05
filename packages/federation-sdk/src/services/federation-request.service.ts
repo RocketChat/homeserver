@@ -60,6 +60,10 @@ export class FederationRequestService {
 		if (queryString) {
 			url.search = queryString;
 		}
+		const url = new URL(`${address}${uri}`);
+		if (queryString) {
+			url.search = queryString;
+		}
 
 		/*
 			{

@@ -1,11 +1,17 @@
-import { signJson, toUnpaddedBase64 } from '@hs/crypto';
-import { singleton } from 'tsyringe';
+import {
+	type SigningKey,
+	getPublicKeyFromRemoteServer,
+	signJson,
+	toUnpaddedBase64,
+} from '@rocket.chat/federation-core';
+import { delay, inject, singleton } from 'tsyringe';
 import { ServerRepository } from '../repositories/server.repository';
 import { ConfigService } from './config.service';
 
 @singleton()
 export class ServerService {
 	constructor(
+		@inject(delay(() => ServerRepository))
 		private readonly serverRepository: ServerRepository,
 		private configService: ConfigService,
 	) {}

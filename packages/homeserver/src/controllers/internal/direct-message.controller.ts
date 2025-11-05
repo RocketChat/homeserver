@@ -1,5 +1,5 @@
 import { UserID } from '@rocket.chat/federation-room';
-import { RoomService } from '@rocket.chat/federation-sdk';
+import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
 import { container } from 'tsyringe';
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
@@ -20,8 +20,6 @@ export type InternalDirectMessageResponse =
 	typeof InternalDirectMessageResponseDto.static;
 
 export const internalDirectMessagePlugin = (app: Elysia) => {
-	const roomService = container.resolve(RoomService);
-
 	return app.post(
 		'/internal/direct-messages/create',
 		async ({
@@ -30,7 +28,7 @@ export const internalDirectMessagePlugin = (app: Elysia) => {
 		}): Promise<InternalDirectMessageResponse | ErrorResponse> => {
 			const { senderUserId, targetUserId } = body;
 			try {
-				const roomId = await roomService.createDirectMessageRoom(
+				const roomId = await federationSDK.createDirectMessageRoom(
 					senderUserId as UserID,
 					targetUserId as UserID,
 				);

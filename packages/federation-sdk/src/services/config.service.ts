@@ -4,6 +4,7 @@ import {
 	generateKeyPairsFromString,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
+import { singleton } from 'tsyringe';
 
 import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ export interface AppConfig {
 	keyRefreshInterval: number;
 	signingKey?: string;
 	timeout?: number;
+	signingKeyPath?: string;
 	database: {
 		uri: string;
 		name: string;
@@ -35,6 +37,10 @@ export interface AppConfig {
 		allowedEncryptedRooms: boolean;
 		allowedNonPrivateRooms: boolean;
 	};
+	edu: {
+		processTyping: boolean;
+		processPresence: boolean;
+	};
 }
 
 export const AppConfigSchema = z.object({
@@ -49,6 +55,7 @@ export const AppConfigSchema = z.object({
 		.min(1, 'Key refresh interval must be at least 1'),
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
+	signingKeyPath: z.string(),
 	database: z.object({
 		uri: z.string().min(1, 'Database URI is required'),
 		name: z.string().min(1, 'Database name is required'),
@@ -76,14 +83,19 @@ export const AppConfigSchema = z.object({
 		allowedEncryptedRooms: z.boolean(),
 		allowedNonPrivateRooms: z.boolean(),
 	}),
+	edu: z.object({
+		processTyping: z.boolean(),
+		processPresence: z.boolean(),
+	}),
 });
 
+@singleton()
 export class ConfigService {
-	private config: AppConfig;
+	private config: AppConfig = {} as AppConfig;
 	private logger = createLogger('ConfigService');
 	private serverKeys: SigningKey[] = [];
 
-	constructor(values: AppConfig) {
+	setConfig(values: AppConfig) {
 		try {
 			this.config = AppConfigSchema.parse(values);
 		} catch (error) {
@@ -112,16 +124,8 @@ export class ConfigService {
 		return this.config.instanceId;
 	}
 
-	getDatabaseConfig(): AppConfig['database'] {
-		return this.config.database;
-	}
-
-	getMediaConfig(): AppConfig['media'] {
-		return this.config.media;
-	}
-
-	getInviteConfig(): AppConfig['invite'] {
-		return this.config.invite;
+	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {
+		return this.config[config];
 	}
 
 	async getSigningKey() {
