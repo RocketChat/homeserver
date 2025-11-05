@@ -710,6 +710,103 @@ describe('authorization rules', () => {
 		await checkEventAuthWithState(randomEvent2, stateY, store);
 	});
 
+	it('09.1 should use events_default for custom and unknown Matrix events', async () => {
+		const alice = '@alice:example.com';
+
+		const joinAlice = new FakeStateEventCreator()
+			.asRoomMember()
+			.withRoomId(roomId)
+			.withSender(alice)
+			.withContent({ membership: 'join' })
+			.withStateKey(alice)
+			.build();
+
+		const { create, join, powerLevel, joinRules } = getInitialEvents(
+			{ joinRule: 'public' },
+			{
+				events: {},
+				users: {
+					[alice]: 40,
+				},
+				state_default: 50, // state events need 50
+				events_default: 30, // unknown/custom events need 30
+			},
+		);
+
+		const state = getStateMap([create, join, powerLevel, joinRules, joinAlice]);
+
+		// test custom application event (io.rocketchat.*)
+		const customRocketChatEvent = new FakeStateEventCreator()
+			// @ts-expect-error - testing unknown event type
+			.withType('io.rocketchat.custom')
+			.withRoomId(roomId)
+			.withSender(alice) // power 40 >= events_default 30, should pass
+			.withContent({})
+			.build();
+
+		await checkEventAuthWithState(customRocketChatEvent, state, store);
+
+		// test another custom event (com.example.*)
+		const customExampleEvent = new FakeStateEventCreator()
+			// @ts-expect-error - testing unknown event type
+			.withType('com.example.event')
+			.withRoomId(roomId)
+			.withSender(alice)
+			.withContent({})
+			.build();
+
+		await checkEventAuthWithState(customExampleEvent, state, store);
+
+		// test unknown Matrix standard event (m.poll.start)
+		const unknownMatrixEvent = new FakeStateEventCreator()
+			// @ts-expect-error - testing unknown event type
+			.withType('m.poll.start')
+			.withRoomId(roomId)
+			.withSender(alice)
+			.withContent({})
+			.build();
+
+		await checkEventAuthWithState(unknownMatrixEvent, state, store);
+
+		// verify that power < events_default fails for custom events
+		const {
+			create: create2,
+			join: join2,
+			powerLevel: powerLevel2,
+			joinRules: joinRules2,
+		} = getInitialEvents(
+			{ joinRule: 'public' },
+			{
+				events: {},
+				users: {
+					[alice]: 25, // power 25 < events_default 30, should fail
+				},
+				state_default: 50,
+				events_default: 30,
+			},
+		);
+
+		const state2 = getStateMap([
+			create2,
+			join2,
+			powerLevel2,
+			joinRules2,
+			joinAlice,
+		]);
+
+		const customEventLowPower = new FakeStateEventCreator()
+			// @ts-expect-error - testing unknown event type
+			.withType('io.rocketchat.test')
+			.withRoomId(roomId)
+			.withSender(alice)
+			.withContent({})
+			.build();
+
+		expect(
+			checkEventAuthWithState(customEventLowPower, state2, store),
+		).rejects.toThrow();
+	});
+
 	it('10 should resolve power events correctly', async () => {
 		const {
 			create,

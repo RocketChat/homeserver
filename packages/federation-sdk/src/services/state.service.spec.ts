@@ -118,7 +118,7 @@ describe('StateService', async () => {
 	}
 
 	const databaseConfig = {
-		uri: 'mongodb://localhost:27017',
+		uri: process.env.MONGO_URI || 'mongodb://localhost:27017',
 		name: 'matrix_test',
 		poolSize: 100,
 	};
@@ -139,8 +139,8 @@ describe('StateService', async () => {
 
 	beforeEach(async () => {
 		await Promise.all([
-			eventCollection.deleteMany(),
-			stateGraphCollection.deleteMany(),
+			eventCollection.deleteMany({}),
+			stateGraphCollection.deleteMany({}),
 		]);
 	});
 
@@ -1274,6 +1274,94 @@ describe('StateService', async () => {
 		expect(stateService.handlePdu(bobLeaveEvent)).rejects.toThrow();
 		expect(bobLeaveEvent.rejected).toBeTrue();
 		expect(bobLeaveEvent.rejectCode).toBe(RejectCodes.AuthError);
+	});
+
+	it('12 should save unknown and custom events to database without throwing errors', async () => {
+		const { roomCreateEvent } = await createRoom('public');
+		const roomId = roomCreateEvent.roomId;
+		const roomVersion =
+			roomCreateEvent.getContent<PduCreateEventContent>().room_version;
+
+		// add a user with power to send events (events_default is 0 by default)
+		const bob = '@bob:example.com' as room.UserID;
+		await joinUser(roomId, bob);
+
+		// test 1: custom application event as timeline event (io.rocketchat.*)
+		const customEvent = await stateService.buildEvent(
+			{
+				// @ts-expect-error - testing unknown event type
+				type: 'io.rocketchat.custom',
+				room_id: roomId,
+				sender: bob,
+				// @ts-expect-error - testing unknown event type
+				content: { custom_field: 'test_value' },
+				...getDefaultFields(),
+			},
+			roomVersion,
+		);
+
+		// should not throw when processing custom event
+		await stateService.handlePdu(customEvent);
+		expect(customEvent.rejected).toBeFalsy();
+
+		// verify custom event is saved in database
+		const savedCustomEvent = await eventRepository.findById(
+			customEvent.eventId,
+		);
+		expect(savedCustomEvent).toBeDefined();
+		// @ts-expect-error - testing unknown event type
+		expect(savedCustomEvent?.event.type).toBe('io.rocketchat.custom');
+
+		// test 2: unknown Matrix standard event as timeline event (m.poll.start)
+		const unknownMatrixEvent = await stateService.buildEvent(
+			{
+				// @ts-expect-error - testing unknown event type
+				type: 'm.poll.start',
+				room_id: roomId,
+				sender: bob,
+				// @ts-expect-error - testing unknown event type
+				content: { question: 'Test poll?' },
+				...getDefaultFields(),
+			},
+			roomVersion,
+		);
+
+		// should not throw when processing unknown Matrix event
+		await stateService.handlePdu(unknownMatrixEvent);
+		expect(unknownMatrixEvent.rejected).toBeFalsy();
+
+		// verify unknown Matrix event is saved in database
+		const savedUnknownEvent = await eventRepository.findById(
+			unknownMatrixEvent.eventId,
+		);
+		expect(savedUnknownEvent).toBeDefined();
+		// @ts-expect-error - testing unknown event type
+		expect(savedUnknownEvent?.event.type).toBe('m.poll.start');
+
+		// test 3: custom event as timeline event (com.example.*)
+		const anotherCustomEvent = await stateService.buildEvent(
+			{
+				// @ts-expect-error - testing unknown event type
+				type: 'com.example.test',
+				room_id: roomId,
+				sender: bob,
+				// @ts-expect-error - testing unknown event type
+				content: { data: 'example' },
+				...getDefaultFields(),
+			},
+			roomVersion,
+		);
+
+		await stateService.handlePdu(anotherCustomEvent);
+		expect(anotherCustomEvent.rejected).toBeFalsy();
+
+		// verify it's saved
+		const savedExampleEvent = await eventRepository.findById(
+			anotherCustomEvent.eventId,
+		);
+		expect(savedExampleEvent).toBeDefined();
+		// @ts-expect-error - testing unknown event type
+		expect(savedExampleEvent?.event.type).toBe('com.example.test');
 	});
 
 	it('01#arriving_late should fix state in case of older event arriving late', async () => {
