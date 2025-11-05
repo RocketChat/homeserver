@@ -42,7 +42,7 @@ export class EventRepository {
 		eventType: string,
 		roomId: string,
 		senderId: string,
-	): FindCursor<EventStore> | [] {
+	): FindCursor<EventStore> {
 		const baseQueries = {
 			create: {
 				query: { 'event.room_id': roomId, 'event.type': 'm.room.create' },
