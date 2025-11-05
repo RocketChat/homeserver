@@ -25,11 +25,10 @@ class MockStore implements EventStore {
 	}
 }
 
-class FakeStateEventCreator {
+class FakeEventCreatorBase {
 	protected _event!: Pdu;
 	constructor() {
 		this._event = {
-			state_key: '', // always a state
 			content: {},
 			type: '',
 			auth_events: [],
@@ -100,7 +99,21 @@ class FakeStateEventCreator {
 	}
 }
 
-class FakeMessageEventCreator extends FakeStateEventCreator {
+class FakeStateEventCreator extends FakeEventCreatorBase {
+	constructor() {
+		super();
+		this._event.state_key = ''; // state events always have state_key
+	}
+}
+
+class FakeTimelineEventCreator extends FakeEventCreatorBase {
+	constructor() {
+		super();
+		// Timeline events don't have state_key
+	}
+}
+
+class FakeMessageEventCreator extends FakeTimelineEventCreator {
 	constructor() {
 		super();
 		this.withType('m.room.message');
@@ -375,7 +388,7 @@ describe('authorization rules', () => {
 
 		const state = getStateMap([create, join, powerLevel, joinBob, joinAlice]);
 
-		const randomEvent = new FakeStateEventCreator()
+		const randomEvent = new FakeTimelineEventCreator()
 			.asTest()
 			.withRoomId(roomId)
 			.withSender(alice) // should not be able to send (power 29 < events_default 30)
@@ -386,7 +399,7 @@ describe('authorization rules', () => {
 			checkEventAuthWithState(randomEvent, state, store),
 		).rejects.toThrow();
 
-		const randomEvent2 = new FakeStateEventCreator()
+		const randomEvent2 = new FakeTimelineEventCreator()
 			.asTest()
 			.withRoomId(roomId)
 			.withSender(bob) // should be able to send (power 30 >= events_default 30)
@@ -623,7 +636,7 @@ describe('authorization rules', () => {
 		// alice should not be able to send unknown event if power < events_default (50)
 		const state49 = setAlicePower(49);
 
-		const randomEvent = new FakeStateEventCreator()
+		const randomEvent = new FakeTimelineEventCreator()
 			.asTest()
 			.withRoomId(roomId)
 			.withSender(alice)
@@ -736,7 +749,7 @@ describe('authorization rules', () => {
 		const state = getStateMap([create, join, powerLevel, joinRules, joinAlice]);
 
 		// test custom application event (io.rocketchat.*)
-		const customRocketChatEvent = new FakeStateEventCreator()
+		const customRocketChatEvent = new FakeTimelineEventCreator()
 			// @ts-expect-error - testing unknown event type
 			.withType('io.rocketchat.custom')
 			.withRoomId(roomId)
@@ -747,7 +760,7 @@ describe('authorization rules', () => {
 		await checkEventAuthWithState(customRocketChatEvent, state, store);
 
 		// test another custom event (com.example.*)
-		const customExampleEvent = new FakeStateEventCreator()
+		const customExampleEvent = new FakeTimelineEventCreator()
 			// @ts-expect-error - testing unknown event type
 			.withType('com.example.event')
 			.withRoomId(roomId)
@@ -758,7 +771,7 @@ describe('authorization rules', () => {
 		await checkEventAuthWithState(customExampleEvent, state, store);
 
 		// test unknown Matrix standard event (m.poll.start)
-		const unknownMatrixEvent = new FakeStateEventCreator()
+		const unknownMatrixEvent = new FakeTimelineEventCreator()
 			// @ts-expect-error - testing unknown event type
 			.withType('m.poll.start')
 			.withRoomId(roomId)
@@ -794,7 +807,7 @@ describe('authorization rules', () => {
 			joinAlice,
 		]);
 
-		const customEventLowPower = new FakeStateEventCreator()
+		const customEventLowPower = new FakeTimelineEventCreator()
 			// @ts-expect-error - testing unknown event type
 			.withType('io.rocketchat.test')
 			.withRoomId(roomId)
