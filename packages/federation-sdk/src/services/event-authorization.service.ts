@@ -13,12 +13,12 @@ import { delay, inject, singleton } from 'tsyringe';
 import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { StateService } from './state.service';
 import {
 	FailedSignatureVerificationPreconditionError,
 	InvalidRequestSignatureError,
 	SignatureVerificationService,
 } from './signature-verification.service';
+import { StateService } from './state.service';
 
 export class AclDeniedError extends Error {
 	constructor(serverName: string, roomId: string) {

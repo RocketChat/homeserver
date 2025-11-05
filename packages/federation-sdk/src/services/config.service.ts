@@ -2,9 +2,9 @@ import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
 import {
+	Signer,
 	fromBase64ToBytes,
 	loadEd25519SignerFromSeed,
-	Signer,
 } from '@rocket.chat/federation-crypto';
 import { z } from 'zod';
 

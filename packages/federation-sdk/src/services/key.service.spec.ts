@@ -3,10 +3,10 @@ import { verifyJsonSignature } from '@rocket.chat/federation-crypto';
 import { Mock, describe, expect, it, mock } from 'bun:test';
 import { afterEach, beforeEach } from 'node:test';
 
+import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
 import { config } from '../__mocks__/config.service.spec';
 import { keyService } from '../__mocks__/services.spec';
 import { signer } from '../__mocks__/singer.spec';
-import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
 
 runIfMongoExists(() =>
 	describe('KeyService', async () => {

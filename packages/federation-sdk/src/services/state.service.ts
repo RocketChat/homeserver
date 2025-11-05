@@ -1,3 +1,4 @@
+import { createLogger } from '@rocket.chat/federation-core';
 import { signJson } from '@rocket.chat/federation-crypto';
 import {
 	type EventID,
@@ -25,7 +26,6 @@ import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
-import { createLogger } from '@rocket.chat/federation-core';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 

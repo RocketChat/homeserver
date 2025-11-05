@@ -19,11 +19,11 @@ import {
 	RoomID,
 	UserID,
 } from '@rocket.chat/federation-room';
+import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
 import { config } from '../__mocks__/config.service.spec';
 import { repositories } from '../__mocks__/repositories.spec';
 import { eventService } from '../__mocks__/services.spec';
 import { StateService } from './state.service';
-import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
 
 const event = {
 	auth_events: [

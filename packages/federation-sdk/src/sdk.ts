@@ -9,15 +9,15 @@ import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
+import { KeyService } from './services/key.service';
 import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
+import { SignatureVerificationService } from './services/signature-verification.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
-import { SignatureVerificationService } from './services/signature-verification.service';
-import { KeyService } from './services/key.service';
 
 // create a federation sdk class to export
 @singleton()

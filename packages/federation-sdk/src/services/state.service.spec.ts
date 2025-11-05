@@ -14,6 +14,8 @@ import {
 	StateMapKey,
 } from '@rocket.chat/federation-room';
 import { type WithId } from 'mongodb';
+import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
+import { signer } from '../__mocks__/singer.spec';
 import { EventRepository } from '../repositories/event.repository';
 import {
 	StateGraphRepository,
@@ -22,8 +24,6 @@ import {
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
 import { StateService } from './state.service';
-import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
-import { signer } from '../__mocks__/singer.spec';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 

@@ -19,9 +19,9 @@ import {
 	RoomID,
 	UserID,
 } from '@rocket.chat/federation-room';
-import { SignatureVerificationService } from './signature-verification.service';
-import { keyService } from '../__mocks__/services.spec';
 import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
+import { keyService } from '../__mocks__/services.spec';
+import { SignatureVerificationService } from './signature-verification.service';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';
 
