@@ -117,10 +117,10 @@ export class FederationSDK {
 		return this.eduService.sendTypingNotification(...args);
 	}
 
-	getSignedServerKey(
-		...args: Parameters<typeof this.keyService.getSignedServerKey>
+	getOwnSignedServerKeyResponse(
+		...args: Parameters<typeof this.keyService.getOwnSignedServerKeyResponse>
 	) {
-		return this.keyService.getSignedServerKey(...args);
+		return this.keyService.getOwnSignedServerKeyResponse(...args);
 	}
 
 	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {

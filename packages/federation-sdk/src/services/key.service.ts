@@ -603,7 +603,7 @@ export class KeyService {
 		);
 	}
 
-	async getSignedServerKey() {
+	async getOwnSignedServerKeyResponse() {
 		return this.convertToKeyV2Response(
 			await this.keyRepository
 				.findByServerName(this.configService.serverName)
