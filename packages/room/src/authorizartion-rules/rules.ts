@@ -848,9 +848,8 @@ export async function checkEventAuthWithState(
 		: PowerLevelEvent.fromDefault();
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.
-	const eventRequiredPowerLevel = powerLevelEvent.getRequiredPowerLevelForEvent(
-		event.type,
-	);
+	const eventRequiredPowerLevel =
+		powerLevelEvent.getRequiredPowerLevelForEvent(event);
 
 	const userPowerLevel = powerLevelEvent.getPowerLevelForUser(
 		event.sender,
