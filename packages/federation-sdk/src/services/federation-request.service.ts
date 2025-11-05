@@ -4,16 +4,6 @@ import type {
 	SigningKey,
 } from '@rocket.chat/federation-core';
 import {
-	EncryptionValidAlgorithm,
-	authorizationHeaders,
-	computeAndMergeHash,
-	createLogger,
-	extractURIfromURL,
-	fetch,
-	signJson,
-} from '@rocket.chat/federation-core';
-import type { SigningKey } from '@rocket.chat/federation-core';
-import {
 	authorizationHeaders,
 	computeAndMergeHash,
 } from '@rocket.chat/federation-core';
@@ -49,7 +39,7 @@ export class FederationRequestService {
 		uri,
 		body,
 		queryString,
-	}: SignedRequest): Promise<T> {
+	}: SignedRequest): Promise<FetchResponse<T>> {
 		const signer = await this.configService.getSigningKey();
 
 		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
@@ -59,10 +49,6 @@ export class FederationRequestService {
 
 		const origin = this.configService.serverName;
 
-		const url = new URL(`${address}${uri}`);
-		if (queryString) {
-			url.search = queryString;
-		}
 		const url = new URL(`${address}${uri}`);
 		if (queryString) {
 			url.search = queryString;
@@ -116,7 +102,7 @@ export class FederationRequestService {
 			'making http request',
 		);
 
-		const response = await fetch(url, {
+		const response = await fetch<T>(url, {
 			method,
 			...(body && { body: JSON.stringify(body) }),
 			headers,
@@ -135,7 +121,7 @@ export class FederationRequestService {
 			);
 		}
 
-		return response.json();
+		return response;
 	}
 
 	async request<T>(

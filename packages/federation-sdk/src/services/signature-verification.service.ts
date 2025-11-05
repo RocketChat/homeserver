@@ -77,7 +77,7 @@ export class SignatureVerificationService {
 			body: object | undefined;
 			uri: string;
 		},
-		verifier: VerifierKey,
+		verifier?: VerifierKey,
 	) {
 		// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
 

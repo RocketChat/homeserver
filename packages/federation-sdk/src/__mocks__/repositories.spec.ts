@@ -7,7 +7,10 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';
 import { Lock, LockRepository } from '../repositories/lock.repository';
-import { StateRepository, StateStore } from '../repositories/state.repository';
+import {
+	StateGraphRepository,
+	type StateGraphStore,
+} from '../repositories/state-graph.repository';
 import { db } from './config.service.spec';
 
 const keysCollection = db.collection<ServerKey>('test_keys');
@@ -15,7 +18,7 @@ const eventsCollection = db.collection<EventStore>('test_events');
 const eventStagingCollection =
 	db.collection<EventStagingStore>('test_event_staging');
 const lockCollection = db.collection<Lock>('test_locks');
-const statesCollection = db.collection<StateStore>('test_states');
+const statesCollection = db.collection<StateGraphStore>('test_states');
 
 export const collections = {
 	keys: keysCollection,
@@ -31,7 +34,7 @@ const eventStagingRepository = new EventStagingRepository(
 	eventStagingCollection,
 );
 const lockRepository = new LockRepository(lockCollection);
-const stateRepository = new StateRepository(statesCollection as any); // TODO: fix this
+const stateRepository = new StateGraphRepository(statesCollection);
 
 const eventsRepository = new EventRepository(eventsCollection);
 

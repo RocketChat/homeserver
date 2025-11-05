@@ -30,14 +30,16 @@ export const isAuthenticatedMiddleware = () => {
 					}
 				}
 
-				const isValid = await federationSDK.verifyRequestSignature(
-					authorizationHeader,
-					method,
-					uri,
-					body,
-				);
-
-				if (!isValid) {
+				try {
+					await federationSDK.verifyRequestSignature({
+						authorizationHeader,
+						method,
+						uri,
+						body,
+					});
+				} catch (error) {
+					// TODO: log better
+					console.error(error);
 					set.status = 401;
 					return {
 						authenticatedServer: undefined,
@@ -45,7 +47,7 @@ export const isAuthenticatedMiddleware = () => {
 				}
 
 				return {
-					authenticatedServer: isValid,
+					authenticatedServer: true,
 				};
 			} catch (error) {
 				console.error('Authentication error:', error);

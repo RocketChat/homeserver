@@ -12,7 +12,13 @@ import {
 	fromBase64ToBytes,
 	loadEd25519SignerFromSeed,
 } from '@rocket.chat/federation-crypto';
-import { Pdu, PersistentEventFactory } from '@rocket.chat/federation-room';
+import {
+	EventID,
+	Pdu,
+	PersistentEventFactory,
+	RoomID,
+	UserID,
+} from '@rocket.chat/federation-room';
 import { config } from '../__mocks__/config.service.spec';
 import { repositories } from '../__mocks__/repositories.spec';
 import { eventService } from '../__mocks__/services.spec';
@@ -24,7 +30,7 @@ const event = {
 		'$Ulggyo4m1OlI08Z0jJDVeceigjSZP9SdEFVoAn9mEh8',
 		'$G2TzsvetG2YlHr20tZLHCCzOd-yxPa1jeFT8OU4_6kg',
 		'$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs',
-	],
+	] as EventID[],
 	content: {
 		avatar_url: null,
 		displayname: 'debdut1',
@@ -34,10 +40,10 @@ const event = {
 	hashes: { sha256: '6MnKSCFJy1fYf6ukILBEbqx2DkoaD1wRyKXhv689a0A' },
 	origin: 'syn1.tunnel.dev.rocket.chat',
 	origin_server_ts: 1757328411218,
-	prev_events: ['$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs'],
-	room_id: '!VoUasOLSpcdtRbGHdT:syn2.tunnel.dev.rocket.chat',
-	sender: '@debdut1:syn1.tunnel.dev.rocket.chat',
-	state_key: '@debdut1:syn1.tunnel.dev.rocket.chat',
+	prev_events: ['$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs'] as EventID[],
+	room_id: '!VoUasOLSpcdtRbGHdT:syn2.tunnel.dev.rocket.chat' as RoomID,
+	sender: '@debdut1:syn1.tunnel.dev.rocket.chat' as UserID,
+	state_key: '@debdut1:syn1.tunnel.dev.rocket.chat' as UserID,
 	type: 'm.room.member' as const,
 	signatures: {
 		'syn1.tunnel.dev.rocket.chat': {
@@ -47,9 +53,9 @@ const event = {
 	},
 	unsigned: {
 		age: 1,
-		replaces_state: '$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs',
+		replaces_state: '$kXOAfDVvahrwzHEOInzmG941IeEJTn-qUOY0YnLIigs' as EventID,
 		prev_content: { displayname: 'debdut1', membership: 'invite' },
-		prev_sender: '@debdut:syn2.tunnel.dev.rocket.chat',
+		prev_sender: '@debdut:syn2.tunnel.dev.rocket.chat' as UserID,
 	},
 };
 
@@ -206,7 +212,7 @@ describe('EventService', async () => {
 		it('should successfully validate hash and signature (happy path)', async () => {
 			// 1. create an event
 			const pdu = PersistentEventFactory.newCreateEvent(
-				`@creator:${inboundServer}`,
+				`@creator:${inboundServer}` as UserID,
 				roomVersion,
 			);
 
@@ -225,7 +231,7 @@ describe('EventService', async () => {
 
 		it('should fail if signed by a key expired at the point of event creation', async () => {
 			const pdu = PersistentEventFactory.newCreateEvent(
-				`@creator:${inboundServer}`,
+				`@creator:${inboundServer}` as UserID,
 				roomVersion,
 			);
 
@@ -259,7 +265,7 @@ describe('EventService', async () => {
 			// need to invalidate the cache though
 			// new room id does it
 			const pdu2 = PersistentEventFactory.newCreateEvent(
-				`@creator:${inboundServer}`,
+				`@creator:${inboundServer}` as UserID,
 				roomVersion,
 			);
 
@@ -274,7 +280,7 @@ describe('EventService', async () => {
 		it('should fail if signed by an unknown key', async () => {
 			// 1. create an event
 			const pdu = PersistentEventFactory.newCreateEvent(
-				`@creator:${inboundServer}`,
+				`@creator:${inboundServer}` as UserID,
 				roomVersion,
 			);
 
@@ -292,7 +298,7 @@ describe('EventService', async () => {
 
 		it('should pass if signed by an old key', async () => {
 			const pdu = PersistentEventFactory.newCreateEvent(
-				`@creator:${inboundServer}`,
+				`@creator:${inboundServer}` as UserID,
 				roomVersion,
 			);
 

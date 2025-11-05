@@ -5,6 +5,7 @@ import type {
 	EventStagingStore,
 	Membership,
 	MessageType,
+	ServerKey,
 } from '@rocket.chat/federation-core';
 import type {
 	EventID,
@@ -14,7 +15,6 @@ import type {
 import { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 import { StagingAreaListener } from './listeners/staging-area.listener';
-import { Key } from './repositories/key.repository';
 import { Lock } from './repositories/lock.repository';
 import { Room } from './repositories/room.repository';
 import { Server } from './repositories/server.repository';
@@ -286,8 +286,8 @@ export async function init({
 		),
 	});
 
-	container.register<Collection<Key>>('KeyCollection', {
-		useValue: db.collection<Key>('rocketchat_federation_keys'),
+	container.register<Collection<ServerKey>>('KeyCollection', {
+		useValue: db.collection<ServerKey>('rocketchat_federation_keys'),
 	});
 
 	container.register<Collection<Lock>>('LockCollection', {

@@ -17,6 +17,7 @@ import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
+import { SignatureVerificationService } from './services/signature-verification.service';
 
 // create a federation sdk class to export
 @singleton()
@@ -37,6 +38,7 @@ export class FederationSDK {
 		private readonly wellKnownService: WellKnownService,
 		private readonly federationRequestService: FederationRequestService,
 		private readonly federationService: FederationService,
+		private readonly signatureVerficationService: SignatureVerificationService,
 	) {}
 
 	createDirectMessageRoom(
@@ -131,10 +133,10 @@ export class FederationSDK {
 
 	verifyRequestSignature(
 		...args: Parameters<
-			typeof this.eventAuthorizationService.verifyRequestSignature
+			typeof this.signatureVerficationService.verifyRequestSignature
 		>
 	) {
-		return this.eventAuthorizationService.verifyRequestSignature(...args);
+		return this.signatureVerficationService.verifyRequestSignature(...args);
 	}
 
 	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {

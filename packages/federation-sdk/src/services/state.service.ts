@@ -1,4 +1,4 @@
-import { createLogger, signJson } from '@rocket.chat/federation-crypto';
+import { signJson } from '@rocket.chat/federation-crypto';
 import {
 	type EventID,
 	type EventStore,
@@ -25,6 +25,7 @@ import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
+import { createLogger } from '@rocket.chat/federation-core';
 
 type State = Map<StateMapKey, PersistentEventBase>;
 
@@ -92,23 +93,23 @@ export class StateService {
 		return event.content;
 	}
 
-	async getRoomVersion(roomId: string): Promise<RoomVersion | undefined> {
-		const createEntry =
-			await this.stateRepository.findCreateEventByRoomId(roomId);
-		if (!createEntry) {
+	async getRoomVersion(roomId: string): Promise<RoomVersion> {
+		const createEventId = await this.stateRepository.findCreateEventIdByRoomId(
+			roomId as RoomID,
+		);
+		if (!createEventId) {
 			throw new Error(
 				'Create event not found for room version maybe event hasn;t been processed yet',
 			);
 		}
 
-		const createEvent = await this.eventRepository.findById(
-			createEntry.delta.eventId,
-		);
+		const createEvent = await this.eventRepository.findById(createEventId);
 		if (!createEvent) {
 			throw new UnknownRoomError(roomId as RoomID);
 		}
 
 		if (createEvent.event.type === 'm.room.create') {
+			// just getting typescriopt to help
 			return createEvent.event.content.room_version;
 		}
 

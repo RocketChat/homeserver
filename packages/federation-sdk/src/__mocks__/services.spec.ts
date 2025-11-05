@@ -19,18 +19,20 @@ const stateService = new StateService(
 
 const eventEmitter = new EventEmitterService();
 
-const signatureVerificationService = new SignatureVerificationService();
+const signatureVerificationService = new SignatureVerificationService(
+	keyService,
+);
 
 const eventService = new EventService(
-	repositories.events,
-	repositories.eventStaging,
-	repositories.locks,
 	config,
 	stagingAreaQueue,
 	stateService,
 	eventEmitter,
 	keyService,
 	signatureVerificationService,
+	repositories.events,
+	repositories.eventStaging,
+	repositories.locks,
 );
 
 export {

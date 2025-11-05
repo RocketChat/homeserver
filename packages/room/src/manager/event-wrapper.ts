@@ -4,8 +4,6 @@ import {
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
-toUnpaddedBase64,
-} from '@rocket.chat/federation-crypto'
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import {
 	type EventStore,
@@ -479,5 +477,16 @@ export abstract class PersistentEventBase<
 	getOriginKeys() {
 		return Object.keys(this.signatures[this.origin]);
 	}
+
+	toStrippedJson() {
+		return encodeCanonicalJson({
+			eventId: this.eventId,
+			type: this.type,
+			roomId: this.roomId,
+			sender: this.sender,
+			stateKey: this.stateKey,
+		});
+	}
 }
+
 export type { EventStore };

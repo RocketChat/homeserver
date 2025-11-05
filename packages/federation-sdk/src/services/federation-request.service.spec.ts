@@ -52,7 +52,7 @@ describe('FederationRequestService', async () => {
 				json: async () => ({ result: 'success' }),
 				text: async () => '{"result":"success"}',
 				multipart: async () => null,
-			} as Response;
+			};
 		},
 	}));
 
@@ -70,14 +70,19 @@ describe('FederationRequestService', async () => {
 		configService = {
 			getConfig: (key: string) => {
 				if (key === 'serverName') {
-					return mockServerName;
+					return origin;
 				}
 				throw new Error(`Unknown config key: ${key}`);
 			},
-			serverName: mockServerName,
-			getSigningKeyBase64: async () => mockSigningKey,
-			getSigningKeyId: async () => mockSigningKeyId,
-		} as ConfigService;
+			serverName: origin,
+			getSigningKey: async () => {
+				const [, version, signingKey] = signingKeyContent.split(' ');
+				return loadEd25519SignerFromSeed(
+					fromBase64ToBytes(signingKey),
+					version,
+				);
+			},
+		} as unknown as ConfigService;
 
 		service = new FederationRequestService(configService);
 	});
@@ -118,7 +123,7 @@ describe('FederationRequestService', async () => {
 			await service.makeSignedRequest({
 				method,
 				// Host: syn2.tunnel.dev.rocket.chat
-				domain: 'syn2.tunnel.dev.rocket.chat',
+				domain: destination,
 				uri,
 				body: transactionBody,
 			});
@@ -183,7 +188,7 @@ describe('FederationRequestService', async () => {
 				ok: true,
 				status: 200,
 				multipart: async () => ({ content: mockBuffer }),
-			});
+			} as any);
 
 			const result = await service.requestBinaryData(
 				'GET',
@@ -209,7 +214,7 @@ describe('FederationRequestService', async () => {
 				ok: true,
 				status: 200,
 				multipart: async () => ({ content: mockBuffer }),
-			});
+			} as any);
 
 			const result = await service.requestBinaryData(
 				'GET',
