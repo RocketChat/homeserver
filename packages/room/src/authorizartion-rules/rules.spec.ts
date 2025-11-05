@@ -109,7 +109,7 @@ class FakeStateEventCreator extends FakeEventCreatorBase {
 class FakeTimelineEventCreator extends FakeEventCreatorBase {
 	constructor() {
 		super();
-		// Timeline events don't have state_key
+		// timeline events don't have state_key
 	}
 }
 
@@ -395,19 +395,17 @@ describe('authorization rules', () => {
 			.withContent({})
 			.build();
 
-		expect(
-			checkEventAuthWithState(randomEvent, state, store),
-		).rejects.toThrow();
-
+		expect(() => checkEventAuthWithState(randomEvent, state, store)).toThrow();
 		const randomEvent2 = new FakeTimelineEventCreator()
 			.asTest()
 			.withRoomId(roomId)
-			.withSender(bob) // should be able to send (power 30 >= events_default 30)
+			.withSender(bob) // should be able to send state
 			.withContent({})
 			.build();
 
-		// Should not throw
-		await checkEventAuthWithState(randomEvent2, state, store);
+		expect(() =>
+			checkEventAuthWithState(randomEvent2, state, store),
+		).not.toThrow();
 	});
 
 	// TODO: alias rooms
@@ -606,7 +604,7 @@ describe('authorization rules', () => {
 		).not.toThrow();
 	});
 
-	it('09 should not allow unknown event sending if power level is too low', async () => {
+	it('09 should not allow custom event sending if power level is too low', async () => {
 		const alice = '@alice:example.com';
 
 		const joinAlice = new FakeStateEventCreator()
@@ -633,7 +631,7 @@ describe('authorization rules', () => {
 			return getStateMap([create, join, powerLevel, joinRules, joinAlice]);
 		};
 
-		// alice should not be able to send unknown event if power < events_default (50)
+		// alice should not be able to send custom event if power < events_default (50)
 		const state49 = setAlicePower(49);
 
 		const randomEvent = new FakeTimelineEventCreator()
@@ -647,7 +645,7 @@ describe('authorization rules', () => {
 			checkEventAuthWithState(randomEvent, state49, store),
 		).rejects.toThrow();
 
-		// alice should be able to send unknown event if power >= events_default (50)
+		// alice should be able to send custom event if power >= events_default (50)
 		const state50 = setAlicePower(50);
 
 		await checkEventAuthWithState(randomEvent, state50, store);

@@ -159,11 +159,11 @@ describe('StateService', async () => {
 		userPowers: PduPowerLevelsEventContent['users'] = {},
 		eventsPowers: PduPowerLevelsEventContent['events'] = {},
 	) => {
-		const username = '@alice:example.com' as room.UserID;
+		const username = '@alice:example.com';
 		const name = 'Test Room';
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
-			username,
+			username as room.UserID,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 		await stateService.handlePdu(roomCreateEvent);
@@ -177,7 +177,7 @@ describe('StateService', async () => {
 					type: 'm.room.member',
 					room_id: roomCreateEvent.roomId,
 					sender: username as room.UserID,
-					state_key: username,
+					state_key: username as room.UserID,
 					content: { membership: 'join' },
 					...getDefaultFields(),
 				},
@@ -189,7 +189,7 @@ describe('StateService', async () => {
 		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomCreateEvent.roomId,
-				sender: username,
+				sender: username as room.UserID,
 				content: { name },
 				state_key: '',
 				type: 'm.room.name',
@@ -205,7 +205,7 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.power_levels',
 					room_id: roomCreateEvent.roomId,
-					sender: username,
+					sender: username as room.UserID,
 					state_key: '',
 					content: {
 						users: {
@@ -2360,9 +2360,9 @@ describe('StateService', async () => {
 	});
 
 	it('should handle concurrent joins fairly and build correct final state', async () => {
-		const users: room.UserID[] = [];
+		const users = [];
 		for (let i = 0; i < 20; i++) {
-			users.push(`@user${i}:example.com` as room.UserID);
+			users.push(`@user${i}:example.com`);
 		}
 
 		const { roomCreateEvent } = await createRoom('public');
