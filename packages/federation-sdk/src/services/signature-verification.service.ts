@@ -6,6 +6,8 @@ import {
 	isValidAlgorithm,
 } from '@rocket.chat/federation-crypto';
 import type { PersistentEventBase } from '@rocket.chat/federation-room';
+import { singleton } from 'tsyringe';
+import { KeyService } from './key.service';
 
 // low cost optimization in case of bad implementations
 // ed25519 signatures in unpaddedbase64 are always 86 characters long (doing math here for future reference)
@@ -30,8 +32,10 @@ export type FederationRequest<Content extends object> =
 			signature: Record<string, Record<string, string>>;
 	  };
 
-// Signature verification service, wihtout dependency on anything just implements the parts of spec that validates json signatures, from requyests and events
+@singleton()
 export class SignatureVerificationService {
+	constructor(private readonly keyService: KeyService) {}
+
 	private readonly logger = createLogger('SignatureVerificationService');
 
 	/**
@@ -40,7 +44,7 @@ export class SignatureVerificationService {
 	 */
 	async verifyEventSignature(
 		event: PersistentEventBase,
-		verifier: VerifierKey,
+		verifier?: VerifierKey,
 	): Promise<void> {
 		// SPEC: First the signature is checked. The event is redacted following the redaction algorithm
 		const { redactedEvent, origin } = event;
@@ -51,9 +55,14 @@ export class SignatureVerificationService {
 			);
 		}
 
-		const { unsigned, ...toCheck } = redactedEvent;
+		const { unsigned: _, ...toCheck } = redactedEvent;
 
-		await this.verifySignature(toCheck, origin, verifier);
+		if (verifier) return this.verifySignature(toCheck, origin, verifier);
+
+		const { key: requiredVerifier } =
+			await this.keyService.getRequiredVerifierForEvent(event);
+
+		return this.verifySignature(toCheck, origin, requiredVerifier);
 	}
 
 	async verifyRequestSignature(
@@ -119,7 +128,16 @@ export class SignatureVerificationService {
 			},
 		};
 
-		await this.verifySignature(toVerify, origin, verifier);
+		if (verifier) {
+			return this.verifySignature(toVerify, origin, verifier);
+		}
+
+		const requiredVerifier = await this.keyService.getRequestVerifier(
+			origin,
+			key,
+		);
+
+		return this.verifySignature(toVerify, origin, requiredVerifier);
 	}
 
 	/**

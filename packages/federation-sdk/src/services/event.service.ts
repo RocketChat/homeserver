@@ -10,12 +10,6 @@ import type { RedactionEvent } from '@rocket.chat/federation-core';
 import { generateId } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-core';
 import { pruneEventDict } from '@rocket.chat/federation-core';
-} from '@rocket.chat/federation-core'
-import { isPresenceEDU, isTypingEDU } from '@rocket.chat/federation-core';
-import type { RedactionEvent } from '@rocket.chat/federation-core';
-import { generateId } from '@rocket.chat/federation-core';
-import type { EventStore } from '@rocket.chat/federation-core';
-import { pruneEventDict } from '@rocket.chat/federation-core';
 
 import { createLogger } from '@rocket.chat/federation-core';
 import {
@@ -25,7 +19,6 @@ import {
 	type PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
-	RoomID,
 	RoomVersion,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
@@ -57,8 +50,9 @@ export class EventService {
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		private readonly stateService: StateService,
-		private readonly serverService: ServerService,
 		private readonly eventEmitterService: EventEmitterService,
+		private readonly keyService: KeyService,
+		private readonly signatureVerificationService: SignatureVerificationService,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))

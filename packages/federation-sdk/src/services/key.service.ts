@@ -2,6 +2,7 @@ import {
 	type KeyV2ServerResponse,
 	type ServerKey,
 	fetch as coreFetch,
+	createLogger,
 } from '@rocket.chat/federation-core';
 import {
 	type Signer,
@@ -15,7 +16,6 @@ import { PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
-import { createLogger } from '../utils/logger';
 import { ConfigService } from './config.service';
 
 type QueryCriteria = {
@@ -104,7 +104,7 @@ export class KeyService {
 		return false;
 	}
 
-	async fetchAndSaveKeysFromRemoteServerRaw(
+	private async fetchAndSaveKeysFromRemoteServerRaw(
 		serverName: string,
 	): Promise<KeyV2ServerResponse> {
 		const [address, hostHeaders] = await getHomeserverFinalAddress(
@@ -208,7 +208,7 @@ export class KeyService {
 	}
 
 	// multiple keys -> single repnse
-	async convertToKeyV2Response(
+	private async convertToKeyV2Response(
 		serverKeys: ServerKey[],
 		minimumValidUntil = Date.now(),
 	): Promise<KeyV2ServerResponse> {
