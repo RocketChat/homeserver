@@ -602,4 +602,12 @@ export class KeyService {
 			`No valid signature keys found for origin ${event.origin} with supported algorithms`,
 		);
 	}
+
+	async getSignedServerKey() {
+		return this.convertToKeyV2Response(
+			await this.keyRepository
+				.findByServerName(this.configService.serverName)
+				.toArray(),
+		);
+	}
 }

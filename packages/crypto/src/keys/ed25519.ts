@@ -6,6 +6,7 @@ import {
 	ed25519PublicKeyRawToPem,
 } from '../rfc/8410/ed25519-pem';
 import { EncryptionValidAlgorithm } from '../utils/constants';
+import { InvalidSignatureError } from '../utils/data-types';
 
 export class Ed25519VerifierKeyImpl implements VerifierKey {
 	algorithm = EncryptionValidAlgorithm.ed25519;
@@ -44,7 +45,7 @@ export class Ed25519VerifierKeyImpl implements VerifierKey {
 					} else if (verified) {
 						resolve();
 					} else {
-						reject(new Error('Invalid signature'));
+						reject(new InvalidSignatureError());
 					}
 				},
 			);

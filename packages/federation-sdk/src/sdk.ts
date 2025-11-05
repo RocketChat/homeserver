@@ -14,10 +14,10 @@ import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
-import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 import { SignatureVerificationService } from './services/signature-verification.service';
+import { KeyService } from './services/key.service';
 
 // create a federation sdk class to export
 @singleton()
@@ -28,7 +28,6 @@ export class FederationSDK {
 		private readonly inviteService: InviteService,
 		private readonly eventService: EventService,
 		private readonly eduService: EduService,
-		private readonly serverService: ServerService,
 		private readonly configService: ConfigService,
 		private readonly eventAuthorizationService: EventAuthorizationService,
 		private readonly stateService: StateService,
@@ -39,6 +38,7 @@ export class FederationSDK {
 		private readonly federationRequestService: FederationRequestService,
 		private readonly federationService: FederationService,
 		private readonly signatureVerficationService: SignatureVerificationService,
+		private readonly keyService: KeyService,
 	) {}
 
 	createDirectMessageRoom(
@@ -118,9 +118,9 @@ export class FederationSDK {
 	}
 
 	getSignedServerKey(
-		...args: Parameters<typeof this.serverService.getSignedServerKey>
+		...args: Parameters<typeof this.keyService.getSignedServerKey>
 	) {
-		return this.serverService.getSignedServerKey(...args);
+		return this.keyService.getSignedServerKey(...args);
 	}
 
 	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {

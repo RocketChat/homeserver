@@ -221,7 +221,7 @@ export type HomeserverEventSignatures = {
 		content: {
 			membership: Membership;
 			displayname?: string;
-			avatar_url?: string;
+			avatar_url?: string | null;
 			reason?: string;
 		};
 	};

@@ -96,7 +96,8 @@ export const profilesPlugin = (app: Elysia) => {
 		.use(canAccessResourceMiddleware('room'))
 		.get(
 			'/_matrix/federation/v1/make_join/:roomId/:userId',
-			async ({ params, query: _query }) => {
+			// FIXME: why complaining now?
+			async ({ params, query: _query }: any) => {
 				const { roomId, userId } = params;
 
 				// const { ver } = query;

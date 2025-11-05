@@ -6,6 +6,7 @@ export {
 	toBinaryData,
 	fromBinaryData,
 	fromBase64ToBytes,
+	InvalidSignatureError,
 } from './utils/data-types';
 
 export { isValidAlgorithm } from './utils/constants';

@@ -1,5 +1,6 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import {
+	InvalidSignatureError,
 	VerifierKey,
 	encodeCanonicalJson,
 	fromBase64ToBytes,
@@ -8,6 +9,18 @@ import {
 import type { PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { KeyService } from './key.service';
+
+export class InvalidEventSignatureError extends InvalidSignatureError {
+	name = 'InvalidEventSignatureError';
+}
+
+export class InvalidRequestSignatureError extends InvalidSignatureError {
+	name = 'InvalidRequestSignatureError';
+}
+
+export class FailedSignatureVerificationPreconditionError extends Error {
+	name = 'FailedSignatureVerificationPreconditionError';
+}
 
 // low cost optimization in case of bad implementations
 // ed25519 signatures in unpaddedbase64 are always 86 characters long (doing math here for future reference)
@@ -50,19 +63,49 @@ export class SignatureVerificationService {
 		const { redactedEvent, origin } = event;
 
 		if (!origin) {
-			throw new Error(
+			throw new InvalidEventSignatureError(
 				`Invalid event sender, unable to find origin part from it ${event.sender}`,
 			);
 		}
 
 		const { unsigned: _, ...toCheck } = redactedEvent;
 
-		if (verifier) return this.verifySignature(toCheck, origin, verifier);
+		if (verifier) {
+			try {
+				await this.verifySignature(toCheck, origin, verifier);
+			} catch (error) {
+				if (error instanceof InvalidSignatureError) {
+					throw new InvalidEventSignatureError(
+						`Invalid event signature for event ${event.eventId} from origin ${origin}: ${error.message}`,
+					);
+				}
 
-		const { key: requiredVerifier } =
+				throw error;
+			}
+		}
+
+		const requiredVerifier =
 			await this.keyService.getRequiredVerifierForEvent(event);
 
-		return this.verifySignature(toCheck, origin, requiredVerifier);
+		if (
+			this.keyService.isVerifierAllowedToCheckEvent(event, requiredVerifier)
+		) {
+			try {
+				await this.verifySignature(toCheck, origin, requiredVerifier.key);
+			} catch (error) {
+				if (error instanceof InvalidSignatureError) {
+					throw new InvalidEventSignatureError(
+						`Invalid event signature for event ${event.eventId} from origin ${origin}: ${error.message}`,
+					);
+				}
+
+				throw error;
+			}
+		}
+
+		throw new FailedSignatureVerificationPreconditionError(
+			`The verifier with id ${requiredVerifier.key.id} is not allowed to verify the event ${event.eventId} from origin ${origin}`,
+		);
 	}
 
 	async verifyRequestSignature(
@@ -96,11 +139,15 @@ export class SignatureVerificationService {
 
 		if (Object.keys(rest).length) {
 			// it should never happen since the regex should match all the parameters
-			throw new Error('Invalid authorization header, unexpected parameters');
+			throw new FailedSignatureVerificationPreconditionError(
+				'Invalid authorization header, unexpected parameters',
+			);
 		}
 
 		if ([origin, destination, key, signature].some((value) => !value)) {
-			throw new Error('Invalid authorization header');
+			throw new FailedSignatureVerificationPreconditionError(
+				'Invalid authorization header',
+			);
 		}
 
 		/*
@@ -129,7 +176,18 @@ export class SignatureVerificationService {
 		};
 
 		if (verifier) {
-			return this.verifySignature(toVerify, origin, verifier);
+			try {
+				await this.verifySignature(toVerify, origin, verifier);
+				return origin;
+			} catch (error) {
+				if (error instanceof InvalidSignatureError) {
+					throw new InvalidRequestSignatureError(
+						`Invalid request signature from origin ${origin}: ${error.message}`,
+					);
+				}
+
+				throw error;
+			}
 		}
 
 		const requiredVerifier = await this.keyService.getRequestVerifier(
@@ -137,7 +195,18 @@ export class SignatureVerificationService {
 			key,
 		);
 
-		return this.verifySignature(toVerify, origin, requiredVerifier);
+		try {
+			await this.verifySignature(toVerify, origin, requiredVerifier);
+			return origin;
+		} catch (error) {
+			if (error instanceof InvalidSignatureError) {
+				throw new InvalidRequestSignatureError(
+					`Invalid request signature from origin ${origin}: ${error.message}`,
+				);
+			}
+
+			throw error;
+		}
 	}
 
 	/**
@@ -151,7 +220,9 @@ export class SignatureVerificationService {
 		// 1. Checks if the signatures member of the object contains an entry with the name of the entity. If the entry is missing then the check fails.
 		const originSignature = data.signatures?.[origin];
 		if (!originSignature) {
-			throw new Error(`No signature found for origin ${origin}`);
+			throw new FailedSignatureVerificationPreconditionError(
+				`No signature found for origin ${origin}`,
+			);
 		}
 
 		// 2. Removes any signing key identifiers from the entry with algorithms it doesn’t understand. If there are no signing key identifiers left then the check fails.
@@ -174,7 +245,7 @@ export class SignatureVerificationService {
 			validSignatureEntries.set(keyId, signature);
 		}
 		if (validSignatureEntries.size === 0) {
-			throw new Error(
+			throw new FailedSignatureVerificationPreconditionError(
 				`No valid signature keys found for origin ${origin} with supported algorithms`,
 			);
 		}
@@ -183,7 +254,7 @@ export class SignatureVerificationService {
 		// one origin can sign with multiple keys - given how the spec AND the schema structures it.
 		// we do NOT need all though, one is enough, one that we can fetch first
 		if (!validSignatureEntries.has(verifier.id)) {
-			throw new Error(
+			throw new FailedSignatureVerificationPreconditionError(
 				`No valid verification key found for origin ${origin} with supported algorithms`,
 			);
 		}
@@ -192,26 +263,26 @@ export class SignatureVerificationService {
 		// we needed to know which key to use to know which signature to decode.
 		const signatureEntry: string = originSignature[verifier.id];
 		if (!signatureEntry) {
-			throw new Error(
+			throw new FailedSignatureVerificationPreconditionError(
 				`No signature entry found for keyId ${verifier.id} from origin ${origin}`,
 			);
 		}
 
 		if (signatureEntry.length !== MAX_SIGNATURE_LENGTH_FOR_ED25519) {
-			throw new Error(
+			throw new FailedSignatureVerificationPreconditionError(
 				`Invalid signature length for keyId ${verifier.id} from origin ${origin}, expected ${MAX_SIGNATURE_LENGTH_FOR_ED25519} got ${signatureEntry.length} characters`,
 			);
 		}
 
 		const signatureBytes = fromBase64ToBytes(signatureEntry);
 		if (signatureBytes.byteLength === 0) {
-			throw new Error(
+			throw new FailedSignatureVerificationPreconditionError(
 				`Failed to decode base64 signature for keyId ${verifier.id} from origin ${origin}`,
 			);
 		}
 
 		// 5. Removes the signatures and unsigned members of the object.
-		const { signatures, ...rest } = data;
+		const { signatures: _, ...rest } = data;
 
 		// 6. Encodes the remainder of the JSON object using the Canonical JSON encoding.
 		const canonicalJson = encodeCanonicalJson(rest);
