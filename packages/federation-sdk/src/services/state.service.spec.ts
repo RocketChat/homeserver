@@ -157,12 +157,13 @@ describe('StateService', async () => {
 	const createRoom = async (
 		joinRule: PduJoinRuleEventContent['join_rule'],
 		userPowers: PduPowerLevelsEventContent['users'] = {},
+		eventsPowers: PduPowerLevelsEventContent['events'] = {},
 	) => {
-		const username = '@alice:example.com';
+		const username = '@alice:example.com' as room.UserID;
 		const name = 'Test Room';
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(
-			username as room.UserID,
+			username,
 			PersistentEventFactory.defaultRoomVersion,
 		);
 		await stateService.handlePdu(roomCreateEvent);
@@ -176,7 +177,7 @@ describe('StateService', async () => {
 					type: 'm.room.member',
 					room_id: roomCreateEvent.roomId,
 					sender: username as room.UserID,
-					state_key: username as room.UserID,
+					state_key: username,
 					content: { membership: 'join' },
 					...getDefaultFields(),
 				},
@@ -188,7 +189,7 @@ describe('StateService', async () => {
 		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomCreateEvent.roomId,
-				sender: username as room.UserID,
+				sender: username,
 				content: { name },
 				state_key: '',
 				type: 'm.room.name',
@@ -204,7 +205,7 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.power_levels',
 					room_id: roomCreateEvent.roomId,
-					sender: username as room.UserID,
+					sender: username,
 					state_key: '',
 					content: {
 						users: {
@@ -212,7 +213,9 @@ describe('StateService', async () => {
 							...userPowers,
 						},
 						users_default: 0,
-						events: {},
+						events: {
+							...eventsPowers,
+						},
 						events_default: 0,
 						state_default: 50,
 						ban: 50,
@@ -1275,6 +1278,56 @@ describe('StateService', async () => {
 		expect(bobLeaveEvent.rejected).toBeTrue();
 		expect(bobLeaveEvent.rejectCode).toBe(RejectCodes.AuthError);
 	});
+	it('should reject event if the power level is not high enough', async () => {
+		const { roomCreateEvent } = await createRoom(
+			'public',
+			{},
+			{ 'rc.message': 70 },
+		);
+		const joinEvent = await joinUser(
+			roomCreateEvent.roomId,
+			'@bob:example.com',
+		);
+
+		const messageEvent = await stateService.buildEvent(
+			{
+				// @ts-expect-error - testing unknown event type
+				type: 'rc.message',
+				room_id: roomCreateEvent.roomId,
+				sender: joinEvent.sender,
+				content: { body: 'hello world', msgtype: 'm.text' },
+				...getDefaultFields(),
+			},
+			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
+		);
+
+		await expect(() => stateService.handlePdu(messageEvent)).toThrow(
+			RejectCodes.AuthError,
+		);
+	});
+
+	it('should allow event if the power level is high enough', async () => {
+		const { roomCreateEvent, creatorMembershipEvent } = await createRoom(
+			'public',
+			{},
+			{ 'rc.message': 70 },
+		);
+
+		const messageEvent = await stateService.buildEvent(
+			{
+				// @ts-expect-error - testing unknown event type
+				type: 'rc.message',
+				room_id: roomCreateEvent.roomId,
+				sender: creatorMembershipEvent.sender,
+				content: { body: 'hello world', msgtype: 'm.text' },
+				...getDefaultFields(),
+			},
+			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
+		);
+
+		await stateService.handlePdu(messageEvent);
+		expect(messageEvent.rejected).toBeFalsy();
+	});
 
 	it('12 should save unknown and custom events to database without throwing errors', async () => {
 		const { roomCreateEvent } = await createRoom('public');
@@ -2307,9 +2360,9 @@ describe('StateService', async () => {
 	});
 
 	it('should handle concurrent joins fairly and build correct final state', async () => {
-		const users = [];
+		const users: room.UserID[] = [];
 		for (let i = 0; i < 20; i++) {
-			users.push(`@user${i}:example.com`);
+			users.push(`@user${i}:example.com` as room.UserID);
 		}
 
 		const { roomCreateEvent } = await createRoom('public');
