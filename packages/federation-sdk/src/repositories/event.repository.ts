@@ -73,25 +73,14 @@ export class EventRepository {
 				queries = [baseQueries.create, baseQueries.powerLevels];
 				break;
 
-			case 'm.reaction':
-			case 'm.room.name':
-			case 'm.room.message':
-			case 'm.room.encrypted':
-			case 'm.room.member':
-			case 'm.room.power_levels':
-			case 'm.room.topic':
-			case 'm.room.server_acl':
+			default:
+				// for all other events (known and unknown), we need to fetch the create,
+				// power levels, and membership events for proper authorization
 				queries = [
 					baseQueries.create,
 					baseQueries.powerLevels,
 					baseQueries.membership,
 				];
-				break;
-
-			default:
-				// for custom and unknown events, we need to fetch the create and power levels events
-				// so that we can authorize the event further down the line
-				queries = [baseQueries.create, baseQueries.powerLevels];
 				break;
 		}
 
