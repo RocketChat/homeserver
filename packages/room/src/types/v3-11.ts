@@ -828,12 +828,3 @@ export const PduSchema = z.discriminatedUnion('type', [
 export type Pdu = z.infer<typeof PduSchema> & {};
 
 export type PduContent<T extends PduType = PduType> = PduForType<T>['content'];
-
-export function isTimelineEventType(type: PduType) {
-	return (
-		type === 'm.room.message' ||
-		type === 'm.room.encrypted' ||
-		type === 'm.reaction' ||
-		type === 'm.room.redaction'
-	);
-}

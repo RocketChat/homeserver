@@ -1,8 +1,4 @@
-import {
-	type PduPowerLevelsEventContent,
-	type PduType,
-	isTimelineEventType,
-} from '../types/v3-11';
+import { type PduPowerLevelsEventContent, type PduType } from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
 import { RoomVersion } from './type';
 
@@ -93,11 +89,11 @@ class PowerLevelEvent<
 
 	getRequiredPowerLevelForEvent(event: PersistentEventBase) {
 		if (!this._content) {
-			if (isTimelineEventType(event.type)) {
-				return 0;
+			if (event.isState()) {
+				return 50;
 			}
 
-			return 50;
+			return 0;
 		}
 
 		if (typeof this._content.events?.[event.type] === 'number') {
