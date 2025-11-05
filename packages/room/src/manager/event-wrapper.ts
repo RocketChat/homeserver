@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import {
+	computeHashBuffer,
 	encodeCanonicalJson,
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto';
@@ -340,12 +341,8 @@ export abstract class PersistentEventBase<
 		const { unsigned, signatures, ...toHash } = redactedEvent;
 
 		// 2. The event is converted into Canonical JSON.
-		const canonicalJson = encodeCanonicalJson(toHash);
 		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = crypto
-			.createHash('sha256')
-			.update(canonicalJson)
-			.digest();
+		const referenceHash = computeHashBuffer(toHash);
 
 		return referenceHash;
 	}
@@ -477,6 +474,10 @@ export abstract class PersistentEventBase<
 		return this;
 	}
 
+	getOriginKeys() {
+		return Object.keys(this.signatures[this.origin]);
+	}
+
 	toStrippedJson() {
 		return encodeCanonicalJson({
 			eventId: this.eventId,
@@ -487,4 +488,5 @@ export abstract class PersistentEventBase<
 		});
 	}
 }
+
 export type { EventStore };

@@ -4,16 +4,15 @@ import type {
 	SigningKey,
 } from '@rocket.chat/federation-core';
 import {
-	EncryptionValidAlgorithm,
 	authorizationHeaders,
 	computeAndMergeHash,
-	createLogger,
-	extractURIfromURL,
-	fetch,
-	signJson,
 } from '@rocket.chat/federation-core';
+import { extractURIfromURL } from '@rocket.chat/federation-core';
+import { EncryptionValidAlgorithm } from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
+import { fetch } from '@rocket.chat/federation-core';
+import { signJson } from '@rocket.chat/federation-crypto';
 import { singleton } from 'tsyringe';
-import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { ConfigService } from './config.service';
 
@@ -33,6 +32,7 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
+	// Implements SPEC: https://spec.matrix.org/v1.12/server-server-api/#request-authentication
 	async makeSignedRequest<T>({
 		method,
 		domain,
@@ -40,78 +40,79 @@ export class FederationRequestService {
 		body,
 		queryString,
 	}: SignedRequest): Promise<FetchResponse<T>> {
-		const serverName = this.configService.getConfig('serverName');
-		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
-		const signingKeyId = await this.configService.getSigningKeyId();
-		const privateKeyBytes = Buffer.from(signingKeyBase64, 'base64');
-		const keyPair = nacl.sign.keyPair.fromSecretKey(privateKeyBytes);
-
-		const signingKey: SigningKey = {
-			algorithm: EncryptionValidAlgorithm.ed25519,
-			version: signingKeyId.split(':')[1] || '1',
-			privateKey: keyPair.secretKey,
-			publicKey: keyPair.publicKey,
-			sign: async (data: Uint8Array) =>
-				nacl.sign.detached(data, keyPair.secretKey),
-		};
+		const signer = await this.configService.getSigningKey();
 
 		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
 			domain,
 			this.logger,
 		);
 
+		const origin = this.configService.serverName;
+
 		const url = new URL(`${address}${uri}`);
 		if (queryString) {
 			url.search = queryString;
 		}
 
-		this.logger.debug(`Making ${method} request to ${url.toString()}`);
-
-		let signedBody: Record<string, unknown> | undefined;
-		if (body) {
-			signedBody = await signJson(
-				body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
-				signingKey,
-				serverName,
-			);
-		}
-
-		const auth = await authorizationHeaders(
-			serverName,
-			signingKey,
-			domain,
+		/*
+			{
+				"method": "POST",
+				"uri": "/target",
+				"origin": "origin.hs.example.com",
+				"destination": "destination.hs.example.com",
+				"content": <JSON-parsed request body>,
+				"signatures": {
+					"origin.hs.example.com": {
+						"ed25519:key1": "ABCDEF..."
+					}
+				}
+			}
+		*/
+		// build the auth request
+		const request = {
 			method,
-			extractURIfromURL(url),
-			signedBody,
-		);
+			uri: url.pathname + url.search,
+			origin,
+			destination: domain,
+			...(body && { content: body }),
+		};
+
+		const requestSignature = await signJson(request, signer);
+
+		// authorization_headers.append(bytes(
+		//     "X-Matrix origin=\"%s\",destination=\"%s\",key=\"%s\",sig=\"%s\"" % (
+		//         origin_name, destination_name, key, sig,
+		//     )
+		// ))
+		const authorizationHeaderValue = `X-Matrix origin="${origin}",destination="${domain}",key="${signer.id}",sig="${requestSignature}"`;
 
 		const headers = {
-			Authorization: auth,
+			Authorization: authorizationHeaderValue,
 			...discoveryHeaders,
-			...(signedBody && { 'Content-Type': 'application/json' }),
 		};
+
+		// TODO: make logging take a function for object to avoid unnecessary computation when log level is high
+		this.logger.debug(
+			{
+				method,
+				body: body,
+				headers,
+				url: url.toString(),
+			},
+			'making http request',
+		);
 
 		const response = await fetch<T>(url, {
 			method,
-			...(signedBody && { body: JSON.stringify(signedBody) }),
+			...(body && { body: JSON.stringify(body) }),
 			headers,
 		});
 
 		if (!response.ok) {
 			const errorText = await response.text();
-
-			this.logger.error({
-				msg: 'Federation request failed',
-				url,
-				status: response.status,
-				errorText,
-				sentHeaders: headers,
-				responseHeaders: response.headers,
-			});
-
 			let errorDetail = errorText;
 			try {
-				errorDetail = JSON.stringify(JSON.parse(errorText || ''));
+				errorDetail = JSON.stringify(JSON.parse(errorText));
 			} catch {
 				/* use raw text if parsing fails */
 			}

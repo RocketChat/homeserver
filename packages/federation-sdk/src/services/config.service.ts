@@ -1,11 +1,11 @@
-import {
-	SigningKey,
-	createLogger,
-	generateKeyPairsFromString,
-	toUnpaddedBase64,
-} from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
+import {
+	Signer,
+	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
+} from '@rocket.chat/federation-crypto';
 import { z } from 'zod';
 
 export interface AppConfig {
@@ -17,7 +17,13 @@ export interface AppConfig {
 	keyRefreshInterval: number;
 	signingKey?: string;
 	timeout?: number;
+	// TODO: need this still?
 	signingKeyPath?: string;
+	database: {
+		uri: string;
+		name: string;
+		poolSize: number;
+	};
 	media: {
 		maxFileSize: number;
 		allowedMimeTypes: string[];
@@ -50,6 +56,11 @@ export const AppConfigSchema = z.object({
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
 	signingKeyPath: z.string(),
+	database: z.object({
+		uri: z.string().min(1, 'Database URI is required'),
+		name: z.string().min(1, 'Database name is required'),
+		poolSize: z.number().int().min(1, 'Pool size must be at least 1'),
+	}),
 	media: z.object({
 		maxFileSize: z
 			.number()
@@ -82,7 +93,8 @@ export const AppConfigSchema = z.object({
 export class ConfigService {
 	private config: AppConfig = {} as AppConfig;
 	private logger = createLogger('ConfigService');
-	private serverKeys: SigningKey[] = [];
+
+	private signer: Signer | undefined;
 
 	setConfig(values: AppConfig) {
 		try {
@@ -118,34 +130,19 @@ export class ConfigService {
 	}
 
 	async getSigningKey() {
+		if (this.signer) {
+			return this.signer;
+		}
+
 		// If config contains a signing key, use it
 		if (!this.config.signingKey) {
 			throw new Error('Signing key is not configured');
 		}
 
-		if (!this.serverKeys.length) {
-			const signingKey = await generateKeyPairsFromString(
-				this.config.signingKey,
-			);
-			this.serverKeys = [signingKey];
-		}
+		this.signer = await loadEd25519SignerFromSeed(
+			fromBase64ToBytes(this.config.signingKey),
+		);
 
-		return this.serverKeys;
-	}
-
-	async getSigningKeyId(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		const signingKey = signingKeys[0];
-		return `${signingKey.algorithm}:${signingKey.version}` || 'ed25519:1';
-	}
-
-	async getSigningKeyBase64(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		return toUnpaddedBase64(signingKeys[0].privateKey);
-	}
-
-	async getPublicSigningKeyBase64(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		return toUnpaddedBase64(signingKeys[0].publicKey);
+		return this.signer;
 	}
 }
