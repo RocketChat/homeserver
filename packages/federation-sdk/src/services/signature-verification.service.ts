@@ -73,6 +73,7 @@ export class SignatureVerificationService {
 		if (verifier) {
 			try {
 				await this.verifySignature(toCheck, origin, verifier);
+				return;
 			} catch (error) {
 				if (error instanceof InvalidSignatureError) {
 					throw new InvalidEventSignatureError(
@@ -92,6 +93,7 @@ export class SignatureVerificationService {
 		) {
 			try {
 				await this.verifySignature(toCheck, origin, requiredVerifier.key);
+				return;
 			} catch (error) {
 				if (error instanceof InvalidSignatureError) {
 					throw new InvalidEventSignatureError(

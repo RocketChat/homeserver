@@ -152,7 +152,7 @@ runIfMongoExists(() =>
 						},
 						thisVerifier,
 					),
-				).resolves.toBeUndefined();
+				).resolves.toBeString();
 			});
 		});
 
@@ -262,7 +262,7 @@ runIfMongoExists(() =>
 
 				await expect(
 					service.verifyEventSignature(pdu2, verifier),
-				).rejects.toThrow('Invalid signature');
+				).rejects.toThrow(/Invalid event signature/);
 			});
 		});
 	}),
