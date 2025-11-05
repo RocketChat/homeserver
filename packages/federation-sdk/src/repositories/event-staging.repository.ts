@@ -1,5 +1,5 @@
 import { type EventID, Pdu } from '@rocket.chat/federation-room';
-import type { EventStagingStore } from '@hs/core';
+import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 

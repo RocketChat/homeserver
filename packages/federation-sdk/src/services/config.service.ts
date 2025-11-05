@@ -6,7 +6,10 @@ import {
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
-import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
+import {
+	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
+} from '@rocket.chat/federation-crypto';
 import { z } from 'zod';
 
 export interface AppConfig {

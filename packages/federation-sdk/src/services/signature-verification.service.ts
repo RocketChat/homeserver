@@ -1,11 +1,11 @@
-import { createLogger } from '@hs/core';
+import { createLogger } from '@rocket.chat/federation-core';
 import {
 	VerifierKey,
 	encodeCanonicalJson,
 	fromBase64ToBytes,
 	isValidAlgorithm,
-} from '@hs/crypto';
-import type { PersistentEventBase } from '@hs/room';
+} from '@rocket.chat/federation-crypto';
+import type { PersistentEventBase } from '@rocket.chat/federation-room';
 
 // low cost optimization in case of bad implementations
 // ed25519 signatures in unpaddedbase64 are always 86 characters long (doing math here for future reference)

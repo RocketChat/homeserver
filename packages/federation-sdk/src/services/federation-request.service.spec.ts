@@ -8,8 +8,11 @@ import {
 	mock,
 	spyOn,
 } from 'bun:test';
-import * as core from '@hs/core';
-import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
+import * as core from '@rocket.chat/federation-core';
+import {
+	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
+} from '@rocket.chat/federation-crypto';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 

@@ -12,8 +12,8 @@ import {
 	fromBase64ToBytes,
 	loadEd25519SignerFromSeed,
 	loadEd25519VerifierFromPublicKey,
-} from '@hs/crypto';
-import { PersistentEventFactory } from '@hs/room';
+} from '@rocket.chat/federation-crypto';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { SignatureVerificationService } from './signature-verification.service';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';

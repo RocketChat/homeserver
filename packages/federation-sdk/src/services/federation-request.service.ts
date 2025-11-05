@@ -12,13 +12,16 @@ import {
 	fetch,
 	signJson,
 } from '@rocket.chat/federation-core';
-import type { SigningKey } from '@hs/core';
-import { authorizationHeaders, computeAndMergeHash } from '@hs/core';
-import { extractURIfromURL } from '@hs/core';
-import { EncryptionValidAlgorithm } from '@hs/core';
-import { createLogger } from '@hs/core';
-import { fetch } from '@hs/core';
-import { signJson } from '@hs/crypto';
+import type { SigningKey } from '@rocket.chat/federation-core';
+import {
+	authorizationHeaders,
+	computeAndMergeHash,
+} from '@rocket.chat/federation-core';
+import { extractURIfromURL } from '@rocket.chat/federation-core';
+import { EncryptionValidAlgorithm } from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
+import { fetch } from '@rocket.chat/federation-core';
+import { signJson } from '@rocket.chat/federation-crypto';
 import { singleton } from 'tsyringe';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { ConfigService } from './config.service';

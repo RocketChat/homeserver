@@ -1,4 +1,8 @@
-import { EventStagingStore, EventStore, ServerKey } from '@hs/core';
+import {
+	EventStagingStore,
+	EventStore,
+	ServerKey,
+} from '@rocket.chat/federation-core';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { KeyRepository } from '../repositories/key.repository';

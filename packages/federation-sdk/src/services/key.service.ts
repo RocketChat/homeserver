@@ -2,7 +2,7 @@ import {
 	type KeyV2ServerResponse,
 	type ServerKey,
 	fetch as coreFetch,
-} from '@hs/core';
+} from '@rocket.chat/federation-core';
 import {
 	type Signer,
 	VerifierKey,
@@ -10,8 +10,8 @@ import {
 	isValidAlgorithm,
 	loadEd25519VerifierFromPublicKey,
 	signJson,
-} from '@hs/crypto';
-import { PersistentEventBase } from '@hs/room';
+} from '@rocket.chat/federation-crypto';
+import { PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';

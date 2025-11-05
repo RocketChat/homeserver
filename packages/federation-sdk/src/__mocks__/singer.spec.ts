@@ -2,7 +2,7 @@ import {
 	VerifierKey,
 	fromBase64ToBytes,
 	loadEd25519SignerFromSeed,
-} from '@hs/crypto';
+} from '@rocket.chat/federation-crypto';
 
 const seed = 'zSkmr713LnEDbxlkYq2ZqIiKTQNsyMOU0T2CEeC44C4';
 

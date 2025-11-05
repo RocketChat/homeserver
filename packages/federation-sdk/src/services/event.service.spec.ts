@@ -7,9 +7,12 @@ import {
 	it,
 	mock,
 } from 'bun:test';
-import { BaseEDU } from '@hs/core';
-import { fromBase64ToBytes, loadEd25519SignerFromSeed } from '@hs/crypto';
-import { Pdu, PersistentEventFactory } from '@hs/room';
+import { BaseEDU } from '@rocket.chat/federation-core';
+import {
+	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
+} from '@rocket.chat/federation-crypto';
+import { Pdu, PersistentEventFactory } from '@rocket.chat/federation-room';
 import { config } from '../__mocks__/config.service.spec';
 import { repositories } from '../__mocks__/repositories.spec';
 import { eventService } from '../__mocks__/services.spec';
@@ -61,7 +64,7 @@ describe('EventService', async () => {
 		'../server-discovery/discovery'
 	);
 
-	const { fetch } = await import('@hs/core');
+	const { fetch } = await import('@rocket.chat/federation-core');
 
 	// random server name for each run
 	let inboundServer = `localhost${Math.floor(Math.random() * 10000).toString()}`;
@@ -80,7 +83,7 @@ describe('EventService', async () => {
 			],
 		}));
 
-		await mock.module('@hs/core', () => ({
+		await mock.module('@rocket.chat/federation-core', () => ({
 			fetch: async (..._args: any[]) => {
 				return {
 					ok: true,
@@ -92,7 +95,7 @@ describe('EventService', async () => {
 	});
 
 	afterEach(async () => {
-		await mock.module('@hs/core', () => ({ fetch }));
+		await mock.module('@rocket.chat/federation-core', () => ({ fetch }));
 		await mock.module('../server-discovery/discovery', () => ({
 			getHomeserverFinalAddress: originalServerDiscovery,
 		}));

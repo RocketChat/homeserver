@@ -1,4 +1,4 @@
-import { verifyJsonSignature } from '@hs/crypto';
+import { verifyJsonSignature } from '@rocket.chat/federation-crypto';
 
 import { Mock, describe, expect, it, mock } from 'bun:test';
 import { afterEach, beforeEach } from 'node:test';
@@ -9,12 +9,12 @@ import { signer } from '../__mocks__/singer.spec';
 
 describe('KeyService', async () => {
 	// fetch mocking
-	const { fetch } = await import('@hs/core');
+	const { fetch } = await import('@rocket.chat/federation-core');
 
 	let inboundServer = ''; // skips server discovery
 
 	beforeEach(async () => {
-		await mock.module('@hs/core', () => ({
+		await mock.module('@rocket.chat/federation-core', () => ({
 			fetch: async (..._args: any[]) => {
 				return {
 					ok: true,
@@ -27,7 +27,7 @@ describe('KeyService', async () => {
 	});
 
 	afterEach(async () => {
-		await mock.module('@hs/core', () => ({ fetch }));
+		await mock.module('@rocket.chat/federation-core', () => ({ fetch }));
 		mock.restore();
 	});
 

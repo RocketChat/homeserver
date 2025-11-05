@@ -1,4 +1,4 @@
-import { ServerKey } from '@hs/core';
+import { ServerKey } from '@rocket.chat/federation-core';
 import type { Collection, Filter, FindCursor, FindOptions } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 

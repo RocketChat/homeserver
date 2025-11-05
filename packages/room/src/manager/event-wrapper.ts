@@ -3,7 +3,7 @@ import {
 	computeHashBuffer,
 	encodeCanonicalJson,
 	toUnpaddedBase64,
-} from '@hs/crypto';
+} from '@rocket.chat/federation-crypto';
 toUnpaddedBase64,
 } from '@rocket.chat/federation-crypto'
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
