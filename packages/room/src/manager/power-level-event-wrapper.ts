@@ -1,7 +1,6 @@
 import {
 	type PduPowerLevelsEventContent,
 	type PduType,
-	isStateEventType,
 	isTimelineEventType,
 } from '../types/v3-11';
 import { PersistentEventBase } from './event-wrapper';
@@ -92,28 +91,24 @@ class PowerLevelEvent<
 		return createEvent?.sender === userId ? 100 : 0;
 	}
 
-	getRequiredPowerLevelForEvent(type: PduType) {
+	getRequiredPowerLevelForEvent(event: PersistentEventBase) {
 		if (!this._content) {
-			if (isTimelineEventType(type)) {
+			if (isTimelineEventType(event.type)) {
 				return 0;
 			}
 
 			return 50;
 		}
 
-		if (typeof this._content.events?.[type] === 'number') {
-			return this._content.events[type];
+		if (typeof this._content.events?.[event.type] === 'number') {
+			return this._content.events[event.type];
 		}
 
-		if (isTimelineEventType(type)) {
-			return this._content.events_default ?? 0;
-		}
-
-		if (isStateEventType(type)) {
+		if (event.isState()) {
 			return this._content.state_default ?? 50;
 		}
 
-		// unknown event type - use events_default
+		// unknown or timeline event type - use events_default
 		return this._content.events_default ?? 0;
 	}
 
