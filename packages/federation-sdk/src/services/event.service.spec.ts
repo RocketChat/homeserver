@@ -224,6 +224,12 @@ describe('EventService', async () => {
 			// to allow fetchign the key we mock
 			fetchJsonMock.mockReturnValue(Promise.resolve(originalKeyResponse));
 
+			console.log(pdu, pdu.event);
+
+			eventService
+				.validateHashAndSignatures(pdu.event, roomVersion)
+				.catch(console.error);
+
 			await expect(
 				eventService.validateHashAndSignatures(pdu.event, roomVersion),
 			).resolves.toHaveProperty('eventId', pdu.eventId);
