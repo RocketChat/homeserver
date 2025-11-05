@@ -89,11 +89,10 @@ export class EventRepository {
 				break;
 
 			default:
+				// for custom and unknown events, we need to fetch the create and power levels events
+				// so that we can authorize the event further down the line
+				queries = [baseQueries.create, baseQueries.powerLevels];
 				break;
-		}
-
-		if (queries.length === 0) {
-			return [];
 		}
 
 		return this.collection.find({ $or: queries.map((q) => q.query) });
