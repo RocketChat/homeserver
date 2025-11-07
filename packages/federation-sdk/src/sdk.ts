@@ -91,6 +91,10 @@ export class FederationSDK {
 		return this.roomService.kickUser(...args);
 	}
 
+	banUser(...args: Parameters<typeof this.roomService.banUser>) {
+		return this.roomService.banUser(...args);
+	}
+
 	updateMessage(...args: Parameters<typeof this.messageService.updateMessage>) {
 		return this.messageService.updateMessage(...args);
 	}

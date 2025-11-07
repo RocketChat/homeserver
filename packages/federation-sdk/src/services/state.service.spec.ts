@@ -118,7 +118,9 @@ describe('StateService', async () => {
 	}
 
 	const databaseConfig = {
-		uri: process.env.MONGO_URI || 'mongodb://localhost:27017',
+		uri:
+			process.env.MONGO_URI ||
+			'mongodb://localhost:27017?directConnection=true',
 		name: 'matrix_test',
 		poolSize: 100,
 	};

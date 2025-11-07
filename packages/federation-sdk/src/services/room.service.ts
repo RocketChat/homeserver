@@ -226,6 +226,13 @@ export class RoomService {
 		username: UserID,
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
+		powers: {
+			users?: Record<UserID, number>;
+			events?: Record<string, number>;
+		} = {
+			users: {},
+			events: {},
+		},
 	) {
 		logger.debug(
 			`Creating room for ${username} with ${name} join_rule: ${joinRule}`,
@@ -283,10 +290,13 @@ export class RoomService {
 					type: 'm.room.power_levels',
 					content: {
 						users: {
+							...powers.users,
 							[username]: 100,
 						},
 						users_default: 0,
-						events: {},
+						events: {
+							...powers.events,
+						},
 						events_default: 0,
 						state_default: 50,
 						ban: 50,
