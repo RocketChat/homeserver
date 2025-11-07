@@ -712,6 +712,50 @@ export class RoomService {
 		return kickEvent.eventId;
 	}
 
+	async updateMemberProfile(
+		roomId: RoomID,
+		userId: UserID,
+		displayName: string,
+	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const currentState = await this.stateService.getLatestRoomState(roomId);
+
+		const currentMembership = currentState.get(`m.room.member:${userId}`);
+		if (!currentMembership || currentMembership.getMembership() !== 'join') {
+			throw new Error(`User ${userId} is not a member of room ${roomId}`);
+		}
+
+		const memberEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'join', // SAME membership (not changing)
+					displayname: displayName, // NEW displayname
+				},
+				room_id: roomId,
+				sender: userId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+			},
+			roomInfo.room_version,
+		);
+
+		await this.stateService.handlePdu(memberEvent);
+
+		if (memberEvent.rejected) {
+			throw new Error(
+				`Member profile update rejected: ${memberEvent.rejectReason}`,
+			);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(memberEvent);
+
+		return memberEvent;
+	}
+
 	async banUser(
 		roomId: RoomID,
 		bannedUserId: UserID,
