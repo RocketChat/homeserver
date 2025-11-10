@@ -8,11 +8,14 @@ import {
 
 export const QueryProfileQueryDto = t.Object({
 	user_id: UsernameDto,
+	field: t.Optional(
+		t.Union([t.Literal('displayname'), t.Literal('avatar_url')]),
+	),
 });
 
 export const QueryProfileResponseDto = t.Object({
-	displayname: t.Optional(t.Union([t.String(), t.Null()])),
-	avatar_url: t.Optional(t.Union([t.String(), t.Null()])),
+	displayname: t.Optional(t.String({ description: 'User display name' })),
+	avatar_url: t.String({ description: 'User avatar URL (MXC URL)' }),
 });
 
 export const QueryKeysBodyDto = t.Object({

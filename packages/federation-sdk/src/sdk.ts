@@ -145,6 +145,12 @@ export class FederationSDK {
 		return this.roomService.joinUser(...args);
 	}
 
+	updateUserProfile(
+		...args: Parameters<typeof this.roomService.updateUserProfile>
+	) {
+		return this.roomService.updateUserProfile(...args);
+	}
+
 	getLatestRoomState2(
 		...args: Parameters<typeof this.stateService.getLatestRoomState2>
 	) {

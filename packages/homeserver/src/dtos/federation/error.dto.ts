@@ -6,6 +6,7 @@ export const FederationErrorResponseDto = t.Object({
 		M_UNAUTHORIZED: 'M_UNAUTHORIZED',
 		M_FORBIDDEN: 'M_FORBIDDEN',
 		M_UNKNOWN: 'M_UNKNOWN',
+		M_NOT_FOUND: 'M_NOT_FOUND',
 	}),
 	error: t.String(),
 });

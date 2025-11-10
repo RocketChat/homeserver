@@ -10,7 +10,8 @@ import {
 	RoomVersion,
 	UserID,
 } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
+import { UserRepository } from '../repositories/user.repository';
 import { StateService } from './state.service';
 
 @singleton()
@@ -21,14 +22,37 @@ export class ProfilesService {
 		private readonly configService: ConfigService,
 		private readonly eventService: EventService,
 		private readonly stateService: StateService,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
 	) {}
 	async queryProfile(userId: string): Promise<{
 		avatar_url: string;
-		displayname: string;
-	}> {
+		displayname?: string;
+	} | null> {
+		const [username, serverName] = userId.startsWith('@')
+			? userId.split(':', 2)
+			: [userId, this.configService.serverName];
+
+		if (serverName !== this.configService.serverName) {
+			return null;
+		}
+
+		const usernameWithoutAt = username.replace('@', '');
+		const user = await this.userRepository.findByUsername(usernameWithoutAt);
+
+		if (!user) {
+			this.logger.debug(`Local user ${userId} not found in repository`);
+			return null;
+		}
+
+		// construct MXC URL based on avatarETag (or fallback to username for backwards compatibility)
+		// RC stores avatars in GridFS accessed via /avatar/{username}
+		// for Matrix, we use the pattern: mxc://{server}/avatar{avatarETag}
+		// Using avatarETag ensures remote servers re-fetch when avatar changes
+		const avatarIdentifier = user.avatarETag || usernameWithoutAt;
 		return {
-			avatar_url: 'mxc://matrix.org/MyC00lAvatar',
-			displayname: userId,
+			avatar_url: `mxc://${this.configService.serverName}/avatar${avatarIdentifier}`,
+			displayname: user.name || user.username,
 		};
 	}
 
@@ -90,10 +114,16 @@ export class ProfilesService {
 			throw new Error(`User ${userId} is not invited`);
 		}
 
+		const profile = await this.queryProfile(userId);
+
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
-				content: { membership: 'join' },
+				content: {
+					membership: 'join',
+					...(profile?.displayname && { displayname: profile.displayname }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+				},
 				room_id: roomId,
 				state_key: userId,
 				auth_events: [],
