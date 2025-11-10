@@ -115,6 +115,12 @@ export class FederationSDK {
 		return this.messageService.updateMessage(...args);
 	}
 
+	updateMemberProfile(
+		...args: Parameters<typeof this.roomService.updateMemberProfile>
+	) {
+		return this.roomService.updateMemberProfile(...args);
+	}
+
 	updateRoomName(...args: Parameters<typeof this.roomService.updateRoomName>) {
 		return this.roomService.updateRoomName(...args);
 	}
