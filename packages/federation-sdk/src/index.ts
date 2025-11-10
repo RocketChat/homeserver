@@ -12,6 +12,7 @@ import { Room } from './repositories/room.repository';
 import { Server } from './repositories/server.repository';
 import { StateGraphStore } from './repositories/state-graph.repository';
 import { Upload } from './repositories/upload.repository';
+import { User } from './repositories/user.repository';
 import { FederationSDK } from './sdk';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventEmitterService } from './services/event-emitter.service';
@@ -170,6 +171,11 @@ export async function init({
 	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
 		useValue: db.collection<StateGraphStore>('rocketchat_federation_state_graphs'),
 	});
+
+	container.register<Collection<User>>('UserCollection', {
+		useValue: db.collection<User>('users'),
+	});
+
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);
 

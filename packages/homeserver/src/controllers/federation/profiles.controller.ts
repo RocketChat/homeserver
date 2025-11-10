@@ -10,6 +10,7 @@ import {
 	ErrorResponseDto,
 	EventAuthParamsDto,
 	EventAuthResponseDto,
+	FederationErrorResponseDto,
 	GetDevicesParamsDto,
 	GetDevicesResponseDto,
 	GetMissingEventsBodyDto,
@@ -24,15 +25,33 @@ import {
 } from '../../dtos';
 
 export const profilesPlugin = (app: Elysia) => {
-	return (
-		app
-			.group('/_matrix', (app) =>
-				app
-					.use(isAuthenticatedMiddleware())
-					.get('/federation/v1/query/profile', ({ query: { user_id } }) => federationSDK.queryProfile(user_id as UserID), {
+	return app
+		.group('/_matrix', (app) =>
+			app
+				.use(isAuthenticatedMiddleware())
+				.get(
+					'/federation/v1/query/profile',
+					async ({ query: { user_id }, set }) => {
+						const response = await federationSDK.queryProfile(user_id);
+
+						if (!response) {
+							set.status = 404;
+							return {
+								errcode: 'M_NOT_FOUND',
+								error: `User ${user_id} not found`,
+							};
+						}
+
+						return {
+							displayname: response.displayname,
+							avatar_url: response.avatar_url,
+						};
+					},
+					{
 						query: QueryProfileQueryDto,
 						response: {
 							200: QueryProfileResponseDto,
+							404: FederationErrorResponseDto,
 						},
 						detail: {
 							tags: ['Federation'],

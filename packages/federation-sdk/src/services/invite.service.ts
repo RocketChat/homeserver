@@ -11,6 +11,7 @@ import {
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
+import { UserRepository } from '../repositories/user.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -40,7 +41,34 @@ export class InviteService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => FederationValidationService)) // need to delay to be able to inject during tests
 		private readonly federationValidationService: FederationValidationService,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
 	) {}
+
+	/**
+	 * Get avatar URL for a user (local users only)
+	 */
+	private async getAvatarUrlForUser(
+		userId: UserID,
+	): Promise<string | undefined> {
+		const userDomain = extractDomainFromId(userId);
+		const localDomain = this.configService.serverName;
+
+		if (userDomain !== localDomain) {
+			return undefined;
+		}
+
+		const username = userId.split(':')[0]?.slice(1);
+		if (!username) {
+			return undefined;
+		}
+
+		// Fetch user to get avatarETag
+		const user = await this.userRepository.findByUsername(username);
+		const avatarIdentifier = user?.avatarETag || username;
+
+		return `mxc://${localDomain}/avatar${avatarIdentifier}`;
+	}
 
 	/**
 	 * Invite a user to an existing room
@@ -65,6 +93,8 @@ export class InviteService {
 		// Extract displayname from userId for direct messages
 		const displayname = isDirectMessage ? userId.split(':').shift()?.slice(1) : undefined;
 
+		const avatarUrl = await this.getAvatarUrlForUser(userId);
+
 		const inviteEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -74,6 +104,7 @@ export class InviteService {
 						is_direct: true,
 						displayname,
 					}),
+					...(avatarUrl && { avatar_url: avatarUrl }),
 				},
 				room_id: roomId,
 				state_key: userId,
