@@ -9,7 +9,8 @@ import {
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
+import { UserRepository } from '../repositories/user.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { FederationService } from './federation.service';
@@ -37,7 +38,34 @@ export class InviteService {
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
 		private readonly eventAuthorizationService: EventAuthorizationService,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
 	) {}
+
+	/**
+	 * Get avatar URL for a user (local users only)
+	 */
+	private async getAvatarUrlForUser(
+		userId: UserID,
+	): Promise<string | undefined> {
+		const userDomain = extractDomainFromId(userId);
+		const localDomain = this.configService.serverName;
+
+		if (userDomain !== localDomain) {
+			return undefined;
+		}
+
+		const username = userId.split(':')[0]?.slice(1);
+		if (!username) {
+			return undefined;
+		}
+
+		// Fetch user to get avatarETag
+		const user = await this.userRepository.findByUsername(username);
+		const avatarIdentifier = user?.avatarETag || username;
+
+		return `mxc://${localDomain}/avatar${avatarIdentifier}`;
+	}
 
 	/**
 	 * Invite a user to an existing room
@@ -64,6 +92,8 @@ export class InviteService {
 			? userId.split(':').shift()?.slice(1)
 			: undefined;
 
+		const avatarUrl = await this.getAvatarUrlForUser(userId);
+
 		const inviteEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -73,6 +103,7 @@ export class InviteService {
 						is_direct: true,
 						displayname: displayname,
 					}),
+					...(avatarUrl && { avatar_url: avatarUrl }),
 				},
 				room_id: roomId,
 				state_key: userId,

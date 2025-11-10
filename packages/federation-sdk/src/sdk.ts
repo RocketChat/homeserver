@@ -5,6 +5,7 @@ import { singleton } from 'tsyringe';
 import { AppConfig, ConfigService } from './services/config.service';
 import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
+import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
@@ -37,6 +38,7 @@ export class FederationSDK {
 		private readonly wellKnownService: WellKnownService,
 		private readonly federationRequestService: FederationRequestService,
 		private readonly federationService: FederationService,
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	createDirectMessageRoom(
@@ -99,6 +101,12 @@ export class FederationSDK {
 		return this.messageService.updateMessage(...args);
 	}
 
+	updateMemberProfile(
+		...args: Parameters<typeof this.roomService.updateMemberProfile>
+	) {
+		return this.roomService.updateMemberProfile(...args);
+	}
+
 	updateRoomName(...args: Parameters<typeof this.roomService.updateRoomName>) {
 		return this.roomService.updateRoomName(...args);
 	}
@@ -143,6 +151,12 @@ export class FederationSDK {
 
 	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
 		return this.roomService.joinUser(...args);
+	}
+
+	updateUserProfile(
+		...args: Parameters<typeof this.roomService.updateUserProfile>
+	) {
+		return this.roomService.updateUserProfile(...args);
 	}
 
 	getLatestRoomState2(
@@ -292,5 +306,9 @@ export class FederationSDK {
 		...args: Parameters<typeof this.eduService.sendPresenceUpdateToRooms>
 	) {
 		return this.eduService.sendPresenceUpdateToRooms(...args);
+	}
+
+	emit(...args: Parameters<typeof this.eventEmitterService.emit>) {
+		return this.eventEmitterService.emit(...args);
 	}
 }

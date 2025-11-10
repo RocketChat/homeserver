@@ -33,6 +33,7 @@ import {
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
+import { UserRepository } from '../repositories/user.repository';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
@@ -57,7 +58,34 @@ export class RoomService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
 	) {}
+
+	/**
+	 * Get avatar URL for a user (local users only)
+	 */
+	private async getAvatarUrlForUser(
+		userId: UserID,
+	): Promise<string | undefined> {
+		const userDomain = extractDomainFromId(userId);
+		const localDomain = this.configService.serverName;
+
+		if (userDomain !== localDomain) {
+			return undefined;
+		}
+
+		const username = userId.split(':')[0]?.slice(1);
+		if (!username) {
+			return undefined;
+		}
+
+		// Fetch user to get avatarETag
+		const user = await this.userRepository.findByUsername(username);
+		const avatarIdentifier = user?.avatarETag || username;
+
+		return `mxc://${localDomain}/avatar${avatarIdentifier}`;
+	}
 
 	private validatePowerLevelChange(
 		currentPowerLevelsContent: PduForType<'m.room.power_levels'>['content'],
@@ -249,11 +277,18 @@ export class RoomService {
 
 		await stateService.handlePdu(roomCreateEvent);
 
+		const avatarUrl = await this.getAvatarUrlForUser(username);
+		const displayname = username.split(':')[0]?.slice(1);
+
 		const creatorMembershipEvent =
 			await stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
-					content: { membership: 'join' },
+					content: {
+						membership: 'join',
+						...(displayname && { displayname }),
+						...(avatarUrl && { avatar_url: avatarUrl }),
+					},
 					room_id: roomCreateEvent.roomId,
 					state_key: username,
 					auth_events: [],
@@ -862,10 +897,17 @@ export class RoomService {
 				);
 			}
 
+			const avatarUrl = await this.getAvatarUrlForUser(userId);
+			const displayname = userId.split(':')[0]?.slice(1);
+
 			const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
-					content: { membership: 'join' },
+					content: {
+						membership: 'join',
+						...(displayname && { displayname }),
+						...(avatarUrl && { avatar_url: avatarUrl }),
+					},
 					room_id: roomId,
 					state_key: userId,
 					auth_events: [],
@@ -884,7 +926,11 @@ export class RoomService {
 				event: membershipEvent.event,
 				room_id: roomId,
 				state_key: userId,
-				content: { membership: 'join' },
+				content: {
+					membership: 'join',
+					...(displayname && { displayname }),
+					...(avatarUrl && { avatar_url: avatarUrl }),
+				},
 				sender: userId,
 				origin_server_ts: Date.now(),
 			});
@@ -898,6 +944,7 @@ export class RoomService {
 			return membershipEvent.eventId;
 		}
 
+		// Resident server is remote, need to do join flow
 		const roomVersion = '10' as const;
 
 		// trying to join room from another server
@@ -1049,6 +1096,62 @@ export class RoomService {
 		);
 
 		return joinEventFinal.eventId;
+	}
+
+	/**
+	 * Update user profile (displayname/avatar) in a room by sending a membership event
+	 */
+	async updateUserProfile(
+		roomId: RoomID,
+		userId: UserID,
+		profile: { displayname?: string; avatar_url?: string },
+	): Promise<EventID> {
+		const stateService = this.stateService;
+		const federationService = this.federationService;
+
+		const roomInfo = await stateService.getRoomInformation(roomId);
+
+		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'join',
+					...profile,
+				},
+				room_id: roomId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: userId,
+			},
+			roomInfo.room_version,
+		);
+
+		await stateService.handlePdu(membershipEvent);
+
+		// Emit event for internal processing
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: membershipEvent.eventId,
+			event: membershipEvent.event,
+			room_id: roomId,
+			state_key: userId,
+			content: {
+				membership: 'join',
+				...profile,
+			},
+			sender: userId,
+			origin_server_ts: Date.now(),
+		});
+
+		if (membershipEvent.rejected) {
+			throw new Error(membershipEvent.rejectReason);
+		}
+
+		void federationService.sendEventToAllServersInRoom(membershipEvent);
+
+		return membershipEvent.eventId;
 	}
 
 	private async _fetchFullBranch(
@@ -1405,6 +1508,7 @@ export class RoomService {
 
 		// Extract displayname from userId for direct messages
 		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
+		const creatorAvatarUrl = await this.getAvatarUrlForUser(creatorUserId);
 
 		const creatorMembershipEvent =
 			await stateService.buildEvent<'m.room.member'>(
@@ -1414,6 +1518,7 @@ export class RoomService {
 						membership: 'join',
 						is_direct: true,
 						displayname: creatorDisplayname,
+						...(creatorAvatarUrl && { avatar_url: creatorAvatarUrl }),
 					},
 					room_id: roomCreateEvent.roomId,
 					state_key: creatorUserId,
@@ -1522,6 +1627,7 @@ export class RoomService {
 		} else {
 			// Extract displayname from userId for direct messages
 			const displayname = targetUserId.split(':').shift()?.slice(1);
+			const targetAvatarUrl = await this.getAvatarUrlForUser(targetUserId);
 
 			const targetMembershipEvent =
 				await stateService.buildEvent<'m.room.member'>(
@@ -1531,6 +1637,7 @@ export class RoomService {
 							membership: 'join',
 							is_direct: true,
 							displayname: displayname,
+							...(targetAvatarUrl && { avatar_url: targetAvatarUrl }),
 						},
 						room_id: roomCreateEvent.roomId,
 						state_key: targetUserId,

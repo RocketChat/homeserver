@@ -379,6 +379,12 @@ export class EventAuthorizationService {
 		}
 
 		if (entityType === 'media') {
+			// avatars are publicly accessible and don't require access control
+			if (entityId.startsWith('avatar')) {
+				// TODO: add avatar access control once we have a way to check if the user is allowed to access the avatar
+				return true;
+			}
+
 			return this.canAccessMedia(entityId, serverName);
 		}
 
