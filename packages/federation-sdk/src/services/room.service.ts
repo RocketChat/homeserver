@@ -882,11 +882,6 @@ export class RoomService {
 			this.eventEmitterService.emit('homeserver.matrix.membership', {
 				event_id: membershipEvent.eventId,
 				event: membershipEvent.event,
-				room_id: roomId,
-				state_key: userId,
-				content: { membership: 'join' },
-				sender: userId,
-				origin_server_ts: Date.now(),
 			});
 
 			if (membershipEvent.rejected) {
