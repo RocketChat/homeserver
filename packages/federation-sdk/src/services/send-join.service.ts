@@ -73,15 +73,6 @@ export class SendJoinService {
 		this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: eventId,
 			event: signedJoinEvent.event,
-			room_id: roomId,
-			sender: signedJoinEvent.sender,
-			state_key: signedJoinEvent.stateKey as string,
-			origin_server_ts: signedJoinEvent.originServerTs,
-			content: {
-				avatar_url: signedJoinEvent.getContent().avatar_url,
-				displayname: signedJoinEvent.getContent().displayname || '',
-				membership: signedJoinEvent.getContent().membership,
-			},
 		});
 
 		return {
