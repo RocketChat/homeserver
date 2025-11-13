@@ -278,34 +278,6 @@ export class StagingAreaService {
 				this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					sender: event.event.sender,
-					origin_server_ts: event.event.origin_server_ts,
-					content: {
-						...event.event.content,
-						body: event.event.content?.body as string,
-						msgtype: event.event.content?.msgtype as MessageType,
-						'm.relates_to': event.event.content?.['m.relates_to'] as
-							| {
-									rel_type: 'm.replace';
-									event_id: EventID;
-							  }
-							| {
-									rel_type: 'm.annotation';
-									event_id: EventID;
-									key: string;
-							  }
-							| {
-									rel_type: 'm.thread';
-									event_id: EventID;
-							  },
-						'm.new_content': event.event.content?.['m.new_content'] as {
-							body: string;
-							msgtype: MessageType;
-						},
-						formatted_body: (event.event.content?.formatted_body ||
-							'') as string,
-					},
 				});
 				break;
 			case event.event.type === 'm.room.encryption':
@@ -318,42 +290,12 @@ export class StagingAreaService {
 				this.eventEmitterService.emit('homeserver.matrix.encrypted', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					sender: event.event.sender,
-					origin_server_ts: event.event.origin_server_ts,
-					content: {
-						...event.event.content,
-						'm.relates_to': event.event.content?.['m.relates_to'] as
-							| {
-									rel_type: 'm.replace';
-									event_id: EventID;
-							  }
-							| {
-									rel_type: 'm.annotation';
-									event_id: EventID;
-									key: string;
-							  }
-							| {
-									rel_type: 'm.thread';
-									event_id: EventID;
-							  },
-					},
 				});
 				break;
 			case event.event.type === 'm.reaction': {
 				this.eventEmitterService.emit('homeserver.matrix.reaction', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					sender: event.event.sender,
-					origin_server_ts: event.event.origin_server_ts,
-					content: event.event.content as {
-						'm.relates_to': {
-							rel_type: 'm.annotation';
-							event_id: EventID;
-							key: string;
-						};
-					},
 				});
 				break;
 			}
@@ -361,13 +303,6 @@ export class StagingAreaService {
 				this.eventEmitterService.emit('homeserver.matrix.redaction', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					sender: event.event.sender,
-					origin_server_ts: event.event.origin_server_ts,
-					redacts: event.event.redacts,
-					content: {
-						reason: event.event.content?.reason,
-					},
 				});
 				break;
 			}
@@ -375,11 +310,6 @@ export class StagingAreaService {
 				this.eventEmitterService.emit('homeserver.matrix.membership', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					sender: event.event.sender,
-					state_key: event.event.state_key,
-					origin_server_ts: event.event.origin_server_ts,
-					content: event.event.content,
 				});
 				break;
 			}
@@ -387,9 +317,6 @@ export class StagingAreaService {
 				this.eventEmitterService.emit('homeserver.matrix.room.name', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					user_id: event.event.sender,
-					name: event.event.content?.name as string,
 				});
 				break;
 			}
@@ -397,9 +324,6 @@ export class StagingAreaService {
 				this.eventEmitterService.emit('homeserver.matrix.room.topic', {
 					event_id: eventId,
 					event: event.event,
-					room_id: roomId,
-					user_id: event.event.sender,
-					topic: event.event.content.topic,
 				});
 				break;
 			}
