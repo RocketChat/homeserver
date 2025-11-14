@@ -88,7 +88,6 @@ export type HomeserverEventSignatures = {
 		event: PduForType<'m.room.encrypted'>;
 	};
 	'homeserver.matrix.room.create': {
-		room_id: string;
 		event: PduForType<'m.room.create'>;
 		event_id: EventID;
 	};

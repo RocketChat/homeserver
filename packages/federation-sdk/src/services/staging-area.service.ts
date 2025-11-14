@@ -268,16 +268,12 @@ export class StagingAreaService {
 	private async processNotificationStage(event: EventStagingStore) {
 		this.logger.debug(`Notifying clients about event ${event._id}`);
 
-		const {
-			_id: eventId,
-			event: { room_id: roomId },
-		} = event;
+		const { _id: eventId, roomId } = event;
 
 		switch (true) {
 			case event.event.type === 'm.room.create':
 				{
 					this.eventEmitterService.emit('homeserver.matrix.room.create', {
-						room_id: roomId,
 						event_id: eventId,
 						event: event.event,
 					});
