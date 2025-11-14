@@ -8,7 +8,6 @@ import { singleton } from 'tsyringe';
 import {
 	MessageType,
 	createLogger,
-	isCreateEvent,
 	isRedactedEvent,
 } from '@rocket.chat/federation-core';
 import {
@@ -275,7 +274,7 @@ export class StagingAreaService {
 		} = event;
 
 		switch (true) {
-			case isCreateEvent(event.event):
+			case event.event.type === 'm.room.create':
 				{
 					this.eventEmitterService.emit('homeserver.matrix.room.create', {
 						room_id: roomId,
