@@ -15,6 +15,7 @@ export const roomPlugin = (app: Elysia) => {
 					guest_can_join: false, // trying to reduce requried endpoint hits
 					world_readable: false, // ^^^
 					avatar_url: '', // ?? don't have any yet
+					name: '',
 				};
 
 				const { limit: _limit } = query;
@@ -25,6 +26,7 @@ export const roomPlugin = (app: Elysia) => {
 					chunk: publicRooms.map((room) => ({
 						...defaultObj,
 						...room,
+						name: room.name ?? '',
 					})),
 				};
 			},
@@ -59,6 +61,7 @@ export const roomPlugin = (app: Elysia) => {
 					guest_can_join: false, // trying to reduce requried endpoint hits
 					world_readable: false, // ^^^
 					avatar_url: '', // ?? don't have any yet
+					name: '',
 				};
 
 				const { filter } = body;
@@ -69,7 +72,7 @@ export const roomPlugin = (app: Elysia) => {
 					chunk: publicRooms
 						.filter((r) => {
 							if (filter.generic_search_term) {
-								return r.name.toLowerCase().includes(filter.generic_search_term.toLowerCase());
+								return r.name?.toLowerCase().includes(filter.generic_search_term.toLowerCase());
 							}
 
 							if (filter.room_types) {
@@ -81,6 +84,7 @@ export const roomPlugin = (app: Elysia) => {
 						.map((room) => ({
 							...defaultObj,
 							...room,
+							name: room.name ?? '',
 						})),
 				};
 			},
