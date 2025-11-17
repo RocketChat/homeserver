@@ -13,7 +13,6 @@ import {
 	GetMissingEventsParamsDto,
 	GetMissingEventsResponseDto,
 	MakeJoinParamsDto,
-	MakeJoinQueryDto,
 	MakeJoinResponseDto,
 	QueryKeysBodyDto,
 	QueryKeysResponseDto,
@@ -119,6 +118,8 @@ export const profilesPlugin = (app: Elysia) => {
 				},
 			},
 		)
+
+		// https://spec.matrix.org/v1.16/server-server-api/#post_matrixfederationv1get_missing_eventsroomid
 		.post(
 			'/_matrix/federation/v1/get_missing_events/:roomId',
 			async ({ params, body }) =>
@@ -126,8 +127,8 @@ export const profilesPlugin = (app: Elysia) => {
 					params.roomId as RoomID,
 					body.earliest_events as EventID[],
 					body.latest_events as EventID[],
-					body.limit,
-					body.min_depth,
+					body.limit || 10,
+					body.min_depth || 0,
 				),
 			{
 				params: GetMissingEventsParamsDto,
