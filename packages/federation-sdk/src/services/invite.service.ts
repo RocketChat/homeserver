@@ -6,12 +6,12 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
+	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
-import { UserRepository } from '../repositories/user.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -19,6 +19,7 @@ import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
+import { UserRepository } from '../repositories/user.repository';
 
 export class NotAllowedError extends Error {
 	constructor(message: string) {
@@ -43,14 +44,13 @@ export class InviteService {
 		private readonly federationValidationService: FederationValidationService,
 		@inject(delay(() => UserRepository))
 		private readonly userRepository: UserRepository,
+		private readonly eventEmitterService: EventEmitterService,
 	) {}
 
 	/**
 	 * Get avatar URL for a user (local users only)
 	 */
-	private async getAvatarUrlForUser(
-		userId: UserID,
-	): Promise<string | undefined> {
+	private async getAvatarUrlForUser(userId: UserID): Promise<string | undefined> {
 		const userDomain = extractDomainFromId(userId);
 		const localDomain = this.configService.serverName;
 
@@ -168,6 +168,7 @@ export class InviteService {
 			| 'm.room.join_rules'
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
+			| 'm.room.member'
 		>[],
 	): Promise<void> {
 		const isRoomNonPrivate = strippedStateEvents.some(
@@ -196,6 +197,7 @@ export class InviteService {
 			| 'm.room.join_rules'
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
+			| 'm.room.member'
 		>[],
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
 		await this.shouldProcessInvite(strippedStateEvents);
@@ -220,6 +222,13 @@ export class InviteService {
 
 			return inviteEvent;
 		}
+
+		await this.eventRepository.forceInsertOrUpdateEventWithStateId(
+			inviteEvent.eventId,
+			inviteEvent.event,
+			'' as StateID,
+			true, // partial = true
+		);
 
 		const invitedServer = extractDomainFromId(event.state_key);
 		if (!invitedServer) {
