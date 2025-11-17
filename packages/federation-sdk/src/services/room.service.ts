@@ -27,6 +27,7 @@ import {
 	EventStore as RoomEventStore,
 	RoomID,
 	RoomVersion,
+	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
@@ -1089,13 +1090,75 @@ export class RoomService {
 			event: joinEventFinal.event,
 		});
 
-		// try to persist the join event now, should succeed with state in place
 		void this.eventService.processIncomingPDUs(
 			residentServer || joinEventFinal.origin,
 			[...state, joinEventFinal.event],
 		);
 
 		return joinEventFinal.eventId;
+	}
+
+	async acceptInvite(inviteEventId: EventID, userId: UserID) {
+		const inviteEventStore =
+			await this.eventService.getEventById(inviteEventId);
+		if (!inviteEventStore) {
+			throw new Error(`Invite event not found: ${inviteEventId}`);
+		}
+
+		const roomVersion = PersistentEventFactory.defaultRoomVersion;
+		const inviteEvent = PersistentEventFactory.createFromRawEvent(
+			inviteEventStore.event,
+			roomVersion,
+		);
+
+		return this.joinUser(inviteEvent, userId);
+	}
+
+	async rejectInvite(inviteEventId: EventID, userId: UserID): Promise<void> {
+		const inviteEventStore =
+			await this.eventService.getEventById(inviteEventId);
+		if (!inviteEventStore) {
+			throw new Error(`Invite event not found: ${inviteEventId}`);
+		}
+
+		const roomId = inviteEventStore.event.room_id;
+		const invitingServer = extractDomainFromId(inviteEventStore.event.sender);
+
+		if (!invitingServer) {
+			throw new Error(
+				`Invalid sender in invite event: ${inviteEventStore.event.sender}`,
+			);
+		}
+
+		const { event: leaveTemplate, room_version } =
+			await this.federationService.makeLeave(invitingServer, roomId, userId);
+
+		const leaveEvent =
+			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				leaveTemplate,
+				room_version,
+			);
+
+		await this.stateService.signEvent(leaveEvent);
+
+		await this.federationService.sendLeave(leaveEvent);
+
+		await this.eventRepository.forceInsertOrUpdateEventWithStateId(
+			leaveEvent.eventId,
+			leaveEvent.event,
+			'' as StateID,
+			true,
+		);
+
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+			room_id: roomId,
+			state_key: userId,
+			content: { membership: 'leave' },
+			sender: userId,
+			origin_server_ts: leaveEvent.originServerTs,
+		});
 	}
 
 	/**
@@ -1105,7 +1168,7 @@ export class RoomService {
 		roomId: RoomID,
 		userId: UserID,
 		profile: { displayname?: string; avatar_url?: string },
-	): Promise<EventID> {
+	): Promise<void> {
 		const stateService = this.stateService;
 		const federationService = this.federationService;
 
@@ -1131,7 +1194,6 @@ export class RoomService {
 
 		await stateService.handlePdu(membershipEvent);
 
-		// Emit event for internal processing
 		this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: membershipEvent.eventId,
 			event: membershipEvent.event,
@@ -1150,8 +1212,6 @@ export class RoomService {
 		}
 
 		void federationService.sendEventToAllServersInRoom(membershipEvent);
-
-		return membershipEvent.eventId;
 	}
 
 	private async _fetchFullBranch(

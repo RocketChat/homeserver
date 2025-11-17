@@ -98,6 +98,50 @@ export class FederationService {
 		}
 	}
 
+	async makeLeave(
+		domain: string,
+		roomId: string,
+		userId: string,
+	): Promise<{ event: Pdu; room_version: string }> {
+		try {
+			const uri = FederationEndpoints.makeLeave(roomId, userId);
+			return await this.requestService.get<{
+				event: Pdu;
+				room_version: string;
+			}>(domain, uri);
+		} catch (error: any) {
+			this.logger.error({ msg: 'makeLeave failed', err: error });
+			throw error;
+		}
+	}
+
+	async sendLeave(leaveEvent: PersistentEventBase): Promise<void> {
+		try {
+			const uri = FederationEndpoints.sendLeave(
+				leaveEvent.roomId,
+				leaveEvent.eventId,
+			);
+
+			const residentServer = leaveEvent.roomId.split(':').pop();
+
+			if (!residentServer) {
+				this.logger.debug({ msg: 'invalid room_id', event: leaveEvent.event });
+				throw new Error(
+					`invalid room_id ${leaveEvent.roomId}, no server_name part`,
+				);
+			}
+
+			await this.requestService.put<void>(
+				residentServer,
+				uri,
+				leaveEvent.event,
+			);
+		} catch (error: any) {
+			this.logger.error({ msg: 'sendLeave failed', err: error });
+			throw error;
+		}
+	}
+
 	/**
 	 * Send a transaction to a remote server
 	 */
