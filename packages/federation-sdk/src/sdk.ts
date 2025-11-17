@@ -145,6 +145,14 @@ export class FederationSDK {
 		return this.roomService.joinUser(...args);
 	}
 
+	acceptInvite(...args: Parameters<typeof this.roomService.acceptInvite>) {
+		return this.roomService.acceptInvite(...args);
+	}
+
+	rejectInvite(...args: Parameters<typeof this.roomService.rejectInvite>) {
+		return this.roomService.rejectInvite(...args);
+	}
+
 	getLatestRoomState2(
 		...args: Parameters<typeof this.stateService.getLatestRoomState2>
 	) {
