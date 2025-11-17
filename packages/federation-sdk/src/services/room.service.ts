@@ -21,6 +21,7 @@ import {
 	EventStore as RoomEventStore,
 	RoomID,
 	RoomVersion,
+	StateID,
 	UserID,
 	extractDomainFromId,
 	getStateByMapKey,
@@ -933,17 +934,10 @@ export class RoomService {
 	/**
 	 * Update user profile (displayname/avatar) in a room by sending a membership event
 	 */
-	async updateUserProfile(
-		roomId: RoomID,
-		userId: UserID,
-		profile: { displayname?: string; avatar_url?: string },
-	): Promise<EventID> {
-		const stateService = this.stateService;
-		const federationService = this.federationService;
+	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }): Promise<void> {
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const roomInfo = await stateService.getRoomInformation(roomId);
-
-		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
+		const membershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
 				content: {
@@ -961,9 +955,8 @@ export class RoomService {
 			roomInfo.room_version,
 		);
 
-		await stateService.handlePdu(membershipEvent);
+		await this.stateService.handlePdu(membershipEvent);
 
-		// Emit event for internal processing
 		this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: membershipEvent.eventId,
 			event: membershipEvent.event,
@@ -973,9 +966,7 @@ export class RoomService {
 			throw new Error(membershipEvent.rejectReason);
 		}
 
-		void federationService.sendEventToAllServersInRoom(membershipEvent);
-
-		return membershipEvent.eventId;
+		void this.federationService.sendEventToAllServersInRoom(membershipEvent);
 	}
 
 	private async _fetchFullBranch(
