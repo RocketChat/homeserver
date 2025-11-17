@@ -1,6 +1,4 @@
-import { createLogger } from '@rocket.chat/federation-core';
 import { ConfigService } from './config.service';
-import { EventService } from './event.service';
 
 import {
 	EventID,
@@ -15,11 +13,8 @@ import { StateService } from './state.service';
 
 @singleton()
 export class ProfilesService {
-	private readonly logger = createLogger('ProfilesService');
-
 	constructor(
 		private readonly configService: ConfigService,
-		private readonly eventService: EventService,
 		private readonly stateService: StateService,
 	) {}
 	async queryProfile(userId: string): Promise<{
@@ -112,22 +107,6 @@ export class ProfilesService {
 				origin: this.configService.serverName,
 			},
 		};
-	}
-
-	async getMissingEvents(
-		roomId: RoomID,
-		earliestEvents: EventID[],
-		latestEvents: EventID[],
-		limit = 10,
-		minDepth = 0,
-	): Promise<{ events: Pdu[] }> {
-		return this.eventService.getMissingEvents(
-			roomId,
-			earliestEvents,
-			latestEvents,
-			limit,
-			minDepth,
-		);
 	}
 
 	async eventAuth(

@@ -271,9 +271,9 @@ export class FederationSDK {
 	}
 
 	getMissingEvents(
-		...args: Parameters<typeof this.profilesService.getMissingEvents>
+		...args: Parameters<typeof this.eventService.getMissingEvents>
 	) {
-		return this.profilesService.getMissingEvents(...args);
+		return this.eventService.getMissingEvents(...args);
 	}
 
 	eventAuth(...args: Parameters<typeof this.profilesService.eventAuth>) {
