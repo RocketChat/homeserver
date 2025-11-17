@@ -405,6 +405,29 @@ export class EventRepository {
 		);
 	}
 
+	forceInsertOrUpdateEventWithStateId(
+		eventId: EventID,
+		event: Pdu,
+		stateId: StateID,
+		partial = false,
+	): Promise<UpdateResult> {
+		return this.collection.updateOne(
+			{ _id: eventId },
+			{
+				$setOnInsert: {
+					nextEventId: '',
+					createdAt: new Date(),
+				},
+				$set: {
+					event,
+					stateId,
+					partial,
+				},
+			},
+			{ upsert: true },
+		);
+	}
+
 	async updateNextEventReferences(
 		newEventId: EventID,
 		previousEventIds: EventID[],

@@ -6,15 +6,18 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
+	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
+import { EventRepository } from '../repositories/event.repository';
 import { UserRepository } from '../repositories/user.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
+import { EventEmitterService } from './event-emitter.service';
 import { FederationService } from './federation.service';
-import { StateService, UnknownRoomError } from './state.service';
+import { StateService } from './state.service';
 // TODO: Have better (detailed/specific) event input type
 export type ProcessInviteEvent = {
 	event: EventBase;
@@ -40,6 +43,9 @@ export class InviteService {
 		private readonly eventAuthorizationService: EventAuthorizationService,
 		@inject(delay(() => UserRepository))
 		private readonly userRepository: UserRepository,
+		private readonly eventEmitterService: EventEmitterService,
+		@inject(delay(() => EventRepository))
+		private readonly eventRepository: EventRepository,
 	) {}
 
 	/**
@@ -183,6 +189,7 @@ export class InviteService {
 			| 'm.room.join_rules'
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
+			| 'm.room.member'
 		>[],
 	): Promise<void> {
 		const isRoomNonPrivate = strippedStateEvents.some(
@@ -222,6 +229,7 @@ export class InviteService {
 			| 'm.room.join_rules'
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
+			| 'm.room.member'
 		>[],
 	) {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
@@ -252,12 +260,29 @@ export class InviteService {
 			);
 
 			// attempt to persist the invite event as we already have the state
-
 			await this.stateService.handlePdu(inviteEvent);
 
 			// we do not send transaction here
 			// the asking server will handle the transactions
+		} else {
+			await this.eventRepository.forceInsertOrUpdateEventWithStateId(
+				inviteEvent.eventId,
+				inviteEvent.event,
+				'' as StateID,
+				true, // partial = true
+			);
 		}
+
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: inviteEvent.eventId,
+			event: inviteEvent.event,
+			room_id: roomId,
+			sender: inviteEvent.sender,
+			state_key: inviteEvent.stateKey ?? '',
+			origin_server_ts: inviteEvent.originServerTs,
+			content: inviteEvent.getContent(),
+			stripped_state: strippedStateEvents,
+		});
 
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions

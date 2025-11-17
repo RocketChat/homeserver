@@ -224,7 +224,18 @@ export type HomeserverEventSignatures = {
 			displayname?: string;
 			avatar_url?: string;
 			reason?: string;
+			is_direct?: boolean;
 		};
+		stripped_state?: PduForType<
+			| 'm.room.create'
+			| 'm.room.name'
+			| 'm.room.avatar'
+			| 'm.room.topic'
+			| 'm.room.join_rules'
+			| 'm.room.canonical_alias'
+			| 'm.room.encryption'
+			| 'm.room.member'
+		>[];
 	};
 	'homeserver.matrix.room.name': {
 		event_id: EventID;
