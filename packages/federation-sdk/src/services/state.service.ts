@@ -1131,7 +1131,7 @@ export class StateService {
 	async getAllPublicRoomIdsAndNames() {
 		const createEvents = await this.eventRepository.findByType('m.room.create');
 
-		const result = [] as { name: string; room_id: RoomID }[];
+		const result = [] as { name?: string; room_id: RoomID }[];
 
 		for await (const create of createEvents) {
 			const roomId = create.event.room_id;
@@ -1141,7 +1141,7 @@ export class StateService {
 				continue;
 			}
 
-			result.push({ name: state.name, room_id: roomId });
+			result.push({ name: state.name ?? '', room_id: roomId });
 		}
 
 		return result;
