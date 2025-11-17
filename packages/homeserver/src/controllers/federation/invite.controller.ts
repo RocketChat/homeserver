@@ -23,7 +23,6 @@ export const invitePlugin = (app: Elysia) => {
 					roomId as RoomID,
 					eventId as EventID,
 					body.room_version,
-					authenticatedServer,
 					body.invite_room_state,
 				);
 			} catch (error) {

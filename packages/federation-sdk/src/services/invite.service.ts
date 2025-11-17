@@ -1,4 +1,4 @@
-import { EventBase, createLogger } from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
 import {
 	EventID,
 	PduForType,
@@ -6,27 +6,16 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
+	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
+import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
-import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
-import { EventService } from './event.service';
 import { FederationService } from './federation.service';
-import {
-	RoomInfoNotReadyError,
-	StateService,
-	UnknownRoomError,
-} from './state.service';
-// TODO: Have better (detailed/specific) event input type
-export type ProcessInviteEvent = {
-	event: EventBase;
-	invite_room_state: unknown;
-	room_version: string;
-};
-
+import { StateService } from './state.service';
 export class NotAllowedError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -42,8 +31,9 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
-		private readonly eventAuthorizationService: EventAuthorizationService,
 		private readonly emitterService: EventEmitterService,
+		@inject(delay(() => EventRepository))
+		private readonly eventRepository: EventRepository,
 	) {}
 
 	/**
@@ -104,8 +94,6 @@ export class InviteService {
 
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.serverName) {
-			await stateService.handlePdu(inviteEvent);
-
 			// let all servers know of this state change
 			// without it join events will not be processed if /event/{eventId} causes problems
 			void federationService.sendEventToAllServersInRoom(inviteEvent);
@@ -196,27 +184,11 @@ export class InviteService {
 
 	async processInvite(
 		event: PduForType<'m.room.member'>,
-		roomId: RoomID,
 		eventId: EventID,
 		roomVersion: RoomVersion,
-		authenticatedServer: string,
-		strippedStateEvents: PduForType<
-			| 'm.room.create'
-			| 'm.room.name'
-			| 'm.room.avatar'
-			| 'm.room.topic'
-			| 'm.room.join_rules'
-			| 'm.room.canonical_alias'
-			| 'm.room.encryption'
-		>[],
-	) {
+	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
 		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
-		await this.shouldProcessInvite(strippedStateEvents);
-
-		const residentServer = roomId.split(':').pop();
-		if (!residentServer) {
-			throw new Error(`Invalid roomId ${roomId}`);
-		}
+		await this.shouldProcessInvite(event.unsigned.invite_room_state);
 
 		const inviteEvent =
 			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
@@ -230,25 +202,17 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
-		// we are the host of the server
-		if (residentServer === this.configService.serverName) {
-			await this.eventAuthorizationService.checkAclForInvite(
-				roomId,
-				authenticatedServer,
-			);
+		await this.eventRepository.forceInsertOrUpdateEventWithStateId(
+			inviteEvent.eventId,
+			inviteEvent.event,
+			'' as StateID,
+			true, // partial = true
+		);
 
-			// attempt to persist the invite event as we already have the state
-
-			await this.stateService.handlePdu(inviteEvent);
-
-			// we do not send transaction here
-			// the asking server will handle the transactions
-
-			this.emitterService.emit('homeserver.matrix.membership', {
-				event_id: inviteEvent.eventId,
-				event: inviteEvent.event,
-			});
-		}
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: inviteEvent.eventId,
+			event: inviteEvent.event,
+		});
 
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
