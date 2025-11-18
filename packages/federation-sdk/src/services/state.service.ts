@@ -774,30 +774,39 @@ export class StateService {
 	// 	return this.getStateAtStateId(stateId, event.version);
 	// }
 	async getServerSetInRoom(roomId: string) {
-		const state = await this.getLatestRoomState(roomId);
-
 		const servers = new Set<string>();
 
-		for (const event of state.values()) {
-			if (!event.isMembershipEvent() || event.getMembership() !== 'join') {
-				continue;
-			}
+		try {
+			const state = await this.getLatestRoomState(roomId);
 
-			try {
-				const server = extractDomainFromId(event.stateKey as string);
-				if (server) {
-					servers.add(server);
+			for (const event of state.values()) {
+				if (!event.isMembershipEvent() || event.getMembership() !== 'join') {
+					continue;
 				}
-			} catch (error) {
-				this.logger.error({
-					err: error,
-					eventId: event.eventId,
-					msg: 'error extracting server',
-				});
-			}
-		}
 
-		return servers;
+				try {
+					const server = extractDomainFromId(event.stateKey as string);
+					if (server) {
+						servers.add(server);
+					}
+				} catch (error) {
+					this.logger.error({
+						err: error,
+						eventId: event.eventId,
+						msg: 'error extracting server',
+					});
+				}
+			}
+
+			return servers;
+		} catch (error) {
+			this.logger.error({
+				err: error,
+				roomId: roomId,
+				msg: 'error getting server set in room',
+			});
+			return servers;
+		}
 	}
 
 	// @deprecated use getServerSetInRoom
