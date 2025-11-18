@@ -3,6 +3,7 @@ import pino from 'pino';
 const logger = pino({
 	name: 'homeserver',
 	level: process.env.LOG_LEVEL || 'info',
+	timestamp: pino.stdTimeFunctions.isoTime,
 	transport:
 		process.env.NODE_ENV === 'development'
 			? {
