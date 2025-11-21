@@ -8,7 +8,6 @@ import {
 	roomPowerLevelsEvent,
 } from '@rocket.chat/federation-core';
 import { delay, inject, singleton } from 'tsyringe';
-import { FederationService } from './federation.service';
 
 import {
 	ForbiddenError,
@@ -34,11 +33,17 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
+import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
-import { StateService, UnknownRoomError } from './state.service';
+import {
+	RoomInfoNotReadyError,
+	StateService,
+	UnknownRoomError,
+} from './state.service';
 
 @singleton()
 export class RoomService {
@@ -57,6 +62,7 @@ export class RoomService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
+		private readonly emitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -890,6 +896,11 @@ export class RoomService {
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
 
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: membershipEvent.eventId,
+				event: membershipEvent.event,
+			});
+
 			return membershipEvent.eventId;
 		}
 
@@ -1268,6 +1279,7 @@ export class RoomService {
 
 		await this.roomRepository.markRoomAsDeleted(roomId, event.eventId);
 
+		// TODO: check if all sendEventToAllServersInRoom should be followed by an emitter
 		void this.federationService.sendEventToAllServersInRoom(event);
 
 		logger.info(`Successfully marked room ${roomId} as tombstone`);

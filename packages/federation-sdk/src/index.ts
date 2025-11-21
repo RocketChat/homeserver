@@ -1,11 +1,7 @@
 import 'reflect-metadata';
 
 import type { Emitter } from '@rocket.chat/emitter';
-import type {
-	EventStagingStore,
-	Membership,
-	MessageType,
-} from '@rocket.chat/federation-core';
+import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type {
 	EventID,
 	EventStore,
@@ -90,6 +86,10 @@ export type HomeserverEventSignatures = {
 	'homeserver.matrix.encrypted': {
 		event_id: EventID;
 		event: PduForType<'m.room.encrypted'>;
+	};
+	'homeserver.matrix.room.create': {
+		event: PduForType<'m.room.create'>;
+		event_id: EventID;
 	};
 	'homeserver.matrix.message': {
 		event_id: EventID;
