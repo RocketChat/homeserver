@@ -144,7 +144,6 @@ export async function init({
 	emitter?: Emitter<HomeserverEventSignatures>;
 	dbConfig: {
 		uri: string;
-		name: string;
 		poolSize: number;
 	};
 }) {

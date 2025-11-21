@@ -7,9 +7,7 @@ export class DatabaseConnectionService {
 	private connectionPromise: Promise<void> | null = null;
 	private readonly logger = createLogger('DatabaseConnectionService');
 
-	constructor(
-		private readonly config: { uri: string; name: string; poolSize: number },
-	) {
+	constructor(private readonly config: { uri: string; poolSize: number }) {
 		this.connect().catch((err) =>
 			this.logger.error({ msg: 'Initial database connection failed', err }),
 		);
@@ -47,8 +45,15 @@ export class DatabaseConnectionService {
 				this.client = new MongoClient(dbConfig.uri, options);
 				this.client.connect();
 
-				this.db = this.client.db(dbConfig.name);
-				this.logger.info(`Connected to MongoDB database: ${dbConfig.name}`);
+				const dbName = this.client.options.dbName;
+				if (!dbName) {
+					throw new Error(
+						"Can't get database name from MongoDB connection string",
+					);
+				}
+
+				this.db = this.client.db(dbName);
+				this.logger.info(`Connected to MongoDB database: ${dbName}`);
 
 				resolve();
 			} catch (error: unknown) {

@@ -39,8 +39,7 @@ export async function setup() {
 
 	await init({
 		dbConfig: {
-			uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/matrix',
-			name: process.env.DATABASE_NAME || 'matrix',
+			uri: process.env.MONGO_URL || 'mongodb://localhost:27017/matrix',
 			poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
 		},
 	});
