@@ -124,9 +124,6 @@ export class StagingAreaService {
 					throw new MissingEventsError('Added missing events');
 				}
 
-				if ('from' in event && event.from !== 'join') {
-					await this.processAuthorizationStage(event);
-				}
 				await this.stateService.handlePdu(await toEventBase(event.event));
 				await this.processNotificationStage(event);
 
@@ -246,23 +243,6 @@ export class StagingAreaService {
 		}
 
 		return addedMissing;
-	}
-
-	private async processAuthorizationStage(event: EventStagingStore) {
-		this.logger.debug(`Authorizing event ${event._id}`);
-		const authEvents = await this.eventService.getAuthEventIds(
-			event.event.type,
-			{ roomId: event.event.room_id, senderId: event.event.sender },
-		);
-
-		const isAuthorized = await this.eventAuthService.authorizeEvent(
-			event.event,
-			authEvents.map((e) => e.event),
-		);
-
-		if (!isAuthorized) {
-			throw new Error('event authorization failed');
-		}
 	}
 
 	private async processNotificationStage(event: EventStagingStore) {
