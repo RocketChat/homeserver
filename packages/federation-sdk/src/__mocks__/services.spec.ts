@@ -10,7 +10,7 @@ import { repositories } from './repositories.spec';
 const configService = new ConfigService();
 
 configService.setConfig({
-	signingKey: 'zSkmr713LnEDbxlkYq2ZqIiKTQNsyMOU0T2CEeC44C4',
+	signingKey: 'ed25519 0 zSkmr713LnEDbxlkYq2ZqIiKTQNsyMOU0T2CEeC44C4',
 	serverName: 'test.local',
 } as AppConfig);
 

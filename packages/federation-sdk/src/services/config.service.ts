@@ -143,8 +143,11 @@ export class ConfigService {
 			throw new Error('Signing key is not configured');
 		}
 
+		const [, version, signingKey] = this.config.signingKey.split(' ');
+
 		this.signer = await loadEd25519SignerFromSeed(
-			fromBase64ToBytes(this.config.signingKey),
+			fromBase64ToBytes(signingKey),
+			version,
 		);
 
 		return this.signer;
