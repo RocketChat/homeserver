@@ -88,51 +88,6 @@ export async function getSignaturesFromRemote<
 	return remoteSignatures;
 }
 
-export const verifySignature = (
-	content: string,
-	signingName: string,
-	signature: Uint8Array,
-	publicKey: Uint8Array,
-	algorithm: EncryptionValidAlgorithm,
-	_version: string,
-) => {
-	if (algorithm !== EncryptionValidAlgorithm.ed25519) {
-		throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
-	}
-
-	if (
-		!nacl.sign.detached.verify(
-			new TextEncoder().encode(content),
-			signature,
-			publicKey,
-		)
-	) {
-		throw new Error(`Invalid signature for ${signingName}`);
-	}
-	return true;
-};
-
-export const verifyJsonSignature = <T extends object>(
-	content: T,
-	signingName: string,
-	signature: Uint8Array,
-	publicKey: Uint8Array,
-	algorithm: EncryptionValidAlgorithm,
-	version: string,
-) => {
-	const { signatures: _, unsigned: _unsigned, ...__rest } = content as any;
-	const canonicalJson = encodeCanonicalJson(__rest);
-
-	return verifySignature(
-		canonicalJson,
-		signingName,
-		signature,
-		publicKey,
-		algorithm,
-		version,
-	);
-};
-
 export async function verifySignaturesFromRemote<
 	T extends object & {
 		signatures?: Record<string, Record<ProtocolVersionKey, string>>;
