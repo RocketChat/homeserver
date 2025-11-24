@@ -8,6 +8,7 @@ import { EventAuthorizationService } from './services/event-authorization.servic
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
+import { FederationValidationService } from './services/federation-validation.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
 import { MediaService } from './services/media.service';
@@ -39,6 +40,7 @@ export class FederationSDK {
 		private readonly federationRequestService: FederationRequestService,
 		private readonly federationService: FederationService,
 		public readonly eventEmitterService: EventEmitterService,
+		private readonly federationValidationService: FederationValidationService,
 	) {}
 
 	createDirectMessageRoom(
@@ -222,6 +224,14 @@ export class FederationSDK {
 		...args: Parameters<typeof this.wellKnownService.getWellKnownHostData>
 	) {
 		return this.wellKnownService.getWellKnownHostData(...args);
+	}
+
+	validateOutboundUser(
+		...args: Parameters<
+			typeof this.federationValidationService.validateOutboundUser
+		>
+	) {
+		return this.federationValidationService.validateOutboundUser(...args);
 	}
 
 	updateUserPowerLevel(

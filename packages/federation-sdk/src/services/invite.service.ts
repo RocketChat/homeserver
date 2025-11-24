@@ -14,6 +14,7 @@ import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
+import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 export class NotAllowedError extends Error {
@@ -35,6 +36,7 @@ export class InviteService {
 		private readonly emitterService: EventEmitterService,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
+		private readonly federationValidationService: FederationValidationService,
 	) {}
 
 	/**
@@ -93,6 +95,11 @@ export class InviteService {
 			);
 		}
 
+		await this.federationValidationService.validateOutboundInvite(
+			userId,
+			roomId,
+		);
+
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.serverName) {
 			await stateService.handlePdu(inviteEvent);
@@ -111,9 +118,7 @@ export class InviteService {
 			};
 		}
 
-		// invited user from another room
 		// get signed invite event
-
 		const inviteResponse = await federationService.inviteUser(
 			inviteEvent,
 			roomVersion,
