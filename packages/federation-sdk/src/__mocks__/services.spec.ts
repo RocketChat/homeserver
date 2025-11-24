@@ -1,20 +1,27 @@
 import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { AppConfig, ConfigService } from '../services/config.service';
 import { EventEmitterService } from '../services/event-emitter.service';
 import { EventService } from '../services/event.service';
 import { KeyService } from '../services/key.service';
 import { SignatureVerificationService } from '../services/signature-verification.service';
 import { StateService } from '../services/state.service';
-import { config } from './config.service.spec';
 import { repositories } from './repositories.spec';
 
-const keyService = new KeyService(config, repositories.keys);
+const configService = new ConfigService();
+
+configService.setConfig({
+	signingKey: 'FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04',
+	serverName: 'test.local',
+} as AppConfig);
+
+const keyService = new KeyService(configService, repositories.keys);
 
 const stagingAreaQueue = new StagingAreaQueue();
 
 const stateService = new StateService(
 	repositories.states,
 	repositories.events,
-	config,
+	configService,
 );
 
 const eventEmitter = new EventEmitterService();
@@ -24,7 +31,7 @@ const signatureVerificationService = new SignatureVerificationService(
 );
 
 const eventService = new EventService(
-	config,
+	configService,
 	stagingAreaQueue,
 	stateService,
 	eventEmitter,

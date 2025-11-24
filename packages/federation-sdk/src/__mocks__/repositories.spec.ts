@@ -11,7 +11,18 @@ import {
 	StateGraphRepository,
 	type StateGraphStore,
 } from '../repositories/state-graph.repository';
-import { db } from './config.service.spec';
+
+import { DatabaseConnectionService } from '../services/database-connection.service';
+
+const databaseConfig = {
+	uri: 'mongodb://localhost:27017/',
+	name: 'matrix_test',
+	poolSize: 100,
+};
+
+const database = new DatabaseConnectionService(databaseConfig);
+
+const db = await database.getDb();
 
 const keysCollection = db.collection<ServerKey>('test_keys');
 const eventsCollection = db.collection<EventStore>('test_events');
@@ -19,14 +30,6 @@ const eventStagingCollection =
 	db.collection<EventStagingStore>('test_event_staging');
 const lockCollection = db.collection<Lock>('test_locks');
 const statesCollection = db.collection<StateGraphStore>('test_states');
-
-export const collections = {
-	keys: keysCollection,
-	events: eventsCollection,
-	eventsStaging: eventStagingCollection,
-	locks: lockCollection,
-	states: statesCollection,
-};
 
 const keyRepository = new KeyRepository(keysCollection);
 

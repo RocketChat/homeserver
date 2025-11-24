@@ -20,10 +20,10 @@ import {
 	UserID,
 } from '@rocket.chat/federation-room';
 import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
-import { config } from '../__mocks__/config.service.spec';
 import { repositories } from '../__mocks__/repositories.spec';
 import { eventService } from '../__mocks__/services.spec';
 import { StateService } from './state.service';
+import type { ConfigService } from './config.service';
 
 const event = {
 	auth_events: [
@@ -164,10 +164,9 @@ runIfMongoExists(() =>
 			beforeEach(async () => {
 				inboundServer = `localhost${Math.floor(Math.random() * 10000).toString()}`;
 				const newConfig = {
-					...config,
 					getSigningKey: async () => signer,
 					serverName: inboundServer,
-				} as unknown as typeof config;
+				} as unknown as ConfigService;
 
 				stateService = new StateService(
 					repositories.states,
@@ -221,15 +220,11 @@ runIfMongoExists(() =>
 					roomVersion,
 				);
 
-				console.log('PDU', pdu.eventId);
-
 				await stateService.signEvent(pdu);
 
 				// now OUR event service gets this event
 				// to allow fetchign the key we mock
 				fetchJsonMock.mockReturnValue(Promise.resolve(originalKeyResponse));
-
-				console.log(pdu, pdu.event);
 
 				eventService
 					.validateHashAndSignatures(pdu.event, roomVersion)

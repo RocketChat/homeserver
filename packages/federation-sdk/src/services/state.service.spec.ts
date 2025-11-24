@@ -115,14 +115,9 @@ async function copyDepth<
 
 runIfMongoExists(() =>
 	describe('StateService', async () => {
-		if (!process.env.RUN_MONGO_TESTS) {
-			console.warn('Skipping tests that require a database');
-			return;
-		}
-
 		const databaseConfig = {
 			uri:
-				process.env.MONGO_URI ||
+				process.env.MONGO_URL ||
 				'mongodb://localhost:27017?directConnection=true',
 			name: 'matrix_test',
 			poolSize: 100,
@@ -1393,8 +1388,6 @@ runIfMongoExists(() =>
 				roomCreateEvent.roomId,
 			);
 
-			// console.log((stte3 as any).stateMap);
-
 			expect(state3.name).toBe(
 				roomNameEvent.getContent<PduRoomNameEventContent>().name,
 			); // should set the state to right versions
@@ -1468,8 +1461,6 @@ runIfMongoExists(() =>
 			// const _state2 = await stateService.findStateAtEvent(joinRuleInvite.eventId);
 
 			// const state2 = new RoomState(_state2);
-
-			// console.log('state', [..._state2.entries()]);
 
 			const state2 = await stateService.getLatestRoomState2(
 				roomCreateEvent.roomId,
@@ -2300,8 +2291,6 @@ runIfMongoExists(() =>
 						authChain.map((e) => e.event),
 					);
 
-					console.log(state.ourUserJoinEvent.eventId);
-
 					expect(stateId).toBeString();
 
 					const event = await stateService.getEvent(
@@ -2369,9 +2358,6 @@ runIfMongoExists(() =>
 							previousEventsInStore.length ===
 							event.getPreviousEventIds().length
 						) {
-							console.log(
-								`All previous events found in store ${event.eventId}`,
-							);
 							// start processing this event now
 							await stateService._resolveStateAtEvent(event);
 							return;
@@ -2387,8 +2373,6 @@ runIfMongoExists(() =>
 								eventIdsToFind.push(previousEventId);
 							}
 						}
-
-						console.log(`Events to find ${eventIdsToFind}`);
 
 						const previousEvents = (await remoteFetch(
 							eventIdsToFind,
@@ -2413,20 +2397,14 @@ runIfMongoExists(() =>
 							.reverse();
 
 						for (const previousEvent of previousEvents) {
-							console.log(`Waling ${previousEvent.eventId}`);
 							await walk(previousEvent);
 						}
-
-						console.log(
-							`Finishing saving ${event.eventId}, all [${event.getPreviousEventIds().join(', ')}] events has been saved`,
-						);
 
 						// once all previous events have been walked we process this event
 						await stateService._resolveStateAtEvent(event);
 					};
 
 					for (const event of eventsToWalk) {
-						console.log(`Starting walking ${event.eventId}`);
 						await walk(event).catch(console.error);
 					}
 

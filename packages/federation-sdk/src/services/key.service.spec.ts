@@ -4,7 +4,6 @@ import { Mock, describe, expect, it, mock } from 'bun:test';
 import { afterEach, beforeEach } from 'node:test';
 
 import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
-import { config } from '../__mocks__/config.service.spec';
 import { keyService } from '../__mocks__/services.spec';
 import { signer } from '../__mocks__/singer.spec';
 
@@ -83,7 +82,7 @@ runIfMongoExists(() =>
 			expect(key.verify_keys['ed25519:0'].key).toBeString();
 			expect(key.verify_keys['ed25519:0'].key).toBe(publicKey);
 
-			const signature = key?.signatures?.[config.serverName];
+			const signature = key?.signatures?.['test.local'];
 
 			expect(signature).toBeDefined();
 			expect(Object.keys(signature).length).toBeGreaterThanOrEqual(1);

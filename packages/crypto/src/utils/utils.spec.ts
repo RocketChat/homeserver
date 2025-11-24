@@ -154,8 +154,6 @@ describe('Signing and verifying payloads', async () => {
 
 		const serialized = encodeCanonicalJson(rest);
 
-		console.log({ serialized });
-
 		const signature =
 			signatures['syn1.tunnel.dev.rocket.chat']['ed25519:a_FAET'];
 
