@@ -70,7 +70,6 @@ export * from './models/event.model';
 
 // Procedures
 export { makeJoinEventBuilder } from './procedures/makeJoin';
-export { getPublicKeyFromRemoteServer } from './procedures/getPublicKeyFromServer';
 
 export { createLogger, logger } from './utils/logger';
 
