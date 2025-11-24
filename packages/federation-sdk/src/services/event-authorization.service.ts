@@ -2,7 +2,6 @@ import {
 	createLogger,
 	extractSignaturesFromHeader,
 	generateId,
-	validateAuthorizationHeader,
 } from '@rocket.chat/federation-core';
 import type {
 	EventID,

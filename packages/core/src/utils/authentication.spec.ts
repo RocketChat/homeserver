@@ -6,7 +6,6 @@ import {
 	computeHash,
 	extractSignaturesFromHeader,
 	signRequest,
-	validateAuthorizationHeader,
 } from './authentication';
 
 import { generateId } from './generateId';

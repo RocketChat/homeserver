@@ -15,7 +15,6 @@ export {
 	computeHash,
 	extractSignaturesFromHeader,
 	signRequest,
-	validateAuthorizationHeader,
 	type HashedEvent,
 } from './utils/authentication';
 
