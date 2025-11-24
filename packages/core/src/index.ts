@@ -24,7 +24,6 @@ export {
 	isValidAlgorithm,
 	getSignaturesFromRemote,
 	verifySignature,
-	verifyJsonSignature,
 	verifySignaturesFromRemote,
 	signText,
 	signData,
