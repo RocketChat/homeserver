@@ -23,7 +23,6 @@ export {
 	signJson,
 	isValidAlgorithm,
 	getSignaturesFromRemote,
-	signText,
 	signData,
 } from './utils/signJson';
 

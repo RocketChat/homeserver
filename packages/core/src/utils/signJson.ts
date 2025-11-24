@@ -88,18 +88,6 @@ export async function getSignaturesFromRemote<
 	return remoteSignatures;
 }
 
-export async function signText(
-	data: string | Uint8Array,
-	signingKey: Uint8Array,
-) {
-	const signature = nacl.sign.detached(
-		typeof data === 'string' ? new TextEncoder().encode(data) : data,
-		signingKey,
-	);
-
-	return toUnpaddedBase64(signature);
-}
-
 export async function signData(
 	data: string | Uint8Array,
 	signingKey: Uint8Array,
