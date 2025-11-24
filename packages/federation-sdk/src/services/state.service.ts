@@ -59,6 +59,13 @@ export class PartialStateResolutionError extends Error {
 export class UnknownRoomError extends Error {
 	constructor(roomId: RoomID) {
 		super(`Room ${roomId} does not exist`);
+		this.name = 'UnknownRoomError';
+	}
+}
+export class RoomInfoNotReadyError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'RoomInfoNotReadyError';
 	}
 }
 
@@ -83,7 +90,9 @@ export class StateService {
 				'm.room.create',
 			)) ?? {};
 		if (event?.type !== 'm.room.create') {
-			throw new Error('Create event mapping not found for room information');
+			throw new RoomInfoNotReadyError(
+				'Create event mapping not found for room information',
+			);
 		}
 
 		if (!stateId) {

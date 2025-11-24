@@ -8,7 +8,6 @@ import {
 	roomPowerLevelsEvent,
 } from '@rocket.chat/federation-core';
 import { delay, inject, singleton } from 'tsyringe';
-import { FederationService } from './federation.service';
 
 import {
 	ForbiddenError,
@@ -34,11 +33,17 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
+import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
-import { StateService, UnknownRoomError } from './state.service';
+import {
+	RoomInfoNotReadyError,
+	StateService,
+	UnknownRoomError,
+} from './state.service';
 
 @singleton()
 export class RoomService {
@@ -57,6 +62,7 @@ export class RoomService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
+		private readonly emitterService: EventEmitterService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -226,6 +232,13 @@ export class RoomService {
 		username: UserID,
 		name: string,
 		joinRule: PduJoinRuleEventContent['join_rule'],
+		powers: {
+			users?: Record<UserID, number>;
+			events?: Record<string, number>;
+		} = {
+			users: {},
+			events: {},
+		},
 	) {
 		logger.debug(
 			`Creating room for ${username} with ${name} join_rule: ${joinRule}`,
@@ -283,10 +296,13 @@ export class RoomService {
 					type: 'm.room.power_levels',
 					content: {
 						users: {
+							...powers.users,
 							[username]: 100,
 						},
 						users_default: 0,
-						events: {},
+						events: {
+							...powers.events,
+						},
 						events_default: 0,
 						state_default: 50,
 						ban: 50,
@@ -702,6 +718,50 @@ export class RoomService {
 		return kickEvent.eventId;
 	}
 
+	async updateMemberProfile(
+		roomId: RoomID,
+		userId: UserID,
+		displayName: string,
+	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const currentState = await this.stateService.getLatestRoomState(roomId);
+
+		const currentMembership = currentState.get(`m.room.member:${userId}`);
+		if (!currentMembership || currentMembership.getMembership() !== 'join') {
+			throw new Error(`User ${userId} is not a member of room ${roomId}`);
+		}
+
+		const memberEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'join', // SAME membership (not changing)
+					displayname: displayName, // NEW displayname
+				},
+				room_id: roomId,
+				sender: userId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+			},
+			roomInfo.room_version,
+		);
+
+		await this.stateService.handlePdu(memberEvent);
+
+		if (memberEvent.rejected) {
+			throw new Error(
+				`Member profile update rejected: ${memberEvent.rejectReason}`,
+			);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(memberEvent);
+
+		return memberEvent;
+	}
+
 	async banUser(
 		roomId: RoomID,
 		bannedUserId: UserID,
@@ -828,11 +888,6 @@ export class RoomService {
 			this.eventEmitterService.emit('homeserver.matrix.membership', {
 				event_id: membershipEvent.eventId,
 				event: membershipEvent.event,
-				room_id: roomId,
-				state_key: userId,
-				content: { membership: 'join' },
-				sender: userId,
-				origin_server_ts: Date.now(),
 			});
 
 			if (membershipEvent.rejected) {
@@ -840,6 +895,11 @@ export class RoomService {
 			}
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
+
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: membershipEvent.eventId,
+				event: membershipEvent.event,
+			});
 
 			return membershipEvent.eventId;
 		}
@@ -1219,6 +1279,7 @@ export class RoomService {
 
 		await this.roomRepository.markRoomAsDeleted(roomId, event.eventId);
 
+		// TODO: check if all sendEventToAllServersInRoom should be followed by an emitter
 		void this.federationService.sendEventToAllServersInRoom(event);
 
 		logger.info(`Successfully marked room ${roomId} as tombstone`);

@@ -128,17 +128,21 @@ export const GetMissingEventsParamsDto = t.Object({
 export const GetMissingEventsBodyDto = t.Object({
 	earliest_events: t.Array(t.String(), { description: 'Earliest events' }),
 	latest_events: t.Array(t.String(), { description: 'Latest events' }),
-	limit: t.Number({
-		minimum: 1,
-		maximum: 100,
-		default: 10,
-		description: 'Maximum number of events to return',
-	}),
-	min_depth: t.Number({
-		minimum: 1,
-		default: 1,
-		description: 'Minimum depth of the events to return',
-	}),
+	limit: t.Optional(
+		t.Number({
+			minimum: 1,
+			maximum: 20,
+			default: 10,
+			description: 'Maximum number of events to return',
+		}),
+	),
+	min_depth: t.Optional(
+		t.Number({
+			minimum: 0,
+			default: 0,
+			description: 'Minimum depth of the events to return',
+		}),
+	),
 });
 
 export const GetMissingEventsResponseDto = t.Object({

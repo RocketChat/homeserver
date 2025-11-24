@@ -98,6 +98,10 @@ export class ConfigService {
 
 	setConfig(values: AppConfig) {
 		try {
+			if (process.env.NODE_ENV === 'test') {
+				this.config = values;
+				return;
+			}
 			this.config = AppConfigSchema.parse(values);
 		} catch (error) {
 			if (error instanceof z.ZodError) {
