@@ -1062,11 +1062,15 @@ export class RoomService {
 		return joinEventFinal.eventId;
 	}
 
-	async acceptInvite(inviteEventId: EventID, userId: UserID) {
-		const inviteEventStore =
-			await this.eventService.getEventById(inviteEventId);
+	async acceptInvite(roomId: RoomID, userId: UserID) {
+		const inviteEventStore = await this.eventService.findInviteEvent(
+			roomId,
+			userId,
+		);
 		if (!inviteEventStore) {
-			throw new Error(`Invite event not found: ${inviteEventId}`);
+			throw new Error(
+				`Invite event not found for user ${userId} in room ${roomId}`,
+			);
 		}
 
 		const roomVersion = PersistentEventFactory.defaultRoomVersion;
@@ -1078,14 +1082,17 @@ export class RoomService {
 		return this.joinUser(inviteEvent, userId);
 	}
 
-	async rejectInvite(inviteEventId: EventID, userId: UserID): Promise<void> {
-		const inviteEventStore =
-			await this.eventService.getEventById(inviteEventId);
+	async rejectInvite(roomId: RoomID, userId: UserID): Promise<void> {
+		const inviteEventStore = await this.eventService.findInviteEvent(
+			roomId,
+			userId,
+		);
 		if (!inviteEventStore) {
-			throw new Error(`Invite event not found: ${inviteEventId}`);
+			throw new Error(
+				`Invite event not found for user ${userId} in room ${roomId}`,
+			);
 		}
 
-		const roomId = inviteEventStore.event.room_id;
 		const invitingServer = extractDomainFromId(inviteEventStore.event.sender);
 
 		if (!invitingServer) {
