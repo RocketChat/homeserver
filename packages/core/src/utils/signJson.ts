@@ -1,5 +1,4 @@
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
-import nacl from 'tweetnacl';
 import type { SigningKey } from '../types';
 import { EncryptionValidAlgorithm } from '../types';
 import { toBinaryData, toUnpaddedBase64 } from './binaryData';
@@ -54,15 +53,3 @@ export const isValidAlgorithm = (
 ): algorithm is EncryptionValidAlgorithm => {
 	return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
 };
-
-export async function signData(
-	data: string | Uint8Array,
-	signingKey: Uint8Array,
-): Promise<Uint8Array> {
-	const signature = nacl.sign.detached(
-		typeof data === 'string' ? new TextEncoder().encode(data) : data,
-		signingKey,
-	);
-
-	return signature;
-}
