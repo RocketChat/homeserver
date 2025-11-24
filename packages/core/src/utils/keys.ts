@@ -1,7 +1,20 @@
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '../types';
 import type { SigningKey } from '../types';
-import { signData } from './signJson';
+
+// these functions are used by tests only
+
+async function signData(
+	data: string | Uint8Array,
+	signingKey: Uint8Array,
+): Promise<Uint8Array> {
+	const signature = nacl.sign.detached(
+		typeof data === 'string' ? new TextEncoder().encode(data) : data,
+		signingKey,
+	);
+
+	return signature;
+}
 
 export async function generateKeyPairs(
 	seed: Uint8Array,

@@ -22,7 +22,6 @@ export type { ProtocolVersionKey, SignedJson } from './utils/signJson';
 export {
 	signJson,
 	isValidAlgorithm,
-	signData,
 } from './utils/signJson';
 
 // Binary data utilities

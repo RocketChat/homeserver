@@ -1,8 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import fs from 'node:fs/promises';
+import { describe, expect, it } from 'bun:test';
 import nacl from 'tweetnacl';
 import { EncryptionValidAlgorithm } from '../types';
-import { toUnpaddedBase64 } from './binaryData';
 import { generateKeyPairs, generateKeyPairsFromString } from './keys';
 
 describe('keys', () => {
