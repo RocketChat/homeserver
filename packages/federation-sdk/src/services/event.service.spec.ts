@@ -22,8 +22,8 @@ import {
 import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
 import { repositories } from '../__mocks__/repositories.spec';
 import { eventService } from '../__mocks__/services.spec';
-import { StateService } from './state.service';
 import type { ConfigService } from './config.service';
+import { StateService } from './state.service';
 
 const event = {
 	auth_events: [
