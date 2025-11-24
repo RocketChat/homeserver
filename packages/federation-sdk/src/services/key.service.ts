@@ -13,7 +13,7 @@ import {
 	signJson,
 } from '@rocket.chat/federation-crypto';
 import { PersistentEventBase } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 import { KeyRepository } from '../repositories/key.repository';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 import { ConfigService } from './config.service';
@@ -54,17 +54,12 @@ export type OldVerifierKey = {
 
 @singleton()
 export class KeyService {
-	private signer: Signer | undefined;
-
 	private logger = createLogger('KeyService');
 	constructor(
 		private readonly configService: ConfigService,
+		@inject(delay(() => KeyRepository))
 		private readonly keyRepository: KeyRepository,
-	) {
-		this.configService.getSigningKey().then((signer) => {
-			this.signer = signer;
-		});
-	}
+	) {}
 
 	public isVerifierAllowedToCheckEvent(
 		event: PersistentEventBase,
@@ -212,10 +207,8 @@ export class KeyService {
 		serverKeys: Omit<ServerKey, 'pem' | '_createdAt' | '_updatedAt'>[],
 		minimumValidUntil = Date.now(),
 	): Promise<KeyV2ServerResponse> {
-		if (!this.signer) {
-			// need this to sign the response json, no point in calculating anythingg if this isn't ready
-			throw new Error('Signing key not configured');
-		}
+		const signer = await this.configService.getSigningKey();
+
 		const verifyKeys: KeyV2ServerResponse['verify_keys'] = {};
 
 		const oldVerifyKeys: KeyV2ServerResponse['old_verify_keys'] = {};
@@ -253,13 +246,13 @@ export class KeyService {
 			valid_until_ts: validUntil,
 		};
 
-		const signature = await signJson(response, this.signer);
+		const signature = await signJson(response, signer);
 
 		return {
 			...response,
 			signatures: {
 				[this.configService.serverName]: {
-					[this.signer.id]: signature,
+					[signer.id]: signature,
 				},
 			},
 		};
@@ -267,11 +260,6 @@ export class KeyService {
 
 	// this shouldn't be here, however, to copy the controller level logic from homeserver router to rocket.chat would be a pain to keep up to date if changes are needed. for now, keeping here.
 	async handleQuery({ server_keys: serverKeys }: QueryRequestBody) {
-		if (!this.signer) {
-			// need this to sign the response json, no point in calculating anythingg if this isn't ready
-			throw new Error('Signing key not configured');
-		}
-
 		const serverKeysResponse = [] as KeyV2ServerResponse[];
 
 		const localKeysPerServer: Map<string, ServerKey[]> = new Map();
@@ -404,6 +392,8 @@ export class KeyService {
 			localKeysPerServer.set(serverName, keysForQuery);
 		}
 
+		const signer = await this.configService.getSigningKey();
+
 		const keys = await Promise.all([
 			// convert and sign
 			...localKeysPerServer
@@ -412,14 +402,14 @@ export class KeyService {
 			// sign with our keys
 			...serverKeysResponse.map(async (key): Promise<KeyV2ServerResponse> => {
 				const { signatures, ...rest } = key;
-				const signature = await signJson(rest, this.signer!);
+				const signature = await signJson(rest, signer);
 
 				return {
 					...rest,
 					signatures: {
 						...signatures,
 						[this.configService.serverName]: {
-							[this.signer!.id]: signature,
+							[signer.id]: signature,
 						},
 					},
 				};
@@ -610,15 +600,13 @@ export class KeyService {
 		// 		.findByServerName(this.configService.serverName)
 		// 		.toArray(),
 		// );
-		if (!this.signer) {
-			throw new Error('Signing key not configured');
-		}
+		const signer = await this.configService.getSigningKey();
 
 		return this.convertToKeyV2Response([
 			{
 				serverName: this.configService.serverName,
-				keyId: this.signer.id,
-				key: this.signer.getPublicKey().toBase64(),
+				keyId: signer.id,
+				key: signer.getPublicKey().toBase64(),
 
 				// TODO: this isn't currently in config, nor do we handle expiration yet
 				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year expiration
