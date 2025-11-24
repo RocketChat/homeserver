@@ -22,7 +22,6 @@ export type { ProtocolVersionKey, SignedJson } from './utils/signJson';
 export {
 	signJson,
 	isValidAlgorithm,
-	getSignaturesFromRemote,
 	signData,
 } from './utils/signJson';
 

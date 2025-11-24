@@ -55,39 +55,6 @@ export const isValidAlgorithm = (
 	return Object.values(EncryptionValidAlgorithm).includes(algorithm as any);
 };
 
-export async function getSignaturesFromRemote<
-	T extends object & {
-		signatures?: Record<string, Record<ProtocolVersionKey, string>>;
-		unsigned?: unknown;
-	},
->(jsonObject: T, signingName: string) {
-	const { signatures, unsigned: _unsigned /*..._rest */ } = jsonObject;
-	const remoteSignatures =
-		signatures?.[signingName] &&
-		Object.entries(signatures[signingName])
-			.map(([keyId, signature]) => {
-				const [algorithm, version] = keyId.split(':');
-				if (!isValidAlgorithm(algorithm)) {
-					throw new Error(`Invalid algorithm ${algorithm} for ${signingName}`);
-				}
-
-				return {
-					algorithm,
-					version,
-					signature,
-				};
-			})
-			.filter(({ algorithm }) =>
-				Object.values(EncryptionValidAlgorithm).includes(algorithm as any),
-			);
-
-	if (!remoteSignatures?.length) {
-		throw new Error(`Signatures not found for ${signingName}`);
-	}
-
-	return remoteSignatures;
-}
-
 export async function signData(
 	data: string | Uint8Array,
 	signingKey: Uint8Array,
