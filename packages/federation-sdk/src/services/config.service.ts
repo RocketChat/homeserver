@@ -19,11 +19,6 @@ export interface AppConfig {
 	timeout?: number;
 	// TODO: need this still?
 	signingKeyPath?: string;
-	database: {
-		uri: string;
-		name: string;
-		poolSize: number;
-	};
 	media: {
 		maxFileSize: number;
 		allowedMimeTypes: string[];
@@ -56,11 +51,6 @@ export const AppConfigSchema = z.object({
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
 	signingKeyPath: z.string(),
-	database: z.object({
-		uri: z.string().min(1, 'Database URI is required'),
-		name: z.string().min(1, 'Database name is required'),
-		poolSize: z.number().int().min(1, 'Pool size must be at least 1'),
-	}),
 	media: z.object({
 		maxFileSize: z
 			.number()
