@@ -555,8 +555,8 @@ export class EventService {
 		roomId: string,
 		earliestEventsId: EventID[],
 		latestEventsId: EventID[],
-		limit: number,
-		minDepth: number,
+		limit = 10,
+		minDepth = 0,
 	): Promise<{ events: Pdu[] }> {
 		const latestEventsData = await this.eventRepository
 			.findEventsByIdsWithDepth(roomId, latestEventsId)
