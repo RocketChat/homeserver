@@ -8,6 +8,7 @@ import {
 } from '@rocket.chat/federation-crypto';
 import type { PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+import { ConfigService } from './config.service';
 import { KeyService } from './key.service';
 
 export class InvalidEventSignatureError extends InvalidSignatureError {
@@ -47,7 +48,10 @@ export type FederationRequest<Content extends object> =
 
 @singleton()
 export class SignatureVerificationService {
-	constructor(private readonly keyService: KeyService) {}
+	constructor(
+		private readonly keyService: KeyService,
+		private readonly configService: ConfigService,
+	) {}
 
 	private readonly logger = createLogger('SignatureVerificationService');
 
@@ -127,6 +131,7 @@ export class SignatureVerificationService {
 		// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
 
 		const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
+
 		const {
 			origin,
 			destination,
@@ -152,20 +157,12 @@ export class SignatureVerificationService {
 			);
 		}
 
-		/*
-			{
-				"method": "POST",
-				"uri": "/target",
-				"origin": "origin.hs.example.com",
-				"destination": "destination.hs.example.com",
-				"content": <JSON-parsed request body>,
-				"signatures": {
-					"origin.hs.example.com": {
-						"ed25519:key1": "ABCDEF..."
-					}
-				}
-			}
-		*/
+		if (destination !== this.configService.serverName) {
+			throw new FailedSignatureVerificationPreconditionError(
+				'Header destination does not match this server name',
+			);
+		}
+
 		const toVerify = {
 			method,
 			uri,
@@ -177,28 +174,12 @@ export class SignatureVerificationService {
 			},
 		};
 
-		if (verifier) {
-			try {
-				await this.verifySignature(toVerify, origin, verifier);
-				return origin;
-			} catch (error) {
-				if (error instanceof InvalidSignatureError) {
-					throw new InvalidRequestSignatureError(
-						`Invalid request signature from origin ${origin}: ${error.message}`,
-					);
-				}
-
-				throw error;
-			}
-		}
-
-		const requiredVerifier = await this.keyService.getRequestVerifier(
-			origin,
-			key,
-		);
+		const signVerifier =
+			verifier || (await this.keyService.getRequestVerifier(origin, key));
 
 		try {
-			await this.verifySignature(toVerify, origin, requiredVerifier);
+			await this.verifySignature(toVerify, origin, signVerifier);
+
 			return origin;
 		} catch (error) {
 			if (error instanceof InvalidSignatureError) {
