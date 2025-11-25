@@ -1,14 +1,7 @@
 import type {
 	FetchResponse,
 	MultipartResult,
-	SigningKey,
 } from '@rocket.chat/federation-core';
-import {
-	authorizationHeaders,
-	computeAndMergeHash,
-} from '@rocket.chat/federation-core';
-import { extractURIfromURL } from '@rocket.chat/federation-core';
-import { EncryptionValidAlgorithm } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import { fetch } from '@rocket.chat/federation-core';
 import { signJson } from '@rocket.chat/federation-crypto';
@@ -70,6 +63,7 @@ export class FederationRequestService {
 		const headers = {
 			Authorization: authorizationHeaderValue,
 			...discoveryHeaders,
+			...(body && { 'Content-Type': 'application/json' }),
 		};
 
 		this.logger.debug(
