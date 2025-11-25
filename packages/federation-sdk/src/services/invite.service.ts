@@ -94,6 +94,8 @@ export class InviteService {
 
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.serverName) {
+			await stateService.handlePdu(inviteEvent);
+
 			// let all servers know of this state change
 			// without it join events will not be processed if /event/{eventId} causes problems
 			void federationService.sendEventToAllServersInRoom(inviteEvent);
@@ -149,24 +151,16 @@ export class InviteService {
 	}
 
 	private async shouldProcessInvite(
-		strippedStateEvents:
-			| PduForType<
-					| 'm.room.create'
-					| 'm.room.name'
-					| 'm.room.avatar'
-					| 'm.room.topic'
-					| 'm.room.join_rules'
-					| 'm.room.canonical_alias'
-					| 'm.room.encryption'
-			  >[]
-			| undefined,
+		strippedStateEvents: PduForType<
+			| 'm.room.create'
+			| 'm.room.name'
+			| 'm.room.avatar'
+			| 'm.room.topic'
+			| 'm.room.join_rules'
+			| 'm.room.canonical_alias'
+			| 'm.room.encryption'
+		>[],
 	): Promise<void> {
-		if (!strippedStateEvents || strippedStateEvents.length === 0) {
-			throw new Error(
-				'Missing invite_room_state required for policy validation',
-			);
-		}
-
 		const isRoomNonPrivate = strippedStateEvents.some(
 			(stateEvent) =>
 				stateEvent.type === 'm.room.join_rules' &&
@@ -195,8 +189,12 @@ export class InviteService {
 		eventId: EventID,
 		roomVersion: RoomVersion,
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
-		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
-		await this.shouldProcessInvite(event.unsigned?.invite_room_state);
+		if (!event.unsigned?.invite_room_state) {
+			throw new Error(
+				'Missing invite_room_state required for policy validation',
+			);
+		}
+		await this.shouldProcessInvite(event.unsigned.invite_room_state);
 
 		const inviteEvent =
 			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
