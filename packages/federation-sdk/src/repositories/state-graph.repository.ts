@@ -222,14 +222,4 @@ export class StateGraphRepository {
 			{ sort: { depth: -1 } },
 		);
 	}
-
-	async findCreateEventIdByRoomId(roomId: RoomID) {
-		const doc = await this.collection.findOne({
-			roomId,
-			type: 'm.room.create',
-			stateKey: '',
-		});
-
-		return doc?.eventId;
-	}
 }

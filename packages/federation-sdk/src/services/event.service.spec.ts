@@ -65,7 +65,7 @@ runIfMongoExists(() =>
 		it('should fail to fetch room informatin of unknown room, sanity check for mock loading', async () => {
 			expect(
 				eventService.getRoomVersion({ room_id: 'abc123' } as Pdu),
-			).rejects.toThrowError(/Create event not found/);
+			).rejects.toThrowError('Room abc123 does not exist');
 		});
 
 		const { getHomeserverFinalAddress: originalServerDiscovery } = await import(

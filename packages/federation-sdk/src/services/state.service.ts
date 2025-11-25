@@ -103,16 +103,10 @@ export class StateService {
 	}
 
 	async getRoomVersion(roomId: string): Promise<RoomVersion> {
-		const createEventId = await this.stateRepository.findCreateEventIdByRoomId(
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
 			roomId as RoomID,
+			'm.room.create',
 		);
-		if (!createEventId) {
-			throw new Error(
-				'Create event not found for room version maybe event hasn;t been processed yet',
-			);
-		}
-
-		const createEvent = await this.eventRepository.findById(createEventId);
 		if (!createEvent) {
 			throw new UnknownRoomError(roomId as RoomID);
 		}
@@ -410,6 +404,7 @@ export class StateService {
 	// saves a full/partial state
 	// returns the final state id
 	async processInitialState(pdus: Pdu[], authChain: Pdu[]) {
+		console.log('processInitialState pdus/authChain ->', pdus, authChain);
 		const create = authChain.find((pdu) => pdu.type === 'm.room.create');
 		if (create?.type !== 'm.room.create') {
 			throw new Error('No create event found in auth chain to save');
