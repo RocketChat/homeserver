@@ -606,7 +606,7 @@ export class KeyService {
 			{
 				serverName: this.configService.serverName,
 				keyId: signer.id,
-				key: signer.getPublicKey().toBase64(),
+				key: Buffer.from(signer.getPublicKey()).toString('base64'),
 
 				// TODO: this isn't currently in config, nor do we handle expiration yet
 				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year expiration
