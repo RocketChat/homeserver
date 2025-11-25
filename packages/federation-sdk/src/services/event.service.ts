@@ -516,13 +516,6 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	public async getRoomVersion(event: Pdu) {
-		return (
-			this.stateService.getRoomVersion(event.room_id) ||
-			PersistentEventFactory.defaultRoomVersion
-		);
-	}
-
 	private getEventSchema(roomVersion: string, eventType: string): z.ZodSchema {
 		const versionSchemas = eventSchemas[roomVersion];
 		if (!versionSchemas) {

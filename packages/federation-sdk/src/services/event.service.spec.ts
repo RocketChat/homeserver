@@ -62,12 +62,6 @@ const event = {
 
 runIfMongoExists(() =>
 	describe('EventService', async () => {
-		it('should fail to fetch room informatin of unknown room, sanity check for mock loading', async () => {
-			expect(
-				eventService.getRoomVersion({ room_id: 'abc123' } as Pdu),
-			).rejects.toThrowError('Room abc123 does not exist');
-		});
-
 		const { getHomeserverFinalAddress: originalServerDiscovery } = await import(
 			'../server-discovery/discovery'
 		);
@@ -186,6 +180,12 @@ runIfMongoExists(() =>
 				},
 				valid_until_ts: Date.now() + 100000,
 			};
+
+			it('should fail to fetch room informatin of unknown room, sanity check for mock loading', async () => {
+				expect(stateService.getRoomVersion('abc123')).rejects.toThrowError(
+					'Room abc123 does not exist',
+				);
+			});
 
 			// sanity check
 			it('should sign events with new keys', async () => {
