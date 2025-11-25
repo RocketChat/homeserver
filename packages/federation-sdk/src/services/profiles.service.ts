@@ -7,6 +7,7 @@ import {
 	RoomID,
 	RoomVersion,
 	UserID,
+	stateIdSchema,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { StateService } from './state.service';
@@ -90,7 +91,7 @@ export class ProfilesService {
 				type: 'm.room.member',
 				content: { membership: 'join' },
 				room_id: roomId,
-				state_key: userId,
+				state_key: stateIdSchema.parse(userId),
 				auth_events: [],
 				depth: 0,
 				prev_events: [],

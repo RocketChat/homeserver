@@ -3,6 +3,7 @@ import {
 	PduForType,
 	eventIdSchema,
 	roomIdSchema,
+	stateIdSchema,
 	userIdSchema,
 } from './_common';
 
@@ -640,7 +641,7 @@ export const PduNoContentTimelineEventSchema = {
 
 export const PduNoContentStateEventSchema = {
 	...PduNoContentTimelineEventSchema,
-	state_key: userIdSchema.describe(
+	state_key: stateIdSchema.describe(
 		'The state key of the event. This is an optional field.',
 	),
 };

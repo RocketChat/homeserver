@@ -28,6 +28,7 @@ import {
 	RoomVersion,
 	UserID,
 	extractDomainFromId,
+	stateIdSchema,
 } from '@rocket.chat/federation-room';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
@@ -261,7 +262,7 @@ export class RoomService {
 					type: 'm.room.member',
 					content: { membership: 'join' },
 					room_id: roomCreateEvent.roomId,
-					state_key: username,
+					state_key: stateIdSchema.parse(username),
 					auth_events: [],
 					depth: 0,
 					prev_events: [],
@@ -486,7 +487,7 @@ export class RoomService {
 		const memberAuthResult = this.getEventByType(
 			authEventIds,
 			'm.room.member',
-			(e) => e.event.state_key === senderId,
+			(e) => e.event.state_key === stateIdSchema.parse(senderId),
 		);
 
 		// Ensure critical auth events were found
@@ -616,7 +617,7 @@ export class RoomService {
 				type: 'm.room.member',
 				content: { membership: 'leave' },
 				room_id: roomId,
-				state_key: senderId,
+				state_key: stateIdSchema.parse(senderId),
 				auth_events: [],
 				depth: 0,
 				prev_events: [],
@@ -697,7 +698,7 @@ export class RoomService {
 					reason: reason,
 				},
 				room_id: roomId,
-				state_key: kickedUserId,
+				state_key: stateIdSchema.parse(kickedUserId),
 				auth_events: [],
 				depth: 0,
 				prev_events: [],
@@ -740,7 +741,7 @@ export class RoomService {
 				},
 				room_id: roomId,
 				sender: userId,
-				state_key: userId,
+				state_key: stateIdSchema.parse(userId),
 				auth_events: [],
 				depth: 0,
 				prev_events: [],
@@ -823,7 +824,7 @@ export class RoomService {
 					reason: reason,
 				},
 				room_id: roomId,
-				state_key: bannedUserId,
+				state_key: stateIdSchema.parse(bannedUserId),
 				auth_events: [],
 				depth: 0,
 				prev_events: [],
@@ -873,7 +874,7 @@ export class RoomService {
 					type: 'm.room.member',
 					content: { membership: 'join' },
 					room_id: roomId,
-					state_key: userId,
+					state_key: stateIdSchema.parse(userId),
 					auth_events: [],
 					depth: 0,
 					prev_events: [],
@@ -1423,7 +1424,7 @@ export class RoomService {
 						displayname: creatorDisplayname,
 					},
 					room_id: roomCreateEvent.roomId,
-					state_key: creatorUserId,
+					state_key: stateIdSchema.parse(creatorUserId),
 					auth_events: [],
 					depth: 0,
 					prev_events: [],
@@ -1540,7 +1541,7 @@ export class RoomService {
 							displayname: displayname,
 						},
 						room_id: roomCreateEvent.roomId,
-						state_key: targetUserId,
+						state_key: stateIdSchema.parse(targetUserId),
 						auth_events: [],
 						depth: 0,
 						prev_events: [],
@@ -1598,8 +1599,8 @@ export class RoomService {
 
 					if (
 						currentUserIds.length === 2 &&
-						currentUserIds.includes(userId1) &&
-						currentUserIds.includes(userId2)
+						currentUserIds.includes(stateIdSchema.parse(userId1)) &&
+						currentUserIds.includes(stateIdSchema.parse(userId2))
 					) {
 						return roomId;
 					}

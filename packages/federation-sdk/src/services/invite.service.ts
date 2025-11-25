@@ -8,6 +8,7 @@ import {
 	RoomVersion,
 	UserID,
 	extractDomainFromId,
+	stateIdSchema,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
@@ -82,7 +83,7 @@ export class InviteService {
 					}),
 				},
 				room_id: roomId,
-				state_key: userId,
+				state_key: stateIdSchema.parse(userId),
 				auth_events: [],
 				depth: 0,
 				prev_events: [],

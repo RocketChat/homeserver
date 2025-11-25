@@ -4,6 +4,7 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	UserID,
+	stateIdSchema,
 } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia, t } from 'elysia';
@@ -354,7 +355,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 							type: 'm.room.member',
 							content: { membership: 'ban' },
 							room_id: roomId as RoomID,
-							state_key: userIdToBan as UserID,
+							state_key: stateIdSchema.parse(userIdToBan),
 							auth_events: [],
 							depth: 0,
 							prev_events: [],

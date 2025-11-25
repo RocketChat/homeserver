@@ -2,6 +2,7 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	UserID,
+	stateIdSchema,
 } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import { Elysia } from 'elysia';
@@ -40,7 +41,7 @@ export const internalInvitePlugin = (app: Elysia) => {
 					type: 'm.room.member',
 					content: { membership: 'invite' },
 					room_id: roomId as RoomID,
-					state_key: username as UserID,
+					state_key: stateIdSchema.parse(username),
 					auth_events: [],
 					depth: 0,
 					prev_events: [],
