@@ -26,7 +26,6 @@ import {
 	EventStore as RoomEventStore,
 	RoomID,
 	RoomVersion,
-	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
@@ -1110,10 +1109,9 @@ export class RoomService {
 
 		await this.federationService.sendLeave(leaveEvent);
 
-		await this.eventRepository.forceInsertOrUpdateEventWithStateId(
+		await this.eventRepository.insertInviteEvent(
 			leaveEvent.eventId,
 			leaveEvent.event,
-			'' as StateID,
 			true,
 		);
 

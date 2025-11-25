@@ -6,7 +6,6 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
-	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
@@ -208,11 +207,10 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
-		await this.eventRepository.forceInsertOrUpdateEventWithStateId(
+		await this.eventRepository.insertInviteEvent(
 			inviteEvent.eventId,
 			inviteEvent.event,
-			'' as StateID,
-			true, // partial = true
+			residentServer,
 		);
 
 		this.emitterService.emit('homeserver.matrix.membership', {
