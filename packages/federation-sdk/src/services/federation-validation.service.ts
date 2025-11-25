@@ -13,7 +13,6 @@ export class FederationValidationError extends Error {
 	constructor(
 		public code: 'POLICY_DENIED' | 'CONNECTION_FAILED' | 'USER_NOT_FOUND',
 		public userMessage: string,
-		public httpStatus: 403 | 502 | 404,
 	) {
 		super(userMessage);
 		this.name = 'FederationValidationError';
@@ -59,7 +58,6 @@ export class FederationValidationService {
 				throw new FederationValidationError(
 					'POLICY_DENIED',
 					"Action Blocked. The room's access control policy blocks communication with this domain.",
-					403,
 				);
 			}
 		} catch (error) {
@@ -83,7 +81,6 @@ export class FederationValidationService {
 			throw new FederationValidationError(
 				'CONNECTION_FAILED',
 				'Connection Failed. The server domain could not be reached or does not support federation.',
-				502,
 			);
 		}
 	}
@@ -105,8 +102,7 @@ export class FederationValidationService {
 		} catch (_error) {
 			throw new FederationValidationError(
 				'USER_NOT_FOUND',
-				'Invitation blocked. The specified user couldn’t be found on their homeserver.',
-				502,
+				"Invitation blocked. The specified user couldn't be found on their homeserver.",
 			);
 		}
 	}
