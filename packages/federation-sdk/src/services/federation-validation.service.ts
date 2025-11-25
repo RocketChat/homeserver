@@ -43,27 +43,21 @@ export class FederationValidationService {
 	}
 
 	private async checkRoomAcl(roomId: RoomID, domain: string): Promise<void> {
-		try {
-			const state = await this.stateService.getLatestRoomState(roomId);
-			const aclEvent = state.get('m.room.server_acl:');
-			if (!aclEvent || !aclEvent.isServerAclEvent()) {
-				return;
-			}
+		const state = await this.stateService.getLatestRoomState(roomId);
+		const aclEvent = state.get('m.room.server_acl:');
+		if (!aclEvent || !aclEvent.isServerAclEvent()) {
+			return;
+		}
 
-			const isAllowed = await this.eventAuthorizationService.checkServerAcl(
-				aclEvent,
-				domain,
+		const isAllowed = await this.eventAuthorizationService.checkServerAcl(
+			aclEvent,
+			domain,
+		);
+		if (!isAllowed) {
+			throw new FederationValidationError(
+				'POLICY_DENIED',
+				"Action Blocked. The room's access control policy blocks communication with this domain.",
 			);
-			if (!isAllowed) {
-				throw new FederationValidationError(
-					'POLICY_DENIED',
-					"Action Blocked. The room's access control policy blocks communication with this domain.",
-				);
-			}
-		} catch (error) {
-			if (error instanceof FederationValidationError) {
-				throw error;
-			}
 		}
 	}
 
