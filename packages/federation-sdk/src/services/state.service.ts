@@ -102,40 +102,21 @@ export class StateService {
 		return event.content;
 	}
 
+	// TODO change type to RoomID
 	async getRoomVersion(roomId: string): Promise<RoomVersion> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
-			roomId as RoomID,
+			roomId,
 			'm.room.create',
 		);
 		if (!createEvent) {
 			throw new UnknownRoomError(roomId as RoomID);
 		}
 
-		if (createEvent.event.type === 'm.room.create') {
-			// just getting typescriopt to help
-			return createEvent.event.content.room_version;
+		if (createEvent.event.type !== 'm.room.create') {
+			throw new Error('Create event content malformed for room version');
 		}
 
-		// should be unreachable
-		throw new Error('Create event content malformed for room version');
-	}
-
-	// helps with logging state
-	private logState(label: string, state: State) {
-		const printableState = Array.from(state.entries()).map(([key, value]) => {
-			return {
-				internalStateKey: key,
-				strippedEvent: {
-					state_key: value.stateKey,
-					sender: value.sender,
-					origin: value.origin,
-					content: value.getContent(),
-				},
-			};
-		});
-
-		// TODO: change to debug later
-		this.logger.info({ state: printableState }, label);
+		return createEvent.event.content.room_version;
 	}
 
 	private async updateNextEventReferencesWithEvent(event: PersistentEventBase) {
@@ -404,7 +385,6 @@ export class StateService {
 	// saves a full/partial state
 	// returns the final state id
 	async processInitialState(pdus: Pdu[], authChain: Pdu[]) {
-		console.log('processInitialState pdus/authChain ->', pdus, authChain);
 		const create = authChain.find((pdu) => pdu.type === 'm.room.create');
 		if (create?.type !== 'm.room.create') {
 			throw new Error('No create event found in auth chain to save');

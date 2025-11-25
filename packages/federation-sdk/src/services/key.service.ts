@@ -260,7 +260,7 @@ export class KeyService {
 
 	// this shouldn't be here, however, to copy the controller level logic from homeserver router to rocket.chat would be a pain to keep up to date if changes are needed. for now, keeping here.
 	async handleQuery({ server_keys: serverKeys }: QueryRequestBody) {
-		const serverKeysResponse = [] as KeyV2ServerResponse[];
+		const serverKeysResponse: KeyV2ServerResponse[] = [];
 
 		const localKeysPerServer: Map<string, ServerKey[]> = new Map();
 

@@ -54,20 +54,6 @@ export class FederationRequestService {
 			url.search = queryString;
 		}
 
-		/*
-			{
-				"method": "POST",
-				"uri": "/target",
-				"origin": "origin.hs.example.com",
-				"destination": "destination.hs.example.com",
-				"content": <JSON-parsed request body>,
-				"signatures": {
-					"origin.hs.example.com": {
-						"ed25519:key1": "ABCDEF..."
-					}
-				}
-			}
-		*/
 		// build the auth request
 		const request = {
 			method,
@@ -79,11 +65,6 @@ export class FederationRequestService {
 
 		const requestSignature = await signJson(request, signer);
 
-		// authorization_headers.append(bytes(
-		//     "X-Matrix origin=\"%s\",destination=\"%s\",key=\"%s\",sig=\"%s\"" % (
-		//         origin_name, destination_name, key, sig,
-		//     )
-		// ))
 		const authorizationHeaderValue = `X-Matrix origin="${origin}",destination="${domain}",key="${signer.id}",sig="${requestSignature}"`;
 
 		const headers = {
@@ -91,7 +72,6 @@ export class FederationRequestService {
 			...discoveryHeaders,
 		};
 
-		// TODO: make logging take a function for object to avoid unnecessary computation when log level is high
 		this.logger.debug(
 			{
 				method,
@@ -110,6 +90,16 @@ export class FederationRequestService {
 
 		if (!response.ok) {
 			const errorText = await response.text();
+
+			this.logger.error({
+				msg: 'Federation request failed',
+				url,
+				status: response.status,
+				errorText,
+				sentHeaders: headers,
+				responseHeaders: response.headers,
+			});
+
 			let errorDetail = errorText;
 			try {
 				errorDetail = JSON.stringify(JSON.parse(errorText));

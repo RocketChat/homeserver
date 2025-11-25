@@ -2,7 +2,6 @@ import {
 	type EventID,
 	type PduType,
 	type PersistentEventBase,
-	RoomID,
 	type StateID,
 	type StateMapKey,
 	getStateMapKey,

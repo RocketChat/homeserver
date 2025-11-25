@@ -342,9 +342,7 @@ export abstract class PersistentEventBase<
 
 		// 2. The event is converted into Canonical JSON.
 		// 3. A sha256 hash is calculated on the resulting JSON object.
-		const referenceHash = computeHashBuffer(toHash);
-
-		return referenceHash;
+		return computeHashBuffer(toHash);
 	}
 
 	// SPEC: https://spec.matrix.org/v1.12/server-server-api/#calculating-the-content-hash-for-an-event
