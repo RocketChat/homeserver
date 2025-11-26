@@ -318,6 +318,11 @@ export class EventService {
 		typingEDU: TypingEDU,
 		origin?: string,
 	): Promise<void> {
+		const config = this.configService.getConfig('edu');
+		if (!config.processTyping) {
+			return;
+		}
+
 		const { room_id, user_id, typing } = typingEDU.content;
 
 		if (!room_id || !user_id || typeof typing !== 'boolean') {
@@ -343,6 +348,11 @@ export class EventService {
 		presenceEDU: PresenceEDU,
 		origin?: string,
 	): Promise<void> {
+		const config = this.configService.getConfig('edu');
+		if (!config.processPresence) {
+			return;
+		}
+
 		const { push } = presenceEDU.content;
 
 		if (!push || !Array.isArray(push)) {
