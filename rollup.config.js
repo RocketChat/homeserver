@@ -31,7 +31,6 @@ const isExternal = (id) => {
 			'pino',
 			'pino-std-serializers',
 			'sonic-boom',
-			'tweetnacl',
 		].includes(id)
 	) {
 		return true;
