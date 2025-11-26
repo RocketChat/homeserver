@@ -12,6 +12,7 @@ import {
 import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
+import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
@@ -30,6 +31,7 @@ export class InviteService {
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
+		private readonly eventAuthorizationService: EventAuthorizationService,
 		private readonly emitterService: EventEmitterService,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
@@ -195,6 +197,11 @@ export class InviteService {
 		}
 		await this.shouldProcessInvite(event.unsigned.invite_room_state);
 
+		const residentServer = extractDomainFromId(event.room_id);
+		if (!residentServer) {
+			throw new Error(`Invalid roomId ${event.room_id}`);
+		}
+
 		const inviteEvent =
 			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
 				event,
@@ -203,6 +210,22 @@ export class InviteService {
 
 		if (inviteEvent.eventId !== eventId) {
 			throw new Error(`Invalid eventId ${eventId}`);
+		}
+
+		if (residentServer === this.configService.serverName) {
+			await this.eventAuthorizationService.checkAclForInvite(
+				event.room_id,
+				residentServer,
+			);
+
+			await this.stateService.handlePdu(inviteEvent);
+
+			this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: inviteEvent.eventId,
+				event: inviteEvent.event,
+			});
+
+			return inviteEvent;
 		}
 
 		await this.stateService.signEvent(inviteEvent);
