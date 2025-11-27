@@ -634,6 +634,11 @@ export class RoomService {
 
 		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
 
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+		});
+
 		return leaveEvent.eventId;
 	}
 
@@ -885,11 +890,6 @@ export class RoomService {
 
 			await stateService.handlePdu(membershipEvent);
 
-			this.eventEmitterService.emit('homeserver.matrix.membership', {
-				event_id: membershipEvent.eventId,
-				event: membershipEvent.event,
-			});
-
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectReason);
 			}
@@ -1093,13 +1093,21 @@ export class RoomService {
 		}
 
 		const invitingServer = extractDomainFromId(inviteEventStore.event.sender);
-
 		if (!invitingServer) {
 			throw new Error(
 				`Invalid sender in invite event: ${inviteEventStore.event.sender}`,
 			);
 		}
 
+		// if inviting server is our own, we can handle the leave event ourselves
+		// otherwise, we need to send the leave event to the inviting server
+		if (invitingServer === this.configService.serverName) {
+			await this.leaveRoom(roomId, userId);
+			return;
+		}
+
+		// important to note that on rejections from remote servers, we might not have the room state yet,
+		// that's why we handle it manually instead of calling this.leaveRoom
 		const { event: leaveTemplate, room_version } =
 			await this.federationService.makeLeave(invitingServer, roomId, userId);
 
@@ -1112,12 +1120,6 @@ export class RoomService {
 		await this.stateService.signEvent(leaveEvent);
 
 		await this.federationService.sendLeave(leaveEvent);
-
-		await this.eventRepository.insertInviteEvent(
-			leaveEvent.eventId,
-			leaveEvent.event,
-			true,
-		);
 
 		this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: leaveEvent.eventId,
