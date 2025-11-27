@@ -1072,7 +1072,11 @@ export class RoomService {
 			);
 		}
 
-		const roomVersion = PersistentEventFactory.defaultRoomVersion;
+		const roomVersion =
+			inviteEventStore.event.unsigned?.invite_room_state?.filter(
+				(state: PduForType<'m.room.create'>) => state.type === 'm.room.create',
+			)?.[0]?.content?.room_version ??
+			PersistentEventFactory.defaultRoomVersion;
 		const inviteEvent = PersistentEventFactory.createFromRawEvent(
 			inviteEventStore.event,
 			roomVersion,
