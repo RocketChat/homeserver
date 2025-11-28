@@ -1,6 +1,7 @@
 import {
 	type EventID,
 	PduForType,
+	PduMembershipEvent,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -23,7 +24,7 @@ export class SendJoinService {
 	async sendJoin(
 		roomId: string,
 		eventId: EventID,
-		event: PduForType<'m.room.member'>,
+		event: PduMembershipEvent<'join'>,
 	) {
 		const stateService = this.stateService;
 

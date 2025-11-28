@@ -2,6 +2,7 @@ import { EventBase, createLogger } from '@rocket.chat/federation-core';
 import {
 	EventID,
 	PduForType,
+	PduMembershipEvent,
 	PersistentEventBase,
 	PersistentEventFactory,
 	RoomID,
@@ -136,10 +137,7 @@ export class InviteService {
 		// try to save
 		// can only invite if already part of the room
 		await stateService.handlePdu(
-			PersistentEventFactory.createFromRawEvent(
-				inviteResponse.event,
-				roomVersion,
-			),
+			PersistentEventFactory.createFromRawEvent(inviteResponse, roomVersion),
 		);
 
 		// let everyone know
@@ -195,7 +193,7 @@ export class InviteService {
 	}
 
 	async processInvite(
-		event: PduForType<'m.room.member'>,
+		event: PduMembershipEvent<'invite'>,
 		roomId: RoomID,
 		eventId: EventID,
 		roomVersion: RoomVersion,

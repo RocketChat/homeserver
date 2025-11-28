@@ -3,7 +3,11 @@ import type { BaseEDU } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
 	EventID,
+	EventPduTypeRoomMember,
+	EventPduTypeRoomMemberInvite,
 	Pdu,
+	PduForType,
+	PduMembershipEvent,
 	PersistentEventBase,
 	PersistentEventFactory,
 	extractDomainFromId,
@@ -248,13 +252,17 @@ export class FederationService {
 			);
 		}
 
-		return await this.requestService.put<any>(residentServer, uri, {
+		const data = await this.requestService.put<{
+			event: PduMembershipEvent<'invite'>;
+		}>(residentServer, uri, {
 			event: inviteEvent.event,
 			room_version: roomVersion,
 			invite_room_state: await this.stateService.getStrippedRoomState(
 				inviteEvent.roomId,
 			),
 		});
+
+		return EventPduTypeRoomMemberInvite.parse(data.event);
 	}
 
 	async sendEventToAllServersInRoom(event: PersistentEventBase) {
