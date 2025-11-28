@@ -14,6 +14,7 @@ import {
 	RoomID,
 	RoomState,
 	RoomVersion,
+	State,
 	type StateID,
 	type StateMapKey,
 	StateResolverAuthorizationError,
@@ -25,8 +26,6 @@ import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
-
-type State = Map<StateMapKey, PersistentEventBase>;
 
 type StrippedEvent = {
 	content: PduContent;
@@ -354,7 +353,7 @@ export class StateService {
 	}
 
 	private buildStateFromEvents(events: PersistentEventBase[]): State {
-		const state = new Map<StateMapKey, PersistentEventBase>();
+		const state: State = new Map();
 		for (const event of events) {
 			state.set(event.getUniqueStateIdentifier(), event);
 		}
@@ -372,7 +371,7 @@ export class StateService {
 		const eventIds = stateMap.values().toArray();
 
 		const events = await this.eventRepository.findByIds(eventIds).toArray();
-		const state = new Map<StateMapKey, PersistentEventBase>();
+		const state: State = new Map();
 		for (const event of events) {
 			const e = PersistentEventFactory.createFromRawEvent(
 				event.event,
@@ -836,7 +835,7 @@ export class StateService {
 	private async _resolveState(
 		stateIds: StateID[],
 		roomVersion: RoomVersion,
-	): Promise<Map<StateMapKey, PersistentEventBase>> {
+	): Promise<State> {
 		if (await this._isSameChain(stateIds)) {
 			// pick the latest id from the chain, that's the state to use
 			const latestDelta =

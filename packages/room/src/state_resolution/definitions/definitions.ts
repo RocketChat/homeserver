@@ -9,7 +9,7 @@ import { type PduType } from '../../types/v3-11';
 import assert from 'node:assert';
 import { StateResolverAuthorizationError } from '../../authorizartion-rules/errors';
 import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
-import { PersistentEventBase } from '../../manager/event-wrapper';
+import { PersistentEventBase, State } from '../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../manager/power-level-event-wrapper';
 import { RoomVersion } from '../../manager/type';
 
@@ -578,13 +578,11 @@ export async function iterativeAuthChecks(
 	events: PersistentEventBase[],
 	stateMap: ReadonlyMap<StateMapKey, PersistentEventBase>,
 	store: EventStore,
-): Promise<Map<StateMapKey, PersistentEventBase>> {
-	const newState = new Map<StateMapKey, PersistentEventBase>(
-		stateMap.entries(),
-	);
+): Promise<State> {
+	const newState: State = new Map(stateMap.entries()) as State;
 
 	for (const event of events) {
-		const authEventStateMap = new Map<StateMapKey, PersistentEventBase>();
+		const authEventStateMap: State = new Map();
 		for (const authEvent of await store.getEvents(event.getAuthEventIds())) {
 			authEventStateMap.set(authEvent.getUniqueStateIdentifier(), authEvent);
 		}

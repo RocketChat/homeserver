@@ -47,9 +47,9 @@ export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 export interface State extends Map<StateMapKey, PersistentEventBase> {
 	get<T extends StateMapKey>(
 		key: T,
-	): T extends `${infer I}:`
+	): T extends `${infer I}:${string}`
 		? I extends PduType
-			? PersistentEventBase<RoomVersion, I>
+			? PersistentEventBase<RoomVersion, I> | undefined
 			: never
 		: never;
 }
