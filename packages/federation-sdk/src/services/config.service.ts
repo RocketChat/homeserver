@@ -1,11 +1,11 @@
-import {
-	SigningKey,
-	createLogger,
-	generateKeyPairsFromString,
-	toUnpaddedBase64,
-} from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
+import {
+	Signer,
+	fromBase64ToBytes,
+	loadEd25519SignerFromSeed,
+} from '@rocket.chat/federation-crypto';
 import { z } from 'zod';
 
 export interface AppConfig {
@@ -17,6 +17,7 @@ export interface AppConfig {
 	keyRefreshInterval: number;
 	signingKey?: string;
 	timeout?: number;
+	// TODO: need this still?
 	signingKeyPath?: string;
 	media: {
 		maxFileSize: number;
@@ -82,7 +83,8 @@ export const AppConfigSchema = z.object({
 export class ConfigService {
 	private config: AppConfig = {} as AppConfig;
 	private logger = createLogger('ConfigService');
-	private serverKeys: SigningKey[] = [];
+
+	private signer: Signer | undefined;
 
 	setConfig(values: AppConfig) {
 		try {
@@ -122,34 +124,22 @@ export class ConfigService {
 	}
 
 	async getSigningKey() {
+		if (this.signer) {
+			return this.signer;
+		}
+
 		// If config contains a signing key, use it
 		if (!this.config.signingKey) {
 			throw new Error('Signing key is not configured');
 		}
 
-		if (!this.serverKeys.length) {
-			const signingKey = await generateKeyPairsFromString(
-				this.config.signingKey,
-			);
-			this.serverKeys = [signingKey];
-		}
+		const [, version, signingKey] = this.config.signingKey.split(' ');
 
-		return this.serverKeys;
-	}
+		this.signer = await loadEd25519SignerFromSeed(
+			fromBase64ToBytes(signingKey),
+			version,
+		);
 
-	async getSigningKeyId(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		const signingKey = signingKeys[0];
-		return `${signingKey.algorithm}:${signingKey.version}` || 'ed25519:1';
-	}
-
-	async getSigningKeyBase64(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		return toUnpaddedBase64(signingKeys[0].privateKey);
-	}
-
-	async getPublicSigningKeyBase64(): Promise<string> {
-		const signingKeys = await this.getSigningKey();
-		return toUnpaddedBase64(signingKeys[0].publicKey);
+		return this.signer;
 	}
 }

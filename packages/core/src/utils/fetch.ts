@@ -177,7 +177,7 @@ export async function fetch<T>(
 					body() {
 						if (!body) {
 							body = new Promise<Buffer>((resBody, rejBody) => {
-								// TODO: Make @hs/core fetch size limit configurable
+								// TODO: Make @rocket.chat/federation-core fetch size limit configurable
 								let total = 0;
 								const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -233,7 +233,7 @@ export async function fetch<T>(
 				reject(err);
 			});
 
-			// TODO: Make @hs/core fetch timeout configurable
+			// TODO: Make @rocket.chat/federation-core fetch timeout configurable
 			request.setTimeout(20_000, () => {
 				request.destroy(new Error('Request timed out after 20s'));
 			});

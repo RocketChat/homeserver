@@ -921,10 +921,9 @@ export class RoomService {
 			makeJoinResponse.room_version,
 		);
 
-		// const signedJoinEvent = await stateService.signEvent(joinEvent);
+		// TODO stop calling stateService to mutate the event
+		await stateService.signEvent(joinEvent);
 
-		// TODO: sign the event here vvv
-		// currently makeSignedRequest does the signing
 		const {
 			state,
 			auth_chain: authChain,

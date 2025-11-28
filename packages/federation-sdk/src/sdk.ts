@@ -9,12 +9,13 @@ import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationService } from './services/federation.service';
 import { InviteService } from './services/invite.service';
+import { KeyService } from './services/key.service';
 import { MediaService } from './services/media.service';
 import { MessageService } from './services/message.service';
 import { ProfilesService } from './services/profiles.service';
 import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
-import { ServerService } from './services/server.service';
+import { SignatureVerificationService } from './services/signature-verification.service';
 import { StateService } from './services/state.service';
 import { WellKnownService } from './services/well-known.service';
 
@@ -27,7 +28,6 @@ export class FederationSDK {
 		private readonly inviteService: InviteService,
 		private readonly eventService: EventService,
 		private readonly eduService: EduService,
-		private readonly serverService: ServerService,
 		private readonly configService: ConfigService,
 		private readonly eventAuthorizationService: EventAuthorizationService,
 		private readonly stateService: StateService,
@@ -37,6 +37,8 @@ export class FederationSDK {
 		private readonly wellKnownService: WellKnownService,
 		private readonly federationRequestService: FederationRequestService,
 		private readonly federationService: FederationService,
+		private readonly signatureVerficationService: SignatureVerificationService,
+		private readonly keyService: KeyService,
 	) {}
 
 	createDirectMessageRoom(
@@ -119,10 +121,8 @@ export class FederationSDK {
 		return this.eduService.sendTypingNotification(...args);
 	}
 
-	getSignedServerKey(
-		...args: Parameters<typeof this.serverService.getSignedServerKey>
-	) {
-		return this.serverService.getSignedServerKey(...args);
+	getSignedServerKey() {
+		return this.keyService.getOwnSignedServerKeyResponse();
 	}
 
 	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {
@@ -134,11 +134,17 @@ export class FederationSDK {
 	}
 
 	verifyRequestSignature(
-		...args: Parameters<
-			typeof this.eventAuthorizationService.verifyRequestSignature
-		>
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
 	) {
-		return this.eventAuthorizationService.verifyRequestSignature(...args);
+		return this.signatureVerficationService.verifyRequestSignature({
+			authorizationHeader,
+			method,
+			uri,
+			body,
+		});
 	}
 
 	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {

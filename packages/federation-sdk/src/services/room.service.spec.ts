@@ -35,7 +35,7 @@ describe('RoomService', async () => {
 
 	const configService = new ConfigService();
 	federationSDK.setConfig({
-		signingKey: '',
+		signingKey: 'FC6cwY3DNmHo3B7GRugaHNyXz+TkBRVx8RvQH0kSZ04',
 		serverName: 'example.com',
 	} as AppConfig);
 	const stateService = container
