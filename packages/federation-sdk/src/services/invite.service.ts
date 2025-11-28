@@ -189,13 +189,22 @@ export class InviteService {
 		event: PduForType<'m.room.member'>,
 		eventId: EventID,
 		roomVersion: RoomVersion,
+		strippedStateEvents: PduForType<
+			| 'm.room.create'
+			| 'm.room.name'
+			| 'm.room.avatar'
+			| 'm.room.topic'
+			| 'm.room.join_rules'
+			| 'm.room.canonical_alias'
+			| 'm.room.encryption'
+		>[],
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
-		if (!event.unsigned?.invite_room_state) {
+		if (!strippedStateEvents) {
 			throw new Error(
 				'Missing invite_room_state required for policy validation',
 			);
 		}
-		await this.shouldProcessInvite(event.unsigned.invite_room_state);
+		await this.shouldProcessInvite(strippedStateEvents);
 
 		const residentServer = extractDomainFromId(event.room_id);
 		if (!residentServer) {
