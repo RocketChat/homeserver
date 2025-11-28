@@ -116,6 +116,14 @@ export abstract class PersistentEventBase<
 		return domain;
 	}
 
+	get residentServer() {
+		const residentServer = extractDomainFromId(this.rawEvent.room_id);
+		if (!residentServer) {
+			throw new Error('Invalid room_id, no domain found');
+		}
+		return residentServer;
+	}
+
 	get stateKey() {
 		return 'state_key' in this.rawEvent ? this.rawEvent.state_key : undefined;
 	}
