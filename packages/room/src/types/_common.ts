@@ -21,7 +21,7 @@ export type UserID = z.infer<typeof userIdSchema>;
 
 export type StateMapKey = `${PduType}:${StateKey}`;
 
-export type State = Map<StateMapKey, EventID>;
+export type StateEventIdMap = Map<StateMapKey, EventID>;
 
 export type PduForType<P extends PduType = PduType> = Extract<Pdu, { type: P }>;
 

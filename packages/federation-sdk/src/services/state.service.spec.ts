@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, spyOn, test } from 'bun:test';
 import { type EventStore } from '@rocket.chat/federation-core';
+import type { State } from '@rocket.chat/federation-room';
 import * as room from '@rocket.chat/federation-room';
 import {
 	EventID,
@@ -11,7 +12,6 @@ import {
 	PersistentEventFactory,
 	RejectCodes,
 	RoomVersion,
-	StateMapKey,
 } from '@rocket.chat/federation-room';
 import { type WithId } from 'mongodb';
 import { EventRepository } from '../repositories/event.repository';
@@ -22,8 +22,6 @@ import {
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
 import { StateService } from './state.service';
-
-type State = Map<StateMapKey, PersistentEventBase>;
 
 function getDefaultFields() {
 	return {

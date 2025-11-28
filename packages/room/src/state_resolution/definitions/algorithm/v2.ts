@@ -58,7 +58,7 @@
 // i am too early in this to remember everything by heart.
 
 import assert from 'node:assert';
-import { PersistentEventBase } from '../../../manager/event-wrapper';
+import { PersistentEventBase, State } from '../../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../../manager/power-level-event-wrapper';
 import type { EventID, StateMapKey } from '../../../types/_common';
 import {
@@ -83,7 +83,7 @@ export const isTruthy = <T>(
 export async function resolveStateV2Plus(
 	states: ReadonlyMap<StateMapKey, PersistentEventBase>[],
 	store: EventStore, // with cache
-): Promise<Map<StateMapKey, PersistentEventBase>> {
+): Promise<State> {
 	// memory o'memory
 	// const eventMap = new Map<string, PduV3>();
 
@@ -138,7 +138,7 @@ export async function resolveStateV2Plus(
 			assert(event, 'event should not be null');
 			accum.set(stateKey, event);
 			return accum;
-		}, new Map<StateMapKey, PersistentEventBase>());
+		}, new Map() as State);
 
 	if (conflicted.size === 0) {
 		// no conflicted state, return the unconflicted state

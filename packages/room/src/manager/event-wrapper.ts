@@ -44,6 +44,16 @@ export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<
 
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
+export interface State extends Map<StateMapKey, PersistentEventBase> {
+	get<T extends StateMapKey>(
+		key: T,
+	): T extends `${infer I}:${string}`
+		? I extends PduType
+			? PersistentEventBase<RoomVersion, I> | undefined
+			: never
+		: never;
+}
+
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
 export abstract class PersistentEventBase<
 	Version extends RoomVersion = RoomVersion,
