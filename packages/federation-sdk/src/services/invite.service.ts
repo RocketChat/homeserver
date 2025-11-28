@@ -251,11 +251,22 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
-		await this.eventRepository.insertOutlierEvent(
-			inviteEvent.eventId,
-			inviteEvent.event,
-			residentServer,
+		// check if we are already in the room, if so we can handlePdu because we have the state and should save
+		// the invite in the state as well
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			event.room_id,
+			'm.room.create',
 		);
+		if (createEvent) {
+			await this.stateService.handlePdu(inviteEvent);
+		} else {
+			// otherwise we save as outlier only so we can deal with it later
+			await this.eventRepository.insertOutlierEvent(
+				inviteEvent.eventId,
+				inviteEvent.event,
+				residentServer,
+			);
+		}
 
 		this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: inviteEvent.eventId,
