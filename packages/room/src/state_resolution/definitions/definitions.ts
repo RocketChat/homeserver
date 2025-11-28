@@ -1,5 +1,9 @@
 import { PriorityQueue } from '@datastructures-js/priority-queue';
-import type { EventID, State, StateMapKey } from '../../types/_common';
+import type {
+	EventID,
+	StateEventIdMap,
+	StateMapKey,
+} from '../../types/_common';
 import { type PduType } from '../../types/v3-11';
 
 import assert from 'node:assert';
@@ -47,8 +51,8 @@ export function isPowerEvent(event: PersistentEventBase): boolean {
 // iout map takes care of the non-duplication of a set
 export function partitionState(
 	events: Readonly<Iterable<PersistentEventBase>>,
-): [State, Map<StateMapKey, EventID[]>] {
-	const unconflictedState: State = new Map();
+): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
+	const unconflictedState: StateEventIdMap = new Map();
 
 	// Note that the unconflicted state map only has one event for each key K, whereas the conflicted state set may contain multiple events with the same key.
 	const conflictedStateEventsMap: Map<StateMapKey, EventID[]> = new Map();
@@ -148,7 +152,7 @@ export async function getAuthChain(
 // Auth difference
 // NOTE: https://github.com/element-hq/synapse/blob/a25a37002c851ef419d12925a11dd8bf2233470e/docs/auth_chain_difference_algorithm.md
 export async function getAuthChainDifference(
-	states: Readonly<Iterable<State>>,
+	states: Readonly<Iterable<StateEventIdMap>>,
 	store: EventStore,
 ) {
 	const authChainSets = [] as Set<EventID>[];
