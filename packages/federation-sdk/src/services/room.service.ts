@@ -634,6 +634,11 @@ export class RoomService {
 
 		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
 
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+		});
+
 		return leaveEvent.eventId;
 	}
 
@@ -885,11 +890,6 @@ export class RoomService {
 
 			await stateService.handlePdu(membershipEvent);
 
-			this.eventEmitterService.emit('homeserver.matrix.membership', {
-				event_id: membershipEvent.eventId,
-				event: membershipEvent.event,
-			});
-
 			if (membershipEvent.rejected) {
 				throw new Error(membershipEvent.rejectReason);
 			}
@@ -1055,6 +1055,76 @@ export class RoomService {
 		);
 
 		return joinEventFinal.eventId;
+	}
+
+	async acceptInvite(roomId: RoomID, userId: UserID) {
+		const inviteEventStore = await this.eventService.findInviteEvent(
+			roomId,
+			userId,
+		);
+		if (!inviteEventStore) {
+			throw new Error(
+				`Invite event not found for user ${userId} in room ${roomId}`,
+			);
+		}
+
+		const roomVersion =
+			inviteEventStore.event.unsigned?.invite_room_state?.filter(
+				(state: PduForType<'m.room.create'>) => state.type === 'm.room.create',
+			)?.[0]?.content?.room_version ??
+			PersistentEventFactory.defaultRoomVersion;
+		const inviteEvent = PersistentEventFactory.createFromRawEvent(
+			inviteEventStore.event,
+			roomVersion,
+		);
+
+		return this.joinUser(inviteEvent, userId);
+	}
+
+	async rejectInvite(roomId: RoomID, userId: UserID): Promise<void> {
+		const inviteEventStore = await this.eventService.findInviteEvent(
+			roomId,
+			userId,
+		);
+		if (!inviteEventStore) {
+			throw new Error(
+				`Invite event not found for user ${userId} in room ${roomId}`,
+			);
+		}
+
+		const invitingServer = extractDomainFromId(inviteEventStore.event.sender);
+		if (!invitingServer) {
+			throw new Error(
+				`Invalid sender in invite event: ${inviteEventStore.event.sender}`,
+			);
+		}
+
+		// if inviting server is our own, we can handle the leave event ourselves
+		// otherwise, we need to send the leave event to the inviting server
+		if (invitingServer === this.configService.serverName) {
+			await this.leaveRoom(roomId, userId);
+			return;
+		}
+
+		// important to note that on rejections from remote servers, we might not have the room state yet,
+		// that's why we handle it manually instead of calling this.leaveRoom
+		const { event: leaveTemplate, room_version } =
+			await this.federationService.makeLeave(invitingServer, roomId, userId);
+
+		const leaveEvent =
+			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				leaveTemplate,
+				room_version,
+			);
+
+		await this.stateService.signEvent(leaveEvent);
+
+		await this.federationService.sendLeave(leaveEvent);
+
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+		});
 	}
 
 	private async _fetchFullBranch(
