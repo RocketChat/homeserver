@@ -406,7 +406,7 @@ export class EventRepository {
 		);
 	}
 
-	insertInviteEvent(
+	insertOutlierEvent(
 		eventId: EventID,
 		event: Pdu,
 		origin: string,
@@ -418,6 +418,7 @@ export class EventRepository {
 			origin,
 			stateId: '' as StateID,
 			nextEventId: '',
+			outlier: true,
 			partial: false,
 		});
 	}

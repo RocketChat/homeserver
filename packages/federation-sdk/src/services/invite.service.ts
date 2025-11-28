@@ -251,7 +251,7 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
-		await this.eventRepository.insertInviteEvent(
+		await this.eventRepository.insertOutlierEvent(
 			inviteEvent.eventId,
 			inviteEvent.event,
 			residentServer,
