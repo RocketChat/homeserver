@@ -62,6 +62,10 @@ export {
 } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
+export {
+	FederationValidationService,
+	FederationValidationError,
+} from './services/federation-validation.service';
 
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
@@ -135,6 +139,7 @@ export {
 	roomIdSchema,
 	userIdSchema,
 	eventIdSchema,
+	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 
 export async function init({
