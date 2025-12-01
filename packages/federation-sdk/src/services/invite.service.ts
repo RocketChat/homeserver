@@ -191,11 +191,6 @@ export class InviteService {
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
 		await this.shouldProcessInvite(strippedStateEvents);
 
-		const residentServer = extractDomainFromId(event.room_id);
-		if (!residentServer) {
-			throw new Error(`Invalid roomId ${event.room_id}`);
-		}
-
 		const inviteEvent =
 			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
 				event,
@@ -205,6 +200,8 @@ export class InviteService {
 		if (inviteEvent.eventId !== eventId) {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
+
+		const { residentServer } = inviteEvent;
 
 		if (residentServer === this.configService.serverName) {
 			await this.eventAuthorizationService.checkAclForInvite(
