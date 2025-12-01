@@ -906,14 +906,13 @@ export class RoomService {
 
 	// if local room, add the user to the room if allowed.
 	// if remote room, run through the join process
-	async joinUser(invite: PersistentEventBase, userId: UserID) {
+	async joinUser(roomId: RoomID, sender: UserID, userId: UserID) {
 		const configService = this.configService;
 		const stateService = this.stateService;
 		const federationService = this.federationService;
-		const roomId = invite.roomId;
 
 		// where the room is hosted at
-		const residentServer = extractDomainFromId(invite.sender);
+		const residentServer = extractDomainFromId(sender);
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
@@ -1127,17 +1126,7 @@ export class RoomService {
 			);
 		}
 
-		const roomVersion =
-			inviteEventStore.event.unsigned?.invite_room_state?.filter(
-				(state: PduForType<'m.room.create'>) => state.type === 'm.room.create',
-			)?.[0]?.content?.room_version ??
-			PersistentEventFactory.defaultRoomVersion;
-		const inviteEvent = PersistentEventFactory.createFromRawEvent(
-			inviteEventStore.event,
-			roomVersion,
-		);
-
-		return this.joinUser(inviteEvent, userId);
+		return this.joinUser(roomId, inviteEventStore.event.sender, userId);
 	}
 
 	async rejectInvite(roomId: RoomID, userId: UserID): Promise<void> {

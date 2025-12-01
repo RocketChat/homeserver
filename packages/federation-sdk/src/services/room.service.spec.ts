@@ -11,6 +11,7 @@ import { container } from 'tsyringe';
 import { federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
 import { StateService } from './state.service';
+import { RoomService } from './room.service';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
@@ -38,11 +39,13 @@ describe('RoomService', async () => {
 		signingKey: '',
 		serverName: 'example.com',
 	} as AppConfig);
-	const stateService = container
-		.register(ConfigService, {
-			useValue: configService,
-		})
-		.resolve(StateService);
+
+	container.register(ConfigService, {
+		useValue: configService,
+	});
+
+	const stateService = container.resolve(StateService);
+	const roomService = container.resolve(RoomService);
 
 	const createRoom = async (
 		username: room.UserID,
@@ -212,7 +215,7 @@ describe('RoomService', async () => {
 
 			expect(imtialStateKeys).toEqual(expectedStateKeys);
 
-			await federationSDK.joinUser(roomCreateEvent, secondaryUsername);
+			await roomService.joinUser(roomId, username, secondaryUsername);
 
 			const state = await stateService.getLatestRoomState(roomId);
 
@@ -312,7 +315,7 @@ describe('RoomService', async () => {
 
 			const roomId = roomCreateEvent.roomId;
 
-			await federationSDK.joinUser(roomCreateEvent, secondaryUsername);
+			await roomService.joinUser(roomId, username, secondaryUsername);
 
 			expect(
 				await stateService.getLatestRoomState(roomId).then((state) => {
