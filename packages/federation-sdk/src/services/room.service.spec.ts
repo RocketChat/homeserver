@@ -10,8 +10,8 @@ import {
 import { container } from 'tsyringe';
 import { federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
-import { StateService } from './state.service';
 import { RoomService } from './room.service';
+import { StateService } from './state.service';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
