@@ -656,11 +656,53 @@ export const EventPduTypeRoomCreate = z.object({
 	content: PduCreateEventContentSchema,
 });
 
-export const EventPduTypeRoomMember = z.object({
+export const EventPduTypeRoomMemberInvite = z.object({
 	...PduNoContentStateEventSchema,
 	type: z.literal('m.room.member'),
-	content: PduMembershipEventContentSchema,
+	content: PduMembershipEventContentSchema.extend({
+		membership: z.literal('invite'),
+	}),
 });
+
+export const EventPduTypeRoomMemberJoin = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal('m.room.member'),
+	content: PduMembershipEventContentSchema.extend({
+		membership: z.literal('join'),
+	}),
+});
+
+export const EventPduTypeRoomMemberLeave = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal('m.room.member'),
+	content: PduMembershipEventContentSchema.extend({
+		membership: z.literal('leave'),
+	}),
+});
+
+export const EventPduTypeRoomMemberBan = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal('m.room.member'),
+	content: PduMembershipEventContentSchema.extend({
+		membership: z.literal('ban'),
+	}),
+});
+
+export const EventPduTypeRoomMemberKnock = z.object({
+	...PduNoContentStateEventSchema,
+	type: z.literal('m.room.member'),
+	content: PduMembershipEventContentSchema.extend({
+		membership: z.literal('knock'),
+	}),
+});
+
+export const EventPduTypeRoomMember = z.union([
+	EventPduTypeRoomMemberInvite,
+	EventPduTypeRoomMemberJoin,
+	EventPduTypeRoomMemberLeave,
+	EventPduTypeRoomMemberBan,
+	EventPduTypeRoomMemberKnock,
+]);
 
 export const EventPduTypeRoomJoinRules = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
@@ -781,7 +823,12 @@ export const EventPduTypeRoomPinnedEvents = z.object({
 export const PduStateEventSchema = z.discriminatedUnion('type', [
 	EventPduTypeRoomCreate,
 
-	EventPduTypeRoomMember,
+	// EventPduTypeRoomMember,
+	EventPduTypeRoomMemberInvite,
+	EventPduTypeRoomMemberJoin,
+	EventPduTypeRoomMemberLeave,
+	EventPduTypeRoomMemberBan,
+	EventPduTypeRoomMemberKnock,
 
 	EventPduTypeRoomJoinRules,
 

@@ -4,6 +4,7 @@ import {
 	type EventID,
 	Pdu,
 	PduForType,
+	PduMembershipEvent,
 	PduType,
 	RejectCode,
 	RoomID,
@@ -125,14 +126,14 @@ export class EventRepository {
 
 	public async findAllJoinedMembersEventsByRoomId(
 		roomId: string,
-	): Promise<EventStore<PduForType<'m.room.member'>>[]> {
+	): Promise<EventStore<PduMembershipEvent<'join'>>[]> {
 		return this.collection
 			.find({
 				'event.room_id': roomId,
 				'event.type': 'm.room.member',
 				'event.content.membership': 'join',
 			})
-			.toArray() as Promise<EventStore<PduForType<'m.room.member'>>[]>;
+			.toArray() as Promise<EventStore<PduMembershipEvent<'join'>>[]>;
 	}
 
 	async findLatestEventByRoomIdBeforeTimestampWithAssociatedState(
@@ -188,13 +189,13 @@ export class EventRepository {
 
 	findMembershipEventsFromDirectMessageRooms(
 		users: string[],
-	): FindCursor<EventStore<PduForType<'m.room.member'>>> {
+	): FindCursor<EventStore<PduMembershipEvent<'join' | 'invite'>>> {
 		return this.collection.find({
 			'event.type': 'm.room.member',
 			'event.state_key': { $in: users },
 			'event.content.membership': { $in: ['join', 'invite'] },
 			'event.content.is_direct': true,
-		}) as FindCursor<EventStore<PduForType<'m.room.member'>>>;
+		}) as FindCursor<EventStore<PduMembershipEvent<'join' | 'invite'>>>;
 	}
 
 	findTombstoneEventsByRoomId(roomId: string): FindCursor<EventStore> {

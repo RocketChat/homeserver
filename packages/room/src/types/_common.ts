@@ -1,5 +1,10 @@
 import z from 'zod';
-import type { Pdu, PduType } from './v3-11';
+import type {
+	Pdu,
+	PduMembershipEventContent,
+	PduMembershipTypeSchema,
+	PduType,
+} from './v3-11';
 
 export type StateKey = string;
 
@@ -24,5 +29,14 @@ export type StateMapKey = `${PduType}:${StateKey}`;
 export type StateEventIdMap = Map<StateMapKey, EventID>;
 
 export type PduForType<P extends PduType = PduType> = Extract<Pdu, { type: P }>;
+
+type MembershipType = z.infer<typeof PduMembershipTypeSchema>;
+
+export type PduMembershipEvent<M extends MembershipType = MembershipType> =
+	Extract<
+		PduForType<'m.room.member'>,
+		// content.membership
+		{ content: { membership: M } }
+	>;
 
 export type PduCreate = PduForType<'m.room.create'>;
