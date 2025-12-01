@@ -298,7 +298,9 @@ async function isMembershipChangeAllowed(
 			// If the sender matches state_key, allow if and only if that user’s current membership state is invite or join.
 			if (
 				sender === invitee &&
-				(inviteeMembership === 'invite' || inviteeMembership === 'join')
+				(inviteeMembership === 'invite' ||
+					inviteeMembership === 'join' ||
+					inviteeMembership === 'leave')
 			) {
 				return;
 			}
