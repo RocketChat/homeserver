@@ -568,10 +568,79 @@ export class RoomService {
 		return event.eventId;
 	}
 
+	async makeLeave(
+		roomId: RoomID,
+		senderId: UserID,
+	): Promise<{
+		event: PduForType<'m.room.member'> & { origin: string };
+		room_version: RoomVersion;
+	}> {
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const leaveEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: { membership: 'leave' },
+				room_id: roomId,
+				state_key: senderId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderId,
+			},
+			roomInfo.room_version,
+		);
+
+		return {
+			event: {
+				...leaveEvent.event,
+				origin: this.configService.serverName,
+			},
+			room_version: roomInfo.room_version,
+		};
+	}
+
+	async sendLeave(
+		roomId: RoomID,
+		eventId: EventID,
+		event: PduForType<'m.room.member'>,
+	): Promise<void> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		if (!roomVersion) {
+			throw new Error('Room version not found while sending leave');
+		}
+
+		const leaveEvent =
+			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				event,
+				roomVersion,
+			);
+		if (leaveEvent.eventId !== eventId) {
+			throw new Error(`Invalid eventId ${eventId}`);
+		}
+
+		const residentServer = extractDomainFromId(roomId);
+		if (residentServer !== this.configService.serverName) {
+			throw new Error(
+				`Server ${residentServer} is not the resident server for room ${roomId}`,
+			);
+		}
+
+		await this.stateService.handlePdu(leaveEvent);
+		if (leaveEvent.rejected) {
+			throw new Error(leaveEvent.rejectReason);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
+
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+		});
+	}
+
 	async leaveRoom(roomId: RoomID, senderId: UserID): Promise<EventID> {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
-
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const authEventIds = await this.eventService.getAuthEventIds(
 			'm.room.member',
@@ -611,19 +680,10 @@ export class RoomService {
 			);
 		}
 
-		const leaveEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: { membership: 'leave' },
-				room_id: roomId,
-				state_key: senderId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderId,
-			},
-			roomInfo.room_version,
+		const makeLeaveResponse = await this.makeLeave(roomId, senderId);
+		const leaveEvent = PersistentEventFactory.createFromRawEvent(
+			makeLeaveResponse.event,
+			makeLeaveResponse.room_version,
 		);
 
 		await this.stateService.handlePdu(leaveEvent);
@@ -633,11 +693,6 @@ export class RoomService {
 		);
 
 		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
-
-		this.emitterService.emit('homeserver.matrix.membership', {
-			event_id: leaveEvent.eventId,
-			event: leaveEvent.event,
-		});
 
 		return leaveEvent.eventId;
 	}

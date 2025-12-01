@@ -83,6 +83,10 @@ export class FederationSDK {
 		return this.eventService.getEventById(...args);
 	}
 
+	makeLeave(...args: Parameters<typeof this.roomService.makeLeave>) {
+		return this.roomService.makeLeave(...args);
+	}
+
 	leaveRoom(...args: Parameters<typeof this.roomService.leaveRoom>) {
 		return this.roomService.leaveRoom(...args);
 	}
