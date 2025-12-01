@@ -13,7 +13,11 @@ import { delay, inject, singleton } from 'tsyringe';
 import { UploadRepository } from '../repositories/upload.repository';
 import { ConfigService } from './config.service';
 import { EventService } from './event.service';
-import { ServerService } from './server.service';
+import {
+	FailedSignatureVerificationPreconditionError,
+	InvalidRequestSignatureError,
+	SignatureVerificationService,
+} from './signature-verification.service';
 import { StateService } from './state.service';
 
 export class AclDeniedError extends Error {
@@ -31,9 +35,9 @@ export class EventAuthorizationService {
 		private readonly stateService: StateService,
 		private readonly eventService: EventService,
 		private readonly configService: ConfigService,
-		private readonly serverService: ServerService,
 		@inject(delay(() => UploadRepository))
 		private readonly uploadRepository: UploadRepository,
+		private readonly signatureVerificationService: SignatureVerificationService,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -135,51 +139,22 @@ export class EventAuthorizationService {
 		}
 
 		try {
-			const { origin, destination, key, signature } =
-				extractSignaturesFromHeader(authorizationHeader);
-
-			if (
-				!origin ||
-				!key ||
-				!signature ||
-				(destination && destination !== this.configService.serverName)
-			) {
-				return;
-			}
-
-			const [algorithm] = key.split(':');
-			if (algorithm !== 'ed25519') {
-				return;
-			}
-
-			const publicKey = await this.serverService.getPublicKey(origin, key);
-			if (!publicKey) {
-				this.logger.warn(`Could not fetch public key for ${origin}:${key}`);
-				return;
-			}
-
-			const actualDestination = destination || this.configService.serverName;
-			const isValid = await validateAuthorizationHeader(
-				origin,
-				publicKey,
-				actualDestination,
+			return await this.signatureVerificationService.verifyRequestSignature({
+				authorizationHeader,
 				method,
 				uri,
-				signature,
 				body,
-			);
-			if (!isValid) {
-				this.logger.warn(`Invalid signature from ${origin}`);
+			});
+		} catch (error) {
+			if (
+				error instanceof InvalidRequestSignatureError ||
+				error instanceof FailedSignatureVerificationPreconditionError
+			) {
+				this.logger.warn('Invalid request signature');
 				return;
 			}
 
-			return origin;
-		} catch (error) {
-			this.logger.error({
-				msg: 'Error verifying request signature',
-				err: error,
-			});
-			return;
+			throw error;
 		}
 	}
 

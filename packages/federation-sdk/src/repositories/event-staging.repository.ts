@@ -1,4 +1,3 @@
-import { generateId } from '@rocket.chat/federation-core';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
 import { type EventID, Pdu } from '@rocket.chat/federation-room';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';

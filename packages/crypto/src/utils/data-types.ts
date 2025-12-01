@@ -102,3 +102,7 @@ export function encodeCanonicalJson(value: unknown): string {
 export function fromBase64ToBytes(base64: string): Uint8Array {
 	return Buffer.from(base64, 'base64');
 }
+
+export class InvalidSignatureError extends Error {
+	name = 'InvalidSignatureError';
+}

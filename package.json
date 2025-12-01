@@ -49,6 +49,7 @@
 		"test": "bun test",
 		"build": "turbo build",
 		"test:coverage": "bun test --coverage",
+		"test:withMongo": "export RUN_MONGO_TESTS=1; grep -r runIfMongoExists packages/federation-sdk/src/services/ | awk -F: '/spec/ { print $1 }' | xargs bun test {}",
 		"lint": "bunx @biomejs/biome lint --diagnostic-level=error",
 		"lint:ci": "bunx @biomejs/biome ci --diagnostic-level=error",
 		"lint:fix": "bunx @biomejs/biome lint --fix",
