@@ -101,11 +101,6 @@ export class InviteService {
 			// without it join events will not be processed if /event/{eventId} causes problems
 			void federationService.sendEventToAllServersInRoom(inviteEvent);
 
-			this.emitterService.emit('homeserver.matrix.membership', {
-				event_id: inviteEvent.eventId,
-				event: inviteEvent.event,
-			});
-
 			return {
 				event_id: inviteEvent.eventId,
 				event: PersistentEventFactory.createFromRawEvent(
@@ -135,11 +130,6 @@ export class InviteService {
 
 		// let everyone know
 		void federationService.sendEventToAllServersInRoom(inviteEvent);
-
-		this.emitterService.emit('homeserver.matrix.membership', {
-			event_id: inviteEvent.eventId,
-			event: inviteEvent.event,
-		});
 
 		return {
 			event_id: inviteEvent.eventId,
@@ -228,11 +218,6 @@ export class InviteService {
 			);
 
 			await this.stateService.handlePdu(inviteEvent);
-
-			this.emitterService.emit('homeserver.matrix.membership', {
-				event_id: inviteEvent.eventId,
-				event: inviteEvent.event,
-			});
 
 			return inviteEvent;
 		}
