@@ -189,11 +189,6 @@ export class InviteService {
 			| 'm.room.encryption'
 		>[],
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
-		if (!strippedStateEvents) {
-			throw new Error(
-				'Missing invite_room_state required for policy validation',
-			);
-		}
 		await this.shouldProcessInvite(strippedStateEvents);
 
 		const residentServer = extractDomainFromId(event.room_id);
