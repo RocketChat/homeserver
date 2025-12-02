@@ -249,7 +249,7 @@ export class InviteService {
 			);
 		}
 
-		this.emitterService.emit('homeserver.matrix.membership', {
+		await this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: inviteEvent.eventId,
 			event: inviteEvent.event,
 		});

@@ -35,7 +35,7 @@ import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { ServerService } from './server.service';
-import { StateService } from './state.service';
+import type { StateService } from './state.service';
 
 export interface AuthEventParams {
 	roomId: string;
@@ -51,6 +51,7 @@ export class EventService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
+		@inject(delay(() => require('./state.service').StateService))
 		private readonly stateService: StateService,
 		private readonly serverService: ServerService,
 		private readonly eventEmitterService: EventEmitterService,
@@ -338,7 +339,7 @@ export class EventService {
 			`Processing typing notification for room ${room_id}: ${user_id} (typing: ${typing})`,
 		);
 
-		this.eventEmitterService.emit('homeserver.matrix.typing', {
+		await this.eventEmitterService.emit('homeserver.matrix.typing', {
 			room_id,
 			user_id,
 			typing,
@@ -378,7 +379,7 @@ export class EventService {
 				}`,
 			);
 
-			this.eventEmitterService.emit('homeserver.matrix.presence', {
+			await this.eventEmitterService.emit('homeserver.matrix.presence', {
 				user_id: presenceUpdate.user_id,
 				presence: presenceUpdate.presence,
 				last_active_ago: presenceUpdate.last_active_ago,
@@ -905,77 +906,83 @@ export class EventService {
 		switch (true) {
 			case event.event.type === 'm.room.create':
 				{
-					this.eventEmitterService.emit('homeserver.matrix.room.create', {
+					await this.eventEmitterService.emit('homeserver.matrix.room.create', {
 						event_id: eventId,
 						event: event.event,
 					});
 				}
 				break;
 			case event.event.type === 'm.room.message':
-				this.eventEmitterService.emit('homeserver.matrix.message', {
+				await this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			case event.event.type === 'm.room.encryption':
-				this.eventEmitterService.emit('homeserver.matrix.encryption', {
+				await this.eventEmitterService.emit('homeserver.matrix.encryption', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			case event.event.type === 'm.room.encrypted':
-				this.eventEmitterService.emit('homeserver.matrix.encrypted', {
+				await this.eventEmitterService.emit('homeserver.matrix.encrypted', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			case event.event.type === 'm.reaction': {
-				this.eventEmitterService.emit('homeserver.matrix.reaction', {
+				await this.eventEmitterService.emit('homeserver.matrix.reaction', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			}
 			case event.event.type === 'm.room.redaction': {
-				this.eventEmitterService.emit('homeserver.matrix.redaction', {
+				await this.eventEmitterService.emit('homeserver.matrix.redaction', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			}
 			case event.event.type === 'm.room.member': {
-				this.eventEmitterService.emit('homeserver.matrix.membership', {
+				await this.eventEmitterService.emit('homeserver.matrix.membership', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			}
 			case event.event.type === 'm.room.name': {
-				this.eventEmitterService.emit('homeserver.matrix.room.name', {
+				await this.eventEmitterService.emit('homeserver.matrix.room.name', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			}
 			case event.event.type === 'm.room.topic': {
-				this.eventEmitterService.emit('homeserver.matrix.room.topic', {
+				await this.eventEmitterService.emit('homeserver.matrix.room.topic', {
 					event_id: eventId,
 					event: event.event,
 				});
 				break;
 			}
 			case event.event.type === 'm.room.server_acl': {
-				this.eventEmitterService.emit('homeserver.matrix.room.server_acl', {
-					event_id: eventId,
-					event: event.event,
-				});
+				await this.eventEmitterService.emit(
+					'homeserver.matrix.room.server_acl',
+					{
+						event_id: eventId,
+						event: event.event,
+					},
+				);
 				break;
 			}
 			case event.event.type === 'm.room.power_levels': {
-				this.eventEmitterService.emit('homeserver.matrix.room.power_levels', {
-					event_id: eventId,
-					event: event.event,
-				});
+				await this.eventEmitterService.emit(
+					'homeserver.matrix.room.power_levels',
+					{
+						event_id: eventId,
+						event: event.event,
+					},
+				);
 				const getRole = (powerLevel: number) => {
 					if (powerLevel === 100) {
 						return 'owner';
@@ -1017,7 +1024,7 @@ export class EventService {
 
 						this.logger.debug(`Resetting power level for ${userId} to user`);
 
-						this.eventEmitterService.emit('homeserver.matrix.room.role', {
+						await this.eventEmitterService.emit('homeserver.matrix.room.role', {
 							sender_id: event.event.sender,
 							user_id: userId,
 							room_id: roomId,
@@ -1033,12 +1040,15 @@ export class EventService {
 							this.logger.debug(
 								`Setting power level for ${userId} to ${power}`,
 							);
-							this.eventEmitterService.emit('homeserver.matrix.room.role', {
-								sender_id: event.event.sender,
-								user_id: userId,
-								room_id: roomId,
-								role: getRole(power),
-							});
+							await this.eventEmitterService.emit(
+								'homeserver.matrix.room.role',
+								{
+									sender_id: event.event.sender,
+									user_id: userId,
+									room_id: roomId,
+									role: getRole(power),
+								},
+							);
 						}
 
 						break;
@@ -1064,7 +1074,7 @@ export class EventService {
 						this.logger.debug(
 							`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`,
 						);
-						this.eventEmitterService.emit('homeserver.matrix.room.role', {
+						await this.eventEmitterService.emit('homeserver.matrix.room.role', {
 							sender_id: event.event.sender,
 							user_id: userId,
 							room_id: roomId,
@@ -1087,7 +1097,7 @@ export class EventService {
 							`Emitting event for ${userId} with power level ${power}`,
 						);
 
-						this.eventEmitterService.emit('homeserver.matrix.room.role', {
+						await this.eventEmitterService.emit('homeserver.matrix.room.role', {
 							sender_id: event.event.sender,
 							user_id: userId,
 							room_id: roomId,

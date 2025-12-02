@@ -152,8 +152,8 @@ describe('StateService', async () => {
 	stateService = new StateService(
 		stateGraphRepository,
 		eventRepository,
-		{ notify: () => Promise.resolve() } as unknown as EventService,
 		configServiceInstance,
+		{ notify: () => Promise.resolve() } as unknown as EventService,
 	);
 
 	const createRoom = async (

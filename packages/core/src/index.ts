@@ -84,3 +84,5 @@ export { makeUnsignedRequest } from './utils/makeRequest';
 export type { FetchResponse, MultipartResult } from './utils/fetch';
 
 export { fetch } from './utils/fetch';
+
+export * from './AsyncDispatcher';
