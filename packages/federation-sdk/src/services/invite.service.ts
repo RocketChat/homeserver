@@ -228,6 +228,10 @@ export class InviteService {
 
 		await this.stateService.signEvent(inviteEvent);
 
+		// we have no specific structure to store the invite_room_state received on the invite route,
+		// so we store it in the unsigned section of the invite event.
+		inviteEvent.event.unsigned.invite_room_state = strippedStateEvents;
+
 		// check if we are already in the room, if so we can handlePdu because we have the state and should save
 		// the invite in the state as well
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
