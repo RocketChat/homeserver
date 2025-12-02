@@ -149,6 +149,13 @@ export class FederationSDK {
 		return this.eventAuthorizationService.verifyRequestSignature(...args);
 	}
 
+	/**
+	 * @deprecated
+	 */
+	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
+		return this.roomService.joinUser(...args);
+	}
+
 	acceptInvite(...args: Parameters<typeof this.roomService.acceptInvite>) {
 		return this.roomService.acceptInvite(...args);
 	}
