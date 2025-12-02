@@ -83,6 +83,14 @@ export class FederationSDK {
 		return this.eventService.getEventById(...args);
 	}
 
+	makeLeave(...args: Parameters<typeof this.roomService.makeLeave>) {
+		return this.roomService.makeLeave(...args);
+	}
+
+	sendLeave(...args: Parameters<typeof this.roomService.sendLeave>) {
+		return this.roomService.sendLeave(...args);
+	}
+
 	leaveRoom(...args: Parameters<typeof this.roomService.leaveRoom>) {
 		return this.roomService.leaveRoom(...args);
 	}
@@ -141,8 +149,19 @@ export class FederationSDK {
 		return this.eventAuthorizationService.verifyRequestSignature(...args);
 	}
 
+	/**
+	 * @deprecated
+	 */
 	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
 		return this.roomService.joinUser(...args);
+	}
+
+	acceptInvite(...args: Parameters<typeof this.roomService.acceptInvite>) {
+		return this.roomService.acceptInvite(...args);
+	}
+
+	rejectInvite(...args: Parameters<typeof this.roomService.rejectInvite>) {
+		return this.roomService.rejectInvite(...args);
 	}
 
 	getLatestRoomState2(

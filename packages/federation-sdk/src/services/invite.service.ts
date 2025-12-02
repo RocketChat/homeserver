@@ -1,4 +1,4 @@
-import { EventBase, createLogger } from '@rocket.chat/federation-core';
+import { createLogger } from '@rocket.chat/federation-core';
 import {
 	EventID,
 	PduForType,
@@ -9,24 +9,13 @@ import {
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
+import { EventRepository } from '../repositories/event.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
-import { EventService } from './event.service';
 import { FederationService } from './federation.service';
-import {
-	RoomInfoNotReadyError,
-	StateService,
-	UnknownRoomError,
-} from './state.service';
-// TODO: Have better (detailed/specific) event input type
-export type ProcessInviteEvent = {
-	event: EventBase;
-	invite_room_state: unknown;
-	room_version: string;
-};
-
+import { StateService } from './state.service';
 export class NotAllowedError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -44,6 +33,8 @@ export class InviteService {
 		private readonly configService: ConfigService,
 		private readonly eventAuthorizationService: EventAuthorizationService,
 		private readonly emitterService: EventEmitterService,
+		@inject(delay(() => EventRepository))
+		private readonly eventRepository: EventRepository,
 	) {}
 
 	/**
@@ -110,11 +101,6 @@ export class InviteService {
 			// without it join events will not be processed if /event/{eventId} causes problems
 			void federationService.sendEventToAllServersInRoom(inviteEvent);
 
-			this.emitterService.emit('homeserver.matrix.membership', {
-				event_id: inviteEvent.eventId,
-				event: inviteEvent.event,
-			});
-
 			return {
 				event_id: inviteEvent.eventId,
 				event: PersistentEventFactory.createFromRawEvent(
@@ -144,11 +130,6 @@ export class InviteService {
 
 		// let everyone know
 		void federationService.sendEventToAllServersInRoom(inviteEvent);
-
-		this.emitterService.emit('homeserver.matrix.membership', {
-			event_id: inviteEvent.eventId,
-			event: inviteEvent.event,
-		});
 
 		return {
 			event_id: inviteEvent.eventId,
@@ -196,10 +177,8 @@ export class InviteService {
 
 	async processInvite(
 		event: PduForType<'m.room.member'>,
-		roomId: RoomID,
 		eventId: EventID,
 		roomVersion: RoomVersion,
-		authenticatedServer: string,
 		strippedStateEvents: PduForType<
 			| 'm.room.create'
 			| 'm.room.name'
@@ -209,14 +188,8 @@ export class InviteService {
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
 		>[],
-	) {
-		// SPEC: when a user invites another user on a different homeserver, a request to that homeserver to have the event signed and verified must be made
+	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
 		await this.shouldProcessInvite(strippedStateEvents);
-
-		const residentServer = roomId.split(':').pop();
-		if (!residentServer) {
-			throw new Error(`Invalid roomId ${roomId}`);
-		}
 
 		const inviteEvent =
 			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
@@ -228,27 +201,58 @@ export class InviteService {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
 
-		await this.stateService.signEvent(inviteEvent);
+		const { residentServer } = inviteEvent;
 
-		// we are the host of the server
 		if (residentServer === this.configService.serverName) {
 			await this.eventAuthorizationService.checkAclForInvite(
-				roomId,
-				authenticatedServer,
+				event.room_id,
+				residentServer,
 			);
-
-			// attempt to persist the invite event as we already have the state
 
 			await this.stateService.handlePdu(inviteEvent);
 
-			// we do not send transaction here
-			// the asking server will handle the transactions
-
-			this.emitterService.emit('homeserver.matrix.membership', {
-				event_id: inviteEvent.eventId,
-				event: inviteEvent.event,
-			});
+			return inviteEvent;
 		}
+
+		const invitedServer = extractDomainFromId(event.state_key);
+		if (!invitedServer) {
+			throw new Error(
+				`invalid state_key ${event.state_key}, no server_name part`,
+			);
+		}
+		if (invitedServer !== this.configService.serverName) {
+			throw new Error(
+				`Cannot sign invite for user ${event.state_key}: user does not belong to this server (${this.configService.serverName})`,
+			);
+		}
+
+		await this.stateService.signEvent(inviteEvent);
+
+		// we have no specific structure to store the invite_room_state received on the invite route,
+		// so we store it in the unsigned section of the invite event.
+		inviteEvent.event.unsigned.invite_room_state = strippedStateEvents;
+
+		// check if we are already in the room, if so we can handlePdu because we have the state and should save
+		// the invite in the state as well
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			event.room_id,
+			'm.room.create',
+		);
+		if (createEvent) {
+			await this.stateService.handlePdu(inviteEvent);
+		} else {
+			// otherwise we save as outlier only so we can deal with it later
+			await this.eventRepository.insertOutlierEvent(
+				inviteEvent.eventId,
+				inviteEvent.event,
+				residentServer,
+			);
+		}
+
+		this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: inviteEvent.eventId,
+			event: inviteEvent.event,
+		});
 
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions

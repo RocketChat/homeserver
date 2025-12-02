@@ -13,6 +13,7 @@ import type {
 	Collection,
 	FindCursor,
 	FindOptions,
+	InsertOneResult,
 	UpdateResult,
 	WithId,
 } from 'mongodb';
@@ -403,6 +404,23 @@ export class EventRepository {
 			},
 			{ upsert: true },
 		);
+	}
+
+	insertOutlierEvent(
+		eventId: EventID,
+		event: Pdu,
+		origin: string,
+	): Promise<InsertOneResult<EventStore>> {
+		return this.collection.insertOne({
+			_id: eventId,
+			event,
+			createdAt: new Date(),
+			origin,
+			stateId: '' as StateID,
+			nextEventId: '',
+			outlier: true,
+			partial: false,
+		});
 	}
 
 	async updateNextEventReferences(

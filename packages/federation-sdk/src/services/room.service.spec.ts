@@ -10,6 +10,7 @@ import {
 import { container } from 'tsyringe';
 import { federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
+import { RoomService } from './room.service';
 import { StateService } from './state.service';
 
 describe('RoomService', async () => {
@@ -38,11 +39,13 @@ describe('RoomService', async () => {
 		signingKey: '',
 		serverName: 'example.com',
 	} as AppConfig);
-	const stateService = container
-		.register(ConfigService, {
-			useValue: configService,
-		})
-		.resolve(StateService);
+
+	container.register(ConfigService, {
+		useValue: configService,
+	});
+
+	const stateService = container.resolve(StateService);
+	const roomService = container.resolve(RoomService);
 
 	const createRoom = async (
 		username: room.UserID,
@@ -212,7 +215,7 @@ describe('RoomService', async () => {
 
 			expect(imtialStateKeys).toEqual(expectedStateKeys);
 
-			await federationSDK.joinUser(roomCreateEvent, secondaryUsername);
+			await roomService.joinUser(roomId, username, secondaryUsername);
 
 			const state = await stateService.getLatestRoomState(roomId);
 
@@ -312,7 +315,7 @@ describe('RoomService', async () => {
 
 			const roomId = roomCreateEvent.roomId;
 
-			await federationSDK.joinUser(roomCreateEvent, secondaryUsername);
+			await roomService.joinUser(roomId, username, secondaryUsername);
 
 			expect(
 				await stateService.getLatestRoomState(roomId).then((state) => {
@@ -337,6 +340,74 @@ describe('RoomService', async () => {
 				[username]: 100,
 				[secondaryUsername]: 50,
 			});
+		});
+	});
+
+	describe('acceptInvite', () => {
+		it('should accept invite and join user to room correctly', async () => {
+			const username = '@alice:example.com' as room.UserID;
+			const invitedUsername = '@bob:example.com' as room.UserID;
+			const { roomCreateEvent } = await createRoom(username, 'invite');
+			const roomId = roomCreateEvent.roomId;
+
+			await federationSDK.inviteUserToRoom(invitedUsername, roomId, username);
+
+			const stateBeforeAccept = await stateService.getLatestRoomState(roomId);
+			const inviteMemberEvent = stateBeforeAccept.get(
+				`m.room.member:${invitedUsername}`,
+			) as PersistentEventBase<RoomVersion, 'm.room.member'> | undefined;
+
+			expect(inviteMemberEvent?.getContent().membership).toBe('invite');
+
+			await federationSDK.acceptInvite(roomId, invitedUsername);
+
+			const stateAfterAccept = await stateService.getLatestRoomState(roomId);
+			const joinMemberEvent = stateAfterAccept.get(
+				`m.room.member:${invitedUsername}`,
+			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+
+			expect(joinMemberEvent.getContent().membership).toBe('join');
+			expect([...stateAfterAccept.keys()]).toEqual(
+				expect.arrayContaining([
+					'm.room.create:',
+					`m.room.member:${username}`,
+					`m.room.member:${invitedUsername}`,
+				]),
+			);
+		});
+	});
+
+	describe('rejectInvite', () => {
+		it('should reject invite and leave room correctly', async () => {
+			const username = '@alice:example.com' as room.UserID;
+			const invitedUsername = '@bob:example.com' as room.UserID;
+			const { roomCreateEvent } = await createRoom(username, 'invite');
+			const roomId = roomCreateEvent.roomId;
+
+			await federationSDK.inviteUserToRoom(invitedUsername, roomId, username);
+
+			const stateBeforeReject = await stateService.getLatestRoomState(roomId);
+			const inviteMemberEvent = stateBeforeReject.get(
+				`m.room.member:${invitedUsername}`,
+			) as PersistentEventBase<RoomVersion, 'm.room.member'> | undefined;
+
+			expect(inviteMemberEvent?.getContent().membership).toBe('invite');
+
+			await federationSDK.rejectInvite(roomId, invitedUsername);
+
+			const stateAfterReject = await stateService.getLatestRoomState(roomId);
+			const leaveMemberEvent = stateAfterReject.get(
+				`m.room.member:${invitedUsername}`,
+			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+
+			expect(leaveMemberEvent.getContent().membership).toBe('leave');
+			expect([...stateAfterReject.keys()]).toEqual(
+				expect.arrayContaining([
+					'm.room.create:',
+					`m.room.member:${username}`,
+					`m.room.member:${invitedUsername}`,
+				]),
+			);
 		});
 	});
 });
