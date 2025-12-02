@@ -71,7 +71,7 @@ export class SendJoinService {
 
 		const signedJoinEvent = await stateService.signEvent(joinEvent);
 
-		this.emitterService.emit('homeserver.matrix.membership', {
+		await this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: eventId,
 			event: signedJoinEvent.event,
 		});

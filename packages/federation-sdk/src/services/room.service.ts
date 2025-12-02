@@ -633,7 +633,7 @@ export class RoomService {
 
 		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
 
-		this.emitterService.emit('homeserver.matrix.membership', {
+		await this.emitterService.emit('homeserver.matrix.membership', {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
@@ -950,7 +950,7 @@ export class RoomService {
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
 
-			this.emitterService.emit('homeserver.matrix.membership', {
+			await this.emitterService.emit('homeserver.matrix.membership', {
 				event_id: membershipEvent.eventId,
 				event: membershipEvent.event,
 			});
@@ -1169,7 +1169,7 @@ export class RoomService {
 
 		await this.federationService.sendLeave(leaveEvent);
 
-		this.eventEmitterService.emit('homeserver.matrix.membership', {
+		await this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});

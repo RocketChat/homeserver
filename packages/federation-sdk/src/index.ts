@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 
-import type { Emitter } from '@rocket.chat/emitter';
+import { Emitter } from '@rocket.chat/emitter';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type {
 	EventID,
@@ -185,14 +185,10 @@ export async function init({
 			'rocketchat_federation_state_graphs',
 		),
 	});
-
 	const eventEmitterService = container.resolve(EventEmitterService);
 	if (emitter) {
 		eventEmitterService.setEmitter(emitter);
-	} else {
-		eventEmitterService.initializeStandalone();
 	}
-
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);
 
