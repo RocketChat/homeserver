@@ -35,7 +35,7 @@ import { eventSchemas } from '../utils/event-schemas';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { ServerService } from './server.service';
-import { StateService } from './state.service';
+import type { StateService } from './state.service';
 
 export interface AuthEventParams {
 	roomId: string;
@@ -50,9 +50,13 @@ export class EventService {
 
 	constructor(
 		private readonly configService: ConfigService,
+		@inject(delay(() => StagingAreaQueue))
 		private readonly stagingAreaQueue: StagingAreaQueue,
+		@inject(delay(() => require('./state.service').StateService))
 		private readonly stateService: StateService,
+		@inject(delay(() => ServerService))
 		private readonly serverService: ServerService,
+		@inject(delay(() => EventEmitterService))
 		private readonly eventEmitterService: EventEmitterService,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,

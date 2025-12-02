@@ -27,7 +27,6 @@ import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
 import type { EventService } from './event.service';
-
 type StrippedEvent = {
 	content: PduContent;
 	sender: string;
@@ -77,6 +76,8 @@ export class StateService {
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
+		@inject(delay(() => require('./event.service').EventService))
+		private readonly eventService: EventService,
 	) {}
 
 	// TODO: this is a very vague method, better would be to use exactly what needed,
@@ -440,7 +441,6 @@ export class StateService {
 			'' as StateID,
 		);
 		await this.addToRoomGraph(createEvent, stateId);
-
 		this.logger.info(
 			{ eventId: createEvent.eventId, roomId: createEvent.roomId, stateId },
 			'create event saved',
@@ -511,6 +511,8 @@ export class StateService {
 				previousStateId,
 			);
 			await this.addToRoomGraph(event, previousStateId);
+
+			await this.eventService.notify(event);
 		}
 
 		return previousStateId;
