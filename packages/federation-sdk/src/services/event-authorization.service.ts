@@ -8,6 +8,7 @@ import type {
 	EventID,
 	Pdu,
 	PersistentEventBase,
+	RoomID,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 import { UploadRepository } from '../repositories/upload.repository';
@@ -262,7 +263,7 @@ export class EventAuthorizationService {
 		return false;
 	}
 
-	async checkAclForInvite(roomId: string, senderServer: string): Promise<void> {
+	async checkAclForInvite(roomId: RoomID, senderServer: string): Promise<void> {
 		const state = await this.stateService.getLatestRoomState(roomId);
 
 		const aclEvent = state.get('m.room.server_acl:');
@@ -278,7 +279,7 @@ export class EventAuthorizationService {
 	}
 
 	async serverHasAccessToResource(
-		roomId: string,
+		roomId: RoomID,
 		serverName: string,
 	): Promise<boolean> {
 		const state = await this.stateService.getLatestRoomState(roomId);
@@ -361,13 +362,13 @@ export class EventAuthorizationService {
 		return this.serverHasAccessToResource(rcUpload.federation.mrid, serverName);
 	}
 
-	async canAccessRoom(roomId: string, serverName: string): Promise<boolean> {
+	async canAccessRoom(roomId: RoomID, serverName: string): Promise<boolean> {
 		return this.serverHasAccessToResource(roomId, serverName);
 	}
 
-	async canAccessResource(
-		entityType: 'event' | 'room' | 'media',
-		entityId: string,
+	async canAccessResource<T extends 'event' | 'room' | 'media'>(
+		entityType: T,
+		entityId: T extends 'event' ? EventID : T extends 'room' ? RoomID : string,
 		serverName: string,
 	): Promise<boolean> {
 		if (entityType === 'event') {
@@ -375,7 +376,7 @@ export class EventAuthorizationService {
 		}
 
 		if (entityType === 'room') {
-			return this.canAccessRoom(entityId, serverName);
+			return this.canAccessRoom(entityId as RoomID, serverName);
 		}
 
 		if (entityType === 'media') {

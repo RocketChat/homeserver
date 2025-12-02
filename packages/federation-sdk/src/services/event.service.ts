@@ -20,7 +20,9 @@ import {
 	type PduType,
 	PersistentEventFactory,
 	RoomID,
+	RoomState,
 	RoomVersion,
+	type State,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
@@ -151,7 +153,7 @@ export class EventService {
 
 	async processIncomingPDUs(origin: string, pdus: Pdu[]): Promise<void> {
 		// organize events by room id
-		const eventsByRoomId = new Map<string, Pdu[]>();
+		const eventsByRoomId = new Map<RoomID, Pdu[]>();
 		for (const event of pdus) {
 			const roomId = event.room_id;
 			if (!eventsByRoomId.has(roomId)) {
@@ -762,7 +764,7 @@ export class EventService {
 	}
 
 	async getState(
-		roomId: string,
+		roomId: RoomID,
 		eventId: EventID,
 	): Promise<{
 		pdus: Record<string, unknown>[];
@@ -775,7 +777,7 @@ export class EventService {
 				throw new Error('M_NOT_FOUND');
 			}
 
-			let state: Map<string, any>;
+			let state: State;
 
 			// Get state at a specific event
 			state = await this.stateService.getStateBeforeEvent(event);
@@ -889,6 +891,218 @@ export class EventService {
 				err: error,
 			});
 			throw error;
+		}
+	}
+
+	async notify(event: { eventId: EventID; event: Pdu }) {
+		const {
+			eventId,
+			event: { room_id: roomId },
+		} = event;
+
+		this.logger.debug(`Notifying clients about event ${eventId}`);
+
+		switch (true) {
+			case event.event.type === 'm.room.create':
+				{
+					this.eventEmitterService.emit('homeserver.matrix.room.create', {
+						event_id: eventId,
+						event: event.event,
+					});
+				}
+				break;
+			case event.event.type === 'm.room.message':
+				this.eventEmitterService.emit('homeserver.matrix.message', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			case event.event.type === 'm.room.encryption':
+				this.eventEmitterService.emit('homeserver.matrix.encryption', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			case event.event.type === 'm.room.encrypted':
+				this.eventEmitterService.emit('homeserver.matrix.encrypted', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			case event.event.type === 'm.reaction': {
+				this.eventEmitterService.emit('homeserver.matrix.reaction', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
+			case event.event.type === 'm.room.redaction': {
+				this.eventEmitterService.emit('homeserver.matrix.redaction', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
+			case event.event.type === 'm.room.member': {
+				this.eventEmitterService.emit('homeserver.matrix.membership', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
+			case event.event.type === 'm.room.name': {
+				this.eventEmitterService.emit('homeserver.matrix.room.name', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
+			case event.event.type === 'm.room.topic': {
+				this.eventEmitterService.emit('homeserver.matrix.room.topic', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
+			case event.event.type === 'm.room.server_acl': {
+				this.eventEmitterService.emit('homeserver.matrix.room.server_acl', {
+					event_id: eventId,
+					event: event.event,
+				});
+				break;
+			}
+			case event.event.type === 'm.room.power_levels': {
+				this.eventEmitterService.emit('homeserver.matrix.room.power_levels', {
+					event_id: eventId,
+					event: event.event,
+				});
+				const getRole = (powerLevel: number) => {
+					if (powerLevel === 100) {
+						return 'owner';
+					}
+					if (powerLevel === 50) {
+						return 'moderator';
+					}
+
+					return 'user';
+				};
+
+				const plEvent = await this.stateService.getEvent(eventId);
+				if (!plEvent) {
+					throw new Error(`Power level event ${eventId} not found in db`);
+				}
+
+				// at this point we potentially have the new power level event
+				const oldRoomState = new RoomState(
+					await this.stateService.getStateBeforeEvent(plEvent),
+				);
+
+				const oldPowerLevels = oldRoomState.powerLevels?.users;
+
+				const changedUserPowers = event.event.content.users;
+
+				if (!changedUserPowers) {
+					this.logger.debug('No changed user powers, resetting all powers');
+					// everyone set to "user" except for the owner
+					const owner = oldRoomState.creator;
+					if (!oldPowerLevels) {
+						this.logger.debug('No current power levels, skipping');
+						break;
+					}
+
+					for (const userId of Object.keys(oldPowerLevels)) {
+						if (userId === owner) {
+							continue;
+						}
+
+						this.logger.debug(`Resetting power level for ${userId} to user`);
+
+						this.eventEmitterService.emit('homeserver.matrix.room.role', {
+							sender_id: event.event.sender,
+							user_id: userId,
+							room_id: roomId,
+							role: 'user', // since new power level reset all powers
+						});
+					}
+				} else {
+					this.logger.debug('Changed user powers, emitting events');
+					if (!oldPowerLevels) {
+						this.logger.debug('No current power levels, setting new ones');
+						// no existing, set the new ones
+						for (const [userId, power] of Object.entries(changedUserPowers)) {
+							this.logger.debug(
+								`Setting power level for ${userId} to ${power}`,
+							);
+							this.eventEmitterService.emit('homeserver.matrix.room.role', {
+								sender_id: event.event.sender,
+								user_id: userId,
+								room_id: roomId,
+								role: getRole(power),
+							});
+						}
+
+						break;
+					}
+					// need to know what changed
+					const usersInOldPowerLevelEvent = Object.keys(oldPowerLevels);
+					const usersInNewPowerLevelEvent = Object.keys(changedUserPowers);
+
+					const setOrUnsetPowerLevels = new Set(
+						usersInNewPowerLevelEvent,
+					).difference(new Set(usersInOldPowerLevelEvent));
+
+					this.logger.debug(
+						{
+							difference: Array.from(setOrUnsetPowerLevels),
+						},
+						'Strong difference in power levels',
+					);
+
+					// for the difference only new power level content matters
+					for (const userId of setOrUnsetPowerLevels) {
+						const newPowerLevel = changedUserPowers[userId]; // if unset, it's 0, if set, it's the power level
+						this.logger.debug(
+							`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`,
+						);
+						this.eventEmitterService.emit('homeserver.matrix.room.role', {
+							sender_id: event.event.sender,
+							user_id: userId,
+							room_id: roomId,
+							role: getRole(newPowerLevel),
+						});
+					}
+
+					this.logger.debug('Emitting events for changed user powers');
+
+					// now use the new content
+					for (const [userId, power] of Object.entries(changedUserPowers)) {
+						if (
+							power === oldPowerLevels[userId] || // no change
+							setOrUnsetPowerLevels.has(userId) // already handled
+						) {
+							continue;
+						}
+
+						this.logger.debug(
+							`Emitting event for ${userId} with power level ${power}`,
+						);
+
+						this.eventEmitterService.emit('homeserver.matrix.room.role', {
+							sender_id: event.event.sender,
+							user_id: userId,
+							room_id: roomId,
+							role: getRole(power),
+						});
+					}
+				}
+
+				break;
+			}
+			default:
+				this.logger.warn(
+					`Unknown event type: ${event.event.type} for emitterService for now`,
+				);
+				break;
 		}
 	}
 }

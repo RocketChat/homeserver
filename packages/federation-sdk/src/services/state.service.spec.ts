@@ -21,6 +21,7 @@ import {
 } from '../repositories/state-graph.repository';
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
+import { EventService } from './event.service';
 import { StateService } from './state.service';
 
 function getDefaultFields() {
@@ -151,6 +152,7 @@ describe('StateService', async () => {
 	stateService = new StateService(
 		stateGraphRepository,
 		eventRepository,
+		{ notify: () => Promise.resolve() } as unknown as EventService,
 		configServiceInstance,
 	);
 
