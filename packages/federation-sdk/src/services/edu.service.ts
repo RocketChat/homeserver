@@ -4,6 +4,7 @@ import {
 	createTypingEDU,
 } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
+import { RoomID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
@@ -20,7 +21,7 @@ export class EduService {
 	) {}
 
 	async sendTypingNotification(
-		roomId: string,
+		roomId: RoomID,
 		userId: string,
 		typing: boolean,
 	): Promise<void> {
@@ -51,7 +52,7 @@ export class EduService {
 
 	async sendPresenceUpdateToRooms(
 		presenceUpdates: PresenceUpdate[],
-		roomIds: string[],
+		roomIds: RoomID[],
 	): Promise<void> {
 		try {
 			const origin = this.configService.serverName;

@@ -22,6 +22,7 @@ import {
 	RoomID,
 	RoomState,
 	RoomVersion,
+	type State,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
@@ -152,7 +153,7 @@ export class EventService {
 
 	async processIncomingPDUs(origin: string, pdus: Pdu[]): Promise<void> {
 		// organize events by room id
-		const eventsByRoomId = new Map<string, Pdu[]>();
+		const eventsByRoomId = new Map<RoomID, Pdu[]>();
 		for (const event of pdus) {
 			const roomId = event.room_id;
 			if (!eventsByRoomId.has(roomId)) {
@@ -763,7 +764,7 @@ export class EventService {
 	}
 
 	async getState(
-		roomId: string,
+		roomId: RoomID,
 		eventId: EventID,
 	): Promise<{
 		pdus: Record<string, unknown>[];
@@ -776,7 +777,7 @@ export class EventService {
 				throw new Error('M_NOT_FOUND');
 			}
 
-			let state: Map<string, any>;
+			let state: State;
 
 			// Get state at a specific event
 			state = await this.stateService.getStateBeforeEvent(event);

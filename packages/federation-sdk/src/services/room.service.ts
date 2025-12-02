@@ -943,6 +943,10 @@ export class RoomService {
 		} catch (error) {
 			if (error instanceof UnknownRoomError) {
 				// if already in room, skip this, walk join event to fill the state
+				this.logger.info(
+					{ roomId },
+					'room not found, processing initial state',
+				);
 				await stateService.processInitialState(state, authChain);
 			}
 		}

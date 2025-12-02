@@ -1,6 +1,6 @@
 import { generateId } from '@rocket.chat/federation-core';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
-import { type EventID, Pdu } from '@rocket.chat/federation-room';
+import { type EventID, Pdu, RoomID } from '@rocket.chat/federation-room';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -68,7 +68,7 @@ export class EventStagingRepository {
 		return this.collection.deleteOne({ _id: eventId });
 	}
 
-	async getDistinctStagedRooms(): Promise<string[]> {
-		return this.collection.distinct('roomId');
+	async getDistinctStagedRooms(): Promise<RoomID[]> {
+		return this.collection.distinct('roomId') as Promise<RoomID[]>;
 	}
 }

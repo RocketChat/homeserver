@@ -26,6 +26,7 @@ import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import { ConfigService } from './config.service';
+import type { EventService } from './event.service';
 
 type StrippedEvent = {
 	content: PduContent;
@@ -100,16 +101,16 @@ export class StateService {
 		return event.content;
 	}
 
-	async getRoomVersion(roomId: string): Promise<RoomVersion> {
+	async getRoomVersion(roomId: RoomID): Promise<RoomVersion> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
 			roomId,
 			'm.room.create',
 		);
 		if (!createEvent) {
-			throw new UnknownRoomError(roomId as RoomID);
+			throw new UnknownRoomError(roomId);
 		}
 
-		return createEvent.event.content?.room_version as RoomVersion;
+		return createEvent.event.content.room_version;
 	}
 
 	// helps with logging state
@@ -165,7 +166,7 @@ export class StateService {
 		return stateId;
 	}
 
-	async getLatestRoomState(roomId: string): Promise<State> {
+	async getLatestRoomState(roomId: RoomID): Promise<State> {
 		const roomVersion = await this.getRoomVersion(roomId);
 
 		const state = await this._mergeDivergentBranches(roomId, roomVersion);
@@ -176,12 +177,12 @@ export class StateService {
 		return state;
 	}
 
-	async getLatestRoomState2(roomId: string) {
+	async getLatestRoomState2(roomId: RoomID) {
 		const state = await this.getLatestRoomState(roomId);
 		return new RoomState(state);
 	}
 
-	public async getStrippedRoomState(roomId: string): Promise<StrippedEvent[]> {
+	public async getStrippedRoomState(roomId: RoomID): Promise<StrippedEvent[]> {
 		const state = await this.getLatestRoomState(roomId);
 
 		const strippedState: StrippedEvent[] = [];
@@ -338,8 +339,8 @@ export class StateService {
 		const result = await signEvent(
 			// Before signing the event, the content hash of the event is calculated as described below. The hash is encoded using Unpadded Base64 and stored in the event object, in a hashes object, under a sha256 key.
 			// ^^ is done already through redactedEvent fgetter
-			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server’s signing key (see also Retrieving server keys).
-			event.redactedEvent as any,
+			// The event object is then redacted, following the redaction algorithm. Finally it is signed as described in Signing JSON, using the server's signing key (see also Retrieving server keys).
+			event.redactedEvent as Pdu,
 			signingKey[0],
 			origin,
 			false, // already passed through redactedEvent, hash is already part of this
@@ -781,7 +782,7 @@ export class StateService {
 	// 	const stateId = await this.getStateIdBeforeEvent(event);
 	// 	return this.getStateAtStateId(stateId, event.version);
 	// }
-	async getServerSetInRoom(roomId: string) {
+	async getServerSetInRoom(roomId: RoomID) {
 		const state = await this.getLatestRoomState(roomId);
 
 		const servers = new Set<string>();
@@ -809,7 +810,7 @@ export class StateService {
 	}
 
 	// @deprecated use getServerSetInRoom
-	async getServersInRoom(roomId: string) {
+	async getServersInRoom(roomId: RoomID) {
 		return Array.from(await this.getServerSetInRoom(roomId));
 	}
 
@@ -1057,7 +1058,7 @@ export class StateService {
 		}
 	}
 
-	async _mergeDivergentBranches(roomId: string, roomVersion_?: RoomVersion) {
+	async _mergeDivergentBranches(roomId: RoomID, roomVersion_?: RoomVersion) {
 		const roomVersion = roomVersion_
 			? roomVersion_
 			: await this.getRoomVersion(roomId);
@@ -1073,7 +1074,11 @@ export class StateService {
 
 		if (stateIds.size === 1) {
 			// all pointing to the same state, no need to merge
-			const stateId = stateIds.values().toArray()[0]!;
+			const stateIdArray = stateIds.values().toArray();
+			if (stateIdArray.length === 0) {
+				throw new Error('StateService: expected state ID but found none');
+			}
+			const stateId = stateIdArray[0];
 			const stateMap = await this.stateRepository.buildStateMapById(stateId);
 
 			if (!stateMap) {

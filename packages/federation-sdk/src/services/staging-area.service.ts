@@ -15,7 +15,7 @@ import {
 	PersistentEventFactory,
 	RoomState,
 } from '@rocket.chat/federation-room';
-import type { Pdu, RoomVersion } from '@rocket.chat/federation-room';
+import type { Pdu, RoomID, RoomVersion } from '@rocket.chat/federation-room';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
@@ -73,14 +73,12 @@ export class StagingAreaService {
 		return [authEvents, prevEvents];
 	}
 
-	async processEventForRoom(roomId: string) {
+	async processEventForRoom(roomId: RoomID) {
 		const roomIdToRoomVersion = new Map<string, RoomVersion>();
-		const getRoomVersion = async (roomId: string) => {
-			if (roomIdToRoomVersion.has(roomId)) {
-				return roomIdToRoomVersion.get(roomId) as RoomVersion;
-			}
-
-			const version = await this.stateService.getRoomVersion(roomId);
+		const getRoomVersion = async (roomId: RoomID) => {
+			const version =
+				roomIdToRoomVersion.get(roomId) ??
+				(await this.stateService.getRoomVersion(roomId));
 			roomIdToRoomVersion.set(roomId, version);
 			return version;
 		};

@@ -1,15 +1,16 @@
+import { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
 import { singleton } from 'tsyringe';
 
-type QueueHandler = (roomId: string) => Promise<void>;
+type QueueHandler = (roomId: RoomID) => Promise<void>;
 
 @singleton()
 export class StagingAreaQueue {
-	private queue: string[] = [];
+	private queue: RoomID[] = [];
 	private handlers: QueueHandler[] = [];
 	private processing = false;
 
-	enqueue(roomId: string): void {
+	enqueue(roomId: RoomID): void {
 		this.queue.push(roomId);
 		this.processQueue();
 	}
@@ -27,7 +28,7 @@ export class StagingAreaQueue {
 
 		try {
 			while (this.queue.length > 0) {
-				const roomId = this.queue.shift();
+				const roomId = this.queue.shift() as RoomID;
 				if (!roomId) continue;
 
 				for (const handler of this.handlers) {
