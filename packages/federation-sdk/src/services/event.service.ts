@@ -50,13 +50,10 @@ export class EventService {
 
 	constructor(
 		private readonly configService: ConfigService,
-		@inject(delay(() => StagingAreaQueue))
 		private readonly stagingAreaQueue: StagingAreaQueue,
 		@inject(delay(() => require('./state.service').StateService))
 		private readonly stateService: StateService,
-		@inject(delay(() => ServerService))
 		private readonly serverService: ServerService,
-		@inject(delay(() => EventEmitterService))
 		private readonly eventEmitterService: EventEmitterService,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
