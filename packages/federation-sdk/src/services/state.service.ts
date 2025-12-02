@@ -1075,9 +1075,7 @@ export class StateService {
 		if (stateIds.size === 1) {
 			// all pointing to the same state, no need to merge
 			const stateIdArray = stateIds.values().toArray();
-			if (stateIdArray.length === 0) {
-				throw new Error('StateService: expected state ID but found none');
-			}
+
 			const stateId = stateIdArray[0];
 			const stateMap = await this.stateRepository.buildStateMapById(stateId);
 
