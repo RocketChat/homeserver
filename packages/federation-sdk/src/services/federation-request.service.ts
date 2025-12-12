@@ -26,6 +26,20 @@ interface SignedRequest {
 }
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export class FederationRequestError extends Error {
+	constructor(
+		readonly response: FetchResponse<unknown>,
+		errorText: string,
+	) {
+		let errorDetail = errorText;
+		try {
+			errorDetail = JSON.stringify(JSON.parse(errorText || ''));
+		} catch {
+			/* use raw text if parsing fails */
+		}
+		super(`Federation request failed: ${response.status} ${errorDetail}`);
+	}
+}
 
 @singleton()
 export class FederationRequestService {
@@ -99,25 +113,18 @@ export class FederationRequestService {
 
 		if (!response.ok) {
 			const errorText = await response.text();
-
+			const error = new FederationRequestError(response, errorText);
 			this.logger.error({
 				msg: 'Federation request failed',
 				url,
 				status: response.status,
 				errorText,
+				errorMessage: error.message,
 				sentHeaders: headers,
 				responseHeaders: response.headers,
 			});
 
-			let errorDetail = errorText;
-			try {
-				errorDetail = JSON.stringify(JSON.parse(errorText || ''));
-			} catch {
-				/* use raw text if parsing fails */
-			}
-			throw new Error(
-				`Federation request failed: ${response.status} ${errorDetail}`,
-			);
+			throw error;
 		}
 
 		return response;

@@ -21,6 +21,8 @@ import { DatabaseConnectionService } from './services/database-connection.servic
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 
+export { FederationRequestError } from './services/federation-request.service';
+
 export type {
 	Pdu,
 	PduForType,
