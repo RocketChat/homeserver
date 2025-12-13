@@ -19,7 +19,6 @@ import {
 	type StateMapKey,
 	StateResolverAuthorizationError,
 	checkEventAuthWithState,
-	checkEventAuthWithoutState,
 	extractDomainFromId,
 	resolveStateV2Plus,
 } from '@rocket.chat/federation-room';
