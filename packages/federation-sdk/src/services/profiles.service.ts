@@ -69,9 +69,7 @@ export class ProfilesService {
 		room_version: RoomVersion;
 	}> {
 		const stateService = this.stateService;
-		const roomInformation = await stateService.getRoomInformation(roomId);
-
-		const roomVersion = roomInformation.room_version;
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		if (!versions.includes(roomVersion)) {
 			throw new Error(`Unsupported room version: ${roomVersion}`);
@@ -97,7 +95,7 @@ export class ProfilesService {
 				origin_server_ts: Date.now(),
 				sender: userId,
 			},
-			roomInformation.room_version,
+			roomVersion,
 		);
 
 		return {
