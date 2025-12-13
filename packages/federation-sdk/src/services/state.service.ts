@@ -19,6 +19,7 @@ import {
 	type StateMapKey,
 	StateResolverAuthorizationError,
 	checkEventAuthWithState,
+	checkEventAuthWithoutState,
 	extractDomainFromId,
 	resolveStateV2Plus,
 } from '@rocket.chat/federation-room';
@@ -60,13 +61,6 @@ export class UnknownRoomError extends Error {
 		this.name = 'UnknownRoomError';
 	}
 }
-export class RoomInfoNotReadyError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'RoomInfoNotReadyError';
-	}
-}
-
 @singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
@@ -79,28 +73,6 @@ export class StateService {
 		@inject(delay(() => require('./event.service').EventService))
 		private readonly eventService: EventService,
 	) {}
-
-	// TODO: this is a very vague method, better would be to use exactly what needed,
-	// or getCreateEvent.
-	// currently AFAIK mostly is used for just room version
-	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
-		const { event, stateId } =
-			(await this.eventRepository.findByRoomIdAndType(
-				roomId,
-				'm.room.create',
-			)) ?? {};
-		if (event?.type !== 'm.room.create') {
-			throw new RoomInfoNotReadyError(
-				'Create event mapping not found for room information',
-			);
-		}
-
-		if (!stateId) {
-			throw new Error('Create event has no state id, something is very wrong');
-		}
-
-		return event.content;
-	}
 
 	async getRoomVersion(roomId: RoomID): Promise<RoomVersion> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
