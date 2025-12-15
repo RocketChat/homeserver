@@ -730,7 +730,7 @@ export type PduRoomTombstoneEventContent = z.infer<
 >;
 
 const EventPduTypeRoomTombstone = z.object({
-	...PduNoContentTimelineEventSchema,
+	...PduNoContentEmptyStateKeyStateEventSchema,
 	type: z.literal('m.room.tombstone'),
 	content: PduRoomTombstoneEventContentSchema,
 });

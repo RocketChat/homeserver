@@ -1377,6 +1377,7 @@ export class RoomService {
 			{
 				room_id: roomId,
 				sender: sender,
+				state_key: '',
 				content: {
 					body: reason,
 					replacement_room: replacementRoomId,
