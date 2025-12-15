@@ -13,13 +13,6 @@ import type { HomeserverEventSignatures } from '..';
 export class EventEmitterService {
 	private emitter: AsyncDispatcher<HomeserverEventSignatures> =
 		new AsyncDispatcher<HomeserverEventSignatures>();
-	private oldEmitter: Emitter<HomeserverEventSignatures> =
-		new Emitter<HomeserverEventSignatures>();
-
-	public setEmitter(emitter: Emitter<HomeserverEventSignatures>): void {
-		this.oldEmitter = emitter;
-		logger.info('EventEmitterService: External emitter injected');
-	}
 
 	public async emit<K extends keyof HomeserverEventSignatures>(
 		event: K,
@@ -28,9 +21,6 @@ export class EventEmitterService {
 			: [EventOf<HomeserverEventSignatures, K>]
 	): Promise<void> {
 		await this.emitter.emit(event, ...([data] as any));
-		if (this.oldEmitter) {
-			await this.oldEmitter.emit(event, ...([data] as any));
-		}
 		logger.debug({ msg: `Event emitted: ${event}`, event, data });
 	}
 
@@ -38,28 +28,14 @@ export class EventEmitterService {
 		event: K,
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
 	): (() => void) | undefined {
-		const [handler1, handler2] = [
-			this.emitter.on(event, handler),
-			this.oldEmitter.on(event, handler),
-		];
-		return () => {
-			handler1();
-			handler2();
-		};
+		return this.emitter.on(event, handler);
 	}
 
 	public once<K extends keyof HomeserverEventSignatures>(
 		event: K,
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
 	): (() => void) | undefined {
-		const [handler1, handler2] = [
-			this.emitter.once(event, handler),
-			this.oldEmitter.once(event, handler),
-		];
-		return () => {
-			handler1();
-			handler2();
-		};
+		return this.emitter.once(event, handler);
 	}
 
 	public off<K extends keyof HomeserverEventSignatures>(
@@ -67,7 +43,5 @@ export class EventEmitterService {
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
 	): void {
 		this.emitter.off(event, handler);
-
-		this.oldEmitter.off(event, handler);
 	}
 }
