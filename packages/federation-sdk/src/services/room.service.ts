@@ -642,6 +642,8 @@ export class RoomService {
 	async leaveRoom(roomId: RoomID, senderId: UserID): Promise<EventID> {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
 
+		// TODO we should actually use the room state to validate the power levels
+
 		const authEventIds = await this.eventService.getAuthEventIds(
 			'm.room.member',
 			{ roomId, senderId },
