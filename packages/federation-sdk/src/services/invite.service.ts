@@ -36,6 +36,7 @@ export class InviteService {
 		private readonly emitterService: EventEmitterService,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
+		@inject(delay(() => FederationValidationService)) // need to delay to be able to inject during tests
 		private readonly federationValidationService: FederationValidationService,
 	) {}
 
