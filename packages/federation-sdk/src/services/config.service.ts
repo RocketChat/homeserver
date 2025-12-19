@@ -35,12 +35,8 @@ export interface AppConfig {
 		processTyping: boolean;
 		processPresence: boolean;
 	};
-	federation: {
-		validation?: {
-			networkCheckTimeoutMs?: number;
-			userCheckTimeoutMs?: number;
-		};
-	};
+	userCheckTimeoutMs?: number;
+	networkCheckTimeoutMs?: number;
 }
 
 export const AppConfigSchema = z.object({
@@ -82,22 +78,18 @@ export const AppConfigSchema = z.object({
 		processTyping: z.boolean(),
 		processPresence: z.boolean(),
 	}),
-	federation: z.object({
-		validation: z
-			.object({
-				networkCheckTimeoutMs: z
-					.number()
-					.int()
-					.min(1000, 'Network check timeout must be at least 1000ms')
-					.default(5000),
-				userCheckTimeoutMs: z
-					.number()
-					.int()
-					.min(1000, 'User check timeout must be at least 1000ms')
-					.default(10000),
-			})
-			.optional(),
-	}),
+	networkCheckTimeoutMs: z
+		.number()
+		.int()
+		.min(1000, 'Network check timeout must be at least 1000ms')
+		.default(5000)
+		.optional(),
+	userCheckTimeoutMs: z
+		.number()
+		.int()
+		.min(1000, 'User check timeout must be at least 1000ms')
+		.default(10000)
+		.optional(),
 });
 
 @singleton()

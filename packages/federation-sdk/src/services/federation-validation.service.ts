@@ -62,8 +62,8 @@ export class FederationValidationService {
 	}
 
 	private async checkDomainReachable(domain: string): Promise<void> {
-		const config = this.configService.getConfig('federation');
-		const timeoutMs = config.validation?.networkCheckTimeoutMs || 5000;
+		const timeoutMs =
+			this.configService.getConfig('networkCheckTimeoutMs') || 5000;
 
 		try {
 			const versionPromise = this.federationRequestService.get<{
@@ -80,8 +80,8 @@ export class FederationValidationService {
 	}
 
 	private async checkUserExists(userId: UserID, domain: string): Promise<void> {
-		const config = this.configService.getConfig('federation');
-		const timeoutMs = config.validation?.userCheckTimeoutMs || 10000;
+		const timeoutMs =
+			this.configService.getConfig('userCheckTimeoutMs') || 10000;
 
 		try {
 			const uri = FederationEndpoints.queryProfile(userId);
