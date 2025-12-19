@@ -35,6 +35,8 @@ export interface AppConfig {
 		processTyping: boolean;
 		processPresence: boolean;
 	};
+	userCheckTimeoutMs?: number;
+	networkCheckTimeoutMs?: number;
 }
 
 export const AppConfigSchema = z.object({
@@ -76,6 +78,18 @@ export const AppConfigSchema = z.object({
 		processTyping: z.boolean(),
 		processPresence: z.boolean(),
 	}),
+	networkCheckTimeoutMs: z
+		.number()
+		.int()
+		.min(1000, 'Network check timeout must be at least 1000ms')
+		.default(5000)
+		.optional(),
+	userCheckTimeoutMs: z
+		.number()
+		.int()
+		.min(1000, 'User check timeout must be at least 1000ms')
+		.default(10000)
+		.optional(),
 });
 
 @singleton()

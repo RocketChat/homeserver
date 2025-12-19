@@ -211,7 +211,7 @@ export class EventAuthorizationService {
 	}
 
 	// as per Matrix spec: https://spec.matrix.org/v1.15/client-server-api/#mroomserver_acl
-	private async checkServerAcl(
+	async checkServerAcl(
 		aclEvent: PersistentEventBase | undefined,
 		serverName: string,
 	): Promise<boolean> {

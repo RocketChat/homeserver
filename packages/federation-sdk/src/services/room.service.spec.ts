@@ -8,7 +8,7 @@ import {
 	StateMapKey,
 } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
-import { federationSDK, init } from '..';
+import { FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
@@ -29,7 +29,6 @@ describe('RoomService', async () => {
 		};
 
 		init({
-			emitter: undefined,
 			dbConfig: databaseConfig,
 		});
 	});
@@ -42,6 +41,18 @@ describe('RoomService', async () => {
 
 	container.register(ConfigService, {
 		useValue: configService,
+	});
+
+	// dont validate anything during tests
+	container.register(FederationValidationService, {
+		useValue: {
+			async validateOutboundUser() {
+				return true;
+			},
+			async validateOutboundInvite() {
+				return true;
+			},
+		} as unknown as FederationValidationService,
 	});
 
 	const stateService = container.resolve(StateService);

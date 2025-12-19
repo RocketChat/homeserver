@@ -37,6 +37,7 @@ import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
+import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
 import {
@@ -63,6 +64,7 @@ export class RoomService {
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly emitterService: EventEmitterService,
+		private readonly federationValidationService: FederationValidationService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -1640,6 +1642,11 @@ export class RoomService {
 		await stateService.handlePdu(guestAccessEvent);
 
 		if (isExternalUser) {
+			await this.federationValidationService.validateOutboundInvite(
+				targetUserId,
+				roomCreateEvent.roomId,
+			);
+
 			await this.inviteService.inviteUserToRoom(
 				targetUserId,
 				roomCreateEvent.roomId,
