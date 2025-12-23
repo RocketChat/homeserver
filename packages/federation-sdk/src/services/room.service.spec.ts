@@ -226,7 +226,7 @@ describe('RoomService', async () => {
 
 			expect(imtialStateKeys).toEqual(expectedStateKeys);
 
-			await roomService.joinUser(roomId, username, secondaryUsername);
+			await roomService.joinUser(roomId, secondaryUsername);
 
 			const state = await stateService.getLatestRoomState(roomId);
 

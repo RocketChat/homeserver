@@ -910,7 +910,7 @@ export class RoomService {
 
 	// if local room, add the user to the room if allowed.
 	// if remote room, run through the join process
-	private async joinUser(roomId: RoomID, userId: UserID) {
+	async joinUser(roomId: RoomID, userId: UserID) {
 		const configService = this.configService;
 		const stateService = this.stateService;
 		const federationService = this.federationService;
