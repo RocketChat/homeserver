@@ -82,7 +82,10 @@ export class PersistentEventFactory {
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
-	static newCreateEvent(creator: UserID, roomVersion: RoomVersion) {
+	static newCreateEvent(
+		creator: UserID,
+		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
+	) {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
