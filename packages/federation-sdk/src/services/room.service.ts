@@ -910,13 +910,13 @@ export class RoomService {
 
 	// if local room, add the user to the room if allowed.
 	// if remote room, run through the join process
-	async joinUser(roomId: RoomID, sender: UserID, userId: UserID) {
+	async joinUser(roomId: RoomID, userId: UserID) {
 		const configService = this.configService;
 		const stateService = this.stateService;
 		const federationService = this.federationService;
 
 		// where the room is hosted at
-		const residentServer = extractDomainFromId(sender);
+		const residentServer = extractDomainFromId(roomId);
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
@@ -1130,7 +1130,7 @@ export class RoomService {
 			);
 		}
 
-		return this.joinUser(roomId, inviteEventStore.event.sender, userId);
+		return this.joinUser(roomId, userId);
 	}
 
 	async rejectInvite(roomId: RoomID, userId: UserID): Promise<void> {
@@ -1500,6 +1500,198 @@ export class RoomService {
 		void this.federationService.sendEventToAllServersInRoom(event);
 	}
 
+	async createDirectMessage({
+		creatorUserId,
+		members,
+	}: {
+		creatorUserId: UserID;
+		members: UserID[];
+	}) {
+		const roomCreateEvent =
+			PersistentEventFactory.newCreateEvent(creatorUserId);
+
+		await this.stateService.signEvent(roomCreateEvent);
+
+		await this.stateService.handlePdu(roomCreateEvent);
+
+		const creatorMembershipEvent =
+			await this.stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					auth_events: [],
+					prev_events: [],
+					sender: creatorUserId,
+					content: {
+						membership: 'join',
+						is_direct: true,
+						displayname: creatorUserId.split(':').shift()?.slice(1),
+					},
+					depth: 2,
+					room_id: roomCreateEvent.roomId,
+					state_key: creatorUserId,
+					origin_server_ts: Date.now(),
+				},
+				roomCreateEvent.version,
+			);
+
+		await this.stateService.handlePdu(creatorMembershipEvent);
+
+		const powerLevelsEvent =
+			await this.stateService.buildEvent<'m.room.power_levels'>(
+				{
+					type: 'm.room.power_levels',
+					auth_events: [],
+					prev_events: [],
+					content: {
+						users: {
+							[creatorUserId]: 100,
+							...(members.length === 1 ? { [members[0]]: 100 } : {}), // 1:1 DM both get 100 power level
+						},
+						users_default: 0,
+						events: {
+							'm.room.name': 50,
+							'm.room.power_levels': 100,
+							'm.room.history_visibility': 100,
+							'm.room.canonical_alias': 50,
+							'm.room.avatar': 50,
+							'm.room.tombstone': 100,
+							'm.room.server_acl': 100,
+							'm.room.encryption': 100,
+						},
+						events_default: 0,
+						state_default: 50,
+						ban: 50,
+						kick: 50,
+						redact: 50,
+						invite: 0,
+						// historical: 100,
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					depth: 3,
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomCreateEvent.version,
+			);
+
+		await this.stateService.handlePdu(powerLevelsEvent);
+
+		const joinRulesEvent =
+			await this.stateService.buildEvent<'m.room.join_rules'>(
+				{
+					type: 'm.room.join_rules',
+					auth_events: [],
+					prev_events: [],
+					content: { join_rule: 'invite' },
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					depth: 4,
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomCreateEvent.version,
+			);
+
+		await this.stateService.handlePdu(joinRulesEvent);
+
+		const historyVisibilityEvent =
+			await this.stateService.buildEvent<'m.room.history_visibility'>(
+				{
+					type: 'm.room.history_visibility',
+					content: { history_visibility: 'shared' },
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 5,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomCreateEvent.version,
+			);
+
+		await this.stateService.handlePdu(historyVisibilityEvent);
+
+		const guestAccessEvent =
+			await this.stateService.buildEvent<'m.room.guest_access'>(
+				{
+					type: 'm.room.guest_access',
+					content: { guest_access: 'forbidden' }, // synapse uses 'can_join' for DMs
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 6,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: creatorUserId,
+				},
+				roomCreateEvent.version,
+			);
+
+		await this.stateService.handlePdu(guestAccessEvent);
+
+		let memberDepthCounter = 7;
+
+		for await (const member of members) {
+			const targetMembershipEvent =
+				await this.stateService.buildEvent<'m.room.member'>(
+					{
+						type: 'm.room.member',
+						auth_events: [],
+						prev_events: [],
+						content: {
+							membership: 'invite',
+							displayname: member.split(':').shift()?.slice(1),
+							...(members.length === 1 && { is_direct: true }), // synapse don't send is_direct on invites for group DMs
+						},
+						room_id: roomCreateEvent.roomId,
+						state_key: member,
+						depth: memberDepthCounter++,
+						origin_server_ts: Date.now(),
+						sender: creatorUserId,
+					},
+					roomCreateEvent.version,
+				);
+
+			const targetServerName = extractDomainFromId(member);
+
+			if (targetServerName !== this.configService.serverName) {
+				// TODO this may not be the best place to do this validation
+				await this.federationValidationService.validateOutboundInvite(
+					member,
+					roomCreateEvent.roomId,
+				);
+
+				// get signed invite event
+				const inviteResponse = await this.federationService.inviteUser(
+					targetMembershipEvent,
+					roomCreateEvent.version,
+				);
+
+				// try to save
+				// can only invite if already part of the room
+				await this.stateService.handlePdu(
+					PersistentEventFactory.createFromRawEvent(
+						inviteResponse.event,
+						roomCreateEvent.version,
+					),
+				);
+
+				// void this.federationService.sendEventToAllServersInRoom(
+				// 	targetMembershipEvent,
+				// );
+			} else {
+				await this.stateService.handlePdu(targetMembershipEvent);
+			}
+		}
+
+		return roomCreateEvent.roomId;
+	}
+
+	/**
+	 * @deprecated Use createDirectMessage instead
+	 */
 	async createDirectMessageRoom(
 		creatorUserId: UserID,
 		targetUserId: UserID,

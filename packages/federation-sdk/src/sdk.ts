@@ -1,5 +1,5 @@
 import type { EventStore } from '@rocket.chat/federation-core';
-import type { PduForType, PduType } from '@rocket.chat/federation-room';
+import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { AppConfig, ConfigService } from './services/config.service';
@@ -43,10 +43,26 @@ export class FederationSDK {
 		private readonly federationValidationService: FederationValidationService,
 	) {}
 
+	/**
+	 * @deprecated use createDirectMessage instead
+	 */
 	createDirectMessageRoom(
 		...args: Parameters<typeof this.roomService.createDirectMessageRoom>
 	) {
 		return this.roomService.createDirectMessageRoom(...args);
+	}
+
+	async createDirectMessage({
+		creatorUserId,
+		members,
+	}: {
+		creatorUserId: UserID;
+		members: UserID[];
+	}) {
+		return this.roomService.createDirectMessage({
+			creatorUserId,
+			members,
+		});
 	}
 
 	createRoom(...args: Parameters<typeof this.roomService.createRoom>) {
@@ -151,13 +167,6 @@ export class FederationSDK {
 		>
 	) {
 		return this.eventAuthorizationService.verifyRequestSignature(...args);
-	}
-
-	/**
-	 * @deprecated
-	 */
-	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
-		return this.roomService.joinUser(...args);
 	}
 
 	acceptInvite(...args: Parameters<typeof this.roomService.acceptInvite>) {

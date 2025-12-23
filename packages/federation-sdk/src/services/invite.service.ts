@@ -217,6 +217,11 @@ export class InviteService {
 
 			await this.stateService.handlePdu(inviteEvent);
 
+			await this.emitterService.emit('homeserver.matrix.membership', {
+				event_id: inviteEvent.eventId,
+				event: inviteEvent.event,
+			});
+
 			return inviteEvent;
 		}
 
