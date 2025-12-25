@@ -33,18 +33,13 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
 import { ConfigService } from './config.service';
-import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
-import {
-	RoomInfoNotReadyError,
-	StateService,
-	UnknownRoomError,
-} from './state.service';
+import { StateService, UnknownRoomError } from './state.service';
 
 @singleton()
 export class RoomService {
@@ -577,7 +572,7 @@ export class RoomService {
 		event: PduForType<'m.room.member'> & { origin: string };
 		room_version: RoomVersion;
 	}> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		const leaveEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -590,7 +585,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		return {
@@ -598,7 +593,7 @@ export class RoomService {
 				...leaveEvent.event,
 				origin: this.configService.serverName,
 			},
-			room_version: roomInfo.room_version,
+			room_version: roomVersion,
 		};
 	}
 
@@ -713,7 +708,7 @@ export class RoomService {
 			}`,
 		);
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
 			'm.room.power_levels',
@@ -768,7 +763,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(kickEvent);
@@ -787,7 +782,7 @@ export class RoomService {
 		userId: UserID,
 		displayName: string,
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		const currentState = await this.stateService.getLatestRoomState(roomId);
 
 		const currentMembership = currentState.get(`m.room.member:${userId}`);
@@ -810,7 +805,7 @@ export class RoomService {
 				prev_events: [],
 				origin_server_ts: Date.now(),
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(memberEvent);
@@ -838,7 +833,7 @@ export class RoomService {
 			}`,
 		);
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds(
 			'm.room.power_levels',
@@ -894,7 +889,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(banEvent);

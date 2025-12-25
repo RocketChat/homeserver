@@ -292,7 +292,7 @@ export class MessageService {
 			);
 		}
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const reactionEvent = await this.stateService.buildEvent<'m.reaction'>(
 			{
@@ -311,7 +311,7 @@ export class MessageService {
 				origin_server_ts: Date.now(),
 				sender: senderUserId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(reactionEvent);
@@ -327,7 +327,7 @@ export class MessageService {
 		_emoji: string,
 		senderUserId: UserID,
 	): Promise<string> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const redactionEvent =
 			await this.stateService.buildEvent<'m.room.redaction'>(
@@ -344,7 +344,7 @@ export class MessageService {
 					origin_server_ts: Date.now(),
 					sender: senderUserId,
 				},
-				roomInfo.room_version,
+				roomVersion,
 			);
 
 		await this.stateService.handlePdu(redactionEvent);
@@ -361,7 +361,7 @@ export class MessageService {
 		senderUserId: UserID,
 		eventIdToReplace: EventID,
 	): Promise<string> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const redactionEvent = await this.stateService.buildEvent<'m.room.message'>(
 			{
@@ -389,7 +389,7 @@ export class MessageService {
 				origin_server_ts: Date.now(),
 				sender: senderUserId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(redactionEvent);
@@ -411,7 +411,7 @@ export class MessageService {
 			throw new ForbiddenError('Cannot delete a message in a tombstoned room');
 		}
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const senderUserId = await this.eventService.getEventById(eventIdToRedact);
 		if (!senderUserId?.event.sender) {
@@ -433,7 +433,7 @@ export class MessageService {
 					origin_server_ts: Date.now(),
 					sender: senderUserId.event.sender,
 				},
-				roomInfo.room_version,
+				roomVersion,
 			);
 
 		await this.stateService.handlePdu(redactionEvent);
