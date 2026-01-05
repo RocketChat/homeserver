@@ -52,7 +52,7 @@ export const FederationEndpoints = {
 	makeLeave: (roomId: string, userId: string) =>
 		`/_matrix/federation/v1/make_leave/${roomId}/${userId}`,
 	sendLeave: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v1/send_leave/${roomId}/${eventId}`,
+		`/_matrix/federation/v2/send_leave/${roomId}/${eventId}`,
 	invite: (roomId: string, eventId: string) =>
 		`/_matrix/federation/v1/invite/${roomId}/${eventId}`,
 	inviteV2: (roomId: string, eventId: string) =>
