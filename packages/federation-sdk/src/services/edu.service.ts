@@ -6,6 +6,8 @@ import {
 import { createLogger } from '@rocket.chat/federation-core';
 import { RoomID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
+import { eduServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
@@ -18,7 +20,14 @@ export class EduService {
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'homeserver-sdk service',
+			className: 'EduService',
+			attributeExtractors: eduServiceAttributeExtractors,
+		});
+	}
 
 	async sendTypingNotification(
 		roomId: RoomID,

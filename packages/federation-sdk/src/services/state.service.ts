@@ -25,6 +25,8 @@ import {
 import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
+import { traceInstanceMethods } from '../utils/tracing';
+import { stateServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import type { EventService } from './event.service';
 type StrippedEvent = {
@@ -78,7 +80,14 @@ export class StateService {
 		private readonly configService: ConfigService,
 		@inject(delay(() => require('./event.service').EventService))
 		private readonly eventService: EventService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'homeserver-sdk service',
+			className: 'StateService',
+			attributeExtractors: stateServiceAttributeExtractors,
+		});
+	}
 
 	// TODO: this is a very vague method, better would be to use exactly what needed,
 	// or getCreateEvent.

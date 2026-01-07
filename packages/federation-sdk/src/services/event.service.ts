@@ -32,6 +32,8 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
+import { traceInstanceMethods } from '../utils/tracing';
+import { eventServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { ServerService } from './server.service';
@@ -61,7 +63,14 @@ export class EventService {
 		private readonly eventStagingRepository: EventStagingRepository,
 		@inject(delay(() => LockRepository))
 		private readonly lockRepository: LockRepository,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'homeserver-sdk service',
+			className: 'EventService',
+			attributeExtractors: eventServiceAttributeExtractors,
+		});
+	}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
 		eventId: EventID,

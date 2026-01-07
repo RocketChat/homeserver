@@ -17,6 +17,8 @@ import {
 	type Transaction,
 	type Version,
 } from '../specs/federation-api';
+import { traceInstanceMethods } from '../utils/tracing';
+import { federationServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 import { StateService } from './state.service';
@@ -29,7 +31,14 @@ export class FederationService {
 		private readonly configService: ConfigService,
 		private readonly requestService: FederationRequestService,
 		private readonly stateService: StateService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'homeserver-sdk service',
+			className: 'FederationService',
+			attributeExtractors: federationServiceAttributeExtractors,
+		});
+	}
 
 	/**
 	 * Get a make_join template for a room and user

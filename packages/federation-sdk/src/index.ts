@@ -68,6 +68,15 @@ export {
 	FederationValidationError,
 } from './services/federation-validation.service';
 
+// Tracing utilities - compatible with @rocket.chat/tracing
+export {
+	addSpanAttributes,
+	traceInstanceMethods,
+	tracerActiveSpan,
+	hasActiveSpan,
+	type ITraceInstanceMethodsOptions,
+} from './utils/tracing';
+
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
 		message: string;

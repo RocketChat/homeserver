@@ -1,5 +1,6 @@
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
 
 export type Lock = {
 	roomId: string;
@@ -14,6 +15,11 @@ export class LockRepository {
 	) {
 		// TODO define proper way of creating indexes in repositories
 		this.collection.createIndex({ roomId: 1 }, { unique: true });
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'homeserver-sdk repository',
+			className: 'LockRepository',
+		});
 	}
 
 	async getLock(roomId: string, instanceId: string): Promise<boolean> {
