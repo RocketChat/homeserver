@@ -109,7 +109,7 @@ export class FederationRequestService {
 	constructor(private readonly configService: ConfigService) {
 		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
 		return traceInstanceMethods(this, {
-			type: 'homeserver-sdk service',
+			type: 'service',
 			className: 'FederationRequestService',
 			attributeExtractors: federationRequestAttributeExtractors,
 		});

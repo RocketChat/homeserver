@@ -83,7 +83,7 @@ export class StateService {
 	) {
 		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
 		return traceInstanceMethods(this, {
-			type: 'homeserver-sdk service',
+			type: 'service',
 			className: 'StateService',
 			attributeExtractors: stateServiceAttributeExtractors,
 		});

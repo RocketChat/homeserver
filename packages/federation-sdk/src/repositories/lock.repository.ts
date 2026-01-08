@@ -17,7 +17,7 @@ export class LockRepository {
 		this.collection.createIndex({ roomId: 1 }, { unique: true });
 		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
 		return traceInstanceMethods(this, {
-			type: 'homeserver-sdk repository',
+			type: 'repository',
 			className: 'LockRepository',
 		});
 	}

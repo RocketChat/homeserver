@@ -23,7 +23,7 @@ export class EduService {
 	) {
 		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
 		return traceInstanceMethods(this, {
-			type: 'homeserver-sdk service',
+			type: 'service',
 			className: 'EduService',
 			attributeExtractors: eduServiceAttributeExtractors,
 		});

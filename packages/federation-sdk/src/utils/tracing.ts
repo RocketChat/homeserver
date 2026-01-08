@@ -155,7 +155,7 @@ export function traceInstanceMethods<T extends object>(
 
 						// Build attributes: start with base info
 						const attributes: Record<string, unknown> = {
-							[type]: className,
+							'homeserver-sdk': `${type} ${className}`,
 							method: prop,
 						};
 
@@ -173,7 +173,7 @@ export function traceInstanceMethods<T extends object>(
 						}
 
 						return tracerActiveSpan(
-							`${type} ${className}.${prop}`,
+							`homeserver-sdk ${type} ${className}.${prop}`,
 							{
 								attributes: attributes as Record<
 									string,

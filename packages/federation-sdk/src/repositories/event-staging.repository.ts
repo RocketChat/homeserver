@@ -19,7 +19,7 @@ export class EventStagingRepository {
 		});
 		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
 		return traceInstanceMethods(this, {
-			type: 'homeserver-sdk repository',
+			type: 'repository',
 			className: 'EventStagingRepository',
 		});
 	}
