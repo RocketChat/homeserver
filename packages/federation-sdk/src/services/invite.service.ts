@@ -105,11 +105,6 @@ export class InviteService {
 			);
 		}
 
-		await this.federationValidationService.validateOutboundInvite(
-			userId,
-			roomId,
-		);
-
 		// if user invited belongs to our server
 		if (invitedServer === this.configService.serverName) {
 			await stateService.handlePdu(inviteEvent);
@@ -127,6 +122,11 @@ export class InviteService {
 				room_id: roomId,
 			};
 		}
+
+		await this.federationValidationService.validateOutboundInvite(
+			userId,
+			roomId,
+		);
 
 		// get signed invite event
 		const inviteResponse = await federationService.inviteUser(

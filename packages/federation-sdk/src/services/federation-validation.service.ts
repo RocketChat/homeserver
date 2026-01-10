@@ -62,6 +62,11 @@ export class FederationValidationService {
 	}
 
 	private async checkDomainReachable(domain: string): Promise<void> {
+		// Early return for same-server domain - no need to check reachability
+		if (domain === this.configService.serverName) {
+			return;
+		}
+
 		const timeoutMs =
 			this.configService.getConfig('networkCheckTimeoutMs') || 5000;
 
