@@ -286,6 +286,13 @@ export const eventServiceAttributeExtractors: ITraceInstanceMethodsOptions['attr
 			};
 		},
 
+		processIncomingEDUs: (args) => {
+			const [edus] = args as [unknown[]];
+			return {
+				eduCount: edus?.length,
+			};
+		},
+
 		emitEventByType: (args) => {
 			const [event] = args as [PersistentEventBase];
 			return {
@@ -593,3 +600,113 @@ export const eduServiceAttributeExtractors: ITraceInstanceMethodsOptions['attrib
 			};
 		},
 	};
+
+/**
+ * Extract attributes from event emitter event data based on event type.
+ * This function extracts relevant debugging information from event payloads
+ * to add as span attributes when events are emitted.
+ *
+ * @param eventType - The event type being emitted (e.g., 'homeserver.matrix.message')
+ * @param data - The event data payload
+ * @returns Record of attributes to add to the span
+ */
+export function extractEventEmitterAttributes(
+	eventType: string,
+	data: unknown,
+): Record<string, string | number | boolean | undefined> {
+	const attributes: Record<string, string | number | boolean | undefined> = {
+		'event.type': eventType,
+	};
+
+	if (!data || typeof data !== 'object') {
+		return attributes;
+	}
+
+	const eventData = data as Record<string, unknown>;
+
+	// Extract common fields that appear in most events
+	if ('event_id' in eventData && typeof eventData.event_id === 'string') {
+		attributes['event.id'] = eventData.event_id;
+	}
+
+	if ('room_id' in eventData && typeof eventData.room_id === 'string') {
+		attributes['room.id'] = eventData.room_id;
+	}
+
+	if ('user_id' in eventData && typeof eventData.user_id === 'string') {
+		attributes['user.id'] = eventData.user_id;
+	}
+
+	if ('sender_id' in eventData && typeof eventData.sender_id === 'string') {
+		attributes['sender.id'] = eventData.sender_id;
+	}
+
+	// Extract nested event data if present
+	if (
+		'event' in eventData &&
+		typeof eventData.event === 'object' &&
+		eventData.event !== null
+	) {
+		const nestedEvent = eventData.event as Record<string, unknown>;
+
+		if ('room_id' in nestedEvent && typeof nestedEvent.room_id === 'string') {
+			attributes['room.id'] = nestedEvent.room_id;
+		}
+
+		if ('sender' in nestedEvent && typeof nestedEvent.sender === 'string') {
+			attributes['sender.id'] = nestedEvent.sender;
+		}
+
+		if ('type' in nestedEvent && typeof nestedEvent.type === 'string') {
+			attributes['matrix.event.type'] = nestedEvent.type;
+		}
+
+		if (
+			'state_key' in nestedEvent &&
+			typeof nestedEvent.state_key === 'string'
+		) {
+			attributes['state.key'] = nestedEvent.state_key;
+		}
+	}
+
+	// Event-specific attribute extraction
+	switch (eventType) {
+		case 'homeserver.matrix.typing':
+			if ('typing' in eventData && typeof eventData.typing === 'boolean') {
+				attributes.typing = eventData.typing;
+			}
+			if ('origin' in eventData && typeof eventData.origin === 'string') {
+				attributes.origin = eventData.origin;
+			}
+			break;
+
+		case 'homeserver.matrix.presence':
+			if ('presence' in eventData && typeof eventData.presence === 'string') {
+				attributes['presence.state'] = eventData.presence;
+			}
+			if (
+				'last_active_ago' in eventData &&
+				typeof eventData.last_active_ago === 'number'
+			) {
+				attributes['presence.last_active_ago'] = eventData.last_active_ago;
+			}
+			if ('origin' in eventData && typeof eventData.origin === 'string') {
+				attributes.origin = eventData.origin;
+			}
+			break;
+
+		case 'homeserver.matrix.room.role':
+			if ('role' in eventData && typeof eventData.role === 'string') {
+				attributes.role = eventData.role;
+			}
+			break;
+
+		case 'homeserver.ping':
+			if ('message' in eventData && typeof eventData.message === 'string') {
+				attributes['ping.message'] = eventData.message;
+			}
+			break;
+	}
+
+	return attributes;
+}

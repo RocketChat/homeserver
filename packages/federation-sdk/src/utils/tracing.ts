@@ -36,11 +36,19 @@ export interface ITraceInstanceMethodsOptions {
  */
 const sanitizeArguments = (args: unknown[]): unknown[] => {
 	return args.map((arg) => {
-		// Skip large objects that would bloat traces
+		// For large objects, include first 10 keys and indicate more were skipped
 		if (typeof arg === 'object' && arg !== null) {
 			const keys = Object.keys(arg);
 			if (keys.length > 10) {
-				return `[object with ${keys.length} keys]`;
+				const limitedObject: Record<string, unknown> = {};
+				// Include first 10 keys
+				for (let i = 0; i < 10; i++) {
+					limitedObject[keys[i]] = (arg as Record<string, unknown>)[keys[i]];
+				}
+				// Add indicator that more keys were skipped
+				const skippedKeysKey = '_skipped_keys';
+				limitedObject[skippedKeysKey] = keys.length - 10;
+				return limitedObject;
 			}
 		}
 		return arg;
