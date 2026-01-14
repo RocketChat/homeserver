@@ -23,9 +23,9 @@ class StateResolverAuthorizationError extends Error {
 			reason,
 			rejectedBy,
 		}: {
-			rejectedEvent: PersistentEventBase;
+			rejectedEvent: PersistentEventBase<any, any>;
 			reason: string;
-			rejectedBy?: PersistentEventBase;
+			rejectedBy?: PersistentEventBase<any, any>;
 		},
 	) {
 		// build the message

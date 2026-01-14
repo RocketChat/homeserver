@@ -89,20 +89,13 @@ export class InviteService {
 
 		// SPEC: Invites a remote user to a room. Once the event has been signed by both the inviting homeserver and the invited homeserver, it can be sent to all of the servers in the room by the inviting homeserver.
 
-		const invitedServer = extractDomainFromId(inviteEvent.stateKey ?? '');
-		if (!invitedServer) {
-			throw new Error(
-				`invalid state_key ${inviteEvent.stateKey}, no server_name part`,
-			);
-		}
-
 		await this.federationValidationService.validateOutboundInvite(
 			userId,
 			roomId,
 		);
 
 		// if user invited belongs to our server
-		if (invitedServer === this.configService.serverName) {
+		if (inviteEvent.stateKeyDomain === this.configService.serverName) {
 			await stateService.handlePdu(inviteEvent);
 
 			// let all servers know of this state change
