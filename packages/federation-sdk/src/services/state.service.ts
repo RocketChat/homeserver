@@ -294,7 +294,7 @@ export class StateService {
 		return instance;
 	}
 
-	private async addAuthEvents(event: PersistentEventBase) {
+	private async addAuthEvents(event: PersistentEventBase<any, any>) {
 		const state = await this.getLatestRoomState(event.roomId);
 
 		const eventsNeeded = event.getAuthEventStateKeys();
@@ -307,7 +307,7 @@ export class StateService {
 		}
 	}
 
-	async addPrevEvents(event: PersistentEventBase) {
+	async addPrevEvents(event: PersistentEventBase<any, any>) {
 		const roomVersion = await this.getRoomVersion(event.roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while filling prev events');
@@ -330,7 +330,7 @@ export class StateService {
 		event.addPrevEvents(events);
 	}
 
-	public async signEvent<T extends PersistentEventBase>(event: T) {
+	public async signEvent<T extends PersistentEventBase<any, any>>(event: T) {
 		if (process.env.NODE_ENV === 'test') return event;
 
 		const signingKey = await this.configService.getSigningKey();
@@ -511,7 +511,6 @@ export class StateService {
 				previousStateId,
 			);
 			await this.addToRoomGraph(event, previousStateId);
-
 			await this.eventService.notify(event);
 		}
 

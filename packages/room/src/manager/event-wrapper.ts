@@ -42,16 +42,22 @@ export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<
 	MakeOptional<T, 'hashes' | 'signatures'>
 >;
 
+export type PduTypeWithoutStateKey = {
+	[K in PduType]: PduForType<K> extends { state_key: unknown } ? never : K;
+}[PduType];
+
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
-export interface State extends Map<StateMapKey, PersistentEventBase> {
+export interface State
+	extends Omit<Map<StateMapKey, PersistentEventBase>, 'get'> {
+	get(key: StateMapKey): PersistentEventBase | undefined;
 	get<T extends StateMapKey>(
 		key: T,
 	): T extends `${infer I}:${string}`
 		? I extends PduType
 			? PersistentEventBase<RoomVersion, I> | undefined
-			: never
-		: never;
+			: PersistentEventBase | undefined
+		: PersistentEventBase | undefined;
 }
 
 // convinient wrapper to manage schema differences when working with same algorithms across different versions
@@ -67,7 +73,7 @@ export abstract class PersistentEventBase<
 
 	private signatures: Signature = {};
 
-	protected rawEvent: PduWithHashesAndSignaturesOptional;
+	protected rawEvent: PduWithHashesAndSignaturesOptional<PduForType<Type>>;
 
 	private authEventsIds: Set<EventID> = new Set();
 	private prevEventsIds: Set<EventID> = new Set();
@@ -134,8 +140,27 @@ export abstract class PersistentEventBase<
 		return residentServer;
 	}
 
-	get stateKey() {
-		return 'state_key' in this.rawEvent ? this.rawEvent.state_key : undefined;
+	get stateKey(): Type extends PduTypeWithoutStateKey
+		? undefined
+		: PduForType<Type> extends { state_key: string }
+			? PduForType<Type>['state_key']
+			: undefined {
+		return (
+			'state_key' in this.rawEvent ? this.rawEvent.state_key : undefined
+		) as Type extends PduTypeWithoutStateKey
+			? undefined
+			: PduForType<Type> extends { state_key: string }
+				? PduForType<Type>['state_key']
+				: undefined;
+	}
+
+	get stateKeyDomain(): Type extends PduTypeWithoutStateKey ? never : string {
+		if (this.stateKey === undefined) {
+			throw new Error('stateKey is undefined');
+		}
+		return extractDomainFromId(
+			this.stateKey,
+		) as Type extends PduTypeWithoutStateKey ? never : string;
 	}
 
 	get originServerTs() {
