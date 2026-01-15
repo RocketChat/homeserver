@@ -41,12 +41,14 @@ export class FederationRequestError extends Error {
 	}
 }
 
-export class PreventedToFetchSelfServer extends Error {
+export class SelfServerFetchError extends Error {
 	constructor(message: string) {
 		super(message);
-		this.name = 'PreventedToFetchSelfServer';
+		this.name = 'SelfServerFetchError';
 	}
 }
+
+export { SelfServerFetchError as PreventedToFetchSelfServer };
 @singleton()
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
