@@ -149,7 +149,7 @@ export class FederationRequestService {
 
 		if (targetServer === this.configService.getConfig('serverName')) {
 			throw new PreventedToFetchSelfServer(
-				'Not possible to fetch the self server',
+				'Cannot make federation request to self server',
 			);
 		}
 
