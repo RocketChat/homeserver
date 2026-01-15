@@ -41,6 +41,12 @@ export class FederationRequestError extends Error {
 	}
 }
 
+export class PreventedToFetchSelfServer extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PreventedToFetchSelfServer';
+	}
+}
 @singleton()
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
@@ -138,6 +144,12 @@ export class FederationRequestService {
 		queryParams?: Record<string, string | string[]>,
 	) {
 		let queryString = '';
+
+		if (targetServer === this.configService.getConfig('serverName')) {
+			throw new PreventedToFetchSelfServer(
+				'Not possible to fetch the self server',
+			);
+		}
 
 		if (queryParams) {
 			const params = new URLSearchParams();
