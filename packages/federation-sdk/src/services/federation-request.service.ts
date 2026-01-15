@@ -41,6 +41,13 @@ export class FederationRequestError extends Error {
 	}
 }
 
+export class SelfServerFetchError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'SelfServerFetchError';
+	}
+}
+
 @singleton()
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
@@ -139,6 +146,12 @@ export class FederationRequestService {
 	) {
 		let queryString = '';
 
+		if (targetServer === this.configService.getConfig('serverName')) {
+			throw new SelfServerFetchError(
+				'Cannot make federation request to self server',
+			);
+		}
+
 		if (queryParams) {
 			const params = new URLSearchParams();
 			for (const [key, value] of Object.entries(queryParams)) {
@@ -202,6 +215,11 @@ export class FederationRequestService {
 		endpoint: string,
 		queryParams?: Record<string, string>,
 	): Promise<MultipartResult> {
+		if (targetServer === this.configService.getConfig('serverName')) {
+			throw new SelfServerFetchError(
+				'Cannot make federation request to self server',
+			);
+		}
 		const response = await this.makeSignedRequest({
 			method,
 			domain: targetServer,
