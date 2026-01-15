@@ -32,6 +32,8 @@ import {
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
+import { traceInstanceMethods } from '../utils/tracing';
+import { roomServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -65,7 +67,14 @@ export class RoomService {
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly emitterService: EventEmitterService,
 		private readonly federationValidationService: FederationValidationService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'service',
+			className: 'RoomService',
+			attributeExtractors: roomServiceAttributeExtractors,
+		});
+	}
 
 	private validatePowerLevelChange(
 		currentPowerLevelsContent: PduForType<'m.room.power_levels'>['content'],

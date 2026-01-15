@@ -7,6 +7,8 @@ import {
 	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+import { addSpanAttributes, traceInstanceMethods } from '../utils/tracing';
+import { messageServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
@@ -57,7 +59,14 @@ export class MessageService {
 		private readonly federationService: FederationService,
 		private readonly roomService: RoomService,
 		private readonly stateService: StateService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'service',
+			className: 'MessageService',
+			attributeExtractors: messageServiceAttributeExtractors,
+		});
+	}
 
 	private buildReplyContent(reply: Reply) {
 		if (
@@ -137,6 +146,12 @@ export class MessageService {
 			roomVersion,
 		);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			eventId: event.eventId,
+			roomVersion,
+		});
+
 		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
@@ -205,6 +220,12 @@ export class MessageService {
 			},
 			roomVersion,
 		);
+
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			eventId: event.eventId,
+			roomVersion,
+		});
 
 		await this.stateService.handlePdu(event);
 		if (event.rejected) {
@@ -314,6 +335,12 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			reactionEventId: reactionEvent.eventId,
+			roomVersion: roomInfo.room_version,
+		});
+
 		await this.stateService.handlePdu(reactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
@@ -347,6 +374,12 @@ export class MessageService {
 				roomInfo.room_version,
 			);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			redactionEventId: redactionEvent.eventId,
+			roomVersion: roomInfo.room_version,
+		});
+
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
@@ -363,7 +396,7 @@ export class MessageService {
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = await this.stateService.buildEvent<'m.room.message'>(
+		const updateEvent = await this.stateService.buildEvent<'m.room.message'>(
 			{
 				type: 'm.room.message',
 				content: {
@@ -392,11 +425,17 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.handlePdu(redactionEvent);
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			updateEventId: updateEvent.eventId,
+			roomVersion: roomInfo.room_version,
+		});
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		await this.stateService.handlePdu(updateEvent);
 
-		return redactionEvent.eventId;
+		void this.federationService.sendEventToAllServersInRoom(updateEvent);
+
+		return updateEvent.eventId;
 	}
 
 	async redactMessage(
@@ -435,6 +474,13 @@ export class MessageService {
 				},
 				roomInfo.room_version,
 			);
+
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			redactionEventId: redactionEvent.eventId,
+			roomVersion: roomInfo.room_version,
+			originalSender: senderUserId.event.sender,
+		});
 
 		await this.stateService.handlePdu(redactionEvent);
 

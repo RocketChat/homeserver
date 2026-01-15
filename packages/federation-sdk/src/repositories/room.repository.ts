@@ -2,6 +2,7 @@ import type { EventBase } from '@rocket.chat/federation-core';
 import type { EventID } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
 
 export type Room = {
 	_id: string;
@@ -20,7 +21,13 @@ export type Room = {
 export class RoomRepository {
 	constructor(
 		@inject('RoomCollection') private readonly collection: Collection<Room>,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'repository',
+			className: 'RoomRepository',
+		});
+	}
 
 	async upsert(roomId: string, state: EventBase[]) {
 		await this.collection.findOneAndUpdate(

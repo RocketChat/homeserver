@@ -1,5 +1,7 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
+import { mediaServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 
@@ -10,7 +12,14 @@ export class MediaService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly federationRequest: FederationRequestService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'service',
+			className: 'MediaService',
+			attributeExtractors: mediaServiceAttributeExtractors,
+		});
+	}
 
 	async downloadFromRemoteServer(
 		serverName: string,

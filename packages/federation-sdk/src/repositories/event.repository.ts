@@ -18,13 +18,20 @@ import type {
 	WithId,
 } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
 
 @singleton()
 export class EventRepository {
 	constructor(
 		@inject('EventCollection')
 		private readonly collection: Collection<EventStore>,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'repository',
+			className: 'EventRepository',
+		});
+	}
 
 	async findById(eventId: EventID): Promise<EventStore | null> {
 		return this.collection.findOne({ _id: eventId });

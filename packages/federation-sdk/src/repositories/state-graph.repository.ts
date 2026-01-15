@@ -8,6 +8,7 @@ import {
 } from '@rocket.chat/federation-room';
 import { type Collection, ObjectId } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
 
 export type StateGraphStore = {
 	_id: StateID;
@@ -30,7 +31,13 @@ export class StateGraphRepository {
 	constructor(
 		@inject('StateGraphCollection')
 		private readonly collection: Collection<StateGraphStore>,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'repository',
+			className: 'StateGraphRepository',
+		});
+	}
 
 	private async _buildPreviousStateMapById(
 		stateId: StateID,

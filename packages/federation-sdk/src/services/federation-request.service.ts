@@ -15,7 +15,68 @@ import {
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+import { traceInstanceMethods } from '../utils/tracing';
+import type { ITraceInstanceMethodsOptions } from '../utils/tracing';
 import { ConfigService } from './config.service';
+
+const federationRequestAttributeExtractors: ITraceInstanceMethodsOptions['attributeExtractors'] =
+	{
+		makeSignedRequest: (args) => {
+			const [params] = args as [
+				{ method: string; domain: string; uri: string },
+			];
+			return {
+				method: params?.method,
+				targetDomain: params?.domain,
+				uri: params?.uri,
+			};
+		},
+
+		request: (args) => {
+			const [method, targetServer, endpoint] = args as [string, string, string];
+			return {
+				method,
+				targetServer,
+				endpoint,
+			};
+		},
+
+		get: (args) => {
+			const [targetServer, endpoint] = args as [string, string];
+			return {
+				method: 'GET',
+				targetServer,
+				endpoint,
+			};
+		},
+
+		put: (args) => {
+			const [targetServer, endpoint] = args as [string, string];
+			return {
+				method: 'PUT',
+				targetServer,
+				endpoint,
+			};
+		},
+
+		post: (args) => {
+			const [targetServer, endpoint] = args as [string, string];
+			return {
+				method: 'POST',
+				targetServer,
+				endpoint,
+			};
+		},
+
+		requestBinaryData: (args) => {
+			const [method, targetServer, endpoint] = args as [string, string, string];
+			return {
+				method,
+				targetServer,
+				endpoint,
+			};
+		},
+	};
 
 interface SignedRequest {
 	method: string;
@@ -52,7 +113,14 @@ export class SelfServerFetchError extends Error {
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 
-	constructor(private readonly configService: ConfigService) {}
+	constructor(private readonly configService: ConfigService) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'service',
+			className: 'FederationRequestService',
+			attributeExtractors: federationRequestAttributeExtractors,
+		});
+	}
 
 	async makeSignedRequest<T>({
 		method,

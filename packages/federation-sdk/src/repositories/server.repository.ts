@@ -1,5 +1,6 @@
 import { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
 
 export type Server = {
 	name: string;
@@ -15,7 +16,13 @@ export type Server = {
 export class ServerRepository {
 	constructor(
 		@inject('ServerCollection') private readonly collection: Collection<Server>,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'repository',
+			className: 'ServerRepository',
+		});
+	}
 
 	async getValidPublicKeyFromLocal(
 		origin: string,

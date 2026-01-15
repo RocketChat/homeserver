@@ -11,6 +11,8 @@ import {
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
+import { traceInstanceMethods } from '../utils/tracing';
+import { inviteServiceAttributeExtractors } from '../utils/tracing-attributes';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -38,7 +40,14 @@ export class InviteService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => FederationValidationService)) // need to delay to be able to inject during tests
 		private readonly federationValidationService: FederationValidationService,
-	) {}
+	) {
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'service',
+			className: 'InviteService',
+			attributeExtractors: inviteServiceAttributeExtractors,
+		});
+	}
 
 	/**
 	 * Invite a user to an existing room

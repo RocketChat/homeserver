@@ -3,6 +3,7 @@ import type { EventStagingStore } from '@rocket.chat/federation-core';
 import { type EventID, Pdu, RoomID } from '@rocket.chat/federation-room';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { traceInstanceMethods } from '../utils/tracing';
 
 @singleton()
 export class EventStagingRepository {
@@ -15,6 +16,11 @@ export class EventStagingRepository {
 			got: 1,
 			'event.depth': 1,
 			createdAt: 1,
+		});
+		// biome-ignore lint/correctness/noConstructorReturn: Intentional proxy wrapper for tracing
+		return traceInstanceMethods(this, {
+			type: 'repository',
+			className: 'EventStagingRepository',
 		});
 	}
 
