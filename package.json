@@ -31,7 +31,7 @@
 			"pre-commit": "bun test"
 		}
 	},
-	"packageManager": "bun@1.2.0",
+	"packageManager": "bun@1.2.5",
 	"lint-staged": {
 		"**.{js|ts|cjs|mjs|d.cts|d.mts|jsx|tsx|json|jsonc}": [
 			"biome check --files-ignore-unknown=true --diagnostic-level=error",
