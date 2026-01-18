@@ -1,9 +1,9 @@
 import {
-	EventBase,
-	EventStore,
-	RoomPowerLevelsEvent,
-	SignedEvent,
-	TombstoneAuthEvents,
+	type EventBase,
+	type EventStore,
+	type RoomPowerLevelsEvent,
+	type SignedEvent,
+	type TombstoneAuthEvents,
 	createLogger,
 	roomPowerLevelsEvent,
 } from '@rocket.chat/federation-core';
@@ -18,20 +18,21 @@ import {
 import { logger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
-	PduForType,
-	PduJoinRuleEventContent,
-	PduType,
-	PersistentEventBase,
+	type PduForType,
+	type PduJoinRuleEventContent,
+	type PduType,
+	type PersistentEventBase,
 	PersistentEventFactory,
-	EventStore as RoomEventStore,
-	RoomID,
-	RoomVersion,
-	UserID,
+	type EventStore as RoomEventStore,
+	type RoomID,
+	type RoomVersion,
+	type UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -46,6 +47,7 @@ import {
 	UnknownRoomError,
 } from './state.service';
 
+@tracedClass({ type: 'service', className: 'RoomService' })
 @singleton()
 export class RoomService {
 	private readonly logger = createLogger('RoomService');
@@ -195,6 +197,10 @@ export class RoomService {
 		}
 	}
 
+	@traced((roomId: string, state: EventBase[]) => ({
+		roomId,
+		stateEventCount: state?.length,
+	}))
 	async upsertRoom(roomId: string, state: EventBase[]) {
 		logger.info(`Upserting room ${roomId} with ${state.length} state events`);
 
@@ -230,6 +236,17 @@ export class RoomService {
 	/**
 	 * Create a new room with the given sender and username
 	 */
+	@traced(
+		(
+			username: UserID,
+			name: string,
+			joinRule: PduJoinRuleEventContent['join_rule'],
+		) => ({
+			roomName: name,
+			creatorUserId: username,
+			visibility: joinRule,
+		}),
+	)
 	async createRoom(
 		username: UserID,
 		name: string,
@@ -369,6 +386,11 @@ export class RoomService {
 		};
 	}
 
+	@traced((roomId: RoomID, newName: string, senderUserId: UserID) => ({
+		roomId,
+		newName,
+		senderUserId,
+	}))
 	async updateRoomName(roomId: RoomID, name: string, senderId: UserID) {
 		logger.info(
 			`Updating room name for ${roomId} to \"${name}\" by ${senderId}`,
@@ -402,6 +424,11 @@ export class RoomService {
 		return roomNameEvent;
 	}
 
+	@traced((roomId: RoomID, senderUserId: UserID, topic: string) => ({
+		roomId,
+		senderUserId,
+		topicLength: topic?.length,
+	}))
 	async setRoomTopic(roomId: RoomID, sender: UserID, topic: string) {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
@@ -641,6 +668,10 @@ export class RoomService {
 		});
 	}
 
+	@traced((roomId: RoomID, userId: UserID) => ({
+		roomId,
+		userId,
+	}))
 	async leaveRoom(roomId: RoomID, senderId: UserID): Promise<EventID> {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
 
@@ -701,6 +732,13 @@ export class RoomService {
 		return leaveEvent.eventId;
 	}
 
+	@traced(
+		(roomId: RoomID, kickedUserId: UserID, senderId: UserID, _reason?: string) => ({
+			roomId,
+			senderId,
+			targetUserId: kickedUserId,
+		}),
+	)
 	async kickUser(
 		roomId: RoomID,
 		kickedUserId: UserID,
@@ -826,6 +864,14 @@ export class RoomService {
 		return memberEvent;
 	}
 
+	@traced(
+		(roomId: RoomID, bannedUserId: UserID, senderId: UserID, reason?: string) => ({
+			roomId,
+			senderId,
+			targetUserId: bannedUserId,
+			reason,
+		}),
+	)
 	async banUser(
 		roomId: RoomID,
 		bannedUserId: UserID,
@@ -1414,6 +1460,7 @@ export class RoomService {
 		};
 	}
 
+	@traced((roomId: RoomID) => ({ roomId }))
 	public async isRoomTombstoned(roomId: RoomID): Promise<boolean> {
 		try {
 			const room = await this.roomRepository.findOneById(roomId);

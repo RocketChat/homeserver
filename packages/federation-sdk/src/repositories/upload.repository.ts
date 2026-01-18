@@ -1,6 +1,7 @@
-import { RoomID } from '@rocket.chat/federation-room';
-import { Collection } from 'mongodb';
+import type { RoomID } from '@rocket.chat/federation-room';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
 export type Upload = {
 	rid: string;
@@ -12,6 +13,7 @@ export type Upload = {
 	};
 };
 
+@tracedClass({ type: 'repository', className: 'UploadRepository' })
 @singleton()
 export class UploadRepository {
 	constructor(

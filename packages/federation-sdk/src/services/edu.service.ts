@@ -4,12 +4,14 @@ import {
 	createTypingEDU,
 } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
-import { RoomID } from '@rocket.chat/federation-room';
+import { type RoomID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 
+@tracedClass({ type: 'service', className: 'EduService' })
 @singleton()
 export class EduService {
 	private readonly logger = createLogger('EduService');
@@ -20,6 +22,11 @@ export class EduService {
 		private readonly stateService: StateService,
 	) {}
 
+	@traced((roomId: RoomID, userId: string, typing: boolean) => ({
+		roomId,
+		userId,
+		typing,
+	}))
 	async sendTypingNotification(
 		roomId: RoomID,
 		userId: string,
@@ -50,6 +57,10 @@ export class EduService {
 		}
 	}
 
+	@traced((presenceUpdates: PresenceUpdate[], roomIds: RoomID[]) => ({
+		presenceUpdateCount: presenceUpdates?.length,
+		roomCount: roomIds?.length,
+	}))
 	async sendPresenceUpdateToRooms(
 		presenceUpdates: PresenceUpdate[],
 		roomIds: RoomID[],

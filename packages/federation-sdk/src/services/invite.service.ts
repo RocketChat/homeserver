@@ -1,16 +1,17 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import {
-	EventID,
-	PduForType,
-	PersistentEventBase,
+	type EventID,
+	type PduForType,
+	type PersistentEventBase,
 	PersistentEventFactory,
-	RoomID,
-	RoomVersion,
-	UserID,
+	type RoomID,
+	type RoomVersion,
+	type UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -24,6 +25,7 @@ export class NotAllowedError extends Error {
 	}
 }
 
+@tracedClass({ type: 'service', className: 'InviteService' })
 @singleton()
 export class InviteService {
 	private readonly logger = createLogger('InviteService');
@@ -43,6 +45,14 @@ export class InviteService {
 	/**
 	 * Invite a user to an existing room
 	 */
+	@traced(
+		(userId: UserID, roomId: RoomID, sender: UserID, isDirectMessage?: boolean) => ({
+			userId,
+			roomId,
+			sender,
+			isDirectMessage,
+		}),
+	)
 	async inviteUserToRoom(
 		userId: UserID,
 		roomId: RoomID,
@@ -181,6 +191,16 @@ export class InviteService {
 		}
 	}
 
+	@traced(
+		(
+			_event: unknown,
+			eventId: EventID,
+			roomVersion: RoomVersion,
+		) => ({
+			eventId,
+			roomVersion,
+		}),
+	)
 	async processInvite(
 		event: PduForType<'m.room.member'>,
 		eventId: EventID,

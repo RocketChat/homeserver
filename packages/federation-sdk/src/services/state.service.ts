@@ -2,18 +2,18 @@ import { createLogger, signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type EventStore,
-	Pdu,
+	type Pdu,
 	type PduContent,
-	PduCreateEventContent,
-	PduForType,
+	type PduCreateEventContent,
+	type PduForType,
 	type PduType,
-	PduWithHashesAndSignaturesOptional,
-	PersistentEventBase,
+	type PduWithHashesAndSignaturesOptional,
+	type PersistentEventBase,
 	PersistentEventFactory,
 	RejectCode,
-	RoomID,
+	type RoomID,
 	RoomState,
-	RoomVersion,
+	type RoomVersion,
 	State,
 	type StateID,
 	type StateMapKey,
@@ -25,6 +25,7 @@ import {
 import { delay, inject, singleton } from 'tsyringe';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import type { EventService } from './event.service';
 type StrippedEvent = {
@@ -67,6 +68,7 @@ export class RoomInfoNotReadyError extends Error {
 	}
 }
 
+@tracedClass({ type: 'service', className: 'StateService' })
 @singleton()
 export class StateService {
 	private readonly logger = createLogger('StateService');
@@ -83,6 +85,7 @@ export class StateService {
 	// TODO: this is a very vague method, better would be to use exactly what needed,
 	// or getCreateEvent.
 	// currently AFAIK mostly is used for just room version
+	@traced((roomId: string) => ({ roomId }))
 	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
 		const { event, stateId } =
 			(await this.eventRepository.findByRoomIdAndType(
@@ -102,6 +105,7 @@ export class StateService {
 		return event.content;
 	}
 
+	@traced((roomId: RoomID) => ({ roomId }))
 	async getRoomVersion(roomId: RoomID): Promise<RoomVersion> {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(
 			roomId,
@@ -167,6 +171,7 @@ export class StateService {
 		return stateId;
 	}
 
+	@traced((roomId: RoomID) => ({ roomId }))
 	async getLatestRoomState(roomId: RoomID): Promise<State> {
 		const roomVersion = await this.getRoomVersion(roomId);
 
@@ -277,6 +282,17 @@ export class StateService {
 		};
 	}
 
+	@traced(
+		(
+			event: { type: string; room_id: string; sender: string },
+			roomVersion: string,
+		) => ({
+			eventType: event?.type,
+			roomId: event?.room_id,
+			sender: event?.sender,
+			roomVersion,
+		}),
+	)
 	async buildEvent<T extends PduType>(
 		event: PduWithHashesAndSignaturesOptional<PduForType<T>>,
 		roomVersion: RoomVersion,
@@ -330,6 +346,10 @@ export class StateService {
 		event.addPrevEvents(events);
 	}
 
+	@traced((event: PersistentEventBase) => ({
+		eventId: event?.eventId,
+		eventType: event?.type,
+	}))
 	public async signEvent<T extends PersistentEventBase>(event: T) {
 		if (process.env.NODE_ENV === 'test') return event;
 
@@ -585,6 +605,11 @@ export class StateService {
 	// handle received pdu from transaction
 	// implements spec:https://spec.matrix.org/v1.12/server-server-api/#checks-performed-on-receipt-of-a-pdu
 	// TODO: this is not state related, can and should accept timeline events too, move to event service?
+	@traced((event: PersistentEventBase) => ({
+		eventId: event?.eventId,
+		eventType: event?.type,
+		roomId: event?.roomId,
+	}))
 	async handlePdu<P extends PersistentEventBase>(pdu: P): Promise<void> {
 		if (pdu.isCreateEvent()) {
 			this.logger.debug({ eventId: pdu.eventId }, 'handling create event');
@@ -784,6 +809,7 @@ export class StateService {
 	// 	const stateId = await this.getStateIdBeforeEvent(event);
 	// 	return this.getStateAtStateId(stateId, event.version);
 	// }
+	@traced((roomId: RoomID) => ({ roomId }))
 	async getServerSetInRoom(roomId: RoomID) {
 		const state = await this.getLatestRoomState(roomId);
 
@@ -812,6 +838,7 @@ export class StateService {
 	}
 
 	// @deprecated use getServerSetInRoom
+	@traced((roomId: RoomID) => ({ roomId }))
 	async getServersInRoom(roomId: RoomID) {
 		return Array.from(await this.getServerSetInRoom(roomId));
 	}

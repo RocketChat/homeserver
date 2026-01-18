@@ -15,6 +15,7 @@ import {
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
 import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 
 interface SignedRequest {
@@ -48,12 +49,20 @@ export class SelfServerFetchError extends Error {
 	}
 }
 
+@tracedClass({ type: 'service', className: 'FederationRequestService' })
 @singleton()
 export class FederationRequestService {
 	private readonly logger = createLogger('FederationRequestService');
 
 	constructor(private readonly configService: ConfigService) {}
 
+	@traced(
+		(params: { method: string; domain: string; uri: string }) => ({
+			method: params?.method,
+			targetDomain: params?.domain,
+			uri: params?.uri,
+		}),
+	)
 	async makeSignedRequest<T>({
 		method,
 		domain,
@@ -137,6 +146,11 @@ export class FederationRequestService {
 		return response;
 	}
 
+	@traced((method: string, targetServer: string, endpoint: string) => ({
+		method,
+		targetServer,
+		endpoint,
+	}))
 	async request<T>(
 		method: HttpMethod,
 		targetServer: string,
@@ -177,6 +191,11 @@ export class FederationRequestService {
 		).json();
 	}
 
+	@traced((targetServer: string, endpoint: string) => ({
+		method: 'GET',
+		targetServer,
+		endpoint,
+	}))
 	async get<T>(
 		targetServer: string,
 		endpoint: string,
@@ -191,6 +210,11 @@ export class FederationRequestService {
 		);
 	}
 
+	@traced((targetServer: string, endpoint: string) => ({
+		method: 'PUT',
+		targetServer,
+		endpoint,
+	}))
 	async put<T>(
 		targetServer: string,
 		endpoint: string,
@@ -200,6 +224,11 @@ export class FederationRequestService {
 		return this.request<T>('PUT', targetServer, endpoint, body, queryParams);
 	}
 
+	@traced((targetServer: string, endpoint: string) => ({
+		method: 'POST',
+		targetServer,
+		endpoint,
+	}))
 	async post<T>(
 		targetServer: string,
 		endpoint: string,
@@ -209,6 +238,11 @@ export class FederationRequestService {
 		return this.request<T>('POST', targetServer, endpoint, body, queryParams);
 	}
 
+	@traced((method: string, targetServer: string, endpoint: string) => ({
+		method,
+		targetServer,
+		endpoint,
+	}))
 	async requestBinaryData(
 		method: string,
 		targetServer: string,

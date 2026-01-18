@@ -2,12 +2,12 @@ import { generateId } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-core';
 import {
 	type EventID,
-	Pdu,
-	PduForType,
-	PduType,
+	type Pdu,
+	type PduForType,
+	type PduType,
 	RejectCode,
-	RoomID,
-	StateID,
+	type RoomID,
+	type StateID,
 } from '@rocket.chat/federation-room';
 import type {
 	Collection,
@@ -18,7 +18,9 @@ import type {
 	WithId,
 } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
+@tracedClass({ type: 'repository', className: 'EventRepository' })
 @singleton()
 export class EventRepository {
 	constructor(

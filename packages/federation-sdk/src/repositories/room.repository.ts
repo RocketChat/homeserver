@@ -1,7 +1,8 @@
 import type { EventBase } from '@rocket.chat/federation-core';
 import type { EventID } from '@rocket.chat/federation-room';
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
 export type Room = {
 	_id: string;
@@ -16,6 +17,7 @@ export type Room = {
 	};
 };
 
+@tracedClass({ type: 'repository', className: 'RoomRepository' })
 @singleton()
 export class RoomRepository {
 	constructor(

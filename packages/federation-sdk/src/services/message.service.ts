@@ -3,10 +3,11 @@ import { createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type PersistentEventBase,
-	RoomID,
-	UserID,
+	type RoomID,
+	type UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+import { addSpanAttributes, traced, tracedClass } from '../utils/tracing';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
@@ -48,6 +49,7 @@ export type FileMessageContent = {
 	};
 };
 
+@tracedClass({ type: 'service', className: 'MessageService' })
 @singleton()
 export class MessageService {
 	private readonly logger = createLogger('MessageService');
@@ -103,6 +105,20 @@ export class MessageService {
 		}
 	}
 
+	@traced(
+		(
+			roomId: RoomID,
+			rawMessage: string,
+			_formattedMessage: string,
+			senderUserId: UserID,
+			reply?: Reply,
+		) => ({
+			roomId,
+			senderUserId,
+			hasReply: Boolean(reply),
+			messageLength: rawMessage?.length,
+		}),
+	)
 	async sendMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -137,6 +153,12 @@ export class MessageService {
 			roomVersion,
 		);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			eventId: event.eventId,
+			roomVersion,
+		});
+
 		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
@@ -151,6 +173,20 @@ export class MessageService {
 	 *
 	 * @deprecated Use sendMessage and replyToEventId instead
 	 */
+	@traced(
+		(
+			roomId: RoomID,
+			rawMessage: string,
+			_formattedMessage: string,
+			eventToReplyTo: EventID,
+			senderUserId: UserID,
+		) => ({
+			roomId,
+			senderUserId,
+			eventToReplyTo,
+			messageLength: rawMessage?.length,
+		}),
+	)
 	async sendReplyToMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -176,6 +212,20 @@ export class MessageService {
 		);
 	}
 
+	@traced(
+		(
+			roomId: RoomID,
+			content: FileMessageContent,
+			senderUserId: UserID,
+			reply?: Reply,
+		) => ({
+			roomId,
+			senderUserId,
+			hasReply: Boolean(reply),
+			msgtype: content?.msgtype,
+			mimetype: content?.info?.mimetype,
+		}),
+	)
 	async sendFileMessage(
 		roomId: RoomID,
 		content: FileMessageContent,
@@ -206,6 +256,12 @@ export class MessageService {
 			roomVersion,
 		);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			eventId: event.eventId,
+			roomVersion,
+		});
+
 		await this.stateService.handlePdu(event);
 		if (event.rejected) {
 			throw new Error(event.rejectReason);
@@ -219,6 +275,20 @@ export class MessageService {
 	/**
 	 * @deprecated Use sendMessage and threadEventId/replyToEventId instead
 	 */
+	@traced(
+		(
+			roomId: RoomID,
+			rawMessage: string,
+			_formattedMessage: string,
+			senderUserId: UserID,
+			threadRootEventId: EventID,
+		) => ({
+			roomId,
+			senderUserId,
+			threadRootEventId,
+			messageLength: rawMessage?.length,
+		}),
+	)
 	async sendThreadMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -249,6 +319,22 @@ export class MessageService {
 	/**
 	 * @deprecated Use sendMessage and threadEventId/replyToEventId instead
 	 */
+	@traced(
+		(
+			roomId: RoomID,
+			rawMessage: string,
+			_formattedMessage: string,
+			senderUserId: UserID,
+			threadRootEventId: EventID,
+			eventToReplyTo: EventID,
+		) => ({
+			roomId,
+			senderUserId,
+			threadRootEventId,
+			eventToReplyTo,
+			messageLength: rawMessage?.length,
+		}),
+	)
 	async sendReplyToInsideThreadMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -276,6 +362,14 @@ export class MessageService {
 		);
 	}
 
+	@traced(
+		(roomId: RoomID, eventId: EventID, emoji: string, senderUserId: UserID) => ({
+			roomId,
+			eventId,
+			emoji,
+			senderUserId,
+		}),
+	)
 	async sendReaction(
 		roomId: RoomID,
 		eventId: EventID,
@@ -314,6 +408,12 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			reactionEventId: reactionEvent.eventId,
+			roomVersion: roomInfo.room_version,
+		});
+
 		await this.stateService.handlePdu(reactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
@@ -321,6 +421,19 @@ export class MessageService {
 		return reactionEvent.eventId;
 	}
 
+	@traced(
+		(
+			roomId: RoomID,
+			eventIdReactedTo: EventID,
+			emoji: string,
+			senderUserId: UserID,
+		) => ({
+			roomId,
+			eventIdReactedTo,
+			emoji,
+			senderUserId,
+		}),
+	)
 	async unsetReaction(
 		roomId: RoomID,
 		eventIdReactedTo: EventID,
@@ -347,6 +460,12 @@ export class MessageService {
 				roomInfo.room_version,
 			);
 
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			redactionEventId: redactionEvent.eventId,
+			roomVersion: roomInfo.room_version,
+		});
+
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
@@ -354,6 +473,20 @@ export class MessageService {
 		return redactionEvent.eventId;
 	}
 
+	@traced(
+		(
+			roomId: RoomID,
+			rawMessage: string,
+			_formattedMessage: string,
+			senderUserId: UserID,
+			eventIdToReplace: EventID,
+		) => ({
+			roomId,
+			senderUserId,
+			eventIdToReplace,
+			messageLength: rawMessage?.length,
+		}),
+	)
 	async updateMessage(
 		roomId: RoomID,
 		rawMessage: string,
@@ -363,7 +496,7 @@ export class MessageService {
 	): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent = await this.stateService.buildEvent<'m.room.message'>(
+		const updateEvent = await this.stateService.buildEvent<'m.room.message'>(
 			{
 				type: 'm.room.message',
 				content: {
@@ -392,13 +525,23 @@ export class MessageService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.handlePdu(redactionEvent);
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			updateEventId: updateEvent.eventId,
+			roomVersion: roomInfo.room_version,
+		});
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		await this.stateService.handlePdu(updateEvent);
 
-		return redactionEvent.eventId;
+		void this.federationService.sendEventToAllServersInRoom(updateEvent);
+
+		return updateEvent.eventId;
 	}
 
+	@traced((roomId: RoomID, eventIdToRedact: EventID) => ({
+		roomId,
+		eventIdToRedact,
+	}))
 	async redactMessage(
 		roomId: RoomID,
 		eventIdToRedact: EventID,
@@ -435,6 +578,13 @@ export class MessageService {
 				},
 				roomInfo.room_version,
 			);
+
+		// Add runtime attributes after event is created
+		addSpanAttributes({
+			redactionEventId: redactionEvent.eventId,
+			roomVersion: roomInfo.room_version,
+			originalSender: senderUserId.event.sender,
+		});
 
 		await this.stateService.handlePdu(redactionEvent);
 

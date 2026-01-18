@@ -19,9 +19,9 @@ import {
 	type PduForType,
 	type PduType,
 	PersistentEventFactory,
-	RoomID,
+	type RoomID,
 	RoomState,
-	RoomVersion,
+	type RoomVersion,
 	type State,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
@@ -32,6 +32,7 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { ServerService } from './server.service';
@@ -42,6 +43,7 @@ export interface AuthEventParams {
 	senderId: string;
 }
 
+@tracedClass({ type: 'service', className: 'EventService' })
 @singleton()
 export class EventService {
 	private readonly logger = createLogger('EventService');
@@ -63,6 +65,10 @@ export class EventService {
 		private readonly lockRepository: LockRepository,
 	) {}
 
+	@traced((eventId: EventID, type?: PduType) => ({
+		eventId,
+		eventType: type,
+	}))
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
 		eventId: EventID,
 		type?: T,
@@ -74,6 +80,9 @@ export class EventService {
 		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;
 	}
 
+	@traced((eventIds: EventID[]) => ({
+		eventCount: eventIds?.length,
+	}))
 	async checkIfEventsExists(
 		eventIds: EventID[],
 	): Promise<{ missing: EventID[]; found: EventID[] }> {
@@ -110,6 +119,11 @@ export class EventService {
 		await this.eventStagingRepository.removeByEventId(event._id);
 	}
 
+	@traced((params: { origin: string; pdus: Pdu[]; edus?: unknown[] }) => ({
+		origin: params?.origin,
+		pduCount: params?.pdus?.length,
+		eduCount: params?.edus?.length,
+	}))
 	async processIncomingTransaction({
 		origin,
 		pdus,
@@ -152,6 +166,10 @@ export class EventService {
 		}
 	}
 
+	@traced((origin: string, pdus: Pdu[]) => ({
+		origin,
+		pduCount: pdus?.length,
+	}))
 	async processIncomingPDUs(origin: string, pdus: Pdu[]): Promise<void> {
 		// organize events by room id
 		const eventsByRoomId = new Map<RoomID, Pdu[]>();
@@ -286,6 +304,9 @@ export class EventService {
 		});
 	}
 
+	@traced((edus: BaseEDU[]) => ({
+		eduCount: edus?.length,
+	}))
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
 		this.logger.debug(`Processing ${edus.length} incoming EDUs`);
 
