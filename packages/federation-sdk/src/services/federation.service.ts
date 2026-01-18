@@ -37,12 +37,14 @@ export class FederationService {
 	/**
 	 * Get a make_join template for a room and user
 	 */
-	@traced((domain: string, roomId: string, userId: string, version?: string) => ({
-		targetDomain: domain,
-		roomId,
-		userId,
-		version,
-	}))
+	@traced(
+		(domain: string, roomId: string, userId: string, version?: string) => ({
+			targetDomain: domain,
+			roomId,
+			userId,
+			version,
+		}),
+	)
 	async makeJoin(
 		domain: string,
 		roomId: string,

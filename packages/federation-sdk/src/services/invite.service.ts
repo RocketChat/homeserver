@@ -46,7 +46,12 @@ export class InviteService {
 	 * Invite a user to an existing room
 	 */
 	@traced(
-		(userId: UserID, roomId: RoomID, sender: UserID, isDirectMessage?: boolean) => ({
+		(
+			userId: UserID,
+			roomId: RoomID,
+			sender: UserID,
+			isDirectMessage?: boolean,
+		) => ({
 			userId,
 			roomId,
 			sender,
@@ -191,16 +196,10 @@ export class InviteService {
 		}
 	}
 
-	@traced(
-		(
-			_event: unknown,
-			eventId: EventID,
-			roomVersion: RoomVersion,
-		) => ({
-			eventId,
-			roomVersion,
-		}),
-	)
+	@traced((_event: unknown, eventId: EventID, roomVersion: RoomVersion) => ({
+		eventId,
+		roomVersion,
+	}))
 	async processInvite(
 		event: PduForType<'m.room.member'>,
 		eventId: EventID,

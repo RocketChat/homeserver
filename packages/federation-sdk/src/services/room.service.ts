@@ -733,7 +733,12 @@ export class RoomService {
 	}
 
 	@traced(
-		(roomId: RoomID, kickedUserId: UserID, senderId: UserID, _reason?: string) => ({
+		(
+			roomId: RoomID,
+			kickedUserId: UserID,
+			senderId: UserID,
+			_reason?: string,
+		) => ({
 			roomId,
 			senderId,
 			targetUserId: kickedUserId,
@@ -865,7 +870,12 @@ export class RoomService {
 	}
 
 	@traced(
-		(roomId: RoomID, bannedUserId: UserID, senderId: UserID, reason?: string) => ({
+		(
+			roomId: RoomID,
+			bannedUserId: UserID,
+			senderId: UserID,
+			reason?: string,
+		) => ({
 			roomId,
 			senderId,
 			targetUserId: bannedUserId,

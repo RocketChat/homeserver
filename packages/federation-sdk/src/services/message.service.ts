@@ -363,7 +363,12 @@ export class MessageService {
 	}
 
 	@traced(
-		(roomId: RoomID, eventId: EventID, emoji: string, senderUserId: UserID) => ({
+		(
+			roomId: RoomID,
+			eventId: EventID,
+			emoji: string,
+			senderUserId: UserID,
+		) => ({
 			roomId,
 			eventId,
 			emoji,

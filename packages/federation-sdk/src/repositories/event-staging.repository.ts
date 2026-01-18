@@ -1,6 +1,10 @@
 import { generateId } from '@rocket.chat/federation-core';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
-import { type EventID, type Pdu, type RoomID } from '@rocket.chat/federation-room';
+import {
+	type EventID,
+	type Pdu,
+	type RoomID,
+} from '@rocket.chat/federation-room';
 import type { Collection, DeleteResult, UpdateResult } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 import { tracedClass } from '../utils/tracing';

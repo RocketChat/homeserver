@@ -56,13 +56,11 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
-	@traced(
-		(params: { method: string; domain: string; uri: string }) => ({
-			method: params?.method,
-			targetDomain: params?.domain,
-			uri: params?.uri,
-		}),
-	)
+	@traced((params: { method: string; domain: string; uri: string }) => ({
+		method: params?.method,
+		targetDomain: params?.domain,
+		uri: params?.uri,
+	}))
 	async makeSignedRequest<T>({
 		method,
 		domain,

@@ -1,3 +1,4 @@
+import { SpanStatusCode, context, trace } from '@opentelemetry/api';
 import {
 	AsyncDispatcher,
 	type EventHandlerOf,
@@ -5,7 +6,6 @@ import {
 	logger,
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
-import { SpanStatusCode, context, trace } from '@opentelemetry/api';
 
 import type { HomeserverEventSignatures } from '..';
 import { extractEventEmitterAttributes } from '../utils/tracing';
