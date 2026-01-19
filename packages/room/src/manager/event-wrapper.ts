@@ -132,9 +132,6 @@ export abstract class PersistentEventBase<
      */
     get senderDomain() {
         const domain = extractDomainFromId(this.rawEvent.sender);
-        if (!domain) {
-            throw new Error('Invalid sender, no domain found');
-        }
         return domain;
     }
 

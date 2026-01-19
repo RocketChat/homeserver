@@ -109,7 +109,7 @@ test('roomCreateEvent with factory', async () => {
 			origin_server_ts: timestamp,
 			unsigned: { age_ts: timestamp },
 			depth: finalEvent.depth,
-			origin: finalEvent.senderDomain,
+			origin: finalEvent.origin,
 		},
 		finalEvent.content.room_version as RoomVersion,
 	);

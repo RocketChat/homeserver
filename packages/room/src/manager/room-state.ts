@@ -108,8 +108,7 @@ export class RoomState {
 
 		return topicEvent.getContent().topic;
 	}
-
-	// origin is the origin of the room gotten from the room id
+	// origin is the domain of the room creator (sender of m.room.create event)
 	get origin() {
 		const createEvent = getStateByMapKey(this.stateMap, {
 			type: 'm.room.create',
@@ -119,12 +118,7 @@ export class RoomState {
 			throw new Error('Room create event not found');
 		}
 
-		const origin = createEvent.senderDomain;
-		if (!origin) {
-			throw new Error('Room create event has no origin');
-		}
-
-		return origin;
+		return createEvent.senderDomain;
 	}
 
 	get powerLevels() {

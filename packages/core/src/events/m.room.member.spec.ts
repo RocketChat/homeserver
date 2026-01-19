@@ -142,7 +142,7 @@ test('roomMemberEvent - leave', async () => {
 	expect(signedLeaveEvent.sender).toBe(userId);
 	expect(signedLeaveEvent.state_key).toBe(userId);
 	expect(signedLeaveEvent.content.membership).toBe('leave');
-	expect(signedLeaveEvent.senderDomain).toBe(serverName);
+	expect(signedLeaveEvent.origin).toBe(serverName);
 	expect(signedLeaveEvent.origin_server_ts).toBe(ts);
 	expect(signedLeaveEvent.prev_events).toEqual([joinEventId]);
 	expect(signedLeaveEvent.auth_events).toContain(createEventId);
@@ -306,7 +306,7 @@ test('roomMemberEvent - kick', async () => {
 	expect(signedKickEvent.state_key).toBe(userToKickId);
 	expect(signedKickEvent.content.membership).toBe('leave');
 	expect(signedKickEvent.content.reason).toBe(kickReason);
-	expect(signedKickEvent.senderDomain).toBe(serverName);
+	expect(signedKickEvent.origin).toBe(serverName);
 	expect(signedKickEvent.origin_server_ts).toBe(ts);
 	expect(signedKickEvent.prev_events).toEqual([userToKickJoinEventId]);
 
@@ -474,7 +474,7 @@ test('roomMemberEvent - ban', async () => {
 	expect(signedBanEvent.state_key).toBe(userToBanId);
 	expect(signedBanEvent.content.membership).toBe('ban');
 	expect(signedBanEvent.content.reason).toBe(banReason);
-	expect(signedBanEvent.senderDomain).toBe(serverName);
+	expect(signedBanEvent.origin).toBe(serverName);
 	expect(signedBanEvent.origin_server_ts).toBe(ts);
 	expect(signedBanEvent.prev_events).toEqual([userToBanJoinEventId]);
 
