@@ -83,7 +83,7 @@ function isRoomAliasAllowed(
 	}
 
 	// If sender’s domain doesn’t matches state_key, reject.
-	if (roomAliasEvent.origin !== roomAliasEvent.stateKey) {
+	if (roomAliasEvent.senderDomain !== roomAliasEvent.stateKey) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: roomAliasEvent,
 			reason:
@@ -799,7 +799,7 @@ export async function checkEventAuthWithState(
 	// If the content of the m.room.create event in the room state has the property m.federate set to false, and the sender domain of the event does not match the sender domain of the create event, reject.
 	if (
 		roomCreateEvent.getContent()['m.federate'] === false &&
-		event.origin !== roomCreateEvent.origin
+		event.senderDomain !== roomCreateEvent.senderDomain
 	) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: event,

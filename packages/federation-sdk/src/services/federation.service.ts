@@ -313,9 +313,9 @@ export class FederationService {
 		}
 
 		for (const server of servers) {
-			if (server === event.origin) {
+			if (server === event.senderDomain) {
 				this.logger.info(
-					`Skipping transaction to event origin: ${event.origin}`,
+					`Skipping transaction to event origin: ${event.senderDomain}`,
 				);
 				continue;
 			}
