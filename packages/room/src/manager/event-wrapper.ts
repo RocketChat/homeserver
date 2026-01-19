@@ -72,6 +72,13 @@ export abstract class PersistentEventBase<
 	private authEventsIds: Set<EventID> = new Set();
 	private prevEventsIds: Set<EventID> = new Set();
 
+	/**
+	 * The origin server that created this event.
+	 * This is metadata stored separately from the PDU and is used to track
+	 * which server the event came from in federation scenarios.
+	 */
+	public eventOrigin?: string;
+
 	constructor(
 		event: PduWithHashesAndSignaturesOptional,
 		public readonly version: Version,
@@ -118,13 +125,18 @@ export abstract class PersistentEventBase<
 
 	// TODO: This should be removed or different name used instead?
 
-	get origin() {
-		const domain = extractDomainFromId(this.rawEvent.sender);
-		if (!domain) {
-			throw new Error('Invalid sender, no domain found');
-		}
-		return domain;
-	}
+	/**
+     * Gets the domain of the sender from their ID.
+     * @returns {string} The sender's domain.
+     * @throws {Error} If the sender ID is invalid or has no domain.
+     */
+    get senderDomain() {
+        const domain = extractDomainFromId(this.rawEvent.sender);
+        if (!domain) {
+            throw new Error('Invalid sender, no domain found');
+        }
+        return domain;
+    }
 
 	get residentServer() {
 		const residentServer = extractDomainFromId(this.rawEvent.room_id);
@@ -140,6 +152,15 @@ export abstract class PersistentEventBase<
 
 	get originServerTs() {
 		return this.rawEvent.origin_server_ts;
+	}
+
+	/**
+	 * Gets the origin server that created this event.
+	 * This is the server identity where the event originated (from federation).
+	 * @returns {string | undefined} The origin server name, or undefined if not set.
+	 */
+	get origin() {
+		return this.eventOrigin;
 	}
 
 	// if we are accessing the inner event, the event itself should be frozen immediately to not change the reference hash any longer, affecting the id

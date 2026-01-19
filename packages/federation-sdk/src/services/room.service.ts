@@ -1112,7 +1112,7 @@ export class RoomService {
 
 		// try to persist the join event now, should succeed with state in place
 		void this.eventService.processIncomingPDUs(
-			residentServer || joinEventFinal.origin,
+			residentServer,
 			[...state, joinEventFinal.event],
 		);
 

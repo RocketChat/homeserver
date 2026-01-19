@@ -119,7 +119,7 @@ export class RoomState {
 			throw new Error('Room create event not found');
 		}
 
-		const origin = createEvent.origin;
+		const origin = createEvent.senderDomain;
 		if (!origin) {
 			throw new Error('Room create event has no origin');
 		}
