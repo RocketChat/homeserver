@@ -2,10 +2,11 @@ import type { EventBase } from '@rocket.chat/federation-core';
 import type { BaseEDU } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
-	EventID,
-	Pdu,
-	PersistentEventBase,
+	type EventID,
+	type Pdu,
+	type PersistentEventBase,
 	PersistentEventFactory,
+	type RoomVersion,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -17,10 +18,12 @@ import {
 	type Transaction,
 	type Version,
 } from '../specs/federation-api';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 import { StateService } from './state.service';
 
+@tracedClass({ type: 'service', className: 'FederationService' })
 @singleton()
 export class FederationService {
 	private readonly logger = createLogger('FederationService');
@@ -34,6 +37,14 @@ export class FederationService {
 	/**
 	 * Get a make_join template for a room and user
 	 */
+	@traced(
+		(domain: string, roomId: string, userId: string, version?: string) => ({
+			targetDomain: domain,
+			roomId,
+			userId,
+			version,
+		}),
+	)
 	async makeJoin(
 		domain: string,
 		roomId: string,
@@ -64,6 +75,11 @@ export class FederationService {
 	/**
 	 * Send a join event to a remote server
 	 */
+	@traced((joinEvent: PersistentEventBase, omitMembers?: boolean) => ({
+		eventId: joinEvent?.eventId,
+		roomId: joinEvent?.roomId,
+		omitMembers,
+	}))
 	async sendJoin(
 		joinEvent: PersistentEventBase,
 		omitMembers = false,
@@ -98,6 +114,11 @@ export class FederationService {
 		}
 	}
 
+	@traced((domain: string, roomId: string, userId: string) => ({
+		targetDomain: domain,
+		roomId,
+		userId,
+	}))
 	async makeLeave(
 		domain: string,
 		roomId: string,
@@ -115,6 +136,10 @@ export class FederationService {
 		}
 	}
 
+	@traced((leaveEvent: PersistentEventBase) => ({
+		eventId: leaveEvent?.eventId,
+		roomId: leaveEvent?.roomId,
+	}))
 	async sendLeave(leaveEvent: PersistentEventBase): Promise<void> {
 		try {
 			const uri = FederationEndpoints.sendLeave(
@@ -145,6 +170,13 @@ export class FederationService {
 	/**
 	 * Send a transaction to a remote server
 	 */
+	@traced(
+		(domain: string, transaction: { pdus?: unknown[]; edus?: unknown[] }) => ({
+			targetDomain: domain,
+			pduCount: transaction?.pdus?.length,
+			eduCount: transaction?.edus?.length,
+		}),
+	)
 	async sendTransaction(
 		domain: string,
 		transaction: Transaction,
@@ -167,6 +199,11 @@ export class FederationService {
 	/**
 	 * Send an event to a remote server
 	 */
+	@traced((domain: string, event: Pdu) => ({
+		targetDomain: domain,
+		eventType: event?.type,
+		roomId: event?.room_id,
+	}))
 	async sendEvent<T extends Pdu>(
 		domain: string,
 		event: T,
@@ -188,6 +225,10 @@ export class FederationService {
 	/**
 	 * Get events from a remote server
 	 */
+	@traced((domain: string, eventId: string) => ({
+		targetDomain: domain,
+		eventId,
+	}))
 	async getEvent(domain: string, eventId: string): Promise<Pdu> {
 		try {
 			const uri = FederationEndpoints.getEvent(eventId);
@@ -201,6 +242,21 @@ export class FederationService {
 	/**
 	 * Get events from a remote server
 	 */
+	@traced(
+		(
+			domain: string,
+			roomId: string,
+			earliestEvents: EventID[],
+			latestEvents: EventID[],
+			limit?: number,
+		) => ({
+			targetDomain: domain,
+			roomId,
+			earliestEventCount: earliestEvents?.length,
+			latestEventCount: latestEvents?.length,
+			limit,
+		}),
+	)
 	async getMissingEvents(
 		domain: string,
 		roomId: string,
@@ -226,6 +282,11 @@ export class FederationService {
 	/**
 	 * Get state for a room from remote server
 	 */
+	@traced((domain: string, roomId: string, eventId: string) => ({
+		targetDomain: domain,
+		roomId,
+		eventId,
+	}))
 	async getState(
 		domain: string,
 		roomId: string,
@@ -245,6 +306,10 @@ export class FederationService {
 	/**
 	 * Get state IDs for a room from remote server
 	 */
+	@traced((domain: string, roomId: string) => ({
+		targetDomain: domain,
+		roomId,
+	}))
 	async getStateIds(domain: string, roomId: string): Promise<EventBase[]> {
 		try {
 			const uri = FederationEndpoints.getStateIds(roomId);
@@ -258,6 +323,9 @@ export class FederationService {
 	/**
 	 * Get server version information
 	 */
+	@traced((domain: string) => ({
+		targetDomain: domain,
+	}))
 	async getVersion(domain: string): Promise<Version> {
 		try {
 			return await this.requestService.get<Version>(
@@ -271,6 +339,12 @@ export class FederationService {
 	}
 
 	// invite user from another homeserver to our homeserver
+	@traced((inviteEvent: PersistentEventBase, roomVersion: string) => ({
+		eventId: inviteEvent?.eventId,
+		roomId: inviteEvent?.roomId,
+		targetUser: inviteEvent?.stateKey,
+		roomVersion,
+	}))
 	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
 		const uri = FederationEndpoints.inviteV2(
 			inviteEvent.roomId,
@@ -301,6 +375,11 @@ export class FederationService {
 		});
 	}
 
+	@traced((event: PersistentEventBase) => ({
+		eventId: event?.eventId,
+		eventType: event?.type,
+		roomId: event?.roomId,
+	}))
 	async sendEventToAllServersInRoom(event: PersistentEventBase) {
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
@@ -352,6 +431,10 @@ export class FederationService {
 		}
 	}
 
+	@traced((edus: BaseEDU[], servers: string[]) => ({
+		eduCount: edus?.length,
+		serverCount: servers?.length,
+	}))
 	async sendEDUToServers(edus: BaseEDU[], servers: string[]): Promise<void> {
 		// Process servers sequentially to avoid concurrent transactions per Matrix spec
 		for (const server of servers) {

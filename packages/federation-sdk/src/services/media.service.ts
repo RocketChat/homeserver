@@ -1,8 +1,10 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
+import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 
+@tracedClass({ type: 'service', className: 'MediaService' })
 @singleton()
 export class MediaService {
 	private readonly logger = createLogger('MediaService');
@@ -12,6 +14,10 @@ export class MediaService {
 		private readonly federationRequest: FederationRequestService,
 	) {}
 
+	@traced((serverName: string, mediaId: string) => ({
+		serverName,
+		mediaId,
+	}))
 	async downloadFromRemoteServer(
 		serverName: string,
 		mediaId: string,

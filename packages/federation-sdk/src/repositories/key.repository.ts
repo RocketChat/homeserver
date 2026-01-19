@@ -1,5 +1,6 @@
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
 export type Key = {
 	origin: string;
@@ -8,6 +9,7 @@ export type Key = {
 	valid_until: Date;
 };
 
+@tracedClass({ type: 'repository', className: 'KeyRepository' })
 @singleton()
 export class KeyRepository {
 	constructor(
