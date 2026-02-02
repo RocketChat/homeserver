@@ -27,12 +27,12 @@ import {
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
+import { federationMetrics } from '../metrics';
+import { bucketizeEduCount, bucketizePduCount } from '../metrics/helpers';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { LockRepository } from '../repositories/lock.repository';
-import { federationMetrics } from '../metrics';
-import { bucketizeEduCount, bucketizePduCount } from '../metrics/helpers';
 import { eventSchemas } from '../utils/event-schemas';
 import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
