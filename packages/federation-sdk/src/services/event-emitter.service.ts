@@ -17,6 +17,17 @@ import {
 } from '../metrics/helpers';
 import { extractEventEmitterAttributes } from '../utils/tracing';
 
+/**
+ * Exception handler type for event handlers.
+ * Called when an event handler throws an error, after metrics are recorded.
+ * The original error is always re-thrown after this handler completes.
+ */
+export type EventHandlerExceptionHandler = (
+	error: unknown,
+	event: string,
+	data: unknown,
+) => void | Promise<void>;
+
 @singleton()
 export class EventEmitterService {
 	private emitter: AsyncDispatcher<HomeserverEventSignatures> =
@@ -50,6 +61,7 @@ export class EventEmitterService {
 		event: K,
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
 		handlerType: 'on' | 'once',
+		onError?: EventHandlerExceptionHandler,
 	): (data: EventOf<HomeserverEventSignatures, K>) => Promise<unknown> {
 		return async (
 			data: EventOf<HomeserverEventSignatures, K>,
@@ -116,6 +128,25 @@ export class EventEmitterService {
 					direction: 'incoming',
 					error_type: err instanceof Error ? err.constructor.name : 'Unknown',
 				});
+
+				// Call optional exception handler if provided
+				if (onError) {
+					try {
+						await onError(err, event as string, data);
+					} catch (handlerErr) {
+						// Log but don't replace the original error
+						logger.error(
+							{
+								msg: 'Exception handler threw an error',
+								event,
+								originalError: err,
+								handlerError: handlerErr,
+							},
+							'Exception handler failed',
+						);
+					}
+				}
+
 				throw err;
 			}
 		};
@@ -175,8 +206,14 @@ export class EventEmitterService {
 		method: 'on' | 'once',
 		event: K,
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
+		onError?: EventHandlerExceptionHandler,
 	): (() => void) | undefined {
-		const tracedHandler = this.createTracedHandler(event, handler, method);
+		const tracedHandler = this.createTracedHandler(
+			event,
+			handler,
+			method,
+			onError,
+		);
 
 		// Get or create the WeakMap for this event
 		let eventHandlers = this.handlerMap.get(event);
@@ -246,23 +283,35 @@ export class EventEmitterService {
 	 * When the event is emitted, the handler will execute within a span
 	 * that continues the context, allowing handlers to add attributes
 	 * to the span using addSpanAttributes().
+	 *
+	 * @param event - The event to subscribe to
+	 * @param handler - The handler function to execute when the event is emitted
+	 * @param onError - Optional exception handler called when the handler throws.
+	 *                  Called after metrics are recorded but before the error is re-thrown.
 	 */
 	public on<K extends keyof HomeserverEventSignatures>(
 		event: K,
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
+		onError?: EventHandlerExceptionHandler,
 	): (() => void) | undefined {
-		return this.subscribe('on', event, handler);
+		return this.subscribe('on', event, handler, onError);
 	}
 
 	/**
 	 * Subscribe to an event once with tracing support.
 	 * Similar to on(), but automatically unsubscribes after the first event.
+	 *
+	 * @param event - The event to subscribe to
+	 * @param handler - The handler function to execute when the event is emitted
+	 * @param onError - Optional exception handler called when the handler throws.
+	 *                  Called after metrics are recorded but before the error is re-thrown.
 	 */
 	public once<K extends keyof HomeserverEventSignatures>(
 		event: K,
 		handler: EventHandlerOf<HomeserverEventSignatures, K>,
+		onError?: EventHandlerExceptionHandler,
 	): (() => void) | undefined {
-		return this.subscribe('once', event, handler);
+		return this.subscribe('once', event, handler, onError);
 	}
 
 	public off<K extends keyof HomeserverEventSignatures>(
