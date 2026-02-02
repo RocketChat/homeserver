@@ -8,6 +8,13 @@ import {
 import { singleton } from 'tsyringe';
 
 import type { HomeserverEventSignatures } from '..';
+import { federationMetrics } from '../metrics';
+import {
+	determineMessageType,
+	extractOriginFromMatrixRoomId,
+	extractOriginFromMatrixUserId,
+	getEventTypeLabel,
+} from '../metrics/helpers';
 import { extractEventEmitterAttributes } from '../utils/tracing';
 
 @singleton()
@@ -47,41 +54,118 @@ export class EventEmitterService {
 		return async (
 			data: EventOf<HomeserverEventSignatures, K>,
 		): Promise<unknown> => {
-			const currentSpan = trace.getSpan(context.active());
+			const startTime = Date.now();
+			const eventTypeLabel = getEventTypeLabel(event as string);
 
-			// If there's an active span (from emit), create a child span for the handler
-			if (currentSpan) {
-				return this.tracer.startActiveSpan(
-					`homeserver-sdk event handler ${event}`,
-					{
-						attributes: {
-							'event.type': event as string,
-							'handler.type': handlerType,
+			// Extract event data for metrics labels
+			const eventData = data as Record<string, unknown>;
+			const nestedEvent = eventData?.event as
+				| Record<string, unknown>
+				| undefined;
+
+			try {
+				const currentSpan = trace.getSpan(context.active());
+
+				let result: unknown;
+				if (currentSpan) {
+					result = await this.tracer.startActiveSpan(
+						`homeserver-sdk event handler ${event}`,
+						{
+							attributes: {
+								'event.type': event as string,
+								'handler.type': handlerType,
+							},
 						},
-					},
-					async (span) => {
-						try {
-							const result = await (handler as (data: unknown) => unknown)(
-								data,
-							);
-							return result;
-						} catch (err) {
-							span.recordException(err as Error);
-							span.setStatus({
-								code: SpanStatusCode.ERROR,
-								message: err instanceof Error ? err.message : String(err),
-							});
-							throw err;
-						} finally {
-							span.end();
-						}
-					},
+						async (span) => {
+							try {
+								return await (handler as (data: unknown) => unknown)(data);
+							} catch (err) {
+								span.recordException(err as Error);
+								span.setStatus({
+									code: SpanStatusCode.ERROR,
+									message: err instanceof Error ? err.message : String(err),
+								});
+								throw err;
+							} finally {
+								span.end();
+							}
+						},
+					);
+				} else {
+					result = await (handler as (data: unknown) => unknown)(data);
+				}
+
+				// Record success metrics
+				federationMetrics.federationEventsProcessed.inc({
+					event_type: eventTypeLabel,
+					direction: 'incoming',
+				});
+
+				// Record event-specific metrics
+				this.recordEventSpecificMetrics(
+					event as string,
+					nestedEvent,
+					startTime,
+				);
+
+				return result;
+			} catch (err) {
+				// Record failure metrics
+				federationMetrics.federationEventsFailed.inc({
+					event_type: eventTypeLabel,
+					direction: 'incoming',
+					error_type: err instanceof Error ? err.constructor.name : 'Unknown',
+				});
+				throw err;
+			}
+		};
+	}
+
+	/**
+	 * Records event-specific metrics based on event type.
+	 */
+	private recordEventSpecificMetrics(
+		event: string,
+		nestedEvent: Record<string, unknown> | undefined,
+		startTime: number,
+	): void {
+		const durationSeconds = (Date.now() - startTime) / 1000;
+
+		if (
+			event === 'homeserver.matrix.message' ||
+			event === 'homeserver.matrix.encrypted'
+		) {
+			const messageType = determineMessageType(nestedEvent || {});
+			const origin = extractOriginFromMatrixUserId(
+				String(nestedEvent?.sender || ''),
+			);
+
+			federationMetrics.federatedMessagesReceived.inc({
+				message_type: messageType,
+				origin,
+			});
+
+			federationMetrics.federationIncomingMessageProcessDuration.observe(
+				{ message_type: messageType },
+				durationSeconds,
+			);
+		}
+
+		if (event === 'homeserver.matrix.membership') {
+			const content = nestedEvent?.content as
+				| Record<string, unknown>
+				| undefined;
+			if (content?.membership === 'join') {
+				const roomId = String(nestedEvent?.room_id || '');
+				const origin = extractOriginFromMatrixRoomId(roomId);
+
+				federationMetrics.federatedRoomsJoined.inc({ origin });
+				federationMetrics.federationRoomJoinDuration.observe(
+					{ origin },
+					durationSeconds,
 				);
 			}
-
-			// No active span, just call the handler directly
-			return (handler as (data: unknown) => unknown)(data);
-		};
+		}
 	}
 
 	/**

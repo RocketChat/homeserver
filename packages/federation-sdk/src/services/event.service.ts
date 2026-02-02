@@ -31,6 +31,8 @@ import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { LockRepository } from '../repositories/lock.repository';
+import { federationMetrics } from '../metrics';
+import { bucketizeEduCount, bucketizePduCount } from '../metrics/helpers';
 import { eventSchemas } from '../utils/event-schemas';
 import { traced, tracedClass } from '../utils/tracing';
 import { ConfigService } from './config.service';
@@ -133,27 +135,34 @@ export class EventService {
 		pdus: Pdu[];
 		edus?: BaseEDU[];
 	}): Promise<void> {
-		if (!Array.isArray(pdus)) {
-			throw new Error('pdus must be an array');
-		}
-
-		if (edus && !Array.isArray(edus)) {
-			throw new Error('edus must be an array');
-		}
-
-		const totalPdus = pdus.length;
-		const totalEdus = edus?.length || 0;
-
-		if (totalPdus > 50 || totalEdus > 100) {
-			throw new Error('too-many-events');
-		}
-
-		// only one current transaction per origin is allowed
-		if (this.currentTransactions.has(origin)) {
-			throw new Error('too-many-concurrent-transactions');
-		}
+		const endTimer =
+			federationMetrics.federationTransactionProcessDuration.startTimer({
+				pdu_count: bucketizePduCount(pdus?.length || 0),
+				edu_count: bucketizeEduCount(edus?.length || 0),
+				origin,
+			});
 
 		try {
+			if (!Array.isArray(pdus)) {
+				throw new Error('pdus must be an array');
+			}
+
+			if (edus && !Array.isArray(edus)) {
+				throw new Error('edus must be an array');
+			}
+
+			const totalPdus = pdus.length;
+			const totalEdus = edus?.length || 0;
+
+			if (totalPdus > 50 || totalEdus > 100) {
+				throw new Error('too-many-events');
+			}
+
+			// only one current transaction per origin is allowed
+			if (this.currentTransactions.has(origin)) {
+				throw new Error('too-many-concurrent-transactions');
+			}
+
 			this.currentTransactions.add(origin);
 
 			// process both PDU and EDU in "parallel" to no block EDUs due to heavy PDU operations
@@ -163,6 +172,7 @@ export class EventService {
 			]);
 		} finally {
 			this.currentTransactions.delete(origin);
+			endTimer();
 		}
 	}
 
