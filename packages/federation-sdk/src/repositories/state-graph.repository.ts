@@ -8,6 +8,7 @@ import {
 } from '@rocket.chat/federation-room';
 import { type Collection, ObjectId } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
 export type StateGraphStore = {
 	_id: StateID;
@@ -25,6 +26,7 @@ export type StateGraphStore = {
 	partial: boolean;
 };
 
+@tracedClass({ type: 'repository', className: 'StateGraphRepository' })
 @singleton()
 export class StateGraphRepository {
 	constructor(

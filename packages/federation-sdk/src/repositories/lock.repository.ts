@@ -1,5 +1,6 @@
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
 export type Lock = {
 	roomId: string;
@@ -7,6 +8,7 @@ export type Lock = {
 	lockedAt: Date;
 };
 
+@tracedClass({ type: 'repository', className: 'LockRepository' })
 @singleton()
 export class LockRepository {
 	constructor(

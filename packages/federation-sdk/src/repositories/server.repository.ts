@@ -1,5 +1,6 @@
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+import { tracedClass } from '../utils/tracing';
 
 export type Server = {
 	name: string;
@@ -11,6 +12,7 @@ export type Server = {
 	};
 };
 
+@tracedClass({ type: 'repository', className: 'ServerRepository' })
 @singleton()
 export class ServerRepository {
 	constructor(
