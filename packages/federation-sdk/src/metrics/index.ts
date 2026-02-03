@@ -17,7 +17,7 @@ function getOrCreateMetric<T extends client.Metric>(
 	name: string,
 	createFn: () => T,
 ): T {
-	const existing = client.register.getSingleMetric(name);
+	const existing = registry.getSingleMetric(name);
 	if (existing) {
 		return existing as T;
 	}
