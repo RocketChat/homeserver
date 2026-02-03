@@ -78,6 +78,19 @@ export {
 	type ITracedClassOptions,
 } from './utils/tracing';
 
+export { federationMetrics, initMetrics } from './metrics';
+export {
+	bucketizeEduCount,
+	bucketizePduCount,
+	determineMessageType,
+	extractOriginFromMatrixRoomId,
+	extractOriginFromMatrixUserId,
+	getEventTypeLabel,
+} from './metrics/helpers';
+
+// Event emitter types
+export type { EventHandlerExceptionHandler } from './services/event-emitter.service';
+
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
 		message: string;
