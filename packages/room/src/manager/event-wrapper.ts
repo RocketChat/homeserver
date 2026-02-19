@@ -42,6 +42,10 @@ export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<
 	MakeOptional<T, 'hashes' | 'signatures'>
 >;
 
+type PduWithFederationOrigin = PduWithHashesAndSignaturesOptional & {
+	origin?: string;
+};
+
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
 export interface State extends Map<StateMapKey, PersistentEventBase> {
@@ -67,7 +71,7 @@ export abstract class PersistentEventBase<
 
 	private signatures: Signature = {};
 
-	protected rawEvent: PduWithHashesAndSignaturesOptional;
+	protected rawEvent: PduWithFederationOrigin;
 
 	private authEventsIds: Set<EventID> = new Set();
 	private prevEventsIds: Set<EventID> = new Set();
@@ -118,12 +122,16 @@ export abstract class PersistentEventBase<
 
 	// TODO: This should be removed or different name used instead?
 
-	get origin() {
+	get senderDomain() {
 		const domain = extractDomainFromId(this.rawEvent.sender);
 		if (!domain) {
 			throw new Error('Invalid sender, no domain found');
 		}
 		return domain;
+	}
+
+	get origin() {
+		return this.rawEvent.origin;
 	}
 
 	get residentServer() {
