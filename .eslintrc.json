@@ -1,5 +1,17 @@
 {
   "root": true,
   "extends": ["@rocket.chat/eslint-config", "prettier", "plugin:@typescript-eslint/recommended"],
-  "plugins": ["prettier", "anti-trojan-source", "no-floating-promise"]
+  "plugins": ["prettier", "anti-trojan-source", "no-floating-promise"],
+  "settings": {
+    "import/core-modules": ["bun", "bun:test", "bun:sqlite"],
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": ["./tsconfig.json", "./packages/*/tsconfig.json"]
+      },
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  }
 }
