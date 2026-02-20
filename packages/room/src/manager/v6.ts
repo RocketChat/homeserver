@@ -7,7 +7,6 @@ export class PersistentEventV6<
 	getAllowedContentKeys() {
 		const resp = super.getAllowedContentKeys();
 
-		// biome-ignore lint/performance/noDelete: <explanation>
 		delete resp['m.room.aliases'];
 
 		return resp;

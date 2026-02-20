@@ -86,7 +86,6 @@ export function partitionState(
 				conflictedStateEventsMap.set(stateKey, [existingEventid, eventId]);
 			}
 		} else if (conflictedStateEventsMap.has(stateKey)) {
-			// biome-ignore lint/style/noNonNullAssertion: `has` asserts non-null
 			conflictedStateEventsMap.get(stateKey)!.push(eventId);
 		} else {
 			unconflictedState.set(stateKey, eventId);
@@ -278,7 +277,6 @@ export function _kahnsOrder<T>(
 
 	// get all indegrees
 	// any key in the graph with no edges has zero indegree
-	// biome-ignore lint/complexity/noForEach: <explanation>
 	indegree
 		.keys()
 		.forEach((k) => indegree.get(k) === 0 && zeroIndegreeQueue.enqueue(k));

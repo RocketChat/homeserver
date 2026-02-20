@@ -157,7 +157,6 @@ export async function resolveStateV2Plus(
 	);
 
 	const fullConflictedSet = conflicted.values().reduce((accum, curr) => {
-		// biome-ignore lint/complexity/noForEach: <explanation>
 		curr.forEach((c) => accum.add(c));
 
 		return accum;
