@@ -1,12 +1,11 @@
+import { afterEach, describe, expect, it } from 'bun:test';
+
+import { resolveStateV2Plus } from './v2';
+import type { PersistentEventBase } from '../../../manager/event-wrapper';
+import { PersistentEventFactory } from '../../../manager/factory';
 import { type EventID, type StateMapKey } from '../../../types/_common';
 import {} from '../../../types/v3-11';
 import { type EventStore, _kahnsOrder, getAuthChainDifference, mainlineOrdering } from '../definitions';
-import { resolveStateV2Plus } from './v2';
-
-import { afterEach, describe, expect, it } from 'bun:test';
-
-import type { PersistentEventBase } from '../../../manager/event-wrapper';
-import { PersistentEventFactory } from '../../../manager/factory';
 
 class MockEventStore implements EventStore {
 	public events: Array<PersistentEventBase> = [];

@@ -1,4 +1,5 @@
 import { afterAll, afterEach, describe, expect, it, jest, mock } from 'bun:test';
+import ResolverModule from 'node:dns/promises';
 
 /**
  * This is a workaround restore the original module, since bun module mock is a bit weird

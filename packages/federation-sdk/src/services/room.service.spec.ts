@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 
-import * as room from '@rocket.chat/federation-room';
-import {
+import type * as room from '@rocket.chat/federation-room';
+import type {
 	PduJoinRuleEventContent,
 	PduPowerLevelsEventContent,
 	PersistentEventBase,
