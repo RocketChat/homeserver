@@ -1,12 +1,12 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 
-import type * as room from '@rocket.chat/federation-room';
 import type {
 	PduJoinRuleEventContent,
 	PduPowerLevelsEventContent,
 	PersistentEventBase,
 	RoomVersion,
 	StateMapKey,
+	UserID,
 } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 
@@ -60,7 +60,7 @@ describe('RoomService', async () => {
 	const roomService = container.resolve(RoomService);
 
 	const createRoom = async (
-		username: room.UserID,
+		username: UserID,
 		joinRule: PduJoinRuleEventContent['join_rule'],
 		{
 			users = {},
@@ -109,7 +109,7 @@ describe('RoomService', async () => {
 
 	describe('createRoom', () => {
 		it('should create room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
 			const { roomCreateEvent, roomNameEvent, joinRuleEvent, powerLevelEvent, creatorMembershipEvent } = await createRoom(
 				username,
 				'public',
@@ -139,7 +139,7 @@ describe('RoomService', async () => {
 		});
 
 		it('should always keep the owner as 100', async () => {
-			const username = '@alice:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
 			const { powerLevelEvent } = await createRoom(username, 'public', {
 				users: { '@alice:example.com': 10 },
 			});
@@ -148,7 +148,7 @@ describe('RoomService', async () => {
 		});
 
 		it('should accept custom event powers', async () => {
-			const username = '@alice:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
 			const { powerLevelEvent } = await createRoom(username, 'public', {
 				events: { 'rc.room.name': 10 },
 			});
@@ -156,8 +156,8 @@ describe('RoomService', async () => {
 		});
 
 		it.skip('should create direct message room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const targetUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const targetUsername = '@bob:example.com' as UserID;
 
 			const roomId = await federationSDK.createDirectMessageRoom(username, targetUsername);
 
@@ -173,8 +173,8 @@ describe('RoomService', async () => {
 
 	describe('joinUser', () => {
 		it('should join user to room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const secondaryUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
 			const { roomId } = roomCreateEvent;
@@ -206,7 +206,7 @@ describe('RoomService', async () => {
 
 	describe('leaveRoom', () => {
 		it('should leave user from room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
 			const { roomId } = roomCreateEvent;
@@ -225,8 +225,8 @@ describe('RoomService', async () => {
 
 	describe('kickUser', () => {
 		it('should ban user to room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const secondaryUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
 			const { roomId } = roomCreateEvent;
@@ -247,8 +247,8 @@ describe('RoomService', async () => {
 
 	describe('banUser', () => {
 		it('should ban user to room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const secondaryUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
 			const { roomId } = roomCreateEvent;
@@ -268,8 +268,8 @@ describe('RoomService', async () => {
 
 	describe('updateUserPowerLevel', () => {
 		it('should update user power level correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const secondaryUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
 			const { roomId } = roomCreateEvent;
@@ -299,8 +299,8 @@ describe('RoomService', async () => {
 
 	describe('acceptInvite', () => {
 		it('should accept invite and join user to room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const invitedUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const invitedUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'invite');
 			const { roomId } = roomCreateEvent;
 
@@ -327,8 +327,8 @@ describe('RoomService', async () => {
 
 	describe('rejectInvite', () => {
 		it('should reject invite and leave room correctly', async () => {
-			const username = '@alice:example.com' as room.UserID;
-			const invitedUsername = '@bob:example.com' as room.UserID;
+			const username = '@alice:example.com' as UserID;
+			const invitedUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'invite');
 			const { roomId } = roomCreateEvent;
 

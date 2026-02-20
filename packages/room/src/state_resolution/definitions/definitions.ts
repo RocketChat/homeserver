@@ -460,7 +460,7 @@ export async function mainlineOrdering(
 
 	// the mainline ordering based on P of a set of events is the ordering
 	// from smallest to largest
-	//   using the following comparison relation on events: for events x and y, x < y if
+	//   using the following comparison relation on events: for events x and y, x < y if
 	const comparisonFn = (e1: PersistentEventBase, e2: PersistentEventBase) => {
 		// the mainline position of x is greater than the mainline position of y
 		const e1Position = mainlinePositions.get(e1.eventId);

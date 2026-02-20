@@ -37,6 +37,7 @@ export class EventService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		@inject(delay(() => require('./state.service').StateService))
 		private readonly stateService: StateService,
 		private readonly serverService: ServerService,
@@ -647,10 +648,8 @@ export class EventService {
 				throw new Error('M_NOT_FOUND');
 			}
 
-			let state: State;
-
 			// Get state at a specific event
-			state = await this.stateService.getStateBeforeEvent(event);
+			const state = await this.stateService.getStateBeforeEvent(event);
 
 			const pdus: Record<string, unknown>[] = [];
 			const authChainIds = new Set<EventID>();
@@ -766,12 +765,10 @@ export class EventService {
 
 		switch (true) {
 			case event.event.type === 'm.room.create':
-				{
-					await this.eventEmitterService.emit('homeserver.matrix.room.create', {
-						event_id: eventId,
-						event: event.event,
-					});
-				}
+				await this.eventEmitterService.emit('homeserver.matrix.room.create', {
+					event_id: eventId,
+					event: event.event,
+				});
 				break;
 			case event.event.type === 'm.room.message':
 				await this.eventEmitterService.emit('homeserver.matrix.message', {

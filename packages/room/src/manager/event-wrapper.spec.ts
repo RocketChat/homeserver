@@ -222,7 +222,7 @@ describe('[EventWrapper] Redaction', () => {
 			unsigned: {},
 		};
 
-		// @ts-expect-error
+		// @ts-expect-error -- ignore --
 		runTest(a2, b2, '11');
 	});
 
