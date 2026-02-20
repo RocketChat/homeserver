@@ -1,3 +1,5 @@
+import { describe, expect, it, test } from 'bun:test';
+
 import {
 	EncryptionValidAlgorithm,
 	generateKeyPairsFromString,
@@ -5,7 +7,6 @@ import {
 	signJson,
 	verifySignaturesFromRemote,
 } from '@rocket.chat/federation-core';
-import { describe, expect, it, test } from 'bun:test';
 
 describe('verifySignaturesFromRemote', async () => {
 	test('it should verify a valid signature', async () => {

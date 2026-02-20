@@ -1,6 +1,6 @@
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import fs from 'node:fs/promises';
 
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import nacl from 'tweetnacl';
 
 import { EncryptionValidAlgorithm } from '../types';

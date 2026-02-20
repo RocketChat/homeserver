@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, spyOn, test } from 'bun:test';
+
 import { type EventStore } from '@rocket.chat/federation-core';
 import type {
 	State,
@@ -11,7 +13,6 @@ import type {
 } from '@rocket.chat/federation-room';
 import * as room from '@rocket.chat/federation-room';
 import { PersistentEventFactory, RejectCodes } from '@rocket.chat/federation-room';
-import { beforeEach, describe, expect, it, spyOn, test } from 'bun:test';
 import { type WithId } from 'mongodb';
 
 import { type ConfigService } from './config.service';

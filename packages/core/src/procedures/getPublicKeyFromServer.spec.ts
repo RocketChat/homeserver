@@ -1,5 +1,6 @@
-import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+
+import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import nacl from 'tweetnacl';
 
 import { EncryptionValidAlgorithm } from '../types';

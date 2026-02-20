@@ -1,7 +1,8 @@
-import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
-import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import type { Elysia } from 'elysia';
 import { t } from 'elysia';
+
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 
 const ErrorResponseSchema = t.Object({
 	errcode: t.Literal('M_UNRECOGNIZED'),

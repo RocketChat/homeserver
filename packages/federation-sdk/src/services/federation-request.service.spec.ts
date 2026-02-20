@@ -1,5 +1,6 @@
-import * as core from '@rocket.chat/federation-core';
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+
+import * as core from '@rocket.chat/federation-core';
 import * as nacl from 'tweetnacl';
 
 import type { ConfigService } from './config.service';

@@ -1,6 +1,5 @@
-import ResolverModule from 'node:dns/promises';
-
 import { afterAll, afterEach, describe, expect, it, jest, mock } from 'bun:test';
+import ResolverModule from 'node:dns/promises';
 
 import {
 	addressWithDefaultPort,

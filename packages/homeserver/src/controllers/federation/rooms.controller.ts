@@ -1,7 +1,8 @@
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import type { Elysia } from 'elysia';
 import { t } from 'elysia';
+
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 
 export const roomPlugin = (app: Elysia) => {
 	return app

@@ -1,6 +1,7 @@
+import { expect, test } from 'bun:test';
+
 import type { RoomVersion } from '@rocket.chat/federation-room';
 import { PersistentEventFactory } from '@rocket.chat/federation-room';
-import { expect, test } from 'bun:test';
 
 import type { SignedEvent } from '../types';
 import { type RoomCreateEvent, isRoomCreateEvent, roomCreateEvent } from './m.room.create';

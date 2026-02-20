@@ -1,3 +1,5 @@
+import { beforeAll, describe, expect, it } from 'bun:test';
+
 import type * as room from '@rocket.chat/federation-room';
 import type {
 	PduJoinRuleEventContent,
@@ -6,7 +8,6 @@ import type {
 	RoomVersion,
 	StateMapKey,
 } from '@rocket.chat/federation-room';
-import { beforeAll, describe, expect, it } from 'bun:test';
 import { container } from 'tsyringe';
 
 import { FederationValidationService, federationSDK, init } from '..';

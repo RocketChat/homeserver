@@ -1,8 +1,9 @@
 import type { EventID, RoomID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import type { Elysia } from 'elysia';
 import { t } from 'elysia';
+
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 
 import { ErrorResponseDto, SendJoinEventDto, SendJoinResponseDto } from '../../dtos';
 

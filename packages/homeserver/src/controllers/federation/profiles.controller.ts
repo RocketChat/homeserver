@@ -1,9 +1,10 @@
 import type { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
-import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 import type { Elysia } from 'elysia';
 import { t } from 'elysia';
+
+import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
+import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
 
 import {
 	ErrorResponseDto,

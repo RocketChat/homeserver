@@ -1,4 +1,5 @@
 import { describe, expect, it, mock } from 'bun:test';
+
 import sinon from 'sinon';
 
 import { _URL } from './_url';
