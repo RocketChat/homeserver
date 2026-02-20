@@ -1,21 +1,19 @@
 import type { EventID } from '@rocket.chat/federation-room';
+
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
 export type TextMessageType = 'm.text' | 'm.emote' | 'm.notice';
 export type FileMessageType = 'm.image' | 'm.file' | 'm.audio' | 'm.video';
 export type LocationMessageType = 'm.location';
-export type MessageType =
-	| TextMessageType
-	| FileMessageType
-	| LocationMessageType;
+export type MessageType = TextMessageType | FileMessageType | LocationMessageType;
 
 // Base message content
 type BaseMessageContent = {
-	body: string;
+	'body': string;
 	'm.mentions'?: Record<string, any>;
-	format?: string;
-	formatted_body?: string;
+	'format'?: string;
+	'formatted_body'?: string;
 	'm.relates_to'?: MessageRelation;
 };
 
@@ -62,11 +60,7 @@ declare module './eventBase' {
 			unsigned: {
 				age_ts: number;
 			};
-			content: (
-				| TextMessageContent
-				| FileMessageContent
-				| LocationMessageContent
-			) & {
+			content: (TextMessageContent | FileMessageContent | LocationMessageContent) & {
 				'm.new_content'?: NewContent;
 			};
 		};
@@ -76,18 +70,13 @@ declare module './eventBase' {
 export type MessageRelation = {
 	rel_type: RelationType;
 	event_id: EventID;
-} & (
-	| RelationTypeReplace
-	| RelationTypeAnnotation
-	| RelationTypeThread
-	| Record<string, never>
-);
+} & (RelationTypeReplace | RelationTypeAnnotation | RelationTypeThread | Record<string, never>);
 
 export type RelationType = 'm.replace' | 'm.annotation' | 'm.thread';
 
 export type RelationTypeReplace = {
-	rel_type: 'm.replace';
-	event_id: EventID;
+	'rel_type': 'm.replace';
+	'event_id': EventID;
 	'm.new_content'?: {
 		body: string;
 		msgtype: MessageType;
@@ -103,15 +92,15 @@ export type RelationTypeAnnotation = {
 };
 
 export type RelationTypeThread = {
-	rel_type: 'm.thread';
-	event_id: EventID;
+	'rel_type': 'm.thread';
+	'event_id': EventID;
 	'm.in_reply_to'?: {
 		event_id: EventID;
 		room_id: string;
 		sender: string;
 		origin_server_ts: number;
 	};
-	is_falling_back?: boolean;
+	'is_falling_back'?: boolean;
 };
 
 export type MessageAuthEvents = {
@@ -120,19 +109,13 @@ export type MessageAuthEvents = {
 	'm.room.member': EventID;
 };
 
-export const isRoomMessageEvent = (
-	event: EventBase,
-): event is RoomMessageEvent => {
+export const isRoomMessageEvent = (event: EventBase): event is RoomMessageEvent => {
 	return event.type === 'm.room.message';
 };
 
 export interface RoomMessageEvent extends EventBase {
 	type: 'm.room.message';
-	content: (
-		| TextMessageContent
-		| FileMessageContent
-		| LocationMessageContent
-	) & {
+	content: (TextMessageContent | FileMessageContent | LocationMessageContent) & {
 		'm.new_content'?: NewContent;
 	};
 	unsigned: {
@@ -141,9 +124,7 @@ export interface RoomMessageEvent extends EventBase {
 	};
 }
 
-const isTruthy = <T>(
-	value: T | null | undefined | false | 0 | '',
-): value is T => {
+const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
 	return Boolean(value);
 };
 
@@ -164,11 +145,7 @@ export const roomMessageEvent = ({
 	prev_events: EventID[];
 	depth: number;
 	unsigned?: RoomMessageEvent['unsigned'];
-	content: (
-		| TextMessageContent
-		| FileMessageContent
-		| LocationMessageContent
-	) & {
+	content: (TextMessageContent | FileMessageContent | LocationMessageContent) & {
 		'm.new_content'?: NewContent;
 	};
 	origin?: string;
@@ -177,11 +154,7 @@ export const roomMessageEvent = ({
 	return createEventBase('m.room.message', {
 		roomId,
 		sender,
-		auth_events: [
-			auth_events['m.room.create'],
-			auth_events['m.room.power_levels'],
-			auth_events['m.room.member'],
-		].filter(isTruthy),
+		auth_events: [auth_events['m.room.create'], auth_events['m.room.power_levels'], auth_events['m.room.member']].filter(isTruthy),
 		prev_events,
 		depth,
 		content,

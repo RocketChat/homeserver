@@ -1,21 +1,12 @@
-import {
-	createLogger,
-	extractSignaturesFromHeader,
-	generateId,
-	validateAuthorizationHeader,
-} from '@rocket.chat/federation-core';
-import type {
-	EventID,
-	Pdu,
-	PersistentEventBase,
-	RoomID,
-} from '@rocket.chat/federation-room';
+import { createLogger, extractSignaturesFromHeader, generateId, validateAuthorizationHeader } from '@rocket.chat/federation-core';
+import type { EventID, Pdu, PersistentEventBase, RoomID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
+
+import type { ConfigService } from './config.service';
+import type { EventService } from './event.service';
+import type { ServerService } from './server.service';
+import type { StateService } from './state.service';
 import { UploadRepository } from '../repositories/upload.repository';
-import { ConfigService } from './config.service';
-import { EventService } from './event.service';
-import { ServerService } from './server.service';
-import { StateService } from './state.service';
 
 export class AclDeniedError extends Error {
 	constructor(serverName: string, roomId: string) {
@@ -38,9 +29,7 @@ export class EventAuthorizationService {
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
-		this.logger.debug(
-			`Authorizing event ${generateId(event)} of type ${event.type}`,
-		);
+		this.logger.debug(`Authorizing event ${generateId(event)} of type ${event.type}`);
 
 		// Simple implementation - would need proper auth rules based on Matrix spec
 		// https://spec.matrix.org/v1.7/server-server-api/#checks-performed-on-receipt-of-a-pdu
@@ -52,9 +41,7 @@ export class EventAuthorizationService {
 		// Check sender is allowed to send this type of event
 		const senderAllowed = this.checkSenderAllowed(event, authEvents);
 		if (!senderAllowed) {
-			this.logger.warn(
-				`Sender ${event.sender} not allowed to send ${event.type}`,
-			);
+			this.logger.warn(`Sender ${event.sender} not allowed to send ${event.type}`);
 			return false;
 		}
 
@@ -90,9 +77,7 @@ export class EventAuthorizationService {
 
 	private checkSenderAllowed(event: Pdu, authEvents: Pdu[]): boolean {
 		// Find power levels
-		const powerLevelsEvent = authEvents.find(
-			(e) => e.type === 'm.room.power_levels',
-		);
+		const powerLevelsEvent = authEvents.find((e) => e.type === 'm.room.power_levels');
 		if (!powerLevelsEvent) {
 			// No power levels - only allow room creator?
 			const createEvent = authEvents.find((e) => e.type === 'm.room.create');
@@ -136,15 +121,9 @@ export class EventAuthorizationService {
 		}
 
 		try {
-			const { origin, destination, key, signature } =
-				extractSignaturesFromHeader(authorizationHeader);
+			const { origin, destination, key, signature } = extractSignaturesFromHeader(authorizationHeader);
 
-			if (
-				!origin ||
-				!key ||
-				!signature ||
-				(destination && destination !== this.configService.serverName)
-			) {
+			if (!origin || !key || !signature || (destination && destination !== this.configService.serverName)) {
 				return;
 			}
 
@@ -160,15 +139,7 @@ export class EventAuthorizationService {
 			}
 
 			const actualDestination = destination || this.configService.serverName;
-			const isValid = await validateAuthorizationHeader(
-				origin,
-				publicKey,
-				actualDestination,
-				method,
-				uri,
-				signature,
-				body,
-			);
+			const isValid = await validateAuthorizationHeader(origin, publicKey, actualDestination, method, uri, signature, body);
 			if (!isValid) {
 				this.logger.warn(`Invalid signature from ${origin}`);
 				return;
@@ -180,7 +151,6 @@ export class EventAuthorizationService {
 				msg: 'Error verifying request signature',
 				err: error,
 			});
-			return;
 		}
 	}
 
@@ -211,24 +181,15 @@ export class EventAuthorizationService {
 	}
 
 	// as per Matrix spec: https://spec.matrix.org/v1.15/client-server-api/#mroomserver_acl
-	async checkServerAcl(
-		aclEvent: PersistentEventBase | undefined,
-		serverName: string,
-	): Promise<boolean> {
+	async checkServerAcl(aclEvent: PersistentEventBase | undefined, serverName: string): Promise<boolean> {
 		if (!aclEvent || !aclEvent.isServerAclEvent()) {
 			return true;
 		}
 
 		const serverAclContent = aclEvent.getContent();
-		const {
-			allow = [],
-			deny = [],
-			allow_ip_literals = true,
-		} = serverAclContent;
+		const { allow = [], deny = [], allow_ip_literals = true } = serverAclContent;
 
-		const isIpLiteral =
-			/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(serverName) ||
-			/^\[.*\](:\d+)?$/.test(serverName); // IPv6
+		const isIpLiteral = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/.test(serverName) || /^\[.*\](:\d+)?$/.test(serverName); // IPv6
 		if (isIpLiteral && !allow_ip_literals) {
 			this.logger.debug(`Server ${serverName} denied: IP literals not allowed`);
 			return false;
@@ -236,9 +197,7 @@ export class EventAuthorizationService {
 
 		for (const pattern of deny) {
 			if (this.matchesServerPattern(serverName, pattern)) {
-				this.logger.debug(
-					`Server ${serverName} matches deny pattern: ${pattern}`,
-				);
+				this.logger.debug(`Server ${serverName} matches deny pattern: ${pattern}`);
 				return false;
 			}
 		}
@@ -252,9 +211,7 @@ export class EventAuthorizationService {
 
 		for (const pattern of allow) {
 			if (this.matchesServerPattern(serverName, pattern)) {
-				this.logger.debug(
-					`Server ${serverName} matches allow pattern: ${pattern}`,
-				);
+				this.logger.debug(`Server ${serverName} matches allow pattern: ${pattern}`);
 				return true;
 			}
 		}
@@ -278,10 +235,7 @@ export class EventAuthorizationService {
 		}
 	}
 
-	async serverHasAccessToResource(
-		roomId: RoomID,
-		serverName: string,
-	): Promise<boolean> {
+	async serverHasAccessToResource(roomId: RoomID, serverName: string): Promise<boolean> {
 		const state = await this.stateService.getLatestRoomState(roomId);
 		if (!state) {
 			this.logger.debug(`Room ${roomId} not found`);
@@ -291,9 +245,7 @@ export class EventAuthorizationService {
 		const aclEvent = state.get('m.room.server_acl:');
 		const isServerAllowed = await this.checkServerAcl(aclEvent, serverName);
 		if (!isServerAllowed) {
-			this.logger.warn(
-				`Server ${serverName} is denied by room ACL for room ${roomId}`,
-			);
+			this.logger.warn(`Server ${serverName} is denied by room ACL for room ${roomId}`);
 			return false;
 		}
 
@@ -306,7 +258,7 @@ export class EventAuthorizationService {
 		for (const [key, event] of state.entries()) {
 			if (key.startsWith('m.room.member:') && event?.isMembershipEvent()) {
 				const membership = event.getContent()?.membership;
-				const stateKey = event.stateKey;
+				const { stateKey } = event;
 
 				if (!membership || !stateKey || !stateKey.includes(':')) {
 					continue;
@@ -315,9 +267,7 @@ export class EventAuthorizationService {
 				if (membership === 'invite') {
 					const invitedUserServer = stateKey.split(':').pop();
 					if (invitedUserServer === serverName) {
-						this.logger.debug(
-							`Server ${serverName} has pending invites in room, allowing access`,
-						);
+						this.logger.debug(`Server ${serverName} has pending invites in room, allowing access`);
 						return true;
 					}
 				}
@@ -325,20 +275,12 @@ export class EventAuthorizationService {
 		}
 
 		const historyVisibilityEvent = state.get('m.room.history_visibility:');
-		if (
-			historyVisibilityEvent?.isHistoryVisibilityEvent() &&
-			historyVisibilityEvent.getContent().history_visibility ===
-				'world_readable'
-		) {
-			this.logger.debug(
-				`Room ${roomId} is world_readable, allowing ${serverName}`,
-			);
+		if (historyVisibilityEvent?.isHistoryVisibilityEvent() && historyVisibilityEvent.getContent().history_visibility === 'world_readable') {
+			this.logger.debug(`Room ${roomId} is world_readable, allowing ${serverName}`);
 			return true;
 		}
 
-		this.logger.debug(
-			`Server ${serverName} not authorized: not in room and room not world_readable`,
-		);
+		this.logger.debug(`Server ${serverName} not authorized: not in room and room not world_readable`);
 		return false;
 	}
 
@@ -462,12 +404,7 @@ export class EventAuthorizationService {
 		  }
 	> {
 		try {
-			const signatureResult = await this.verifyRequestSignature(
-				method,
-				uri,
-				authorizationHeader,
-				body,
-			);
+			const signatureResult = await this.verifyRequestSignature(method, uri, authorizationHeader, body);
 			if (!signatureResult) {
 				return {
 					authorized: false,

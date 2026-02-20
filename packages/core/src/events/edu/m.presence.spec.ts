@@ -1,12 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { BaseEDU } from './base';
-import {
-	type PresenceEDU,
-	type PresenceUpdate,
-	createPresenceEDU,
-	isPresenceEDU,
-} from './m.presence';
+import { type PresenceEDU, type PresenceUpdate, createPresenceEDU, isPresenceEDU } from './m.presence';
 
 describe('PresenceEDU', () => {
 	describe('createPresenceEDU', () => {
@@ -162,11 +157,7 @@ describe('PresenceEDU', () => {
 		});
 
 		test('validates presence state values', () => {
-			const validStates: Array<'online' | 'offline' | 'unavailable'> = [
-				'online',
-				'offline',
-				'unavailable',
-			];
+			const validStates: Array<'online' | 'offline' | 'unavailable'> = ['online', 'offline', 'unavailable'];
 
 			for (const state of validStates) {
 				const update: PresenceUpdate = {

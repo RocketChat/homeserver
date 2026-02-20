@@ -1,15 +1,13 @@
 import fs from 'node:fs/promises';
+
 import nacl from 'tweetnacl';
+
 import { EncryptionValidAlgorithm } from '../types';
 import type { SigningKey } from '../types';
 import { toUnpaddedBase64 } from './binaryData';
 import { signData } from './signJson';
 
-export async function generateKeyPairs(
-	seed: Uint8Array,
-	algorithm = EncryptionValidAlgorithm.ed25519,
-	version = '0',
-): Promise<SigningKey> {
+export async function generateKeyPairs(seed: Uint8Array, algorithm = EncryptionValidAlgorithm.ed25519, version = '0'): Promise<SigningKey> {
 	// Generate an Ed25519 key pair
 	const keyPair = await nacl.sign.keyPair.fromSeed(seed);
 
@@ -45,23 +43,16 @@ async function storeKeyPairs(
 	path: string,
 ) {
 	for await (const keyPair of seeds) {
-		await fs.writeFile(
-			path,
-			`${keyPair.algorithm} ${keyPair.version} ${toUnpaddedBase64(keyPair.seed)}`,
-		);
+		await fs.writeFile(path, `${keyPair.algorithm} ${keyPair.version} ${toUnpaddedBase64(keyPair.seed)}`);
 	}
 }
 
-export const getKeyPair = async (config: {
-	signingKeyPath: string;
-}): Promise<SigningKey[]> => {
+export const getKeyPair = async (config: { signingKeyPath: string }): Promise<SigningKey[]> => {
 	const { signingKeyPath } = config;
 
 	const seeds = [];
 
-	const existingKeyContent = await fs
-		.readFile(signingKeyPath, 'utf8')
-		.catch(() => null);
+	const existingKeyContent = await fs.readFile(signingKeyPath, 'utf8').catch(() => null);
 
 	if (existingKeyContent) {
 		const [algorithm, version, seed] = existingKeyContent.trim().split(' ');
@@ -80,12 +71,7 @@ export const getKeyPair = async (config: {
 		await storeKeyPairs(seeds, signingKeyPath);
 	}
 
-	return Promise.all(
-		seeds.map(
-			async (seed) =>
-				await generateKeyPairs(seed.seed, seed.algorithm, seed.version),
-		),
-	);
+	return Promise.all(seeds.map(async (seed) => await generateKeyPairs(seed.seed, seed.algorithm, seed.version)));
 };
 
 export const convertSigningKeyToBase64 = (signingKey: SigningKey): string =>

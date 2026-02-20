@@ -96,11 +96,7 @@ describe('TypingEDU', () => {
 		});
 
 		test('type guard correctly narrows type', () => {
-			const edu: BaseEDU = createTypingEDU(
-				'!room:example.com',
-				'@user:example.com',
-				true,
-			);
+			const edu: BaseEDU = createTypingEDU('!room:example.com', '@user:example.com', true);
 
 			if (isTypingEDU(edu)) {
 				expect(edu.content.room_id).toBe('!room:example.com');
@@ -114,12 +110,7 @@ describe('TypingEDU', () => {
 
 	describe('TypingEDU interface', () => {
 		test('typing EDU has correct structure', () => {
-			const edu = createTypingEDU(
-				'!room:example.com',
-				'@user:example.com',
-				true,
-				'example.com',
-			);
+			const edu = createTypingEDU('!room:example.com', '@user:example.com', true, 'example.com');
 
 			expect(edu).toHaveProperty('edu_type', 'm.typing');
 			expect(edu).toHaveProperty('content');

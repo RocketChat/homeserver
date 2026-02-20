@@ -1,8 +1,4 @@
-import {
-	eventIdSchema,
-	roomIdSchema,
-	userIdSchema,
-} from '@rocket.chat/federation-room';
+import { eventIdSchema, roomIdSchema, userIdSchema } from '@rocket.chat/federation-room';
 import { z } from 'zod';
 
 const baseEventSchema = z.object({
@@ -14,12 +10,8 @@ const baseEventSchema = z.object({
 	event_id: eventIdSchema.optional(),
 	state_key: userIdSchema.or(z.literal('')).optional(),
 	depth: z.number().int().nonnegative().optional(),
-	prev_events: z
-		.array(z.string().or(z.tuple([z.string(), z.string()])))
-		.optional(),
-	auth_events: z
-		.array(z.string().or(z.tuple([z.string(), z.string()])))
-		.optional(),
+	prev_events: z.array(z.string().or(z.tuple([z.string(), z.string()]))).optional(),
+	auth_events: z.array(z.string().or(z.tuple([z.string(), z.string()]))).optional(),
 	redacts: eventIdSchema.optional(),
 	hashes: z.record(z.string()).optional(),
 	signatures: z.record(z.record(z.string())).optional(),
@@ -120,7 +112,7 @@ const roomV10Schemas = {
 	'm.room.join_rules': joinRulesEventSchema,
 	'm.reaction': reactionEventSchema,
 	'm.room.redaction': redactionEventSchema,
-	default: baseEventSchema,
+	'default': baseEventSchema,
 };
 
 export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = {

@@ -30,16 +30,10 @@ export const isMatrixEDU = (obj: unknown): obj is MatrixEDU => {
 	}
 
 	const edu = obj as Record<string, unknown>;
-	return (
-		typeof edu.edu_type === 'string' &&
-		typeof edu.content === 'object' &&
-		edu.content !== null
-	);
+	return typeof edu.edu_type === 'string' && typeof edu.content === 'object' && edu.content !== null;
 };
 
-export const isFederationEDUResponse = (
-	obj: unknown,
-): obj is FederationEDUResponse => {
+export const isFederationEDUResponse = (obj: unknown): obj is FederationEDUResponse => {
 	if (typeof obj !== 'object' || obj === null) {
 		return false;
 	}
@@ -48,9 +42,7 @@ export const isFederationEDUResponse = (
 	return 'edus' in response && Array.isArray(response.edus);
 };
 
-export const isFederationEventWithEDUs = (
-	response: unknown,
-): response is FederationEDUResponse => {
+export const isFederationEventWithEDUs = (response: unknown): response is FederationEDUResponse => {
 	if (typeof response !== 'object' || response === null) {
 		return false;
 	}

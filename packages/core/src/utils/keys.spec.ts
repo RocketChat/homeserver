@@ -1,13 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import fs from 'node:fs/promises';
+
+import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import nacl from 'tweetnacl';
+
 import { EncryptionValidAlgorithm } from '../types';
 import { toUnpaddedBase64 } from './binaryData';
-import {
-	generateKeyPairs,
-	generateKeyPairsFromString,
-	getKeyPair,
-} from './keys';
+import { generateKeyPairs, generateKeyPairsFromString, getKeyPair } from './keys';
 
 describe('keys', () => {
 	describe('generateKeyPairs', () => {
@@ -39,11 +37,7 @@ describe('keys', () => {
 
 			expect(signature).toBeInstanceOf(Uint8Array);
 
-			const isValid = nacl.sign.detached.verify(
-				data,
-				signature,
-				keyPair.publicKey,
-			);
+			const isValid = nacl.sign.detached.verify(data, signature, keyPair.publicKey);
 
 			expect(isValid).toBe(true);
 		});

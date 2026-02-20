@@ -1,16 +1,18 @@
 import { createLogger } from '@rocket.chat/federation-core';
-import { Db, MongoClient, type MongoClientOptions } from 'mongodb';
+import { MongoClient } from 'mongodb';
+import type { Db, type MongoClientOptions } from 'mongodb';
 
 export class DatabaseConnectionService {
 	private client: MongoClient | null = null;
+
 	private db: Db | null = null;
+
 	private connectionPromise: Promise<void> | null = null;
+
 	private readonly logger = createLogger('DatabaseConnectionService');
 
 	constructor(private readonly config: { uri: string; poolSize: number }) {
-		this.connect().catch((err) =>
-			this.logger.error({ msg: 'Initial database connection failed', err }),
-		);
+		this.connect().catch((err) => this.logger.error({ msg: 'Initial database connection failed', err }));
 	}
 
 	async getDb(): Promise<Db> {
@@ -45,11 +47,9 @@ export class DatabaseConnectionService {
 				this.client = new MongoClient(dbConfig.uri, options);
 				this.client.connect();
 
-				const dbName = this.client.options.dbName;
+				const { dbName } = this.client.options;
 				if (!dbName) {
-					throw new Error(
-						"Can't get database name from MongoDB connection string",
-					);
+					throw new Error("Can't get database name from MongoDB connection string");
 				}
 
 				this.db = this.client.db(dbName);

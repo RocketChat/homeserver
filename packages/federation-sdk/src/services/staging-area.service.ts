@@ -1,30 +1,18 @@
-import type {
-	EventBase,
-	EventStagingStore,
-	Membership,
-} from '@rocket.chat/federation-core';
+import type { EventBase, EventStagingStore, Membership } from '@rocket.chat/federation-core';
+import { MessageType, createLogger, isRedactedEvent } from '@rocket.chat/federation-core';
+import { PduPowerLevelsEventContent, PersistentEventFactory, RoomState } from '@rocket.chat/federation-room';
+import type { Pdu, RoomID, RoomVersion } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
-import {
-	MessageType,
-	createLogger,
-	isRedactedEvent,
-} from '@rocket.chat/federation-core';
-import {
-	PduPowerLevelsEventContent,
-	PersistentEventFactory,
-	RoomState,
-} from '@rocket.chat/federation-room';
-import type { Pdu, RoomID, RoomVersion } from '@rocket.chat/federation-room';
-import { EventAuthorizationService } from './event-authorization.service';
-import { EventEmitterService } from './event-emitter.service';
-import { EventService } from './event.service';
-
-import { LockRepository } from '../repositories/lock.repository';
-import { ConfigService } from './config.service';
-import { FederationService } from './federation.service';
-import { MissingEventService } from './missing-event.service';
-import { PartialStateResolutionError, StateService } from './state.service';
+import type { ConfigService } from './config.service';
+import type { EventAuthorizationService } from './event-authorization.service';
+import type { EventEmitterService } from './event-emitter.service';
+import type { EventService } from './event.service';
+import type { FederationService } from './federation.service';
+import type { MissingEventService } from './missing-event.service';
+import type { StateService } from './state.service';
+import { PartialStateResolutionError } from './state.service';
+import type { LockRepository } from '../repositories/lock.repository';
 
 const MAX_EVENT_RETRY =
 	((maxRetry?: string) => {
@@ -76,9 +64,7 @@ export class StagingAreaService {
 	async processEventForRoom(roomId: RoomID) {
 		const roomIdToRoomVersion = new Map<string, RoomVersion>();
 		const getRoomVersion = async (roomId: RoomID) => {
-			const version =
-				roomIdToRoomVersion.get(roomId) ??
-				(await this.stateService.getRoomVersion(roomId));
+			const version = roomIdToRoomVersion.get(roomId) ?? (await this.stateService.getRoomVersion(roomId));
 			roomIdToRoomVersion.set(roomId, version);
 			return version;
 		};
@@ -98,9 +84,7 @@ export class StagingAreaService {
 			}
 
 			if (event.got > MAX_EVENT_RETRY) {
-				this.logger.warn(
-					`Event ${event._id} has been tried ${MAX_EVENT_RETRY} times, removing from staging area`,
-				);
+				this.logger.warn(`Event ${event._id} has been tried ${MAX_EVENT_RETRY} times, removing from staging area`);
 				await this.eventService.markEventAsUnstaged(event);
 				continue;
 			}
@@ -109,10 +93,7 @@ export class StagingAreaService {
 
 			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
 			// and acquired by another instance while we're processing a batch of events for this room
-			await this.lockRepository.updateLockTimestamp(
-				roomId,
-				this.configService.instanceId,
-			);
+			await this.lockRepository.updateLockTimestamp(roomId, this.configService.instanceId);
 
 			try {
 				const addedMissing = await this.processDependencyStage(event);
@@ -159,45 +140,30 @@ export class StagingAreaService {
 		} while (event);
 
 		// release the lock after processing
-		await this.lockRepository.releaseLock(
-			roomId,
-			this.configService.instanceId,
-		);
+		await this.lockRepository.releaseLock(roomId, this.configService.instanceId);
 	}
 
 	private async processDependencyStage(event: EventStagingStore) {
 		const eventId = event._id;
 
-		const [authEvents, prevEvents] = this.extractEventsFromIncomingPDU(
-			event.event,
-		);
+		const [authEvents, prevEvents] = this.extractEventsFromIncomingPDU(event.event);
 
 		const eventIds = [...authEvents, ...prevEvents];
-		this.logger.debug(
-			`Checking dependencies for event ${eventId}: ${eventIds.length} references`,
-		);
+		this.logger.debug(`Checking dependencies for event ${eventId}: ${eventIds.length} references`);
 
-		const { missing } = await this.eventService.checkIfEventsExists(
-			eventIds.flat(),
-		);
+		const { missing } = await this.eventService.checkIfEventsExists(eventIds.flat());
 
 		if (missing.length === 0) {
 			return false;
 		}
-		this.logger.debug(
-			`Missing ${missing.length} events for ${eventId}: ${missing}`,
-		);
+		this.logger.debug(`Missing ${missing.length} events for ${eventId}: ${missing}`);
 
-		const latestEvent = await this.eventService.getLastEventForRoom(
-			event.event.room_id,
-		);
+		const latestEvent = await this.eventService.getLastEventForRoom(event.event.room_id);
 
 		let addedMissing = false;
 
 		if (latestEvent) {
-			this.logger.debug(
-				`Fetching missing events between ${latestEvent._id} and ${eventId} for room ${event.event.room_id}`,
-			);
+			this.logger.debug(`Fetching missing events between ${latestEvent._id} and ${eventId} for room ${event.event.room_id}`);
 
 			const missingEvents = await this.federationService.getMissingEvents(
 				event.origin,
@@ -208,22 +174,15 @@ export class StagingAreaService {
 				0,
 			);
 
-			this.logger.debug(
-				`Persisting ${missingEvents.events.length} fetched missing events`,
-			);
+			this.logger.debug(`Persisting ${missingEvents.events.length} fetched missing events`);
 
-			await this.eventService.processIncomingPDUs(
-				event.origin,
-				missingEvents.events,
-			);
+			await this.eventService.processIncomingPDUs(event.origin, missingEvents.events);
 
 			addedMissing = missingEvents.events.length > 0;
 		} else {
 			const found = await Promise.all(
 				missing.map((missingId) => {
-					this.logger.debug(
-						`Adding missing event ${missingId} to missing events service`,
-					);
+					this.logger.debug(`Adding missing event ${missingId} to missing events service`);
 
 					return this.missingEventsService.fetchMissingEvent({
 						eventId: missingId,

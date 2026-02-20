@@ -21,12 +21,7 @@ export const isTypingEDU = (edu: BaseEDU): edu is TypingEDU => {
 	return edu.edu_type === 'm.typing';
 };
 
-export const createTypingEDU = (
-	roomId: string,
-	userId: string,
-	typing: boolean,
-	origin?: string,
-): TypingEDU => ({
+export const createTypingEDU = (roomId: string, userId: string, typing: boolean, origin?: string): TypingEDU => ({
 	edu_type: 'm.typing',
 	content: {
 		room_id: roomId,

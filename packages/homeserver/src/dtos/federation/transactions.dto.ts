@@ -1,4 +1,5 @@
 import { type Static, t } from 'elysia';
+
 import { EventBaseDto } from '../common/event.dto';
 
 export const SendTransactionParamsDto = t.Object({

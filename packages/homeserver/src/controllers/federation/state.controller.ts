@@ -1,7 +1,8 @@
-import { EventID, RoomID } from '@rocket.chat/federation-room';
+import type { EventID, RoomID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
-import { Elysia } from 'elysia';
+import type { Elysia } from 'elysia';
+
 import {
 	ErrorResponseDto,
 	GetStateIdsParamsDto,
@@ -17,11 +18,7 @@ export const statePlugin = (app: Elysia) => {
 		.use(canAccessResourceMiddleware('room'))
 		.get(
 			'/_matrix/federation/v1/state_ids/:roomId',
-			({ params, query }) =>
-				federationSDK.getStateIds(
-					params.roomId as RoomID,
-					query.event_id as EventID,
-				),
+			({ params, query }) => federationSDK.getStateIds(params.roomId as RoomID, query.event_id as EventID),
 			{
 				params: GetStateIdsParamsDto,
 				query: GetStateIdsQueryDto,
@@ -38,11 +35,7 @@ export const statePlugin = (app: Elysia) => {
 		)
 		.get(
 			'/_matrix/federation/v1/state/:roomId',
-			({ params, query }) =>
-				federationSDK.getState(
-					params.roomId as RoomID,
-					query.event_id as EventID,
-				),
+			({ params, query }) => federationSDK.getState(params.roomId as RoomID, query.event_id as EventID),
 			{
 				params: GetStateParamsDto,
 				query: GetStateQueryDto,

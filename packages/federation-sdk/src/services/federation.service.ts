@@ -1,14 +1,12 @@
-import type { EventBase } from '@rocket.chat/federation-core';
-import type { BaseEDU } from '@rocket.chat/federation-core';
+import type { EventBase, BaseEDU } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
-import {
-	EventID,
-	Pdu,
-	PersistentEventBase,
-	PersistentEventFactory,
-	extractDomainFromId,
-} from '@rocket.chat/federation-room';
+import type { EventID, Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
+import { PersistentEventFactory, extractDomainFromId } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
+import type { ConfigService } from './config.service';
+import type { FederationRequestService } from './federation-request.service';
+import type { StateService } from './state.service';
 import {
 	FederationEndpoints,
 	type MakeJoinResponse,
@@ -17,9 +15,6 @@ import {
 	type Transaction,
 	type Version,
 } from '../specs/federation-api';
-import { ConfigService } from './config.service';
-import { FederationRequestService } from './federation-request.service';
-import { StateService } from './state.service';
 
 @singleton()
 export class FederationService {
@@ -34,12 +29,7 @@ export class FederationService {
 	/**
 	 * Get a make_join template for a room and user
 	 */
-	async makeJoin(
-		domain: string,
-		roomId: string,
-		userId: string,
-		version?: string,
-	): Promise<MakeJoinResponse> {
+	async makeJoin(domain: string, roomId: string, userId: string, version?: string): Promise<MakeJoinResponse> {
 		try {
 			const uri = FederationEndpoints.makeJoin(roomId, userId);
 			const queryParams: Record<string, string | string[]> = {};
@@ -50,11 +40,7 @@ export class FederationService {
 				queryParams.ver = PersistentEventFactory.supportedRoomVersions;
 			}
 
-			return await this.requestService.get<MakeJoinResponse>(
-				domain,
-				uri,
-				queryParams,
-			);
+			return await this.requestService.get<MakeJoinResponse>(domain, uri, queryParams);
 		} catch (error: any) {
 			this.logger.error({ msg: 'makeJoin failed', err: error });
 			throw error;
@@ -64,45 +50,28 @@ export class FederationService {
 	/**
 	 * Send a join event to a remote server
 	 */
-	async sendJoin(
-		joinEvent: PersistentEventBase,
-		omitMembers = false,
-	): Promise<SendJoinResponse> {
+	async sendJoin(joinEvent: PersistentEventBase, omitMembers = false): Promise<SendJoinResponse> {
 		try {
-			const event = joinEvent.event;
+			const { event } = joinEvent;
 
-			const uri = FederationEndpoints.sendJoinV2(
-				joinEvent.roomId,
-				joinEvent.eventId,
-			);
+			const uri = FederationEndpoints.sendJoinV2(joinEvent.roomId, joinEvent.eventId);
 			const queryParams = omitMembers ? { omit_members: 'true' } : undefined;
 
 			const residentServer = joinEvent.roomId.split(':').pop();
 
 			if (!residentServer) {
 				this.logger.debug({ msg: 'invalid room_id', event: joinEvent.event });
-				throw new Error(
-					`invalid room_id ${joinEvent.roomId}, no server_name part`,
-				);
+				throw new Error(`invalid room_id ${joinEvent.roomId}, no server_name part`);
 			}
 
-			return await this.requestService.put<SendJoinResponse>(
-				residentServer,
-				uri,
-				event,
-				queryParams,
-			);
+			return await this.requestService.put<SendJoinResponse>(residentServer, uri, event, queryParams);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendJoin failed', err: error });
 			throw error;
 		}
 	}
 
-	async makeLeave(
-		domain: string,
-		roomId: string,
-		userId: string,
-	): Promise<{ event: Pdu; room_version: string }> {
+	async makeLeave(domain: string, roomId: string, userId: string): Promise<{ event: Pdu; room_version: string }> {
 		try {
 			const uri = FederationEndpoints.makeLeave(roomId, userId);
 			return await this.requestService.get<{
@@ -117,25 +86,16 @@ export class FederationService {
 
 	async sendLeave(leaveEvent: PersistentEventBase): Promise<void> {
 		try {
-			const uri = FederationEndpoints.sendLeave(
-				leaveEvent.roomId,
-				leaveEvent.eventId,
-			);
+			const uri = FederationEndpoints.sendLeave(leaveEvent.roomId, leaveEvent.eventId);
 
 			const residentServer = leaveEvent.roomId.split(':').pop();
 
 			if (!residentServer) {
 				this.logger.debug({ msg: 'invalid room_id', event: leaveEvent.event });
-				throw new Error(
-					`invalid room_id ${leaveEvent.roomId}, no server_name part`,
-				);
+				throw new Error(`invalid room_id ${leaveEvent.roomId}, no server_name part`);
 			}
 
-			await this.requestService.put<void>(
-				residentServer,
-				uri,
-				leaveEvent.event,
-			);
+			await this.requestService.put<void>(residentServer, uri, leaveEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendLeave failed', err: error });
 			throw error;
@@ -145,19 +105,12 @@ export class FederationService {
 	/**
 	 * Send a transaction to a remote server
 	 */
-	async sendTransaction(
-		domain: string,
-		transaction: Transaction,
-	): Promise<SendTransactionResponse> {
+	async sendTransaction(domain: string, transaction: Transaction): Promise<SendTransactionResponse> {
 		try {
 			const txnId = Date.now().toString();
 			const uri = FederationEndpoints.sendTransaction(txnId);
 
-			return await this.requestService.put<SendTransactionResponse>(
-				domain,
-				uri,
-				transaction,
-			);
+			return await this.requestService.put<SendTransactionResponse>(domain, uri, transaction);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendTransaction failed', err: error });
 			throw error;
@@ -167,10 +120,7 @@ export class FederationService {
 	/**
 	 * Send an event to a remote server
 	 */
-	async sendEvent<T extends Pdu>(
-		domain: string,
-		event: T,
-	): Promise<SendTransactionResponse> {
+	async sendEvent<T extends Pdu>(domain: string, event: T): Promise<SendTransactionResponse> {
 		try {
 			const transaction: Transaction = {
 				origin: this.configService.serverName,
@@ -226,11 +176,7 @@ export class FederationService {
 	/**
 	 * Get state for a room from remote server
 	 */
-	async getState(
-		domain: string,
-		roomId: string,
-		eventId: string,
-	): Promise<EventBase> {
+	async getState(domain: string, roomId: string, eventId: string): Promise<EventBase> {
 		try {
 			const uri = FederationEndpoints.getState(roomId);
 			const queryParams = { event_id: eventId };
@@ -260,10 +206,7 @@ export class FederationService {
 	 */
 	async getVersion(domain: string): Promise<Version> {
 		try {
-			return await this.requestService.get<Version>(
-				domain,
-				FederationEndpoints.version,
-			);
+			return await this.requestService.get<Version>(domain, FederationEndpoints.version);
 		} catch (error: any) {
 			this.logger.error({ msg: 'getVersion failed', err: error });
 			throw error;
@@ -272,32 +215,23 @@ export class FederationService {
 
 	// invite user from another homeserver to our homeserver
 	async inviteUser(inviteEvent: PersistentEventBase, roomVersion: string) {
-		const uri = FederationEndpoints.inviteV2(
-			inviteEvent.roomId,
-			inviteEvent.eventId,
-		);
+		const uri = FederationEndpoints.inviteV2(inviteEvent.roomId, inviteEvent.eventId);
 
 		if (!inviteEvent.stateKey) {
 			this.logger.debug({ msg: 'invalid state_key', event: inviteEvent.event });
-			throw new Error(
-				'failed to send invite request, invite has invalid state_key',
-			);
+			throw new Error('failed to send invite request, invite has invalid state_key');
 		}
 
 		const residentServer = inviteEvent.stateKey.split(':').pop();
 
 		if (!residentServer) {
-			throw new Error(
-				`invalid state_key ${inviteEvent.stateKey}, no domain found, failed to send invite`,
-			);
+			throw new Error(`invalid state_key ${inviteEvent.stateKey}, no domain found, failed to send invite`);
 		}
 
 		return await this.requestService.put<any>(residentServer, uri, {
 			event: inviteEvent.event,
 			room_version: roomVersion,
-			invite_room_state: await this.stateService.getStrippedRoomState(
-				inviteEvent.roomId,
-			),
+			invite_room_state: await this.stateService.getStrippedRoomState(inviteEvent.roomId),
 		});
 	}
 
@@ -314,9 +248,7 @@ export class FederationService {
 
 		for (const server of servers) {
 			if (server === event.origin) {
-				this.logger.info(
-					`Skipping transaction to event origin: ${event.origin}`,
-				);
+				this.logger.info(`Skipping transaction to event origin: ${event.origin}`);
 				continue;
 			}
 

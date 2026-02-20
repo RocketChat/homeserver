@@ -1,4 +1,4 @@
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 export type Key = {
@@ -10,14 +10,9 @@ export type Key = {
 
 @singleton()
 export class KeyRepository {
-	constructor(
-		@inject('KeyCollection') private readonly collection: Collection<Key>,
-	) {}
+	constructor(@inject('KeyCollection') private readonly collection: Collection<Key>) {}
 
-	async getValidPublicKeyFromLocal(
-		origin: string,
-		keyId: string,
-	): Promise<string | undefined> {
+	async getValidPublicKeyFromLocal(origin: string, keyId: string): Promise<string | undefined> {
 		const key = await this.collection.findOne({
 			origin,
 			key_id: keyId,
@@ -27,12 +22,7 @@ export class KeyRepository {
 		return key?.public_key;
 	}
 
-	async storePublicKey(
-		origin: string,
-		keyId: string,
-		publicKey: string,
-		validUntil?: Date,
-	): Promise<void> {
+	async storePublicKey(origin: string, keyId: string, publicKey: string, validUntil?: Date): Promise<void> {
 		await this.collection.updateOne(
 			{ origin, key_id: keyId },
 			{

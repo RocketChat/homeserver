@@ -2,23 +2,23 @@ import type { EventStore } from '@rocket.chat/federation-core';
 import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
-import { AppConfig, ConfigService } from './services/config.service';
-import { EduService } from './services/edu.service';
-import { EventAuthorizationService } from './services/event-authorization.service';
-import { EventEmitterService } from './services/event-emitter.service';
-import { EventService } from './services/event.service';
-import { FederationRequestService } from './services/federation-request.service';
-import { FederationValidationService } from './services/federation-validation.service';
-import { FederationService } from './services/federation.service';
-import { InviteService } from './services/invite.service';
-import { MediaService } from './services/media.service';
-import { MessageService } from './services/message.service';
-import { ProfilesService } from './services/profiles.service';
-import { RoomService } from './services/room.service';
-import { SendJoinService } from './services/send-join.service';
-import { ServerService } from './services/server.service';
-import { StateService } from './services/state.service';
-import { WellKnownService } from './services/well-known.service';
+import type { AppConfig, ConfigService } from './services/config.service';
+import type { EduService } from './services/edu.service';
+import type { EventAuthorizationService } from './services/event-authorization.service';
+import type { EventEmitterService } from './services/event-emitter.service';
+import type { EventService } from './services/event.service';
+import type { FederationRequestService } from './services/federation-request.service';
+import type { FederationValidationService } from './services/federation-validation.service';
+import type { FederationService } from './services/federation.service';
+import type { InviteService } from './services/invite.service';
+import type { MediaService } from './services/media.service';
+import type { MessageService } from './services/message.service';
+import type { ProfilesService } from './services/profiles.service';
+import type { RoomService } from './services/room.service';
+import type { SendJoinService } from './services/send-join.service';
+import type { ServerService } from './services/server.service';
+import type { StateService } from './services/state.service';
+import type { WellKnownService } from './services/well-known.service';
 
 // create a federation sdk class to export
 @singleton()
@@ -46,19 +46,11 @@ export class FederationSDK {
 	/**
 	 * @deprecated use createDirectMessage instead
 	 */
-	createDirectMessageRoom(
-		...args: Parameters<typeof this.roomService.createDirectMessageRoom>
-	) {
+	createDirectMessageRoom(...args: Parameters<typeof this.roomService.createDirectMessageRoom>) {
 		return this.roomService.createDirectMessageRoom(...args);
 	}
 
-	async createDirectMessage({
-		creatorUserId,
-		members,
-	}: {
-		creatorUserId: UserID;
-		members: UserID[];
-	}) {
+	async createDirectMessage({ creatorUserId, members }: { creatorUserId: UserID; members: UserID[] }) {
 		return this.roomService.createDirectMessage({
 			creatorUserId,
 			members,
@@ -69,15 +61,11 @@ export class FederationSDK {
 		return this.roomService.createRoom(...args);
 	}
 
-	inviteUserToRoom(
-		...args: Parameters<typeof this.inviteService.inviteUserToRoom>
-	) {
+	inviteUserToRoom(...args: Parameters<typeof this.inviteService.inviteUserToRoom>) {
 		return this.inviteService.inviteUserToRoom(...args);
 	}
 
-	sendFileMessage(
-		...args: Parameters<typeof this.messageService.sendFileMessage>
-	) {
+	sendFileMessage(...args: Parameters<typeof this.messageService.sendFileMessage>) {
 		return this.messageService.sendFileMessage(...args);
 	}
 
@@ -135,21 +123,15 @@ export class FederationSDK {
 		return this.roomService.setRoomTopic(...args);
 	}
 
-	setPowerLevelForUser(
-		...args: Parameters<typeof this.roomService.setPowerLevelForUser>
-	) {
+	setPowerLevelForUser(...args: Parameters<typeof this.roomService.setPowerLevelForUser>) {
 		return this.roomService.setPowerLevelForUser(...args);
 	}
 
-	sendTypingNotification(
-		...args: Parameters<typeof this.eduService.sendTypingNotification>
-	) {
+	sendTypingNotification(...args: Parameters<typeof this.eduService.sendTypingNotification>) {
 		return this.eduService.sendTypingNotification(...args);
 	}
 
-	getSignedServerKey(
-		...args: Parameters<typeof this.serverService.getSignedServerKey>
-	) {
+	getSignedServerKey(...args: Parameters<typeof this.serverService.getSignedServerKey>) {
 		return this.serverService.getSignedServerKey(...args);
 	}
 
@@ -161,11 +143,7 @@ export class FederationSDK {
 		return this.inviteService.processInvite(...args);
 	}
 
-	verifyRequestSignature(
-		...args: Parameters<
-			typeof this.eventAuthorizationService.verifyRequestSignature
-		>
-	) {
+	verifyRequestSignature(...args: Parameters<typeof this.eventAuthorizationService.verifyRequestSignature>) {
 		return this.eventAuthorizationService.verifyRequestSignature(...args);
 	}
 
@@ -177,15 +155,11 @@ export class FederationSDK {
 		return this.roomService.rejectInvite(...args);
 	}
 
-	getLatestRoomState2(
-		...args: Parameters<typeof this.stateService.getLatestRoomState2>
-	) {
+	getLatestRoomState2(...args: Parameters<typeof this.stateService.getLatestRoomState2>) {
 		return this.stateService.getLatestRoomState2(...args);
 	}
 
-	downloadFromRemoteServer(
-		...args: Parameters<typeof this.mediaService.downloadFromRemoteServer>
-	) {
+	downloadFromRemoteServer(...args: Parameters<typeof this.mediaService.downloadFromRemoteServer>) {
 		return this.mediaService.downloadFromRemoteServer(...args);
 	}
 
@@ -193,9 +167,7 @@ export class FederationSDK {
 		return this.profilesService.queryProfile(...args);
 	}
 
-	getAllPublicRoomIdsAndNames(
-		...args: Parameters<typeof this.stateService.getAllPublicRoomIdsAndNames>
-	) {
+	getAllPublicRoomIdsAndNames(...args: Parameters<typeof this.stateService.getAllPublicRoomIdsAndNames>) {
 		return this.stateService.getAllPublicRoomIdsAndNames(...args);
 	}
 
@@ -203,9 +175,7 @@ export class FederationSDK {
 		return this.sendJoinService.sendJoin(...args);
 	}
 
-	processIncomingTransaction(
-		...args: Parameters<typeof this.eventService.processIncomingTransaction>
-	) {
+	processIncomingTransaction(...args: Parameters<typeof this.eventService.processIncomingTransaction>) {
 		return this.eventService.processIncomingTransaction(...args);
 	}
 
@@ -217,47 +187,31 @@ export class FederationSDK {
 		return this.eventService.getState(...args);
 	}
 
-	getBackfillEvents(
-		...args: Parameters<typeof this.eventService.getBackfillEvents>
-	) {
+	getBackfillEvents(...args: Parameters<typeof this.eventService.getBackfillEvents>) {
 		return this.eventService.getBackfillEvents(...args);
 	}
 
-	canAccessResource(
-		...args: Parameters<typeof this.eventAuthorizationService.canAccessResource>
-	) {
+	canAccessResource(...args: Parameters<typeof this.eventAuthorizationService.canAccessResource>) {
 		return this.eventAuthorizationService.canAccessResource(...args);
 	}
 
-	getWellKnownHostData(
-		...args: Parameters<typeof this.wellKnownService.getWellKnownHostData>
-	) {
+	getWellKnownHostData(...args: Parameters<typeof this.wellKnownService.getWellKnownHostData>) {
 		return this.wellKnownService.getWellKnownHostData(...args);
 	}
 
-	validateOutboundUser(
-		...args: Parameters<
-			typeof this.federationValidationService.validateOutboundUser
-		>
-	) {
+	validateOutboundUser(...args: Parameters<typeof this.federationValidationService.validateOutboundUser>) {
 		return this.federationValidationService.validateOutboundUser(...args);
 	}
 
-	updateUserPowerLevel(
-		...args: Parameters<typeof this.roomService.updateUserPowerLevel>
-	) {
+	updateUserPowerLevel(...args: Parameters<typeof this.roomService.updateUserPowerLevel>) {
 		return this.roomService.updateUserPowerLevel(...args);
 	}
 
-	findStateAtEvent(
-		...args: Parameters<typeof this.stateService.findStateAtEvent>
-	) {
+	findStateAtEvent(...args: Parameters<typeof this.stateService.findStateAtEvent>) {
 		return this.stateService.findStateAtEvent(...args);
 	}
 
-	getLatestRoomState(
-		...args: Parameters<typeof this.stateService.getLatestRoomState>
-	) {
+	getLatestRoomState(...args: Parameters<typeof this.stateService.getLatestRoomState>) {
 		return this.stateService.getLatestRoomState(...args);
 	}
 
@@ -265,9 +219,7 @@ export class FederationSDK {
 		return this.stateService.handlePdu(...args);
 	}
 
-	markRoomAsTombstone(
-		...args: Parameters<typeof this.roomService.markRoomAsTombstone>
-	) {
+	markRoomAsTombstone(...args: Parameters<typeof this.roomService.markRoomAsTombstone>) {
 		return this.roomService.markRoomAsTombstone(...args);
 	}
 
@@ -275,34 +227,19 @@ export class FederationSDK {
 		return this.stateService.getAllRoomIds(...args);
 	}
 
-	makeSignedRequest(
-		...args: Parameters<typeof this.federationRequestService.makeSignedRequest>
-	) {
+	makeSignedRequest(...args: Parameters<typeof this.federationRequestService.makeSignedRequest>) {
 		return this.federationRequestService.makeSignedRequest(...args);
 	}
 
-	queryProfileRemote<T>({
-		homeserverUrl,
-		userId,
-	}: { homeserverUrl: string; userId: string }) {
-		return this.federationRequestService.get<T>(
-			homeserverUrl,
-			'/_matrix/federation/v1/query/profile',
-			{ user_id: userId },
-		);
+	queryProfileRemote<T>({ homeserverUrl, userId }: { homeserverUrl: string; userId: string }) {
+		return this.federationRequestService.get<T>(homeserverUrl, '/_matrix/federation/v1/query/profile', { user_id: userId });
 	}
 
-	buildEvent<T extends PduType>(
-		...args: Parameters<typeof this.stateService.buildEvent<T>>
-	) {
+	buildEvent<T extends PduType>(...args: Parameters<typeof this.stateService.buildEvent<T>>) {
 		return this.stateService.buildEvent<T>(...args);
 	}
 
-	sendEventToAllServersInRoom(
-		...args: Parameters<
-			typeof this.federationService.sendEventToAllServersInRoom
-		>
-	) {
+	sendEventToAllServersInRoom(...args: Parameters<typeof this.federationService.sendEventToAllServersInRoom>) {
 		return this.federationService.sendEventToAllServersInRoom(...args);
 	}
 
@@ -310,9 +247,7 @@ export class FederationSDK {
 		return this.profilesService.makeJoin(...args);
 	}
 
-	getMissingEvents(
-		...args: Parameters<typeof this.eventService.getMissingEvents>
-	) {
+	getMissingEvents(...args: Parameters<typeof this.eventService.getMissingEvents>) {
 		return this.eventService.getMissingEvents(...args);
 	}
 
@@ -328,9 +263,7 @@ export class FederationSDK {
 		return this.profilesService.queryKeys(...args);
 	}
 
-	sendPresenceUpdateToRooms(
-		...args: Parameters<typeof this.eduService.sendPresenceUpdateToRooms>
-	) {
+	sendPresenceUpdateToRooms(...args: Parameters<typeof this.eduService.sendPresenceUpdateToRooms>) {
 		return this.eduService.sendPresenceUpdateToRooms(...args);
 	}
 }

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+
 import { generateId } from '../../utils/generateId';
 import { generateKeyPairsFromString } from '../../utils/keys';
 import { signEvent } from '../../utils/signEvent';
@@ -7,9 +8,7 @@ import { createSignedEvent } from './createSignedEvent';
 
 describe('makeSignedEvent', () => {
 	test('it should return the same payload, following create event > sign > generate id', async () => {
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U');
 
 		const event = roomCreateEvent({
 			roomId: '!uTqsSSWabZzthsSCNf:hs1',

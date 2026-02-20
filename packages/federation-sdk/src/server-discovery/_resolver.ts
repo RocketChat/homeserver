@@ -9,9 +9,7 @@ class _Resolver extends Resolver {
 		super();
 
 		if (process.env.HOMESERVER_CONFIG_DNS_SERVERS) {
-			const servers = process.env.HOMESERVER_CONFIG_DNS_SERVERS.split(',').map(
-				(s) => s.trim(),
-			);
+			const servers = process.env.HOMESERVER_CONFIG_DNS_SERVERS.split(',').map((s) => s.trim());
 
 			this.setServers(servers);
 		}
@@ -20,11 +18,7 @@ class _Resolver extends Resolver {
 		// for systems with no v6 support this still lets allow a fallback to v4 first. without needing to add system level dns filter.
 		// as long as the name has an a record, should be able to communicate.
 		const order = process.env.HOMESERVER_CONFIG_DNS_LOOKUP_ORDER;
-		if (
-			order === 'ipv4first' ||
-			order === 'ipv6first' ||
-			order === 'verbatim'
-		) {
+		if (order === 'ipv4first' || order === 'ipv6first' || order === 'verbatim') {
 			this.lookupOrder = order;
 		}
 	}

@@ -1,5 +1,6 @@
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia } from 'elysia';
+import type { Elysia } from 'elysia';
+
 import { WellKnownServerResponseDto } from '../../dtos';
 
 export const wellKnownPlugin = (app: Elysia) => {
@@ -7,9 +8,7 @@ export const wellKnownPlugin = (app: Elysia) => {
 		'/.well-known/matrix/server',
 		({ set }) => {
 			const responseData = federationSDK.getWellKnownHostData();
-			const etag = new Bun.CryptoHasher('md5')
-				.update(JSON.stringify(responseData))
-				.digest('hex');
+			const etag = new Bun.CryptoHasher('md5').update(JSON.stringify(responseData)).digest('hex');
 			set.headers.ETag = etag;
 			set.headers['Content-Type'] = 'application/json';
 			return responseData;

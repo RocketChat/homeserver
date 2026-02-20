@@ -9,11 +9,7 @@ import { createTypingEDU, isTypingEDU } from './m.typing';
 describe('EDU Index', () => {
 	describe('MatrixEDUTypes union type', () => {
 		test('accepts TypingEDU', () => {
-			const typingEDU = createTypingEDU(
-				'!room:example.com',
-				'@user:example.com',
-				true,
-			);
+			const typingEDU = createTypingEDU('!room:example.com', '@user:example.com', true);
 
 			const eduUnion: MatrixEDUTypes = typingEDU;
 
@@ -44,11 +40,7 @@ describe('EDU Index', () => {
 		});
 
 		test('union type preserves specific EDU properties', () => {
-			const typingEDU = createTypingEDU(
-				'!room:example.com',
-				'@user:example.com',
-				true,
-			);
+			const typingEDU = createTypingEDU('!room:example.com', '@user:example.com', true);
 			const presenceEDU = createPresenceEDU([
 				{
 					user_id: '@user:example.com',
@@ -66,9 +58,7 @@ describe('EDU Index', () => {
 		test('can be used in discriminated union patterns', () => {
 			const edus: MatrixEDUTypes[] = [
 				createTypingEDU('!room:example.com', '@user:example.com', true),
-				createPresenceEDU([
-					{ user_id: '@user:example.com', presence: 'online' },
-				]),
+				createPresenceEDU([{ user_id: '@user:example.com', presence: 'online' }]),
 			];
 
 			for (const edu of edus) {

@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 
+import { roomMemberEvent } from './m.room.member';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import { roomMemberEvent } from './m.room.member';
 
 const finalEventId = '$nzfaHPXjmyOQerkm4WOlFupYVq56ZDHqC42DlgPydaI';
 const finalEvent = {
@@ -30,8 +30,7 @@ const finalEvent = {
 	hashes: { sha256: '1tVvOpcM7iQz9kacDoUa8vhNMQVZZhA+5txzwsH8NR8' },
 	signatures: {
 		hs1: {
-			'ed25519:a_HDhg':
-				'8/qPp2d0PTc4bVMNdbTl32OSFnNqXan9ACQr1QcDV3SgdsDnm+sZv2mXW8rdhIOLOohRG2cED0+1aNxV7VH2Cw',
+			'ed25519:a_HDhg': '8/qPp2d0PTc4bVMNdbTl32OSFnNqXan9ACQr1QcDV3SgdsDnm+sZv2mXW8rdhIOLOohRG2cED0+1aNxV7VH2Cw',
 		},
 	},
 	unsigned: {
@@ -61,9 +60,7 @@ const finalEvent = {
 };
 
 test('roomMemberInviteEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const memberEvent = roomMemberEvent({
 		membership: 'invite',
@@ -76,10 +73,8 @@ test('roomMemberInviteEvent', async () => {
 			'm.room.create': '$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4',
 			'm.room.power_levels': '$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE',
 			'm.room.join_rules': '$Uxo9MgF-4HQNEZdkkQDzgh9wlZ1yJbDXTMXCh6aZBi4',
-			'm.room.member:@admin:hs1':
-				'$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8',
-			'm.room.history_visibility':
-				'$HistVisAuthEvent123456789012345678901234567890',
+			'm.room.member:@admin:hs1': '$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8',
+			'm.room.history_visibility': '$HistVisAuthEvent123456789012345678901234567890',
 		},
 		prev_events: ['$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas'],
 		content: {

@@ -1,21 +1,20 @@
+import type { PersistentEventBase } from './event-wrapper';
+import type { RoomVersion } from './type';
 import { type PduPowerLevelsEventContent, type PduType } from '../types/v3-11';
-import { PersistentEventBase } from './event-wrapper';
-import { RoomVersion } from './type';
 
 // centralize all power level values here
 // whether there is an event or not
 // all defaults and transformations according to diff versions of pdus
 
 class PowerLevelEvent<
-	PowerLevelEventType extends
-		| PersistentEventBase<RoomVersion, 'm.room.power_levels'>
-		| undefined = PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
+	PowerLevelEventType extends PersistentEventBase<RoomVersion, 'm.room.power_levels'> | undefined = PersistentEventBase<
+		RoomVersion,
+		'm.room.power_levels'
+	>,
 > {
 	private readonly _content?: PduPowerLevelsEventContent;
 
-	static fromEvent(
-		event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
-	) {
+	static fromEvent(event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>) {
 		return new PowerLevelEvent(event);
 	}
 
@@ -64,10 +63,7 @@ class PowerLevelEvent<
 		return this._content.redact ?? 50;
 	}
 
-	getPowerLevelForUser(
-		userId: string,
-		createEvent?: PersistentEventBase<RoomVersion, 'm.room.create'>,
-	) {
+	getPowerLevelForUser(userId: string, createEvent?: PersistentEventBase<RoomVersion, 'm.room.create'>) {
 		if (!this._content) {
 			if (createEvent?.sender === userId) {
 				return 100;

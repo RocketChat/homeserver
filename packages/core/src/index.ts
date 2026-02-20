@@ -33,11 +33,7 @@ export {
 } from './utils/signJson';
 
 // Binary data utilities
-export {
-	toBinaryData,
-	fromBinaryData,
-	toUnpaddedBase64,
-} from './utils/binaryData';
+export { toBinaryData, fromBinaryData, toUnpaddedBase64 } from './utils/binaryData';
 
 // Keys utilities
 export * from './utils/keys';

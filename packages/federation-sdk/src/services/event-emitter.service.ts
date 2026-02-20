@@ -1,24 +1,16 @@
-import {
-	AsyncDispatcher,
-	type EventHandlerOf,
-	type EventOf,
-	logger,
-} from '@rocket.chat/federation-core';
+import { Emitter } from '@rocket.chat/emitter';
+import { AsyncDispatcher, type EventHandlerOf, type EventOf, logger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
-import { Emitter } from '@rocket.chat/emitter';
 import type { HomeserverEventSignatures } from '..';
 
 @singleton()
 export class EventEmitterService {
-	private emitter: AsyncDispatcher<HomeserverEventSignatures> =
-		new AsyncDispatcher<HomeserverEventSignatures>();
+	private emitter: AsyncDispatcher<HomeserverEventSignatures> = new AsyncDispatcher<HomeserverEventSignatures>();
 
 	public async emit<K extends keyof HomeserverEventSignatures>(
 		event: K,
-		...[data]: EventOf<HomeserverEventSignatures, K> extends void
-			? [undefined?]
-			: [EventOf<HomeserverEventSignatures, K>]
+		...[data]: EventOf<HomeserverEventSignatures, K> extends void ? [undefined?] : [EventOf<HomeserverEventSignatures, K>]
 	): Promise<void> {
 		await this.emitter.emit(event, ...([data] as any));
 		logger.debug({ msg: `Event emitted: ${event}`, event, data });
@@ -38,10 +30,7 @@ export class EventEmitterService {
 		return this.emitter.once(event, handler);
 	}
 
-	public off<K extends keyof HomeserverEventSignatures>(
-		event: K,
-		handler: EventHandlerOf<HomeserverEventSignatures, K>,
-	): void {
+	public off<K extends keyof HomeserverEventSignatures>(event: K, handler: EventHandlerOf<HomeserverEventSignatures, K>): void {
 		this.emitter.off(event, handler);
 	}
 }

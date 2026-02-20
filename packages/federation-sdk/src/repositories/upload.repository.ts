@@ -1,5 +1,5 @@
-import { RoomID } from '@rocket.chat/federation-room';
-import { Collection } from 'mongodb';
+import type { RoomID } from '@rocket.chat/federation-room';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 export type Upload = {
@@ -14,9 +14,7 @@ export type Upload = {
 
 @singleton()
 export class UploadRepository {
-	constructor(
-		@inject('UploadCollection') private readonly collection: Collection<Upload>,
-	) {}
+	constructor(@inject('UploadCollection') private readonly collection: Collection<Upload>) {}
 
 	async findByMediaId(mediaId: string): Promise<Upload | null> {
 		return this.collection.findOne({

@@ -1,5 +1,6 @@
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import type { Elysia } from 'elysia';
+
 import { ServerKeyResponseDto } from '../../dtos';
 
 export const serverKeyPlugin = (app: Elysia) => {

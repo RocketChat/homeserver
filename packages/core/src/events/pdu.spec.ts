@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+
 import type { EventBase } from './eventBase';
-import {
-	type FederationEventResponse,
-	type MatrixPDU,
-	isFederationEventWithPDUs,
-} from './pdu';
+import { type FederationEventResponse, type MatrixPDU, isFederationEventWithPDUs } from './pdu';
 
 describe('PDU', () => {
 	const samplePDU: MatrixPDU = {

@@ -1,5 +1,4 @@
-import { Pdu, PduForType } from '@rocket.chat/federation-room';
-import type { EventID } from '@rocket.chat/federation-room';
+import type { Pdu, PduForType, EventID } from '@rocket.chat/federation-room';
 
 export type EventBase = {
 	auth_events: EventID[];
@@ -37,9 +36,7 @@ export type RedactedEvent = EventBase & {
 	type: 'm.room.redaction';
 };
 
-export const isRedactedEvent = (
-	event: Pdu,
-): event is PduForType<'m.room.redaction'> => {
+export const isRedactedEvent = (event: Pdu): event is PduForType<'m.room.redaction'> => {
 	return event.type === 'm.room.redaction' && 'redacts' in event;
 };
 
@@ -63,21 +60,13 @@ export const createEventBase = <T extends KeyEvent>(
 		ts?: number;
 	},
 ): Events[T] extends EventBase ? Events[T] : never => {
-	return _createEventBase<
-		Events[T] extends EventBase ? Events[T] : never,
-		Events[T]['content'],
-		Events[T]['unsigned']
-	>({
+	return _createEventBase<Events[T] extends EventBase ? Events[T] : never, Events[T]['content'], Events[T]['unsigned']>({
 		type,
 		...props,
 	});
 };
 
-const _createEventBase = <
-	E extends EventBase,
-	TContent extends EventBase['content'],
-	TUnsigned extends EventBase['unsigned'],
->({
+const _createEventBase = <E extends EventBase, TContent extends EventBase['content'], TUnsigned extends EventBase['unsigned']>({
 	roomId,
 	sender,
 	auth_events = [],
@@ -104,9 +93,7 @@ const _createEventBase = <
 	origin?: string;
 	ts?: number;
 }): E & {
-	unsigned: E['unsigned'] extends void
-		? { age_ts: number }
-		: E['unsigned'] & { age_ts: number };
+	unsigned: E['unsigned'] extends void ? { age_ts: number } : E['unsigned'] & { age_ts: number };
 } => {
 	if (!sender.includes(':') || !sender.includes('@')) {
 		throw new Error('Invalid sender');

@@ -1,11 +1,6 @@
-import {
-	SigningKey,
-	createLogger,
-	generateKeyPairsFromString,
-	toUnpaddedBase64,
-} from '@rocket.chat/federation-core';
+import type { SigningKey } from '@rocket.chat/federation-core';
+import { createLogger, generateKeyPairsFromString, toUnpaddedBase64 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
-
 import { z } from 'zod';
 
 export interface AppConfig {
@@ -45,29 +40,17 @@ export const AppConfigSchema = z.object({
 	port: z.number().int().min(1).max(65535, 'Port must be between 1 and 65535'),
 	version: z.string().min(1, 'Server version is required'),
 	matrixDomain: z.string().min(1, 'Matrix domain is required'),
-	keyRefreshInterval: z
-		.number()
-		.int()
-		.min(1, 'Key refresh interval must be at least 1'),
+	keyRefreshInterval: z.number().int().min(1, 'Key refresh interval must be at least 1'),
 	signingKey: z.string().optional(),
 	timeout: z.number().optional(),
 	signingKeyPath: z.string(),
 	media: z.object({
-		maxFileSize: z
-			.number()
-			.int()
-			.min(1, 'Max file size must be at least 1 byte'),
+		maxFileSize: z.number().int().min(1, 'Max file size must be at least 1 byte'),
 		allowedMimeTypes: z.array(z.string()),
 		enableThumbnails: z.boolean(),
 		rateLimits: z.object({
-			uploadPerMinute: z
-				.number()
-				.int()
-				.min(1, 'Upload rate limit must be at least 1'),
-			downloadPerMinute: z
-				.number()
-				.int()
-				.min(1, 'Download rate limit must be at least 1'),
+			uploadPerMinute: z.number().int().min(1, 'Upload rate limit must be at least 1'),
+			downloadPerMinute: z.number().int().min(1, 'Download rate limit must be at least 1'),
 		}),
 	}),
 	invite: z.object({
@@ -78,24 +61,16 @@ export const AppConfigSchema = z.object({
 		processTyping: z.boolean(),
 		processPresence: z.boolean(),
 	}),
-	networkCheckTimeoutMs: z
-		.number()
-		.int()
-		.min(1000, 'Network check timeout must be at least 1000ms')
-		.default(5000)
-		.optional(),
-	userCheckTimeoutMs: z
-		.number()
-		.int()
-		.min(1000, 'User check timeout must be at least 1000ms')
-		.default(10000)
-		.optional(),
+	networkCheckTimeoutMs: z.number().int().min(1000, 'Network check timeout must be at least 1000ms').default(5000).optional(),
+	userCheckTimeoutMs: z.number().int().min(1000, 'User check timeout must be at least 1000ms').default(10000).optional(),
 });
 
 @singleton()
 export class ConfigService {
 	private config: AppConfig = {} as AppConfig;
+
 	private logger = createLogger('ConfigService');
+
 	private serverKeys: SigningKey[] = [];
 
 	setConfig(values: AppConfig) {
@@ -111,9 +86,7 @@ export class ConfigService {
 					msg: 'Configuration validation failed:',
 					err: error,
 				});
-				throw new Error(
-					`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
-				);
+				throw new Error(`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`);
 			}
 			throw error;
 		}
@@ -142,9 +115,7 @@ export class ConfigService {
 		}
 
 		if (!this.serverKeys.length) {
-			const signingKey = await generateKeyPairsFromString(
-				this.config.signingKey,
-			);
+			const signingKey = await generateKeyPairsFromString(this.config.signingKey);
 			this.serverKeys = [signingKey];
 		}
 

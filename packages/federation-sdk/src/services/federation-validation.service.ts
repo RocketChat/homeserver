@@ -1,19 +1,17 @@
 import type { RoomID, UserID } from '@rocket.chat/federation-room';
 import { extractDomainFromId } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
+import type { ConfigService } from './config.service';
+import type { EventAuthorizationService } from './event-authorization.service';
+import type { FederationRequestService } from './federation-request.service';
+import type { StateService } from './state.service';
 import { FederationEndpoints } from '../specs/federation-api';
-import { ConfigService } from './config.service';
-import { EventAuthorizationService } from './event-authorization.service';
-import { FederationRequestService } from './federation-request.service';
-import { StateService } from './state.service';
 
 export class FederationValidationError extends Error {
 	public error: string;
 
-	constructor(
-		public code: 'POLICY_DENIED' | 'CONNECTION_FAILED' | 'USER_NOT_FOUND',
-		public userMessage: string,
-	) {
+	constructor(public code: 'POLICY_DENIED' | 'CONNECTION_FAILED' | 'USER_NOT_FOUND', public userMessage: string) {
 		super(userMessage);
 		this.name = 'FederationValidationError';
 		this.error = `federation-${code.toLowerCase().replace(/_/g, '-')}`;
@@ -49,10 +47,7 @@ export class FederationValidationService {
 			return;
 		}
 
-		const isAllowed = await this.eventAuthorizationService.checkServerAcl(
-			aclEvent,
-			domain,
-		);
+		const isAllowed = await this.eventAuthorizationService.checkServerAcl(aclEvent, domain);
 		if (!isAllowed) {
 			throw new FederationValidationError(
 				'POLICY_DENIED',
@@ -67,8 +62,7 @@ export class FederationValidationService {
 			return;
 		}
 
-		const timeoutMs =
-			this.configService.getConfig('networkCheckTimeoutMs') || 5000;
+		const timeoutMs = this.configService.getConfig('networkCheckTimeoutMs') || 5000;
 
 		try {
 			const versionPromise = this.federationRequestService.get<{
@@ -85,8 +79,7 @@ export class FederationValidationService {
 	}
 
 	private async checkUserExists(userId: UserID, domain: string): Promise<void> {
-		const timeoutMs =
-			this.configService.getConfig('userCheckTimeoutMs') || 10000;
+		const timeoutMs = this.configService.getConfig('userCheckTimeoutMs') || 10000;
 
 		try {
 			const uri = FederationEndpoints.queryProfile(userId);
@@ -106,10 +99,7 @@ export class FederationValidationService {
 		}
 	}
 
-	private async withTimeout<T>(
-		promise: Promise<T>,
-		timeoutMs: number,
-	): Promise<T> {
+	private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 		const timeoutPromise = new Promise<never>((_, reject) => {
 			setTimeout(() => {
 				reject(new Error(`Operation timed out after ${timeoutMs}ms`));

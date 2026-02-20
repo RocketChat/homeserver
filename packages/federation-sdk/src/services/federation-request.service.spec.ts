@@ -1,16 +1,8 @@
-import {
-	afterAll,
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	mock,
-	spyOn,
-} from 'bun:test';
 import * as core from '@rocket.chat/federation-core';
+import { afterAll, afterEach, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import * as nacl from 'tweetnacl';
-import { ConfigService } from './config.service';
+
+import type { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 
 describe('FederationRequestService', async () => {
@@ -33,9 +25,7 @@ describe('FederationRequestService', async () => {
 		},
 	];
 
-	const { getHomeserverFinalAddress } = await import(
-		'../server-discovery/discovery'
-	);
+	const { getHomeserverFinalAddress } = await import('../server-discovery/discovery');
 
 	const { fetch: originalFetch } = await import('@rocket.chat/federation-core');
 
@@ -76,8 +66,7 @@ describe('FederationRequestService', async () => {
 		},
 	};
 
-	const mockAuthHeaders =
-		'X-Matrix origin="example.com",destination="target.example.com",key="ed25519:1",sig="xyz123"';
+	const mockAuthHeaders = 'X-Matrix origin="example.com",destination="target.example.com",key="ed25519:1",sig="xyz123"';
 
 	beforeEach(() => {
 		spyOn(nacl.sign.keyPair, 'fromSecretKey').mockReturnValue(mockKeyPair);
@@ -86,9 +75,7 @@ describe('FederationRequestService', async () => {
 		spyOn(core, 'extractURIfromURL').mockReturnValue('/test/path?query=value');
 		spyOn(core, 'authorizationHeaders').mockResolvedValue(mockAuthHeaders);
 		spyOn(core, 'signJson').mockResolvedValue(mockSignedJson);
-		spyOn(core, 'computeAndMergeHash').mockImplementation(
-			(obj: unknown) => obj,
-		);
+		spyOn(core, 'computeAndMergeHash').mockImplementation((obj: unknown) => obj);
 
 		configService = {
 			getConfig: (key: string) => {
@@ -195,9 +182,7 @@ describe('FederationRequestService', async () => {
 			});
 
 			expect(fetchSpy).toHaveBeenCalledWith(
-				new URL(
-					'https://target.example.com/test/path?param1=value1&param2=value2',
-				),
+				new URL('https://target.example.com/test/path?param1=value1&param2=value2'),
 				expect.any(Object),
 			);
 
@@ -227,9 +212,7 @@ describe('FederationRequestService', async () => {
 				});
 			} catch (error: unknown) {
 				if (error instanceof Error) {
-					expect(error.message).toContain(
-						'Federation request failed: 404 Not Found',
-					);
+					expect(error.message).toContain('Federation request failed: 404 Not Found');
 				} else {
 					throw error;
 				}
@@ -242,8 +225,7 @@ describe('FederationRequestService', async () => {
 					return {
 						ok: false,
 						status: 400,
-						text: async () =>
-							'{"error":"Bad Request","code":"M_INVALID_PARAM"}',
+						text: async () => '{"error":"Bad Request","code":"M_INVALID_PARAM"}',
 						multipart: async () => null,
 					} as Response;
 				},
@@ -258,9 +240,7 @@ describe('FederationRequestService', async () => {
 				});
 			} catch (error: unknown) {
 				if (error instanceof Error) {
-					expect(error.message).toContain(
-						'Federation request failed: 400 {"error":"Bad Request","code":"M_INVALID_PARAM"}',
-					);
+					expect(error.message).toContain('Federation request failed: 400 {"error":"Bad Request","code":"M_INVALID_PARAM"}');
 				} else {
 					throw error;
 				}
@@ -293,10 +273,7 @@ describe('FederationRequestService', async () => {
 
 	describe('convenience methods', () => {
 		it('should call makeSignedRequest with correct parameters for GET', async () => {
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({
+			const makeSignedRequestSpy = spyOn(service, 'makeSignedRequest').mockResolvedValue({
 				ok: true,
 				status: 200,
 				json: async () => ({ result: 'success' }),
@@ -317,10 +294,7 @@ describe('FederationRequestService', async () => {
 		});
 
 		it('should call makeSignedRequest with correct parameters for POST', async () => {
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({
+			const makeSignedRequestSpy = spyOn(service, 'makeSignedRequest').mockResolvedValue({
 				ok: true,
 				status: 200,
 				json: async () => ({ result: 'success' }),
@@ -343,10 +317,7 @@ describe('FederationRequestService', async () => {
 		});
 
 		it('should call makeSignedRequest with correct parameters for PUT', async () => {
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({
+			const makeSignedRequestSpy = spyOn(service, 'makeSignedRequest').mockResolvedValue({
 				ok: true,
 				status: 200,
 				json: async () => ({ result: 'success' }),
@@ -370,20 +341,13 @@ describe('FederationRequestService', async () => {
 	describe('requestBinaryData', () => {
 		it('should call makeSignedRequest for binary data without query params', async () => {
 			const mockBuffer = Buffer.from('binary content');
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({
+			const makeSignedRequestSpy = spyOn(service, 'makeSignedRequest').mockResolvedValue({
 				ok: true,
 				status: 200,
 				multipart: async () => ({ content: mockBuffer }),
 			});
 
-			const result = await service.requestBinaryData(
-				'GET',
-				'target.example.com',
-				'/media/download',
-			);
+			const result = await service.requestBinaryData('GET', 'target.example.com', '/media/download');
 
 			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
 				method: 'GET',
@@ -396,21 +360,13 @@ describe('FederationRequestService', async () => {
 
 		it('should call makeSignedRequest for binary data with query params', async () => {
 			const mockBuffer = Buffer.from('binary content');
-			const makeSignedRequestSpy = spyOn(
-				service,
-				'makeSignedRequest',
-			).mockResolvedValue({
+			const makeSignedRequestSpy = spyOn(service, 'makeSignedRequest').mockResolvedValue({
 				ok: true,
 				status: 200,
 				multipart: async () => ({ content: mockBuffer }),
 			});
 
-			const result = await service.requestBinaryData(
-				'GET',
-				'target.example.com',
-				'/media/download',
-				{ width: '100', height: '100' },
-			);
+			const result = await service.requestBinaryData('GET', 'target.example.com', '/media/download', { width: '100', height: '100' });
 
 			expect(makeSignedRequestSpy).toHaveBeenCalledWith({
 				method: 'GET',

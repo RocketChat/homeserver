@@ -1,12 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import {
-	type BaseEDU,
-	type FederationEDUResponse,
-	type MatrixEDU,
-	isFederationEDUResponse,
-	isMatrixEDU,
-} from './base';
+import { type BaseEDU, type FederationEDUResponse, type MatrixEDU, isFederationEDUResponse, isMatrixEDU } from './base';
 
 describe('BaseEDU', () => {
 	describe('isMatrixEDU', () => {

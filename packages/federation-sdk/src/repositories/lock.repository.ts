@@ -1,4 +1,4 @@
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 export type Lock = {
@@ -9,9 +9,7 @@ export type Lock = {
 
 @singleton()
 export class LockRepository {
-	constructor(
-		@inject('LockCollection') private readonly collection: Collection<Lock>,
-	) {
+	constructor(@inject('LockCollection') private readonly collection: Collection<Lock>) {
 		// TODO define proper way of creating indexes in repositories
 		this.collection.createIndex({ roomId: 1 }, { unique: true });
 	}
@@ -57,9 +55,6 @@ export class LockRepository {
 	}
 
 	async updateLockTimestamp(roomId: string, instanceId: string): Promise<void> {
-		await this.collection.updateOne(
-			{ roomId, instanceId },
-			{ $set: { lockedAt: new Date() } },
-		);
+		await this.collection.updateOne({ roomId, instanceId }, { $set: { lockedAt: new Date() } });
 	}
 }

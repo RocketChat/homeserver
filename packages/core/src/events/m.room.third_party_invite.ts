@@ -22,8 +22,6 @@ export interface RoomThirdPartyInviteEvent extends EventBase {
 	};
 }
 
-export const isRoomThirdPartyInviteEvent = (
-	event: EventBase,
-): event is RoomThirdPartyInviteEvent => {
+export const isRoomThirdPartyInviteEvent = (event: EventBase): event is RoomThirdPartyInviteEvent => {
 	return event.type === 'm.room.third_party_invite';
 };

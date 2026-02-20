@@ -1,9 +1,10 @@
 import { describe, expect, it, mock } from 'bun:test';
+
 // Note: Error classes are now generic Error instances in the core package
 import { IncompatibleRoomVersionError, NotFoundError } from '../errors';
+import { makeJoinEventBuilder } from './makeJoin';
 import type { AuthEvents } from '../events/m.room.member';
 import type { EventStore } from '../models/event.model';
-import { makeJoinEventBuilder } from './makeJoin';
 
 describe('makeJoinEventBuilder', () => {
 	const mockRoomId = '!roomId:example.org';
@@ -12,27 +13,25 @@ describe('makeJoinEventBuilder', () => {
 	const mockDate = 1620000000000;
 	Date.now = () => mockDate;
 
-	const mockGetLastEvent = mock(
-		(roomId: string): Promise<EventStore | null> => {
-			return Promise.resolve({
-				_id: 'lastEventId',
-				event: {
-					depth: 10,
-					room_id: roomId,
-					sender: '@otheruser:example.org',
-					type: 'm.room.message',
-					origin: 'example.org',
-					origin_server_ts: 1600000000000,
-					prev_events: [],
-					auth_events: [],
-				},
-				stateId: 'stateId',
-				createdAt: new Date(mockDate),
-				nextEventId: 'nextEventId',
-				eventId: 'eventId',
-			});
-		},
-	);
+	const mockGetLastEvent = mock((roomId: string): Promise<EventStore | null> => {
+		return Promise.resolve({
+			_id: 'lastEventId',
+			event: {
+				depth: 10,
+				room_id: roomId,
+				sender: '@otheruser:example.org',
+				type: 'm.room.message',
+				origin: 'example.org',
+				origin_server_ts: 1600000000000,
+				prev_events: [],
+				auth_events: [],
+			},
+			stateId: 'stateId',
+			createdAt: new Date(mockDate),
+			nextEventId: 'nextEventId',
+			eventId: 'eventId',
+		});
+	});
 
 	const mockGetAuthEvents = mock((): Promise<AuthEvents> => {
 		return Promise.resolve({
@@ -45,44 +44,25 @@ describe('makeJoinEventBuilder', () => {
 	it('should throw IncompatibleRoomVersionError when room version is not supported', async () => {
 		const makeJoin = makeJoinEventBuilder(mockGetLastEvent, mockGetAuthEvents);
 
-		await expect(
-			makeJoin(mockRoomId, mockUserId, ['1', '2', '9'], mockOrigin),
-		).rejects.toEqual(
-			new IncompatibleRoomVersionError(
-				'Your homeserver does not support the features required to join this room',
-				{ roomVersion: '10' },
-			),
+		await expect(makeJoin(mockRoomId, mockUserId, ['1', '2', '9'], mockOrigin)).rejects.toEqual(
+			new IncompatibleRoomVersionError('Your homeserver does not support the features required to join this room', { roomVersion: '10' }),
 		);
 	});
 
 	it('should throw NotFoundError when no events found for room', async () => {
-		const mockEmptyGetLastEvent = mock(
-			(_: string): Promise<EventStore | null> => Promise.resolve(null),
-		);
-		const makeJoin = makeJoinEventBuilder(
-			mockEmptyGetLastEvent,
-			mockGetAuthEvents,
-		);
+		const mockEmptyGetLastEvent = mock((_: string): Promise<EventStore | null> => Promise.resolve(null));
+		const makeJoin = makeJoinEventBuilder(mockEmptyGetLastEvent, mockGetAuthEvents);
 
-		await expect(
-			makeJoin(mockRoomId, mockUserId, ['10'], mockOrigin),
-		).rejects.toEqual(
+		await expect(makeJoin(mockRoomId, mockUserId, ['10'], mockOrigin)).rejects.toEqual(
 			new NotFoundError(`No events found for room ${mockRoomId}`),
 		);
 	});
 
 	it('should throw NotFoundError when no create event found for room', async () => {
-		const mockEmptyGetAuthEvents = mock(
-			(_: string): Promise<AuthEvents> => Promise.resolve({} as AuthEvents),
-		);
-		const makeJoin = makeJoinEventBuilder(
-			mockGetLastEvent,
-			mockEmptyGetAuthEvents,
-		);
+		const mockEmptyGetAuthEvents = mock((_: string): Promise<AuthEvents> => Promise.resolve({} as AuthEvents));
+		const makeJoin = makeJoinEventBuilder(mockGetLastEvent, mockEmptyGetAuthEvents);
 
-		await expect(
-			makeJoin(mockRoomId, mockUserId, ['10'], mockOrigin),
-		).rejects.toEqual(
+		await expect(makeJoin(mockRoomId, mockUserId, ['10'], mockOrigin)).rejects.toEqual(
 			new NotFoundError(`No create event found for room ${mockRoomId}`),
 		);
 	});
@@ -90,12 +70,7 @@ describe('makeJoinEventBuilder', () => {
 	it('should create a valid join event', async () => {
 		const makeJoin = makeJoinEventBuilder(mockGetLastEvent, mockGetAuthEvents);
 
-		const result = await makeJoin(
-			mockRoomId,
-			mockUserId,
-			['10', '11'],
-			mockOrigin,
-		);
+		const result = await makeJoin(mockRoomId, mockUserId, ['10', '11'], mockOrigin);
 
 		expect(result).toEqual({
 			event: {
@@ -104,11 +79,7 @@ describe('makeJoinEventBuilder', () => {
 				room_id: mockRoomId,
 				sender: mockUserId,
 				state_key: mockUserId,
-				auth_events: [
-					'createEventId',
-					'powerLevelsEventId',
-					'joinRulesEventId',
-				],
+				auth_events: ['createEventId', 'powerLevelsEventId', 'joinRulesEventId'],
 				prev_events: ['lastEventId'],
 				depth: 11,
 				origin: mockOrigin,
@@ -125,12 +96,7 @@ describe('makeJoinEventBuilder', () => {
 	it('should work with multiple room versions', async () => {
 		const makeJoin = makeJoinEventBuilder(mockGetLastEvent, mockGetAuthEvents);
 
-		const result = await makeJoin(
-			mockRoomId,
-			mockUserId,
-			['9', '10', '11'],
-			mockOrigin,
-		);
+		const result = await makeJoin(mockRoomId, mockUserId, ['9', '10', '11'], mockOrigin);
 
 		expect(result.room_version).toEqual('10');
 	});

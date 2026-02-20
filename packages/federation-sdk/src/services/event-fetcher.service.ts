@@ -1,11 +1,10 @@
-import { isFederationEventWithPDUs } from '@rocket.chat/federation-core';
-import { createLogger } from '@rocket.chat/federation-core';
-import { generateId } from '@rocket.chat/federation-core';
-import { EventID, Pdu } from '@rocket.chat/federation-room';
+import { isFederationEventWithPDUs, createLogger, generateId } from '@rocket.chat/federation-core';
+import type { EventID, Pdu } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
+
+import type { ConfigService } from './config.service';
+import type { FederationService } from './federation.service';
 import { EventRepository } from '../repositories/event.repository';
-import { ConfigService } from './config.service';
-import { FederationService } from './federation.service';
 
 export interface FetchedEvents {
 	events: { eventId: string; event: Pdu }[];
@@ -23,11 +22,7 @@ export class EventFetcherService {
 		private readonly configService: ConfigService,
 	) {}
 
-	public async fetchEventsByIds(
-		eventIds: EventID[],
-		roomId: string,
-		originServer: string,
-	): Promise<FetchedEvents> {
+	public async fetchEventsByIds(eventIds: EventID[], roomId: string, originServer: string): Promise<FetchedEvents> {
 		this.logger.debug(`Fetching ${eventIds.length} events for room ${roomId}`);
 
 		if (!eventIds || eventIds.length === 0) {
@@ -55,17 +50,12 @@ export class EventFetcherService {
 		}
 
 		// For events we don't have locally, try federation
-		const missingEventIds = eventIds.filter(
-			(id) => !localEvents.some((e) => e.eventId === id),
-		);
+		const missingEventIds = eventIds.filter((id) => !localEvents.some((e) => e.eventId === id));
 		if (missingEventIds.length > 0) {
 			this.logger.debug(
 				`Fetching ${missingEventIds.length} missing events from federation ${Array.from(missingEventIds).join(', ')} ${originServer}`,
 			);
-			const federationEvents = await this.fetchEventsFromFederation(
-				missingEventIds,
-				originServer,
-			);
+			const federationEvents = await this.fetchEventsFromFederation(missingEventIds, originServer);
 
 			const federationEventsWithIds = federationEvents.map((e) => ({
 				eventId: generateId(e),
@@ -74,9 +64,7 @@ export class EventFetcherService {
 
 			return {
 				events: [...localEvents, ...federationEventsWithIds],
-				missingEventIds: missingEventIds.filter(
-					(id) => !federationEventsWithIds.some((e) => e.eventId === id),
-				),
+				missingEventIds: missingEventIds.filter((id) => !federationEventsWithIds.some((e) => e.eventId === id)),
 			};
 		}
 
@@ -86,10 +74,7 @@ export class EventFetcherService {
 		};
 	}
 
-	async fetchEventsFromFederation(
-		eventIds: string[],
-		targetServerName: string,
-	): Promise<Pdu[]> {
+	async fetchEventsFromFederation(eventIds: string[], targetServerName: string): Promise<Pdu[]> {
 		const eventsToReturn: Pdu[] = [];
 
 		try {
@@ -102,11 +87,7 @@ export class EventFetcherService {
 					return [];
 				}
 
-				const federationResponses = await Promise.all(
-					chunk.map((id) =>
-						this.federationService.getEvent(targetServerName, id),
-					),
-				);
+				const federationResponses = await Promise.all(chunk.map((id) => this.federationService.getEvent(targetServerName, id)));
 
 				for (const response of federationResponses) {
 					// The Matrix spec defines that federation responses may contain PDUs field

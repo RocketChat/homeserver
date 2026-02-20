@@ -1,4 +1,5 @@
 import { type Static, t } from 'elysia';
+
 import { ServerNameDto, TimestampDto } from '../common/validation.dto';
 
 export const ServerKeyResponseDto = t.Object({

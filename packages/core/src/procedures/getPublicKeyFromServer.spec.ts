@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import nacl from 'tweetnacl';
+
 import { EncryptionValidAlgorithm } from '../types';
-import { generateKeyPairs } from '../utils/keys';
 import { getPublicKeyFromRemoteServer } from './getPublicKeyFromServer';
+import { generateKeyPairs } from '../utils/keys';
 
 describe('getPublicKeyFromRemoteServer', () => {
 	let originalFetch: typeof globalThis.fetch;
@@ -17,11 +18,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 
 	const createValidServerKeyResponse = async () => {
 		const seed = nacl.randomBytes(32);
-		const keyPair = await generateKeyPairs(
-			seed,
-			EncryptionValidAlgorithm.ed25519,
-			'test_key',
-		);
+		const keyPair = await generateKeyPairs(seed, EncryptionValidAlgorithm.ed25519, 'test_key');
 		const serverName = 'test.server';
 		const keyId = `${keyPair.algorithm}:${keyPair.version}`;
 		const validUntil = Date.now() + 24 * 60 * 60 * 1000;
@@ -38,9 +35,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 		};
 
 		const canonicalJson = encodeCanonicalJson(serverKey);
-		const signature = await keyPair.sign(
-			new TextEncoder().encode(canonicalJson),
-		);
+		const signature = await keyPair.sign(new TextEncoder().encode(canonicalJson));
 
 		return {
 			...serverKey,
@@ -79,11 +74,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 		const origin = 'test.server';
 		const algorithmAndVersion = `${EncryptionValidAlgorithm.ed25519}:test_key`;
 
-		const result = await getPublicKeyFromRemoteServer(
-			domain,
-			origin,
-			algorithmAndVersion,
-		);
+		const result = await getPublicKeyFromRemoteServer(domain, origin, algorithmAndVersion);
 
 		expect(result).toBeDefined();
 		expect(result.key).toBeDefined();
@@ -95,11 +86,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 		mockServerKeys.valid_until_ts = Date.now() - 1000;
 
 		await expect(
-			getPublicKeyFromRemoteServer(
-				'test.server',
-				'test.server',
-				`${EncryptionValidAlgorithm.ed25519}:test_key`,
-			),
+			getPublicKeyFromRemoteServer('test.server', 'test.server', `${EncryptionValidAlgorithm.ed25519}:test_key`),
 		).rejects.toThrow('Expired remote public key');
 	});
 
@@ -107,32 +94,18 @@ describe('getPublicKeyFromRemoteServer', () => {
 		mockServerKeys.verify_keys = {};
 
 		await expect(
-			getPublicKeyFromRemoteServer(
-				'test.server',
-				'test.server',
-				`${EncryptionValidAlgorithm.ed25519}:test_key`,
-			),
+			getPublicKeyFromRemoteServer('test.server', 'test.server', `${EncryptionValidAlgorithm.ed25519}:test_key`),
 		).rejects.toThrow('Public key not found');
 	});
 
 	it('should throw error for invalid algorithm', async () => {
-		await expect(
-			getPublicKeyFromRemoteServer(
-				'test.server',
-				'test.server',
-				'invalid_alg:test_key',
-			),
-		).rejects.toThrow('Invalid algorithm');
+		await expect(getPublicKeyFromRemoteServer('test.server', 'test.server', 'invalid_alg:test_key')).rejects.toThrow('Invalid algorithm');
 	});
 
 	it('should throw error for invalid algorithm format', async () => {
-		await expect(
-			getPublicKeyFromRemoteServer(
-				'test.server',
-				'test.server',
-				'invalid_algorithm_format',
-			),
-		).rejects.toThrow('Invalid algorithm and version format');
+		await expect(getPublicKeyFromRemoteServer('test.server', 'test.server', 'invalid_algorithm_format')).rejects.toThrow(
+			'Invalid algorithm and version format',
+		);
 	});
 
 	it('should handle network errors gracefully', async () => {
@@ -143,11 +116,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 		globalThis.fetch = errorFetch;
 
 		await expect(
-			getPublicKeyFromRemoteServer(
-				'test.server',
-				'test.server',
-				`${EncryptionValidAlgorithm.ed25519}:test_key`,
-			),
+			getPublicKeyFromRemoteServer('test.server', 'test.server', `${EncryptionValidAlgorithm.ed25519}:test_key`),
 		).rejects.toThrow();
 	});
 
@@ -162,21 +131,13 @@ describe('getPublicKeyFromRemoteServer', () => {
 		globalThis.fetch = invalidJsonFetch;
 
 		await expect(
-			getPublicKeyFromRemoteServer(
-				'test.server',
-				'test.server',
-				`${EncryptionValidAlgorithm.ed25519}:test_key`,
-			),
+			getPublicKeyFromRemoteServer('test.server', 'test.server', `${EncryptionValidAlgorithm.ed25519}:test_key`),
 		).rejects.toThrow();
 	});
 
 	it('should successfully retrieve and validate a public key with different algorithm version', async () => {
 		const seed = nacl.randomBytes(32);
-		const keyPair = await generateKeyPairs(
-			seed,
-			EncryptionValidAlgorithm.ed25519,
-			'another_version',
-		);
+		const keyPair = await generateKeyPairs(seed, EncryptionValidAlgorithm.ed25519, 'another_version');
 		const serverName = 'test.server';
 		const keyId = `${keyPair.algorithm}:${keyPair.version}`;
 
@@ -195,9 +156,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 				};
 
 				const canonicalJson = encodeCanonicalJson(baseServerKey);
-				const signature = await keyPair.sign(
-					new TextEncoder().encode(canonicalJson),
-				);
+				const signature = await keyPair.sign(new TextEncoder().encode(canonicalJson));
 
 				const fullServerKey = {
 					...baseServerKey,
@@ -218,11 +177,7 @@ describe('getPublicKeyFromRemoteServer', () => {
 		specialMockFetch.preconnect = async () => undefined;
 		globalThis.fetch = specialMockFetch;
 
-		const result = await getPublicKeyFromRemoteServer(
-			serverName,
-			serverName,
-			keyId,
-		);
+		const result = await getPublicKeyFromRemoteServer(serverName, serverName, keyId);
 
 		expect(result).toBeDefined();
 		expect(result.key).toBeDefined();

@@ -5,8 +5,7 @@ export type DefaultEventMap = Record<string | symbol, any>;
 export type AnyEventTypeOf<EventMap extends DefaultEventMap> = keyof EventMap;
 
 /** @public */
-export type AnyEventOf<EventMap extends DefaultEventMap> =
-	EventMap[keyof EventMap];
+export type AnyEventOf<EventMap extends DefaultEventMap> = EventMap[keyof EventMap];
 
 /** @public */
 export type AnyEventHandlerOf<EventMap extends DefaultEventMap> = {
@@ -16,26 +15,17 @@ export type AnyEventHandlerOf<EventMap extends DefaultEventMap> = {
 }[keyof EventMap];
 
 /** @public */
-export type EventTypeOf<
-	EventMap extends DefaultEventMap,
-	EventValue extends EventMap[keyof EventMap],
-> = {
-	[EventType in keyof EventMap]: EventMap[EventType] extends EventValue
-		? EventType
-		: never;
+export type EventTypeOf<EventMap extends DefaultEventMap, EventValue extends EventMap[keyof EventMap]> = {
+	[EventType in keyof EventMap]: EventMap[EventType] extends EventValue ? EventType : never;
 }[keyof EventMap];
 
 /** @public */
-export type EventOf<
-	EventMap extends DefaultEventMap,
-	EventType extends AnyEventTypeOf<EventMap>,
-> = EventMap[EventType] extends void ? never : EventMap[EventType];
+export type EventOf<EventMap extends DefaultEventMap, EventType extends AnyEventTypeOf<EventMap>> = EventMap[EventType] extends void
+	? never
+	: EventMap[EventType];
 
 /** @public */
-export type EventHandlerOf<
-	EventMap extends DefaultEventMap,
-	EventType extends AnyEventTypeOf<EventMap>,
-> = EventMap[EventType] extends void
+export type EventHandlerOf<EventMap extends DefaultEventMap, EventType extends AnyEventTypeOf<EventMap>> = EventMap[EventType] extends void
 	? () => unknown | Promise<unknown>
 	: (event: EventMap[EventType]) => unknown | Promise<unknown>;
 
@@ -43,39 +33,26 @@ export type EventHandlerOf<
 export type OffCallbackHandler = () => void;
 
 /** @public */
-export interface IAsyncDispatcher<
-	EventMap extends DefaultEventMap = DefaultEventMap,
-> {
-	on<
-		T extends AnyEventOf<EventMap>,
-		EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>,
-	>(
+export interface IAsyncDispatcher<EventMap extends DefaultEventMap = DefaultEventMap> {
+	on<T extends AnyEventOf<EventMap>, EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>>(
 		type: EventType,
 		handler: EventHandlerOf<EventMap, EventType>,
 	): OffCallbackHandler;
-	once<
-		T extends AnyEventOf<EventMap>,
-		EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>,
-	>(
+	once<T extends AnyEventOf<EventMap>, EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>>(
 		type: EventType,
 		handler: EventHandlerOf<EventMap, EventType>,
 	): OffCallbackHandler;
-	off<
-		T extends AnyEventOf<EventMap>,
-		EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>,
-	>(type: EventType, handler: EventHandlerOf<EventMap, EventType>): void;
+	off<T extends AnyEventOf<EventMap>, EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>>(
+		type: EventType,
+		handler: EventHandlerOf<EventMap, EventType>,
+	): void;
 
 	has(key: AnyEventTypeOf<EventMap>): boolean;
 	events(): AnyEventTypeOf<EventMap>[];
 
-	emit<
-		T extends AnyEventOf<EventMap>,
-		EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>,
-	>(
+	emit<T extends AnyEventOf<EventMap>, EventType extends AnyEventTypeOf<EventMap> = EventTypeOf<EventMap, T>>(
 		type: EventType,
-		...[event]: EventOf<EventMap, EventType> extends void
-			? [undefined?]
-			: [EventOf<EventMap, EventType>]
+		...[event]: EventOf<EventMap, EventType> extends void ? [undefined?] : [EventOf<EventMap, EventType>]
 	): Promise<void>;
 }
 
@@ -89,13 +66,8 @@ const kEvents = Symbol('events');
  *
  * @public
  */
-export class AsyncDispatcher<EventMap extends DefaultEventMap = DefaultEventMap>
-	implements IAsyncDispatcher<EventMap>
-{
-	private [kEvents] = new Map<
-		AnyEventTypeOf<EventMap>,
-		AnyEventHandlerOf<EventMap>[]
-	>();
+export class AsyncDispatcher<EventMap extends DefaultEventMap = DefaultEventMap> implements IAsyncDispatcher<EventMap> {
+	private [kEvents] = new Map<AnyEventTypeOf<EventMap>, AnyEventHandlerOf<EventMap>[]>();
 
 	private [kOnce] = new WeakMap<AnyEventHandlerOf<EventMap>, number>();
 

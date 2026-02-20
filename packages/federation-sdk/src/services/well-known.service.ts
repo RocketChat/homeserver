@@ -1,5 +1,6 @@
 import { singleton } from 'tsyringe';
-import { ConfigService } from './config.service';
+
+import type { ConfigService } from './config.service';
 
 @singleton()
 export class WellKnownService {

@@ -1,8 +1,10 @@
-import { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
+import type { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia } from 'elysia';
-import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
+import type { Elysia } from 'elysia';
+
 import {
+	type ErrorResponse,
+	ErrorResponseDto,
 	type InternalMessageResponse,
 	InternalMessageResponseDto,
 	type InternalReactionResponse,
@@ -22,11 +24,7 @@ export const internalMessagePlugin = (app: Elysia) => {
 	return app
 		.patch(
 			'/internal/messages/:messageId',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalMessageResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalMessageResponse | ErrorResponse> => {
 				const { roomId, message, senderUserId } = body;
 				try {
 					const eventId = await federationSDK.updateMessage(
@@ -64,19 +62,10 @@ export const internalMessagePlugin = (app: Elysia) => {
 		)
 		.post(
 			'/internal/messages/:messageId/reactions',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalReactionResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalReactionResponse | ErrorResponse> => {
 				const { roomId, emoji, senderUserId } = body;
 				try {
-					const eventId = await federationSDK.sendReaction(
-						roomId as RoomID,
-						params.messageId as EventID,
-						emoji,
-						senderUserId as UserID,
-					);
+					const eventId = await federationSDK.sendReaction(roomId as RoomID, params.messageId as EventID, emoji, senderUserId as UserID);
 					return {
 						event_id: eventId,
 						origin_server_ts: Date.now(),
@@ -105,19 +94,10 @@ export const internalMessagePlugin = (app: Elysia) => {
 		)
 		.delete(
 			'/internal/messages/:messageId/reactions',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalReactionResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalReactionResponse | ErrorResponse> => {
 				const { roomId, emoji, senderUserId } = body;
 				try {
-					const eventId = await federationSDK.unsetReaction(
-						roomId as RoomID,
-						params.messageId as EventID,
-						emoji,
-						senderUserId as UserID,
-					);
+					const eventId = await federationSDK.unsetReaction(roomId as RoomID, params.messageId as EventID, emoji, senderUserId as UserID);
 					return {
 						event_id: eventId,
 						origin_server_ts: Date.now(),
@@ -146,15 +126,9 @@ export const internalMessagePlugin = (app: Elysia) => {
 		)
 		.delete(
 			'/internal/messages/:messageId',
-			async ({
-				params,
-				body,
-			}): Promise<InternalRedactMessageResponse | ErrorResponse> => {
+			async ({ params, body }): Promise<InternalRedactMessageResponse | ErrorResponse> => {
 				const { roomId } = body;
-				const eventId = await federationSDK.redactMessage(
-					roomId as RoomID,
-					params.messageId as EventID,
-				);
+				const eventId = await federationSDK.redactMessage(roomId as RoomID, params.messageId as EventID);
 
 				return {
 					event_id: eventId,

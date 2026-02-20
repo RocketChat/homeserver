@@ -6,34 +6,12 @@ const input = './packages/federation-sdk/dist/index.d.ts';
 // Função para determinar se um módulo deve ser tratado como externo
 const isExternal = (id) => {
 	// Módulos Node.js nativos
-	if (
-		id.startsWith('node:') ||
-		[
-			'http',
-			'https',
-			'dns',
-			'events',
-			'net',
-			'stream',
-			'tls',
-			'worker_threads',
-		].includes(id)
-	) {
+	if (id.startsWith('node:') || ['http', 'https', 'dns', 'events', 'net', 'stream', 'tls', 'worker_threads'].includes(id)) {
 		return true;
 	}
 
 	// Dependências de terceiros
-	if (
-		[
-			'zod',
-			'mongodb',
-			'tsyringe',
-			'pino',
-			'pino-std-serializers',
-			'sonic-boom',
-			'tweetnacl',
-		].includes(id)
-	) {
+	if (['zod', 'mongodb', 'tsyringe', 'pino', 'pino-std-serializers', 'sonic-boom', 'tweetnacl'].includes(id)) {
 		return true;
 	}
 
@@ -68,11 +46,7 @@ export default [
 		},
 		plugins: [
 			dts({
-				includeExternal: [
-					'@rocket.chat/federation-core',
-					'@rocket.chat/federation-room',
-					'@rocket.chat/federation-crypto',
-				],
+				includeExternal: ['@rocket.chat/federation-core', '@rocket.chat/federation-room', '@rocket.chat/federation-crypto'],
 				respectExternal: true,
 			}),
 		],

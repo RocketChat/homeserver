@@ -1,12 +1,10 @@
 import type { EventID, RoomID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
-import { Elysia, t } from 'elysia';
-import {
-	ErrorResponseDto,
-	SendJoinEventDto,
-	SendJoinResponseDto,
-} from '../../dtos';
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
+
+import { ErrorResponseDto, SendJoinEventDto, SendJoinResponseDto } from '../../dtos';
 
 export const sendJoinPlugin = (app: Elysia) => {
 	return app.use(canAccessResourceMiddleware('room')).put(
@@ -18,11 +16,7 @@ export const sendJoinPlugin = (app: Elysia) => {
 		}) => {
 			const { roomId, eventId } = params;
 
-			return federationSDK.sendJoin(
-				roomId as RoomID,
-				eventId as EventID,
-				body as any,
-			);
+			return federationSDK.sendJoin(roomId as RoomID, eventId as EventID, body as any);
 		},
 		{
 			params: t.Object({

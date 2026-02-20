@@ -1,9 +1,5 @@
-import type {
-	EventID,
-	Pdu,
-	RejectCode,
-	StateID,
-} from '@rocket.chat/federation-room';
+import type { EventID, Pdu, RejectCode, StateID } from '@rocket.chat/federation-room';
+
 import type { EventBase as CoreEventBase } from '../events/eventBase';
 
 // TODO: use room package

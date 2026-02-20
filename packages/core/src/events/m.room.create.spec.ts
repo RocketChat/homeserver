@@ -1,18 +1,12 @@
+import type { RoomVersion } from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { expect, test } from 'bun:test';
 
-import {
-	PersistentEventFactory,
-	RoomVersion,
-} from '@rocket.chat/federation-room';
 import type { SignedEvent } from '../types';
+import { type RoomCreateEvent, isRoomCreateEvent, roomCreateEvent } from './m.room.create';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import {
-	type RoomCreateEvent,
-	isRoomCreateEvent,
-	roomCreateEvent,
-} from './m.room.create';
 
 const finalEventId = '$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4';
 const finalEvent = {
@@ -34,17 +28,14 @@ const finalEvent = {
 
 	signatures: {
 		hs1: {
-			'ed25519:a_HDhg':
-				'rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg',
+			'ed25519:a_HDhg': 'rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg',
 		},
 	},
 	unsigned: { age_ts: 1733107418648 },
 };
 
 test('roomCreateEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const event = roomCreateEvent({
 		roomId: '!uTqsSSWabZzthsSCNf:hs1',
@@ -54,9 +45,7 @@ test('roomCreateEvent', async () => {
 
 	const signed = await signEvent(event, signature, 'hs1');
 
-	expect(signed).toStrictEqual(
-		finalEvent as unknown as SignedEvent<RoomCreateEvent>,
-	);
+	expect(signed).toStrictEqual(finalEvent as unknown as SignedEvent<RoomCreateEvent>);
 	expect(signed).toHaveProperty(
 		'signatures.hs1.ed25519:a_HDhg',
 		'rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg',
@@ -86,9 +75,7 @@ const roomId = '!uTqsSSWabZzthsSCNf:hs1';
 const timestamp = 1733107418648;
 
 test('roomCreateEvent with factory', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const sender = '@admin:hs1';
 
@@ -114,12 +101,7 @@ test('roomCreateEvent with factory', async () => {
 		finalEvent.content.room_version as RoomVersion,
 	);
 
-	const signed = await signEvent(
-		createEvent.redactedEvent as any,
-		signature,
-		'hs1',
-		false,
-	);
+	const signed = await signEvent(createEvent.redactedEvent as any, signature, 'hs1', false);
 
 	expect({
 		...signed,
@@ -131,7 +113,7 @@ test('roomCreateEvent with factory', async () => {
 		'rmnvsWlTL+JP8Sk9767UR0svF4IrzC9zhUPbT+y4u31r/qtIaF9OtT1FP8tD/yFGD92qoTcRb4Oo8DRbLRXcAg',
 	);
 
-	const eventId = createEvent.eventId;
+	const { eventId } = createEvent;
 
 	expect(eventId).toBe(finalEventId);
 });
