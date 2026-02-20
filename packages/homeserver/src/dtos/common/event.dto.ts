@@ -12,7 +12,7 @@ export const EventSignatureDto = t.Record(t.String(), t.Record(t.String(), t.Str
 
 type TOptional = ReturnType<typeof t.Optional>;
 
-function HiddenOptional<T extends TOptional>(schema: T): T {
+function hiddenOptional<T extends TOptional>(schema: T): T {
 	return schema;
 }
 
@@ -26,7 +26,7 @@ export const EventBaseDto = t.Object({
 	prev_events: t.Array(t.String(), {
 		description: 'Previous events in the room',
 	}),
-	origin: HiddenOptional(t.Optional(t.String())),
+	origin: hiddenOptional(t.Optional(t.String())),
 	auth_events: t.Array(t.String(), { description: 'Authorization events' }),
 	hashes: EventHashDto,
 	signatures: EventSignatureDto,
