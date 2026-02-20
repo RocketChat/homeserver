@@ -1,4 +1,4 @@
-import { type Static, t } from 'elysia';
+import { t } from 'elysia';
 
 export const FederationErrorResponseDto = t.Object({
 	errcode: t.Enum({
@@ -9,5 +9,3 @@ export const FederationErrorResponseDto = t.Object({
 	}),
 	error: t.String(),
 });
-
-export type FederationErrorResponseDto = Static<typeof FederationErrorResponseDto>;

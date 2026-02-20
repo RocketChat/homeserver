@@ -7,7 +7,7 @@ import { type RoomVersion } from './type';
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
 import type { EventID, PduForType, StateMapKey } from '../types/_common';
-import type { Pdu, PduContent, PduType, Signature, type PduJoinRuleEventContent, type PduMembershipEventContent } from '../types/v3-11';
+import type { Pdu, PduContent, PduType, Signature, PduJoinRuleEventContent, PduMembershipEventContent } from '../types/v3-11';
 
 export function extractDomainFromId(identifier: string) {
 	const idx = identifier.indexOf(':');
@@ -445,4 +445,3 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		});
 	}
 }
-export type { EventStore };

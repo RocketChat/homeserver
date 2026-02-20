@@ -6,6 +6,7 @@ const outputDir = './federation-bundle';
 function getLocalPackages(packages: string[]) {
 	const localPackages = new Set();
 	for (const pkg of packages) {
+		// eslint-disable-next-line @typescript-eslint/no-var-requires import/no-dynamic-require
 		const packageJson = require(`./packages/${pkg}/package.json`);
 		localPackages.add(packageJson.name);
 	}
@@ -13,6 +14,7 @@ function getLocalPackages(packages: string[]) {
 }
 
 const getDependencies = (pkg: string, type: 'dependencies' | 'devDependencies' | 'peerDependencies') => {
+	// eslint-disable-next-line @typescript-eslint/no-var-requires import/no-dynamic-require
 	const packageJson = require(`./packages/${pkg}/package.json`);
 	return packageJson[type] ?? {};
 };

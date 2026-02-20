@@ -79,6 +79,7 @@ export class StateService {
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		@inject(delay(() => require('./event.service').EventService))
 		private readonly eventService: EventService,
 	) {}

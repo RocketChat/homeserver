@@ -305,22 +305,47 @@ describe('Canonical json serialization', () => {
 		},
 		// In arrays, JSON.stringify converts undefined/function/symbol to null.
 		{
-			input: { a: [undefined, () => {}, Symbol('sym'), 1] },
+			input: {
+				a: [
+					undefined,
+					() => {
+						/* noop */
+					},
+					Symbol('sym'),
+					1,
+				],
+			},
 			expected: '{"a":[null,null,null,1]}',
 		},
 		// invalid value should be removed in objects
 		{
-			input: { a: undefined, b: () => {}, c: Symbol('sym'), d: 1 },
+			input: {
+				a: undefined,
+				b: () => {
+					/* noop */
+				},
+				c: Symbol('sym'),
+				d: 1,
+			},
 			expected: '{"d":1}',
 		},
 		// mix those previous two
 		{
 			input: {
 				a: undefined,
-				b: () => {},
+				b: () => {
+					/* noop */
+				},
 				c: Symbol('sym'),
 				d: 1,
-				e: [undefined, () => {}, Symbol('sym'), 2],
+				e: [
+					undefined,
+					() => {
+						/* noop */
+					},
+					Symbol('sym'),
+					2,
+				],
 			},
 			expected: '{"d":1,"e":[null,null,null,2]}',
 		},
