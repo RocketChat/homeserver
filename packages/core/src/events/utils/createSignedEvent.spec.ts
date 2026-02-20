@@ -28,7 +28,7 @@ describe('makeSignedEvent', () => {
 		expect({
 			event: signed,
 			_id: id,
-			// @ts-ignore
+			// @ts-expect-error --- IGNORE ---
 		}).toStrictEqual(result);
 	});
 });

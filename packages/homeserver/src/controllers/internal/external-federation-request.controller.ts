@@ -207,7 +207,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 			if (!PersistentEventFactory.isSupportedRoomVersion(version)) {
 				throw new Error(`Room version ${version} is not supported`);
 			}
-			// @ts-ignore
+			// @ts-expect-error defining as undefined to force to be recalculated
 			event.hashes = undefined; // force to be recalculated
 			const pdu = PersistentEventFactory.createFromRawEvent(event, version);
 			if (!pdu) {

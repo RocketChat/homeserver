@@ -722,7 +722,6 @@ export async function checkEventAuthWithState(
 	}
 
 	// If type is m.room.third_party_invite:
-	// @ts-ignore the pdu union doesn't have this type TODO: add
 	if (event.type === 'm.room.third_party_invite') {
 		console.warn('third_party_invite not implemented');
 		throw new StateResolverAuthorizationError(RejectCodes.NotImplemented, {

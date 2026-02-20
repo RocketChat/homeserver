@@ -82,7 +82,6 @@ export async function setup() {
 
 	app
 		.use(
-			// @ts-ignore - Elysia is not typed correctly
 			swagger({
 				documentation: {
 					info: {

@@ -1941,7 +1941,6 @@ describe('StateService', async () => {
 			content: {
 				membership: 'join',
 				displayname: 'ah',
-				// @ts-ignore this has been fixed by rodrigo already in zod
 				avatar_url: null as unknown as undefined,
 			},
 			sender: '@ah:syn1.tunnel.dev.rocket.chat' as room.UserID,
@@ -1955,7 +1954,7 @@ describe('StateService', async () => {
 				'$N6KEZQ-ClhVa9P4_MgGmtnR32zZk-W-y7IebNjdoKqI',
 				'$wWJBjUdHzAds-ZjpgwLQdDKpA3lQQLPkJuQCq-yUHQc',
 			] as EventID[],
-			// @ts-ignore
+			// @ts-expect-error --- IGNORE ---
 			origin: 'syn1.tunnel.dev.rocket.chat',
 			unsigned: {
 				age: 2,
@@ -2018,7 +2017,7 @@ describe('StateService', async () => {
 			type: 'm.room.message',
 			content: {
 				'body': '1',
-				// @ts-ignore are we missing this ? TODO:
+				// @ts-expect-error --- IGNORE ---
 				'm.mentions': {},
 				'msgtype': 'm.text',
 			},

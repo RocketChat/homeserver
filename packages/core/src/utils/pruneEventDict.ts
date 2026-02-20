@@ -118,8 +118,7 @@ export function pruneEventDict<T extends Pdu>(
 
 		for (const field of fields) {
 			if (field in eventDict.content) {
-				// @ts-ignore
-				content[field] = eventDict.content[field];
+				content[field] = (eventDict.content as Record<string, unknown>)[field];
 			}
 		}
 	}
@@ -130,8 +129,7 @@ export function pruneEventDict<T extends Pdu>(
 		addFields(...contentKeys);
 
 		if (roomVersion.updated_redaction_rules) {
-			// @ts-ignore
-			const thirdPartyInvite = eventDict.content.third_party_invite;
+			const thirdPartyInvite = (eventDict.content as Record<string, unknown>)?.third_party_invite as Record<string, unknown> | undefined;
 			if (thirdPartyInvite && typeof thirdPartyInvite === 'object') {
 				content.third_party_invite = {};
 				if ('signed' in thirdPartyInvite) {
