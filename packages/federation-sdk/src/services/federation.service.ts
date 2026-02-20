@@ -227,7 +227,7 @@ export class FederationService {
 			throw new Error(`invalid state_key ${inviteEvent.stateKey}, no domain found, failed to send invite`);
 		}
 
-		return await this.requestService.put<any>(residentServer, uri, {
+		return this.requestService.put<any>(residentServer, uri, {
 			event: inviteEvent.event,
 			room_version: roomVersion,
 			invite_room_state: await this.stateService.getStrippedRoomState(inviteEvent.roomId),

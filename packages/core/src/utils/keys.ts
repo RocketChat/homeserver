@@ -27,7 +27,7 @@ export async function generateKeyPairs(seed: Uint8Array, algorithm = EncryptionV
 export async function generateKeyPairsFromString(content: string) {
 	const [algorithm, version, seed] = content.trim().split(' ');
 
-	return await generateKeyPairs(
+	return generateKeyPairs(
 		Uint8Array.from(atob(seed), (c) => c.charCodeAt(0)),
 		algorithm as EncryptionValidAlgorithm,
 		version,
@@ -71,7 +71,7 @@ export const getKeyPair = async (config: { signingKeyPath: string }): Promise<Si
 		await storeKeyPairs(seeds, signingKeyPath);
 	}
 
-	return Promise.all(seeds.map(async (seed) => await generateKeyPairs(seed.seed, seed.algorithm, seed.version)));
+	return Promise.all(seeds.map(async (seed) => generateKeyPairs(seed.seed, seed.algorithm, seed.version)));
 };
 
 export const convertSigningKeyToBase64 = (signingKey: SigningKey): string =>

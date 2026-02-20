@@ -13,7 +13,7 @@ export class ServerService {
 	) {}
 
 	async getValidPublicKeyFromLocal(origin: string, key: string): Promise<string | undefined> {
-		return await this.serverRepository.getValidPublicKeyFromLocal(origin, key);
+		return this.serverRepository.getValidPublicKeyFromLocal(origin, key);
 	}
 
 	async storePublicKey(origin: string, key: string, value: string, validUntil: number): Promise<void> {
