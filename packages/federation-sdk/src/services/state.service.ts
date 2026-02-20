@@ -17,12 +17,12 @@ import type {
 	RoomID,
 	RoomVersion,
 	State,
-	type EventID,
-	type EventStore,
-	type PduContent,
-	type PduType,
-	type StateID,
-	type StateMapKey,
+	EventID,
+	EventStore,
+	PduContent,
+	PduType,
+	StateID,
+	StateMapKey,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 

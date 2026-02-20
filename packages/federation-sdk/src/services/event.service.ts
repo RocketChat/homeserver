@@ -9,7 +9,7 @@ import type {
 } from '@rocket.chat/federation-core';
 import { isPresenceEDU, isTypingEDU, generateId, pruneEventDict, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import { PersistentEventFactory, RoomState, getAuthChain } from '@rocket.chat/federation-room';
-import type { RoomID, RoomVersion, type EventID, type Pdu, type PduForType, type PduType, type State } from '@rocket.chat/federation-room';
+import type { RoomID, RoomVersion, EventID, Pdu, PduForType, PduType, State } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
 

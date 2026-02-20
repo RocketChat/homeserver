@@ -1,6 +1,6 @@
 import { generateId } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-core';
-import type { Pdu, PduForType, PduType, RejectCode, RoomID, StateID, type EventID } from '@rocket.chat/federation-room';
+import type { Pdu, PduForType, PduType, RejectCode, RoomID, StateID, EventID } from '@rocket.chat/federation-room';
 import type { Collection, FindCursor, FindOptions, InsertOneResult, UpdateResult, WithId } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 

@@ -1,6 +1,6 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import { MongoClient } from 'mongodb';
-import type { Db, type MongoClientOptions } from 'mongodb';
+import type { Db, MongoClientOptions } from 'mongodb';
 
 export class DatabaseConnectionService {
 	private client: MongoClient | null = null;

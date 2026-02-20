@@ -1,5 +1,5 @@
 import { PersistentEventFactory } from '@rocket.chat/federation-room';
-import type { EventID, RoomID, UserID, type PduCreateEventContent } from '@rocket.chat/federation-room';
+import type { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
 import type { Elysia } from 'elysia';
 import { t } from 'elysia';

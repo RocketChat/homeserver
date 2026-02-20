@@ -5,7 +5,7 @@ import { encodeCanonicalJson, toUnpaddedBase64 } from '@rocket.chat/federation-c
 import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
-import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
+import { getStateMapKey } from '../state_resolution/definitions/definitions';
 import type { EventID, PduForType, StateMapKey } from '../types/_common';
 import type { Pdu, PduContent, PduType, Signature, PduJoinRuleEventContent, PduMembershipEventContent } from '../types/v3-11';
 

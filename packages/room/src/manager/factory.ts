@@ -7,7 +7,7 @@ import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
 import { RoomID, roomIdSchema } from '../types/_common';
 import type { PduForType, UserID } from '../types/_common';
-import type { Pdu, PduType, type PduCreateEventContent } from '../types/v3-11';
+import type { Pdu, PduType, PduCreateEventContent } from '../types/v3-11';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {

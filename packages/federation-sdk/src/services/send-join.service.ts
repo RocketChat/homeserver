@@ -1,5 +1,5 @@
 import { getAuthChain } from '@rocket.chat/federation-room';
-import type { PduForType, RoomID, type EventID } from '@rocket.chat/federation-room';
+import type { PduForType, RoomID, EventID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import type { ConfigService } from './config.service';

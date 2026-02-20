@@ -1,5 +1,5 @@
 import { ForbiddenError, createLogger } from '@rocket.chat/federation-core';
-import type { RoomID, UserID, type EventID, type PersistentEventBase } from '@rocket.chat/federation-room';
+import type { RoomID, UserID, EventID, PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import type { EventService } from './event.service';

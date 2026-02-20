@@ -10,7 +10,7 @@ import type {
 	RoomID,
 	RoomVersion,
 	UserID,
-	type EventID,
+	EventID,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
