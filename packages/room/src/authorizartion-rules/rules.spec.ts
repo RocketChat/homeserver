@@ -43,7 +43,7 @@ class FakeEventCreatorBase {
 	}
 
 	withType(type: PduType | 'test') {
-		// @ts-ignore breaking due to type and content conflict, doesn't matter here
+		// @ts-expect-error breaking due to type and content conflict, doesn't matter here
 		this._event.type = type;
 		return this;
 	}
