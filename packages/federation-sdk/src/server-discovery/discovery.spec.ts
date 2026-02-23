@@ -190,6 +190,7 @@ async function runTest(inputs: INPUT[], outputs: OUTPUT[]) {
 		const input = inputs[i];
 		const output = outputs[i];
 
+		// eslint-disable-next-line no-await-in-loop
 		const [address, headers] = await getHomeserverFinalAddress(input);
 
 		expect(address).toBe(output[0]);

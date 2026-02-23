@@ -38,7 +38,7 @@ export class MissingEventService {
 				return false;
 			}
 
-			for (const { event, eventId } of fetchedEvents.events) {
+			for await (const { event, eventId } of fetchedEvents.events) {
 				this.logger.debug(`Persisting fetched missing event ${eventId}`);
 
 				// TODO is there anything else we need to do with missing dependencies from received event?

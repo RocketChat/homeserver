@@ -61,7 +61,7 @@ export class ServerService {
 		};
 
 		let signedResponse = baseResponse;
-		for (const key of signingKeys) {
+		for await (const key of signingKeys) {
 			signedResponse = await signJson(signedResponse, key, this.configService.serverName);
 		}
 

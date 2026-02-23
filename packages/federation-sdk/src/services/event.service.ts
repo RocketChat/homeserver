@@ -255,7 +255,7 @@ export class EventService {
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
 		this.logger.debug(`Processing ${edus.length} incoming EDUs`);
 
-		for (const edu of edus) {
+		for await (const edu of edus) {
 			try {
 				await this.processEDU(edu);
 			} catch (error) {
@@ -317,7 +317,7 @@ export class EventService {
 			return;
 		}
 
-		for (const presenceUpdate of push) {
+		for await (const presenceUpdate of push) {
 			if (!presenceUpdate.user_id || !presenceUpdate.presence) {
 				this.logger.warn('Invalid presence update, missing user_id or presence');
 				continue;
@@ -616,7 +616,7 @@ export class EventService {
 			const store = this.stateService._getStore(event.version);
 
 			// Extract state event IDs and collect auth chain IDs
-			for (const [, event] of state.entries()) {
+			for await (const [, event] of state.entries()) {
 				// Get the complete auth chain for this event
 				try {
 					const authChain = await getAuthChain(event, store);
@@ -673,7 +673,7 @@ export class EventService {
 			// Get the event store
 			const store = this.stateService._getStore(roomVersion);
 			// Extract state event objects and collect auth chain IDs
-			for (const [, event] of state.entries()) {
+			for await (const [, event] of state.entries()) {
 				// PersistentEventBase has an event getter that contains the actual event data
 				pdus.push(event.event);
 
@@ -877,7 +877,7 @@ export class EventService {
 						break;
 					}
 
-					for (const userId of Object.keys(oldPowerLevels)) {
+					for await (const userId of Object.keys(oldPowerLevels)) {
 						if (userId === owner) {
 							continue;
 						}
@@ -896,7 +896,7 @@ export class EventService {
 					if (!oldPowerLevels) {
 						this.logger.debug('No current power levels, setting new ones');
 						// no existing, set the new ones
-						for (const [userId, power] of Object.entries(changedUserPowers)) {
+						for await (const [userId, power] of Object.entries(changedUserPowers)) {
 							this.logger.debug(`Setting power level for ${userId} to ${power}`);
 							await this.eventEmitterService.emit('homeserver.matrix.room.role', {
 								sender_id: event.event.sender,
@@ -922,7 +922,7 @@ export class EventService {
 					);
 
 					// for the difference only new power level content matters
-					for (const userId of setOrUnsetPowerLevels) {
+					for await (const userId of setOrUnsetPowerLevels) {
 						const newPowerLevel = changedUserPowers[userId]; // if unset, it's 0, if set, it's the power level
 						this.logger.debug(`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`);
 						await this.eventEmitterService.emit('homeserver.matrix.room.role', {
@@ -936,7 +936,7 @@ export class EventService {
 					this.logger.debug('Emitting events for changed user powers');
 
 					// now use the new content
-					for (const [userId, power] of Object.entries(changedUserPowers)) {
+					for await (const [userId, power] of Object.entries(changedUserPowers)) {
 						if (
 							power === oldPowerLevels[userId] || // no change
 							setOrUnsetPowerLevels.has(userId) // already handled

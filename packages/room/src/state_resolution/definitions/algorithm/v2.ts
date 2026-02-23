@@ -163,7 +163,7 @@ export async function resolveStateV2Plus(
 	// etc.
 	const powerEvents = new Map<EventID, PersistentEventBase>(); // using map instead of set to store the event objects uniquely
 
-	for (const eventid of fullConflictedSet) {
+	for await (const eventid of fullConflictedSet) {
 		const [event] = await wrappedStore.getEvents([eventid]);
 		if (!event) {
 			console.warn('event not found in eventMap', eventid);
@@ -176,11 +176,11 @@ export async function resolveStateV2Plus(
 
 	//  For each such power event P, enlarge X by adding the events in the auth chain of P which also belong to the full conflicted set.
 
-	for (const event of powerEvents.values()) {
+	for await (const event of powerEvents.values()) {
 		// pass cache
 		const authChain = await getAuthChain(event, wrappedStore);
 
-		for (const authEventId of authChain) {
+		for await (const authEventId of authChain) {
 			const [authEvent] = await wrappedStore.getEvents([authEventId]);
 
 			if (!authEvent) {
@@ -277,7 +277,7 @@ export async function resolveStateV2Plus(
 	const finalState = await iterativeAuthChecks(orderedRemainingEvents, partiallyResolvedState, wrappedStore);
 
 	// 5. Update the result by replacing any event with the event with the same key from the unconflicted state map, if such an event exists, to get the final resolved state.
-	for (const [key, value] of unconflicted) {
+	for await (const [key, value] of unconflicted) {
 		if (finalState.has(key)) {
 			const [event] = await wrappedStore.getEvents([value]);
 			assert(event, 'event should not be null');

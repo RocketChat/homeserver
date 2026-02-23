@@ -32,6 +32,7 @@ export abstract class BaseQueue<T> {
 					continue;
 				}
 
+				// eslint-disable-next-line no-await-in-loop
 				await this.handler(item);
 			} catch (err) {
 				logger.error({

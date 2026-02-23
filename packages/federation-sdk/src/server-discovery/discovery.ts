@@ -257,7 +257,7 @@ async function fromSRVDelegation(hostname: string): Promise<[IP4or6WithPortStrin
 	const _do = async (name: string): Promise<Awaited<ReturnType<typeof fromSRVDelegation>> | undefined> => {
 		const srvs = await resolver.resolveSrv(name);
 
-		for (const srv of srvs) {
+		for await (const srv of srvs) {
 			const _is4 = isIPv4(srv.name);
 			const _is6 = isIPv6(srv.name);
 

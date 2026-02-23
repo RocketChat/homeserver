@@ -185,7 +185,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 
 	stateAtEventId.set(createEvent.eventId, new Map([[createEvent.getUniqueStateIdentifier(), createEvent]]));
 
-	for (const nodeId of rest) {
+	for await (const nodeId of rest) {
 		const prevEventsNodeIds = reverseGraph.get(nodeId)!;
 
 		let stateBefore: Map<StateMapKey, PersistentEventBase>;

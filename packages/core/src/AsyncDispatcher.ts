@@ -114,7 +114,7 @@ export class AsyncDispatcher<EventMap extends DefaultEventMap = DefaultEventMap>
 	async emit(type: keyof EventMap, ...[event]: any[]): Promise<void> {
 		const list = [...(this[kEvents].get(type) ?? [])];
 
-		for (const handler of list) {
+		for await (const handler of list) {
 			await handler(event);
 
 			if (this[kOnce].get(handler)) {

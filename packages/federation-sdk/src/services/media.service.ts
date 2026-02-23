@@ -17,7 +17,7 @@ export class MediaService {
 			`/_matrix/media/r0/download/${serverName}/${mediaId}`,
 		];
 
-		for (const endpoint of endpoints) {
+		for await (const endpoint of endpoints) {
 			try {
 				// TODO: Stream remote file downloads instead of buffering the entire file in memory.
 				const response = await this.federationRequest.requestBinaryData('GET', serverName, endpoint);

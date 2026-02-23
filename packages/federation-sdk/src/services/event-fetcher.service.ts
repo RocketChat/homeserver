@@ -81,7 +81,7 @@ export class EventFetcherService {
 			// TODO: Improve batch event requests to avoid too many parallel requests
 			const chunks = this.chunkArray(eventIds, 10);
 
-			for (const chunk of chunks) {
+			for await (const chunk of chunks) {
 				if (targetServerName === this.configService.serverName) {
 					this.logger.info(`Skipping request to self: ${targetServerName}`);
 					return [];

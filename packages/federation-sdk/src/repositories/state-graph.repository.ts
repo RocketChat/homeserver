@@ -122,7 +122,7 @@ export class StateGraphRepository {
 		}
 
 		let previousStateId = await this.createDelta(create, '' as StateID);
-		for (const event of rest) {
+		for await (const event of rest) {
 			previousStateId = await this.createDelta(event, previousStateId);
 		}
 

@@ -34,6 +34,7 @@ export class StagingAreaQueue {
 				if (!roomId) continue;
 
 				for (const handler of this.handlers) {
+					// eslint-disable-next-line no-await-in-loop
 					await handler(roomId);
 				}
 			}

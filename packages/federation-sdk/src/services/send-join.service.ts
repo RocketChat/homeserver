@@ -48,7 +48,7 @@ export class SendJoinService {
 
 		const authChain = [];
 
-		for (const event of state.values()) {
+		for await (const event of state.values()) {
 			const authEvents = await getAuthChain(event, stateService._getStore(roomVersion));
 			authChain.push(...authEvents);
 		}
