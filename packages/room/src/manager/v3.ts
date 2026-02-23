@@ -1,7 +1,7 @@
 import { toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 
 import { PersistentEventBase } from './event-wrapper';
-import type { REDACT_ALLOW_ALL_KEYS, type EventStore } from './event-wrapper';
+import type { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
 import type { RoomVersion3To11 } from './type';
 import type { EventID } from '../types/_common';
 import type { PduType } from '../types/v3-11';
