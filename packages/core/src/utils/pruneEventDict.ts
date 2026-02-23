@@ -40,7 +40,7 @@ type AllowedKeysPowerLevels = Extract<
 type MergeMultipleKeys<T, U> = T | U;
 export type Prettify<T> = {
 	[K in keyof T]: T[K];
-} & {};
+} & object;
 
 export function pruneEventDict<T extends Pdu>(
 	eventDict: T,
@@ -52,7 +52,9 @@ export function pruneEventDict<T extends Pdu>(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): Prettify<Pick<T, MergeMultipleKeys<AllowedKeysDefault, T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never> & {}>> {
+): Prettify<
+	Pick<T, MergeMultipleKeys<AllowedKeysDefault, T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never> & object>
+> {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it
 	 * operates on objects rather than event instances.

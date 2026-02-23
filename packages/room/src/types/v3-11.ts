@@ -623,6 +623,6 @@ export const PduTimelineSchema = z.discriminatedUnion('type', [
 
 export const PduSchema = z.discriminatedUnion('type', [...PduTimelineSchema.options, ...PduStateEventSchema.options]);
 
-export type Pdu = z.infer<typeof PduSchema> & {};
+export type Pdu = z.infer<typeof PduSchema> & object;
 
 export type PduContent<T extends PduType = PduType> = PduForType<T>['content'];

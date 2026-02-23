@@ -25,7 +25,7 @@ type MakeOptional<T, K extends keyof T> = {
 
 export type Prettify<T> = {
 	[K in keyof T]: T[K];
-} & {};
+} & object;
 
 export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<MakeOptional<T, 'hashes' | 'signatures'>>;
 
