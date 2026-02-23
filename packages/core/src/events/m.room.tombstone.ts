@@ -1,4 +1,5 @@
-import { EventID } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
+
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -38,9 +39,7 @@ type RoomTombstoneEventProps = {
 	origin?: string;
 };
 
-const isTruthy = <T>(
-	value: T | null | undefined | false | 0 | '',
-): value is T => {
+const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
 	return Boolean(value);
 };
 
@@ -66,11 +65,7 @@ export const roomTombstoneEvent = ({
 	return createEventBase('m.room.tombstone', {
 		roomId,
 		sender,
-		auth_events: [
-			auth_events['m.room.create'],
-			auth_events['m.room.power_levels'],
-			auth_events['m.room.member'],
-		].filter(isTruthy),
+		auth_events: [auth_events['m.room.create'], auth_events['m.room.power_levels'], auth_events['m.room.member']].filter(isTruthy),
 		prev_events,
 		depth,
 		content,
@@ -84,9 +79,5 @@ export const roomTombstoneEvent = ({
 
 export const createRoomTombstoneEvent = createEventWithId(roomTombstoneEvent);
 
-export const isRoomTombstoneEvent = (
-	event: EventBase | null | undefined,
-): event is RoomTombstoneEvent =>
-	Boolean(
-		event && typeof event === 'object' && event.type === 'm.room.tombstone',
-	);
+export const isRoomTombstoneEvent = (event: EventBase | null | undefined): event is RoomTombstoneEvent =>
+	Boolean(event && typeof event === 'object' && event.type === 'm.room.tombstone');

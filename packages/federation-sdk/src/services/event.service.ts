@@ -4,15 +4,10 @@ import type {
 	PresenceEDU,
 	RoomPowerLevelsEvent,
 	TypingEDU,
+	RedactionEvent,
+	EventStore,
 } from '@rocket.chat/federation-core';
-import { isPresenceEDU, isTypingEDU } from '@rocket.chat/federation-core';
-import type { RedactionEvent } from '@rocket.chat/federation-core';
-import { generateId } from '@rocket.chat/federation-core';
-import type { EventStore } from '@rocket.chat/federation-core';
-import { pruneEventDict } from '@rocket.chat/federation-core';
-
-import { checkSignAndHashes } from '@rocket.chat/federation-core';
-import { createLogger } from '@rocket.chat/federation-core';
+import { isPresenceEDU, isTypingEDU, generateId, pruneEventDict, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type Pdu,
@@ -27,15 +22,16 @@ import {
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 import type { z } from 'zod';
+
+import { ConfigService } from './config.service';
+import { EventEmitterService } from './event-emitter.service';
+import { ServerService } from './server.service';
+import type { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
-import { ConfigService } from './config.service';
-import { EventEmitterService } from './event-emitter.service';
-import { ServerService } from './server.service';
-import type { StateService } from './state.service';
 
 export interface AuthEventParams {
 	roomId: string;
@@ -51,6 +47,7 @@ export class EventService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
 		@inject(delay(() => require('./state.service').StateService))
 		private readonly stateService: StateService,
 		private readonly serverService: ServerService,
@@ -63,20 +60,14 @@ export class EventService {
 		private readonly lockRepository: LockRepository,
 	) {}
 
-	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(
-		eventId: EventID,
-		type?: T,
-	): Promise<P | null> {
+	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(eventId: EventID, type?: T): Promise<P | null> {
 		if (type) {
-			return (this.eventRepository.findByIdAndType(eventId, type) ??
-				null) as Promise<P>;
+			return (this.eventRepository.findByIdAndType(eventId, type) ?? null) as Promise<P>;
 		}
 		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;
 	}
 
-	async checkIfEventsExists(
-		eventIds: EventID[],
-	): Promise<{ missing: EventID[]; found: EventID[] }> {
+	async checkIfEventsExists(eventIds: EventID[]): Promise<{ missing: EventID[]; found: EventID[] }> {
 		// TODO, return only the IDs, not the full events
 		const eventsCursor = this.eventRepository.findByIds(eventIds);
 		const events = await eventsCursor.toArray();
@@ -97,9 +88,7 @@ export class EventService {
 		);
 	}
 
-	async getLeastDepthEventForRoom(
-		roomId: string,
-	): Promise<EventStagingStore | null> {
+	async getLeastDepthEventForRoom(roomId: string): Promise<EventStagingStore | null> {
 		return this.eventStagingRepository.getLeastDepthEventForRoom(roomId);
 	}
 
@@ -110,15 +99,7 @@ export class EventService {
 		await this.eventStagingRepository.removeByEventId(event._id);
 	}
 
-	async processIncomingTransaction({
-		origin,
-		pdus,
-		edus,
-	}: {
-		origin: string;
-		pdus: Pdu[];
-		edus?: BaseEDU[];
-	}): Promise<void> {
+	async processIncomingTransaction({ origin, pdus, edus }: { origin: string; pdus: Pdu[]; edus?: BaseEDU[] }): Promise<void> {
 		if (!Array.isArray(pdus)) {
 			throw new Error('pdus must be an array');
 		}
@@ -143,10 +124,7 @@ export class EventService {
 			this.currentTransactions.add(origin);
 
 			// process both PDU and EDU in "parallel" to no block EDUs due to heavy PDU operations
-			await Promise.all([
-				this.processIncomingPDUs(origin, pdus),
-				edus && this.processIncomingEDUs(edus),
-			]);
+			await Promise.all([this.processIncomingPDUs(origin, pdus), edus && this.processIncomingEDUs(edus)]);
 		} finally {
 			this.currentTransactions.delete(origin);
 		}
@@ -195,18 +173,13 @@ export class EventService {
 
 					const roomVersion = await getRoomVersion(event.room_id);
 
-					const pdu = PersistentEventFactory.createFromRawEvent(
-						event,
-						roomVersion,
-					);
+					const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
 
-					const eventId = pdu.eventId;
+					const { eventId } = pdu;
 
 					const existing = await this.eventRepository.findById(eventId);
 					if (existing) {
-						this.logger.info(
-							`Ignoring received event ${eventId} which we have already seen`,
-						);
+						this.logger.info(`Ignoring received event ${eventId} which we have already seen`);
 
 						// TODO we may need to check if an event is an outlier and re-process it
 						continue;
@@ -216,10 +189,7 @@ export class EventService {
 					await this.eventStagingRepository.create(eventId, origin, event);
 
 					// acquire a lock for processing the event
-					const lock = await this.lockRepository.getLock(
-						roomId,
-						this.configService.instanceId,
-					);
+					const lock = await this.lockRepository.getLock(roomId, this.configService.instanceId);
 					if (!lock) {
 						this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
 						continue;
@@ -241,11 +211,7 @@ export class EventService {
 			throw new Error('M_UNKNOWN_ROOM_VERSION');
 		}
 
-		if (
-			event.type === 'm.room.member' &&
-			event.content.membership === 'invite' &&
-			'third_party_invite' in event.content
-		) {
+		if (event.type === 'm.room.member' && event.content.membership === 'invite' && 'third_party_invite' in event.content) {
 			throw new Error('Third party invites are not supported');
 		}
 
@@ -289,7 +255,7 @@ export class EventService {
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
 		this.logger.debug(`Processing ${edus.length} incoming EDUs`);
 
-		for (const edu of edus) {
+		for await (const edu of edus) {
 			try {
 				await this.processEDU(edu);
 			} catch (error) {
@@ -312,15 +278,10 @@ export class EventService {
 		}
 		if (isPresenceEDU(edu)) {
 			await this.processPresenceEDU(edu, origin);
-			return;
 		}
-		return;
 	}
 
-	private async processTypingEDU(
-		typingEDU: TypingEDU,
-		origin?: string,
-	): Promise<void> {
+	private async processTypingEDU(typingEDU: TypingEDU, origin?: string): Promise<void> {
 		const config = this.configService.getConfig('edu');
 		if (!config.processTyping) {
 			return;
@@ -329,15 +290,11 @@ export class EventService {
 		const { room_id, user_id, typing } = typingEDU.content;
 
 		if (!room_id || !user_id || typeof typing !== 'boolean') {
-			this.logger.warn(
-				'Invalid typing EDU content, missing room_id, user_id, or typing',
-			);
+			this.logger.warn('Invalid typing EDU content, missing room_id, user_id, or typing');
 			return;
 		}
 
-		this.logger.debug(
-			`Processing typing notification for room ${room_id}: ${user_id} (typing: ${typing})`,
-		);
+		this.logger.debug(`Processing typing notification for room ${room_id}: ${user_id} (typing: ${typing})`);
 
 		await this.eventEmitterService.emit('homeserver.matrix.typing', {
 			room_id,
@@ -347,10 +304,7 @@ export class EventService {
 		});
 	}
 
-	private async processPresenceEDU(
-		presenceEDU: PresenceEDU,
-		origin?: string,
-	): Promise<void> {
+	private async processPresenceEDU(presenceEDU: PresenceEDU, origin?: string): Promise<void> {
 		const config = this.configService.getConfig('edu');
 		if (!config.processPresence) {
 			return;
@@ -363,19 +317,15 @@ export class EventService {
 			return;
 		}
 
-		for (const presenceUpdate of push) {
+		for await (const presenceUpdate of push) {
 			if (!presenceUpdate.user_id || !presenceUpdate.presence) {
-				this.logger.warn(
-					'Invalid presence update, missing user_id or presence',
-				);
+				this.logger.warn('Invalid presence update, missing user_id or presence');
 				continue;
 			}
 
 			this.logger.debug(
 				`Processing presence update for ${presenceUpdate.user_id}: ${presenceUpdate.presence}${
-					presenceUpdate.last_active_ago !== undefined
-						? ` (${presenceUpdate.last_active_ago}ms ago)`
-						: ''
+					presenceUpdate.last_active_ago !== undefined ? ` (${presenceUpdate.last_active_ago}ms ago)` : ''
 				}`,
 			);
 
@@ -392,11 +342,7 @@ export class EventService {
 		const errors: string[] = [];
 
 		if (event.type !== 'm.room.create') {
-			if (
-				!event.prev_events ||
-				!Array.isArray(event.prev_events) ||
-				event.prev_events.length === 0
-			) {
+			if (!event.prev_events || !Array.isArray(event.prev_events) || event.prev_events.length === 0) {
 				errors.push('Event must reference previous events (prev_events)');
 			}
 
@@ -419,9 +365,7 @@ export class EventService {
 				const senderDomain = this.extractDomain(event.sender);
 
 				if (roomDomain !== senderDomain) {
-					errors.push(
-						`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`,
-					);
+					errors.push(`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`);
 				}
 			}
 
@@ -432,26 +376,9 @@ export class EventService {
 			if (!event.content || !event.content.room_version) {
 				errors.push('Create event must specify a room_version');
 			} else {
-				const validRoomVersions = [
-					'1',
-					'2',
-					'3',
-					'4',
-					'5',
-					'6',
-					'7',
-					'8',
-					'9',
-					'10',
-					'11',
-				];
-				if (
-					typeof event.content.room_version !== 'string' ||
-					!validRoomVersions.includes(event.content.room_version)
-				) {
-					errors.push(
-						`Unsupported room version: ${event.content.room_version}`,
-					);
+				const validRoomVersions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
+				if (typeof event.content.room_version !== 'string' || !validRoomVersions.includes(event.content.room_version)) {
+					errors.push(`Unsupported room version: ${event.content.room_version}`);
 				}
 			}
 		}
@@ -465,10 +392,7 @@ export class EventService {
 	}
 
 	private async getRoomVersion(event: Pick<Pdu, 'room_id'>) {
-		return (
-			this.stateService.getRoomVersion(event.room_id) ||
-			PersistentEventFactory.defaultRoomVersion
-		);
+		return this.stateService.getRoomVersion(event.room_id) || PersistentEventFactory.defaultRoomVersion;
 	}
 
 	private getEventSchema(roomVersion: string, eventType: string): z.ZodSchema {
@@ -479,9 +403,7 @@ export class EventService {
 
 		const schema = versionSchemas[eventType] || versionSchemas.default;
 		if (!schema) {
-			throw new Error(
-				`No schema available for event type ${eventType} in room version ${roomVersion}`,
-			);
+			throw new Error(`No schema available for event type ${eventType} in room version ${roomVersion}`);
 		}
 
 		return schema;
@@ -492,10 +414,7 @@ export class EventService {
 	}
 
 	async getCreateEventForRoom(roomId: string): Promise<Pdu | null> {
-		const createEvent = await this.eventRepository.findByRoomIdAndType(
-			roomId,
-			'm.room.create',
-		);
+		const createEvent = await this.eventRepository.findByRoomIdAndType(roomId, 'm.room.create');
 		return createEvent?.event ?? null;
 	}
 
@@ -514,22 +433,14 @@ export class EventService {
 		const maxDepth = Math.min(...latestEventsData);
 
 		const events = await this.eventRepository
-			.findEventsByRoomAndDepth(
-				roomId,
-				minDepth,
-				maxDepth,
-				[...earliestEventsId, ...latestEventsId],
-				limit,
-			)
+			.findEventsByRoomAndDepth(roomId, minDepth, maxDepth, [...earliestEventsId, ...latestEventsId], limit)
 			.map((e) => e.event)
 			.toArray();
 
 		return { events };
 	}
 
-	async getEventsByIds(
-		eventIds: EventID[],
-	): Promise<{ _id: EventID; event: Pdu }[]> {
+	async getEventsByIds(eventIds: EventID[]): Promise<{ _id: EventID; event: Pdu }[]> {
 		if (!eventIds || eventIds.length === 0) {
 			return [];
 		}
@@ -547,21 +458,11 @@ export class EventService {
 	 * Find an invite event for a specific user in a specific room
 	 */
 	findInviteEvent(roomId: string, userId: string): Promise<EventStore | null> {
-		return this.eventRepository.findInviteEventsByRoomIdAndUserId(
-			roomId,
-			userId,
-		);
+		return this.eventRepository.findInviteEventsByRoomIdAndUserId(roomId, userId);
 	}
 
-	async getAuthEventIds(
-		eventType: PduType,
-		params: AuthEventParams,
-	): Promise<EventStore[]> {
-		const authEventsCursor = this.eventRepository.findAuthEvents(
-			eventType,
-			params.roomId,
-			params.senderId,
-		);
+	async getAuthEventIds(eventType: PduType, params: AuthEventParams): Promise<EventStore[]> {
+		const authEventsCursor = this.eventRepository.findAuthEvents(eventType, params.roomId, params.senderId);
 		const authEvents: EventStore[] = [];
 
 		for await (const storeEvent of authEventsCursor) {
@@ -583,9 +484,7 @@ export class EventService {
 			) {
 				authEvents.push(storeEvent);
 			} else {
-				this.logger.warn(
-					`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`,
-				);
+				this.logger.warn(`EventStore with id ${storeEvent._id} has an unrecognized event type: ${storeEvent.event?.type}`);
 			}
 		}
 
@@ -595,17 +494,13 @@ export class EventService {
 	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
 		const eventIdToRedact = redactionEvent.redacts;
 		if (!eventIdToRedact) {
-			this.logger.error(
-				`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`,
-			);
+			this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
 			return;
 		}
 
 		const eventToRedact = await this.eventRepository.findById(eventIdToRedact);
 		if (!eventToRedact) {
-			this.logger.warn(
-				`[REDACTION] Event to redact ${eventIdToRedact} not found`,
-			);
+			this.logger.warn(`[REDACTION] Event to redact ${eventIdToRedact} not found`);
 			return;
 		}
 
@@ -649,24 +544,15 @@ export class EventService {
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}
 
-	async checkUserPermission(
-		powerLevelsEventId: EventID,
-		userId: string,
-		actionType: PduType,
-	): Promise<boolean> {
-		const powerLevelsEvent =
-			await this.eventRepository.findById(powerLevelsEventId);
+	async checkUserPermission(powerLevelsEventId: EventID, userId: string, actionType: PduType): Promise<boolean> {
+		const powerLevelsEvent = await this.eventRepository.findById(powerLevelsEventId);
 		if (!powerLevelsEvent) {
 			this.logger.warn(`Power levels event ${powerLevelsEventId} not found`);
 			return false;
 		}
 
-		const powerLevelsContent = powerLevelsEvent.event
-			.content as RoomPowerLevelsEvent['content'];
-		const userPowerLevel =
-			powerLevelsContent.users?.[userId] ??
-			powerLevelsContent.users_default ??
-			0;
+		const powerLevelsContent = powerLevelsEvent.event.content as RoomPowerLevelsEvent['content'];
+		const userPowerLevel = powerLevelsContent.users?.[userId] ?? powerLevelsContent.users_default ?? 0;
 
 		let requiredPowerLevel = powerLevelsContent.events?.[actionType];
 		if (requiredPowerLevel === undefined) {
@@ -693,10 +579,7 @@ export class EventService {
 
 		// not we try to process one room at a time
 		for await (const roomId of rooms) {
-			const lock = await this.lockRepository.getLock(
-				roomId,
-				this.configService.instanceId,
-			);
+			const lock = await this.lockRepository.getLock(roomId, this.configService.instanceId);
 			if (!lock) {
 				this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
 				continue;
@@ -713,10 +596,7 @@ export class EventService {
 		}
 	}
 
-	async getStateIds(
-		roomId: string,
-		eventId: EventID,
-	): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
+	async getStateIds(roomId: string, eventId: EventID): Promise<{ pdu_ids: string[]; auth_chain_ids: string[] }> {
 		try {
 			// Ensure the event exists and belongs to the requested room
 			const event = await this.stateService.getEvent(eventId);
@@ -736,7 +616,7 @@ export class EventService {
 			const store = this.stateService._getStore(event.version);
 
 			// Extract state event IDs and collect auth chain IDs
-			for (const [, event] of state.entries()) {
+			for await (const [, event] of state.entries()) {
 				// Get the complete auth chain for this event
 				try {
 					const authChain = await getAuthChain(event, store);
@@ -778,10 +658,8 @@ export class EventService {
 				throw new Error('M_NOT_FOUND');
 			}
 
-			let state: State;
-
 			// Get state at a specific event
-			state = await this.stateService.getStateBeforeEvent(event);
+			const state = await this.stateService.getStateBeforeEvent(event);
 
 			const pdus: Record<string, unknown>[] = [];
 			const authChainIds = new Set<EventID>();
@@ -795,7 +673,7 @@ export class EventService {
 			// Get the event store
 			const store = this.stateService._getStore(roomVersion);
 			// Extract state event objects and collect auth chain IDs
-			for (const [, event] of state.entries()) {
+			for await (const [, event] of state.entries()) {
 				// PersistentEventBase has an event getter that contains the actual event data
 				pdus.push(event.event);
 
@@ -830,7 +708,7 @@ export class EventService {
 			}
 
 			return {
-				pdus: pdus,
+				pdus,
 				auth_chain: authChain,
 			};
 		} catch (error) {
@@ -862,21 +740,13 @@ export class EventService {
 		try {
 			const parsedLimit = Math.min(Math.max(1, limit), 100);
 
-			const newestRef = await this.eventRepository.findNewestEventForBackfill(
-				roomId,
-				eventIds,
-			);
+			const newestRef = await this.eventRepository.findNewestEventForBackfill(roomId, eventIds);
 			if (!newestRef) {
 				throw new Error('No newest event found');
 			}
 
 			const events = await this.eventRepository
-				.findEventsForBackfill(
-					roomId,
-					newestRef.event.depth,
-					newestRef.event.origin_server_ts,
-					parsedLimit,
-				)
+				.findEventsForBackfill(roomId, newestRef.event.depth, newestRef.event.origin_server_ts, parsedLimit)
 				.toArray();
 
 			const pdus = events.map((eventStore) => eventStore.event);
@@ -905,12 +775,10 @@ export class EventService {
 
 		switch (true) {
 			case event.event.type === 'm.room.create':
-				{
-					await this.eventEmitterService.emit('homeserver.matrix.room.create', {
-						event_id: eventId,
-						event: event.event,
-					});
-				}
+				await this.eventEmitterService.emit('homeserver.matrix.room.create', {
+					event_id: eventId,
+					event: event.event,
+				});
 				break;
 			case event.event.type === 'm.room.message':
 				await this.eventEmitterService.emit('homeserver.matrix.message', {
@@ -966,23 +834,17 @@ export class EventService {
 				break;
 			}
 			case event.event.type === 'm.room.server_acl': {
-				await this.eventEmitterService.emit(
-					'homeserver.matrix.room.server_acl',
-					{
-						event_id: eventId,
-						event: event.event,
-					},
-				);
+				await this.eventEmitterService.emit('homeserver.matrix.room.server_acl', {
+					event_id: eventId,
+					event: event.event,
+				});
 				break;
 			}
 			case event.event.type === 'm.room.power_levels': {
-				await this.eventEmitterService.emit(
-					'homeserver.matrix.room.power_levels',
-					{
-						event_id: eventId,
-						event: event.event,
-					},
-				);
+				await this.eventEmitterService.emit('homeserver.matrix.room.power_levels', {
+					event_id: eventId,
+					event: event.event,
+				});
 				const getRole = (powerLevel: number) => {
 					if (powerLevel === 100) {
 						return 'owner';
@@ -1000,9 +862,7 @@ export class EventService {
 				}
 
 				// at this point we potentially have the new power level event
-				const oldRoomState = new RoomState(
-					await this.stateService.getStateBeforeEvent(plEvent),
-				);
+				const oldRoomState = new RoomState(await this.stateService.getStateBeforeEvent(plEvent));
 
 				const oldPowerLevels = oldRoomState.powerLevels?.users;
 
@@ -1017,7 +877,7 @@ export class EventService {
 						break;
 					}
 
-					for (const userId of Object.keys(oldPowerLevels)) {
+					for await (const userId of Object.keys(oldPowerLevels)) {
 						if (userId === owner) {
 							continue;
 						}
@@ -1036,19 +896,14 @@ export class EventService {
 					if (!oldPowerLevels) {
 						this.logger.debug('No current power levels, setting new ones');
 						// no existing, set the new ones
-						for (const [userId, power] of Object.entries(changedUserPowers)) {
-							this.logger.debug(
-								`Setting power level for ${userId} to ${power}`,
-							);
-							await this.eventEmitterService.emit(
-								'homeserver.matrix.room.role',
-								{
-									sender_id: event.event.sender,
-									user_id: userId,
-									room_id: roomId,
-									role: getRole(power),
-								},
-							);
+						for await (const [userId, power] of Object.entries(changedUserPowers)) {
+							this.logger.debug(`Setting power level for ${userId} to ${power}`);
+							await this.eventEmitterService.emit('homeserver.matrix.room.role', {
+								sender_id: event.event.sender,
+								user_id: userId,
+								room_id: roomId,
+								role: getRole(power),
+							});
 						}
 
 						break;
@@ -1057,9 +912,7 @@ export class EventService {
 					const usersInOldPowerLevelEvent = Object.keys(oldPowerLevels);
 					const usersInNewPowerLevelEvent = Object.keys(changedUserPowers);
 
-					const setOrUnsetPowerLevels = new Set(
-						usersInNewPowerLevelEvent,
-					).difference(new Set(usersInOldPowerLevelEvent));
+					const setOrUnsetPowerLevels = new Set(usersInNewPowerLevelEvent).difference(new Set(usersInOldPowerLevelEvent));
 
 					this.logger.debug(
 						{
@@ -1069,11 +922,9 @@ export class EventService {
 					);
 
 					// for the difference only new power level content matters
-					for (const userId of setOrUnsetPowerLevels) {
+					for await (const userId of setOrUnsetPowerLevels) {
 						const newPowerLevel = changedUserPowers[userId]; // if unset, it's 0, if set, it's the power level
-						this.logger.debug(
-							`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`,
-						);
+						this.logger.debug(`Emitting event for ${userId} with new power level ${newPowerLevel ?? 0}`);
 						await this.eventEmitterService.emit('homeserver.matrix.room.role', {
 							sender_id: event.event.sender,
 							user_id: userId,
@@ -1085,7 +936,7 @@ export class EventService {
 					this.logger.debug('Emitting events for changed user powers');
 
 					// now use the new content
-					for (const [userId, power] of Object.entries(changedUserPowers)) {
+					for await (const [userId, power] of Object.entries(changedUserPowers)) {
 						if (
 							power === oldPowerLevels[userId] || // no change
 							setOrUnsetPowerLevels.has(userId) // already handled
@@ -1093,9 +944,7 @@ export class EventService {
 							continue;
 						}
 
-						this.logger.debug(
-							`Emitting event for ${userId} with power level ${power}`,
-						);
+						this.logger.debug(`Emitting event for ${userId} with power level ${power}`);
 
 						await this.eventEmitterService.emit('homeserver.matrix.room.role', {
 							sender_id: event.event.sender,
@@ -1109,9 +958,7 @@ export class EventService {
 				break;
 			}
 			default:
-				this.logger.warn(
-					`Unknown event type: ${event.event.type} for emitterService for now`,
-				);
+				this.logger.warn(`Unknown event type: ${event.event.type} for emitterService for now`);
 				break;
 		}
 	}

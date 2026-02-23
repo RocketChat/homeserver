@@ -1,4 +1,5 @@
-import { Elysia } from 'elysia';
+import type { Elysia } from 'elysia';
+
 import { InternalPingResponseDto } from '../../dtos/internal/ping.dto';
 
 export const pingPlugin = (app: Elysia) =>

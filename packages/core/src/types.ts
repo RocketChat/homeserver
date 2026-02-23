@@ -1,5 +1,4 @@
-import { Pdu } from '@rocket.chat/federation-room';
-import type { EventID } from '@rocket.chat/federation-room';
+import type { Pdu, EventID } from '@rocket.chat/federation-room';
 
 export enum EncryptionValidAlgorithm {
 	ed25519 = 'ed25519',

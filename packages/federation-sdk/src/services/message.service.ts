@@ -1,12 +1,7 @@
-import { ForbiddenError } from '@rocket.chat/federation-core';
-import { createLogger } from '@rocket.chat/federation-core';
-import {
-	type EventID,
-	type PersistentEventBase,
-	RoomID,
-	UserID,
-} from '@rocket.chat/federation-room';
+import { ForbiddenError, createLogger } from '@rocket.chat/federation-core';
+import { type EventID, type PersistentEventBase, RoomID, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
@@ -60,33 +55,23 @@ export class MessageService {
 	) {}
 
 	private buildReplyContent(reply: Reply) {
-		if (
-			'replyToEventId' in reply &&
-			reply?.replyToEventId &&
-			'threadEventId' in reply &&
-			reply?.threadEventId
-		) {
+		if ('replyToEventId' in reply && reply?.replyToEventId && 'threadEventId' in reply && reply?.threadEventId) {
 			return {
 				'm.relates_to': {
 					...(!reply.showInMainChat && { rel_type: 'm.thread' as const }),
-					is_falling_back: false,
-					event_id: reply.threadEventId,
+					'is_falling_back': false,
+					'event_id': reply.threadEventId,
 					'm.in_reply_to': { event_id: reply.replyToEventId },
 				},
 			} as const;
 		}
 
-		if (
-			'threadEventId' in reply &&
-			reply?.threadEventId &&
-			'latestThreadEventId' in reply &&
-			reply?.latestThreadEventId
-		) {
+		if ('threadEventId' in reply && reply?.threadEventId && 'latestThreadEventId' in reply && reply?.latestThreadEventId) {
 			return {
 				'm.relates_to': {
 					...(!reply.showInMainChat && { rel_type: 'm.thread' as const }),
-					event_id: reply.threadEventId,
-					is_falling_back: true,
+					'event_id': reply.threadEventId,
+					'is_falling_back': true,
 					'm.in_reply_to': { event_id: reply.latestThreadEventId },
 				},
 			} as const;
@@ -112,9 +97,7 @@ export class MessageService {
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
-			throw new Error(
-				`Room version not found for room ${roomId} white trying to send message`,
-			);
+			throw new Error(`Room version not found for room ${roomId} white trying to send message`);
 		}
 
 		const event = await this.stateService.buildEvent<'m.room.message'>(
@@ -160,33 +143,18 @@ export class MessageService {
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
-			throw new Error(
-				`Room version not found for room ${roomId} white trying to send message`,
-			);
+			throw new Error(`Room version not found for room ${roomId} white trying to send message`);
 		}
 
-		return this.sendMessage(
-			roomId,
-			rawMessage,
-			formattedMessage,
-			senderUserId,
-			{
-				replyToEventId: eventToReplyTo,
-			},
-		);
+		return this.sendMessage(roomId, rawMessage, formattedMessage, senderUserId, {
+			replyToEventId: eventToReplyTo,
+		});
 	}
 
-	async sendFileMessage(
-		roomId: RoomID,
-		content: FileMessageContent,
-		senderUserId: UserID,
-		reply?: Reply,
-	): Promise<PersistentEventBase> {
+	async sendFileMessage(roomId: RoomID, content: FileMessageContent, senderUserId: UserID, reply?: Reply): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
-			throw new Error(
-				`Room version not found for room ${roomId} while trying to send file message`,
-			);
+			throw new Error(`Room version not found for room ${roomId} while trying to send file message`);
 		}
 
 		const event = await this.stateService.buildEvent<'m.room.message'>(
@@ -229,21 +197,13 @@ export class MessageService {
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
-			throw new Error(
-				`Room version not found for room ${roomId} while trying to send thread message`,
-			);
+			throw new Error(`Room version not found for room ${roomId} while trying to send thread message`);
 		}
 
-		return this.sendMessage(
-			roomId,
-			rawMessage,
-			formattedMessage,
-			senderUserId,
-			{
-				threadEventId: threadRootEventId,
-				latestThreadEventId: latestThreadEventId ?? threadRootEventId,
-			},
-		);
+		return this.sendMessage(roomId, rawMessage, formattedMessage, senderUserId, {
+			threadEventId: threadRootEventId,
+			latestThreadEventId: latestThreadEventId ?? threadRootEventId,
+		});
 	}
 
 	/**
@@ -259,37 +219,20 @@ export class MessageService {
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
-			throw new Error(
-				`Room version not found for room ${roomId} while trying to send thread message`,
-			);
+			throw new Error(`Room version not found for room ${roomId} while trying to send thread message`);
 		}
 
-		return this.sendMessage(
-			roomId,
-			rawMessage,
-			formattedMessage,
-			senderUserId,
-			{
-				threadEventId: threadRootEventId,
-				replyToEventId: eventToReplyTo,
-			},
-		);
+		return this.sendMessage(roomId, rawMessage, formattedMessage, senderUserId, {
+			threadEventId: threadRootEventId,
+			replyToEventId: eventToReplyTo,
+		});
 	}
 
-	async sendReaction(
-		roomId: RoomID,
-		eventId: EventID,
-		emoji: string,
-		senderUserId: UserID,
-	): Promise<string> {
+	async sendReaction(roomId: RoomID, eventId: EventID, emoji: string, senderUserId: UserID): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
-			this.logger.warn(
-				`Attempted to react to a message in a tombstoned room: ${roomId}`,
-			);
-			throw new ForbiddenError(
-				'Cannot react to a message in a tombstoned room',
-			);
+			this.logger.warn(`Attempted to react to a message in a tombstoned room: ${roomId}`);
+			throw new ForbiddenError('Cannot react to a message in a tombstoned room');
 		}
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
@@ -321,31 +264,25 @@ export class MessageService {
 		return reactionEvent.eventId;
 	}
 
-	async unsetReaction(
-		roomId: RoomID,
-		eventIdReactedTo: EventID,
-		_emoji: string,
-		senderUserId: UserID,
-	): Promise<string> {
+	async unsetReaction(roomId: RoomID, eventIdReactedTo: EventID, _emoji: string, senderUserId: UserID): Promise<string> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const redactionEvent =
-			await this.stateService.buildEvent<'m.room.redaction'>(
-				{
-					type: 'm.room.redaction',
-					content: {
-						reason: 'Unsetting reaction',
-					},
-					redacts: eventIdReactedTo,
-					room_id: roomId,
-					auth_events: [],
-					depth: 0,
-					prev_events: [],
-					origin_server_ts: Date.now(),
-					sender: senderUserId,
+		const redactionEvent = await this.stateService.buildEvent<'m.room.redaction'>(
+			{
+				type: 'm.room.redaction',
+				content: {
+					reason: 'Unsetting reaction',
 				},
-				roomInfo.room_version,
-			);
+				redacts: eventIdReactedTo,
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
+			roomInfo.room_version,
+		);
 
 		await this.stateService.handlePdu(redactionEvent);
 
@@ -367,10 +304,10 @@ export class MessageService {
 			{
 				type: 'm.room.message',
 				content: {
-					msgtype: 'm.text',
-					body: rawMessage,
-					format: 'org.matrix.custom.html',
-					formatted_body: formattedMessage,
+					'msgtype': 'm.text',
+					'body': rawMessage,
+					'format': 'org.matrix.custom.html',
+					'formatted_body': formattedMessage,
 					'm.new_content': {
 						msgtype: 'm.text',
 						body: rawMessage,
@@ -399,15 +336,10 @@ export class MessageService {
 		return redactionEvent.eventId;
 	}
 
-	async redactMessage(
-		roomId: RoomID,
-		eventIdToRedact: EventID,
-	): Promise<string> {
+	async redactMessage(roomId: RoomID, eventIdToRedact: EventID): Promise<string> {
 		const isTombstoned = await this.roomService.isRoomTombstoned(roomId);
 		if (isTombstoned) {
-			this.logger.warn(
-				`Attempted to delete a message in a tombstoned room: ${roomId}`,
-			);
+			this.logger.warn(`Attempted to delete a message in a tombstoned room: ${roomId}`);
 			throw new ForbiddenError('Cannot delete a message in a tombstoned room');
 		}
 
@@ -418,23 +350,22 @@ export class MessageService {
 			throw new Error(`Sender user ID not found for event ${eventIdToRedact}`);
 		}
 
-		const redactionEvent =
-			await this.stateService.buildEvent<'m.room.redaction'>(
-				{
-					type: 'm.room.redaction',
-					content: {
-						reason: `Deleting message: ${eventIdToRedact}`,
-					},
-					redacts: eventIdToRedact,
-					room_id: roomId,
-					auth_events: [],
-					depth: 0,
-					prev_events: [],
-					origin_server_ts: Date.now(),
-					sender: senderUserId.event.sender,
+		const redactionEvent = await this.stateService.buildEvent<'m.room.redaction'>(
+			{
+				type: 'm.room.redaction',
+				content: {
+					reason: `Deleting message: ${eventIdToRedact}`,
 				},
-				roomInfo.room_version,
-			);
+				redacts: eventIdToRedact,
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId.event.sender,
+			},
+			roomInfo.room_version,
+		);
 
 		await this.stateService.handlePdu(redactionEvent);
 

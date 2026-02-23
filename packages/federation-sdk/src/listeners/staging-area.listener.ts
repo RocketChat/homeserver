@@ -1,6 +1,7 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import { RoomID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { StagingAreaService } from '../services/staging-area.service';
 
@@ -8,10 +9,7 @@ import { StagingAreaService } from '../services/staging-area.service';
 export class StagingAreaListener {
 	private readonly logger = createLogger('StagingAreaListener');
 
-	constructor(
-		private readonly stagingAreaQueue: StagingAreaQueue,
-		private readonly stagingAreaService: StagingAreaService,
-	) {
+	constructor(private readonly stagingAreaQueue: StagingAreaQueue, private readonly stagingAreaService: StagingAreaService) {
 		this.stagingAreaQueue.registerHandler(this.handleQueueItem.bind(this));
 	}
 

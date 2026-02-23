@@ -1,19 +1,14 @@
-import {
-	EventID,
-	type PduCreateEventContent,
-	PersistentEventFactory,
-	RoomID,
-	UserID,
-} from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+import type { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia, t } from 'elysia';
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
+
 import {
 	type ErrorResponse,
 	ErrorResponseDto,
 	RoomIdDto,
 	UsernameDto,
-} from '../../dtos';
-import {
 	InternalBanUserBodyDto,
 	InternalBanUserParamsDto,
 	type InternalBanUserResponse,
@@ -65,11 +60,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/name',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalUpdateRoomNameResponse | ErrorResponse> => {
 				const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				const bodyParse = InternalUpdateRoomNameBodyDto.safeParse(body);
 				if (!roomIdParse.success || !bodyParse.success) {
@@ -83,11 +74,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 					};
 				}
 				const { name, senderUserId } = bodyParse.data;
-				return federationSDK.updateRoomName(
-					roomIdParse.data as RoomID,
-					name,
-					senderUserId as UserID,
-				);
+				return federationSDK.updateRoomName(roomIdParse.data as RoomID, name, senderUserId as UserID);
 			},
 			{
 				params: InternalUpdateRoomNameParamsDto,
@@ -105,19 +92,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/permissions/:userId',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalUpdateUserPowerLevelResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalUpdateUserPowerLevelResponse | ErrorResponse> => {
 				const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				const userIdParse = UsernameDto.safeParse(params.userId);
 				const bodyParse = InternalUpdateUserPowerLevelBodyDto.safeParse(body);
-				if (
-					!roomIdParse.success ||
-					!userIdParse.success ||
-					!bodyParse.success
-				) {
+				if (!roomIdParse.success || !userIdParse.success || !bodyParse.success) {
 					set.status = 400;
 					return {
 						error: 'Invalid request',
@@ -192,11 +171,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/leave',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalLeaveRoomResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalLeaveRoomResponse | ErrorResponse> => {
 				const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				const bodyParse = InternalLeaveRoomBodyDto.safeParse(body);
 				if (!roomIdParse.success || !bodyParse.success) {
@@ -211,10 +186,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				}
 				const { senderUserId } = bodyParse.data;
 				try {
-					const eventId = await federationSDK.leaveRoom(
-						roomIdParse.data as RoomID,
-						senderUserId as UserID,
-					);
+					const eventId = await federationSDK.leaveRoom(roomIdParse.data as RoomID, senderUserId as UserID);
 					return { eventId };
 				} catch (error) {
 					set.status = 500;
@@ -240,19 +212,11 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/kick/:memberId',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalKickUserResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalKickUserResponse | ErrorResponse> => {
 				const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				const memberIdParse = UsernameDto.safeParse(params.memberId);
 				const bodyParse = InternalKickUserBodyDto.safeParse(body);
-				if (
-					!roomIdParse.success ||
-					!memberIdParse.success ||
-					!bodyParse.success
-				) {
+				if (!roomIdParse.success || !memberIdParse.success || !bodyParse.success) {
 					set.status = 400;
 					return {
 						error: 'Invalid request',
@@ -263,14 +227,9 @@ export const internalRoomPlugin = (app: Elysia) => {
 						},
 					};
 				}
-				const { /*userIdToKick, */ senderUserId, reason } = bodyParse.data;
+				const { /* userIdToKick, */ senderUserId, reason } = bodyParse.data;
 				try {
-					const eventId = await federationSDK.kickUser(
-						params.roomId as RoomID,
-						params.memberId as UserID,
-						senderUserId as UserID,
-						reason,
-					);
+					const eventId = await federationSDK.kickUser(params.roomId as RoomID, params.memberId as UserID, senderUserId as UserID, reason);
 					return { eventId };
 				} catch (error) {
 					set.status = 500;
@@ -296,10 +255,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/ban/:userIdToBan',
-			async ({
-				params,
-				body,
-			}): Promise<InternalBanUserResponse | ErrorResponse> => {
+			async ({ params, body }): Promise<InternalBanUserResponse | ErrorResponse> => {
 				// const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				// const userIdParse = UsernameDto.safeParse(params.userIdToBan);
 				// const bodyParse = InternalBanUserBodyDto.safeParse(body);
@@ -348,21 +304,20 @@ export const internalRoomPlugin = (app: Elysia) => {
 					throw new Error('Room create event not found');
 				}
 
-				const membershipEvent =
-					PersistentEventFactory.newEvent<'m.room.member'>(
-						{
-							type: 'm.room.member',
-							content: { membership: 'ban' },
-							room_id: roomId as RoomID,
-							state_key: userIdToBan as UserID,
-							auth_events: [],
-							depth: 0,
-							prev_events: [],
-							origin_server_ts: Date.now(),
-							sender: senderUserId as UserID,
-						},
-						createEvent.getContent().room_version,
-					);
+				const membershipEvent = PersistentEventFactory.newEvent<'m.room.member'>(
+					{
+						type: 'm.room.member',
+						content: { membership: 'ban' },
+						room_id: roomId as RoomID,
+						state_key: userIdToBan as UserID,
+						auth_events: [],
+						depth: 0,
+						prev_events: [],
+						origin_server_ts: Date.now(),
+						sender: senderUserId as UserID,
+					},
+					createEvent.getContent().room_version,
+				);
 
 				const statesNeeded = membershipEvent.getAuthEventStateKeys();
 
@@ -395,11 +350,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 		)
 		.put(
 			'/internal/rooms/:roomId/tombstone',
-			async ({
-				params,
-				body,
-				set,
-			}): Promise<InternalTombstoneRoomResponse | ErrorResponse> => {
+			async ({ params, body, set }): Promise<InternalTombstoneRoomResponse | ErrorResponse> => {
 				const roomIdParse = RoomIdDto.safeParse(params.roomId);
 				const bodyParse = InternalTombstoneRoomBodyDto.safeParse(body);
 				if (!roomIdParse.success || !bodyParse.success) {
@@ -451,11 +402,7 @@ export const internalRoomPlugin = (app: Elysia) => {
 				const { roomId, userId } = params;
 				const { sender } = body;
 
-				const resp = await federationSDK.inviteUserToRoom(
-					userId as UserID,
-					roomId as RoomID,
-					sender as UserID,
-				);
+				const resp = await federationSDK.inviteUserToRoom(userId as UserID, roomId as RoomID, sender as UserID);
 				return {
 					eventId: resp.event_id,
 				};

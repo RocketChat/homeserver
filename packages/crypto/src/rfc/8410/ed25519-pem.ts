@@ -1,10 +1,4 @@
-import {
-	algorithmIdentifierTlv,
-	bitStringTlv,
-	octetStringTlv,
-	privateKeyVersionTlv,
-	sequenceOrderedTlv,
-} from '../../der';
+import { algorithmIdentifierTlv, bitStringTlv, octetStringTlv, privateKeyVersionTlv, sequenceOrderedTlv } from '../../der';
 
 enum KeyType {
 	private = 'PRIVATE KEY',
@@ -45,9 +39,7 @@ export function ed25519PrivateKeyRawToPem(rawKey: Uint8Array): string {
 	const algId = algorithmIdentifierTlv;
 	// privateKey PrivateKey -> OCTET STRING
 
-	const privKeyOctet = octetStringTlv(
-		octetStringTlv(rawKey),
-	); /* The ASN.1 type CurvePrivateKey is defined in
+	const privKeyOctet = octetStringTlv(octetStringTlv(rawKey)); /* The ASN.1 type CurvePrivateKey is defined in
    this document to hold the byte sequence.  Thus, when encoding a
    OneAsymmetricKey object, the private key is wrapped in a
    CurvePrivateKey object and wrapped by the OCTET STRING of the
@@ -56,10 +48,7 @@ export function ed25519PrivateKeyRawToPem(rawKey: Uint8Array): string {
 	// OneAsymmetricKey -> SEQUENCE
 	const oneAsymmetricKey = sequenceOrderedTlv([version, algId, privKeyOctet]);
 	// :)
-	return toPem(
-		Buffer.from(oneAsymmetricKey).toString('base64'),
-		KeyType.private,
-	);
+	return toPem(Buffer.from(oneAsymmetricKey).toString('base64'), KeyType.private);
 }
 
 /*

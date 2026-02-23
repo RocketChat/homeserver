@@ -1,6 +1,6 @@
 import type { EventBase } from '@rocket.chat/federation-core';
 import type { EventID } from '@rocket.chat/federation-room';
-import { Collection } from 'mongodb';
+import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
 export type Room = {
@@ -18,9 +18,7 @@ export type Room = {
 
 @singleton()
 export class RoomRepository {
-	constructor(
-		@inject('RoomCollection') private readonly collection: Collection<Room>,
-	) {}
+	constructor(@inject('RoomCollection') private readonly collection: Collection<Room>) {}
 
 	async upsert(roomId: string, state: EventBase[]) {
 		await this.collection.findOneAndUpdate(
@@ -35,45 +33,11 @@ export class RoomRepository {
 		);
 	}
 
-	async insert(
-		roomId: string,
-		props: { name?: string; canonicalAlias?: string; alias?: string },
-	): Promise<void> {
-		await this.collection.insertOne({
-			_id: roomId,
-			room: {
-				name: props.name || '',
-				join_rules: 'public',
-				version: '1',
-				alias: props.alias || '',
-				canonical_alias: props.canonicalAlias || '',
-			},
-		});
-	}
-
-	async getRoomVersion(roomId: string): Promise<string | null> {
-		const room = await this.collection.findOne(
-			{ _id: roomId },
-			{ projection: { version: 1 } },
-		);
-		return room?.room.version || null;
-	}
-
-	async updateRoomName(roomId: string, name: string): Promise<void> {
-		await this.collection.updateOne(
-			{ room_id: roomId },
-			{ $set: { name: name } },
-			{ upsert: false },
-		);
-	}
 	public async findOneById(roomId: string): Promise<Room | null> {
 		return this.collection.findOne({ _id: roomId });
 	}
 
-	async markRoomAsDeleted(
-		roomId: string,
-		tombstoneEventId: string,
-	): Promise<void> {
+	async markRoomAsDeleted(roomId: string, tombstoneEventId: string): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: roomId },
 			{

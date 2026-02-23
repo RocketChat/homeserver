@@ -1,9 +1,6 @@
 import { type Static, t } from 'elysia';
-import {
-	RoomIdDto,
-	ServerNameDto,
-	UsernameDto,
-} from '../common/validation.dto';
+
+import { RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
 
 export const InternalCreateRoomBodyDto = t.Object({
 	username: t.String({
@@ -116,48 +113,22 @@ export const InternalTombstoneRoomResponseDto = t.Object({
 });
 
 export type InternalCreateRoomBody = Static<typeof InternalCreateRoomBodyDto>;
-export type InternalCreateRoomResponse = Static<
-	typeof InternalCreateRoomResponseDto
->;
-export type InternalUpdateRoomNameParams = Static<
-	typeof InternalUpdateRoomNameParamsDto
->;
-export type InternalUpdateRoomNameBody = Static<
-	typeof InternalUpdateRoomNameBodyDto
->;
-export type InternalUpdateRoomNameResponse = Static<
-	typeof InternalRoomEventResponseDto
->;
-export type InternalUpdateUserPowerLevelParams = Static<
-	typeof InternalUpdateUserPowerLevelParamsDto
->;
-export type InternalUpdateUserPowerLevelBody = Static<
-	typeof InternalUpdateUserPowerLevelBodyDto
->;
-export type InternalUpdateUserPowerLevelResponse = Static<
-	typeof InternalRoomEventResponseDto
->;
+export type InternalCreateRoomResponse = Static<typeof InternalCreateRoomResponseDto>;
+export type InternalUpdateRoomNameParams = Static<typeof InternalUpdateRoomNameParamsDto>;
+export type InternalUpdateRoomNameBody = Static<typeof InternalUpdateRoomNameBodyDto>;
+export type InternalUpdateRoomNameResponse = Static<typeof InternalRoomEventResponseDto>;
+export type InternalUpdateUserPowerLevelParams = Static<typeof InternalUpdateUserPowerLevelParamsDto>;
+export type InternalUpdateUserPowerLevelBody = Static<typeof InternalUpdateUserPowerLevelBodyDto>;
+export type InternalUpdateUserPowerLevelResponse = Static<typeof InternalRoomEventResponseDto>;
 export type InternalLeaveRoomParams = Static<typeof InternalLeaveRoomParamsDto>;
 export type InternalLeaveRoomBody = Static<typeof InternalLeaveRoomBodyDto>;
-export type InternalLeaveRoomResponse = Static<
-	typeof InternalRoomEventResponseDto
->;
+export type InternalLeaveRoomResponse = Static<typeof InternalRoomEventResponseDto>;
 export type InternalKickUserParams = Static<typeof InternalKickUserParamsDto>;
 export type InternalKickUserBody = Static<typeof InternalKickUserBodyDto>;
-export type InternalKickUserResponse = Static<
-	typeof InternalRoomEventResponseDto
->;
+export type InternalKickUserResponse = Static<typeof InternalRoomEventResponseDto>;
 export type InternalBanUserParams = Static<typeof InternalBanUserParamsDto>;
 export type InternalBanUserBody = Static<typeof InternalBanUserBodyDto>;
-export type InternalBanUserResponse = Static<
-	typeof InternalRoomEventResponseDto
->;
-export type InternalTombstoneRoomParams = Static<
-	typeof InternalTombstoneRoomParamsDto
->;
-export type InternalTombstoneRoomBody = Static<
-	typeof InternalTombstoneRoomBodyDto
->;
-export type InternalTombstoneRoomResponse = Static<
-	typeof InternalTombstoneRoomResponseDto
->;
+export type InternalBanUserResponse = Static<typeof InternalRoomEventResponseDto>;
+export type InternalTombstoneRoomParams = Static<typeof InternalTombstoneRoomParamsDto>;
+export type InternalTombstoneRoomBody = Static<typeof InternalTombstoneRoomBodyDto>;
+export type InternalTombstoneRoomResponse = Static<typeof InternalTombstoneRoomResponseDto>;

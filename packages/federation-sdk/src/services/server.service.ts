@@ -1,12 +1,8 @@
-import {
-	type SigningKey,
-	getPublicKeyFromRemoteServer,
-	signJson,
-	toUnpaddedBase64,
-} from '@rocket.chat/federation-core';
+import { type SigningKey, getPublicKeyFromRemoteServer, signJson, toUnpaddedBase64 } from '@rocket.chat/federation-core';
 import { delay, inject, singleton } from 'tsyringe';
-import { ServerRepository } from '../repositories/server.repository';
+
 import { ConfigService } from './config.service';
+import { ServerRepository } from '../repositories/server.repository';
 
 @singleton()
 export class ServerService {
@@ -16,19 +12,11 @@ export class ServerService {
 		private configService: ConfigService,
 	) {}
 
-	async getValidPublicKeyFromLocal(
-		origin: string,
-		key: string,
-	): Promise<string | undefined> {
-		return await this.serverRepository.getValidPublicKeyFromLocal(origin, key);
+	async getValidPublicKeyFromLocal(origin: string, key: string): Promise<string | undefined> {
+		return this.serverRepository.getValidPublicKeyFromLocal(origin, key);
 	}
 
-	async storePublicKey(
-		origin: string,
-		key: string,
-		value: string,
-		validUntil: number,
-	): Promise<void> {
+	async storePublicKey(origin: string, key: string, value: string, validUntil: number): Promise<void> {
 		await this.serverRepository.storePublicKey(origin, key, value, validUntil);
 	}
 
@@ -37,18 +25,12 @@ export class ServerService {
 			return this.configService.getPublicSigningKeyBase64();
 		}
 
-		const localPublicKey =
-			await this.serverRepository.getValidPublicKeyFromLocal(origin, key);
+		const localPublicKey = await this.serverRepository.getValidPublicKeyFromLocal(origin, key);
 		if (localPublicKey) {
 			return localPublicKey;
 		}
 
-		const { key: remotePublicKey, validUntil } =
-			await getPublicKeyFromRemoteServer(
-				origin,
-				this.configService.serverName,
-				key,
-			);
+		const { key: remotePublicKey, validUntil } = await getPublicKeyFromRemoteServer(origin, this.configService.serverName, key);
 
 		if (!remotePublicKey) {
 			throw new Error('Could not get public key from remote server');
@@ -79,12 +61,8 @@ export class ServerService {
 		};
 
 		let signedResponse = baseResponse;
-		for (const key of signingKeys) {
-			signedResponse = await signJson(
-				signedResponse,
-				key,
-				this.configService.serverName,
-			);
+		for await (const key of signingKeys) {
+			signedResponse = await signJson(signedResponse, key, this.configService.serverName);
 		}
 
 		return signedResponse;

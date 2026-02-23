@@ -1,8 +1,11 @@
-import { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
+import type { EventID, RoomID, UserID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
+
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
-import { Elysia, t } from 'elysia';
+
 import {
 	ErrorResponseDto,
 	EventAuthParamsDto,
@@ -26,22 +29,17 @@ export const profilesPlugin = (app: Elysia) => {
 			.group('/_matrix', (app) =>
 				app
 					.use(isAuthenticatedMiddleware())
-					.get(
-						'/federation/v1/query/profile',
-						({ query: { user_id } }) =>
-							federationSDK.queryProfile(user_id as UserID),
-						{
-							query: QueryProfileQueryDto,
-							response: {
-								200: QueryProfileResponseDto,
-							},
-							detail: {
-								tags: ['Federation'],
-								summary: 'Query profile',
-								description: "Query a user's profile",
-							},
+					.get('/federation/v1/query/profile', ({ query: { user_id } }) => federationSDK.queryProfile(user_id as UserID), {
+						query: QueryProfileQueryDto,
+						response: {
+							200: QueryProfileResponseDto,
 						},
-					)
+						detail: {
+							tags: ['Federation'],
+							summary: 'Query profile',
+							description: "Query a user's profile",
+						},
+					})
 					.post(
 						'/federation/v1/user/keys/query',
 						async ({ set }) => {
@@ -63,8 +61,7 @@ export const profilesPlugin = (app: Elysia) => {
 							detail: {
 								tags: ['Federation'],
 								summary: 'Query keys',
-								description:
-									"Query a user's device keys (E2EE not implemented)",
+								description: "Query a user's device keys (E2EE not implemented)",
 							},
 						},
 					)
@@ -102,9 +99,7 @@ export const profilesPlugin = (app: Elysia) => {
 
 					// const { ver } = query;
 
-					return federationSDK.makeJoin(roomId as RoomID, userId as UserID, [
-						'10',
-					]);
+					return federationSDK.makeJoin(roomId as RoomID, userId as UserID, ['10']);
 				},
 				{
 					params: MakeJoinParamsDto,
@@ -147,11 +142,7 @@ export const profilesPlugin = (app: Elysia) => {
 			)
 			.get(
 				'/_matrix/federation/v1/event_auth/:roomId/:eventId',
-				({ params }) =>
-					federationSDK.eventAuth(
-						params.roomId as RoomID,
-						params.eventId as EventID,
-					),
+				({ params }) => federationSDK.eventAuth(params.roomId as RoomID, params.eventId as EventID),
 				{
 					params: EventAuthParamsDto,
 					response: {

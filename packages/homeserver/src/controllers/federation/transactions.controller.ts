@@ -1,8 +1,10 @@
-import { EventID, RoomID } from '@rocket.chat/federation-room';
+import type { EventID, RoomID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
+import type { Elysia } from 'elysia';
+
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
-import { Elysia } from 'elysia';
+
 import {
 	BackfillErrorResponseDto,
 	BackfillParamsDto,
@@ -22,7 +24,6 @@ export const transactionsPlugin = (app: Elysia) => {
 			'/_matrix/federation/v1/send/:txnId',
 			async ({ body }) => {
 				// TODO need to validate better the payload
-				// biome-ignore lint/suspicious/noExplicitAny:
 				await federationSDK.processIncomingTransaction(body as any);
 
 				return {
@@ -50,9 +51,7 @@ export const transactionsPlugin = (app: Elysia) => {
 			async ({ params, set }) => {
 				const serverName = federationSDK.getConfig('serverName');
 
-				const eventData = await federationSDK.getEventById(
-					params.eventId as EventID,
-				);
+				const eventData = await federationSDK.getEventById(params.eventId as EventID);
 				if (!eventData) {
 					set.status = 404;
 					return {
@@ -89,7 +88,7 @@ export const transactionsPlugin = (app: Elysia) => {
 			'/_matrix/federation/v1/backfill/:roomId',
 			async ({ params, query, set }) => {
 				try {
-					const limit = query.limit;
+					const { limit } = query;
 					const eventIdParam = query.v;
 					if (!eventIdParam) {
 						set.status = 400;
@@ -99,15 +98,9 @@ export const transactionsPlugin = (app: Elysia) => {
 						};
 					}
 
-					const eventIds = Array.isArray(eventIdParam)
-						? eventIdParam
-						: [eventIdParam];
+					const eventIds = Array.isArray(eventIdParam) ? eventIdParam : [eventIdParam];
 
-					return federationSDK.getBackfillEvents(
-						params.roomId as RoomID,
-						eventIds as EventID[],
-						limit,
-					);
+					return federationSDK.getBackfillEvents(params.roomId as RoomID, eventIds as EventID[], limit);
 				} catch {
 					set.status = 500;
 					return {
@@ -131,8 +124,7 @@ export const transactionsPlugin = (app: Elysia) => {
 				detail: {
 					tags: ['Federation'],
 					summary: 'Backfill room events',
-					description:
-						'Retrieves a sliding-window history of previous PDUs that occurred in the given room',
+					description: 'Retrieves a sliding-window history of previous PDUs that occurred in the given room',
 				},
 			},
 		);

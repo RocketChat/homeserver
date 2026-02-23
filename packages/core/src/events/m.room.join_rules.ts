@@ -1,4 +1,5 @@
-import { EventID } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
+
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -8,12 +9,7 @@ declare module './eventBase' {
 	}
 }
 
-export type JoinRule =
-	| 'invite'
-	| 'knock'
-	| 'public'
-	| 'restricted'
-	| 'knock_restricted';
+export type JoinRule = 'invite' | 'knock' | 'public' | 'restricted' | 'knock_restricted';
 
 export interface RoomJoinRulesEvent extends EventBase {
 	content: {
@@ -55,8 +51,6 @@ export const roomJoinRulesEvent = ({
 
 export const createRoomJoinRulesEvent = createEventWithId(roomJoinRulesEvent);
 
-export const isRoomJoinRulesEvent = (
-	event: EventBase,
-): event is RoomJoinRulesEvent => {
+export const isRoomJoinRulesEvent = (event: EventBase): event is RoomJoinRulesEvent => {
 	return event.type === 'm.room.join_rules';
 };

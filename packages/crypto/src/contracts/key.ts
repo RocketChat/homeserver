@@ -1,8 +1,4 @@
-import type {
-	DataType,
-	EncryptionValidAlgorithm,
-	SignatureType,
-} from '../utils/constants';
+import type { DataType, EncryptionValidAlgorithm, SignatureType } from '../utils/constants';
 
 type KeyId = `${EncryptionValidAlgorithm}:${string}`;
 

@@ -1,9 +1,6 @@
 import { type Static, t } from 'elysia';
-import {
-	RoomIdDto,
-	ServerNameDto,
-	UsernameDto,
-} from '../common/validation.dto';
+
+import { RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
 
 export const InternalSendMessageBodyDto = t.Object({
 	roomId: RoomIdDto,
@@ -64,28 +61,12 @@ export const InternalRedactMessageBodyDto = t.Object({
 export const InternalRedactMessageResponseDto = InternalMessageResponseDto;
 
 export type InternalMessageResponse = Static<typeof InternalMessageResponseDto>;
-export type InternalReactionResponse = Static<
-	typeof InternalReactionResponseDto
->;
+export type InternalReactionResponse = Static<typeof InternalReactionResponseDto>;
 export type InternalSendMessageBody = Static<typeof InternalSendMessageBodyDto>;
-export type InternalUpdateMessageBody = Static<
-	typeof InternalUpdateMessageBodyDto
->;
-export type InternalUpdateMessageParams = Static<
-	typeof InternalUpdateMessageParamsDto
->;
-export type InternalSendReactionBody = Static<
-	typeof InternalSendReactionBodyDto
->;
-export type InternalSendReactionParams = Static<
-	typeof InternalSendReactionParamsDto
->;
-export type InternalRedactMessageBody = Static<
-	typeof InternalRedactMessageBodyDto
->;
-export type InternalRedactMessageParams = Static<
-	typeof InternalRedactMessageParamsDto
->;
-export type InternalRedactMessageResponse = Static<
-	typeof InternalRedactMessageResponseDto
->;
+export type InternalUpdateMessageBody = Static<typeof InternalUpdateMessageBodyDto>;
+export type InternalUpdateMessageParams = Static<typeof InternalUpdateMessageParamsDto>;
+export type InternalSendReactionBody = Static<typeof InternalSendReactionBodyDto>;
+export type InternalSendReactionParams = Static<typeof InternalSendReactionParamsDto>;
+export type InternalRedactMessageBody = Static<typeof InternalRedactMessageBodyDto>;
+export type InternalRedactMessageParams = Static<typeof InternalRedactMessageParamsDto>;
+export type InternalRedactMessageResponse = Static<typeof InternalRedactMessageResponseDto>;

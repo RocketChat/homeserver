@@ -1,4 +1,5 @@
-import { EventID } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
+
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -8,14 +9,7 @@ declare module './eventBase' {
 	}
 }
 
-export type PowerLevelNames =
-	| 'events_default'
-	| 'state_default'
-	| 'ban'
-	| 'kick'
-	| 'redact'
-	| 'invite'
-	| 'historical';
+export type PowerLevelNames = 'events_default' | 'state_default' | 'ban' | 'kick' | 'redact' | 'invite' | 'historical';
 
 export interface RoomPowerLevelsEvent extends EventBase {
 	content: {
@@ -67,11 +61,9 @@ export const roomPowerLevelsEvent = ({
 	return createEventBase('m.room.power_levels', {
 		roomId,
 		sender,
-		auth_events: [
-			auth_events['m.room.create'],
-			auth_events['m.room.power_levels'],
-			auth_events['m.room.member'],
-		].filter(Boolean) as EventID[],
+		auth_events: [auth_events['m.room.create'], auth_events['m.room.power_levels'], auth_events['m.room.member']].filter(
+			Boolean,
+		) as EventID[],
 		prev_events,
 		depth,
 		ts,
@@ -107,11 +99,8 @@ export const roomPowerLevelsEvent = ({
 	});
 };
 
-export const createRoomPowerLevelsEvent =
-	createEventWithId(roomPowerLevelsEvent);
+export const createRoomPowerLevelsEvent = createEventWithId(roomPowerLevelsEvent);
 
-export const isRoomPowerLevelsEvent = (
-	event: EventBase,
-): event is RoomPowerLevelsEvent => {
+export const isRoomPowerLevelsEvent = (event: EventBase): event is RoomPowerLevelsEvent => {
 	return event.type === 'm.room.power_levels';
 };

@@ -10,13 +10,15 @@ import {
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
-import { EventRepository } from '../repositories/event.repository';
+
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
+import { EventRepository } from '../repositories/event.repository';
+
 export class NotAllowedError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -55,15 +57,13 @@ export class InviteService {
 	}> {
 		this.logger.debug(`Inviting ${userId} to room ${roomId}`);
 
-		const stateService = this.stateService;
-		const federationService = this.federationService;
+		const { stateService } = this;
+		const { federationService } = this;
 
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		// Extract displayname from userId for direct messages
-		const displayname = isDirectMessage
-			? userId.split(':').shift()?.slice(1)
-			: undefined;
+		const displayname = isDirectMessage ? userId.split(':').shift()?.slice(1) : undefined;
 
 		const inviteEvent = await stateService.buildEvent<'m.room.member'>(
 			{
@@ -72,7 +72,7 @@ export class InviteService {
 					membership: 'invite',
 					...(isDirectMessage && {
 						is_direct: true,
-						displayname: displayname,
+						displayname,
 					}),
 				},
 				room_id: roomId,
@@ -81,7 +81,7 @@ export class InviteService {
 				depth: 0,
 				prev_events: [],
 				origin_server_ts: Date.now(),
-				sender: sender,
+				sender,
 			},
 
 			roomVersion,
@@ -91,9 +91,7 @@ export class InviteService {
 
 		const invitedServer = extractDomainFromId(inviteEvent.stateKey ?? '');
 		if (!invitedServer) {
-			throw new Error(
-				`invalid state_key ${inviteEvent.stateKey}, no server_name part`,
-			);
+			throw new Error(`invalid state_key ${inviteEvent.stateKey}, no server_name part`);
 		}
 
 		// if user invited belongs to our server
@@ -106,43 +104,26 @@ export class InviteService {
 
 			return {
 				event_id: inviteEvent.eventId,
-				event: PersistentEventFactory.createFromRawEvent(
-					inviteEvent.event,
-					roomVersion,
-				),
+				event: PersistentEventFactory.createFromRawEvent(inviteEvent.event, roomVersion),
 				room_id: roomId,
 			};
 		}
 
-		await this.federationValidationService.validateOutboundInvite(
-			userId,
-			roomId,
-		);
+		await this.federationValidationService.validateOutboundInvite(userId, roomId);
 
 		// get signed invite event
-		const inviteResponse = await federationService.inviteUser(
-			inviteEvent,
-			roomVersion,
-		);
+		const inviteResponse = await federationService.inviteUser(inviteEvent, roomVersion);
 
 		// try to save
 		// can only invite if already part of the room
-		await stateService.handlePdu(
-			PersistentEventFactory.createFromRawEvent(
-				inviteResponse.event,
-				roomVersion,
-			),
-		);
+		await stateService.handlePdu(PersistentEventFactory.createFromRawEvent(inviteResponse.event, roomVersion));
 
 		// let everyone know
 		void federationService.sendEventToAllServersInRoom(inviteEvent);
 
 		return {
 			event_id: inviteEvent.eventId,
-			event: PersistentEventFactory.createFromRawEvent(
-				inviteEvent.event,
-				roomVersion,
-			),
+			event: PersistentEventFactory.createFromRawEvent(inviteEvent.event, roomVersion),
 			room_id: roomId,
 		};
 	}
@@ -159,25 +140,16 @@ export class InviteService {
 		>[],
 	): Promise<void> {
 		const isRoomNonPrivate = strippedStateEvents.some(
-			(stateEvent) =>
-				stateEvent.type === 'm.room.join_rules' &&
-				stateEvent.content.join_rule === 'public',
+			(stateEvent) => stateEvent.type === 'm.room.join_rules' && stateEvent.content.join_rule === 'public',
 		);
 
-		const isRoomEncrypted = strippedStateEvents.some(
-			(stateEvent) => stateEvent.type === 'm.room.encryption',
-		);
+		const isRoomEncrypted = strippedStateEvents.some((stateEvent) => stateEvent.type === 'm.room.encryption');
 
-		const { allowedEncryptedRooms, allowedNonPrivateRooms } =
-			this.configService.getConfig('invite');
+		const { allowedEncryptedRooms, allowedNonPrivateRooms } = this.configService.getConfig('invite');
 
-		const shouldRejectInvite =
-			(!allowedEncryptedRooms && isRoomEncrypted) ||
-			(!allowedNonPrivateRooms && isRoomNonPrivate);
+		const shouldRejectInvite = (!allowedEncryptedRooms && isRoomEncrypted) || (!allowedNonPrivateRooms && isRoomNonPrivate);
 		if (shouldRejectInvite) {
-			throw new NotAllowedError(
-				`Could not process invite due to room being ${isRoomEncrypted ? 'encrypted' : 'public'}`,
-			);
+			throw new NotAllowedError(`Could not process invite due to room being ${isRoomEncrypted ? 'encrypted' : 'public'}`);
 		}
 	}
 
@@ -197,11 +169,7 @@ export class InviteService {
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
 		await this.shouldProcessInvite(strippedStateEvents);
 
-		const inviteEvent =
-			PersistentEventFactory.createFromRawEvent<'m.room.member'>(
-				event,
-				roomVersion,
-			);
+		const inviteEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(event, roomVersion);
 
 		if (inviteEvent.eventId !== eventId) {
 			throw new Error(`Invalid eventId ${eventId}`);
@@ -210,10 +178,7 @@ export class InviteService {
 		const { residentServer } = inviteEvent;
 
 		if (residentServer === this.configService.serverName) {
-			await this.eventAuthorizationService.checkAclForInvite(
-				event.room_id,
-				residentServer,
-			);
+			await this.eventAuthorizationService.checkAclForInvite(event.room_id, residentServer);
 
 			await this.stateService.handlePdu(inviteEvent);
 
@@ -227,9 +192,7 @@ export class InviteService {
 
 		const invitedServer = extractDomainFromId(event.state_key);
 		if (!invitedServer) {
-			throw new Error(
-				`invalid state_key ${event.state_key}, no server_name part`,
-			);
+			throw new Error(`invalid state_key ${event.state_key}, no server_name part`);
 		}
 		if (invitedServer !== this.configService.serverName) {
 			throw new Error(
@@ -245,19 +208,12 @@ export class InviteService {
 
 		// check if we are already in the room, if so we can handlePdu because we have the state and should save
 		// the invite in the state as well
-		const createEvent = await this.eventRepository.findByRoomIdAndType(
-			event.room_id,
-			'm.room.create',
-		);
+		const createEvent = await this.eventRepository.findByRoomIdAndType(event.room_id, 'm.room.create');
 		if (createEvent) {
 			await this.stateService.handlePdu(inviteEvent);
 		} else {
 			// otherwise we save as outlier only so we can deal with it later
-			await this.eventRepository.insertOutlierEvent(
-				inviteEvent.eventId,
-				inviteEvent.event,
-				residentServer,
-			);
+			await this.eventRepository.insertOutlierEvent(inviteEvent.eventId, inviteEvent.event, residentServer);
 		}
 
 		await this.emitterService.emit('homeserver.matrix.membership', {

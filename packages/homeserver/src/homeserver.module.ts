@@ -4,16 +4,12 @@ import crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import {
-	type HomeserverEventSignatures,
-	federationSDK,
-	init,
-} from '@rocket.chat/federation-sdk';
-import * as dotenv from 'dotenv';
-
 import { swagger } from '@elysiajs/swagger';
 import type { Emitter } from '@rocket.chat/emitter';
+import { type HomeserverEventSignatures, federationSDK, init } from '@rocket.chat/federation-sdk';
+import * as dotenv from 'dotenv';
 import Elysia from 'elysia';
+
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { mediaPlugin } from './controllers/federation/media.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
@@ -49,17 +45,12 @@ export async function setup() {
 		serverName: process.env.SERVER_NAME || 'rc1',
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
 		matrixDomain: process.env.MATRIX_DOMAIN || 'rc1',
-		keyRefreshInterval: Number.parseInt(
-			process.env.MATRIX_KEY_REFRESH_INTERVAL || '60',
-			10,
-		),
+		keyRefreshInterval: Number.parseInt(process.env.MATRIX_KEY_REFRESH_INTERVAL || '60', 10),
 		signingKey: process.env.SIGNING_KEY,
 		signingKeyPath: process.env.CONFIG_FOLDER || './rc1.signing.key',
 		version: process.env.SERVER_VERSION || '1.0',
 		media: {
-			maxFileSize: process.env.MEDIA_MAX_FILE_SIZE
-				? Number.parseInt(process.env.MEDIA_MAX_FILE_SIZE, 10) * 1024 * 1024
-				: 100 * 1024 * 1024,
+			maxFileSize: process.env.MEDIA_MAX_FILE_SIZE ? Number.parseInt(process.env.MEDIA_MAX_FILE_SIZE, 10) * 1024 * 1024 : 100 * 1024 * 1024,
 			allowedMimeTypes: process.env.MEDIA_ALLOWED_MIME_TYPES?.split(',') || [
 				'image/jpeg',
 				'image/png',
@@ -73,21 +64,13 @@ export async function setup() {
 			],
 			enableThumbnails: process.env.MEDIA_ENABLE_THUMBNAILS === 'true' || true,
 			rateLimits: {
-				uploadPerMinute: Number.parseInt(
-					process.env.MEDIA_UPLOAD_RATE_LIMIT || '10',
-					10,
-				),
-				downloadPerMinute: Number.parseInt(
-					process.env.MEDIA_DOWNLOAD_RATE_LIMIT || '60',
-					10,
-				),
+				uploadPerMinute: Number.parseInt(process.env.MEDIA_UPLOAD_RATE_LIMIT || '10', 10),
+				downloadPerMinute: Number.parseInt(process.env.MEDIA_DOWNLOAD_RATE_LIMIT || '60', 10),
 			},
 		},
 		invite: {
-			allowedEncryptedRooms:
-				process.env.INVITE_ALLOWED_ENCRYPTED_ROOMS === 'true',
-			allowedNonPrivateRooms:
-				process.env.INVITE_ALLOWED_NON_PRIVATE_ROOMS === 'true',
+			allowedEncryptedRooms: process.env.INVITE_ALLOWED_ENCRYPTED_ROOMS === 'true',
+			allowedNonPrivateRooms: process.env.INVITE_ALLOWED_NON_PRIVATE_ROOMS === 'true',
 		},
 		edu: {
 			processTyping: process.env.EDU_PROCESS_TYPING !== 'false',
@@ -99,14 +82,12 @@ export async function setup() {
 
 	app
 		.use(
-			// @ts-ignore - Elysia is not typed correctly
 			swagger({
 				documentation: {
 					info: {
 						title: 'Matrix Homeserver API',
 						version: '1.0.0',
-						description:
-							'Matrix Protocol Implementation - Federation and Internal APIs',
+						description: 'Matrix Protocol Implementation - Federation and Internal APIs',
 					},
 				},
 			}),

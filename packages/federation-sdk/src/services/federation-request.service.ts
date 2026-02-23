@@ -1,8 +1,4 @@
-import type {
-	FetchResponse,
-	MultipartResult,
-	SigningKey,
-} from '@rocket.chat/federation-core';
+import type { FetchResponse, MultipartResult, SigningKey } from '@rocket.chat/federation-core';
 import {
 	EncryptionValidAlgorithm,
 	authorizationHeaders,
@@ -14,8 +10,9 @@ import {
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 import * as nacl from 'tweetnacl';
-import { getHomeserverFinalAddress } from '../server-discovery/discovery';
+
 import { ConfigService } from './config.service';
+import { getHomeserverFinalAddress } from '../server-discovery/discovery';
 
 interface SignedRequest {
 	method: string;
@@ -27,10 +24,7 @@ interface SignedRequest {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class FederationRequestError extends Error {
-	constructor(
-		readonly response: FetchResponse<unknown>,
-		errorText: string,
-	) {
+	constructor(readonly response: FetchResponse<unknown>, errorText: string) {
 		let errorDetail = errorText;
 		try {
 			errorDetail = JSON.stringify(JSON.parse(errorText || ''));
@@ -54,13 +48,7 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
-	async makeSignedRequest<T>({
-		method,
-		domain,
-		uri,
-		body,
-		queryString,
-	}: SignedRequest): Promise<FetchResponse<T>> {
+	async makeSignedRequest<T>({ method, domain, uri, body, queryString }: SignedRequest): Promise<FetchResponse<T>> {
 		const serverName = this.configService.getConfig('serverName');
 		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
 		const signingKeyId = await this.configService.getSigningKeyId();
@@ -72,14 +60,10 @@ export class FederationRequestService {
 			version: signingKeyId.split(':')[1] || '1',
 			privateKey: keyPair.secretKey,
 			publicKey: keyPair.publicKey,
-			sign: async (data: Uint8Array) =>
-				nacl.sign.detached(data, keyPair.secretKey),
+			sign: async (data: Uint8Array) => nacl.sign.detached(data, keyPair.secretKey),
 		};
 
-		const [address, discoveryHeaders] = await getHomeserverFinalAddress(
-			domain,
-			this.logger,
-		);
+		const [address, discoveryHeaders] = await getHomeserverFinalAddress(domain, this.logger);
 
 		const url = new URL(`${address}${uri}`);
 		if (queryString) {
@@ -90,21 +74,10 @@ export class FederationRequestService {
 
 		let signedBody: Record<string, unknown> | undefined;
 		if (body) {
-			signedBody = await signJson(
-				body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }),
-				signingKey,
-				serverName,
-			);
+			signedBody = await signJson(body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }), signingKey, serverName);
 		}
 
-		const auth = await authorizationHeaders(
-			serverName,
-			signingKey,
-			domain,
-			method,
-			extractURIfromURL(url),
-			signedBody,
-		);
+		const auth = await authorizationHeaders(serverName, signingKey, domain, method, extractURIfromURL(url), signedBody);
 
 		const headers = {
 			Authorization: auth,
@@ -147,9 +120,7 @@ export class FederationRequestService {
 		let queryString = '';
 
 		if (targetServer === this.configService.getConfig('serverName')) {
-			throw new SelfServerFetchError(
-				'Cannot make federation request to self server',
-			);
+			throw new SelfServerFetchError('Cannot make federation request to self server');
 		}
 
 		if (queryParams) {
@@ -177,35 +148,15 @@ export class FederationRequestService {
 		).json();
 	}
 
-	async get<T>(
-		targetServer: string,
-		endpoint: string,
-		queryParams?: Record<string, string | string[]>,
-	): Promise<T> {
-		return this.request<T>(
-			'GET',
-			targetServer,
-			endpoint,
-			undefined,
-			queryParams,
-		);
+	async get<T>(targetServer: string, endpoint: string, queryParams?: Record<string, string | string[]>): Promise<T> {
+		return this.request<T>('GET', targetServer, endpoint, undefined, queryParams);
 	}
 
-	async put<T>(
-		targetServer: string,
-		endpoint: string,
-		body: Record<string, unknown>,
-		queryParams?: Record<string, string>,
-	): Promise<T> {
+	async put<T>(targetServer: string, endpoint: string, body: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
 		return this.request<T>('PUT', targetServer, endpoint, body, queryParams);
 	}
 
-	async post<T>(
-		targetServer: string,
-		endpoint: string,
-		body: Record<string, unknown>,
-		queryParams?: Record<string, string>,
-	): Promise<T> {
+	async post<T>(targetServer: string, endpoint: string, body: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
 		return this.request<T>('POST', targetServer, endpoint, body, queryParams);
 	}
 
@@ -216,17 +167,13 @@ export class FederationRequestService {
 		queryParams?: Record<string, string>,
 	): Promise<MultipartResult> {
 		if (targetServer === this.configService.getConfig('serverName')) {
-			throw new SelfServerFetchError(
-				'Cannot make federation request to self server',
-			);
+			throw new SelfServerFetchError('Cannot make federation request to self server');
 		}
 		const response = await this.makeSignedRequest({
 			method,
 			domain: targetServer,
 			uri: endpoint,
-			queryString: queryParams
-				? new URLSearchParams(queryParams).toString()
-				: '',
+			queryString: queryParams ? new URLSearchParams(queryParams).toString() : '',
 		});
 
 		return response.multipart();

@@ -1,4 +1,5 @@
 import { type Static, t } from 'elysia';
+
 import { RoomIdDto } from '../common/validation.dto';
 
 export const GetStateIdsParamsDto = t.Object({

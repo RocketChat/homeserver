@@ -1,6 +1,7 @@
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import { type Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
 import nacl from 'tweetnacl';
+
 import { type SigningKey } from '../types';
 import { signJson } from './signJson';
 
@@ -20,11 +21,7 @@ export const extractSignaturesFromHeader = (authorizationHeader: string) => {
 		key,
 		sig: signature,
 		...rest
-	} = Object.fromEntries(
-		[...authorizationHeader.matchAll(regex)].map(
-			([, key, value]) => [key, value] as const,
-		),
-	);
+	} = Object.fromEntries([...authorizationHeader.matchAll(regex)].map(([, key, value]) => [key, value] as const));
 
 	if (Object.keys(rest).length) {
 		// it should never happen since the regex should match all the parameters
@@ -51,14 +48,7 @@ export async function authorizationHeaders<T extends object>(
 	uri: string,
 	content?: T,
 ): Promise<string> {
-	const signedJson = await signRequest(
-		origin,
-		signingKey,
-		destination,
-		method,
-		uri,
-		content,
-	);
+	const signedJson = await signRequest(origin, signingKey, destination, method, uri, content);
 
 	const key = `${signingKey.algorithm}:${signingKey.version}` as const;
 	const signed = signedJson.signatures[origin][key];
@@ -83,23 +73,13 @@ export const validateAuthorizationHeader = async <T extends object>(
 		...(content && { content }),
 	});
 
-	const signature = Uint8Array.from(atob(hash as string), (c) =>
-		c.charCodeAt(0),
-	);
-	const signingKeyBytes = Uint8Array.from(atob(signingKey as string), (c) =>
-		c.charCodeAt(0),
-	);
+	const signature = Uint8Array.from(atob(hash as string), (c) => c.charCodeAt(0));
+	const signingKeyBytes = Uint8Array.from(atob(signingKey as string), (c) => c.charCodeAt(0));
 	const messageBytes = new TextEncoder().encode(canonicalJson);
-	const isValid = nacl.sign.detached.verify(
-		messageBytes,
-		signature,
-		signingKeyBytes,
-	);
+	const isValid = nacl.sign.detached.verify(messageBytes, signature, signingKeyBytes);
 
 	if (!isValid) {
-		throw new Error(
-			`Invalid signature from ${origin} for request to ${destination}`,
-		);
+		throw new Error(`Invalid signature from ${origin} for request to ${destination}`);
 	}
 
 	return true;
@@ -135,19 +115,9 @@ export type HashedEvent<T extends Record<string, unknown>> = T & {
 	};
 };
 
-export function computeAndMergeHash<T extends Record<string, unknown>>(
-	content: T,
-): HashedEvent<T> {
+export function computeAndMergeHash<T extends Record<string, unknown>>(content: T): HashedEvent<T> {
 	// remove the fields that are not part of the hash
-	const {
-		age_ts,
-		unsigned,
-		signatures,
-		hashes,
-		outlier,
-		destinations,
-		...toHash
-	} = content;
+	const { age_ts, unsigned, signatures, hashes, outlier, destinations, ...toHash } = content;
 
 	const [algorithm, hash] = computeHash(toHash);
 
@@ -159,10 +129,7 @@ export function computeAndMergeHash<T extends Record<string, unknown>>(
 	};
 }
 
-export function computeHash<T extends Record<string, unknown>>(
-	content: T,
-	algorithm: 'sha256' = 'sha256',
-): ['sha256', string] {
+export function computeHash<T extends Record<string, unknown>>(content: T, algorithm: 'sha256' = 'sha256'): ['sha256', string] {
 	// remove the fields that are not part of the hash
 	return [
 		algorithm,

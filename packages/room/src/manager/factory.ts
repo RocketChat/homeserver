@@ -1,17 +1,13 @@
-import { Pdu, type PduCreateEventContent, PduType } from '../types/v3-11';
-
-import { PersistentEventV3 } from './v3';
-
-import { PduForType, RoomID, UserID, roomIdSchema } from '../types/_common';
-import type {
-	PduWithHashesAndSignaturesOptional,
-	PersistentEventBase,
-} from './event-wrapper';
+import type { PduWithHashesAndSignaturesOptional, PersistentEventBase } from './event-wrapper';
 import type { RoomVersion } from './type';
+import { PersistentEventV11 } from './v11';
+import { PersistentEventV3 } from './v3';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
-import { PersistentEventV11 } from './v11';
+import { RoomID, roomIdSchema } from '../types/_common';
+import type { PduForType, UserID } from '../types/_common';
+import type { Pdu, PduType, PduCreateEventContent } from '../types/v3-11';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -44,9 +40,7 @@ export class PersistentEventFactory {
 
 	static defaultRoomVersion = '10' as const; // same as synapse
 
-	static isSupportedRoomVersion(
-		roomVersion: string,
-	): roomVersion is RoomVersion {
+	static isSupportedRoomVersion(roomVersion: string): roomVersion is RoomVersion {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
@@ -82,10 +76,7 @@ export class PersistentEventFactory {
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
-	static newCreateEvent(
-		creator: UserID,
-		roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion,
-	) {
+	static newCreateEvent(creator: UserID, roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion) {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
@@ -111,10 +102,7 @@ export class PersistentEventFactory {
 			depth: 1,
 		};
 
-		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(
-			eventPartial,
-			roomVersion,
-		);
+		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(eventPartial, roomVersion);
 	}
 
 	static newEvent<Type extends PduType>(

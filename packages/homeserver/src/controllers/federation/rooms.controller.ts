@@ -1,6 +1,8 @@
 import { federationSDK } from '@rocket.chat/federation-sdk';
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
+
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
-import { Elysia, t } from 'elysia';
 
 export const roomPlugin = (app: Elysia) => {
 	return app
@@ -67,9 +69,7 @@ export const roomPlugin = (app: Elysia) => {
 					chunk: publicRooms
 						.filter((r) => {
 							if (filter.generic_search_term) {
-								return r.name
-									.toLowerCase()
-									.includes(filter.generic_search_term.toLowerCase());
+								return r.name.toLowerCase().includes(filter.generic_search_term.toLowerCase());
 							}
 
 							if (filter.room_types) {

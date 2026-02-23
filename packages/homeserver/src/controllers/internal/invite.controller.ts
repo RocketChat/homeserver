@@ -1,12 +1,11 @@
-import {
-	PersistentEventFactory,
-	RoomID,
-	UserID,
-} from '@rocket.chat/federation-room';
+import type { RoomID, UserID } from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia } from 'elysia';
-import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
+import type { Elysia } from 'elysia';
+
 import {
+	type ErrorResponse,
+	ErrorResponseDto,
 	InternalInviteUserBodyDto,
 	type InternalInviteUserResponse,
 	InternalInviteUserResponseDto,

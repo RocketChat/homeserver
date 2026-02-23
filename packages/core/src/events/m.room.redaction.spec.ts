@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 
+import type { EventBase } from './eventBase';
+import { isRedactionEvent, redactionEvent } from './m.room.redaction';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import type { EventBase } from './eventBase';
-import { isRedactionEvent, redactionEvent } from './m.room.redaction';
 
 test('isRedactionEvent', () => {
 	// Test case 1: Should return true for a redaction event
@@ -55,9 +55,7 @@ test('isRedactionEvent', () => {
 });
 
 test('redactionEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const { state_key: redactionStateKey, ...redaction } = redactionEvent({
 		roomId: '!MZyyuzkUwHEaBBOXai:hs1',
@@ -78,9 +76,7 @@ test('redactionEvent', async () => {
 	});
 
 	// Verify that the redacts property is in the original event
-	expect(redaction.redacts).toBe(
-		'$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA',
-	);
+	expect(redaction.redacts).toBe('$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA');
 
 	const signedRedaction = await signEvent(redaction, signature, 'rc1');
 	const redactionEventId = generateId(signedRedaction);

@@ -1,6 +1,8 @@
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
+
 import { canAccessResourceMiddleware } from '@rocket.chat/homeserver/middlewares/canAccessResource';
 import { isAuthenticatedMiddleware } from '@rocket.chat/homeserver/middlewares/isAuthenticated';
-import { Elysia, t } from 'elysia';
 
 const ErrorResponseSchema = t.Object({
 	errcode: t.Literal('M_UNRECOGNIZED'),
@@ -127,9 +129,7 @@ export const mediaPlugin = (app: Elysia) => {
 					query: t.Object({
 						width: t.Optional(t.Number({ minimum: 1, maximum: 800 })),
 						height: t.Optional(t.Number({ minimum: 1, maximum: 600 })),
-						method: t.Optional(
-							t.Union([t.Literal('crop'), t.Literal('scale')]),
-						),
+						method: t.Optional(t.Union([t.Literal('crop'), t.Literal('scale')])),
 						allow_remote: t.Optional(t.Boolean()),
 						timeout_ms: t.Optional(t.Number()),
 					}),

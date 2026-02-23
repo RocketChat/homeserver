@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { SignedEvent } from '../types';
-import { generateId } from '../utils/generateId';
-import { generateKeyPairsFromString } from '../utils/keys';
-import { signEvent } from '../utils/signEvent';
 import { roomCreateEvent } from './m.room.create';
 import { roomMemberEvent } from './m.room.member';
 import { type RoomNameEvent, roomNameEvent } from './m.room.name';
+import { generateId } from '../utils/generateId';
+import { generateKeyPairsFromString } from '../utils/keys';
+import { signEvent } from '../utils/signEvent';
 
 const finalEventId = '$JdX_s3d4CORV_BfkatJxF_lUfzJoKjzQXTP0NGtVj1E';
 const finalEventPlaceholder: SignedEvent<RoomNameEvent> = {
@@ -35,17 +35,14 @@ const finalEventPlaceholder: SignedEvent<RoomNameEvent> = {
 	},
 	signatures: {
 		rc1: {
-			'ed25519:a_HDhg':
-				'ZHKRV0W5bGYNdyP1CZ3PPjc/3ZC6DUOiEBtCpNwvh2aDnrNly7SxjjYHdkAi5+ZpZVB57o8AKsVuDoGnfV2cDQ',
+			'ed25519:a_HDhg': 'ZHKRV0W5bGYNdyP1CZ3PPjc/3ZC6DUOiEBtCpNwvh2aDnrNly7SxjjYHdkAi5+ZpZVB57o8AKsVuDoGnfV2cDQ',
 		},
 	},
 };
 
 describe('roomNameEvent', () => {
 	test('it should correctly create, sign, and generate an ID for an m.room.name event', async () => {
-		const signingKey = await generateKeyPairsFromString(
-			'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-		);
+		const signingKey = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 		const serverName = 'rc1';
 		const roomId = '!MZyyuzkUwHEaBBOXai:hs1';
 		const userId = '@user1:rc1';
@@ -57,11 +54,7 @@ describe('roomNameEvent', () => {
 			sender: userId,
 			ts: exampleTimestamp - 2000, // No explicit content needed here
 		});
-		const signedCreateEvent = await signEvent(
-			createEventPayload,
-			signingKey,
-			serverName,
-		);
+		const signedCreateEvent = await signEvent(createEventPayload, signingKey, serverName);
 		const createEventId = generateId(signedCreateEvent);
 
 		// 2. Mock Power Levels Event ID (as in m.room.message.spec.ts)
@@ -79,11 +72,7 @@ describe('roomNameEvent', () => {
 			auth_events: { 'm.room.create': createEventId },
 			prev_events: [createEventId],
 		});
-		const signedMemberEvent = await signEvent(
-			memberEventPayload,
-			signingKey,
-			serverName,
-		);
+		const signedMemberEvent = await signEvent(memberEventPayload, signingKey, serverName);
 		const memberEventId = generateId(signedMemberEvent);
 
 		// 4. Room Name Event
@@ -102,11 +91,7 @@ describe('roomNameEvent', () => {
 			origin: serverName,
 		});
 
-		const signedRoomNameEvent = await signEvent(
-			roomNamePayload,
-			signingKey,
-			serverName,
-		);
+		const signedRoomNameEvent = await signEvent(roomNamePayload, signingKey, serverName);
 		const generatedEventId = generateId(signedRoomNameEvent);
 
 		expect(finalEventId).toBe(generatedEventId);

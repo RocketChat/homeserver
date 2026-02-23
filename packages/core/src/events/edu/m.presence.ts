@@ -32,10 +32,7 @@ export const isPresenceEDU = (edu: BaseEDU): edu is PresenceEDU => {
 	return edu.edu_type === 'm.presence';
 };
 
-export const createPresenceEDU = (
-	presenceUpdates: PresenceUpdate[],
-	origin?: string,
-): PresenceEDU => ({
+export const createPresenceEDU = (presenceUpdates: PresenceUpdate[], origin?: string): PresenceEDU => ({
 	edu_type: 'm.presence',
 	content: {
 		push: presenceUpdates,

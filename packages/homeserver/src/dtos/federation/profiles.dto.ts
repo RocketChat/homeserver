@@ -1,10 +1,6 @@
 import { type Static, t } from 'elysia';
-import {
-	RoomIdDto,
-	ServerNameDto,
-	TimestampDto,
-	UsernameDto,
-} from '../common/validation.dto';
+
+import { RoomIdDto, ServerNameDto, TimestampDto, UsernameDto } from '../common/validation.dto';
 
 export const QueryProfileQueryDto = t.Object({
 	user_id: UsernameDto,
@@ -37,12 +33,8 @@ export const GetDevicesResponseDto = t.Object({
 	devices: t.Array(
 		t.Object({
 			device_id: t.String({ description: 'Device ID' }),
-			display_name: t.Optional(
-				t.String({ description: 'Device display name' }),
-			),
-			last_seen_ip: t.Optional(
-				t.String({ description: 'Last seen IP address' }),
-			),
+			display_name: t.Optional(t.String({ description: 'Device display name' })),
+			last_seen_ip: t.Optional(t.String({ description: 'Last seen IP address' })),
 			last_seen_ts: t.Optional(TimestampDto),
 		}),
 		{ description: 'List of devices for the user' },
@@ -76,13 +68,7 @@ export const MakeJoinQueryDto = t.Object({
 	),
 });
 
-const MembershipDto = t.Union([
-	t.Literal('join'),
-	t.Literal('leave'),
-	t.Literal('invite'),
-	t.Literal('ban'),
-	t.Literal('knock'),
-]);
+const MembershipDto = t.Union([t.Literal('join'), t.Literal('leave'), t.Literal('invite'), t.Literal('ban'), t.Literal('knock')]);
 
 export const MakeJoinResponseDto = t.Object({
 	room_version: t.String({ description: 'Room version' }),
@@ -96,15 +82,9 @@ export const MakeJoinResponseDto = t.Object({
 		state_key: UsernameDto,
 		type: t.Literal('m.room.member'),
 		origin_server_ts: TimestampDto,
-		depth: t.Optional(
-			t.Number({ description: 'Depth of the event in the DAG' }),
-		),
-		prev_events: t.Optional(
-			t.Array(t.String(), { description: 'Previous events in the room' }),
-		),
-		auth_events: t.Optional(
-			t.Array(t.String(), { description: 'Authorization events' }),
-		),
+		depth: t.Optional(t.Number({ description: 'Depth of the event in the DAG' })),
+		prev_events: t.Optional(t.Array(t.String(), { description: 'Previous events in the room' })),
+		auth_events: t.Optional(t.Array(t.String(), { description: 'Authorization events' })),
 		hashes: t.Optional(
 			t.Object({
 				sha256: t.String({ description: 'SHA256 hash of the event' }),
@@ -115,9 +95,7 @@ export const MakeJoinResponseDto = t.Object({
 				description: 'Event signatures by server and key ID',
 			}),
 		),
-		unsigned: t.Optional(
-			t.Record(t.String(), t.Any(), { description: 'Unsigned data' }),
-		),
+		unsigned: t.Optional(t.Record(t.String(), t.Any(), { description: 'Unsigned data' })),
 	}),
 });
 
@@ -169,9 +147,7 @@ export type GetDevicesResponse = Static<typeof GetDevicesResponseDto>;
 export type QueryProfileResponse = Static<typeof QueryProfileResponseDto>;
 export type EventAuthResponse = Static<typeof EventAuthResponseDto>;
 export type EventAuthParams = Static<typeof EventAuthParamsDto>;
-export type GetMissingEventsResponse = Static<
-	typeof GetMissingEventsResponseDto
->;
+export type GetMissingEventsResponse = Static<typeof GetMissingEventsResponseDto>;
 export type GetMissingEventsBody = Static<typeof GetMissingEventsBodyDto>;
 export type GetMissingEventsParams = Static<typeof GetMissingEventsParamsDto>;
 export type MakeJoinResponse = Static<typeof MakeJoinResponseDto>;

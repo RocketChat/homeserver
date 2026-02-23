@@ -1,10 +1,7 @@
 export class MatrixError<TCode extends string> extends Error {
 	public readonly status: number = 400;
 
-	public constructor(
-		public readonly errcode: TCode,
-		message: string,
-	) {
+	public constructor(public readonly errcode: TCode, message: string) {
 		super(message);
 	}
 
@@ -33,10 +30,7 @@ export class UnknownTokenError extends MatrixError<'M_UNKNOWN_TOKEN'> {
 
 	public softLogout?: boolean;
 
-	public constructor(
-		message: string,
-		{ softLogout }: { softLogout?: boolean } = {},
-	) {
+	public constructor(message: string, { softLogout }: { softLogout?: boolean } = {}) {
 		super('M_UNKNOWN_TOKEN', message);
 		this.softLogout = softLogout;
 	}
@@ -97,10 +91,7 @@ export class LimitExceededError extends MatrixError<'M_LIMIT_EXCEEDED'> {
  * This is expected to be returned with a 404 HTTP status code if the endpoint is not implemented or a 405 HTTP status code if the endpoint is implemented, but the incorrect HTTP method is used.
  */
 export class UnrecognizedError extends MatrixError<'M_UNRECOGNIZED'> {
-	private constructor(
-		message: string,
-		public readonly status: number,
-	) {
+	private constructor(message: string, public readonly status: number) {
 		super('M_UNRECOGNIZED', message);
 	}
 
@@ -222,10 +213,7 @@ export class UnsupportedRoomVersionError extends MatrixError<'M_UNSUPPORTED_ROOM
 export class IncompatibleRoomVersionError extends MatrixError<'M_INCOMPATIBLE_ROOM_VERSION'> {
 	public roomVersion: string;
 
-	public constructor(
-		message: string,
-		{ roomVersion }: { roomVersion: string },
-	) {
+	public constructor(message: string, { roomVersion }: { roomVersion: string }) {
 		super('M_INCOMPATIBLE_ROOM_VERSION', message);
 		this.roomVersion = roomVersion;
 	}
@@ -308,10 +296,7 @@ export class ExclusiveError extends MatrixError<'M_EXCLUSIVE'> {
  * Typically, this error will appear on routes which attempt to modify state (e.g.: sending messages, account data, etc) and not routes which only read state (e.g.: /sync, get account data, etc).
  */
 export class ResourceLimitExceededError extends MatrixError<'M_RESOURCE_LIMIT_EXCEEDED'> {
-	public constructor(
-		message: string,
-		public readonly adminContact: string,
-	) {
+	public constructor(message: string, public readonly adminContact: string) {
 		super('M_RESOURCE_LIMIT_EXCEEDED', message);
 	}
 
@@ -343,6 +328,7 @@ export enum HttpStatus {
 
 export class HttpException extends Error {
 	public readonly status: number;
+
 	public readonly response: string | Record<string, unknown>;
 
 	constructor(response: string | Record<string, unknown>, status: number) {

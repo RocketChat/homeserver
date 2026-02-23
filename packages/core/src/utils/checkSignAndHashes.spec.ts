@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
+
 import type { EventBase } from '../events/eventBase';
 import { EncryptionValidAlgorithm } from '../types';
-import * as authentication from '../utils/authentication';
 import type { HashedEvent } from './authentication';
+import * as authentication from './authentication';
 import { checkSignAndHashes } from './checkSignAndHashes';
 import { MatrixError } from './errors';
 import * as signJson from './signJson';
@@ -34,10 +35,7 @@ describe('checkSignAndHashes', () => {
 		},
 	} as unknown as HashedEvent<SignedJson<EventBase>>;
 
-	const getPublicKeyFromServerMock = (
-		_origin: string,
-		_key: string,
-	): Promise<string> => {
+	const getPublicKeyFromServerMock = (_origin: string, _key: string): Promise<string> => {
 		return Promise.resolve(mockPublicKey);
 	};
 
@@ -59,23 +57,11 @@ describe('checkSignAndHashes', () => {
 	});
 
 	it('should validate signature and hash successfully', async () => {
-		const getSignaturesSpy = spyOn(
-			signJson,
-			'getSignaturesFromRemote',
-		).mockResolvedValue([mockSignature]);
-		const verifyJsonSpy = spyOn(
-			signJson,
-			'verifyJsonSignature',
-		).mockReturnValue(true);
-		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(
-			['sha256', mockHash],
-		);
+		const getSignaturesSpy = spyOn(signJson, 'getSignaturesFromRemote').mockResolvedValue([mockSignature]);
+		const verifyJsonSpy = spyOn(signJson, 'verifyJsonSignature').mockReturnValue(true);
+		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(['sha256', mockHash]);
 
-		const result = await checkSignAndHashes(
-			mockPdu,
-			mockOrigin,
-			getPublicKeyFromServerMock,
-		);
+		const result = await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock);
 
 		expect(getSignaturesSpy).toHaveBeenCalledWith(mockPdu, mockOrigin);
 		expect(verifyJsonSpy).toHaveBeenCalled();
@@ -89,17 +75,9 @@ describe('checkSignAndHashes', () => {
 	});
 
 	it('should throw error for invalid signature', async () => {
-		const getSignaturesSpy = spyOn(
-			signJson,
-			'getSignaturesFromRemote',
-		).mockResolvedValue([mockSignature]);
-		const verifyJsonSpy = spyOn(
-			signJson,
-			'verifyJsonSignature',
-		).mockReturnValue(false);
-		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(
-			['sha256', mockHash],
-		);
+		const getSignaturesSpy = spyOn(signJson, 'getSignaturesFromRemote').mockResolvedValue([mockSignature]);
+		const verifyJsonSpy = spyOn(signJson, 'verifyJsonSignature').mockReturnValue(false);
+		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(['sha256', mockHash]);
 
 		let error: Error | undefined;
 		try {
@@ -117,17 +95,9 @@ describe('checkSignAndHashes', () => {
 	});
 
 	it('should throw error for invalid hash', async () => {
-		const getSignaturesSpy = spyOn(
-			signJson,
-			'getSignaturesFromRemote',
-		).mockResolvedValue([mockSignature]);
-		const verifyJsonSpy = spyOn(
-			signJson,
-			'verifyJsonSignature',
-		).mockReturnValue(true);
-		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(
-			['sha256', 'differentHash'],
-		);
+		const getSignaturesSpy = spyOn(signJson, 'getSignaturesFromRemote').mockResolvedValue([mockSignature]);
+		const verifyJsonSpy = spyOn(signJson, 'verifyJsonSignature').mockReturnValue(true);
+		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(['sha256', 'differentHash']);
 
 		let error: Error | undefined;
 		try {

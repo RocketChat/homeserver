@@ -1,26 +1,18 @@
 import crypto from 'node:crypto';
 
 // computeJsonHashBuffer computes the hash of a JSON object using the specified algorithm (default is sha256).
-export function computeHashBuffer<T extends Record<string, unknown>>(
-	content: T,
-	algorithm: 'sha256' = 'sha256',
-): Buffer<ArrayBufferLike> {
+export function computeHashBuffer<T extends Record<string, unknown>>(content: T, algorithm: 'sha256' = 'sha256'): Buffer<ArrayBufferLike> {
 	// making sure same JSON always results in same hash
 	const canonicalisedJson = encodeCanonicalJson(content);
 	return crypto.createHash(algorithm).update(canonicalisedJson).digest();
 }
 
 // computeJsonHashString computes the hash of a JSON object and returns it as a UNPADDED base64 string.
-export function computeHashString<T extends Record<string, unknown>>(
-	content: T,
-	algorithm = 'sha256' as const,
-) {
+export function computeHashString<T extends Record<string, unknown>>(content: T, algorithm = 'sha256' as const) {
 	return toUnpaddedBase64(computeHashBuffer(content, algorithm));
 }
 
-export function toBinaryData(
-	value: string | Uint8Array | ArrayBuffer | ArrayBufferView,
-): Uint8Array {
+export function toBinaryData(value: string | Uint8Array | ArrayBuffer | ArrayBufferView): Uint8Array {
 	if (typeof value === 'string') {
 		return new TextEncoder().encode(value);
 	}
@@ -36,9 +28,7 @@ export function toBinaryData(
 	return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 }
 
-export function fromBinaryData(
-	value: string | Uint8Array | ArrayBuffer,
-): string {
+export function fromBinaryData(value: string | Uint8Array | ArrayBuffer): string {
 	if (typeof value === 'string') {
 		return value;
 	}
@@ -70,11 +60,7 @@ export function encodeCanonicalJson(value: unknown): string {
 		// Handle arrays recursively
 		const serializedArray = value.map((value) => {
 			// can't be in top level since encodeCanonicalJson(function() {}) should be undefined, just not as part of an array
-			if (
-				value === undefined ||
-				typeof value === 'function' ||
-				typeof value === 'symbol'
-			) {
+			if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
 				return 'null';
 			}
 			return encodeCanonicalJson(value);
@@ -85,9 +71,7 @@ export function encodeCanonicalJson(value: unknown): string {
 	// Handle objects: sort keys lexicographically
 	const sortedKeys = Object.keys(value).sort();
 	const serializedEntries = sortedKeys.reduce((accum, key) => {
-		const encodedValue = encodeCanonicalJson(
-			(value as Record<string, unknown>)[key],
-		);
+		const encodedValue = encodeCanonicalJson((value as Record<string, unknown>)[key]);
 		if (encodedValue === undefined) {
 			return accum;
 		}

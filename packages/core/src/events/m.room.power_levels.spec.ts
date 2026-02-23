@@ -1,20 +1,14 @@
 import { expect, test } from 'bun:test';
 
 import type { SignedEvent } from '../types';
+import { type RoomPowerLevelsEvent, roomPowerLevelsEvent } from './m.room.power_levels';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import {
-	type RoomPowerLevelsEvent,
-	roomPowerLevelsEvent,
-} from './m.room.power_levels';
 
 const finalEventId = '$T20EETjD2OuaC1OVyg8iIbJGTNeGBsMiWoAagBOVRNE';
 const finalEvent = {
-	auth_events: [
-		'$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4',
-		'$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8',
-	],
+	auth_events: ['$0AQU5dG_mtjH6qavAxYrQsDC0a_-6T3DHs1yoxf5fz4', '$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8'],
 	prev_events: ['$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8'],
 	type: 'm.room.power_levels',
 	room_id: '!uTqsSSWabZzthsSCNf:hs1',
@@ -47,8 +41,7 @@ const finalEvent = {
 	hashes: { sha256: '7Sv2UTnpNI9qnVO1oXaNoj1SEraxoWTm9uloqm3Oqho' },
 	signatures: {
 		hs1: {
-			'ed25519:a_HDhg':
-				'UBNpsQBCDX7t6cPHSj+g4bfAf/9Gb1TxYnme2MCXF4JgN7P3X0OUq0leFjrI5p/+sTR60/nuaZCX7OUYWTTLDA',
+			'ed25519:a_HDhg': 'UBNpsQBCDX7t6cPHSj+g4bfAf/9Gb1TxYnme2MCXF4JgN7P3X0OUq0leFjrI5p/+sTR60/nuaZCX7OUYWTTLDA',
 		},
 	},
 	unsigned: { age_ts: 1733107418713 },
@@ -92,17 +85,14 @@ const finalCustomEvent: Omit<SignedEvent<RoomPowerLevelsEvent>, 'event_id'> = {
 	hashes: { sha256: 'y0ffUmoWZ9WYPiGk8fdrDyu0Sc7JRpTBsmnjRUoPL7I' },
 	signatures: {
 		hs1: {
-			'ed25519:test_key_custom':
-				'x8W5woA58MTdNlxF5PY+m3MvrJVOmBOVuB/xG3+kQ/pX6EEdmAexVUYGCtzf7GcIk9TsGGG6Q1NmJOxyH6PrBQ',
+			'ed25519:test_key_custom': 'x8W5woA58MTdNlxF5PY+m3MvrJVOmBOVuB/xG3+kQ/pX6EEdmAexVUYGCtzf7GcIk9TsGGG6Q1NmJOxyH6PrBQ',
 		},
 	},
 	unsigned: { age_ts: 1748224026175 },
 };
 
 test('roomPowerLevelsEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const event = roomPowerLevelsEvent({
 		roomId: '!uTqsSSWabZzthsSCNf:hs1',
@@ -130,9 +120,7 @@ test('roomPowerLevelsEvent', async () => {
 });
 
 test('roomPowerLevelsEvent with custom content', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 test_key_custom WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 test_key_custom WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const roomId = '!customRoom:hs1';
 	const senderId = '@customSender:hs1';
@@ -179,10 +167,7 @@ test('roomPowerLevelsEvent with custom content', async () => {
 		ts: 1748224026175,
 	});
 
-	const signed: Omit<
-		SignedEvent<RoomPowerLevelsEvent>,
-		'event_id'
-	> = await signEvent(event, signature, 'hs1');
+	const signed: Omit<SignedEvent<RoomPowerLevelsEvent>, 'event_id'> = await signEvent(event, signature, 'hs1');
 	const eventId = generateId(signed);
 
 	expect(signed).toStrictEqual(finalCustomEvent);

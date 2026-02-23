@@ -1,3 +1,2 @@
 bun run build
 bunx tsc --noEmit
-lint-staged

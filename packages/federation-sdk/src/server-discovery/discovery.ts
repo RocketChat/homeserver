@@ -1,5 +1,7 @@
 import { isIPv4, isIPv6 } from 'node:net';
+
 import memoize from 'memoize';
+
 import { MultiError } from './_multi-error';
 import { resolver } from './_resolver';
 import { _URL } from './_url';
@@ -19,8 +21,7 @@ type IP4or6WithPortString = `${IP4or6String}:${PortString | number}`;
 // 	| 'http'
 // 	| 'https'}://${AddressWithPortString}`;
 
-type IP4or6WithPortAndProtocolString =
-	`${'http' | 'https'}://${IP4or6WithPortString}`;
+type IP4or6WithPortAndProtocolString = `${'http' | 'https'}://${IP4or6WithPortString}`;
 
 type HostHeaders = {
 	Host: AddressString | AddressWithPortString | IP4or6WithPortString;
@@ -44,10 +45,7 @@ function fix6(addr: string): `[${string}]` {
 	return /^\[.+\]$/.test(addr) ? (addr as `[${string}]`) : `[${addr}]`;
 }
 
-export async function resolveHostname(
-	hostname: string,
-	resolveCname: boolean,
-): Promise<IP4or6String> {
+export async function resolveHostname(hostname: string, resolveCname: boolean): Promise<IP4or6String> {
 	const errors = new MultiError();
 
 	// in order as in spec
@@ -155,8 +153,7 @@ async function getHomeserverFinalAddressInternal(
 		});
 
 		try {
-			const [addr, hostHeaders] =
-				await fromSRVResolutionWithBasicFallback(hostname);
+			const [addr, hostHeaders] = await fromSRVResolutionWithBasicFallback(hostname);
 			logger?.debug({ msg: 'result from SRV resolution', addr, hostHeaders });
 
 			return [`https://${addr}` as const, hostHeaders];
@@ -174,28 +171,16 @@ async function getHomeserverFinalAddressInternal(
 	}
 }
 
-export const getHomeserverFinalAddress = memoize(
-	getHomeserverFinalAddressInternal,
-	{ maxAge: SERVER_DISCOVERY_CACHE_MAX_AGE },
-);
+export const getHomeserverFinalAddress = memoize(getHomeserverFinalAddressInternal, { maxAge: SERVER_DISCOVERY_CACHE_MAX_AGE });
 
 type WellKnownResponse = {
 	'm.server': string;
 };
 
 // error must be caught and handled by the caller
-async function fromWellKnownDelegation(
-	host: string,
-): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
-	const isWellKnownResponse = (
-		response: unknown,
-	): response is WellKnownResponse => {
-		return (
-			typeof response === 'object' &&
-			response !== null &&
-			'm.server' in response &&
-			typeof response['m.server'] === 'string'
-		);
+async function fromWellKnownDelegation(host: string): Promise<[IP4or6WithPortAndProtocolString, HostHeaders]> {
+	const isWellKnownResponse = (response: unknown): response is WellKnownResponse => {
+		return typeof response === 'object' && response !== null && 'm.server' in response && typeof response['m.server'] === 'string';
 	};
 
 	// SPEC: 3. If the hostname is not an IP literal, a regular HTTPS request is made to https://<hostname>/.well-known/matrix/server,
@@ -240,8 +225,7 @@ async function fromWellKnownDelegation(
 	if (url.isIP()) {
 		// compiler should take care of this redundant reassignment
 		const delegatedIp = delegatedHostname;
-		const finalAddress =
-			`https://${delegatedIp}:${delegatedPort || DEFAULT_PORT}` as const;
+		const finalAddress = `https://${delegatedIp}:${delegatedPort || DEFAULT_PORT}` as const;
 		return [
 			finalAddress,
 			{
@@ -264,28 +248,22 @@ async function fromWellKnownDelegation(
 	}
 
 	// SPEC: 3.3. If <delegated_hostname> is not an IP literal and no <delegated_port> is present, an SRV record is looked up for _matrix-fed._tcp.<delegated_hostname>. This may result in another hostname (to be resolved using AAAA or A records) and port. Requests should be made to the resolved IP address and port with a Host header containing the <delegated_hostname>. The target server must present a valid certificate for <delegated_hostname>.
-	const [addr, hostHeaders] =
-		await fromSRVResolutionWithBasicFallback(delegatedHostname);
+	const [addr, hostHeaders] = await fromSRVResolutionWithBasicFallback(delegatedHostname);
 	return [`https://${addr}` as const, hostHeaders];
 }
 
 // SPEC: If the /.well-known request resulted in an error response, a server is found by resolving an SRV record for _matrix-fed._tcp.<hostname>. This may result in a hostname (to be resolved using AAAA or A records) and port. Requests are made to the resolved IP address and port, with a Host header of <hostname>. The target server must present a valid certificate for <hostname>.
-async function fromSRVDelegation(
-	hostname: string,
-): Promise<[IP4or6WithPortString, HostHeaders]> {
-	const _do = async (
-		name: string,
-	): Promise<Awaited<ReturnType<typeof fromSRVDelegation>> | undefined> => {
+async function fromSRVDelegation(hostname: string): Promise<[IP4or6WithPortString, HostHeaders]> {
+	const _do = async (name: string): Promise<Awaited<ReturnType<typeof fromSRVDelegation>> | undefined> => {
 		const srvs = await resolver.resolveSrv(name);
 
-		for (const srv of srvs) {
+		for await (const srv of srvs) {
 			const _is4 = isIPv4(srv.name);
 			const _is6 = isIPv6(srv.name);
 
 			if (_is4 || _is6) {
 				// use as is
-				const finalAddress =
-					`${_is6 ? fix6(srv.name) : srv.name}:${srv.port}` as const;
+				const finalAddress = `${_is6 ? fix6(srv.name) : srv.name}:${srv.port}` as const;
 
 				return [finalAddress, { Host: hostname }];
 			}
@@ -316,9 +294,7 @@ async function fromSRVDelegation(
 	throw new Error(`no srv address found for ${hostname}`);
 }
 
-async function fromSRVResolutionWithBasicFallback(
-	hostname: AddressString,
-): Promise<[IP4or6WithPortString, HostHeaders]> {
+async function fromSRVResolutionWithBasicFallback(hostname: AddressString): Promise<[IP4or6WithPortString, HostHeaders]> {
 	// SPEC: 6. If the /.well-known request returned an error response, and no SRV records were found, an IP address is resolved using CNAME, AAAA and A records. Requests are made to the resolved IP address using port 8448 and a Host header containing the <hostname>. The target server must present a valid certificate for <hostname>.
 	try {
 		return await fromSRVDelegation(hostname);

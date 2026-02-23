@@ -1,22 +1,16 @@
-import { PriorityQueue } from '@datastructures-js/priority-queue';
-import type {
-	EventID,
-	StateEventIdMap,
-	StateMapKey,
-} from '../../types/_common';
-import { type PduType } from '../../types/v3-11';
-
 import assert from 'node:assert';
+
+import { PriorityQueue } from '@datastructures-js/priority-queue';
+
 import { StateResolverAuthorizationError } from '../../authorizartion-rules/errors';
 import { checkEventAuthWithState } from '../../authorizartion-rules/rules';
-import { PersistentEventBase, State } from '../../manager/event-wrapper';
+import type { PersistentEventBase, State } from '../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../manager/power-level-event-wrapper';
-import { RoomVersion } from '../../manager/type';
+import type { RoomVersion } from '../../manager/type';
+import type { EventID, StateEventIdMap, StateMapKey } from '../../types/_common';
+import { type PduType } from '../../types/v3-11';
 
-export function getStateMapKey(event: {
-	type: PduType;
-	state_key?: string;
-}): StateMapKey {
+export function getStateMapKey(event: { type: PduType; state_key?: string }): StateMapKey {
 	return `${event.type}:${event.state_key ?? ''}`;
 }
 
@@ -27,9 +21,7 @@ export function getStateByMapKey<T extends PduType>(
 		state_key?: string;
 	},
 ) {
-	return map.get(getStateMapKey(filter)) as
-		| PersistentEventBase<RoomVersion, T>
-		| undefined;
+	return map.get(getStateMapKey(filter)) as PersistentEventBase<RoomVersion, T> | undefined;
 }
 
 // https://spec.matrix.org/v1.12/rooms/v2/#definitions
@@ -40,18 +32,14 @@ export function isPowerEvent(event: PersistentEventBase): boolean {
 		event.isPowerLevelEvent() ||
 		event.isJoinRuleEvent() ||
 		// or a state event with type m.room.member where the membership is leave or ban and the sender does not match the state_key
-		(event.isMembershipEvent() &&
-			(event.getMembership() === 'leave' || event.getMembership() === 'ban') &&
-			event.sender !== event.stateKey)
+		(event.isMembershipEvent() && (event.getMembership() === 'leave' || event.getMembership() === 'ban') && event.sender !== event.stateKey)
 	);
 }
 
 //  Unconflicted state map and conflicted state set.
 // State map S_i is {S_1, S_2, S_3, ...}
 // iout map takes care of the non-duplication of a set
-export function partitionState(
-	events: Readonly<Iterable<PersistentEventBase>>,
-): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
+export function partitionState(events: Readonly<Iterable<PersistentEventBase>>): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
 	const unconflictedState: StateEventIdMap = new Map();
 
 	// Note that the unconflicted state map only has one event for each key K, whereas the conflicted state set may contain multiple events with the same key.
@@ -67,7 +55,7 @@ export function partitionState(
 	unconflictedState.set(first.getUniqueStateIdentifier(), first.eventId);
 
 	for (const event of events) {
-		const eventId = event.eventId;
+		const { eventId } = event;
 		const stateKey = event.getUniqueStateIdentifier();
 		// If a given key K is present in every Si with the same value V in each state map
 		if (unconflictedState.has(stateKey)) {
@@ -86,7 +74,6 @@ export function partitionState(
 				conflictedStateEventsMap.set(stateKey, [existingEventid, eventId]);
 			}
 		} else if (conflictedStateEventsMap.has(stateKey)) {
-			// biome-ignore lint/style/noNonNullAssertion: `has` asserts non-null
 			conflictedStateEventsMap.get(stateKey)!.push(eventId);
 		} else {
 			unconflictedState.set(stateKey, eventId);
@@ -105,18 +92,12 @@ export interface EventStore {
 /*
  *The auth chain of an event E is the set containing all of E’s auth events, all of their auth events, and so on recursively, stretching back to the start of the room. Put differently, these are the events reachable by walking the graph induced by an event’s auth_events links.
  */
-export async function getAuthChain(
-	event: PersistentEventBase,
-	store: EventStore,
-): Promise<Set<EventID>> {
+export async function getAuthChain(event: PersistentEventBase, store: EventStore): Promise<Set<EventID>> {
 	// TODO: central cache for t6his
 	const eventIdToAuthChainMap = new Map<EventID, Set<EventID>>(); // do not repeat
 
-	const _getAuthChain = async (
-		event: PersistentEventBase,
-		existingAuthChainPart: Set<EventID>,
-	) => {
-		const eventId = event.eventId;
+	const _getAuthChain = async (event: PersistentEventBase, existingAuthChainPart: Set<EventID>) => {
+		const { eventId } = event;
 
 		if (eventIdToAuthChainMap.has(eventId)) {
 			return eventIdToAuthChainMap.get(eventId)!;
@@ -132,11 +113,8 @@ export async function getAuthChain(
 
 		let newAuthChainPart = existingAuthChainPart.union(authEventIdsSet);
 
-		for (const authEvent of authEvents) {
-			const nextAuthChainPart = await _getAuthChain(
-				authEvent,
-				newAuthChainPart,
-			);
+		for await (const authEvent of authEvents) {
+			const nextAuthChainPart = await _getAuthChain(authEvent, newAuthChainPart);
 			if (!nextAuthChainPart) {
 				continue;
 			}
@@ -151,26 +129,20 @@ export async function getAuthChain(
 
 // Auth difference
 // NOTE: https://github.com/element-hq/synapse/blob/a25a37002c851ef419d12925a11dd8bf2233470e/docs/auth_chain_difference_algorithm.md
-export async function getAuthChainDifference(
-	states: Readonly<Iterable<StateEventIdMap>>,
-	store: EventStore,
-) {
+export async function getAuthChainDifference(states: Readonly<Iterable<StateEventIdMap>>, store: EventStore) {
 	const authChainSets = [] as Set<EventID>[];
 
-	for (const state of states) {
+	for await (const state of states) {
 		const authChainForState = new Set<EventID>();
 
-		for (const eventid of state.values()) {
+		for await (const eventid of state.values()) {
 			const [event] = await store.getEvents([eventid]);
 			if (!event) {
 				console.warn('event not found in store or remote', eventid);
 				continue;
 			}
 			// TODO: deb check this I changed to keep the function behaving as the spec
-			for (const authChainEventId of [
-				...(await getAuthChain(event, store)),
-				event.eventId,
-			]) {
+			for (const authChainEventId of [...(await getAuthChain(event, store)), event.eventId]) {
 				authChainForState.add(authChainEventId);
 			}
 		}
@@ -178,14 +150,8 @@ export async function getAuthChainDifference(
 		authChainSets.push(authChainForState);
 	}
 
-	const union = authChainSets.reduce(
-		(accum, curr) => accum.union(curr),
-		new Set<EventID>(),
-	);
-	const intersection = authChainSets.reduce(
-		(accum, curr) => accum?.intersection(curr),
-		authChainSets.shift(),
-	);
+	const union = authChainSets.reduce((accum, curr) => accum.union(curr), new Set<EventID>());
+	const intersection = authChainSets.reduce((accum, curr) => accum?.intersection(curr), authChainSets.shift());
 
 	if (!intersection) {
 		return union;
@@ -278,18 +244,12 @@ export function _kahnsOrder<T>(
 
 	// get all indegrees
 	// any key in the graph with no edges has zero indegree
-	// biome-ignore lint/complexity/noForEach: <explanation>
-	indegree
-		.keys()
-		.forEach((k) => indegree.get(k) === 0 && zeroIndegreeQueue.enqueue(k));
+	indegree.keys().forEach((k) => indegree.get(k) === 0 && zeroIndegreeQueue.enqueue(k));
 
 	// While the queue is not empty:
 	while (!zeroIndegreeQueue.isEmpty()) {
 		const node = zeroIndegreeQueue.pop();
-		assert(
-			node !== null,
-			'undefined element in zeroIndegreeQueue should not happen',
-		);
+		assert(node !== null, 'undefined element in zeroIndegreeQueue should not happen');
 
 		result.push(node);
 
@@ -337,35 +297,19 @@ export async function reverseTopologicalPowerSort(
 	// event to the auth events
 	// so, all edges to each node is a parent
 
-	const buildIndegreeGraph = async (
-		graph: Map<EventID, Set<EventID>>,
-		event: PersistentEventBase,
-	) => {
+	const buildIndegreeGraph = async (graph: Map<EventID, Set<EventID>>, event: PersistentEventBase) => {
 		graph.set(event.eventId, new Set());
 
 		if (event.isPowerLevelEvent()) {
-			eventToPowerLevelMap.set(
-				event.eventId,
-				event
-					.toPowerLevelEvent()
-					.getPowerLevelForUser(event.sender, roomCreateEvent),
-			);
+			eventToPowerLevelMap.set(event.eventId, event.toPowerLevelEvent().getPowerLevelForUser(event.sender, roomCreateEvent));
 		}
 
 		// auths are the parents, must be on tiop
 		for (const authEvent of await store.getEvents(event.getAuthEventIds())) {
 			eventMap.set(authEvent.eventId, authEvent);
 
-			if (
-				!eventToPowerLevelMap.has(authEvent.eventId) &&
-				authEvent.isPowerLevelEvent()
-			) {
-				eventToPowerLevelMap.set(
-					event.eventId,
-					authEvent
-						.toPowerLevelEvent()
-						.getPowerLevelForUser(event.sender, roomCreateEvent),
-				);
+			if (!eventToPowerLevelMap.has(authEvent.eventId) && authEvent.isPowerLevelEvent()) {
+				eventToPowerLevelMap.set(event.eventId, authEvent.toPowerLevelEvent().getPowerLevelForUser(event.sender, roomCreateEvent));
 			}
 
 			if (conflictedSet.has(authEvent.eventId)) {
@@ -377,17 +321,11 @@ export async function reverseTopologicalPowerSort(
 
 		if (!eventToPowerLevelMap.has(event.eventId)) {
 			// use default power level
-			eventToPowerLevelMap.set(
-				event.eventId,
-				PowerLevelEvent.fromDefault().getPowerLevelForUser(
-					event.sender,
-					roomCreateEvent,
-				),
-			);
+			eventToPowerLevelMap.set(event.eventId, PowerLevelEvent.fromDefault().getPowerLevelForUser(event.sender, roomCreateEvent));
 		}
 	};
 
-	for (const event of events) {
+	for await (const event of events) {
 		eventMap.set(event.eventId, event);
 		await buildIndegreeGraph(graph, event);
 	}
@@ -406,11 +344,7 @@ export async function reverseTopologicalPowerSort(
 		const sender1PowerLevel = eventToPowerLevelMap.get(event1Id);
 		const sender2PowerLevel = eventToPowerLevelMap.get(event2Id);
 
-		if (
-			sender1PowerLevel !== undefined &&
-			sender2PowerLevel !== undefined &&
-			sender1PowerLevel !== sender2PowerLevel
-		) {
+		if (sender1PowerLevel !== undefined && sender2PowerLevel !== undefined && sender1PowerLevel !== sender2PowerLevel) {
 			return sender2PowerLevel - sender1PowerLevel;
 		}
 
@@ -435,17 +369,10 @@ export async function mainlineOrdering(
 	// Let P = P0 be an m.room.power_levels event
 	powerLevelEvent?: PersistentEventBase<RoomVersion, 'm.room.power_levels'>, // of which we will calculate the mainline
 ): Promise<PersistentEventBase[]> {
-	const getMainline = async (
-		event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
-	) => {
-		const mainline = [] as PersistentEventBase<
-			RoomVersion,
-			'm.room.power_levels'
-		>[];
+	const getMainline = async (event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>) => {
+		const mainline = [] as PersistentEventBase<RoomVersion, 'm.room.power_levels'>[];
 
-		const fn = async (
-			event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>,
-		) => {
+		const fn = async (event: PersistentEventBase<RoomVersion, 'm.room.power_levels'>) => {
 			const authEvents = await store.getEvents(event.getAuthEventIds());
 
 			// await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -471,8 +398,7 @@ export async function mainlineOrdering(
 	};
 
 	// this is how we get the mainline of an event
-	const mainline: PersistentEventBase<RoomVersion, 'm.room.power_levels'>[] =
-		[];
+	const mainline: PersistentEventBase<RoomVersion, 'm.room.power_levels'>[] = [];
 
 	if (powerLevelEvent?.isPowerLevelEvent()) {
 		mainline.push(...(await getMainline(powerLevelEvent)));
@@ -490,9 +416,7 @@ export async function mainlineOrdering(
 		);
 	}
 
-	const getMainlinePositionOfEvent = async (
-		event: PersistentEventBase,
-	): Promise<number> => {
+	const getMainlinePositionOfEvent = async (event: PersistentEventBase): Promise<number> => {
 		let _event: PersistentEventBase | null = event;
 
 		while (_event) {
@@ -502,17 +426,13 @@ export async function mainlineOrdering(
 				return mainlineMap.get(_event.eventId) || 0;
 			}
 
-			const authEvents: PersistentEventBase[] = await store.getEvents(
-				_event.getAuthEventIds(),
-			);
+			// eslint-disable-next-line no-await-in-loop
+			const authEvents: PersistentEventBase[] = await store.getEvents(_event.getAuthEventIds());
 
 			_event = null;
 
 			for (const authEvent of authEvents) {
-				assert(
-					authEvent,
-					'auth event should not be null, either in our store or remote',
-				);
+				assert(authEvent, 'auth event should not be null, either in our store or remote');
 
 				// Find the smallest index j ≥ 1 for which e_j belongs to the mainline of P.
 				if (
@@ -531,30 +451,22 @@ export async function mainlineOrdering(
 
 	// Let e = e0 be another event (possibly another m.room.power_levels event)
 	// iterating over all, could have been better visualized with a for (let i = 0; i < events.length; i++) loop
-	for (const event of events) {
+	for await (const event of events) {
 		// "Now compare these two lists as follows."
 		// since we have to compare it doesn't make sense to fetch mainlines of all events here, too expensive, let's try to calculate on the fly
 		// we just want the mainline position of the event
 
-		mainlinePositions.set(
-			event.eventId,
-			await getMainlinePositionOfEvent(event),
-		);
+		mainlinePositions.set(event.eventId, await getMainlinePositionOfEvent(event));
 	}
 
 	// the mainline ordering based on P of a set of events is the ordering
 	// from smallest to largest
-	//   using the following comparison relation on events: for events x and y, x < y if
+	//   using the following comparison relation on events: for events x and y, x < y if
 	const comparisonFn = (e1: PersistentEventBase, e2: PersistentEventBase) => {
 		// the mainline position of x is greater than the mainline position of y
 		const e1Position = mainlinePositions.get(e1.eventId);
 		const e2Position = mainlinePositions.get(e2.eventId);
-		if (
-			e1Position !== undefined &&
-			e2Position !== undefined &&
-			e1Position < e2Position
-		)
-			return -1;
+		if (e1Position !== undefined && e2Position !== undefined && e1Position < e2Position) return -1;
 
 		// x’s origin_server_ts is less than y’s origin_server_ts
 		if (e1.originServerTs !== e2.originServerTs) {
@@ -581,9 +493,11 @@ export async function iterativeAuthChecks(
 ): Promise<State> {
 	const newState: State = new Map(stateMap.entries()) as State;
 
-	for (const event of events) {
+	for await (const event of events) {
 		const authEventStateMap: State = new Map();
-		for (const authEvent of await store.getEvents(event.getAuthEventIds())) {
+
+		const authEvents = await store.getEvents(event.getAuthEventIds());
+		for (const authEvent of authEvents) {
 			authEventStateMap.set(authEvent.getUniqueStateIdentifier(), authEvent);
 		}
 

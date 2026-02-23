@@ -8,7 +8,8 @@ import {
 	type UserID,
 } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia, t } from 'elysia';
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
 
 export const internalRequestPlugin = (app: Elysia) => {
 	app.post(
@@ -34,12 +35,9 @@ export const internalRequestPlugin = (app: Elysia) => {
 					description: 'the endpoint uri, roomid user id and all',
 				}),
 				body: t.Optional(t.Any({ description: 'the body to send, if any' })),
-				method: t.Union(
-					[t.Literal('GET'), t.Literal('POST'), t.Literal('PUT')],
-					{
-						description: 'the method to use',
-					},
-				),
+				method: t.Union([t.Literal('GET'), t.Literal('POST'), t.Literal('PUT')], {
+					description: 'the method to use',
+				}),
 				query: t.Optional(
 					t.Record(t.String(), t.String(), {
 						description: 'query parameters to append to the url',
@@ -63,9 +61,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 				roomId: RoomID;
 				sender: UserID;
 			};
-			const version =
-				(query.version as RoomVersion | undefined) ||
-				PersistentEventFactory.defaultRoomVersion;
+			const version = (query.version as RoomVersion | undefined) || PersistentEventFactory.defaultRoomVersion;
 			switch (eventType) {
 				case 'm.room.member': {
 					const event = await federationSDK.buildEvent<'m.room.member'>(
@@ -198,8 +194,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 			detail: {
 				tags: ['Devtools'],
 				summary: 'Event template',
-				description:
-					'Get an event template to fill and send, use /internal/event/send to send it',
+				description: 'Get an event template to fill and send, use /internal/event/send to send it',
 			},
 		},
 	);
@@ -208,13 +203,11 @@ export const internalRequestPlugin = (app: Elysia) => {
 		'/internal/event/send',
 		async ({ body, query }) => {
 			const event = body as Pdu;
-			const version =
-				(query.version as RoomVersion | undefined) ||
-				PersistentEventFactory.defaultRoomVersion;
+			const version = (query.version as RoomVersion | undefined) || PersistentEventFactory.defaultRoomVersion;
 			if (!PersistentEventFactory.isSupportedRoomVersion(version)) {
 				throw new Error(`Room version ${version} is not supported`);
 			}
-			// @ts-ignore
+			// @ts-expect-error defining as undefined to force to be recalculated
 			event.hashes = undefined; // force to be recalculated
 			const pdu = PersistentEventFactory.createFromRawEvent(event, version);
 			if (!pdu) {
@@ -230,8 +223,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 			detail: {
 				tags: ['Devtools'],
 				summary: 'Send an event',
-				description:
-					'Send an event, you can get templates from /internal/event/template/:eventType/:roomId/:sender',
+				description: 'Send an event, you can get templates from /internal/event/template/:eventType/:roomId/:sender',
 			},
 		},
 	);

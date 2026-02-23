@@ -21,10 +21,7 @@ export const makeRequest = async <T = Record<string, unknown>>({
 	options?: Record<string, unknown>;
 	queryString?: string;
 }): Promise<T> => {
-	const { address, headers } = await resolveHostAddressByServerName(
-		domain,
-		signingName,
-	);
+	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
 	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
@@ -64,19 +61,9 @@ export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 	signingName: string;
 	queryString?: string;
 }): Promise<T> => {
-	const auth = await authorizationHeaders<Record<string, unknown>>(
-		signingName,
-		signingKey,
-		domain,
-		method,
-		uri,
-		body,
-	);
+	const auth = await authorizationHeaders<Record<string, unknown>>(signingName, signingKey, domain, method, uri, body);
 
-	const { address, headers } = await resolveHostAddressByServerName(
-		domain,
-		signingName,
-	);
+	const { address, headers } = await resolveHostAddressByServerName(domain, signingName);
 	const url = new URL(`https://${address}${uri}`);
 	if (queryString) {
 		url.search = queryString;
@@ -86,7 +73,7 @@ export const makeUnsignedRequest = async <T = Record<string, unknown>>({
 		...options,
 		method,
 		headers: {
-			Authorization: auth,
+			'Authorization': auth,
 			...headers,
 			'content-type': 'application/json',
 		},

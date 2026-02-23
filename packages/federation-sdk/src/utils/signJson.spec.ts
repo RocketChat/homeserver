@@ -1,4 +1,5 @@
 import { describe, expect, it, test } from 'bun:test';
+
 import {
 	EncryptionValidAlgorithm,
 	generateKeyPairsFromString,
@@ -10,93 +11,64 @@ import {
 describe('verifySignaturesFromRemote', async () => {
 	test('it should verify a valid signature', async () => {
 		const serverName = 'synapse';
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8');
 
 		const signed = await signJson({}, signature, serverName);
 
-		await verifySignaturesFromRemote(
-			signed,
-			serverName,
-			async () => signature.publicKey,
-		);
+		await verifySignaturesFromRemote(signed, serverName, async () => signature.publicKey);
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(
-					signed,
-					serverName,
-					async () => signature.publicKey,
-				),
-		).not.toThrow();
+		expect(async () => {
+			await verifySignaturesFromRemote(signed, serverName, async () => signature.publicKey);
+		}).not.toThrow();
 	});
 
 	test('it should throw an error if the signature is invalid', async () => {
 		const serverName = 'synapse';
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8');
 
 		const signed = await signJson({}, signature, serverName);
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(signed, serverName, async () =>
-					Uint8Array.from(
-						atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'),
-						(c) => c.charCodeAt(0),
-					),
-				),
-		).toThrow();
+		expect(async () => {
+			await verifySignaturesFromRemote(signed, serverName, async () =>
+				Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
+			);
+		}).toThrow();
 	});
 
 	test('it should throw an error if there is no valid protocol version', async () => {
 		const serverName = 'synapse';
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(
-					{
-						signatures: {
-							[serverName]: {
-								[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
-							},
+		expect(async () => {
+			await verifySignaturesFromRemote(
+				{
+					signatures: {
+						[serverName]: {
+							[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
 						},
 					},
-					serverName,
-					async () =>
-						Uint8Array.from(
-							atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'),
-							(c) => c.charCodeAt(0),
-						),
-				),
-		).toThrow(
-			`Invalid algorithm ${EncryptionValidAlgorithm.ed25519}1 for ${serverName}`,
-		);
+				},
+				serverName,
+				async () => Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
+			);
+		}).toThrow(`Invalid algorithm ${EncryptionValidAlgorithm.ed25519}1 for ${serverName}`);
 	});
 
 	it('it should throw an error if the signature is invalid for the serverName', async () => {
 		const serverName = 'synapse';
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(
-					{
-						signatures: {
-							differentServer: {
-								[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
-							},
+		expect(async () => {
+			await verifySignaturesFromRemote(
+				{
+					signatures: {
+						differentServer: {
+							[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
 						},
 					},
-					serverName,
-					async () =>
-						Uint8Array.from(
-							atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'),
-							(c) => c.charCodeAt(0),
-						),
-				),
-		).toThrow(`Signatures not found for ${serverName}`);
+				},
+				serverName,
+				async () => Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
+			);
+		}).toThrow(`Signatures not found for ${serverName}`);
 	});
 });
 
@@ -145,9 +117,7 @@ describe('verifySignaturesFromRemote', async () => {
 // }
 
 test('signJson send_join', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8');
 
 	const signed = await signJson(
 		pruneEventDict({
@@ -209,9 +179,7 @@ test('signJson send_join', async () => {
 // }
 
 test('signJson make_join', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8');
 
 	const signed = await signJson(
 		{
@@ -220,8 +188,7 @@ test('signJson make_join', async () => {
 			origin: 'synapse2',
 			signatures: {
 				synapse2: {
-					'ed25519:a_yNbw':
-						'YmiPpEE6QAeZzd8qw/FUXw2kiu0FJsApxnDfnbZmcEY5gFP97srHRqRzLjBn8Rh38nV2ZFTPXOV2Req+7JR1Bw',
+					'ed25519:a_yNbw': 'YmiPpEE6QAeZzd8qw/FUXw2kiu0FJsApxnDfnbZmcEY5gFP97srHRqRzLjBn8Rh38nV2ZFTPXOV2Req+7JR1Bw',
 				},
 			},
 			uri: '/_matrix/federation/v1/make_join/%21JVkUxGlBLsuOwTBUpN%3Asynapse1/%40rodrigo2%3Asynapse2?ver=1&ver=2&ver=3&ver=4&ver=5&ver=6&ver=7&ver=8&ver=9&ver=10&ver=11&ver=org.matrix.msc3757.10&ver=org.matrix.msc3757.11',

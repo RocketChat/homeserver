@@ -4,7 +4,9 @@ export type QueueHandler<T> = (item: T) => Promise<void> | void;
 
 export abstract class BaseQueue<T> {
 	protected queue: T[] = [];
+
 	protected processing = false;
+
 	protected handler?: QueueHandler<T>;
 
 	registerHandler(handler: QueueHandler<T>) {
@@ -30,6 +32,7 @@ export abstract class BaseQueue<T> {
 					continue;
 				}
 
+				// eslint-disable-next-line no-await-in-loop
 				await this.handler(item);
 			} catch (err) {
 				logger.error({

@@ -58,7 +58,8 @@
 // i am too early in this to remember everything by heart.
 
 import assert from 'node:assert';
-import { PersistentEventBase, State } from '../../../manager/event-wrapper';
+
+import type { PersistentEventBase, State } from '../../../manager/event-wrapper';
 import { PowerLevelEvent } from '../../../manager/power-level-event-wrapper';
 import type { EventID, StateMapKey } from '../../../types/_common';
 import {
@@ -73,9 +74,7 @@ import {
 	reverseTopologicalPowerSort,
 } from '../definitions';
 
-export const isTruthy = <T>(
-	value: T | null | undefined | false | 0 | '',
-): value is T => {
+export const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
 	return Boolean(value);
 };
 
@@ -131,14 +130,12 @@ export async function resolveStateV2Plus(
 
 	const [unconflicted, conflicted] = partitionState(eventIdToEventMap.values());
 
-	const unconflictedStateMap = unconflicted
-		.entries()
-		.reduce((accum, [stateKey, eventId]) => {
-			const event = eventIdToEventMap.get(eventId);
-			assert(event, 'event should not be null');
-			accum.set(stateKey, event);
-			return accum;
-		}, new Map() as State);
+	const unconflictedStateMap = unconflicted.entries().reduce((accum, [stateKey, eventId]) => {
+		const event = eventIdToEventMap.get(eventId);
+		assert(event, 'event should not be null');
+		accum.set(stateKey, event);
+		return accum;
+	}, new Map() as State);
 
 	if (conflicted.size === 0) {
 		// no conflicted state, return the unconflicted state
@@ -147,17 +144,11 @@ export async function resolveStateV2Plus(
 
 	// ajuthchain diff calculation will require non unique statekeys
 	const authChainDifference = await getAuthChainDifference(
-		states.map(
-			(state) =>
-				new Map<StateMapKey, EventID>(
-					state.entries().map(([stateKey, event]) => [stateKey, event.eventId]),
-				),
-		),
+		states.map((state) => new Map<StateMapKey, EventID>(state.entries().map(([stateKey, event]) => [stateKey, event.eventId]))),
 		wrappedStore,
 	);
 
 	const fullConflictedSet = conflicted.values().reduce((accum, curr) => {
-		// biome-ignore lint/complexity/noForEach: <explanation>
 		curr.forEach((c) => accum.add(c));
 
 		return accum;
@@ -172,7 +163,7 @@ export async function resolveStateV2Plus(
 	// etc.
 	const powerEvents = new Map<EventID, PersistentEventBase>(); // using map instead of set to store the event objects uniquely
 
-	for (const eventid of fullConflictedSet) {
+	for await (const eventid of fullConflictedSet) {
 		const [event] = await wrappedStore.getEvents([eventid]);
 		if (!event) {
 			console.warn('event not found in eventMap', eventid);
@@ -185,11 +176,11 @@ export async function resolveStateV2Plus(
 
 	//  For each such power event P, enlarge X by adding the events in the auth chain of P which also belong to the full conflicted set.
 
-	for (const event of powerEvents.values()) {
+	for await (const event of powerEvents.values()) {
 		// pass cache
 		const authChain = await getAuthChain(event, wrappedStore);
 
-		for (const authEventId of authChain) {
+		for await (const authEventId of authChain) {
 			const [authEvent] = await wrappedStore.getEvents([authEventId]);
 
 			if (!authEvent) {
@@ -278,25 +269,15 @@ export async function resolveStateV2Plus(
 	// since the power level event that allowed X (A) is earlier, the mainline ordering will put X before Y.
 	// mainlineSort([Y, X]) -> [X, Y] because A < B
 
-	const sanitizedRemainingEvents = remainingEvents
-		.map((e) => eventIdToEventMap.get(e))
-		.filter(isTruthy);
+	const sanitizedRemainingEvents = remainingEvents.map((e) => eventIdToEventMap.get(e)).filter(isTruthy);
 
-	const orderedRemainingEvents = await mainlineOrdering(
-		sanitizedRemainingEvents,
-		wrappedStore,
-		powerLevelEvent,
-	);
+	const orderedRemainingEvents = await mainlineOrdering(sanitizedRemainingEvents, wrappedStore, powerLevelEvent);
 
 	// 4. Apply the iterative auth checks algorithm on the partial resolved state and the list of events from the previous step.
-	const finalState = await iterativeAuthChecks(
-		orderedRemainingEvents,
-		partiallyResolvedState,
-		wrappedStore,
-	);
+	const finalState = await iterativeAuthChecks(orderedRemainingEvents, partiallyResolvedState, wrappedStore);
 
 	// 5. Update the result by replacing any event with the event with the same key from the unconflicted state map, if such an event exists, to get the final resolved state.
-	for (const [key, value] of unconflicted) {
+	for await (const [key, value] of unconflicted) {
 		if (finalState.has(key)) {
 			const [event] = await wrappedStore.getEvents([value]);
 			assert(event, 'event should not be null');

@@ -1,0 +1,30 @@
+{
+  "root": true,
+  "extends": ["@rocket.chat/eslint-config", "prettier", "plugin:@typescript-eslint/recommended"],
+  "plugins": ["prettier", "anti-trojan-source", "no-floating-promise"],
+  "settings": {
+    "import/core-modules": ["bun", "bun:test", "bun:sqlite"],
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": ["./tsconfig.json", "./packages/*/tsconfig.json"]
+      },
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  },
+  "rules": {
+    "@typescript-eslint/consistent-type-imports": "off",
+    "new-cap": ["error", {
+      "capIsNewExceptionPattern": "^t\\.(Object|String|Number|Boolean|Array|Tuple|Record|Union|Intersect|Literal|Optional|Nullable|Any|Unknown|Never|Void|Undefined|Null|Date|Files|File|Numeric|Integer|Enum|TemplateLiteral|Not|Recursive|Transform|Unsafe|Function|Constructor|Promise|AsyncIterator|Iterator|RegExp|Index|KeyOf|Partial|Required|Pick|Omit|Exclude|Extract|InstanceType|Parameters|ReturnType|Awaited|BooleanString|NumericString|MaybeEmpty|ObjectString|Lowercase|Uppercase|Capitalize|Uncapitalize)$"
+    }],
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "interface",
+        "format": null
+      }
+    ]
+  }
+}

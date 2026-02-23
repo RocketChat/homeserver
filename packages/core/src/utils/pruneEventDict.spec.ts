@@ -8,8 +8,7 @@ const event = {
 	destination: 'synapse1',
 	signatures: {
 		synapse2: {
-			'ed25519:a_yNbw':
-				'4rVyjfM9Apz6O93HvqkeidmsjwNGHD9WbEA1AdUsjdbACPM67iJK75BQLBLcw5NQj3q/eL7+kGaknkqJH8kEAw',
+			'ed25519:a_yNbw': '4rVyjfM9Apz6O93HvqkeidmsjwNGHD9WbEA1AdUsjdbACPM67iJK75BQLBLcw5NQj3q/eL7+kGaknkqJH8kEAw',
 		},
 	},
 	content: {
@@ -29,13 +28,11 @@ const event = {
 		sender: '@rodrigo2:synapse2',
 		signatures: {
 			synapse2: {
-				'ed25519:a_yNbw':
-					'0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
+				'ed25519:a_yNbw': '0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
 			},
 		},
 		state_key: '@rodrigo2:synapse2',
 		type: 'm.room.member',
-		// @ts-ignore
 		unsigned: { age: 1 },
 	},
 	origin: 'synapse2',
@@ -52,7 +49,6 @@ describe('pruneEventDict', () => {
 				'$brN97rWTFjQbIQHy2FNwg4BHc5HbhruxQHdCdk__Lb0',
 				'$7tKDuHnd8QKPx_T_9-2WGAgJLqjfOndQgzWM1afTQLQ',
 			],
-			// @ts-ignore
 			content: {
 				// avatar_url: null, --> it should be removed
 				// displayname: "rodrigo2", --> it should be removed
@@ -67,13 +63,11 @@ describe('pruneEventDict', () => {
 			sender: '@rodrigo2:synapse2',
 			signatures: {
 				synapse2: {
-					'ed25519:a_yNbw':
-						'0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
+					'ed25519:a_yNbw': '0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
 				},
 			},
 			state_key: '@rodrigo2:synapse2',
 			type: 'm.room.member',
-			// @ts-ignore
 			unsigned: {
 				// age: 1 --> it should be removed
 			},

@@ -1,4 +1,4 @@
-import { RoomID } from '@rocket.chat/federation-room';
+import type { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
 import { singleton } from 'tsyringe';
 
@@ -7,7 +7,9 @@ type QueueHandler = (roomId: RoomID) => Promise<void>;
 @singleton()
 export class StagingAreaQueue {
 	private queue: RoomID[] = [];
+
 	private handlers: QueueHandler[] = [];
+
 	private processing = false;
 
 	enqueue(roomId: RoomID): void {
@@ -32,6 +34,7 @@ export class StagingAreaQueue {
 				if (!roomId) continue;
 
 				for (const handler of this.handlers) {
+					// eslint-disable-next-line no-await-in-loop
 					await handler(roomId);
 				}
 			}

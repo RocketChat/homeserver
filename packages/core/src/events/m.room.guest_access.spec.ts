@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 
+import { roomGuestAccessEvent } from './m.room.guest_access';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import { roomGuestAccessEvent } from './m.room.guest_access';
 
 const finalEventId = '$gdAY3-3DdjuG-uyFkDn8q5wPS4fbymH__fch9BQmOas';
 const finalEvent = {
@@ -24,17 +24,14 @@ const finalEvent = {
 	hashes: { sha256: 'ArUZZ33x+j5oMNWhWvHDXBH7qrMRMbsqig5XDM5jOac' },
 	signatures: {
 		hs1: {
-			'ed25519:a_HDhg':
-				'PLaE7un6a+pzrsU/0kiB/tvneZp5/dEda4+uE7UK411hNaM4W4ZUo52ua6AGO9q5gLBjSmnR90/tPf714HiTBw',
+			'ed25519:a_HDhg': 'PLaE7un6a+pzrsU/0kiB/tvneZp5/dEda4+uE7UK411hNaM4W4ZUo52ua6AGO9q5gLBjSmnR90/tPf714HiTBw',
 		},
 	},
 	unsigned: { age_ts: 1733107418721 },
 } as const;
 
 test('roomGuestAccessEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const event = roomGuestAccessEvent({
 		roomId: '!uTqsSSWabZzthsSCNf:hs1',
@@ -50,7 +47,7 @@ test('roomGuestAccessEvent', async () => {
 	});
 
 	const signed = await signEvent(event, signature, 'hs1');
-	// @ts-ignore
+	// @ts-expect-error --- IGNORE ---
 	expect(signed).toStrictEqual(finalEvent);
 	expect(signed).toHaveProperty(
 		'signatures.hs1.ed25519:a_HDhg',

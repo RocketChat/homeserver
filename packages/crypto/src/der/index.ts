@@ -30,7 +30,7 @@ function encodeLength(len: number): Uint8Array {
 export const privateKeyVersionTlv = Uint8Array.of(
 	0x02 /* tag for int */,
 	0x01 /* legth */,
-	0x00 /*version of private key, we are not using extensions*/,
+	0x00 /* version of private key, we are not using extensions*/,
 );
 
 //
@@ -49,22 +49,16 @@ export const oidTlv = Uint8Array.of(
 );
 
 // https://letsencrypt.org/docs/a-warm-welcome-to-asn1-and-der/#null-encoding
-export const nullTlv = Uint8Array.of(
-	0x05 /* tag for null */,
-	0x00 /* length 0 */,
-);
+export const nullTlv = Uint8Array.of(0x05 /* tag for null */, 0x00 /* length 0 */);
 
 // https://letsencrypt.org/docs/a-warm-welcome-to-asn1-and-der/#sequence-encoding
 export function sequenceOrderedTlv(elements: Uint8Array[]): Uint8Array {
 	const totalLengthInBytes = elements.reduce((a, b) => a + b.length, 0);
 
-	const bytesRepresentationForTotalLengthRequired =
-		encodeLength(totalLengthInBytes);
+	const bytesRepresentationForTotalLengthRequired = encodeLength(totalLengthInBytes);
 
 	const numberOfBytesRequired =
-		1 +
-		bytesRepresentationForTotalLengthRequired.length /*bytes needed for the length itself*/ +
-		totalLengthInBytes;
+		1 + bytesRepresentationForTotalLengthRequired.length /* bytes needed for the length itself*/ + totalLengthInBytes;
 
 	const sequence = new Uint8Array(numberOfBytesRequired);
 
@@ -89,11 +83,7 @@ export function sequenceOrderedTlv(elements: Uint8Array[]): Uint8Array {
 export function octetStringTlv(data: Uint8Array): Uint8Array {
 	const encodedLength = encodeLength(data.length);
 
-	const octet = new Uint8Array(
-		1 +
-			encodedLength.length /* space just for the length representation */ +
-			data.length,
-	);
+	const octet = new Uint8Array(1 + encodedLength.length /* space just for the length representation */ + data.length);
 
 	// TAG
 	octet[0] = 0x04; // OCTET STRING tag

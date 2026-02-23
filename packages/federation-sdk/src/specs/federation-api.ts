@@ -4,20 +4,13 @@
  * See: https://spec.matrix.org/v1.7/server-server-api/
  */
 
-import {
-	EventPduTypeRoomMember,
-	PduStateEventSchema,
-} from '@rocket.chat/federation-room';
+import { EventPduTypeRoomMember, PduStateEventSchema } from '@rocket.chat/federation-room';
 import * as z from 'zod';
 
 // Common types
 export const EventIdSchema = z.string().regex(/^\$[A-Za-z0-9_-]+$/);
-export const RoomIdSchema = z
-	.string()
-	.regex(/^![A-Za-z0-9_-]+:[A-Za-z0-9.-]+\.[A-Za-z]+$/);
-export const UserIdSchema = z
-	.string()
-	.regex(/^@[A-Za-z0-9_=/.+-]+:[A-Za-z0-9.-]+\.[A-Za-z]+$/);
+export const RoomIdSchema = z.string().regex(/^![A-Za-z0-9_-]+:[A-Za-z0-9.-]+\.[A-Za-z]+$/);
+export const UserIdSchema = z.string().regex(/^@[A-Za-z0-9_=/.+-]+:[A-Za-z0-9.-]+\.[A-Za-z]+$/);
 export const ServerNameSchema = z.string().regex(/^[A-Za-z0-9.-]+\.[A-Za-z]+$/);
 
 // Federation API endpoints
@@ -32,39 +25,28 @@ export const FederationEndpoints = {
 	// Querying room state and events
 	getStateIds: (roomId: string) => `/_matrix/federation/v1/state_ids/${roomId}`,
 	getState: (roomId: string) => `/_matrix/federation/v1/state/${roomId}`,
-	getEvent: (eventId: string) =>
-		`/_matrix/federation/v1/event/${encodeURIComponent(eventId)}`,
-	getEventAuth: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v1/event_auth/${roomId}/${encodeURIComponent(eventId)}`,
+	getEvent: (eventId: string) => `/_matrix/federation/v1/event/${encodeURIComponent(eventId)}`,
+	getEventAuth: (roomId: string, eventId: string) => `/_matrix/federation/v1/event_auth/${roomId}/${encodeURIComponent(eventId)}`,
 
 	// Room backfill and missing events
-	getMissingEvents: (roomId: string) =>
-		`/_matrix/federation/v1/get_missing_events/${roomId}`,
+	getMissingEvents: (roomId: string) => `/_matrix/federation/v1/get_missing_events/${roomId}`,
 	backfill: (roomId: string) => `/_matrix/federation/v1/backfill/${roomId}`,
 
 	// Joining/inviting and leaving rooms
-	makeJoin: (roomId: string, userId: string) =>
-		`/_matrix/federation/v1/make_join/${roomId}/${userId}`,
-	sendJoin: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v1/send_join/${roomId}/${eventId}`,
-	sendJoinV2: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v2/send_join/${roomId}/${eventId}`,
-	makeLeave: (roomId: string, userId: string) =>
-		`/_matrix/federation/v1/make_leave/${roomId}/${userId}`,
-	sendLeave: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v2/send_leave/${roomId}/${eventId}`,
-	invite: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v1/invite/${roomId}/${eventId}`,
-	inviteV2: (roomId: string, eventId: string) =>
-		`/_matrix/federation/v2/invite/${roomId}/${eventId}`,
+	makeJoin: (roomId: string, userId: string) => `/_matrix/federation/v1/make_join/${roomId}/${userId}`,
+	sendJoin: (roomId: string, eventId: string) => `/_matrix/federation/v1/send_join/${roomId}/${eventId}`,
+	sendJoinV2: (roomId: string, eventId: string) => `/_matrix/federation/v2/send_join/${roomId}/${eventId}`,
+	makeLeave: (roomId: string, userId: string) => `/_matrix/federation/v1/make_leave/${roomId}/${userId}`,
+	sendLeave: (roomId: string, eventId: string) => `/_matrix/federation/v2/send_leave/${roomId}/${eventId}`,
+	invite: (roomId: string, eventId: string) => `/_matrix/federation/v1/invite/${roomId}/${eventId}`,
+	inviteV2: (roomId: string, eventId: string) => `/_matrix/federation/v2/invite/${roomId}/${eventId}`,
 
 	// Sending events
 	sendTransaction: (txnId: string) => `/_matrix/federation/v1/send/${txnId}`,
 
 	// User and profile data
 	queryProfile: (_userId: string) => '/_matrix/federation/v1/query/profile',
-	userDevices: (userId: string) =>
-		`/_matrix/federation/v1/user/devices/${userId}`,
+	userDevices: (userId: string) => `/_matrix/federation/v1/user/devices/${userId}`,
 
 	// Public room directory
 	publicRooms: '/_matrix/federation/v1/publicRooms',
@@ -175,6 +157,4 @@ export type SendJoinEventResponseSchema = z.infer<typeof SendJoinEventSchema>;
 export type MakeJoinResponse = z.infer<typeof MakeJoinResponseSchema>;
 export type SendJoinResponse = z.infer<typeof SendJoinResponseSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
-export type SendTransactionResponse = z.infer<
-	typeof SendTransactionResponseSchema
->;
+export type SendTransactionResponse = z.infer<typeof SendTransactionResponseSchema>;

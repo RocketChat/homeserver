@@ -1,12 +1,8 @@
-import { Pdu } from '@rocket.chat/federation-room';
+import type { Pdu } from '@rocket.chat/federation-room';
+
 import type { EventBase } from './eventBase';
 
-export type JoinRule =
-	| 'invite'
-	| 'knock'
-	| 'public'
-	| 'restricted'
-	| 'knock_restricted';
+export type JoinRule = 'invite' | 'knock' | 'public' | 'restricted' | 'knock_restricted';
 
 export type Membership = 'join' | 'invite' | 'leave' | 'knock' | 'ban';
 

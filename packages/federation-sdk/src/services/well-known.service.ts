@@ -1,4 +1,5 @@
 import { singleton } from 'tsyringe';
+
 import { ConfigService } from './config.service';
 
 @singleton()
