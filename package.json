@@ -15,6 +15,7 @@
 		"eslint-config-prettier": "~9.1.2",
 		"eslint-import-resolver-typescript": "^4.4.4",
 		"eslint-plugin-anti-trojan-source": "^1.1.2",
+		"eslint-plugin-import": "^2.32.0",
 		"eslint-plugin-no-floating-promise": "~2.0.0",
 		"eslint-plugin-prettier": "4.2.1",
 		"husky": "^9.1.7",
