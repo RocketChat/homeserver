@@ -4,7 +4,6 @@ import ResolverModule from 'node:dns/promises';
 /**
  * This is a workaround restore the original module, since bun module mock is a bit weird
  */
-import ResolverModule from 'node:dns/promises';
 
 import {
 	addressWithDefaultPort,
