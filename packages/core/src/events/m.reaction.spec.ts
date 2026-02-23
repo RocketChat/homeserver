@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 
+import { reactionEvent } from './m.reaction';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import { reactionEvent } from './m.reaction';
 
 const finalEvent = {
 	auth_events: [
@@ -28,9 +28,7 @@ const finalEvent = {
 };
 
 test('reactionEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const { state_key: reactionStateKey, ...reaction } = reactionEvent({
 		roomId: '!MZyyuzkUwHEaBBOXai:hs1',

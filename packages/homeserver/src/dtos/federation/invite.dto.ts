@@ -1,4 +1,5 @@
 import { type Static, t } from 'elysia';
+
 import { RoomMemberEventDto } from '../common/event.dto';
 import { EventIdDto, RoomIdDto } from '../common/validation.dto';
 

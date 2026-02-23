@@ -1,7 +1,7 @@
 import { createLogger } from '@rocket.chat/federation-core';
-
 import { EventID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
 import { StateService } from './state.service';
@@ -27,22 +27,14 @@ export class MissingEventService {
 
 		const exists = await this.eventService.getEventById(eventId);
 		if (exists) {
-			this.logger.debug(
-				`Event ${eventId} already exists in database (staged or processed), marking as fetched`,
-			);
+			this.logger.debug(`Event ${eventId} already exists in database (staged or processed), marking as fetched`);
 			return true;
 		}
 
 		try {
-			const fetchedEvents = await this.eventFetcherService.fetchEventsByIds(
-				[eventId],
-				roomId,
-				origin,
-			);
+			const fetchedEvents = await this.eventFetcherService.fetchEventsByIds([eventId], roomId, origin);
 			if (fetchedEvents.events.length === 0) {
-				this.logger.warn(
-					`Failed to fetch missing event ${eventId} from ${origin}`,
-				);
+				this.logger.warn(`Failed to fetch missing event ${eventId} from ${origin}`);
 				return false;
 			}
 

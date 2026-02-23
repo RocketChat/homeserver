@@ -10,6 +10,4 @@ export const FederationErrorResponseDto = t.Object({
 	error: t.String(),
 });
 
-export type FederationErrorResponseDto = Static<
-	typeof FederationErrorResponseDto
->;
+export type FederationErrorResponseDto = Static<typeof FederationErrorResponseDto>;

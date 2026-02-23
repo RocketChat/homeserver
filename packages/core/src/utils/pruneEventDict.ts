@@ -1,7 +1,7 @@
-import { isRoomMemberEvent } from '../events/isRoomMemberEvent';
+import type { Pdu } from '@rocket.chat/federation-room';
 
-import { Pdu } from '@rocket.chat/federation-room';
 import type { EventBase } from '../events/eventBase';
+import { isRoomMemberEvent } from '../events/isRoomMemberEvent';
 
 interface RoomVersion {
 	updated_redaction_rules: boolean;
@@ -34,14 +34,7 @@ type AllowedKeysDefault = Extract<
 
 type AllowedKeysPowerLevels = Extract<
 	keyof Pdu,
-	| 'users'
-	| 'users_default'
-	| 'events'
-	| 'events_default'
-	| 'state_default'
-	| 'ban'
-	| 'kick'
-	| 'redact'
+	'users' | 'users_default' | 'events' | 'events_default' | 'state_default' | 'ban' | 'kick' | 'redact'
 >;
 
 type MergeMultipleKeys<T, U> = T | U;
@@ -59,15 +52,7 @@ export function pruneEventDict<T extends Pdu>(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): Prettify<
-	Pick<
-		T,
-		MergeMultipleKeys<
-			AllowedKeysDefault,
-			T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never
-		> & {}
-	>
-> {
+): Prettify<Pick<T, MergeMultipleKeys<AllowedKeysDefault, T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never> & {}>> {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it
 	 * operates on objects rather than event instances.
@@ -91,18 +76,14 @@ export function pruneEventDict<T extends Pdu>(
 		'auth_events',
 		'origin_server_ts',
 		// Earlier room versions had additional allowed keys.
-		...(!roomVersion.updated_redaction_rules
-			? ['prev_state', 'membership', 'origin']
-			: []),
+		...(!roomVersion.updated_redaction_rules ? ['prev_state', 'membership', 'origin'] : []),
 	];
 
 	const content: JsonDict = {};
 
 	if (roomVersion.msc3389_relation_redactions) {
 		const relatesTo =
-			eventDict.content &&
-			'm.relates_to' in eventDict.content &&
-			(eventDict.content['m.relates_to'] as Record<string, unknown>);
+			eventDict.content && 'm.relates_to' in eventDict.content && (eventDict.content['m.relates_to'] as Record<string, unknown>);
 
 		if (relatesTo && typeof relatesTo === 'object') {
 			const newRelatesTo: JsonDict = {};
@@ -117,9 +98,7 @@ export function pruneEventDict<T extends Pdu>(
 		}
 	}
 
-	const allowedFields: JsonDict = Object.fromEntries(
-		Object.entries(eventDict).filter(([key]) => allowedKeys.includes(key)),
-	);
+	const allowedFields: JsonDict = Object.fromEntries(Object.entries(eventDict).filter(([key]) => allowedKeys.includes(key)));
 
 	const unsigned: JsonDict = {};
 	allowedFields.unsigned = unsigned;
@@ -146,10 +125,7 @@ export function pruneEventDict<T extends Pdu>(
 	}
 
 	if (isRoomMemberEvent(eventDict)) {
-		const contentKeys = [
-			'membership',
-			...(roomVersion.restricted_join_rule_fix ? ['authorising_user'] : []),
-		];
+		const contentKeys = ['membership', ...(roomVersion.restricted_join_rule_fix ? ['authorising_user'] : [])];
 
 		addFields(...contentKeys);
 
@@ -178,10 +154,7 @@ export function pruneEventDict<T extends Pdu>(
 	}
 
 	if (eventType === 'm.room.join_rules') {
-		addFields(
-			'join_rule',
-			...(roomVersion.restricted_join_rule ? ['allow'] : []),
-		);
+		addFields('join_rule', ...(roomVersion.restricted_join_rule ? ['allow'] : []));
 	}
 
 	if (eventType === 'm.room.power_levels') {

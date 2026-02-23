@@ -1,5 +1,6 @@
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia } from 'elysia';
+import type { Elysia } from 'elysia';
+
 import { GetVersionsResponseDto } from '../../dtos';
 
 export const versionsPlugin = (app: Elysia) => {
@@ -12,7 +13,7 @@ export const versionsPlugin = (app: Elysia) => {
 			return {
 				server: {
 					name: serverName,
-					version: version,
+					version,
 				},
 			};
 		},

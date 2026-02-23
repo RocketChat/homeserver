@@ -1,7 +1,9 @@
-import { UserID } from '@rocket.chat/federation-room';
+import type { UserID } from '@rocket.chat/federation-room';
 import { federationSDK } from '@rocket.chat/federation-sdk';
-import { Elysia, t } from 'elysia';
+import type { Elysia } from 'elysia';
+import { t } from 'elysia';
 import { container } from 'tsyringe';
+
 import { type ErrorResponse, ErrorResponseDto } from '../../dtos';
 
 // DTOs for direct message operations
@@ -14,24 +16,16 @@ export const InternalDirectMessageResponseDto = t.Object({
 	roomId: t.String(),
 });
 
-export type InternalCreateDirectMessageBody =
-	typeof InternalCreateDirectMessageBodyDto.static;
-export type InternalDirectMessageResponse =
-	typeof InternalDirectMessageResponseDto.static;
+export type InternalCreateDirectMessageBody = typeof InternalCreateDirectMessageBodyDto.static;
+export type InternalDirectMessageResponse = typeof InternalDirectMessageResponseDto.static;
 
 export const internalDirectMessagePlugin = (app: Elysia) => {
 	return app.post(
 		'/internal/direct-messages/create',
-		async ({
-			body,
-			set,
-		}): Promise<InternalDirectMessageResponse | ErrorResponse> => {
+		async ({ body, set }): Promise<InternalDirectMessageResponse | ErrorResponse> => {
 			const { senderUserId, targetUserId } = body;
 			try {
-				const roomId = await federationSDK.createDirectMessageRoom(
-					senderUserId as UserID,
-					targetUserId as UserID,
-				);
+				const roomId = await federationSDK.createDirectMessageRoom(senderUserId as UserID, targetUserId as UserID);
 				return {
 					roomId,
 				};

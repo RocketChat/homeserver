@@ -1,20 +1,16 @@
 import { type EventID, type StateMapKey } from '../../../types/_common';
 import {} from '../../../types/v3-11';
-import {
-	type EventStore,
-	_kahnsOrder,
-	getAuthChainDifference,
-	mainlineOrdering,
-} from '../definitions';
-
+import { type EventStore, _kahnsOrder, getAuthChainDifference, mainlineOrdering } from '../definitions';
 import { resolveStateV2Plus } from './v2';
 
 import { afterEach, describe, expect, it } from 'bun:test';
+
 import type { PersistentEventBase } from '../../../manager/event-wrapper';
 import { PersistentEventFactory } from '../../../manager/factory';
 
 class MockEventStore implements EventStore {
 	public events: Array<PersistentEventBase> = [];
+
 	async getEvents(eventIds: string[]): Promise<PersistentEventBase[]> {
 		return this.events.filter((e) => eventIds.includes(e.eventId));
 	}
@@ -49,20 +45,22 @@ let ORIGIN_SERVER_TS = 0;
 
 class FakeEvent {
 	node_id: string;
+
 	sender: string;
+
 	type: string;
+
 	state_key: string | null;
+
 	content: Record<string, any>;
+
 	room_id: string;
+
 	event_dict: any;
+
 	_event_id: EventID;
-	constructor(
-		id: string,
-		sender: string,
-		type: string,
-		state_key: string | null,
-		content: Record<string, any>,
-	) {
+
+	constructor(id: string, sender: string, type: string, state_key: string | null, content: Record<string, any>) {
 		this.node_id = id;
 		this._event_id = `${id}:example.com`;
 		this.sender = sender;
@@ -78,14 +76,13 @@ class FakeEvent {
 			throw new Error('event_dict is not set');
 		}
 
-		return PersistentEventFactory.createFromRawEvent(this.event_dict, '11')
-			.eventId;
+		return PersistentEventFactory.createFromRawEvent(this.event_dict, '11').eventId;
 	}
 
 	toEvent(auth_events: string[], prev_events: string[]) {
 		this.event_dict = {
-			auth_events: auth_events,
-			prev_events: prev_events,
+			auth_events,
+			prev_events,
 			// event_id: this.event_id,
 			sender: this.sender,
 			type: this.type,
@@ -95,7 +92,7 @@ class FakeEvent {
 			room_id: this.room_id,
 		} as any;
 
-		ORIGIN_SERVER_TS = ORIGIN_SERVER_TS + 1;
+		ORIGIN_SERVER_TS += 1;
 
 		if (this.state_key !== null) {
 			this.event_dict.state_key = this.state_key;
@@ -115,28 +112,13 @@ const INITIAL_EVENTS = [
 		join_rule: 'public',
 	}),
 	new FakeEvent('IMB', BOB, 'm.room.member', BOB, MEMBERSHIP_CONTENT_JOIN),
-	new FakeEvent(
-		'IMC',
-		CHARLIE,
-		'm.room.member',
-		CHARLIE,
-		MEMBERSHIP_CONTENT_JOIN,
-	),
+	new FakeEvent('IMC', CHARLIE, 'm.room.member', CHARLIE, MEMBERSHIP_CONTENT_JOIN),
 	new FakeEvent('IMZ', ZARA, 'm.room.member', ZARA, MEMBERSHIP_CONTENT_JOIN),
 	new FakeEvent('START', ZARA, 'm.room.message', null, {}),
 	new FakeEvent('END', ZARA, 'm.room.message', null, {}),
 ];
 
-const INITIAL_EDGES = [
-	'START',
-	'IMZ',
-	'IMC',
-	'IMB',
-	'IJR',
-	'IPOWER',
-	'IMA',
-	'CREATE',
-];
+const INITIAL_EDGES = ['START', 'IMZ', 'IMC', 'IMB', 'IJR', 'IPOWER', 'IMA', 'CREATE'];
 
 function getGraph(events: FakeEvent[], edges: string[][]) {
 	const graph = new Map<string, Set<string>>();
@@ -191,10 +173,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		compareFunc: (a, b) => a.localeCompare(b),
 	});
 
-	const stateAtEventId = new Map<
-		string,
-		Map<StateMapKey, PersistentEventBase<'11'>>
-	>();
+	const stateAtEventId = new Map<string, Map<StateMapKey, PersistentEventBase<'11'>>>();
 
 	const [create, ...rest] = sorted;
 
@@ -205,10 +184,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 
 	eventStore.events.push(createEvent);
 
-	stateAtEventId.set(
-		createEvent.eventId,
-		new Map([[createEvent.getUniqueStateIdentifier(), createEvent]]),
-	);
+	stateAtEventId.set(createEvent.eventId, new Map([[createEvent.getUniqueStateIdentifier(), createEvent]]));
 
 	for (const nodeId of rest) {
 		const prevEventsNodeIds = reverseGraph.get(nodeId)!;
@@ -217,16 +193,12 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 
 		if (prevEventsNodeIds.size === 1) {
 			// very next to CREATE
-			stateBefore = stateAtEventId.get(
-				fakeEventMap.get(prevEventsNodeIds.values().next().value!)?.event_id,
-			)!;
+			stateBefore = stateAtEventId.get(fakeEventMap.get(prevEventsNodeIds.values().next().value!)?.event_id)!;
 		} else {
 			stateBefore = await resolveStateV2Plus(
 				prevEventsNodeIds
 					.values()
-					.map(
-						(nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)?.event_id)!,
-					)
+					.map((nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)?.event_id)!)
 					.toArray(),
 				eventStore,
 			);
@@ -235,13 +207,10 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 		// whatever was state before, append current event info to new state
 		const stateAfter = new Map(stateBefore.entries());
 
-		/// get the authEvents for the current event
+		// / get the authEvents for the current event
 		const authEvents = [];
 
-		const authTypes = fakeEventMap
-			.get(nodeId)
-			?.toEvent([], [])
-			.getAuthEventStateKeys();
+		const authTypes = fakeEventMap.get(nodeId)?.toEvent([], []).getAuthEventStateKeys();
 
 		for (const type of authTypes) {
 			// get the auth event id from the seen state
@@ -311,13 +280,7 @@ describe('Definitions', () => {
 			new FakeEvent('PA', ALICE, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
 			}),
-			new FakeEvent(
-				'MA',
-				ALICE,
-				'm.room.member',
-				ALICE,
-				MEMBERSHIP_CONTENT_JOIN,
-			),
+			new FakeEvent('MA', ALICE, 'm.room.member', ALICE, MEMBERSHIP_CONTENT_JOIN),
 			new FakeEvent('MB', ALICE, 'm.room.member', BOB, MEMBERSHIP_CONTENT_BAN),
 			new FakeEvent('PB', BOB, 'm.room.power_levels', '', {
 				users: { [ALICE]: 100, [BOB]: 50 },
@@ -331,18 +294,9 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
-			'eventId',
-			'PA:example.com',
-		);
-		expect(finalState?.get('m.room.member:@bob:example.com')).toHaveProperty(
-			'eventId',
-			'MB:example.com',
-		);
-		expect(finalState?.get('m.room.member:@alice:example.com')).toHaveProperty(
-			'eventId',
-			'MA:example.com',
-		);
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty('eventId', 'PA:example.com');
+		expect(finalState?.get('m.room.member:@bob:example.com')).toHaveProperty('eventId', 'MB:example.com');
+		expect(finalState?.get('m.room.member:@alice:example.com')).toHaveProperty('eventId', 'MA:example.com');
 	});
 
 	it('02 join rule evasion', async () => {
@@ -362,10 +316,7 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.join_rules:')).toHaveProperty(
-			'eventId',
-			'JR:example.com',
-		);
+		expect(finalState?.get('m.room.join_rules:')).toHaveProperty('eventId', 'JR:example.com');
 	});
 	it('offtopic pl', async () => {
 		// FIXME:
@@ -388,10 +339,7 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
-			'eventId',
-			'PC:example.com',
-		);
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty('eventId', 'PC:example.com');
 	});
 	it('topic basic', async () => {
 		const events = [
@@ -416,14 +364,8 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.topic:')).toHaveProperty(
-			'eventId',
-			'T2:example.com',
-		);
-		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
-			'eventId',
-			'PA2:example.com',
-		);
+		expect(finalState?.get('m.room.topic:')).toHaveProperty('eventId', 'T2:example.com');
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty('eventId', 'PA2:example.com');
 	});
 	it('topic reset', async () => {
 		const events = [
@@ -442,18 +384,9 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.topic:')).toHaveProperty(
-			'eventId',
-			'T1:example.com',
-		);
-		expect(finalState?.get('m.room.member:@bob:example.com')).toHaveProperty(
-			'eventId',
-			'MB:example.com',
-		);
-		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
-			'eventId',
-			'PA:example.com',
-		);
+		expect(finalState?.get('m.room.topic:')).toHaveProperty('eventId', 'T1:example.com');
+		expect(finalState?.get('m.room.member:@bob:example.com')).toHaveProperty('eventId', 'MB:example.com');
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty('eventId', 'PA:example.com');
 	});
 
 	it('topic', async () => {
@@ -481,14 +414,8 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.topic:')).toHaveProperty(
-			'eventId',
-			'T4:example.com',
-		);
-		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
-			'eventId',
-			'PA2:example.com',
-		);
+		expect(finalState?.get('m.room.topic:')).toHaveProperty('eventId', 'T4:example.com');
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty('eventId', 'PA2:example.com');
 	});
 
 	it('mainline sort', async () => {
@@ -516,15 +443,9 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState?.get('m.room.topic:')).toHaveProperty(
-			'eventId',
-			'T3:example.com',
-		);
+		expect(finalState?.get('m.room.topic:')).toHaveProperty('eventId', 'T3:example.com');
 
-		expect(finalState?.get('m.room.power_levels:')).toHaveProperty(
-			'eventId',
-			'PA2:example.com',
-		);
+		expect(finalState?.get('m.room.power_levels:')).toHaveProperty('eventId', 'PA2:example.com');
 	});
 
 	it('successful mainline sort with no existing power level event', async () => {
@@ -532,32 +453,17 @@ describe('Definitions', () => {
 			creator: ALICE,
 		}).toEvent([], []);
 
-		const aliceMemberEvent = new FakeEvent(
-			'IMA2',
-			ALICE,
-			'm.room.member',
-			ALICE,
-			MEMBERSHIP_CONTENT_JOIN,
-		).toEvent([createEvent.eventId], [createEvent.eventId]);
+		const aliceMemberEvent = new FakeEvent('IMA2', ALICE, 'm.room.member', ALICE, MEMBERSHIP_CONTENT_JOIN).toEvent(
+			[createEvent.eventId],
+			[createEvent.eventId],
+		);
 
-		const joinRuleEvent = new FakeEvent(
-			'IJR2',
-			ALICE,
-			'm.room.join_rules',
-			'',
-			{ join_rule: 'public' },
-		).toEvent(
+		const joinRuleEvent = new FakeEvent('IJR2', ALICE, 'm.room.join_rules', '', { join_rule: 'public' }).toEvent(
 			[createEvent.eventId, aliceMemberEvent.eventId],
 			[aliceMemberEvent.eventId],
 		);
 
-		const bobJoinEvent = new FakeEvent(
-			'IMB2',
-			BOB,
-			'm.room.member',
-			BOB,
-			MEMBERSHIP_CONTENT_JOIN,
-		).toEvent(
+		const bobJoinEvent = new FakeEvent('IMB2', BOB, 'm.room.member', BOB, MEMBERSHIP_CONTENT_JOIN).toEvent(
 			[createEvent.eventId, joinRuleEvent.eventId],
 			[joinRuleEvent.eventId],
 		);
@@ -580,11 +486,9 @@ describe('Definitions', () => {
 				return e.eventId;
 			});
 
-		const mainlineSorted = (await mainlineOrdering(events, eventStore)).map(
-			(e) => {
-				return e.eventId;
-			},
-		);
+		const mainlineSorted = (await mainlineOrdering(events, eventStore)).map((e) => {
+			return e.eventId;
+		});
 
 		expect(mainlineSorted).toEqual(sortedEvents);
 	});
@@ -705,13 +609,7 @@ describe('Definitions', () => {
 		const events = [
 			// two memberships
 			// one join rule
-			new FakeEvent(
-				'EB',
-				EVELYN,
-				'm.room.member',
-				EVELYN,
-				MEMBERSHIP_CONTENT_JOIN,
-			),
+			new FakeEvent('EB', EVELYN, 'm.room.member', EVELYN, MEMBERSHIP_CONTENT_JOIN),
 			new FakeEvent('JRI', ALICE, 'm.room.join_rules', '', {
 				join_rule: 'invite',
 			}),
@@ -724,10 +622,7 @@ describe('Definitions', () => {
 
 		const finalState = await runTest(events, edges);
 
-		expect(finalState.get('m.room.join_rules:')).toHaveProperty(
-			'eventId',
-			'JRI:example.com',
-		);
+		expect(finalState.get('m.room.join_rules:')).toHaveProperty('eventId', 'JRI:example.com');
 		expect(finalState.get('m.room.member:@evelyn:example.com')).toBeUndefined();
 	});
 });

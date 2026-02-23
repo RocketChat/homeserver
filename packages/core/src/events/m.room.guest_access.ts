@@ -1,4 +1,5 @@
-import { EventID } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
+
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -44,5 +45,4 @@ export const roomGuestAccessEvent = ({
 	});
 };
 
-export const createRoomGuestAccessEvent =
-	createEventWithId(roomGuestAccessEvent);
+export const createRoomGuestAccessEvent = createEventWithId(roomGuestAccessEvent);

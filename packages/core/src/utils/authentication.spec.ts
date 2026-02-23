@@ -8,7 +8,6 @@ import {
 	signRequest,
 	validateAuthorizationHeader,
 } from './authentication';
-
 import { generateId } from './generateId';
 import { generateKeyPairsFromString } from './keys';
 import { signJson } from './signJson';
@@ -58,9 +57,7 @@ import { signJson } from './signJson';
 // }
 
 test('signRequest', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U');
 
 	const event = Object.freeze({
 		auth_events: [
@@ -90,8 +87,7 @@ test('signRequest', async () => {
 		state_key: '@admin:hs2',
 		signatures: {
 			hs2: {
-				'ed25519:a_XRhW':
-					'DR+DBqFTm7IUa35pFeOczsNw4shglIXW+3Ze63wC3dqQ4okzaSRgLuAUkYnVyxM2sZkSvlbeSBS7G6DeeaDEAA',
+				'ed25519:a_XRhW': 'DR+DBqFTm7IUa35pFeOczsNw4shglIXW+3Ze63wC3dqQ4okzaSRgLuAUkYnVyxM2sZkSvlbeSBS7G6DeeaDEAA',
 			},
 		},
 		unsigned: {

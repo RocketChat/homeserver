@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+
 import { fromBase64ToBytes } from './utils/data-types';
-import {
-	loadEd25519SignerFromSeed,
-	loadEd25519VerifierFromPublicKey,
-	signJson,
-	verifyJsonSignature,
-} from './utils/keys';
+import { loadEd25519SignerFromSeed, loadEd25519VerifierFromPublicKey, signJson, verifyJsonSignature } from './utils/keys';
 
 describe('signJson', () => {
 	it('should sign a json object', async () => {
@@ -46,9 +42,7 @@ describe('signJson', () => {
 
 		const signature = await signJson(json, signer);
 
-		expect(signature).toBe(
-			'ZDz7K7NRz0OwgR6n96YMIyt9h8KUCb7T9TklId7S1UDVOwc2y45+tC12/51kxRxpUkaOgr+iBtSBBh74BIrsBQ',
-		);
+		expect(signature).toBe('ZDz7K7NRz0OwgR6n96YMIyt9h8KUCb7T9TklId7S1UDVOwc2y45+tC12/51kxRxpUkaOgr+iBtSBBh74BIrsBQ');
 	});
 
 	it('should verify a signature', async () => {
@@ -78,16 +72,14 @@ describe('signJson', () => {
 			},
 		};
 
-		const signature =
-			'ZDz7K7NRz0OwgR6n96YMIyt9h8KUCb7T9TklId7S1UDVOwc2y45+tC12/51kxRxpUkaOgr+iBtSBBh74BIrsBQ';
+		const signature = 'ZDz7K7NRz0OwgR6n96YMIyt9h8KUCb7T9TklId7S1UDVOwc2y45+tC12/51kxRxpUkaOgr+iBtSBBh74BIrsBQ';
 
 		const keyv2serverresponsefromorigin = {
 			old_verify_keys: {},
 			server_name: 'syn1.tunnel.dev.rocket.chat',
 			signatures: {
 				'syn1.tunnel.dev.rocket.chat': {
-					'ed25519:a_FAET':
-						'MZF+8pncxhUNp7JzdSTIqriaANQ4QTYTe1AIqBNAtVhWcKz1Mc/6nzkP3/1HXZHAzCLYrmuFnTGb874XT4TJDg',
+					'ed25519:a_FAET': 'MZF+8pncxhUNp7JzdSTIqriaANQ4QTYTe1AIqBNAtVhWcKz1Mc/6nzkP3/1HXZHAzCLYrmuFnTGb874XT4TJDg',
 				},
 			},
 			valid_until_ts: 1747753307525,
@@ -98,12 +90,9 @@ describe('signJson', () => {
 			},
 		};
 
-		const verifyKey =
-			keyv2serverresponsefromorigin.verify_keys['ed25519:a_FAET'].key;
+		const verifyKey = keyv2serverresponsefromorigin.verify_keys['ed25519:a_FAET'].key;
 
-		const verifier = await loadEd25519VerifierFromPublicKey(
-			fromBase64ToBytes(verifyKey),
-		);
+		const verifier = await loadEd25519VerifierFromPublicKey(fromBase64ToBytes(verifyKey));
 
 		expect(verifyJsonSignature(json, signature, verifier)).resolves;
 	});

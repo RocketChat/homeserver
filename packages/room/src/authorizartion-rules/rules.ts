@@ -1,15 +1,12 @@
 import assert from 'node:assert';
-import { type PduType } from '../types/v3-11';
 
+import { RejectCodes, StateResolverAuthorizationError } from './errors';
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
-import { RoomVersion } from '../manager/type';
-import {
-	type EventStore,
-	getStateByMapKey,
-} from '../state_resolution/definitions/definitions';
+import type { RoomVersion } from '../manager/type';
+import { type EventStore, getStateByMapKey } from '../state_resolution/definitions/definitions';
 import { type StateMapKey } from '../types/_common';
-import { RejectCodes, StateResolverAuthorizationError } from './errors';
+import { type PduType } from '../types/v3-11';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
 // skip if not any of the specified type of events
@@ -27,9 +24,7 @@ function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
 
-function isCreateAllowed(
-	createEvent: PersistentEventBase<RoomVersion, 'm.room.create'>,
-) {
+function isCreateAllowed(createEvent: PersistentEventBase<RoomVersion, 'm.room.create'>) {
 	// If it has any prev_events, reject.
 	if (createEvent.event.prev_events.length > 0) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
@@ -49,12 +44,7 @@ function isCreateAllowed(
 	const content = createEvent.getContent();
 
 	// If content.room_version is assert(verifier(event as V2Pdu, authEvents), "not allowed"present and is not a recognised version, reject.
-	if (
-		content.room_version &&
-		!['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'].includes(
-			content.room_version,
-		)
-	) {
+	if (content.room_version && !['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'].includes(content.room_version)) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: createEvent,
 			reason: `m.room.create event content.room_version is not a recognised version ${content.room_version}`,
@@ -71,9 +61,7 @@ function isCreateAllowed(
 }
 
 // TODO: better typing for alias event
-function isRoomAliasAllowed(
-	roomAliasEvent: PersistentEventBase<RoomVersion, 'm.room.aliases'>,
-): void {
+function isRoomAliasAllowed(roomAliasEvent: PersistentEventBase<RoomVersion, 'm.room.aliases'>): void {
 	// If event has no state_key, reject.
 	if (!roomAliasEvent.stateKey) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
@@ -86,12 +74,9 @@ function isRoomAliasAllowed(
 	if (roomAliasEvent.origin !== roomAliasEvent.stateKey) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: roomAliasEvent,
-			reason:
-				'm.room.canonical_alias event sender domain does not match state_key',
+			reason: 'm.room.canonical_alias event sender domain does not match state_key',
 		});
 	}
-
-	return;
 }
 
 async function isMembershipChangeAllowed(
@@ -100,10 +85,7 @@ async function isMembershipChangeAllowed(
 	store: EventStore,
 ): Promise<void> {
 	// If there is no state_key property, or no membership property in content, reject.
-	if (
-		!membershipEventToCheck.stateKey ||
-		!membershipEventToCheck.isMembershipEvent()
-	) {
+	if (!membershipEventToCheck.stateKey || !membershipEventToCheck.isMembershipEvent()) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: membershipEventToCheck,
 			reason: 'm.room.member event has no state_key or membership property',
@@ -114,7 +96,7 @@ async function isMembershipChangeAllowed(
 	// state_key -> whose state is asked to change
 
 	// sender information, like does this user have permission?
-	const sender = membershipEventToCheck.sender;
+	const { sender } = membershipEventToCheck;
 	const senderMembershipEvent = getStateByMapKey(authEventStateMap, {
 		type: 'm.room.member',
 		state_key: sender,
@@ -135,9 +117,7 @@ async function isMembershipChangeAllowed(
 		type: 'm.room.join_rules',
 	});
 
-	const joinRule = joinRuleEvent?.isJoinRuleEvent()
-		? joinRuleEvent.getJoinRule()
-		: undefined;
+	const joinRule = joinRuleEvent?.isJoinRuleEvent() ? joinRuleEvent.getJoinRule() : undefined;
 
 	const powerLevelEventInAuthStateMap = getStateByMapKey(authEventStateMap, {
 		type: 'm.room.power_levels',
@@ -155,9 +135,7 @@ async function isMembershipChangeAllowed(
 
 	const content = membershipEventToCheck.getContent();
 
-	const previousEvents = await store.getEvents(
-		membershipEventToCheck.getPreviousEventIds(),
-	);
+	const previousEvents = await store.getEvents(membershipEventToCheck.getPreviousEventIds());
 
 	switch (content.membership) {
 		case 'join': {
@@ -174,10 +152,7 @@ async function isMembershipChangeAllowed(
 			if (previousEvents.length === 1) {
 				const [event] = previousEvents;
 
-				if (
-					event.isCreateEvent() &&
-					event.getContent().creator === membershipEventToCheck.stateKey
-				) {
+				if (event.isCreateEvent() && event.getContent().creator === membershipEventToCheck.stateKey) {
 					return;
 				}
 			}
@@ -275,10 +250,7 @@ async function isMembershipChangeAllowed(
 			}
 
 			// If the sender’s power level is greater than or equal to the invite level, allow.
-			const senderPowerLevel = powerLevelEvent.getPowerLevelForUser(
-				sender,
-				roomCreateEvent,
-			);
+			const senderPowerLevel = powerLevelEvent.getPowerLevelForUser(sender, roomCreateEvent);
 
 			//  The level required to invite a user. Defaults to 0 if unspecified.
 			const inviteLevel = powerLevelEvent.getRequiredPowerForInvite();
@@ -296,10 +268,7 @@ async function isMembershipChangeAllowed(
 
 		case 'leave': {
 			// If the sender matches state_key, allow if and only if that user’s current membership state is invite or join.
-			if (
-				sender === invitee &&
-				(inviteeMembership === 'invite' || inviteeMembership === 'join')
-			) {
+			if (sender === invitee && (inviteeMembership === 'invite' || inviteeMembership === 'join')) {
 				return;
 			}
 
@@ -313,10 +282,7 @@ async function isMembershipChangeAllowed(
 			}
 
 			// If the target user’s current membership state is ban, and the sender’s power level is less than the ban level, reject.
-			const senderPowerLevel = powerLevelEvent.getPowerLevelForUser(
-				sender,
-				roomCreateEvent,
-			);
+			const senderPowerLevel = powerLevelEvent.getPowerLevelForUser(sender, roomCreateEvent);
 			// defaults to 50 if not specified
 			const banLevel = powerLevelEvent.getRequiredPowerForBan();
 
@@ -330,11 +296,7 @@ async function isMembershipChangeAllowed(
 
 			// If the sender’s power level is greater than or equal to the kick level, and the target user’s power level is less than the sender’s power level, allow.
 			const kickRequiredLevel = powerLevelEvent.getRequiredPowerForKick();
-			if (
-				senderPowerLevel >= kickRequiredLevel &&
-				powerLevelEvent.getPowerLevelForUser(invitee, roomCreateEvent) <
-					senderPowerLevel
-			) {
+			if (senderPowerLevel >= kickRequiredLevel && powerLevelEvent.getPowerLevelForUser(invitee, roomCreateEvent) < senderPowerLevel) {
 				return;
 			}
 
@@ -356,17 +318,10 @@ async function isMembershipChangeAllowed(
 			}
 
 			// If the sender’s power level is greater than or equal to the ban level, and the target user’s power level is less than the sender’s power level, allow.
-			const senderPowerLevel = powerLevelEvent.getPowerLevelForUser(
-				sender,
-				roomCreateEvent,
-			);
+			const senderPowerLevel = powerLevelEvent.getPowerLevelForUser(sender, roomCreateEvent);
 			// defaults to 50 if not specified
 			const banLevel = powerLevelEvent.getRequiredPowerForBan();
-			if (
-				senderPowerLevel >= banLevel &&
-				powerLevelEvent.getPowerLevelForUser(invitee, roomCreateEvent) <
-					senderPowerLevel
-			) {
+			if (senderPowerLevel >= banLevel && powerLevelEvent.getPowerLevelForUser(invitee, roomCreateEvent) < senderPowerLevel) {
 				return;
 			}
 
@@ -405,16 +360,11 @@ export function validatePowerLevelEvent(
 
 	const newPowerLevel = powerLevelEvent;
 
-	const senderCurrentPowerLevel = existingPowerLevel.getPowerLevelForUser(
-		newPowerLevel.sender,
-		roomCreateEvent,
-	);
+	const senderCurrentPowerLevel = existingPowerLevel.getPowerLevelForUser(newPowerLevel.sender, roomCreateEvent);
 
-	const existingUserDefaultPowerLevel =
-		existingPowerLevel.getPowerLevelUserDefaultValue();
+	const existingUserDefaultPowerLevel = existingPowerLevel.getPowerLevelUserDefaultValue();
 
-	const newUserDefaultPowerLevel =
-		newPowerLevel.getPowerLevelUserDefaultValue();
+	const newUserDefaultPowerLevel = newPowerLevel.getPowerLevelUserDefaultValue();
 
 	// For each found alteration:
 
@@ -422,86 +372,60 @@ export function validatePowerLevelEvent(
 	// If the new value is greater than the sender’s current power level, reject.
 
 	if (existingUserDefaultPowerLevel !== newUserDefaultPowerLevel) {
-		if (
-			newUserDefaultPowerLevel &&
-			newUserDefaultPowerLevel > senderCurrentPowerLevel
-		) {
+		if (newUserDefaultPowerLevel && newUserDefaultPowerLevel > senderCurrentPowerLevel) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: powerLevelEvent.toEventBase()!,
-				reason:
-					'new user_default power level is greater than sender power level',
+				reason: 'new user_default power level is greater than sender power level',
 				rejectedBy: existingPowerLevel.toEventBase(),
 			});
 		}
 
-		if (
-			existingUserDefaultPowerLevel &&
-			existingUserDefaultPowerLevel > senderCurrentPowerLevel
-		) {
+		if (existingUserDefaultPowerLevel && existingUserDefaultPowerLevel > senderCurrentPowerLevel) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: powerLevelEvent.toEventBase()!,
-				reason:
-					'existing user_default power level is greater than sender power level',
+				reason: 'existing user_default power level is greater than sender power level',
 				rejectedBy: existingPowerLevel.toEventBase(),
 			});
 		}
 	}
 
 	const newEventsDefaultValue = newPowerLevel.getPowerLevelEventsDefaultValue();
-	const existingEventsDefaultValue =
-		existingPowerLevel.getPowerLevelEventsDefaultValue();
+	const existingEventsDefaultValue = existingPowerLevel.getPowerLevelEventsDefaultValue();
 
 	if (existingEventsDefaultValue !== newEventsDefaultValue) {
-		if (
-			newEventsDefaultValue &&
-			newEventsDefaultValue > senderCurrentPowerLevel
-		) {
+		if (newEventsDefaultValue && newEventsDefaultValue > senderCurrentPowerLevel) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: powerLevelEvent.toEventBase()!,
-				reason:
-					'new events_default power level is greater than sender power level',
+				reason: 'new events_default power level is greater than sender power level',
 				rejectedBy: existingPowerLevel.toEventBase(),
 			});
 		}
 
-		if (
-			existingEventsDefaultValue &&
-			existingEventsDefaultValue > senderCurrentPowerLevel
-		) {
+		if (existingEventsDefaultValue && existingEventsDefaultValue > senderCurrentPowerLevel) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: powerLevelEvent.toEventBase()!,
-				reason:
-					'existing events_default power level is greater than sender power level',
+				reason: 'existing events_default power level is greater than sender power level',
 				rejectedBy: existingPowerLevel.toEventBase(),
 			});
 		}
 	}
 
 	const newStateDefaultValue = newPowerLevel.getPowerLevelStateDefaultValue();
-	const existingStateDefaultValue =
-		existingPowerLevel.getPowerLevelStateDefaultValue();
+	const existingStateDefaultValue = existingPowerLevel.getPowerLevelStateDefaultValue();
 
 	if (existingStateDefaultValue !== newStateDefaultValue) {
-		if (
-			newStateDefaultValue &&
-			newStateDefaultValue > senderCurrentPowerLevel
-		) {
+		if (newStateDefaultValue && newStateDefaultValue > senderCurrentPowerLevel) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: powerLevelEvent.toEventBase()!,
-				reason:
-					'new state_default power level is greater than sender power level',
+				reason: 'new state_default power level is greater than sender power level',
 				rejectedBy: existingPowerLevel.toEventBase(),
 			});
 		}
 
-		if (
-			existingStateDefaultValue &&
-			existingStateDefaultValue > senderCurrentPowerLevel
-		) {
+		if (existingStateDefaultValue && existingStateDefaultValue > senderCurrentPowerLevel) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: powerLevelEvent.toEventBase()!,
-				reason:
-					'existing state_default power level is greater than sender power level',
+				reason: 'existing state_default power level is greater than sender power level',
 				rejectedBy: existingPowerLevel.toEventBase(),
 			});
 		}
@@ -601,23 +525,15 @@ export function validatePowerLevelEvent(
 	// 4. For each entry being changed in, or removed from, the events property:
 	const existingEvents = Object.keys(existingContent?.events ?? {});
 	for (const eventType of existingEvents) {
-		const existingPowerLevelValue = existingPowerLevel.getPowerLevelEventsValue(
-			eventType as PduType,
-		);
-		const newPowerLevelValue = newPowerLevel.getPowerLevelEventsValue(
-			eventType as PduType,
-		);
+		const existingPowerLevelValue = existingPowerLevel.getPowerLevelEventsValue(eventType as PduType);
+		const newPowerLevelValue = newPowerLevel.getPowerLevelEventsValue(eventType as PduType);
 		if (!newPowerLevelValue || newPowerLevelValue !== existingPowerLevelValue) {
 			// changed or removed
 			// If the current value is greater than the sender’s current power level, reject.
-			if (
-				existingPowerLevelValue &&
-				existingPowerLevelValue > senderCurrentPowerLevel
-			) {
+			if (existingPowerLevelValue && existingPowerLevelValue > senderCurrentPowerLevel) {
 				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 					rejectedEvent: powerLevelEvent.toEventBase()!,
-					reason:
-						'existing power level value is greater than sender power level',
+					reason: 'existing power level value is greater than sender power level',
 					rejectedBy: existingPowerLevel.toEventBase(),
 				});
 			}
@@ -627,12 +543,8 @@ export function validatePowerLevelEvent(
 	// 5. For each entry being added to, or changed in, the events property:
 	const newEvents = Object.keys(newContent?.events ?? {});
 	for (const eventType of newEvents) {
-		const existingPowerLevelValue = existingPowerLevel.getPowerLevelEventsValue(
-			eventType as PduType,
-		);
-		const newPowerLevelValue = newPowerLevel.getPowerLevelEventsValue(
-			eventType as PduType,
-		);
+		const existingPowerLevelValue = existingPowerLevel.getPowerLevelEventsValue(eventType as PduType);
+		const newPowerLevelValue = newPowerLevel.getPowerLevelEventsValue(eventType as PduType);
 		if (!newPowerLevelValue || newPowerLevelValue !== existingPowerLevelValue) {
 			// changed or added
 			// If the new value is greater than the sender’s current power level, reject.
@@ -650,23 +562,15 @@ export function validatePowerLevelEvent(
 	const existingUsers = Object.keys(existingContent?.users ?? {});
 
 	for (const userId of existingUsers) {
-		const existingPowerLevelValue =
-			existingPowerLevel.getPowerLevelUsersValue(userId);
+		const existingPowerLevelValue = existingPowerLevel.getPowerLevelUsersValue(userId);
 		const newPowerLevelValue = newPowerLevel.getPowerLevelUsersValue(userId);
-		if (
-			userId !== powerLevelEvent.sender &&
-			(!newPowerLevelValue || newPowerLevelValue !== existingPowerLevelValue)
-		) {
+		if (userId !== powerLevelEvent.sender && (!newPowerLevelValue || newPowerLevelValue !== existingPowerLevelValue)) {
 			// changed or removed
 			// If the current value is greater than the sender’s current power level, reject.
-			if (
-				existingPowerLevelValue &&
-				existingPowerLevelValue > senderCurrentPowerLevel
-			) {
+			if (existingPowerLevelValue && existingPowerLevelValue > senderCurrentPowerLevel) {
 				throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 					rejectedEvent: powerLevelEvent.toEventBase()!,
-					reason:
-						'existing power level value is greater than sender power level',
+					reason: 'existing power level value is greater than sender power level',
 					rejectedBy: existingPowerLevel.toEventBase(),
 				});
 			}
@@ -676,13 +580,9 @@ export function validatePowerLevelEvent(
 	// 7. For each entry being changed in, or removed from, the users property:
 	const newUsers = Object.keys(newContent?.users ?? {});
 	for (const userId of newUsers) {
-		const existingPowerLevelValue =
-			existingPowerLevel.getPowerLevelUsersValue(userId);
+		const existingPowerLevelValue = existingPowerLevel.getPowerLevelUsersValue(userId);
 		const newPowerLevelValue = newPowerLevel.getPowerLevelUsersValue(userId);
-		if (
-			!existingPowerLevelValue ||
-			newPowerLevelValue !== existingPowerLevelValue
-		) {
+		if (!existingPowerLevelValue || newPowerLevelValue !== existingPowerLevelValue) {
 			// changed or added
 			// If the new value is greater than the sender’s current power level, reject.
 			if (newPowerLevelValue && newPowerLevelValue > senderCurrentPowerLevel) {
@@ -696,10 +596,7 @@ export function validatePowerLevelEvent(
 	}
 }
 
-export function checkEventAuthWithoutState(
-	event: PersistentEventBase,
-	authEvents: PersistentEventBase[],
-) {
+export function checkEventAuthWithoutState(event: PersistentEventBase, authEvents: PersistentEventBase[]) {
 	if (event.isCreateEvent()) {
 		if (authEvents.length > 0) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
@@ -721,9 +618,7 @@ export function checkEventAuthWithoutState(
 
 	*/
 
-	const stateKeysNeeded = new Map<StateMapKey, null>(
-		event.getAuthEventStateKeys().map((key) => [key, null]),
-	);
+	const stateKeysNeeded = new Map<StateMapKey, null>(event.getAuthEventStateKeys().map((key) => [key, null]));
 
 	const authEventStateMap = new Map<StateMapKey, PersistentEventBase>();
 
@@ -797,10 +692,7 @@ export async function checkEventAuthWithState(
 	}
 
 	// If the content of the m.room.create event in the room state has the property m.federate set to false, and the sender domain of the event does not match the sender domain of the create event, reject.
-	if (
-		roomCreateEvent.getContent()['m.federate'] === false &&
-		event.origin !== roomCreateEvent.origin
-	) {
+	if (roomCreateEvent.getContent()['m.federate'] === false && event.origin !== roomCreateEvent.origin) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: event,
 			rejectedBy: roomCreateEvent,
@@ -848,13 +740,9 @@ export async function checkEventAuthWithState(
 		: PowerLevelEvent.fromDefault();
 
 	// If the event type’s required power level is greater than the sender’s power level, reject.
-	const eventRequiredPowerLevel =
-		powerLevelEvent.getRequiredPowerLevelForEvent(event);
+	const eventRequiredPowerLevel = powerLevelEvent.getRequiredPowerLevelForEvent(event);
 
-	const userPowerLevel = powerLevelEvent.getPowerLevelForUser(
-		event.sender,
-		roomCreateEvent,
-	);
+	const userPowerLevel = powerLevelEvent.getPowerLevelForUser(event.sender, roomCreateEvent);
 
 	if (userPowerLevel < eventRequiredPowerLevel) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
@@ -874,11 +762,7 @@ export async function checkEventAuthWithState(
 
 	// If type is m.room.power_levels:
 	if (event.isPowerLevelEvent()) {
-		return validatePowerLevelEvent(
-			event.toPowerLevelEvent(),
-			roomCreateEvent,
-			state,
-		);
+		return validatePowerLevelEvent(event.toPowerLevelEvent(), roomCreateEvent, state);
 	}
 
 	// TODO: redaction

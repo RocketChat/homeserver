@@ -1,11 +1,7 @@
 import { type Static, t } from 'elysia';
+
 import { EventBaseDto, MembershipEventContentDto } from '../common/event.dto';
-import {
-	EventIdDto,
-	RoomIdDto,
-	ServerNameDto,
-	UsernameDto,
-} from '../common/validation.dto';
+import { EventIdDto, RoomIdDto, ServerNameDto, UsernameDto } from '../common/validation.dto';
 
 export const SendJoinParamsDto = t.Object({
 	roomId: RoomIdDto,

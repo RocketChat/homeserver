@@ -1,22 +1,13 @@
-import { ConfigService } from './config.service';
-
-import {
-	EventID,
-	Pdu,
-	PduForType,
-	RoomID,
-	RoomVersion,
-	UserID,
-} from '@rocket.chat/federation-room';
+import { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
+import { ConfigService } from './config.service';
 import { StateService } from './state.service';
 
 @singleton()
 export class ProfilesService {
-	constructor(
-		private readonly configService: ConfigService,
-		private readonly stateService: StateService,
-	) {}
+	constructor(private readonly configService: ConfigService, private readonly stateService: StateService) {}
+
 	async queryProfile(userId: string): Promise<{
 		avatar_url: string;
 		displayname: string;
@@ -27,9 +18,7 @@ export class ProfilesService {
 		};
 	}
 
-	async queryKeys(
-		deviceKeys: Record<string, string>,
-	): Promise<{ device_keys: Record<string, string> }> {
+	async queryKeys(deviceKeys: Record<string, string>): Promise<{ device_keys: Record<string, string> }> {
 		const keys = Object.keys(deviceKeys).reduce(
 			(v, cur) => {
 				v[cur] = 'unknown_key';
@@ -68,7 +57,7 @@ export class ProfilesService {
 		event: PduForType<'m.room.member'> & { origin: string };
 		room_version: RoomVersion;
 	}> {
-		const stateService = this.stateService;
+		const { stateService } = this;
 		const roomInformation = await stateService.getRoomInformation(roomId);
 
 		const roomVersion = roomInformation.room_version;
@@ -77,11 +66,7 @@ export class ProfilesService {
 			throw new Error(`Unsupported room version: ${roomVersion}`);
 		}
 
-		if (
-			!(await this.stateService.getLatestRoomState2(roomId)).isUserInvited(
-				userId,
-			)
-		) {
+		if (!(await this.stateService.getLatestRoomState2(roomId)).isUserInvited(userId)) {
 			throw new Error(`User ${userId} is not invited`);
 		}
 
@@ -109,10 +94,7 @@ export class ProfilesService {
 		};
 	}
 
-	async eventAuth(
-		_roomId: RoomID,
-		_eventId: EventID,
-	): Promise<{ auth_chain: Record<string, string>[] }> {
+	async eventAuth(_roomId: RoomID, _eventId: EventID): Promise<{ auth_chain: Record<string, string>[] }> {
 		return {
 			auth_chain: [],
 		};

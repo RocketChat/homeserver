@@ -1,13 +1,10 @@
 import 'reflect-metadata';
 
 import type { EventStagingStore } from '@rocket.chat/federation-core';
-import type {
-	EventID,
-	EventStore,
-	PduForType,
-} from '@rocket.chat/federation-room';
+import type { EventID, EventStore, PduForType } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
 import { container } from 'tsyringe';
+
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { Key } from './repositories/key.repository';
 import { Lock } from './repositories/lock.repository';
@@ -33,14 +30,7 @@ export type {
 	UserID,
 	RoomID,
 } from '@rocket.chat/federation-room';
-export type {
-	EventStore,
-	FileMessageType,
-	PresenceState,
-	FileMessageContent,
-	MessageType,
-	Membership,
-} from '@rocket.chat/federation-core';
+export type { EventStore, FileMessageType, PresenceState, FileMessageContent, MessageType, Membership } from '@rocket.chat/federation-core';
 export { generateEd25519RandomSecretKey } from '@rocket.chat/federation-crypto';
 
 export type {
@@ -56,17 +46,10 @@ export type {
 // Utility exports
 export { getErrorMessage } from './utils/get-error-message';
 export { USERNAME_REGEX, ROOM_ID_REGEX } from './utils/validation-regex';
-export {
-	eventSchemas,
-	roomV10Schemas,
-	type BaseEventType,
-} from './utils/event-schemas';
+export { eventSchemas, roomV10Schemas, type BaseEventType } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
-export {
-	FederationValidationService,
-	FederationValidationError,
-} from './services/federation-validation.service';
+export { FederationValidationService, FederationValidationError } from './services/federation-validation.service';
 
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
@@ -136,12 +119,7 @@ export type HomeserverEventSignatures = {
 	};
 };
 
-export {
-	roomIdSchema,
-	userIdSchema,
-	eventIdSchema,
-	extractDomainFromId,
-} from '@rocket.chat/federation-room';
+export { roomIdSchema, userIdSchema, eventIdSchema, extractDomainFromId } from '@rocket.chat/federation-room';
 
 export async function init({
 	dbConfig,
@@ -159,9 +137,7 @@ export async function init({
 	});
 
 	container.register<Collection<EventStagingStore>>('EventStagingCollection', {
-		useValue: db.collection<EventStagingStore>(
-			'rocketchat_federation_events_staging',
-		),
+		useValue: db.collection<EventStagingStore>('rocketchat_federation_events_staging'),
 	});
 
 	container.register<Collection<Key>>('KeyCollection', {
@@ -185,9 +161,7 @@ export async function init({
 	});
 
 	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
-		useValue: db.collection<StateGraphStore>(
-			'rocketchat_federation_state_graphs',
-		),
+		useValue: db.collection<StateGraphStore>('rocketchat_federation_state_graphs'),
 	});
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);

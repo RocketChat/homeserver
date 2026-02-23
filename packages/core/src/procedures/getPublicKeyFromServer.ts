@@ -1,17 +1,8 @@
 import type { ServerKey } from '../server';
 import { makeRequest } from '../utils/makeRequest';
+import { getSignaturesFromRemote, isValidAlgorithm, verifyJsonSignature } from '../utils/signJson';
 
-import {
-	getSignaturesFromRemote,
-	isValidAlgorithm,
-	verifyJsonSignature,
-} from '../utils/signJson';
-
-export const getPublicKeyFromRemoteServer = async (
-	domain: string,
-	origin: string,
-	algorithmAndVersion: string,
-) => {
+export const getPublicKeyFromRemoteServer = async (domain: string, origin: string, algorithmAndVersion: string) => {
 	const [algorithm, version] = algorithmAndVersion.split(':');
 	if (!algorithm || !version) {
 		throw new Error('Invalid algorithm and version format');
@@ -42,23 +33,10 @@ export const getPublicKeyFromRemoteServer = async (
 		throw new Error(`No valid signature found for ${domain}`);
 	}
 
-	const publicKeyBytes = Uint8Array.from(atob(publickey), (c) =>
-		c.charCodeAt(0),
-	);
-	const signatureBytes = Uint8Array.from(atob(signature.signature), (c) =>
-		c.charCodeAt(0),
-	);
+	const publicKeyBytes = Uint8Array.from(atob(publickey), (c) => c.charCodeAt(0));
+	const signatureBytes = Uint8Array.from(atob(signature.signature), (c) => c.charCodeAt(0));
 
-	if (
-		!verifyJsonSignature(
-			result,
-			domain,
-			signatureBytes,
-			publicKeyBytes,
-			signature.algorithm,
-			signature.version,
-		)
-	) {
+	if (!verifyJsonSignature(result, domain, signatureBytes, publicKeyBytes, signature.algorithm, signature.version)) {
 		throw new Error('Invalid signature');
 	}
 

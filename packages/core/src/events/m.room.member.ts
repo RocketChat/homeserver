@@ -1,4 +1,5 @@
-import { EventID } from '@rocket.chat/federation-room';
+import type { EventID } from '@rocket.chat/federation-room';
+
 import { createEventBase } from './eventBase';
 import type { Membership, RoomMemberEvent } from './isRoomMemberEvent';
 import { createEventWithId } from './utils/createSignedEvent';
@@ -27,9 +28,7 @@ export type AuthEvents = {
 	[K in `m.room.member:${string}`]?: EventID;
 };
 
-const isTruthy = <T>(
-	value: T | null | undefined | false | 0 | '',
-): value is T => {
+const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
 	return Boolean(value);
 };
 

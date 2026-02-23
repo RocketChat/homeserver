@@ -12,18 +12,12 @@ function getLocalPackages(packages: string[]) {
 	return localPackages;
 }
 
-const getDependencies = (
-	pkg: string,
-	type: 'dependencies' | 'devDependencies' | 'peerDependencies',
-) => {
+const getDependencies = (pkg: string, type: 'dependencies' | 'devDependencies' | 'peerDependencies') => {
 	const packageJson = require(`./packages/${pkg}/package.json`);
 	return packageJson[type] ?? {};
 };
 
-const getDependenciesFromPackages = (
-	packages: string[],
-	type: 'dependencies' | 'devDependencies' | 'peerDependencies',
-) => {
+const getDependenciesFromPackages = (packages: string[], type: 'dependencies' | 'devDependencies' | 'peerDependencies') => {
 	return packages.reduce((acc, name) => {
 		// biome-ignore lint/performance/noAccumulatingSpread: <explanation>
 		return { ...acc, ...getDependencies(name, type) };
@@ -31,21 +25,14 @@ const getDependenciesFromPackages = (
 };
 
 const filterWorkspace = (deps: Record<string, unknown>) =>
-	Object.fromEntries(
-		Object.entries(deps || {}).filter(
-			([, value]) =>
-				typeof value === 'string' && !value.startsWith('workspace:'),
-		),
-	);
+	Object.fromEntries(Object.entries(deps || {}).filter(([, value]) => typeof value === 'string' && !value.startsWith('workspace:')));
 
 // TODO get list of packages programmatically
 const packages = ['core', 'crypto', 'federation-sdk', 'room'];
 
 const localPackagesNames = getLocalPackages(packages);
 
-const packageJson = JSON.parse(
-	await Bun.file(`${inputDir}/package.json`).text(),
-);
+const packageJson = JSON.parse(await Bun.file(`${inputDir}/package.json`).text());
 
 async function main() {
 	await $`rm -rf ${outputDir}/dist`;
@@ -54,23 +41,15 @@ async function main() {
 	await $`touch ${outputDir}/yarn.lock`;
 
 	const dependencies = getDependenciesFromPackages(packages, 'dependencies');
-	const devDependencies = getDependenciesFromPackages(
-		packages,
-		'devDependencies',
-	);
-	const peerDependencies = getDependenciesFromPackages(
-		packages,
-		'peerDependencies',
-	);
+	const devDependencies = getDependenciesFromPackages(packages, 'devDependencies');
+	const peerDependencies = getDependenciesFromPackages(packages, 'peerDependencies');
 
 	await Bun.build({
 		entrypoints: [`${inputDir}/src/index.ts`],
 		outdir: `${outputDir}/dist`,
 		target: 'node',
 		format: 'cjs',
-		external: Object.keys(dependencies).filter(
-			(dep) => !localPackagesNames.has(dep),
-		),
+		external: Object.keys(dependencies).filter((dep) => !localPackagesNames.has(dep)),
 		env: 'disable',
 		define: {
 			'process.env.NODE_ENV': '"production"',
@@ -92,9 +71,7 @@ async function main() {
 		...peerDependencies,
 	});
 
-	await Bun.file(`${outputDir}/package.json`).write(
-		`${JSON.stringify(packageJson, null, 2)}\n`,
-	);
+	await Bun.file(`${outputDir}/package.json`).write(`${JSON.stringify(packageJson, null, 2)}\n`);
 
 	await $`bun run rollup -c`;
 

@@ -1,20 +1,14 @@
 import { TSchema, t } from 'elysia';
-import {
-	DepthDto,
-	RoomIdDto,
-	TimestampDto,
-	UsernameDto,
-} from './validation.dto';
+
+import { DepthDto, RoomIdDto, TimestampDto, UsernameDto } from './validation.dto';
 
 export const EventHashDto = t.Object({
 	sha256: t.String({ description: 'SHA256 hash of the event' }),
 });
 
-export const EventSignatureDto = t.Record(
-	t.String(),
-	t.Record(t.String(), t.String()),
-	{ description: 'Event signatures by server and key ID' },
-);
+export const EventSignatureDto = t.Record(t.String(), t.Record(t.String(), t.String()), {
+	description: 'Event signatures by server and key ID',
+});
 
 type TOptional = ReturnType<typeof t.Optional>;
 
@@ -36,22 +30,13 @@ export const EventBaseDto = t.Object({
 	auth_events: t.Array(t.String(), { description: 'Authorization events' }),
 	hashes: EventHashDto,
 	signatures: EventSignatureDto,
-	unsigned: t.Optional(
-		t.Record(t.String(), t.Any(), { description: 'Unsigned data' }),
-	),
+	unsigned: t.Optional(t.Record(t.String(), t.Any(), { description: 'Unsigned data' })),
 });
 
 export const MembershipEventContentDto = t.Object({
-	membership: t.Union(
-		[
-			t.Literal('join'),
-			t.Literal('leave'),
-			t.Literal('invite'),
-			t.Literal('ban'),
-			t.Literal('knock'),
-		],
-		{ description: 'Membership state' },
-	),
+	membership: t.Union([t.Literal('join'), t.Literal('leave'), t.Literal('invite'), t.Literal('ban'), t.Literal('knock')], {
+		description: 'Membership state',
+	}),
 	displayname: t.Optional(t.Union([t.String(), t.Null()])),
 	avatar_url: t.Optional(t.Union([t.String(), t.Null()])),
 	join_authorised_via_users_server: t.Optional(t.Union([t.String(), t.Null()])),

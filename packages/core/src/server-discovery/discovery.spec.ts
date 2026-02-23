@@ -1,19 +1,9 @@
-import {
-	afterAll,
-	afterEach,
-	describe,
-	expect,
-	it,
-	jest,
-	mock,
-} from 'bun:test';
+import { afterAll, afterEach, describe, expect, it, jest, mock } from 'bun:test';
 
 /**
  * This is a workaround restore the original module, since bun module mock is a bit weird
  */
 import ResolverModule from 'node:dns/promises';
-
-const { Resolver } = ResolverModule;
 
 import {
 	addressWithDefaultPort,
@@ -26,6 +16,8 @@ import {
 	resolveWhenServerNameIsIpAddress,
 	wellKnownCache,
 } from './discovery';
+
+const { Resolver } = ResolverModule;
 
 const mockResolver = {
 	resolveAny: jest.fn(),
@@ -69,9 +61,7 @@ describe('#isIpLiteral()', () => {
 
 	it('should return true for IP addresses with ports', () => {
 		expect(isIpLiteral('192.168.1.1:8080')).toBe(true);
-		expect(isIpLiteral('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:443')).toBe(
-			true,
-		);
+		expect(isIpLiteral('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:443')).toBe(true);
 	});
 });
 
@@ -81,9 +71,7 @@ describe('#addressWithDefaultPort()', () => {
 	});
 
 	it('should append default port 8448 to IPv6 address', () => {
-		expect(
-			addressWithDefaultPort('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]'),
-		).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
+		expect(addressWithDefaultPort('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]')).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 	});
 
 	it('should append default port 8448 to domain name', () => {
@@ -98,9 +86,7 @@ describe('#resolveWhenServerNameIsIpAddress()', () => {
 	});
 
 	it('should return the same address with port if IPv6 address has a port', async () => {
-		const result = await resolveWhenServerNameIsIpAddress(
-			'[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:443',
-		);
+		const result = await resolveWhenServerNameIsIpAddress('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:443');
 		expect(result).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:443');
 	});
 
@@ -110,9 +96,7 @@ describe('#resolveWhenServerNameIsIpAddress()', () => {
 	});
 
 	it('should append default port 8448 if IPv6 address does not have a port', async () => {
-		const result = await resolveWhenServerNameIsIpAddress(
-			'2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-		);
+		const result = await resolveWhenServerNameIsIpAddress('2001:0db8:85a3:0000:0000:8a2e:0370:7334');
 		expect(result).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 	});
 
@@ -122,9 +106,7 @@ describe('#resolveWhenServerNameIsIpAddress()', () => {
 	});
 
 	it('should return the same address if it is a valid IPv6 address with default port', async () => {
-		const result = await resolveWhenServerNameIsIpAddress(
-			'[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448',
-		);
+		const result = await resolveWhenServerNameIsIpAddress('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 		expect(result).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 	});
 
@@ -134,9 +116,7 @@ describe('#resolveWhenServerNameIsIpAddress()', () => {
 	});
 
 	it('should throw an error if the URL is not parseable', async () => {
-		await expect(
-			resolveWhenServerNameIsIpAddress('::invalid'),
-		).rejects.toThrow();
+		await expect(resolveWhenServerNameIsIpAddress('::invalid')).rejects.toThrow();
 	});
 });
 
@@ -146,12 +126,9 @@ describe('#resolveWhenServerNameIsAddressWithPort()', () => {
 	});
 
 	it('should resolve to CNAME record with port', async () => {
-		mockResolver.resolveAny.mockResolvedValueOnce([
-			{ type: 'CNAME', value: 'alias.example.com' },
-		]);
+		mockResolver.resolveAny.mockResolvedValueOnce([{ type: 'CNAME', value: 'alias.example.com' }]);
 
-		const result =
-			await resolveWhenServerNameIsAddressWithPort('example.com:8080');
+		const result = await resolveWhenServerNameIsAddressWithPort('example.com:8080');
 		expect(result).toBe('alias.example.com:8080');
 	});
 
@@ -164,37 +141,28 @@ describe('#resolveWhenServerNameIsAddressWithPort()', () => {
 			},
 		]);
 
-		const result =
-			await resolveWhenServerNameIsAddressWithPort('example.com:8080');
+		const result = await resolveWhenServerNameIsAddressWithPort('example.com:8080');
 		expect(result).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080');
 	});
 
 	it('should resolve to A record with port', async () => {
-		mockResolver.resolveAny.mockResolvedValueOnce([
-			{ type: 'A', address: '192.168.1.1', ttl: 300 },
-		]);
+		mockResolver.resolveAny.mockResolvedValueOnce([{ type: 'A', address: '192.168.1.1', ttl: 300 }]);
 
-		const result =
-			await resolveWhenServerNameIsAddressWithPort('example.com:8080');
+		const result = await resolveWhenServerNameIsAddressWithPort('example.com:8080');
 		expect(result).toBe('192.168.1.1:8080');
 	});
 
 	it('should return the same address with its port if no records are found', async () => {
 		mockResolver.resolveAny.mockResolvedValueOnce([]);
 
-		const result =
-			await resolveWhenServerNameIsAddressWithPort('example.com:8080');
+		const result = await resolveWhenServerNameIsAddressWithPort('example.com:8080');
 		expect(result).toBe('example.com:8080');
 	});
 
 	it('should throw an error if an error occurs during resolution', async () => {
-		mockResolver.resolveAny.mockRejectedValueOnce(
-			new Error('DNS resolution error'),
-		);
+		mockResolver.resolveAny.mockRejectedValueOnce(new Error('DNS resolution error'));
 
-		await expect(
-			resolveWhenServerNameIsAddressWithPort('example.com:8080'),
-		).rejects.toThrow('DNS resolution error');
+		await expect(resolveWhenServerNameIsAddressWithPort('example.com:8080')).rejects.toThrow('DNS resolution error');
 	});
 });
 
@@ -204,32 +172,18 @@ describe('#resolveUsingSRVRecordsOrFallbackToOtherRecords()', () => {
 	});
 
 	it('should resolve to SRV record target with default port', async () => {
-		mockResolver.resolveSrv = jest
-			.fn()
-			.mockResolvedValue([
-				{ name: 'srv.example.com', port: 8448, priority: 10, weight: 5 },
-			]);
-		mockResolver.resolveAny.mockResolvedValueOnce([
-			{ type: 'A', address: '192.168.1.1', ttl: 300 },
-		]);
+		mockResolver.resolveSrv = jest.fn().mockResolvedValue([{ name: 'srv.example.com', port: 8448, priority: 10, weight: 5 }]);
+		mockResolver.resolveAny.mockResolvedValueOnce([{ type: 'A', address: '192.168.1.1', ttl: 300 }]);
 
-		const result =
-			await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
+		const result = await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
 		expect(result).toBe('192.168.1.1:8448');
 	});
 
 	it('should resolve to SRV record target with specified port', async () => {
-		mockResolver.resolveSrv = jest
-			.fn()
-			.mockResolvedValue([
-				{ name: 'srv.example.com', port: 8448, priority: 10, weight: 5 },
-			]);
-		mockResolver.resolveAny.mockResolvedValueOnce([
-			{ type: 'A', address: '192.168.1.1', ttl: 300 },
-		]);
+		mockResolver.resolveSrv = jest.fn().mockResolvedValue([{ name: 'srv.example.com', port: 8448, priority: 10, weight: 5 }]);
+		mockResolver.resolveAny.mockResolvedValueOnce([{ type: 'A', address: '192.168.1.1', ttl: 300 }]);
 
-		const result =
-			await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
+		const result = await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
 		expect(result).toBe('192.168.1.1:8448');
 	});
 
@@ -243,19 +197,15 @@ describe('#resolveUsingSRVRecordsOrFallbackToOtherRecords()', () => {
 			},
 		]);
 
-		const result =
-			await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
+		const result = await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
 		expect(result).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 	});
 
 	it('should resolve to A record if no SRV records are found', async () => {
 		mockResolver.resolveSrv = jest.fn().mockResolvedValue([]);
-		mockResolver.resolveAny.mockResolvedValueOnce([
-			{ type: 'A', address: '192.168.1.1', ttl: 300 },
-		]);
+		mockResolver.resolveAny.mockResolvedValueOnce([{ type: 'A', address: '192.168.1.1', ttl: 300 }]);
 
-		const result =
-			await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
+		const result = await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
 		expect(result).toBe('192.168.1.1:8448');
 	});
 
@@ -263,30 +213,21 @@ describe('#resolveUsingSRVRecordsOrFallbackToOtherRecords()', () => {
 		mockResolver.resolveSrv = jest.fn().mockResolvedValue([]);
 		mockResolver.resolveAny.mockResolvedValueOnce([]);
 
-		const result =
-			await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
+		const result = await resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com');
 		expect(result).toBe('example.com:8448');
 	});
 
 	it('should throw an error if an error occurs during SRV resolution', async () => {
-		mockResolver.resolveSrv = jest
-			.fn()
-			.mockRejectedValue(new Error('DNS resolution error'));
+		mockResolver.resolveSrv = jest.fn().mockRejectedValue(new Error('DNS resolution error'));
 
-		await expect(
-			resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com'),
-		).rejects.toThrow('DNS resolution error');
+		await expect(resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com')).rejects.toThrow('DNS resolution error');
 	});
 
 	it('should throw an error if an error if an error occurs during ANY resolution', async () => {
 		mockResolver.resolveSrv = jest.fn().mockResolvedValue([]);
-		mockResolver.resolveAny.mockRejectedValueOnce(
-			new Error('DNS resolution error'),
-		);
+		mockResolver.resolveAny.mockRejectedValueOnce(new Error('DNS resolution error'));
 
-		await expect(
-			resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com'),
-		).rejects.toThrow('DNS resolution error');
+		await expect(resolveUsingSRVRecordsOrFallbackToOtherRecords('example.com')).rejects.toThrow('DNS resolution error');
 	});
 });
 
@@ -333,9 +274,7 @@ describe('#getAddressFromTargetWellKnownEndpoint()', () => {
 		};
 		global.fetch = jest.fn().mockResolvedValueOnce(mockResponse) as any;
 
-		await expect(
-			getAddressFromTargetWellKnownEndpoint('example.com'),
-		).rejects.toThrow('No address found');
+		await expect(getAddressFromTargetWellKnownEndpoint('example.com')).rejects.toThrow('No address found');
 	});
 
 	it('should throw an error if json() throws', async () => {
@@ -348,9 +287,7 @@ describe('#getAddressFromTargetWellKnownEndpoint()', () => {
 		};
 		global.fetch = jest.fn().mockResolvedValueOnce(mockResponse) as any;
 
-		await expect(
-			getAddressFromTargetWellKnownEndpoint('example.com'),
-		).rejects.toThrow('No address found');
+		await expect(getAddressFromTargetWellKnownEndpoint('example.com')).rejects.toThrow('No address found');
 	});
 
 	it('should throw an error if the well-known response does not contain m.server', async () => {
@@ -363,9 +300,7 @@ describe('#getAddressFromTargetWellKnownEndpoint()', () => {
 		};
 		global.fetch = jest.fn().mockResolvedValueOnce(mockResponse) as any;
 
-		await expect(
-			getAddressFromTargetWellKnownEndpoint('example.com'),
-		).rejects.toThrow('No address found');
+		await expect(getAddressFromTargetWellKnownEndpoint('example.com')).rejects.toThrow('No address found');
 	});
 
 	it('should limit maxAge to 48 hours if cache-control header exceeds the limit', async () => {
@@ -431,10 +366,7 @@ describe('#resolveHostAddressByServerName()', () => {
 	});
 
 	it('should resolve IP literal addresses directly', async () => {
-		const { address, headers } = await resolveHostAddressByServerName(
-			'192.168.1.1',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('192.168.1.1', localHomeServerName);
 		expect(address).toBe('192.168.1.1:8448');
 		expect(headers).toEqual({ Host: localHomeServerNameWithPort });
 	});
@@ -447,10 +379,7 @@ describe('#resolveHostAddressByServerName()', () => {
 				ttl: 300,
 			},
 		]);
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com:8080',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com:8080', localHomeServerName);
 		expect(address).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8080');
 		expect(headers).toEqual({ Host: localHomeServerNameWithPort });
 	});
@@ -472,10 +401,7 @@ describe('#resolveHostAddressByServerName()', () => {
 		};
 		wellKnownCache.set(serverName, cachedData);
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			serverName,
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName(serverName, localHomeServerName);
 		expect(address).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 		expect(headers).toEqual({ Host: 'cached.example.com:8448' });
 	});
@@ -498,27 +424,17 @@ describe('#resolveHostAddressByServerName()', () => {
 		};
 		global.fetch = jest.fn().mockResolvedValueOnce(mockResponse) as any;
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com', localHomeServerName);
 		expect(address).toBe('[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:8448');
 		expect(headers).toEqual({ Host: 'example.com:8448' });
 	});
 
 	it('should fallback to SRV records if well-known address is not available', async () => {
-		global.fetch = jest
-			.fn()
-			.mockRejectedValueOnce(new Error('Fetch error')) as any;
+		global.fetch = jest.fn().mockRejectedValueOnce(new Error('Fetch error')) as any;
 		mockResolver.resolveSrv = jest.fn().mockResolvedValue([]);
-		mockResolver.resolveAny.mockResolvedValueOnce([
-			{ type: 'A', address: '192.168.1.1', ttl: 300 },
-		]);
+		mockResolver.resolveAny.mockResolvedValueOnce([{ type: 'A', address: '192.168.1.1', ttl: 300 }]);
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com', localHomeServerName);
 		expect(address).toBe('192.168.1.1:8448');
 		expect(headers).toEqual({ Host: 'example.com' });
 	});
@@ -536,10 +452,7 @@ describe('#resolveHostAddressByServerName()', () => {
 		};
 		global.fetch = jest.fn().mockResolvedValueOnce(mockResponse) as any;
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com', localHomeServerName);
 		expect(address).toBe('example.com:8448');
 		expect(headers).toEqual({ Host: 'example.com' });
 	});
@@ -557,41 +470,26 @@ describe('#resolveHostAddressByServerName()', () => {
 		};
 		global.fetch = jest.fn().mockResolvedValueOnce(mockResponse) as any;
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com', localHomeServerName);
 		expect(address).toBe('example.com:8448');
 		expect(headers).toEqual({ Host: 'example.com' });
 	});
 
 	it('should fallback to default port if no SRV, CNAME, AAAA, not A records are found', async () => {
-		global.fetch = jest
-			.fn()
-			.mockRejectedValueOnce(new Error('Fetch error')) as any;
+		global.fetch = jest.fn().mockRejectedValueOnce(new Error('Fetch error')) as any;
 		mockResolver.resolveSrv = jest.fn().mockResolvedValue([]);
 		mockResolver.resolveAny.mockResolvedValueOnce([]);
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com', localHomeServerName);
 		expect(address).toBe('example.com:8448');
 		expect(headers).toEqual({ Host: 'example.com' });
 	});
 
 	it('should handle errors gracefully and return address with default port', async () => {
-		global.fetch = jest
-			.fn()
-			.mockRejectedValueOnce(new Error('Fetch error')) as any;
-		mockResolver.resolveSrv = jest
-			.fn()
-			.mockRejectedValue(new Error('DNS resolution error'));
+		global.fetch = jest.fn().mockRejectedValueOnce(new Error('Fetch error')) as any;
+		mockResolver.resolveSrv = jest.fn().mockRejectedValue(new Error('DNS resolution error'));
 
-		const { address, headers } = await resolveHostAddressByServerName(
-			'example.com',
-			localHomeServerName,
-		);
+		const { address, headers } = await resolveHostAddressByServerName('example.com', localHomeServerName);
 		expect(address).toBe('example.com:8448');
 		expect(headers).toEqual({ Host: 'example.com' });
 	});

@@ -32,9 +32,7 @@ export class StateGraphRepository {
 		private readonly collection: Collection<StateGraphStore>,
 	) {}
 
-	private async _buildPreviousStateMapById(
-		stateId: StateID,
-	): Promise<Map<StateMapKey, EventID>> {
+	private async _buildPreviousStateMapById(stateId: StateID): Promise<Map<StateMapKey, EventID>> {
 		const result = await this.collection
 			.aggregate<{ stateMap: Record<StateMapKey, EventID> }>([
 				{ $match: { _id: stateId } },
@@ -75,14 +73,10 @@ export class StateGraphRepository {
 			return new Map<StateMapKey, EventID>();
 		}
 
-		return new Map(
-			Object.entries(result[0].stateMap) as [StateMapKey, EventID][],
-		);
+		return new Map(Object.entries(result[0].stateMap) as [StateMapKey, EventID][]);
 	}
 
-	async buildPreviousStateMapById(
-		stateId: StateID,
-	): Promise<Map<StateMapKey, EventID> | null> {
+	async buildPreviousStateMapById(stateId: StateID): Promise<Map<StateMapKey, EventID> | null> {
 		const current = await this.collection.findOne({ _id: stateId });
 		if (!current) {
 			return null;
@@ -91,9 +85,7 @@ export class StateGraphRepository {
 		return this._buildPreviousStateMapById(stateId);
 	}
 
-	async buildStateMapById(
-		stateId: StateID,
-	): Promise<Map<StateMapKey, EventID> | null> {
+	async buildStateMapById(stateId: StateID): Promise<Map<StateMapKey, EventID> | null> {
 		const current = await this.collection.findOne({ _id: stateId });
 		if (!current) {
 			return null;
@@ -104,10 +96,7 @@ export class StateGraphRepository {
 			return null;
 		}
 
-		stateMap.set(
-			getStateMapKey({ type: current.type, state_key: current.stateKey }),
-			current.eventId,
-		);
+		stateMap.set(getStateMapKey({ type: current.type, state_key: current.stateKey }), current.eventId);
 
 		return stateMap;
 	}
@@ -129,9 +118,7 @@ export class StateGraphRepository {
 
 		const [create, ...rest] = sorted;
 		if (!create) {
-			throw new Error(
-				'StateGraphReposiory: no create event in state snapshot to be saved',
-			);
+			throw new Error('StateGraphReposiory: no create event in state snapshot to be saved');
 		}
 
 		let previousStateId = await this.createDelta(create, '' as StateID);
@@ -143,10 +130,7 @@ export class StateGraphRepository {
 	}
 
 	async findChainIdByStateId(stateId: StateID) {
-		const doc = await this.collection.findOne(
-			{ _id: stateId },
-			{ projection: { chainId: 1 } },
-		);
+		const doc = await this.collection.findOne({ _id: stateId }, { projection: { chainId: 1 } });
 		if (!doc) {
 			throw new Error(`No chain id for existing state id ${stateId}`);
 		}
@@ -162,10 +146,7 @@ export class StateGraphRepository {
 		return this.collection.findOne({ previousNode: stateId });
 	}
 
-	async createDelta(
-		event: PersistentEventBase,
-		previousStateId: StateID,
-	): Promise<StateID> {
+	async createDelta(event: PersistentEventBase, previousStateId: StateID): Promise<StateID> {
 		const stateId = new ObjectId().toString() as StateID;
 
 		const previousDelta = await this.findOneById(previousStateId);
@@ -205,10 +186,7 @@ export class StateGraphRepository {
 	}
 
 	async findLatestByStateIds(stateIds: StateID[]) {
-		return this.collection.findOne(
-			{ _id: { $in: stateIds } },
-			{ sort: { depth: -1 } },
-		);
+		return this.collection.findOne({ _id: { $in: stateIds } }, { sort: { depth: -1 } });
 	}
 
 	findByEventIds(eventIds: EventID[]) {
@@ -216,9 +194,6 @@ export class StateGraphRepository {
 	}
 
 	findLatestByChainIdAndEventIds(chainId: string, eventIds: EventID[]) {
-		return this.collection.findOne(
-			{ chainId, eventId: { $in: eventIds } },
-			{ sort: { depth: -1 } },
-		);
+		return this.collection.findOne({ chainId, eventId: { $in: eventIds } }, { sort: { depth: -1 } });
 	}
 }

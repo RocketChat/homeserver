@@ -1,10 +1,6 @@
-import {
-	type EventID,
-	PduForType,
-	RoomID,
-	getAuthChain,
-} from '@rocket.chat/federation-room';
+import { type EventID, PduForType, RoomID, getAuthChain } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
+
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
@@ -21,12 +17,8 @@ export class SendJoinService {
 		private readonly federationService: FederationService,
 	) {}
 
-	async sendJoin(
-		roomId: RoomID,
-		eventId: EventID,
-		event: PduForType<'m.room.member'>,
-	) {
-		const stateService = this.stateService;
+	async sendJoin(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>) {
+		const { stateService } = this;
 
 		const roomVersion = await stateService.getRoomVersion(roomId);
 
@@ -34,10 +26,7 @@ export class SendJoinService {
 			throw new Error('Room version not found');
 		}
 
-		const joinEvent = await this.stateService.buildEvent<'m.room.member'>(
-			event,
-			roomVersion,
-		);
+		const joinEvent = await this.stateService.buildEvent<'m.room.member'>(event, roomVersion);
 
 		// now check the calculated id if it matches what is passed in param
 		if (joinEvent.eventId !== eventId) {
@@ -53,17 +42,14 @@ export class SendJoinService {
 		// accepted? allow other servers to start processing already
 		void this.federationService.sendEventToAllServersInRoom(joinEvent);
 
-		const configService = this.configService;
+		const { configService } = this;
 
 		const origin = configService.serverName;
 
 		const authChain = [];
 
 		for (const event of state.values()) {
-			const authEvents = await getAuthChain(
-				event,
-				stateService._getStore(roomVersion),
-			);
+			const authEvents = await getAuthChain(event, stateService._getStore(roomVersion));
 			authChain.push(...authEvents);
 		}
 

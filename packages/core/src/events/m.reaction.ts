@@ -1,4 +1,5 @@
 import type { EventID } from '@rocket.chat/federation-room';
+
 import { type EventBase, createEventBase } from './eventBase';
 import { createEventWithId } from './utils/createSignedEvent';
 
@@ -43,9 +44,7 @@ export interface ReactionEvent extends EventBase {
 	};
 }
 
-const isTruthy = <T>(
-	value: T | null | undefined | false | 0 | '',
-): value is T => {
+const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value is T => {
 	return Boolean(value);
 };
 
@@ -79,11 +78,7 @@ export const reactionEvent = ({
 	return createEventBase('m.reaction', {
 		roomId,
 		sender,
-		auth_events: [
-			auth_events['m.room.create'],
-			auth_events['m.room.power_levels'],
-			auth_events['m.room.member'],
-		].filter(isTruthy),
+		auth_events: [auth_events['m.room.create'], auth_events['m.room.power_levels'], auth_events['m.room.member']].filter(isTruthy),
 		prev_events,
 		depth,
 		content,

@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
 
+import { roomCreateEvent } from './m.room.create';
+import { roomMemberEvent } from './m.room.member';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import { roomCreateEvent } from './m.room.create';
-import { roomMemberEvent } from './m.room.member';
 
 const finalEventId = '$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8';
 const finalEvent = {
@@ -21,17 +21,14 @@ const finalEvent = {
 	hashes: { sha256: '7qLYbHf6z6nLGkN0DABO89wgDjaeZwq0ma7GsPbhZ8I' },
 	signatures: {
 		hs1: {
-			'ed25519:a_HDhg':
-				'y/qV5T9PeXvqgwRafZDSygtk4XRMstdt04qusZWJSu77Juxzzz4Ijyk+JsJ5NNV0/WWYMT9IhmVb7/EEBH4vDQ',
+			'ed25519:a_HDhg': 'y/qV5T9PeXvqgwRafZDSygtk4XRMstdt04qusZWJSu77Juxzzz4Ijyk+JsJ5NNV0/WWYMT9IhmVb7/EEBH4vDQ',
 		},
 	},
 	unsigned: { age_ts: 1733107418672 },
 };
 
 test('roomMemberEvent', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 	const createEvent = roomCreateEvent({
 		roomId: '!uTqsSSWabZzthsSCNf:hs1',
@@ -71,9 +68,7 @@ test('roomMemberEvent', async () => {
 });
 
 test('roomMemberEvent - leave', async () => {
-	const signature = await generateKeyPairsFromString(
-		'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 	const serverName = 'hs1';
 	const roomId = '!leaveRoomTest:hs1';
 	const userId = '@user_to_leave:hs1';
@@ -84,11 +79,7 @@ test('roomMemberEvent - leave', async () => {
 		sender: userId,
 		ts: ts - 1000,
 	});
-	const signedCreateEvent = await signEvent(
-		createEventPayload,
-		signature,
-		serverName,
-	);
+	const signedCreateEvent = await signEvent(createEventPayload, signature, serverName);
 	const createEventId = generateId(signedCreateEvent);
 
 	// A user usually joins before they can leave
@@ -104,11 +95,7 @@ test('roomMemberEvent - leave', async () => {
 		ts: ts - 500,
 		origin: serverName,
 	});
-	const signedJoinEvent = await signEvent(
-		joinMemberEventPayload,
-		signature,
-		serverName,
-	);
+	const signedJoinEvent = await signEvent(joinMemberEventPayload, signature, serverName);
 	const joinEventId = generateId(signedJoinEvent);
 
 	// Now, the leave event
@@ -130,11 +117,7 @@ test('roomMemberEvent - leave', async () => {
 		},
 	});
 
-	const signedLeaveEvent = await signEvent(
-		leaveMemberEventPayload,
-		signature,
-		serverName,
-	);
+	const signedLeaveEvent = await signEvent(leaveMemberEventPayload, signature, serverName);
 	const leaveEventId = generateId(signedLeaveEvent);
 
 	expect(signedLeaveEvent.type).toBe('m.room.member');
@@ -148,21 +131,13 @@ test('roomMemberEvent - leave', async () => {
 	expect(signedLeaveEvent.auth_events).toContain(createEventId);
 	expect(signedLeaveEvent.auth_events).toContain(joinEventId);
 	expect(leaveEventId).toBeDefined();
-	expect(
-		signedLeaveEvent.signatures[serverName][
-			`${signature.algorithm}:${signature.version}`
-		],
-	).toBeString();
+	expect(signedLeaveEvent.signatures[serverName][`${signature.algorithm}:${signature.version}`]).toBeString();
 	expect(Object.keys(signedLeaveEvent.content).length).toBe(1);
 });
 
 test('roomMemberEvent - kick', async () => {
-	const kickerSignature = await generateKeyPairsFromString(
-		'ed25519 kicker_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
-	const userToKickSignature = await generateKeyPairsFromString(
-		'ed25519 kicked_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const kickerSignature = await generateKeyPairsFromString('ed25519 kicker_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
+	const userToKickSignature = await generateKeyPairsFromString('ed25519 kicked_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 	const serverName = 'hs1';
 	const roomId = '!kickRoomTest:hs1';
 	const kickerId = '@kicker:hs1';
@@ -176,11 +151,7 @@ test('roomMemberEvent - kick', async () => {
 		sender: kickerId,
 		ts: ts - 4000,
 	});
-	const signedCreateEvent = await signEvent(
-		createEventPayload,
-		kickerSignature,
-		serverName,
-	);
+	const signedCreateEvent = await signEvent(createEventPayload, kickerSignature, serverName);
 	const createEventId = generateId(signedCreateEvent);
 	let lastEventId = createEventId;
 	let currentDepth = 1;
@@ -214,11 +185,7 @@ test('roomMemberEvent - kick', async () => {
 		origin: serverName,
 		origin_server_ts: ts - 3000,
 	};
-	const signedPowerLevelsEvent = await signEvent(
-		powerLevelsEventPayload,
-		kickerSignature,
-		serverName,
-	);
+	const signedPowerLevelsEvent = await signEvent(powerLevelsEventPayload, kickerSignature, serverName);
 	const powerLevelsEventId = generateId(signedPowerLevelsEvent);
 	lastEventId = powerLevelsEventId;
 
@@ -238,11 +205,7 @@ test('roomMemberEvent - kick', async () => {
 		ts: ts - 2000,
 		origin: serverName,
 	});
-	const signedKickerJoinEvent = await signEvent(
-		kickerJoinEventPayload,
-		kickerSignature,
-		serverName,
-	);
+	const signedKickerJoinEvent = await signEvent(kickerJoinEventPayload, kickerSignature, serverName);
 	const kickerJoinEventId = generateId(signedKickerJoinEvent);
 	lastEventId = kickerJoinEventId;
 
@@ -262,11 +225,7 @@ test('roomMemberEvent - kick', async () => {
 		ts: ts - 1000,
 		origin: serverName,
 	});
-	const signedUserToKickJoinEvent = await signEvent(
-		userToKickJoinEventPayload,
-		userToKickSignature,
-		serverName,
-	);
+	const signedUserToKickJoinEvent = await signEvent(userToKickJoinEventPayload, userToKickSignature, serverName);
 	const userToKickJoinEventId = generateId(signedUserToKickJoinEvent);
 	lastEventId = userToKickJoinEventId;
 
@@ -292,11 +251,7 @@ test('roomMemberEvent - kick', async () => {
 		},
 	});
 
-	const signedKickEvent = await signEvent(
-		kickMemberEventPayload,
-		kickerSignature,
-		serverName,
-	);
+	const signedKickEvent = await signEvent(kickMemberEventPayload, kickerSignature, serverName);
 	const kickEventId = generateId(signedKickEvent);
 
 	// Assertions
@@ -316,21 +271,13 @@ test('roomMemberEvent - kick', async () => {
 	expect(signedKickEvent.auth_events).toContain(kickerJoinEventId);
 
 	expect(kickEventId).toBeDefined();
-	expect(
-		signedKickEvent.signatures[serverName][
-			`${kickerSignature.algorithm}:${kickerSignature.version}`
-		],
-	).toBeString();
+	expect(signedKickEvent.signatures[serverName][`${kickerSignature.algorithm}:${kickerSignature.version}`]).toBeString();
 	expect(Object.keys(signedKickEvent.content).length).toBe(2); // membership + reason
 });
 
 test('roomMemberEvent - ban', async () => {
-	const bannerSignature = await generateKeyPairsFromString(
-		'ed25519 banner_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
-	const userToBanSignature = await generateKeyPairsFromString(
-		'ed25519 banned_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-	);
+	const bannerSignature = await generateKeyPairsFromString('ed25519 banner_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
+	const userToBanSignature = await generateKeyPairsFromString('ed25519 banned_key WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 	const serverName = 'hs1';
 	const roomId = '!banRoomTest:hs1';
 	const bannerId = '@banner:hs1';
@@ -344,11 +291,7 @@ test('roomMemberEvent - ban', async () => {
 		sender: bannerId,
 		ts: ts - 4000,
 	});
-	const signedCreateEvent = await signEvent(
-		createEventPayload,
-		bannerSignature,
-		serverName,
-	);
+	const signedCreateEvent = await signEvent(createEventPayload, bannerSignature, serverName);
 	const createEventId = generateId(signedCreateEvent);
 	let lastEventId = createEventId;
 	let currentDepth = 1;
@@ -382,11 +325,7 @@ test('roomMemberEvent - ban', async () => {
 		origin: serverName,
 		origin_server_ts: ts - 3000,
 	};
-	const signedPowerLevelsEvent = await signEvent(
-		powerLevelsEventPayload,
-		bannerSignature,
-		serverName,
-	);
+	const signedPowerLevelsEvent = await signEvent(powerLevelsEventPayload, bannerSignature, serverName);
 	const powerLevelsEventId = generateId(signedPowerLevelsEvent);
 	lastEventId = powerLevelsEventId;
 
@@ -406,11 +345,7 @@ test('roomMemberEvent - ban', async () => {
 		ts: ts - 2000,
 		origin: serverName,
 	});
-	const signedBannerJoinEvent = await signEvent(
-		bannerJoinEventPayload,
-		bannerSignature,
-		serverName,
-	);
+	const signedBannerJoinEvent = await signEvent(bannerJoinEventPayload, bannerSignature, serverName);
 	const bannerJoinEventId = generateId(signedBannerJoinEvent);
 	lastEventId = bannerJoinEventId;
 
@@ -430,11 +365,7 @@ test('roomMemberEvent - ban', async () => {
 		ts: ts - 1000,
 		origin: serverName,
 	});
-	const signedUserToBanJoinEvent = await signEvent(
-		userToBanJoinEventPayload,
-		userToBanSignature,
-		serverName,
-	);
+	const signedUserToBanJoinEvent = await signEvent(userToBanJoinEventPayload, userToBanSignature, serverName);
 	const userToBanJoinEventId = generateId(signedUserToBanJoinEvent);
 	lastEventId = userToBanJoinEventId;
 
@@ -460,11 +391,7 @@ test('roomMemberEvent - ban', async () => {
 		},
 	});
 
-	const signedBanEvent = await signEvent(
-		banMemberEventPayload,
-		bannerSignature,
-		serverName,
-	);
+	const signedBanEvent = await signEvent(banMemberEventPayload, bannerSignature, serverName);
 	const banEventId = generateId(signedBanEvent);
 
 	// Assertions
@@ -484,10 +411,6 @@ test('roomMemberEvent - ban', async () => {
 	expect(signedBanEvent.auth_events).toContain(bannerJoinEventId);
 
 	expect(banEventId).toBeDefined();
-	expect(
-		signedBanEvent.signatures[serverName][
-			`${bannerSignature.algorithm}:${bannerSignature.version}`
-		],
-	).toBeString();
+	expect(signedBanEvent.signatures[serverName][`${bannerSignature.algorithm}:${bannerSignature.version}`]).toBeString();
 	expect(Object.keys(signedBanEvent.content).length).toBe(2); // membership + reason
 });

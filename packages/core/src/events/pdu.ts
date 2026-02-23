@@ -1,4 +1,5 @@
-import { Pdu } from '@rocket.chat/federation-room';
+import type { Pdu } from '@rocket.chat/federation-room';
+
 import type { EventBase } from './eventBase';
 
 /**
@@ -24,13 +25,6 @@ export interface FederationEventResponse {
 	pdus: Pdu[];
 }
 
-export const isFederationEventWithPDUs = (
-	response: unknown,
-): response is FederationEventResponse => {
-	return (
-		response instanceof Object &&
-		'pdus' in response &&
-		Array.isArray(response.pdus) &&
-		response.pdus.length > 0
-	);
+export const isFederationEventWithPDUs = (response: unknown): response is FederationEventResponse => {
+	return response instanceof Object && 'pdus' in response && Array.isArray(response.pdus) && response.pdus.length > 0;
 };

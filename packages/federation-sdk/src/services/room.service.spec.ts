@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
+
 import * as room from '@rocket.chat/federation-room';
 import {
 	PduJoinRuleEventContent,
@@ -8,6 +9,7 @@ import {
 	StateMapKey,
 } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
+
 import { FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
 import { RoomService } from './room.service';
@@ -21,9 +23,7 @@ describe('RoomService', async () => {
 
 	beforeAll(() => {
 		const databaseConfig = {
-			uri:
-				process.env.MONGO_URI ||
-				'mongodb://localhost:27017?directConnection=true',
+			uri: process.env.MONGO_URI || 'mongodb://localhost:27017?directConnection=true',
 			name: 'matrix_test',
 			poolSize: 100,
 		};
@@ -72,21 +72,14 @@ describe('RoomService', async () => {
 			events: {},
 		},
 	) => {
-		const result = await federationSDK.createRoom(
-			username,
-			'Test Room',
-			joinRule,
-			{
-				users,
-				events,
-			},
-		);
+		const result = await federationSDK.createRoom(username, 'Test Room', joinRule, {
+			users,
+			events,
+		});
 
 		const state = await stateService.getLatestRoomState(result.room_id);
 
-		const memberKey = [...state.keys()].find((stateKey) =>
-			stateKey.includes('m.room.member:'),
-		) as `m.room.member:${string}`;
+		const memberKey = [...state.keys()].find((stateKey) => stateKey.includes('m.room.member:')) as `m.room.member:${string}`;
 
 		const roomCreateEvent = state.get('m.room.create:');
 		const joinRuleEvent = state.get('m.room.join_rules:');
@@ -94,13 +87,7 @@ describe('RoomService', async () => {
 		const creatorMembershipEvent = state.get(memberKey);
 		const roomNameEvent = state.get('m.room.name:');
 
-		if (
-			!roomCreateEvent ||
-			!joinRuleEvent ||
-			!powerLevelEvent ||
-			!creatorMembershipEvent ||
-			!roomNameEvent
-		) {
+		if (!roomCreateEvent || !joinRuleEvent || !powerLevelEvent || !creatorMembershipEvent || !roomNameEvent) {
 			throw new Error('Event not found');
 		}
 
@@ -122,34 +109,21 @@ describe('RoomService', async () => {
 	describe('createRoom', () => {
 		it('should create room correctly', async () => {
 			const username = '@alice:example.com' as room.UserID;
-			const {
-				roomCreateEvent,
-				roomNameEvent,
-				joinRuleEvent,
-				powerLevelEvent,
-				creatorMembershipEvent,
-			} = await createRoom(username, 'public');
+			const { roomCreateEvent, roomNameEvent, joinRuleEvent, powerLevelEvent, creatorMembershipEvent } = await createRoom(
+				username,
+				'public',
+			);
 
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			const state = await stateService.getLatestRoomState(roomId);
 
 			// check each event
-			expect(
-				state.get(roomCreateEvent.getUniqueStateIdentifier()),
-			).toHaveProperty('eventId', roomCreateEvent.eventId);
-			expect(
-				state.get(roomNameEvent.getUniqueStateIdentifier()),
-			).toHaveProperty('eventId', roomNameEvent.eventId);
-			expect(
-				state.get(joinRuleEvent.getUniqueStateIdentifier()),
-			).toHaveProperty('eventId', joinRuleEvent.eventId);
-			expect(
-				state.get(powerLevelEvent.getUniqueStateIdentifier()),
-			).toHaveProperty('eventId', powerLevelEvent.eventId);
-			expect(
-				state.get(creatorMembershipEvent.getUniqueStateIdentifier()),
-			).toHaveProperty('eventId', creatorMembershipEvent.eventId);
+			expect(state.get(roomCreateEvent.getUniqueStateIdentifier())).toHaveProperty('eventId', roomCreateEvent.eventId);
+			expect(state.get(roomNameEvent.getUniqueStateIdentifier())).toHaveProperty('eventId', roomNameEvent.eventId);
+			expect(state.get(joinRuleEvent.getUniqueStateIdentifier())).toHaveProperty('eventId', joinRuleEvent.eventId);
+			expect(state.get(powerLevelEvent.getUniqueStateIdentifier())).toHaveProperty('eventId', powerLevelEvent.eventId);
+			expect(state.get(creatorMembershipEvent.getUniqueStateIdentifier())).toHaveProperty('eventId', creatorMembershipEvent.eventId);
 
 			expect([...state.keys()]).toEqual(
 				expect.arrayContaining([
@@ -184,21 +158,14 @@ describe('RoomService', async () => {
 			const username = '@alice:example.com' as room.UserID;
 			const targetUsername = '@bob:example.com' as room.UserID;
 
-			const roomId = await federationSDK.createDirectMessageRoom(
-				username,
-				targetUsername,
-			);
+			const roomId = await federationSDK.createDirectMessageRoom(username, targetUsername);
 
 			const state = await stateService.getLatestRoomState(roomId);
 
 			expect(state.size).toBe(2);
 
 			expect([...state.keys()]).toEqual(
-				expect.arrayContaining([
-					'm.room.create:',
-					`m.room.member:${targetUsername}`,
-					`m.room.member:${username}`,
-				]),
+				expect.arrayContaining(['m.room.create:', `m.room.member:${targetUsername}`, `m.room.member:${username}`]),
 			);
 		});
 	});
@@ -209,7 +176,7 @@ describe('RoomService', async () => {
 			const secondaryUsername = '@bob:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			const initialState = await stateService.getLatestRoomState(roomId);
 
@@ -231,11 +198,7 @@ describe('RoomService', async () => {
 			const state = await stateService.getLatestRoomState(roomId);
 
 			expect([...state.keys()]).toEqual(
-				expect.arrayContaining([
-					'm.room.create:',
-					`m.room.member:${username}`,
-					`m.room.member:${secondaryUsername}`,
-				]),
+				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${secondaryUsername}`]),
 			);
 		});
 	});
@@ -245,19 +208,15 @@ describe('RoomService', async () => {
 			const username = '@alice:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			await federationSDK.leaveRoom(roomId, username);
 
 			const state = await stateService.getLatestRoomState(roomId);
 
-			expect([...state.keys()]).toEqual(
-				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`]),
-			);
+			expect([...state.keys()]).toEqual(expect.arrayContaining(['m.room.create:', `m.room.member:${username}`]));
 
-			const userState = state.get(
-				`m.room.member:${username}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+			const userState = state.get(`m.room.member:${username}`) as PersistentEventBase<RoomVersion, 'm.room.member'>;
 
 			expect(userState?.getContent().membership).toBe('leave');
 		});
@@ -269,23 +228,17 @@ describe('RoomService', async () => {
 			const secondaryUsername = '@bob:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			await federationSDK.kickUser(roomId, secondaryUsername, username);
 
 			const state = await stateService.getLatestRoomState(roomId);
 
 			expect([...state.keys()]).toEqual(
-				expect.arrayContaining([
-					'm.room.create:',
-					`m.room.member:${username}`,
-					`m.room.member:${secondaryUsername}`,
-				]),
+				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${secondaryUsername}`]),
 			);
 
-			const secondaryState = state.get(
-				`m.room.member:${secondaryUsername}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+			const secondaryState = state.get(`m.room.member:${secondaryUsername}`) as PersistentEventBase<RoomVersion, 'm.room.member'>;
 
 			expect(secondaryState?.getContent().membership).toBe('leave');
 		});
@@ -297,22 +250,16 @@ describe('RoomService', async () => {
 			const secondaryUsername = '@bob:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 			await federationSDK.banUser(roomId, secondaryUsername, username);
 
 			const state = await stateService.getLatestRoomState(roomId);
 
 			expect([...state.keys()]).toEqual(
-				expect.arrayContaining([
-					'm.room.create:',
-					`m.room.member:${username}`,
-					`m.room.member:${secondaryUsername}`,
-				]),
+				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${secondaryUsername}`]),
 			);
 
-			const secondaryState = state.get(
-				`m.room.member:${secondaryUsername}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+			const secondaryState = state.get(`m.room.member:${secondaryUsername}`) as PersistentEventBase<RoomVersion, 'm.room.member'>;
 
 			expect(secondaryState?.getContent().membership).toBe('ban');
 		});
@@ -324,7 +271,7 @@ describe('RoomService', async () => {
 			const secondaryUsername = '@bob:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
 
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			await roomService.joinUser(roomId, username, secondaryUsername);
 
@@ -336,12 +283,7 @@ describe('RoomService', async () => {
 				[username]: 100,
 			});
 
-			await federationSDK.updateUserPowerLevel(
-				roomId,
-				secondaryUsername,
-				50,
-				username,
-			);
+			await federationSDK.updateUserPowerLevel(roomId, secondaryUsername, 50, username);
 
 			expect(
 				await stateService.getLatestRoomState(roomId).then((state) => {
@@ -359,31 +301,25 @@ describe('RoomService', async () => {
 			const username = '@alice:example.com' as room.UserID;
 			const invitedUsername = '@bob:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'invite');
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			await federationSDK.inviteUserToRoom(invitedUsername, roomId, username);
 
 			const stateBeforeAccept = await stateService.getLatestRoomState(roomId);
-			const inviteMemberEvent = stateBeforeAccept.get(
-				`m.room.member:${invitedUsername}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'> | undefined;
+			const inviteMemberEvent = stateBeforeAccept.get(`m.room.member:${invitedUsername}`) as
+				| PersistentEventBase<RoomVersion, 'm.room.member'>
+				| undefined;
 
 			expect(inviteMemberEvent?.getContent().membership).toBe('invite');
 
 			await federationSDK.acceptInvite(roomId, invitedUsername);
 
 			const stateAfterAccept = await stateService.getLatestRoomState(roomId);
-			const joinMemberEvent = stateAfterAccept.get(
-				`m.room.member:${invitedUsername}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+			const joinMemberEvent = stateAfterAccept.get(`m.room.member:${invitedUsername}`) as PersistentEventBase<RoomVersion, 'm.room.member'>;
 
 			expect(joinMemberEvent.getContent().membership).toBe('join');
 			expect([...stateAfterAccept.keys()]).toEqual(
-				expect.arrayContaining([
-					'm.room.create:',
-					`m.room.member:${username}`,
-					`m.room.member:${invitedUsername}`,
-				]),
+				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${invitedUsername}`]),
 			);
 		});
 	});
@@ -393,31 +329,28 @@ describe('RoomService', async () => {
 			const username = '@alice:example.com' as room.UserID;
 			const invitedUsername = '@bob:example.com' as room.UserID;
 			const { roomCreateEvent } = await createRoom(username, 'invite');
-			const roomId = roomCreateEvent.roomId;
+			const { roomId } = roomCreateEvent;
 
 			await federationSDK.inviteUserToRoom(invitedUsername, roomId, username);
 
 			const stateBeforeReject = await stateService.getLatestRoomState(roomId);
-			const inviteMemberEvent = stateBeforeReject.get(
-				`m.room.member:${invitedUsername}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'> | undefined;
+			const inviteMemberEvent = stateBeforeReject.get(`m.room.member:${invitedUsername}`) as
+				| PersistentEventBase<RoomVersion, 'm.room.member'>
+				| undefined;
 
 			expect(inviteMemberEvent?.getContent().membership).toBe('invite');
 
 			await federationSDK.rejectInvite(roomId, invitedUsername);
 
 			const stateAfterReject = await stateService.getLatestRoomState(roomId);
-			const leaveMemberEvent = stateAfterReject.get(
-				`m.room.member:${invitedUsername}`,
-			) as PersistentEventBase<RoomVersion, 'm.room.member'>;
+			const leaveMemberEvent = stateAfterReject.get(`m.room.member:${invitedUsername}`) as PersistentEventBase<
+				RoomVersion,
+				'm.room.member'
+			>;
 
 			expect(leaveMemberEvent.getContent().membership).toBe('leave');
 			expect([...stateAfterReject.keys()]).toEqual(
-				expect.arrayContaining([
-					'm.room.create:',
-					`m.room.member:${username}`,
-					`m.room.member:${invitedUsername}`,
-				]),
+				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${invitedUsername}`]),
 			);
 		});
 	});

@@ -1,4 +1,5 @@
 import { type Static, t } from 'elysia';
+
 import { RoomIdDto, UsernameDto } from '../common/validation.dto';
 
 export const InternalInviteUserBodyDto = t.Object({
@@ -16,6 +17,4 @@ export const InternalInviteUserResponseDto = t.Object({
 });
 
 export type InternalInviteUserBody = Static<typeof InternalInviteUserBodyDto>;
-export type InternalInviteUserResponse = Static<
-	typeof InternalInviteUserResponseDto
->;
+export type InternalInviteUserResponse = Static<typeof InternalInviteUserResponseDto>;

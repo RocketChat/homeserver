@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+
 import { extractURIfromURL } from './url';
 
 describe('extractURIfromURL', () => {
@@ -27,12 +28,8 @@ describe('extractURIfromURL', () => {
 	});
 
 	it('should handle URLs with special characters in pathname and search params', () => {
-		const url = new URL(
-			'https://example.com/path/to/resource%20with%20spaces?query=123&another=456',
-		);
+		const url = new URL('https://example.com/path/to/resource%20with%20spaces?query=123&another=456');
 		const result = extractURIfromURL(url);
-		expect(result).toBe(
-			'/path/to/resource%20with%20spaces?query=123&another=456',
-		);
+		expect(result).toBe('/path/to/resource%20with%20spaces?query=123&another=456');
 	});
 });

@@ -8,8 +8,7 @@ const event = {
 	destination: 'synapse1',
 	signatures: {
 		synapse2: {
-			'ed25519:a_yNbw':
-				'4rVyjfM9Apz6O93HvqkeidmsjwNGHD9WbEA1AdUsjdbACPM67iJK75BQLBLcw5NQj3q/eL7+kGaknkqJH8kEAw',
+			'ed25519:a_yNbw': '4rVyjfM9Apz6O93HvqkeidmsjwNGHD9WbEA1AdUsjdbACPM67iJK75BQLBLcw5NQj3q/eL7+kGaknkqJH8kEAw',
 		},
 	},
 	content: {
@@ -29,8 +28,7 @@ const event = {
 		sender: '@rodrigo2:synapse2',
 		signatures: {
 			synapse2: {
-				'ed25519:a_yNbw':
-					'0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
+				'ed25519:a_yNbw': '0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
 			},
 		},
 		state_key: '@rodrigo2:synapse2',
@@ -67,8 +65,7 @@ describe('pruneEventDict', () => {
 			sender: '@rodrigo2:synapse2',
 			signatures: {
 				synapse2: {
-					'ed25519:a_yNbw':
-						'0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
+					'ed25519:a_yNbw': '0mp0rfrdjPhJFK603sAjCp/iau2cGnxTXhwJoyyrnLw7uqhVs/1vzNxjnntU2G5GFtKLa6YqNzSooLsqhptgBQ',
 				},
 			},
 			state_key: '@rodrigo2:synapse2',

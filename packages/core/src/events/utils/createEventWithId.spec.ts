@@ -1,13 +1,12 @@
 import { describe, expect, test } from 'bun:test';
+
+import { createEventWithId, createSignedEvent } from './createSignedEvent';
 import { generateId } from '../../utils/generateId';
 import { generateKeyPairsFromString } from '../../utils/keys';
-import { createEventWithId, createSignedEvent } from './createSignedEvent';
 
 describe('createEventWithId', () => {
 	test('it should add an ID to a signed event', async () => {
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U');
 
 		const testEvent = () => ({
 			type: 'm.test.event',
@@ -29,9 +28,7 @@ describe('createEventWithId', () => {
 	});
 
 	test('it should generate unique IDs for different events', async () => {
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U');
 
 		const testEvent1 = () => ({
 			type: 'm.test.event',
@@ -63,9 +60,7 @@ describe('createEventWithId', () => {
 	});
 
 	test('it should work with async event generators', async () => {
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_XRhW YjbSyfqQeGto+OFswt+XwtJUUooHXH5w+czSgawN63U');
 
 		const asyncTestEvent = async () => {
 			await new Promise((resolve) => setTimeout(resolve, 10));

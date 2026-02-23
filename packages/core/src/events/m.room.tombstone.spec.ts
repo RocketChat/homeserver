@@ -1,13 +1,10 @@
 import { describe, expect, test } from 'bun:test';
+
+import type { EventBase } from './eventBase';
+import { createRoomTombstoneEvent, isRoomTombstoneEvent, roomTombstoneEvent } from './m.room.tombstone';
 import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
-import type { EventBase } from './eventBase';
-import {
-	createRoomTombstoneEvent,
-	isRoomTombstoneEvent,
-	roomTombstoneEvent,
-} from './m.room.tombstone';
 
 describe('m.room.tombstone', () => {
 	const roomId = '!someroom:example.com';
@@ -69,9 +66,7 @@ describe('m.room.tombstone', () => {
 		});
 
 		expect(isRoomTombstoneEvent(event)).toBe(true);
-		expect(isRoomTombstoneEvent({ ...event, type: 'm.room.message' })).toBe(
-			false,
-		);
+		expect(isRoomTombstoneEvent({ ...event, type: 'm.room.message' })).toBe(false);
 	});
 
 	test('should thoroughly validate different types of events with isRoomTombstoneEvent', () => {
@@ -97,27 +92,18 @@ describe('m.room.tombstone', () => {
 		expect(isRoomTombstoneEvent(messageEvent)).toBe(false);
 		expect(isRoomTombstoneEvent(createEvent)).toBe(false);
 		expect(isRoomTombstoneEvent(memberEvent)).toBe(false);
-		expect(isRoomTombstoneEvent(malformedEvent as unknown as EventBase)).toBe(
-			false,
-		);
-		expect(
-			isRoomTombstoneEvent(objectWithTypeOnly as unknown as EventBase),
-		).toBe(true);
+		expect(isRoomTombstoneEvent(malformedEvent as unknown as EventBase)).toBe(false);
+		expect(isRoomTombstoneEvent(objectWithTypeOnly as unknown as EventBase)).toBe(true);
 		expect(isRoomTombstoneEvent(null as unknown as EventBase)).toBe(false);
 		expect(isRoomTombstoneEvent(undefined as unknown as EventBase)).toBe(false);
 		expect(isRoomTombstoneEvent({} as unknown as EventBase)).toBe(false);
-		expect(
-			isRoomTombstoneEvent('m.room.tombstone' as unknown as EventBase),
-		).toBe(false);
+		expect(isRoomTombstoneEvent('m.room.tombstone' as unknown as EventBase)).toBe(false);
 	});
 
 	test('should validate event signature and ID', async () => {
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
-		const expectedSignature =
-			'leZQvRcjV9GwnSDtmuUtheOODSVpb98kszzyEw0X8ScqEYx0Z1eOIXhOFL3jcolFHGoFZMGYC5GGNN44x1BWBA';
+		const expectedSignature = 'leZQvRcjV9GwnSDtmuUtheOODSVpb98kszzyEw0X8ScqEYx0Z1eOIXhOFL3jcolFHGoFZMGYC5GGNN44x1BWBA';
 		const expectedEventId = '$3Sw4iBWv9pil8BRt3ojPIWGLNQGpsKJoImxNoCmz7ME';
 
 		const event = roomTombstoneEvent({
@@ -142,9 +128,7 @@ describe('m.room.tombstone', () => {
 	});
 
 	test('should create a room tombstone event with ID', async () => {
-		const signature = await generateKeyPairsFromString(
-			'ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw',
-		);
+		const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
 
 		const eventProps = {
 			roomId,

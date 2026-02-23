@@ -1,7 +1,4 @@
-export const errCodes: Record<
-	string,
-	{ errcode: string; error: string; status: 401 | 403 | 500 }
-> = {
+export const errCodes: Record<string, { errcode: string; error: string; status: 401 | 403 | 500 }> = {
 	M_UNAUTHORIZED: {
 		errcode: 'M_UNAUTHORIZED',
 		error: 'Invalid or missing signature',

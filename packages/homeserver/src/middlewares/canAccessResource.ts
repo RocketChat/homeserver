@@ -1,6 +1,6 @@
-import { federationSDK } from '@rocket.chat/federation-sdk';
-import { errCodes } from '@rocket.chat/federation-sdk';
+import { federationSDK, errCodes } from '@rocket.chat/federation-sdk';
 import Elysia from 'elysia';
+
 import { isAuthenticatedMiddleware } from './isAuthenticated';
 
 function extractEntityId(
@@ -22,9 +22,7 @@ function extractEntityId(
 	return null;
 }
 
-export const canAccessResourceMiddleware = (
-	entityType: 'event' | 'media' | 'room',
-) => {
+export const canAccessResourceMiddleware = (entityType: 'event' | 'media' | 'room') => {
 	return new Elysia({ name: 'homeserver/canAccessResource' })
 		.use(isAuthenticatedMiddleware())
 		.onBeforeHandle(async ({ params, authenticatedServer, set }) => {
@@ -46,11 +44,7 @@ export const canAccessResourceMiddleware = (
 					};
 				}
 
-				const resourceAccess = await federationSDK.canAccessResource(
-					entityType,
-					resourceId,
-					authenticatedServer,
-				);
+				const resourceAccess = await federationSDK.canAccessResource(entityType, resourceId, authenticatedServer);
 				if (!resourceAccess) {
 					set.status = errCodes.M_FORBIDDEN.status;
 					return {

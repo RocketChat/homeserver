@@ -7,7 +7,7 @@ export const isAuthenticatedMiddleware = () => {
 	})
 		.derive({ as: 'global' }, async ({ headers, request, set }) => {
 			const authorizationHeader = headers.authorization;
-			const method = request.method;
+			const { method } = request;
 			const url = new URL(request.url);
 			const uri = url.pathname + url.search;
 
@@ -30,12 +30,7 @@ export const isAuthenticatedMiddleware = () => {
 					}
 				}
 
-				const isValid = await federationSDK.verifyRequestSignature(
-					authorizationHeader,
-					method,
-					uri,
-					body,
-				);
+				const isValid = await federationSDK.verifyRequestSignature(authorizationHeader, method, uri, body);
 
 				if (!isValid) {
 					set.status = 401;
@@ -59,10 +54,7 @@ export const isAuthenticatedMiddleware = () => {
 			if (!authenticatedServer) {
 				return {
 					errcode: set.status === 500 ? 'M_UNKNOWN' : 'M_UNAUTHORIZED',
-					error:
-						set.status === 500
-							? 'Internal server error'
-							: 'Authentication required',
+					error: set.status === 500 ? 'Internal server error' : 'Authentication required',
 				};
 			}
 		});

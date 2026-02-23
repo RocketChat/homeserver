@@ -1,6 +1,4 @@
-export function toBinaryData(
-	value: string | Uint8Array | ArrayBuffer | ArrayBufferView,
-): Uint8Array {
+export function toBinaryData(value: string | Uint8Array | ArrayBuffer | ArrayBufferView): Uint8Array {
 	if (typeof value === 'string') {
 		return new TextEncoder().encode(value);
 	}
@@ -16,9 +14,7 @@ export function toBinaryData(
 	return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
 }
 
-export function fromBinaryData(
-	value: string | Uint8Array | ArrayBuffer,
-): string {
+export function fromBinaryData(value: string | Uint8Array | ArrayBuffer): string {
 	if (typeof value === 'string') {
 		return value;
 	}
