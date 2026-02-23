@@ -22,7 +22,7 @@
 		"@rocket.chat/federation-core": "workspace:*",
 		"@rocket.chat/federation-sdk": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*",
-		"@rocket.chat/emitter": "^0.31.25",
+		"@rocket.chat/emitter": "^0.32.0",
 		"elysia": "^1.1.26",
 		"mongodb": "^6.16.0",
 		"tsyringe": "^4.10.0"

@@ -1,4 +1,5 @@
-import z from 'zod';
+import * as z from 'zod';
+
 import type { Pdu, PduType } from './v3-11';
 
 export type StateKey = string;

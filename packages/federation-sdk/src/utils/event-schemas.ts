@@ -3,11 +3,11 @@ import {
 	roomIdSchema,
 	userIdSchema,
 } from '@rocket.chat/federation-room';
-import { z } from 'zod';
+import * as z from 'zod';
 
 const baseEventSchema = z.object({
 	type: z.string(),
-	content: z.record(z.any()).or(z.object({})),
+	content: z.record(z.string(), z.any()).or(z.object({})),
 	sender: userIdSchema,
 	room_id: roomIdSchema,
 	origin_server_ts: z.number().int().positive(),
@@ -21,8 +21,8 @@ const baseEventSchema = z.object({
 		.array(z.string().or(z.tuple([z.string(), z.string()])))
 		.optional(),
 	redacts: eventIdSchema.optional(),
-	hashes: z.record(z.string()).optional(),
-	signatures: z.record(z.record(z.string())).optional(),
+	hashes: z.record(z.string(), z.string()).optional(),
+	signatures: z.record(z.string(), z.record(z.string(), z.string())).optional(),
 	unsigned: z.any().optional(),
 });
 
@@ -34,7 +34,7 @@ const createEventSchema = baseEventSchema.extend({
 			room_version: z.string(),
 			creator: userIdSchema,
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 	prev_events: z.array(z.any()).max(0).optional(),
 	auth_events: z.array(z.any()).max(0).optional(),
 });
@@ -48,7 +48,7 @@ const memberEventSchema = baseEventSchema.extend({
 			displayname: z.string().optional().nullable(),
 			avatar_url: z.string().optional().nullable(),
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 });
 
 const messageEventSchema = baseEventSchema.extend({
@@ -58,7 +58,7 @@ const messageEventSchema = baseEventSchema.extend({
 			msgtype: z.string(),
 			body: z.string(),
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 });
 
 const reactionEventSchema = baseEventSchema.extend({
@@ -71,7 +71,7 @@ const reactionEventSchema = baseEventSchema.extend({
 				key: z.string(),
 			}),
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 });
 
 const powerLevelsEventSchema = baseEventSchema.extend({
@@ -83,13 +83,13 @@ const powerLevelsEventSchema = baseEventSchema.extend({
 			kick: z.number().int().default(50),
 			redact: z.number().int().default(50),
 			invite: z.number().int().default(50),
-			events: z.record(z.number().int()).optional(),
+			events: z.record(z.string(), z.number().int()).optional(),
 			events_default: z.number().int().default(0),
 			state_default: z.number().int().default(50),
-			users: z.record(z.number().int()).optional(),
+			users: z.record(z.string(), z.number().int()).optional(),
 			users_default: z.number().int().default(0),
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 });
 
 const joinRulesEventSchema = baseEventSchema.extend({
@@ -99,7 +99,7 @@ const joinRulesEventSchema = baseEventSchema.extend({
 		.object({
 			join_rule: z.enum(['public', 'knock', 'invite', 'private']),
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 });
 
 const redactionEventSchema = baseEventSchema.extend({
@@ -109,7 +109,7 @@ const redactionEventSchema = baseEventSchema.extend({
 		.object({
 			reason: z.string().optional(),
 		})
-		.and(z.record(z.any())),
+		.and(z.record(z.string(), z.any())),
 });
 
 const roomV10Schemas = {
