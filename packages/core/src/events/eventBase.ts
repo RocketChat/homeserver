@@ -40,6 +40,7 @@ export const isRedactedEvent = (event: Pdu): event is PduForType<'m.room.redacti
 	return event.type === 'm.room.redaction' && 'redacts' in event;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Events {}
 
 type KeyEvent = keyof Events;
