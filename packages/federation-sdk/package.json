@@ -16,7 +16,7 @@
 		"test": "bun test"
 	},
 	"dependencies": {
-		"@rocket.chat/emitter": "^0.31.25",
+		"@rocket.chat/emitter": "^0.32.0",
 		"@rocket.chat/federation-core": "workspace:*",
 		"@rocket.chat/federation-crypto": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*",
@@ -24,7 +24,7 @@
 		"reflect-metadata": "^0.2.2",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3",
-		"zod": "^3.24.1"
+		"zod": "~4.3.6"
 	},
 	"license": "AGPL-3.0",
 	"author": "Rocket.Chat Technologies Corp. <contact@rocket.chat>",

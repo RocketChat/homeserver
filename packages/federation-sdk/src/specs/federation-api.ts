@@ -8,7 +8,7 @@ import {
 	EventPduTypeRoomMember,
 	PduStateEventSchema,
 } from '@rocket.chat/federation-room';
-import { z } from 'zod';
+import * as z from 'zod';
 
 // Common types
 export const EventIdSchema = z.string().regex(/^\$[A-Za-z0-9_-]+$/);
@@ -160,6 +160,7 @@ export const TransactionSchema = z.object({
 
 export const SendTransactionResponseSchema = z.object({
 	pdus: z.record(
+		z.string(),
 		z.object({
 			error: z.string().optional(),
 		}),

@@ -5,8 +5,7 @@ import {
 	toUnpaddedBase64,
 } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
-
-import { z } from 'zod';
+import * as z from 'zod';
 
 export interface AppConfig {
 	serverName: string;
@@ -112,7 +111,7 @@ export class ConfigService {
 					err: error,
 				});
 				throw new Error(
-					`Invalid configuration: ${error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
+					`Invalid configuration: ${error.issues.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
 				);
 			}
 			throw error;
