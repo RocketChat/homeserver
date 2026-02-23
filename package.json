@@ -19,7 +19,6 @@
 		"eslint-plugin-no-floating-promise": "~2.0.0",
 		"eslint-plugin-prettier": "4.2.1",
 		"husky": "^9.1.7",
-		"lint-staged": "^16.1.2",
 		"prettier": "2.8.8",
 		"sinon": "^20.0.0",
 		"tsconfig-paths": "^4.2.0",
@@ -35,11 +34,6 @@
 		"rollup-plugin-dts": "^6.2.3",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3"
-	},
-	"husky": {
-		"hooks": {
-			"pre-commit": "bun test"
-		}
 	},
 	"packageManager": "bun@1.3.9",
 	"lint-staged": {},
