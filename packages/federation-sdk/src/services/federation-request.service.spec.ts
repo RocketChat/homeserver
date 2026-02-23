@@ -202,7 +202,11 @@ describe('FederationRequestService', async () => {
 						multipart: async () => null,
 					} as Response;
 				},
-				{ preconnect: () => {} },
+				{
+					preconnect: () => {
+						/* noop */
+					},
+				},
 			) as typeof fetch;
 
 			try {
@@ -230,7 +234,11 @@ describe('FederationRequestService', async () => {
 						multipart: async () => null,
 					} as Response;
 				},
-				{ preconnect: () => {} },
+				{
+					preconnect: () => {
+						/* noop */
+					},
+				},
 			) as typeof fetch;
 
 			try {
@@ -253,7 +261,11 @@ describe('FederationRequestService', async () => {
 				async () => {
 					throw new Error('Network Error');
 				},
-				{ preconnect: () => {} },
+				{
+					preconnect: () => {
+						/* noop */
+					},
+				},
 			) as typeof fetch;
 
 			try {

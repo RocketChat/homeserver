@@ -110,7 +110,9 @@ describe('StateService', async () => {
 	};
 
 	const configServiceInstance = {
-		getSigningKey: async () => {},
+		getSigningKey: async () => {
+			/* noop */
+		},
 		serverName: 'example.com',
 	} as unknown as ConfigService;
 
