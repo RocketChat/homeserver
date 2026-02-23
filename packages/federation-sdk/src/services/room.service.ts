@@ -775,7 +775,7 @@ export class RoomService {
 
 			this.logger.info({ roomId, partialEventIds: partialEvents.map((e) => e.eventId) }, 'events with incomplete states');
 
-			for (const event of partialEvents) {
+			for await (const event of partialEvents) {
 				this.logger.info({ roomId, eventId: event.eventId }, 'walking branch');
 
 				const missingBranchEvents = (
@@ -792,7 +792,7 @@ export class RoomService {
 					return e1.eventId.localeCompare(e2.eventId);
 				});
 
-				for (const missingEvent of missingBranchEvents) {
+				for await (const missingEvent of missingBranchEvents) {
 					this.logger.info(
 						{
 							eventId: event.eventId,
@@ -947,8 +947,10 @@ export class RoomService {
 			throw new Error();
 		}
 
-		for (let i = 0; i < serverList.length && missing.length > 0; i++) {
-			const askingServer = serverList[i];
+		for await (const askingServer of serverList) {
+			if (missing.length === 0) {
+				break;
+			}
 
 			this.logger.warn({
 				msg: 'attempting to fetch events from participating server',
@@ -1516,7 +1518,7 @@ export class RoomService {
 				}
 			}
 
-			for (const [roomId, members] of roomMemberCounts) {
+			for await (const [roomId, members] of roomMemberCounts) {
 				if (members.size === 2 && members.has(userId1) && members.has(userId2)) {
 					const currentMembers = await this.eventRepository.findAllJoinedMembersEventsByRoomId(roomId);
 					const currentUserIds = currentMembers.map((m) => m.event.state_key).filter(Boolean);

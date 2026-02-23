@@ -69,7 +69,7 @@ export const resolveUsingSRVRecordsOrFallbackToOtherRecords = async (serverName:
 	const srvRecords = await resolver.resolveSrv(`_matrix-fed._tcp.${serverName}`);
 
 	if (srvRecords.length > 0) {
-		for (const srv of srvRecords) {
+		for await (const srv of srvRecords) {
 			const addresses = await resolver.resolveAny(srv.name);
 			for (const address of addresses) {
 				if (address.type === 'AAAA' || address.type === 'A') {

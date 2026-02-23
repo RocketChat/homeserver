@@ -420,7 +420,7 @@ export class StateService {
 
 		let previousStateId = stateId;
 
-		for (const event of sortedEvents) {
+		for await (const event of sortedEvents) {
 			const authState = getAuthEventStateMap(event);
 			try {
 				await checkEventAuthWithState(event, authState, store);

@@ -17,7 +17,9 @@ describe('verifySignaturesFromRemote', async () => {
 
 		await verifySignaturesFromRemote(signed, serverName, async () => signature.publicKey);
 
-		expect(async () => await verifySignaturesFromRemote(signed, serverName, async () => signature.publicKey)).not.toThrow();
+		expect(async () => {
+			await verifySignaturesFromRemote(signed, serverName, async () => signature.publicKey);
+		}).not.toThrow();
 	});
 
 	test('it should throw an error if the signature is invalid', async () => {
@@ -26,50 +28,47 @@ describe('verifySignaturesFromRemote', async () => {
 
 		const signed = await signJson({}, signature, serverName);
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(signed, serverName, async () =>
-					Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
-				),
-		).toThrow();
+		expect(async () => {
+			await verifySignaturesFromRemote(signed, serverName, async () =>
+				Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
+			);
+		}).toThrow();
 	});
 
 	test('it should throw an error if there is no valid protocol version', async () => {
 		const serverName = 'synapse';
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(
-					{
-						signatures: {
-							[serverName]: {
-								[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
-							},
+		expect(async () => {
+			await verifySignaturesFromRemote(
+				{
+					signatures: {
+						[serverName]: {
+							[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
 						},
 					},
-					serverName,
-					async () => Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
-				),
-		).toThrow(`Invalid algorithm ${EncryptionValidAlgorithm.ed25519}1 for ${serverName}`);
+				},
+				serverName,
+				async () => Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
+			);
+		}).toThrow(`Invalid algorithm ${EncryptionValidAlgorithm.ed25519}1 for ${serverName}`);
 	});
 
 	it('it should throw an error if the signature is invalid for the serverName', async () => {
 		const serverName = 'synapse';
 
-		expect(
-			async () =>
-				await verifySignaturesFromRemote(
-					{
-						signatures: {
-							differentServer: {
-								[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
-							},
+		expect(async () => {
+			await verifySignaturesFromRemote(
+				{
+					signatures: {
+						differentServer: {
+							[`${EncryptionValidAlgorithm.ed25519}1:a_yNbw`]: 'invalid',
 						},
 					},
-					serverName,
-					async () => Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
-				),
-		).toThrow(`Signatures not found for ${serverName}`);
+				},
+				serverName,
+				async () => Uint8Array.from(atob('tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8'), (c) => c.charCodeAt(0)),
+			);
+		}).toThrow(`Signatures not found for ${serverName}`);
 	});
 });
 

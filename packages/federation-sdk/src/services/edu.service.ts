@@ -47,7 +47,7 @@ export class EduService {
 			this.logger.debug(`Sending presence updates for ${presenceUpdates.length} users to all servers in rooms: ${roomIds.join(', ')}`);
 			const uniqueServers = new Set<string>();
 
-			for (const roomId of roomIds) {
+			for await (const roomId of roomIds) {
 				const servers = await this.stateService.getServersInRoom(roomId);
 				for (const server of servers) {
 					if (server !== origin) {

@@ -357,7 +357,7 @@ describe('StateService', async () => {
 
 			const store = getStore(map);
 
-			for (const event of Object.values(state)) {
+			for await (const event of Object.values(state)) {
 				for (const eventId of await room.getAuthChain(event, store)) {
 					authChainSet.add(eventId);
 				}
@@ -515,7 +515,7 @@ describe('StateService', async () => {
 
 			const store = getStore(map);
 
-			for (const event of Object.values(state)) {
+			for await (const event of Object.values(state)) {
 				for (const eventId of await room.getAuthChain(event, store)) {
 					authChainSet.add(eventId);
 				}
@@ -689,7 +689,7 @@ describe('StateService', async () => {
 
 			const store = getStore(map);
 
-			for (const event of Object.values(state)) {
+			for await (const event of Object.values(state)) {
 				for (const eventId of await room.getAuthChain(event, store)) {
 					authChainSet.add(eventId);
 				}
@@ -901,7 +901,7 @@ describe('StateService', async () => {
 
 		// at each event the corresponding user should be in state
 
-		for (const event of events) {
+		for await (const event of events) {
 			const stateAtEvent = await stateService.getStateAtEvent(event);
 			expect(stateAtEvent.get(event.getUniqueStateIdentifier())?.getContent()).toHaveProperty('membership', 'join');
 		}
@@ -2071,7 +2071,7 @@ describe('StateService', async () => {
 		}
 
 		// all users should also be able to send a message
-		for (const user of users) {
+		for await (const user of users) {
 			const message = await stateService.buildEvent<'m.room.message'>(
 				{
 					type: 'm.room.message',
@@ -2096,6 +2096,7 @@ describe('StateService', async () => {
 	};
 
 	for (let i = 1; i <= partialStateEvents.length; i++) {
+		// eslint-disable-next-line no-loop-func
 		describe(label('partial states', i), () => {
 			it(label('should not be able to complete the chain', i), async () => {
 				const { state } = await partialStateEvents[i - 1]();
@@ -2200,7 +2201,7 @@ describe('StateService', async () => {
 						})
 						.reverse();
 
-					for (const previousEvent of previousEvents) {
+					for await (const previousEvent of previousEvents) {
 						console.log(`Waling ${previousEvent.eventId}`);
 						await walk(previousEvent);
 					}
@@ -2211,7 +2212,7 @@ describe('StateService', async () => {
 					await stateService._resolveStateAtEvent(event);
 				};
 
-				for (const event of eventsToWalk) {
+				for await (const event of eventsToWalk) {
 					console.log(`Starting walking ${event.eventId}`);
 					await walk(event).catch(console.error);
 				}

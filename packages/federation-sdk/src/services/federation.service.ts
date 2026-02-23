@@ -246,7 +246,7 @@ export class FederationService {
 			}
 		}
 
-		for (const server of servers) {
+		for await (const server of servers) {
 			if (server === event.origin) {
 				this.logger.info(`Skipping transaction to event origin: ${event.origin}`);
 				continue;
@@ -286,7 +286,7 @@ export class FederationService {
 
 	async sendEDUToServers(edus: BaseEDU[], servers: string[]): Promise<void> {
 		// Process servers sequentially to avoid concurrent transactions per Matrix spec
-		for (const server of servers) {
+		for await (const server of servers) {
 			if (server === this.configService.serverName) {
 				this.logger.info(`Skipping EDU to local server: ${server}`);
 				continue;
@@ -300,7 +300,7 @@ export class FederationService {
 				batches.push(edus.slice(i, i + maxEDUsPerTransaction));
 			}
 
-			for (const batch of batches) {
+			for await (const batch of batches) {
 				const txn: Transaction = {
 					origin: this.configService.serverName,
 					origin_server_ts: Date.now(),

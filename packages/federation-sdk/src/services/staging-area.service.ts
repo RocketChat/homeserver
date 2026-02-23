@@ -77,6 +77,7 @@ export class StagingAreaService {
 		let event: EventStagingStore | null = null;
 
 		do {
+			// eslint-disable-next-line no-await-in-loop
 			event = await this.eventService.getLeastDepthEventForRoom(roomId);
 			if (!event) {
 				this.logger.debug({ msg: 'No staged event found for room', roomId });
@@ -85,6 +86,7 @@ export class StagingAreaService {
 
 			if (event.got > MAX_EVENT_RETRY) {
 				this.logger.warn(`Event ${event._id} has been tried ${MAX_EVENT_RETRY} times, removing from staging area`);
+				// eslint-disable-next-line no-await-in-loop
 				await this.eventService.markEventAsUnstaged(event);
 				continue;
 			}
@@ -93,9 +95,11 @@ export class StagingAreaService {
 
 			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
 			// and acquired by another instance while we're processing a batch of events for this room
+			// eslint-disable-next-line no-await-in-loop
 			await this.lockRepository.updateLockTimestamp(roomId, this.configService.instanceId);
 
 			try {
+				// eslint-disable-next-line no-await-in-loop
 				const addedMissing = await this.processDependencyStage(event);
 				if (addedMissing) {
 					// if we added missing events, we postpone the processing of this event
@@ -103,11 +107,14 @@ export class StagingAreaService {
 					throw new MissingEventsError('Added missing events');
 				}
 
+				// eslint-disable-next-line no-await-in-loop
 				await this.stateService.handlePdu(await toEventBase(event.event));
+				// eslint-disable-next-line no-await-in-loop
 				await this.eventService.notify({
 					eventId: event._id,
 					event: event.event,
 				});
+				// eslint-disable-next-line no-await-in-loop
 				await this.eventService.markEventAsUnstaged(event);
 
 				// TODO add missing logic from synapse: Prune the event queue if it's getting large.

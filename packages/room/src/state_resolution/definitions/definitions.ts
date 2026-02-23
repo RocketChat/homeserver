@@ -113,7 +113,7 @@ export async function getAuthChain(event: PersistentEventBase, store: EventStore
 
 		let newAuthChainPart = existingAuthChainPart.union(authEventIdsSet);
 
-		for (const authEvent of authEvents) {
+		for await (const authEvent of authEvents) {
 			const nextAuthChainPart = await _getAuthChain(authEvent, newAuthChainPart);
 			if (!nextAuthChainPart) {
 				continue;
@@ -132,10 +132,10 @@ export async function getAuthChain(event: PersistentEventBase, store: EventStore
 export async function getAuthChainDifference(states: Readonly<Iterable<StateEventIdMap>>, store: EventStore) {
 	const authChainSets = [] as Set<EventID>[];
 
-	for (const state of states) {
+	for await (const state of states) {
 		const authChainForState = new Set<EventID>();
 
-		for (const eventid of state.values()) {
+		for await (const eventid of state.values()) {
 			const [event] = await store.getEvents([eventid]);
 			if (!event) {
 				console.warn('event not found in store or remote', eventid);
@@ -325,7 +325,7 @@ export async function reverseTopologicalPowerSort(
 		}
 	};
 
-	for (const event of events) {
+	for await (const event of events) {
 		eventMap.set(event.eventId, event);
 		await buildIndegreeGraph(graph, event);
 	}
@@ -426,6 +426,7 @@ export async function mainlineOrdering(
 				return mainlineMap.get(_event.eventId) || 0;
 			}
 
+			// eslint-disable-next-line no-await-in-loop
 			const authEvents: PersistentEventBase[] = await store.getEvents(_event.getAuthEventIds());
 
 			_event = null;
@@ -450,7 +451,7 @@ export async function mainlineOrdering(
 
 	// Let e = e0 be another event (possibly another m.room.power_levels event)
 	// iterating over all, could have been better visualized with a for (let i = 0; i < events.length; i++) loop
-	for (const event of events) {
+	for await (const event of events) {
 		// "Now compare these two lists as follows."
 		// since we have to compare it doesn't make sense to fetch mainlines of all events here, too expensive, let's try to calculate on the fly
 		// we just want the mainline position of the event
@@ -492,9 +493,11 @@ export async function iterativeAuthChecks(
 ): Promise<State> {
 	const newState: State = new Map(stateMap.entries()) as State;
 
-	for (const event of events) {
+	for await (const event of events) {
 		const authEventStateMap: State = new Map();
-		for (const authEvent of await store.getEvents(event.getAuthEventIds())) {
+
+		const authEvents = await store.getEvents(event.getAuthEventIds());
+		for (const authEvent of authEvents) {
 			authEventStateMap.set(authEvent.getUniqueStateIdentifier(), authEvent);
 		}
 
