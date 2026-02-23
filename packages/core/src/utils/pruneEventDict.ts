@@ -40,9 +40,9 @@ type AllowedKeysPowerLevels = Extract<
 type MergeMultipleKeys<T, U> = T | U;
 export type Prettify<T> = {
 	[K in keyof T]: T[K];
-} & object;
+};
 
-export function pruneEventDict<T extends Pdu>(
+export function pruneEventDict<T extends Pdu | EventBase>(
 	eventDict: T,
 	roomVersion: RoomVersion = {
 		updated_redaction_rules: false,
@@ -52,9 +52,7 @@ export function pruneEventDict<T extends Pdu>(
 		special_case_aliases_auth: false,
 		msc3389_relation_redactions: false,
 	},
-): Prettify<
-	Pick<T, MergeMultipleKeys<AllowedKeysDefault, T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never> & object>
-> {
+): Prettify<Pick<T, MergeMultipleKeys<AllowedKeysDefault, T['type'] extends 'm.room.power_levels' ? AllowedKeysPowerLevels : never>>> {
 	/**
 	 * Redacts the eventDict in the same way as `prune_event`, except it
 	 * operates on objects rather than event instances.
@@ -125,7 +123,7 @@ export function pruneEventDict<T extends Pdu>(
 		}
 	}
 
-	if (isRoomMemberEvent(eventDict)) {
+	if (eventType === 'm.room.member') {
 		const contentKeys = ['membership', ...(roomVersion.restricted_join_rule_fix ? ['authorising_user'] : [])];
 
 		addFields(...contentKeys);
