@@ -9,7 +9,18 @@ export class EventRepository {
 	constructor(
 		@inject('EventCollection')
 		private readonly collection: Collection<EventStore>,
-	) {}
+	) {
+		this.collection.createIndex({
+			'event.room_id': 1,
+			'nextEventId': 1,
+			'event.depth': 1,
+			'createdAt': 1,
+		});
+		this.collection.createIndex({
+			'event.room_id': 1,
+			'event.type': 1,
+		});
+	}
 
 	async findById(eventId: EventID): Promise<EventStore | null> {
 		return this.collection.findOne({ _id: eventId });
