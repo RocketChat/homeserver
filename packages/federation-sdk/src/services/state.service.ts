@@ -719,11 +719,6 @@ export class StateService {
 		return servers;
 	}
 
-	// @deprecated use getServerSetInRoom
-	async getServersInRoom(roomId: RoomID) {
-		return Array.from(await this.getServerSetInRoom(roomId));
-	}
-
 	private async _isSameChain(stateIds: StateID[]) {
 		const stateDocs = await this.stateRepository.findByStateIds(stateIds).toArray();
 
