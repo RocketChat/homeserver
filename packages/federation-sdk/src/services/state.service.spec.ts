@@ -1446,32 +1446,32 @@ describe('StateService', async () => {
 		const diego = '@diego:example.com';
 		await joinUser(roomCreateEvent.roomId, diego);
 
-		const servers = await stateService.getServersInRoom(roomCreateEvent.roomId);
-		expect(servers).toContain('example.com');
-		expect(servers.length).toBe(1);
+		const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+		expect(servers.has('example.com')).toBe(true);
+		expect(servers.size).toBe(1);
 
 		const remoteUser = '@alice:remote.com';
 		await joinUser(roomCreateEvent.roomId, remoteUser);
 
-		const servers2 = await stateService.getServersInRoom(roomCreateEvent.roomId);
-		expect(servers2).toContain('example.com');
-		expect(servers2).toContain('remote.com');
-		expect(servers2.length).toBe(2);
+		const servers2 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+		expect(servers2.has('example.com')).toBe(true);
+		expect(servers2.has('remote.com')).toBe(true);
+		expect(servers2.size).toBe(2);
 
 		// now leave the remote user
 		await leaveUser(roomCreateEvent.roomId, remoteUser);
 
-		const servers3 = await stateService.getServersInRoom(roomCreateEvent.roomId);
-		expect(servers3).toContain('example.com');
-		expect(servers3.length).toBe(1);
+		const servers3 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+		expect(servers3.has('example.com')).toBe(true);
+		expect(servers3.size).toBe(1);
 
 		// now add her again
 		await joinUser(roomCreateEvent.roomId, remoteUser);
 
-		const servers4 = await stateService.getServersInRoom(roomCreateEvent.roomId);
-		expect(servers4).toContain('example.com');
-		expect(servers4).toContain('remote.com');
-		expect(servers4.length).toBe(2);
+		const servers4 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+		expect(servers4.has('example.com')).toBe(true);
+		expect(servers4.has('remote.com')).toBe(true);
+		expect(servers4.size).toBe(2);
 	});
 
 	it('should allow previously rejected events through multiple state resolutions', async () => {
@@ -2224,4 +2224,135 @@ describe('StateService', async () => {
 			});
 		});
 	}
+
+	describe('getServerSetInRoom', () => {
+		it('should return servers with joined members', async () => {
+			const { roomCreateEvent } = await createRoom('public');
+
+			const alice = '@alice:example.com';
+			const bob = '@bob:remote.com';
+			const charlie = '@charlie:another.com';
+
+			await joinUser(roomCreateEvent.roomId, alice);
+			await joinUser(roomCreateEvent.roomId, bob);
+			await joinUser(roomCreateEvent.roomId, charlie);
+
+			const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+
+			expect(servers.has('example.com')).toBe(true);
+			expect(servers.has('remote.com')).toBe(true);
+			expect(servers.has('another.com')).toBe(true);
+			expect(servers.size).toBe(3);
+		});
+
+		it('should deduplicate servers with multiple users from same domain', async () => {
+			const { roomCreateEvent } = await createRoom('public');
+
+			const alice = '@alice:example.com';
+			const bob = '@bob:example.com';
+			const charlie = '@charlie:example.com';
+
+			await joinUser(roomCreateEvent.roomId, alice);
+			await joinUser(roomCreateEvent.roomId, bob);
+			await joinUser(roomCreateEvent.roomId, charlie);
+
+			const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+
+			expect(servers.has('example.com')).toBe(true);
+			expect(servers.size).toBe(1);
+		});
+
+		it('should exclude servers with non-joined members', async () => {
+			const { roomCreateEvent } = await createRoom('public');
+
+			const creator = '@alice:example.com'; // Room creator with admin permissions
+			const joined = '@joined:joined.com';
+			const left = '@left:left.com';
+			const banned = '@banned:banned.com';
+			const invited = '@invited:invited.com';
+
+			await joinUser(roomCreateEvent.roomId, joined);
+			await joinUser(roomCreateEvent.roomId, left);
+			await joinUser(roomCreateEvent.roomId, banned);
+
+			// Change memberships - use creator for moderation actions
+			await leaveUser(roomCreateEvent.roomId, left);
+			await banUser(roomCreateEvent.roomId, banned, creator);
+			await inviteUser(roomCreateEvent.roomId, invited, creator);
+
+			const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+
+			expect(servers.has('joined.com')).toBe(true);
+			expect(servers.has('left.com')).toBe(false);
+			expect(servers.has('banned.com')).toBe(false);
+			expect(servers.has('invited.com')).toBe(false);
+			expect(servers.size).toBe(2); // example.com (creator) + joined.com
+		});
+
+		it('should return empty set for room with only creator', async () => {
+			const { roomCreateEvent } = await createRoom('public');
+
+			const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+
+			// Only the room creator from createRoom should be present
+			expect(servers.has('example.com')).toBe(true);
+			expect(servers.size).toBe(1);
+		});
+
+		it('should update server list when users join and leave', async () => {
+			const { roomCreateEvent } = await createRoom('public');
+
+			const remoteUser = '@alice:remote.com';
+
+			// Initially only creator's server
+			const servers1 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+			expect(servers1.has('example.com')).toBe(true);
+			expect(servers1.size).toBe(1);
+
+			// Add remote user
+			await joinUser(roomCreateEvent.roomId, remoteUser);
+			const servers2 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+			expect(servers2.has('example.com')).toBe(true);
+			expect(servers2.has('remote.com')).toBe(true);
+			expect(servers2.size).toBe(2);
+
+			// Remove remote user
+			await leaveUser(roomCreateEvent.roomId, remoteUser);
+			const servers3 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+			expect(servers3.has('example.com')).toBe(true);
+			expect(servers3.has('remote.com')).toBe(false);
+			expect(servers3.size).toBe(1);
+
+			// Add remote user back
+			await joinUser(roomCreateEvent.roomId, remoteUser);
+			const servers4 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+			expect(servers4.has('example.com')).toBe(true);
+			expect(servers4.has('remote.com')).toBe(true);
+			expect(servers4.size).toBe(2);
+		});
+
+		it('should handle multiple servers with different user counts', async () => {
+			const { roomCreateEvent } = await createRoom('public');
+
+			// Server 1: 3 users
+			await joinUser(roomCreateEvent.roomId, '@user1:server1.com');
+			await joinUser(roomCreateEvent.roomId, '@user2:server1.com');
+			await joinUser(roomCreateEvent.roomId, '@user3:server1.com');
+
+			// Server 2: 2 users
+			await joinUser(roomCreateEvent.roomId, '@alice:server2.com');
+			await joinUser(roomCreateEvent.roomId, '@bob:server2.com');
+
+			// Server 3: 1 user
+			await joinUser(roomCreateEvent.roomId, '@charlie:server3.com');
+
+			const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
+
+			expect(servers.has('example.com')).toBe(true);
+			expect(servers.has('server1.com')).toBe(true);
+			expect(servers.has('server2.com')).toBe(true);
+			expect(servers.has('server3.com')).toBe(true);
+			expect(servers.size).toBe(4);
+		});
+	});
 });
