@@ -270,4 +270,8 @@ export class FederationSDK {
 	sendReadReceipt(...args: Parameters<typeof this.eduService.sendReadReceipt>) {
 		return this.eduService.sendReadReceipt(...args);
 	}
+
+	notifyRemoteServerUp(...args: Parameters<typeof this.federationService.notifyRemoteServerUp>) {
+		return this.federationService.notifyRemoteServerUp(...args);
+	}
 }
