@@ -124,7 +124,7 @@ export class PerDestinationQueue {
 
 		// Trigger immediate processing if there are items in queue
 		if (!this.isEmpty()) {
-			this.processQueue();
+			void this.processQueue();
 		}
 	}
 
@@ -152,6 +152,8 @@ export class PerDestinationQueue {
 
 		this.processing = true;
 
+		let shouldContinue = false;
+
 		try {
 			// Batch PDUs and EDUs into a transaction
 			// Matrix spec: max 50 PDUs and 100 EDUs per transaction
@@ -177,11 +179,8 @@ export class PerDestinationQueue {
 
 			this.logger.info('Successfully sent transaction');
 
-			// Continue processing if there are more items
-			if (!this.isEmpty()) {
-				this.processing = false;
-				this.processQueue();
-			}
+			// Mark that we should continue processing after finally block completes
+			shouldContinue = !this.isEmpty();
 		} catch (error) {
 			this.logger.error(
 				{
@@ -195,6 +194,11 @@ export class PerDestinationQueue {
 			this.handleRetry();
 		} finally {
 			this.processing = false;
+		}
+
+		// Continue processing if there are more items (after finally has released the mutex)
+		if (shouldContinue) {
+			void this.processQueue();
 		}
 	}
 
