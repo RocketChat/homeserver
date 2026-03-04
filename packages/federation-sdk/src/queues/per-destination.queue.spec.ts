@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, jest } from 'bun:test';
 
 import type { BaseEDU } from '@rocket.chat/federation-core';
 import type { Pdu } from '@rocket.chat/federation-room';
@@ -315,44 +315,51 @@ describe('PerDestinationQueue', () => {
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 		});
 
-		it('should not schedule setTimeout with infinite waitTime when nextRetryAt is Infinity', async () => {
-			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Server unreachable'));
+		describe('setTimeout spy', () => {
+			let setTimeoutSpy: ReturnType<typeof jest.spyOn>;
 
-			// Spy on setTimeout to verify it's not called with Infinity
-			const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-
-			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
-				maxRetries: 20,
-				initialBackoffMs: 4000000, // Exceeds 1 hour on first retry
-				maxBackoffMs: 7200000,
-				backoffMultiplier: 1,
+			beforeEach(() => {
+				setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 			});
 
-			queue.enqueuePDU(createMockPdu('$event1'));
+			afterEach(() => {
+				setTimeoutSpy.mockRestore();
+			});
 
-			// First attempt fails, triggers 1-hour threshold and sets nextRetryAt to Infinity
-			await new Promise((resolve) => setTimeout(resolve, 50));
-			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
-			expect(queue.isEmpty()).toBe(true); // Queue emptied due to threshold
+			it('should not schedule setTimeout with infinite waitTime when nextRetryAt is Infinity', async () => {
+				mockRequestService.put = jest.fn().mockRejectedValue(new Error('Server unreachable'));
 
-			// Clear previous setTimeout calls
-			setTimeoutSpy.mockClear();
+				queue = new PerDestinationQueue(destination, origin, mockRequestService, {
+					maxRetries: 20,
+					initialBackoffMs: 4000000, // Exceeds 1 hour on first retry
+					maxBackoffMs: 7200000,
+					backoffMultiplier: 1,
+				});
 
-			// Enqueue new event after nextRetryAt is set to Infinity
-			queue.enqueuePDU(createMockPdu('$event2'));
+				queue.enqueuePDU(createMockPdu('$event1'));
 
-			// Wait a bit to ensure processQueue is called
-			await new Promise((resolve) => setTimeout(resolve, 50));
+				// First attempt fails, triggers 1-hour threshold and sets nextRetryAt to Infinity
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				expect(mockRequestService.put).toHaveBeenCalledTimes(1);
+				expect(queue.isEmpty()).toBe(true); // Queue emptied due to threshold
 
-			// Verify setTimeout was not called with Infinity
-			const setTimeoutCalls = setTimeoutSpy.mock.calls;
-			const hasInfiniteTimeout = setTimeoutCalls.some((call) => !Number.isFinite(call[1]));
-			expect(hasInfiniteTimeout).toBe(false);
+				// Clear previous setTimeout calls
+				setTimeoutSpy.mockClear();
 
-			// Queue should still have the event (not dropped, but not processing)
-			expect(queue.isEmpty()).toBe(false);
+				// Enqueue new event after nextRetryAt is set to Infinity
+				queue.enqueuePDU(createMockPdu('$event2'));
 
-			setTimeoutSpy.mockRestore();
+				// Wait a bit to ensure processQueue is called
+				await new Promise((resolve) => setTimeout(resolve, 50));
+
+				// Verify setTimeout was not called with Infinity
+				const setTimeoutCalls = setTimeoutSpy.mock.calls;
+				const hasInfiniteTimeout = setTimeoutCalls.some((call: unknown[]) => !Number.isFinite(call[1]));
+				expect(hasInfiniteTimeout).toBe(false);
+
+				// Queue should still have the event (not dropped, but not processing)
+				expect(queue.isEmpty()).toBe(false);
+			});
 		});
 
 		it('should handle multiple enqueue attempts when parked with infinite backoff', async () => {
