@@ -92,11 +92,4 @@ export class FederationSenderService {
 
 		return queue;
 	}
-
-	/**
-	 * Graceful shutdown
-	 */
-	shutdown(): void {
-		this.logger.info('OutgoingQueueManager shutdown complete');
-	}
 }

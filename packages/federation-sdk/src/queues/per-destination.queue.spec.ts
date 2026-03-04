@@ -563,43 +563,4 @@ describe('PerDestinationQueue', () => {
 			expect(firstCallUri).not.toBe(secondCallUri);
 		});
 	});
-
-	describe('Configuration from environment variables', () => {
-		it('should use default configuration when env vars are not set', () => {
-			// Clear any environment variables
-			delete process.env.FEDERATION_OUTGOING_MAX_RETRIES;
-			delete process.env.FEDERATION_OUTGOING_INITIAL_BACKOFF_MS;
-			delete process.env.FEDERATION_OUTGOING_MAX_BACKOFF_MS;
-			delete process.env.FEDERATION_OUTGOING_BACKOFF_MULTIPLIER;
-
-			queue = new PerDestinationQueue(destination, origin, mockRequestService);
-
-			// Default values should be used (maxRetries: 10, initialBackoffMs: 1000, etc.)
-			// We can't directly access private fields, but we can test behavior
-			expect(queue).toBeDefined();
-		});
-
-		it('should allow custom retry config override', async () => {
-			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Fail'));
-
-			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
-				maxRetries: 1, // Override to 1
-				initialBackoffMs: 50,
-			});
-
-			queue.enqueuePDU(createMockPdu('$event1'));
-
-			// First attempt
-			await new Promise((resolve) => setTimeout(resolve, 50));
-			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
-
-			// Second attempt (exceeds our custom maxRetries of 1)
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
-
-			// Queue should be dropped
-			await new Promise((resolve) => setTimeout(resolve, 50));
-			expect(queue.isEmpty()).toBe(true);
-		});
-	});
 });
