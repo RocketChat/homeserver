@@ -266,4 +266,8 @@ export class FederationSDK {
 	sendPresenceUpdateToRooms(...args: Parameters<typeof this.eduService.sendPresenceUpdateToRooms>) {
 		return this.eduService.sendPresenceUpdateToRooms(...args);
 	}
+
+	sendReadReceipt(...args: Parameters<typeof this.eduService.sendReadReceipt>) {
+		return this.eduService.sendReadReceipt(...args);
+	}
 }

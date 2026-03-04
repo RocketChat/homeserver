@@ -1,4 +1,4 @@
-import type { PresenceUpdate } from '@rocket.chat/federation-core';
+import type { PresenceUpdate, ReceiptEDU } from '@rocket.chat/federation-core';
 import { createPresenceEDU, createTypingEDU, createLogger } from '@rocket.chat/federation-core';
 import { RoomID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -62,6 +62,55 @@ export class EduService {
 		} catch (error) {
 			this.logger.error({
 				msg: 'Failed to send presence update to rooms',
+				err: error,
+			});
+			throw error;
+		}
+	}
+
+	async sendReadReceipt({
+		roomId,
+		userId,
+		eventIds,
+		threadId,
+	}: {
+		roomId: RoomID;
+		userId: string;
+		eventIds: string[];
+		threadId?: string;
+	}): Promise<void> {
+		try {
+			const origin = this.configService.serverName;
+			const receiptEDU: ReceiptEDU = {
+				edu_type: 'm.receipt',
+				content: {
+					[roomId]: {
+						'm.read': {
+							[userId]: {
+								data: {
+									ts: Date.now(),
+									thread_id: threadId,
+								},
+								event_ids: eventIds,
+							},
+						},
+					},
+				},
+			};
+
+			this.logger.debug(
+				`Sending read receipt for user ${userId} in room ${roomId} for events ${eventIds.join(', ')} to all servers in room`,
+			);
+
+			const servers = await this.stateService.getServersInRoom(roomId);
+			const uniqueServers = servers.filter((server) => server !== origin);
+
+			await this.federationService.sendEDUToServers([receiptEDU], uniqueServers);
+
+			this.logger.debug(`Sent read receipt to ${uniqueServers.length} unique servers for room ${roomId}`);
+		} catch (error) {
+			this.logger.error({
+				msg: 'Failed to send read receipt',
 				err: error,
 			});
 			throw error;
