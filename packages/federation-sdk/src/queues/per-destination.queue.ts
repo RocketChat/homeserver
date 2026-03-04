@@ -139,6 +139,10 @@ export class PerDestinationQueue {
 
 		const now = Date.now();
 		if (this.nextRetryAt > now) {
+			// Don't schedule if nextRetryAt is not finite
+			if (!Number.isFinite(this.nextRetryAt)) {
+				return;
+			}
 			const waitTime = this.nextRetryAt - now;
 			this.logger.debug({ waitTimeMs: waitTime, nextRetryAt: this.nextRetryAt }, 'Waiting before next retry');
 			setTimeout(() => this.processQueue(), waitTime);
