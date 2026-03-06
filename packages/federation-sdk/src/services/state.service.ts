@@ -102,46 +102,21 @@ export class StateService {
 		return event.content;
 	}
 
+	// TODO change type to RoomID
 	async getRoomVersion(roomId: string): Promise<RoomVersion> {
-		const createEventId = await this.stateRepository.findCreateEventIdByRoomId(
-			roomId as RoomID,
+		const createEvent = await this.eventRepository.findByRoomIdAndType(
+			roomId,
+			'm.room.create',
 		);
-		if (!createEventId) {
-			throw new Error(
-				'Create event not found for room version maybe event hasn;t been processed yet',
-			);
-		}
-
-		const createEvent = await this.eventRepository.findById(createEventId);
 		if (!createEvent) {
 			throw new UnknownRoomError(roomId as RoomID);
 		}
 
-		if (createEvent.event.type === 'm.room.create') {
-			// just getting typescriopt to help
-			return createEvent.event.content.room_version;
+		if (createEvent.event.type !== 'm.room.create') {
+			throw new Error('Create event content malformed for room version');
 		}
 
-		// should be unreachable
-		throw new Error('Create event content malformed for room version');
-	}
-
-	// helps with logging state
-	private logState(label: string, state: State) {
-		const printableState = Array.from(state.entries()).map(([key, value]) => {
-			return {
-				internalStateKey: key,
-				strippedEvent: {
-					state_key: value.stateKey,
-					sender: value.sender,
-					origin: value.origin,
-					content: value.getContent(),
-				},
-			};
-		});
-
-		// TODO: change to debug later
-		this.logger.info({ state: printableState }, label);
+		return createEvent.event.content.room_version;
 	}
 
 	private async updateNextEventReferencesWithEvent(event: PersistentEventBase) {

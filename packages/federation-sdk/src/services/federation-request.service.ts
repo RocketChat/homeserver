@@ -1,14 +1,7 @@
 import type {
 	FetchResponse,
 	MultipartResult,
-	SigningKey,
 } from '@rocket.chat/federation-core';
-import {
-	authorizationHeaders,
-	computeAndMergeHash,
-} from '@rocket.chat/federation-core';
-import { extractURIfromURL } from '@rocket.chat/federation-core';
-import { EncryptionValidAlgorithm } from '@rocket.chat/federation-core';
 import { createLogger } from '@rocket.chat/federation-core';
 import { fetch } from '@rocket.chat/federation-core';
 import { signJson } from '@rocket.chat/federation-crypto';
@@ -54,20 +47,6 @@ export class FederationRequestService {
 			url.search = queryString;
 		}
 
-		/*
-			{
-				"method": "POST",
-				"uri": "/target",
-				"origin": "origin.hs.example.com",
-				"destination": "destination.hs.example.com",
-				"content": <JSON-parsed request body>,
-				"signatures": {
-					"origin.hs.example.com": {
-						"ed25519:key1": "ABCDEF..."
-					}
-				}
-			}
-		*/
 		// build the auth request
 		const request = {
 			method,
@@ -79,19 +58,14 @@ export class FederationRequestService {
 
 		const requestSignature = await signJson(request, signer);
 
-		// authorization_headers.append(bytes(
-		//     "X-Matrix origin=\"%s\",destination=\"%s\",key=\"%s\",sig=\"%s\"" % (
-		//         origin_name, destination_name, key, sig,
-		//     )
-		// ))
 		const authorizationHeaderValue = `X-Matrix origin="${origin}",destination="${domain}",key="${signer.id}",sig="${requestSignature}"`;
 
 		const headers = {
 			Authorization: authorizationHeaderValue,
 			...discoveryHeaders,
+			...(body && { 'Content-Type': 'application/json' }),
 		};
 
-		// TODO: make logging take a function for object to avoid unnecessary computation when log level is high
 		this.logger.debug(
 			{
 				method,
@@ -110,6 +84,16 @@ export class FederationRequestService {
 
 		if (!response.ok) {
 			const errorText = await response.text();
+
+			this.logger.error({
+				msg: 'Federation request failed',
+				url,
+				status: response.status,
+				errorText,
+				sentHeaders: headers,
+				responseHeaders: response.headers,
+			});
+
 			let errorDetail = errorText;
 			try {
 				errorDetail = JSON.stringify(JSON.parse(errorText));

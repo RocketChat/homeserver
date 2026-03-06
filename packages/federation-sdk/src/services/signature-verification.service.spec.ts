@@ -21,6 +21,7 @@ import {
 } from '@rocket.chat/federation-room';
 import { runIfMongoExists } from '../__mocks__/block-if-no-mongo';
 import { keyService } from '../__mocks__/services.spec';
+import { AppConfig, ConfigService } from './config.service';
 import { SignatureVerificationService } from './signature-verification.service';
 
 const originServer = 'syn1.tunnel.dev.rocket.chat';
@@ -93,8 +94,13 @@ runIfMongoExists(() =>
 			'./signature-verification.service'
 		);
 
+		const configService = new ConfigService();
+		configService.setConfig({
+			serverName: 'syn2.tunnel.dev.rocket.chat',
+		} as AppConfig);
+
 		beforeEach(() => {
-			service = new SignatureVerificationService(keyService); // invalidates internal cache
+			service = new SignatureVerificationService(keyService, configService); // invalidates internal cache
 		});
 
 		afterEach(async () => {

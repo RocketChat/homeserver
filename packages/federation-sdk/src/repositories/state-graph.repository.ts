@@ -2,7 +2,6 @@ import {
 	type EventID,
 	type PduType,
 	type PersistentEventBase,
-	RoomID,
 	type StateID,
 	type StateMapKey,
 	getStateMapKey,
@@ -221,15 +220,5 @@ export class StateGraphRepository {
 			{ chainId, eventId: { $in: eventIds } },
 			{ sort: { depth: -1 } },
 		);
-	}
-
-	async findCreateEventIdByRoomId(roomId: RoomID) {
-		const doc = await this.collection.findOne({
-			roomId,
-			type: 'm.room.create',
-			stateKey: '',
-		});
-
-		return doc?.eventId;
 	}
 }

@@ -28,6 +28,7 @@ const eventEmitter = new EventEmitterService();
 
 const signatureVerificationService = new SignatureVerificationService(
 	keyService,
+	configService,
 );
 
 const eventService = new EventService(

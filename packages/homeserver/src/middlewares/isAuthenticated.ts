@@ -34,12 +34,12 @@ export const isAuthenticatedMiddleware = () => {
 			}
 
 			try {
-				await federationSDK.verifyRequestSignature({
+				await federationSDK.verifyRequestSignature(
 					authorizationHeader,
 					method,
 					uri,
 					body,
-				});
+				);
 			} catch (error) {
 				console.error('Signature verification error:', error);
 				if (

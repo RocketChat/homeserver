@@ -121,10 +121,8 @@ export class FederationSDK {
 		return this.eduService.sendTypingNotification(...args);
 	}
 
-	getOwnSignedServerKeyResponse(
-		...args: Parameters<typeof this.keyService.getOwnSignedServerKeyResponse>
-	) {
-		return this.keyService.getOwnSignedServerKeyResponse(...args);
+	getSignedServerKey() {
+		return this.keyService.getOwnSignedServerKeyResponse();
 	}
 
 	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {
@@ -136,11 +134,17 @@ export class FederationSDK {
 	}
 
 	verifyRequestSignature(
-		...args: Parameters<
-			typeof this.signatureVerficationService.verifyRequestSignature
-		>
+		authorizationHeader: string,
+		method: string,
+		uri: string,
+		body?: Record<string, unknown>,
 	) {
-		return this.signatureVerficationService.verifyRequestSignature(...args);
+		return this.signatureVerficationService.verifyRequestSignature({
+			authorizationHeader,
+			method,
+			uri,
+			body,
+		});
 	}
 
 	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {

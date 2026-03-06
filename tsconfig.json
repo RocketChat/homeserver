@@ -6,27 +6,12 @@
 		"tsBuildInfoFile": ".tsbuildinfo"
 	},
 	"include": ["index.ts", "test-setup.ts"],
-	"exclude": [
-		"node_modules",
-		"dist",
-		"packages/*/dist",
-		"benchmark-scripts/**"
-	],
+	"exclude": ["node_modules", "dist", "packages/*/dist"],
 	"references": [
-		{
-			"path": "./packages/core"
-		},
-		{
-			"path": "./packages/crypto"
-		},
-		{
-			"path": "./packages/federation-sdk"
-		},
-		{
-			"path": "./packages/homeserver"
-		},
-		{
-			"path": "./packages/room"
-		}
+		{ "path": "./packages/core" },
+		{ "path": "./packages/crypto" },
+		{ "path": "./packages/federation-sdk" },
+		{ "path": "./packages/homeserver" },
+		{ "path": "./packages/room" }
 	]
 }

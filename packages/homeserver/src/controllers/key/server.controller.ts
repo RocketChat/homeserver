@@ -6,7 +6,7 @@ export const serverKeyPlugin = (app: Elysia) => {
 	return app.get(
 		'/_matrix/key/v2/server',
 		async () => {
-			return federationSDK.getOwnSignedServerKeyResponse();
+			return federationSDK.getSignedServerKey();
 		},
 		{
 			response: {

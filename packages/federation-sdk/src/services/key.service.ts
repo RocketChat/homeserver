@@ -260,7 +260,7 @@ export class KeyService {
 
 	// this shouldn't be here, however, to copy the controller level logic from homeserver router to rocket.chat would be a pain to keep up to date if changes are needed. for now, keeping here.
 	async handleQuery({ server_keys: serverKeys }: QueryRequestBody) {
-		const serverKeysResponse = [] as KeyV2ServerResponse[];
+		const serverKeysResponse: KeyV2ServerResponse[] = [];
 
 		const localKeysPerServer: Map<string, ServerKey[]> = new Map();
 
@@ -606,7 +606,7 @@ export class KeyService {
 			{
 				serverName: this.configService.serverName,
 				keyId: signer.id,
-				key: signer.getPublicKey().toBase64(),
+				key: Buffer.from(signer.getPublicKey()).toString('base64'),
 
 				// TODO: this isn't currently in config, nor do we handle expiration yet
 				expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year expiration
