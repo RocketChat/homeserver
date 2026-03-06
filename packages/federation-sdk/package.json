@@ -23,7 +23,6 @@
 		"mongodb": "^6.16.0",
 		"reflect-metadata": "^0.2.2",
 		"tsyringe": "^4.10.0",
-		"tweetnacl": "^1.0.3",
 		"zod": "^3.24.1"
 	},
 	"license": "AGPL-3.0",

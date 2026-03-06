@@ -115,7 +115,6 @@ bun build ./packages/federation-sdk/src/index.ts \
  -e @rocket.chat/emitter \
  -e reflect-metadata \
  -e tsyringe \
- -e tweetnacl \
  --production \
  --sourcemap=inline
 */

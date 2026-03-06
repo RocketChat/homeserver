@@ -8,14 +8,12 @@ export { signEvent } from './utils/signEvent';
 // Authentication utilities
 export { generateId } from './utils/generateId';
 export { pruneEventDict } from './utils/pruneEventDict';
-export { checkSignAndHashes } from './utils/checkSignAndHashes';
 export {
 	authorizationHeaders,
 	computeAndMergeHash,
 	computeHash,
 	extractSignaturesFromHeader,
 	signRequest,
-	validateAuthorizationHeader,
 	type HashedEvent,
 } from './utils/authentication';
 
@@ -24,12 +22,6 @@ export type { ProtocolVersionKey, SignedJson } from './utils/signJson';
 export {
 	signJson,
 	isValidAlgorithm,
-	getSignaturesFromRemote,
-	verifySignature,
-	verifyJsonSignature,
-	verifySignaturesFromRemote,
-	signText,
-	signData,
 } from './utils/signJson';
 
 // Binary data utilities
@@ -72,7 +64,6 @@ export * from './models/event.model';
 
 // Procedures
 export { makeJoinEventBuilder } from './procedures/makeJoin';
-export { getPublicKeyFromRemoteServer } from './procedures/getPublicKeyFromServer';
 
 export { createLogger, logger } from './utils/logger';
 

@@ -1,6 +1,4 @@
-import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import { type Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
-import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
 import { signJson } from './signJson';
 
@@ -65,45 +63,6 @@ export async function authorizationHeaders<T extends object>(
 
 	return `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`;
 }
-
-export const validateAuthorizationHeader = async <T extends object>(
-	origin: string,
-	signingKey: string,
-	destination: string,
-	method: string,
-	uri: string,
-	hash: string,
-	content?: T,
-) => {
-	const canonicalJson = encodeCanonicalJson({
-		method,
-		uri,
-		origin,
-		destination,
-		...(content && { content }),
-	});
-
-	const signature = Uint8Array.from(atob(hash as string), (c) =>
-		c.charCodeAt(0),
-	);
-	const signingKeyBytes = Uint8Array.from(atob(signingKey as string), (c) =>
-		c.charCodeAt(0),
-	);
-	const messageBytes = new TextEncoder().encode(canonicalJson);
-	const isValid = nacl.sign.detached.verify(
-		messageBytes,
-		signature,
-		signingKeyBytes,
-	);
-
-	if (!isValid) {
-		throw new Error(
-			`Invalid signature from ${origin} for request to ${destination}`,
-		);
-	}
-
-	return true;
-};
 
 export async function signRequest<T extends object>(
 	origin: string,
