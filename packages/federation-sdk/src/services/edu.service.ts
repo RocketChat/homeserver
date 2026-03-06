@@ -89,7 +89,7 @@ export class EduService {
 							[userId]: {
 								data: {
 									ts: Date.now(),
-									thread_id: threadId,
+									thread_id: threadId || 'main',
 								},
 								event_ids: eventIds,
 							},
