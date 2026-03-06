@@ -29,19 +29,3 @@ export interface ReceiptEDU extends BaseEDU {
 export const isReceiptEDU = (edu: BaseEDU): edu is ReceiptEDU => {
 	return edu.edu_type === 'm.receipt';
 };
-
-export const createReceiptEDU = (roomId: RoomID, userId: UserID, eventIds: string[]): ReceiptEDU => ({
-	edu_type: 'm.receipt',
-	content: {
-		[roomId]: {
-			'm.read': {
-				[userId]: {
-					data: {
-						ts: Date.now(),
-					},
-					event_ids: eventIds,
-				},
-			},
-		},
-	},
-});

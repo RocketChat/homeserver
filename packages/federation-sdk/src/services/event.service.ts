@@ -383,19 +383,14 @@ export class EventService {
 
 				const { event_ids, data } = receiptData;
 
-				const threadId = (data as { ts: number; thread_id?: string }).thread_id;
-				this.logger.debug(
-					`Processing read receipt for room ${roomId}: ${userId} read events ${event_ids.join(', ')}${
-						threadId ? ` in thread ${threadId}` : ''
-					}`,
-				);
+				this.logger.debug('Processing read receipt', { roomId, userId, event_ids, thread_id: data.thread_id });
 
 				await this.eventEmitterService.emit('homeserver.matrix.receipt', {
 					room_id: roomId,
 					user_id: userId,
 					event_ids,
 					ts: data.ts,
-					thread_id: threadId,
+					thread_id: data.thread_id,
 				});
 			}
 		}
