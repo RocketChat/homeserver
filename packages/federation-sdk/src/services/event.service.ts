@@ -26,7 +26,6 @@ import {
 	RoomID,
 	RoomState,
 	RoomVersion,
-	type State,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
@@ -39,7 +38,6 @@ import type { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
 
 export interface AuthEventParams {
@@ -65,8 +63,6 @@ export class EventService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
-		@inject(delay(() => LockRepository))
-		private readonly lockRepository: LockRepository,
 	) {}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(eventId: EventID, type?: T): Promise<P | null> {

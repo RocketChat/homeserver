@@ -1,6 +1,6 @@
 import type { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 
 import { LockRepository } from '../repositories/lock.repository';
 import { ConfigService } from '../services/config.service';
@@ -16,6 +16,7 @@ export class StagingAreaQueue {
 	private processing = false;
 
 	constructor(
+		@inject(delay(() => LockRepository))
 		private readonly lockRepository: LockRepository,
 		private readonly configService: ConfigService,
 	) {}
