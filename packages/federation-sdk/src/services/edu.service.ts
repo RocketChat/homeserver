@@ -24,8 +24,8 @@ export class EduService {
 
 			this.logger.debug(`Sending typing notification for room ${roomId}: ${userId} (typing: ${typing}) to all servers in room`);
 
-			const servers = await this.stateService.getServersInRoom(roomId);
-			const uniqueServers = servers.filter((server) => server !== origin);
+			const servers = await this.stateService.getServerSetInRoom(roomId);
+			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
 			await this.federationService.sendEDUToServers([typingEDU], uniqueServers);
 
@@ -47,14 +47,16 @@ export class EduService {
 			this.logger.debug(`Sending presence updates for ${presenceUpdates.length} users to all servers in rooms: ${roomIds.join(', ')}`);
 			const uniqueServers = new Set<string>();
 
-			for await (const roomId of roomIds) {
-				const servers = await this.stateService.getServersInRoom(roomId);
-				for (const server of servers) {
-					if (server !== origin) {
-						uniqueServers.add(server);
+			await Promise.all(
+				roomIds.map(async (roomId) => {
+					const servers = await this.stateService.getServerSetInRoom(roomId);
+					for (const server of servers) {
+						if (server !== origin) {
+							uniqueServers.add(server);
+						}
 					}
-				}
-			}
+				}),
+			);
 
 			await this.federationService.sendEDUToServers([presenceEDU], Array.from(uniqueServers));
 

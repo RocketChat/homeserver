@@ -249,8 +249,8 @@ export class EventAuthorizationService {
 			return false;
 		}
 
-		const serversInRoom = await this.stateService.getServersInRoom(roomId);
-		if (serversInRoom.includes(serverName)) {
+		const serversInRoom = await this.stateService.getServerSetInRoom(roomId, state);
+		if (serversInRoom.has(serverName)) {
 			this.logger.debug(`Server ${serverName} is in room, allowing access`);
 			return true;
 		}
