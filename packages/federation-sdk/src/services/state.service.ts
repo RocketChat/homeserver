@@ -692,8 +692,8 @@ export class StateService {
 	// 	const stateId = await this.getStateIdBeforeEvent(event);
 	// 	return this.getStateAtStateId(stateId, event.version);
 	// }
-	async getServerSetInRoom(roomId: RoomID) {
-		const state = await this.getLatestRoomState(roomId);
+	async getServerSetInRoom(roomId: RoomID, roomState?: State) {
+		const state = roomState ?? (await this.getLatestRoomState(roomId));
 
 		const servers = new Set<string>();
 
