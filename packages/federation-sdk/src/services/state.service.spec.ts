@@ -2289,7 +2289,7 @@ describe('StateService', async () => {
 			expect(servers.size).toBe(2); // example.com (creator) + joined.com
 		});
 
-		it('should return empty set for room with only creator', async () => {
+		it('should return creator server for room with only creator', async () => {
 			const { roomCreateEvent } = await createRoom('public');
 
 			const servers = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
