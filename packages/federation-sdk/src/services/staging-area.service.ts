@@ -90,12 +90,9 @@ export class StagingAreaService {
 				continue;
 			}
 
-			this.logger.info({ msg: 'Processing event', eventId: event._id });
+			yield event;
 
-			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
-			// and acquired by another instance while we're processing a batch of events for this room
-			// eslint-disable-next-line no-await-in-loop
-			await this.lockRepository.updateLockTimestamp(roomId, this.configService.instanceId);
+			this.logger.info({ msg: 'Processing event', eventId: event._id });
 
 			try {
 				// eslint-disable-next-line no-await-in-loop
@@ -145,16 +142,6 @@ export class StagingAreaService {
 			}
 
 			// TODO: what should we do to avoid infinite loops in case the next event is always the same event
-
-			// eslint-disable-next-line no-await-in-loop
-			event = await this.eventService.getLeastDepthEventForRoom(roomId);
-
-			// if we got an event, we need to update the lock's timestamp to avoid it being timed out
-			// and acquired by another instance while we're processing a batch of events for this room
-
-			if (event) {
-				yield event;
-			}
 		} while (event);
 		this.logger.debug({ msg: 'No more events to process for room', roomId });
 	}
