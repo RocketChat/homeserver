@@ -11,7 +11,7 @@ type QueueHandler = (roomId: RoomID) => AsyncGenerator<unknown | undefined>;
 export class StagingAreaQueue {
 	private queue: RoomID[] = [];
 
-	private handlers: QueueHandler[] = [];
+	private handler: QueueHandler | null = null;
 
 	private processing = false;
 
@@ -27,12 +27,16 @@ export class StagingAreaQueue {
 	}
 
 	registerHandler(handler: QueueHandler): void {
-		this.handlers.push(handler);
+		this.handler = handler;
 	}
 
 	private async processQueue(): Promise<void> {
 		if (this.processing) {
 			return;
+		}
+
+		if (!this.handler) {
+			throw new Error('No handler registered for StagingAreaQueue');
 		}
 
 		this.processing = true;
@@ -42,19 +46,19 @@ export class StagingAreaQueue {
 				const roomId = this.queue.shift() as RoomID;
 				if (!roomId) continue;
 
-				for (const handler of this.handlers) {
 					// eslint-disable-next-line no-await-in-loop, prettier/prettier
 					await using lock = await this.lockRepository.lock(
 						roomId,
 						this.configService.instanceId,
 					);
+
 					if (!lock.success) {
 						continue;
 					}
-					// eslint-disable-next-line no-await-in-loop
-					for await (const _ of handler(roomId)) {
+
+				// eslint-disable-next-line no-await-in-loop --- this is valid since this.handler is an async generator
+				for await (const _ of this.handler(roomId)) {
 						await lock.update();
-					}
 				}
 			}
 		} finally {
