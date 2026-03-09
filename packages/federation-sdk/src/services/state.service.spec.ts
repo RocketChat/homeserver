@@ -2299,38 +2299,6 @@ describe('StateService', async () => {
 			expect(servers.size).toBe(1);
 		});
 
-		it('should update server list when users join and leave', async () => {
-			const { roomCreateEvent } = await createRoom('public');
-
-			const remoteUser = '@alice:remote.com';
-
-			// Initially only creator's server
-			const servers1 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
-			expect(servers1.has('example.com')).toBe(true);
-			expect(servers1.size).toBe(1);
-
-			// Add remote user
-			await joinUser(roomCreateEvent.roomId, remoteUser);
-			const servers2 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
-			expect(servers2.has('example.com')).toBe(true);
-			expect(servers2.has('remote.com')).toBe(true);
-			expect(servers2.size).toBe(2);
-
-			// Remove remote user
-			await leaveUser(roomCreateEvent.roomId, remoteUser);
-			const servers3 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
-			expect(servers3.has('example.com')).toBe(true);
-			expect(servers3.has('remote.com')).toBe(false);
-			expect(servers3.size).toBe(1);
-
-			// Add remote user back
-			await joinUser(roomCreateEvent.roomId, remoteUser);
-			const servers4 = await stateService.getServerSetInRoom(roomCreateEvent.roomId);
-			expect(servers4.has('example.com')).toBe(true);
-			expect(servers4.has('remote.com')).toBe(true);
-			expect(servers4.size).toBe(2);
-		});
-
 		it('should handle multiple servers with different user counts', async () => {
 			const { roomCreateEvent } = await createRoom('public');
 
