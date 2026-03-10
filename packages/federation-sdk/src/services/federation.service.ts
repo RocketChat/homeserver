@@ -197,6 +197,7 @@ export class FederationService {
 	}
 
 	async sendEventToAllServersInRoom(event: PersistentEventBase) {
+		// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
 		if (event.stateKey) {

@@ -24,6 +24,7 @@ export class EduService {
 
 			this.logger.debug(`Sending typing notification for room ${roomId}: ${userId} (typing: ${typing}) to all servers in room`);
 
+			// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 			const servers = await this.stateService.getServerSetInRoom(roomId);
 			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
@@ -49,6 +50,7 @@ export class EduService {
 
 			await Promise.all(
 				roomIds.map(async (roomId) => {
+					// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 					const servers = await this.stateService.getServerSetInRoom(roomId);
 					for (const server of servers) {
 						if (server !== origin) {
@@ -104,6 +106,7 @@ export class EduService {
 				`Sending read receipt for user ${userId} in room ${roomId} for events ${eventIds.join(', ')} to all servers in room`,
 			);
 
+			// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 			const servers = await this.stateService.getServerSetInRoom(roomId);
 			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
