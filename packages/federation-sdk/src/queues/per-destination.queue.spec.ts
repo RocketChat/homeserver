@@ -7,6 +7,23 @@ import { PerDestinationQueue } from './per-destination.queue';
 import type { FederationRequestService } from '../services/federation-request.service';
 import type { Transaction } from '../specs/federation-api';
 
+// Type augmentation for Bun's jest timer methods that exist at runtime
+// but are missing from type definitions
+interface JestTimers {
+	useFakeTimers(options?: { now?: number | Date }): void;
+	useRealTimers(): void;
+	advanceTimersByTime(milliseconds: number): void;
+	advanceTimersToNextTimer(): void;
+	runAllTimers(): void;
+	runOnlyPendingTimers(): void;
+	clearAllTimers(): void;
+	getTimerCount(): number;
+	setSystemTime(now?: number | Date): void;
+}
+
+// Cast jest to include timer methods
+const jestTimers = jest as typeof jest & JestTimers;
+
 describe('PerDestinationQueue', () => {
 	let queue: PerDestinationQueue;
 	let mockRequestService: FederationRequestService;
@@ -52,6 +69,16 @@ describe('PerDestinationQueue', () => {
 		return getRequestCall(callIndex).transaction;
 	};
 
+	// Helper to properly flush promises when using fake timers
+	const flushPromises = async () => {
+		// Run multiple rounds to ensure all nested promises resolve
+		// biome-ignore lint/suspicious/noAwaitInLoop: intentional sequential promise flushing
+		for (let i = 0; i < 10; i++) {
+			// eslint-disable-next-line no-await-in-loop
+			await Promise.resolve();
+		}
+	};
+
 	beforeEach(() => {
 		// Reset mocks
 		jest.clearAllMocks();
@@ -63,8 +90,15 @@ describe('PerDestinationQueue', () => {
 		} as unknown as FederationRequestService;
 	});
 
+	afterEach(() => {
+		// Restore real timers after each test
+		jestTimers.useRealTimers();
+	});
+
 	describe('Basic enqueueing and sending', () => {
 		it('should enqueue and send a single PDU successfully', async () => {
+			jestTimers.useFakeTimers();
+
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
 				maxRetries: 3,
 				initialBackoffMs: 100,
@@ -74,13 +108,15 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(pdu);
 
 			// Wait for async processing
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(true);
 		});
 
 		it('should enqueue and send a single EDU successfully', async () => {
+			jestTimers.useFakeTimers();
+
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
 				maxRetries: 3,
 				initialBackoffMs: 100,
@@ -89,13 +125,15 @@ describe('PerDestinationQueue', () => {
 			const edu = createMockEdu('m.typing');
 			queue.enqueueEDU(edu);
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(true);
 		});
 
 		it('should send PDUs and EDUs together when enqueued before processing starts', async () => {
+			jestTimers.useFakeTimers();
+
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
 				maxRetries: 3,
 			});
@@ -107,7 +145,7 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(pdu);
 
 			// Wait for first transaction to complete
-			await new Promise((resolve) => setTimeout(resolve, 60));
+			await flushPromises();
 
 			// First transaction had only the PDU
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
@@ -117,7 +155,7 @@ describe('PerDestinationQueue', () => {
 
 			// Enqueue EDU after first processing completes
 			queue.enqueueEDU(edu);
-			await new Promise((resolve) => setTimeout(resolve, 60));
+			await flushPromises();
 
 			// Second transaction has the EDU
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
@@ -130,9 +168,13 @@ describe('PerDestinationQueue', () => {
 
 	describe('Batching limits', () => {
 		it('should limit PDUs to 50 per transaction', async () => {
-			//  Mock that delays to allow batching
+			jestTimers.useFakeTimers();
+
+			// Mock that delays to allow batching
+			const pendingResolvers: Array<(value: unknown) => void> = [];
 			mockRequestService.put = jest.fn().mockImplementation(() => {
 				return new Promise((resolve) => {
+					pendingResolvers.push(() => resolve({ pdus: {} }));
 					setTimeout(() => resolve({ pdus: {} }), 100);
 				});
 			});
@@ -144,8 +186,18 @@ describe('PerDestinationQueue', () => {
 				queue.enqueuePDU(createMockPdu(`$event${i}`));
 			}
 
-			// Wait for processing to complete
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			// Process first batch
+			await flushPromises();
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
+
+			// Process second batch
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
+
+			// Process third batch
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
 
 			// Should have: 1 (first) + 50 (second batch) + 25 (third batch) = 76 total
 			expect(mockRequestService.put).toHaveBeenCalledTimes(3);
@@ -166,6 +218,8 @@ describe('PerDestinationQueue', () => {
 		});
 
 		it('should limit EDUs to 100 per transaction', async () => {
+			jestTimers.useFakeTimers();
+
 			// Mock that delays to allow batching
 			mockRequestService.put = jest.fn().mockImplementation(() => {
 				return new Promise((resolve) => {
@@ -180,8 +234,18 @@ describe('PerDestinationQueue', () => {
 				queue.enqueueEDU(createMockEdu(`type${i}`));
 			}
 
-			// Wait for processing to complete
-			await new Promise((resolve) => setTimeout(resolve, 500));
+			// Process first batch
+			await flushPromises();
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
+
+			// Process second batch
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
+
+			// Process third batch
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
 
 			// Should have: 1 (first) + 100 (second batch) + 50 (third batch) = 151 total
 			expect(mockRequestService.put).toHaveBeenCalledTimes(3);
@@ -204,6 +268,8 @@ describe('PerDestinationQueue', () => {
 
 	describe('Retry logic with exponential backoff', () => {
 		it('should retry with exponential backoff on failure', async () => {
+			jestTimers.useFakeTimers();
+
 			let callCount = 0;
 			mockRequestService.put = jest.fn().mockImplementation(() => {
 				callCount++;
@@ -222,20 +288,24 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(createMockPdu('$event1'));
 
 			// First attempt fails immediately
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 
 			// Second attempt after 100ms backoff
-			await new Promise((resolve) => setTimeout(resolve, 150));
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
 
-			// Third attempt succeeds after 200ms backoff
-			await new Promise((resolve) => setTimeout(resolve, 250));
+			// Third attempt succeeds after 200ms backoff (exponential: 100 * 2^1)
+			jestTimers.advanceTimersByTime(200);
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(3);
 			expect(queue.isEmpty()).toBe(true);
 		});
 
 		it('should respect maxBackoffMs limit', async () => {
+			jestTimers.useFakeTimers();
+
 			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Always fails'));
 
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
@@ -247,7 +317,7 @@ describe('PerDestinationQueue', () => {
 
 			queue.enqueuePDU(createMockPdu('$event1'));
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			// After many retries, backoff should cap at maxBackoffMs
 			// Just verify it doesn't grow unbounded by checking the implementation works
@@ -255,6 +325,8 @@ describe('PerDestinationQueue', () => {
 		});
 
 		it('should drop events after maxRetries is exceeded', async () => {
+			jestTimers.useFakeTimers();
+
 			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Always fails'));
 
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
@@ -267,25 +339,28 @@ describe('PerDestinationQueue', () => {
 			expect(queue.isEmpty()).toBe(false);
 
 			// First attempt
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 
-			// Second retry
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			// Second retry (after 50ms backoff)
+			jestTimers.advanceTimersByTime(50);
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
 
-			// Third retry (exceeds max)
-			await new Promise((resolve) => setTimeout(resolve, 150));
+			// Third retry (after 100ms backoff, exceeds max)
+			jestTimers.advanceTimersByTime(100);
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(3);
 
 			// Queue should be empty now (events dropped)
-			await new Promise((resolve) => setTimeout(resolve, 50));
 			expect(queue.isEmpty()).toBe(true);
 		});
 	});
 
 	describe('1-hour backoff threshold behavior', () => {
 		it('should empty queue when backoff exceeds 1 hour', async () => {
+			jestTimers.useFakeTimers();
+
 			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Server unreachable'));
 
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
@@ -300,7 +375,7 @@ describe('PerDestinationQueue', () => {
 			expect(queue.isEmpty()).toBe(false);
 
 			// First attempt fails, triggers 1-hour threshold check
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 
 			// After first retry fails, backoff calculation exceeds 1 hour
@@ -309,7 +384,7 @@ describe('PerDestinationQueue', () => {
 
 			// Additional enqueues should not trigger processing (nextRetryAt = Infinity)
 			queue.enqueuePDU(createMockPdu('$event3'));
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await flushPromises();
 
 			// Should still only have 1 call (no new attempts)
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
@@ -319,6 +394,7 @@ describe('PerDestinationQueue', () => {
 			let setTimeoutSpy: ReturnType<typeof jest.spyOn>;
 
 			beforeEach(() => {
+				jestTimers.useFakeTimers();
 				setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 			});
 
@@ -339,7 +415,7 @@ describe('PerDestinationQueue', () => {
 				queue.enqueuePDU(createMockPdu('$event1'));
 
 				// First attempt fails, triggers 1-hour threshold and sets nextRetryAt to Infinity
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				await flushPromises();
 				expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 				expect(queue.isEmpty()).toBe(true); // Queue emptied due to threshold
 
@@ -350,7 +426,7 @@ describe('PerDestinationQueue', () => {
 				queue.enqueuePDU(createMockPdu('$event2'));
 
 				// Wait a bit to ensure processQueue is called
-				await new Promise((resolve) => setTimeout(resolve, 50));
+				await flushPromises();
 
 				// Verify setTimeout was not called with Infinity
 				const setTimeoutCalls = setTimeoutSpy.mock.calls;
@@ -363,6 +439,8 @@ describe('PerDestinationQueue', () => {
 		});
 
 		it('should handle multiple enqueue attempts when parked with infinite backoff', async () => {
+			jestTimers.useFakeTimers();
+
 			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Server unreachable'));
 
 			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
@@ -374,7 +452,7 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(createMockPdu('$event1'));
 
 			// First attempt fails, triggers 1-hour threshold
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(true);
 
@@ -383,7 +461,7 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(createMockPdu('$event3'));
 			queue.enqueuePDU(createMockPdu('$event4'));
 
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await flushPromises();
 
 			// Should not attempt to send (still parked at Infinity)
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
@@ -393,6 +471,8 @@ describe('PerDestinationQueue', () => {
 
 	describe('notifyServerUp behavior', () => {
 		it('should clear backoff and resume processing when server comes back up', async () => {
+			jestTimers.useFakeTimers();
+
 			let callCount = 0;
 			mockRequestService.put = jest.fn().mockImplementation(() => {
 				callCount++;
@@ -411,7 +491,7 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(createMockPdu('$event1'));
 
 			// First attempt fails
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(false);
 
@@ -419,12 +499,14 @@ describe('PerDestinationQueue', () => {
 			queue.notifyServerUp();
 
 			// Should immediately retry without waiting for backoff
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
 			expect(queue.isEmpty()).toBe(true);
 		});
 
 		it('should resume processing after 1-hour threshold when notifyServerUp is called', async () => {
+			jestTimers.useFakeTimers();
+
 			const failingMock = jest.fn().mockRejectedValue(new Error('Server down'));
 			mockRequestService.put = failingMock;
 
@@ -437,13 +519,13 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(createMockPdu('$event1'));
 
 			// First attempt fails, triggers 1-hour threshold
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(failingMock).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(true); // Queue emptied due to 1-hour threshold
 
 			// Add new event AFTER threshold is hit (should not process due to Infinity backoff)
 			queue.enqueuePDU(createMockPdu('$event2'));
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(failingMock).toHaveBeenCalledTimes(1); // No new call, still stuck
 			expect(queue.isEmpty()).toBe(false); // Event is queued but not processing
 
@@ -455,7 +537,7 @@ describe('PerDestinationQueue', () => {
 			queue.notifyServerUp();
 
 			// Should process the queued event ($event2)
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 			expect(workingMock).toHaveBeenCalledTimes(1); // New event processed
 			expect(queue.isEmpty()).toBe(true); // Queue cleared
 		});
@@ -463,6 +545,8 @@ describe('PerDestinationQueue', () => {
 
 	describe('Concurrent processing prevention', () => {
 		it('should not process queue concurrently', async () => {
+			jestTimers.useFakeTimers();
+
 			let resolveRequest: ((value: unknown) => void) | undefined;
 			const requestPromise = new Promise((resolve) => {
 				resolveRequest = resolve;
@@ -477,7 +561,7 @@ describe('PerDestinationQueue', () => {
 			queue.enqueuePDU(createMockPdu('$event2'));
 			queue.enqueuePDU(createMockPdu('$event3'));
 
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			// Should only have one call (first transaction is still processing)
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
@@ -486,7 +570,7 @@ describe('PerDestinationQueue', () => {
 			if (resolveRequest) {
 				resolveRequest({ pdus: {} });
 			}
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			// Now should process remaining events
 			expect(mockRequestService.put).toHaveBeenCalled();
@@ -521,16 +605,18 @@ describe('PerDestinationQueue', () => {
 
 	describe('Transaction structure', () => {
 		it('should create transaction with correct structure', async () => {
+			jestTimers.useFakeTimers();
+
 			queue = new PerDestinationQueue(destination, origin, mockRequestService);
 
 			const pdu = createMockPdu('$event1');
 			const edu = createMockEdu('m.typing');
 
 			queue.enqueuePDU(pdu);
-			await new Promise((resolve) => setTimeout(resolve, 60));
+			await flushPromises();
 
 			queue.enqueueEDU(edu);
-			await new Promise((resolve) => setTimeout(resolve, 60));
+			await flushPromises();
 
 			// Check first transaction (PDU)
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
@@ -555,13 +641,15 @@ describe('PerDestinationQueue', () => {
 		});
 
 		it('should generate unique transaction IDs', async () => {
+			jestTimers.useFakeTimers();
+
 			queue = new PerDestinationQueue(destination, origin, mockRequestService);
 
 			queue.enqueuePDU(createMockPdu('$event1'));
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			queue.enqueuePDU(createMockPdu('$event2'));
-			await new Promise((resolve) => setTimeout(resolve, 50));
+			await flushPromises();
 
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
 			const firstCallUri = getRequestCall(0).uri;
