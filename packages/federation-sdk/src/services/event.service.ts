@@ -3,11 +3,20 @@ import type {
 	EventStagingStore,
 	PresenceEDU,
 	RoomPowerLevelsEvent,
+	ReceiptEDU,
 	TypingEDU,
 	RedactionEvent,
 	EventStore,
 } from '@rocket.chat/federation-core';
-import { isPresenceEDU, isTypingEDU, generateId, pruneEventDict, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
+import {
+	isPresenceEDU,
+	isReceiptEDU,
+	isTypingEDU,
+	generateId,
+	pruneEventDict,
+	checkSignAndHashes,
+	createLogger,
+} from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type Pdu,
@@ -279,6 +288,9 @@ export class EventService {
 		if (isPresenceEDU(edu)) {
 			await this.processPresenceEDU(edu, origin);
 		}
+		if (isReceiptEDU(edu)) {
+			await this.processReceiptEDU(edu);
+		}
 	}
 
 	private async processTypingEDU(typingEDU: TypingEDU, origin?: string): Promise<void> {
@@ -335,6 +347,52 @@ export class EventService {
 				last_active_ago: presenceUpdate.last_active_ago,
 				origin,
 			});
+		}
+	}
+
+	private async processReceiptEDU(receiptEDU: ReceiptEDU): Promise<void> {
+		const config = this.configService.getConfig('edu');
+
+		// turned on by default, so if undefined we should process receipts
+		if (config.processReceipt === false) {
+			return;
+		}
+
+		const { content } = receiptEDU;
+
+		if (!content || typeof content !== 'object') {
+			this.logger.warn('Invalid receipt EDU content, missing or invalid content');
+			return;
+		}
+
+		// Loop through each room in the receipt EDU
+		for await (const [roomId, roomReceipts] of Object.entries(content)) {
+			if (!roomReceipts?.['m.read']) {
+				this.logger.warn(`Invalid receipt EDU for room ${roomId}, missing m.read`);
+				continue;
+			}
+
+			const readReceipts = roomReceipts['m.read'];
+
+			// Loop through each user's read receipt in this room
+			for await (const [userId, receiptData] of Object.entries(readReceipts)) {
+				if (!receiptData?.event_ids || !Array.isArray(receiptData.event_ids)) {
+					this.logger.warn(`Invalid receipt data for user ${userId} in room ${roomId}, missing event_ids`);
+					continue;
+				}
+
+				const { event_ids, data } = receiptData;
+
+				this.logger.debug('Processing read receipt', { roomId, userId, event_ids, thread_id: data.thread_id });
+
+				await this.eventEmitterService.emit('homeserver.matrix.receipt', {
+					room_id: roomId,
+					user_id: userId,
+					event_ids,
+					ts: data.ts,
+					thread_id: data.thread_id,
+				});
+			}
 		}
 	}
 

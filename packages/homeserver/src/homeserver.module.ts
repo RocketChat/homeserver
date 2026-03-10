@@ -75,6 +75,7 @@ export async function setup() {
 		edu: {
 			processTyping: process.env.EDU_PROCESS_TYPING !== 'false',
 			processPresence: process.env.EDU_PROCESS_PRESENCE === 'true',
+			processReceipt: process.env.EDU_PROCESS_RECEIPT === 'true',
 		},
 	});
 
