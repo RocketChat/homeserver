@@ -41,9 +41,7 @@ export const isAuthenticatedMiddleware = () => {
 
 				// Notify outgoing queue that the remote server is online
 				// This clears backoff and triggers immediate retry for pending events
-				if (isValid) {
-					federationSDK.notifyRemoteServerUp(isValid);
-				}
+				federationSDK.notifyRemoteServerUp(isValid);
 
 				return {
 					authenticatedServer: isValid,
