@@ -223,7 +223,7 @@ describe('RoomService', async () => {
 	});
 
 	describe('kickUser', () => {
-		it('should ban user to room correctly', async () => {
+		it('should kick user from room correctly', async () => {
 			const username = '@alice:example.com' as UserID;
 			const secondaryUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
@@ -242,10 +242,33 @@ describe('RoomService', async () => {
 
 			expect(secondaryState?.getContent().membership).toBe('leave');
 		});
+
+		it('should reject kick when sender has insufficient power level', async () => {
+			const admin = '@alice:example.com' as UserID;
+			const regularUser = '@bob:example.com' as UserID;
+			const target = '@charlie:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(admin, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, regularUser);
+
+			await expect(federationSDK.kickUser(roomId, target, regularUser)).rejects.toThrow();
+		});
+
+		it('should reject kick when sender tries to kick a user with equal or higher power level', async () => {
+			const admin = '@alice:example.com' as UserID;
+			const coAdmin = '@bob:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(admin, 'public', {
+				users: { [coAdmin]: 100 },
+			});
+			const { roomId } = roomCreateEvent;
+
+			await expect(federationSDK.kickUser(roomId, coAdmin, admin)).rejects.toThrow();
+		});
 	});
 
 	describe('banUser', () => {
-		it('should ban user to room correctly', async () => {
+		it('should ban user from room correctly', async () => {
 			const username = '@alice:example.com' as UserID;
 			const secondaryUsername = '@bob:example.com' as UserID;
 			const { roomCreateEvent } = await createRoom(username, 'public');
@@ -262,6 +285,29 @@ describe('RoomService', async () => {
 			const secondaryState = state.get(`m.room.member:${secondaryUsername}`) as PersistentEventBase<RoomVersion, 'm.room.member'>;
 
 			expect(secondaryState?.getContent().membership).toBe('ban');
+		});
+
+		it('should reject ban when sender has insufficient power level', async () => {
+			const admin = '@alice:example.com' as UserID;
+			const regularUser = '@bob:example.com' as UserID;
+			const target = '@charlie:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(admin, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, regularUser);
+
+			await expect(federationSDK.banUser(roomId, target, regularUser)).rejects.toThrow();
+		});
+
+		it('should reject ban when sender tries to ban a user with equal or higher power level', async () => {
+			const admin = '@alice:example.com' as UserID;
+			const coAdmin = '@bob:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(admin, 'public', {
+				users: { [coAdmin]: 100 },
+			});
+			const { roomId } = roomCreateEvent;
+
+			await expect(federationSDK.banUser(roomId, coAdmin, admin)).rejects.toThrow();
 		});
 	});
 
@@ -293,6 +339,29 @@ describe('RoomService', async () => {
 				[username]: 100,
 				[secondaryUsername]: 50,
 			});
+		});
+
+		it('should reject power level update when sender has insufficient power level', async () => {
+			const admin = '@alice:example.com' as UserID;
+			const regularUser = '@bob:example.com' as UserID;
+			const target = '@charlie:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(admin, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, regularUser);
+
+			await expect(federationSDK.updateUserPowerLevel(roomId, target, 50, regularUser)).rejects.toThrow();
+		});
+
+		it('should reject power level update when sender tries to grant more power than they have', async () => {
+			const admin = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(admin, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, secondaryUsername);
+			// admin (100) cannot grant power level above their own (e.g. 200)
+			await expect(federationSDK.updateUserPowerLevel(roomId, secondaryUsername, 200, admin)).rejects.toThrow();
 		});
 	});
 

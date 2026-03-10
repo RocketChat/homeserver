@@ -1,7 +1,6 @@
 import {
 	EventBase,
 	EventStore,
-	RoomPowerLevelsEvent,
 	SignedEvent,
 	TombstoneAuthEvents,
 	createLogger,
@@ -23,18 +22,18 @@ import {
 	RoomVersion,
 	UserID,
 	extractDomainFromId,
+	StateResolverAuthorizationError,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
-import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
 import { EventService } from './event.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
-import { RoomInfoNotReadyError, StateService, UnknownRoomError } from './state.service';
+import { StateService, UnknownRoomError } from './state.service';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
@@ -102,42 +101,6 @@ export class RoomService {
 					HttpStatus.FORBIDDEN,
 				);
 			}
-		}
-	}
-
-	private validateKickPermission(currentPowerLevelsContent: RoomPowerLevelsEvent['content'], senderId: string, kickedUserId: string): void {
-		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
-		const kickedUserPower = currentPowerLevelsContent.users?.[kickedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
-		const kickLevel = currentPowerLevelsContent.kick ?? 50; // Default kick level if not specified
-
-		if (senderPower < kickLevel) {
-			logger.warn(`Sender ${senderId} (power ${senderPower}) does not meet required power level (${kickLevel}) to kick users.`);
-			throw new HttpException("You don't have permission to kick users from this room.", HttpStatus.FORBIDDEN);
-		}
-
-		if (kickedUserPower >= senderPower) {
-			logger.warn(
-				`Sender ${senderId} (power ${senderPower}) cannot kick user ${kickedUserId} (power ${kickedUserPower}) who has equal or greater power.`,
-			);
-			throw new HttpException('You cannot kick a user with power greater than or equal to your own.', HttpStatus.FORBIDDEN);
-		}
-	}
-
-	private validateBanPermission(currentPowerLevelsContent: RoomPowerLevelsEvent['content'], senderId: string, bannedUserId: string): void {
-		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
-		const bannedUserPower = currentPowerLevelsContent.users?.[bannedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
-		const banLevel = currentPowerLevelsContent.ban ?? 50; // Default ban level if not specified
-
-		if (senderPower < banLevel) {
-			logger.warn(`Sender ${senderId} (power ${senderPower}) does not meet required power level (${banLevel}) to ban users.`);
-			throw new HttpException("You don't have permission to ban users from this room.", HttpStatus.FORBIDDEN);
-		}
-
-		if (bannedUserPower >= senderPower) {
-			logger.warn(
-				`Sender ${senderId} (power ${senderPower}) cannot ban user ${bannedUserId} (power ${bannedUserPower}) who has equal or greater power.`,
-			);
-			throw new HttpException('You cannot ban a user with power greater than or equal to your own.', HttpStatus.FORBIDDEN);
 		}
 	}
 
@@ -447,7 +410,14 @@ export class RoomService {
 			PersistentEventFactory.defaultRoomVersion,
 		);
 
-		await this.stateService.handlePdu(event);
+		try {
+			await this.stateService.handlePdu(event);
+		} catch (error) {
+			if (error instanceof StateResolverAuthorizationError) {
+				throw new HttpException(error.reason, HttpStatus.FORBIDDEN);
+			}
+			throw error;
+		}
 
 		logger.info(`Successfully created and stored m.room.power_levels event ${event.eventId} for room ${roomId}`);
 
@@ -557,21 +527,6 @@ export class RoomService {
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds('m.room.power_levels', { roomId, senderId });
-		const powerLevelsEventId = this.getEventByType(authEventIdsForPowerLevels, 'm.room.power_levels')?._id;
-
-		if (!powerLevelsEventId) {
-			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to kick.`);
-			throw new HttpException('Cannot verify permission to kick user.', HttpStatus.FORBIDDEN);
-		}
-		const powerLevelsEvent = await this.eventService.getEventById(powerLevelsEventId, 'm.room.power_levels');
-		if (!powerLevelsEvent) {
-			logger.error(`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`);
-			throw new HttpException('Internal server error: Power levels event data missing.', HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-
-		this.validateKickPermission(powerLevelsEvent.event.content, senderId, kickedUserId);
-
 		const kickEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -590,13 +545,27 @@ export class RoomService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.handlePdu(kickEvent);
+		try {
+			await this.stateService.handlePdu(kickEvent);
+		} catch (error) {
+			if (error instanceof StateResolverAuthorizationError) {
+				logger.warn(`User ${senderId} failed to kick ${kickedUserId} from room ${roomId}: ${error.reason}`);
+
+				throw new HttpException(error.reason, HttpStatus.FORBIDDEN);
+			}
+			throw error;
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(kickEvent);
+
+		await this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: kickEvent.eventId,
+			event: kickEvent.event,
+		});
 
 		logger.info(
 			`Successfully created and stored m.room.member (kick) event ${kickEvent.eventId} for user ${kickedUserId} in room ${roomId}`,
 		);
-
-		void this.federationService.sendEventToAllServersInRoom(kickEvent);
 
 		return kickEvent.eventId;
 	}
@@ -648,22 +617,6 @@ export class RoomService {
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds('m.room.power_levels', { roomId, senderId });
-
-		const powerLevelsEventId = this.getEventByType(authEventIdsForPowerLevels, 'm.room.power_levels')?._id;
-
-		if (!powerLevelsEventId) {
-			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to ban.`);
-			throw new HttpException('Cannot verify permission to ban user.', HttpStatus.FORBIDDEN);
-		}
-		const powerLevelsEvent = await this.eventService.getEventById(powerLevelsEventId, 'm.room.power_levels');
-		if (!powerLevelsEvent) {
-			logger.error(`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`);
-			throw new HttpException('Internal server error: Power levels event data missing.', HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-
-		this.validateBanPermission(powerLevelsEvent.event.content, senderId, bannedUserId);
-
 		const banEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -682,7 +635,16 @@ export class RoomService {
 			roomInfo.room_version,
 		);
 
-		await this.stateService.handlePdu(banEvent);
+		try {
+			await this.stateService.handlePdu(banEvent);
+		} catch (error) {
+			if (error instanceof StateResolverAuthorizationError) {
+				logger.warn(`User ${senderId} failed to ban ${bannedUserId} from room ${roomId}: ${error.reason}`);
+
+				throw new HttpException(error.reason, HttpStatus.FORBIDDEN);
+			}
+			throw error;
+		}
 
 		logger.info(`Successfully created and stored m.room.member (ban) event ${banEvent.eventId} for user ${bannedUserId} in room ${roomId}`);
 

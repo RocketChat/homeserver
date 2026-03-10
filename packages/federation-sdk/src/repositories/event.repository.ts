@@ -154,6 +154,7 @@ export class EventRepository {
 					'nextEventId': '',
 					'event.room_id': roomId,
 					'rejectCode': { $exists: false },
+					'outlier': { $ne: true },
 				},
 				{ sort: { 'event.depth': 1, 'createdAt': 1 } },
 			)
