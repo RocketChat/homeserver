@@ -104,8 +104,8 @@ export class EduService {
 				`Sending read receipt for user ${userId} in room ${roomId} for events ${eventIds.join(', ')} to all servers in room`,
 			);
 
-			const servers = await this.stateService.getServersInRoom(roomId);
-			const uniqueServers = servers.filter((server) => server !== origin);
+			const servers = await this.stateService.getServerSetInRoom(roomId);
+			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
 			await this.federationService.sendEDUToServers([receiptEDU], uniqueServers);
 
