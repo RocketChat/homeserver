@@ -69,6 +69,8 @@ export class PerDestinationQueue {
 
 	private readonly retryConfig: RetryConfig;
 
+	private retryTimerId: NodeJS.Timeout | null = null;
+
 	constructor(
 		private readonly destination: string,
 		private readonly origin: string,
@@ -119,12 +121,23 @@ export class PerDestinationQueue {
 	 */
 	notifyServerUp(): void {
 		this.logger.info('Remote server is back online, clearing backoff');
+		this.clearRetryTimer();
 		this.retryCount = 0;
 		this.nextRetryAt = 0;
 
 		// Trigger immediate processing if there are items in queue
 		if (!this.isEmpty()) {
 			void this.processQueue();
+		}
+	}
+
+	/**
+	 * Clear any pending retry timer
+	 */
+	private clearRetryTimer(): void {
+		if (this.retryTimerId) {
+			clearTimeout(this.retryTimerId);
+			this.retryTimerId = null;
 		}
 	}
 
@@ -139,13 +152,9 @@ export class PerDestinationQueue {
 
 		const now = Date.now();
 		if (this.nextRetryAt > now) {
-			// Don't schedule if nextRetryAt is not finite
-			if (!Number.isFinite(this.nextRetryAt)) {
-				return;
-			}
+			// Already in backoff period, timer from handleRetry() will process the queue later
 			const waitTime = this.nextRetryAt - now;
-			this.logger.debug({ waitTimeMs: waitTime, nextRetryAt: this.nextRetryAt }, 'Waiting before next retry');
-			setTimeout(() => this.processQueue(), waitTime);
+			this.logger.debug({ waitTimeMs: waitTime, nextRetryAt: this.nextRetryAt }, 'Still in backoff period, skipping');
 			return;
 		}
 
@@ -236,6 +245,7 @@ export class PerDestinationQueue {
 			this.eduQueue = [];
 			this.retryCount = 0;
 			this.nextRetryAt = 0;
+			this.clearRetryTimer();
 			return;
 		}
 
@@ -260,6 +270,7 @@ export class PerDestinationQueue {
 			this.eduQueue = [];
 			this.retryCount = 0;
 			this.nextRetryAt = Infinity;
+			this.clearRetryTimer();
 			return;
 		}
 
@@ -275,7 +286,8 @@ export class PerDestinationQueue {
 			'Scheduling retry',
 		);
 
-		// Schedule retry
-		setTimeout(() => this.processQueue(), backoff);
+		// Clear any existing timer before scheduling a new retry
+		this.clearRetryTimer();
+		this.retryTimerId = setTimeout(() => this.processQueue(), backoff);
 	}
 }
