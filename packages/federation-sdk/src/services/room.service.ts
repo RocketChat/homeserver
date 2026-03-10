@@ -23,6 +23,7 @@ import {
 	RoomVersion,
 	UserID,
 	extractDomainFromId,
+	getStateByMapKey,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
@@ -557,20 +558,15 @@ export class RoomService {
 
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const authEventIdsForPowerLevels = await this.eventService.getAuthEventIds('m.room.power_levels', { roomId, senderId });
-		const powerLevelsEventId = this.getEventByType(authEventIdsForPowerLevels, 'm.room.power_levels')?._id;
-
-		if (!powerLevelsEventId) {
+		// Use resolved room state for power level (same state used when building the kick event's auth_events).
+		const state = await this.stateService.getLatestRoomState(roomId);
+		const powerLevelsEvent = getStateByMapKey(state, { type: 'm.room.power_levels' });
+		if (!powerLevelsEvent?.isPowerLevelEvent?.()) {
 			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to kick.`);
 			throw new HttpException('Cannot verify permission to kick user.', HttpStatus.FORBIDDEN);
 		}
-		const powerLevelsEvent = await this.eventService.getEventById(powerLevelsEventId, 'm.room.power_levels');
-		if (!powerLevelsEvent) {
-			logger.error(`Power levels event ${powerLevelsEventId} not found despite ID being retrieved.`);
-			throw new HttpException('Internal server error: Power levels event data missing.', HttpStatus.INTERNAL_SERVER_ERROR);
-		}
 
-		this.validateKickPermission(powerLevelsEvent.event.content, senderId, kickedUserId);
+		this.validateKickPermission(powerLevelsEvent.getContent(), senderId, kickedUserId);
 
 		const kickEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
