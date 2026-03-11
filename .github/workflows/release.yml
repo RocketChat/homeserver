@@ -32,9 +32,9 @@ jobs:
 
       - run: bun install
 
-      - run: bun run lint
-
       - run: bun run build
+
+      - run: bun run lint
 
       - run: bun run test
 
