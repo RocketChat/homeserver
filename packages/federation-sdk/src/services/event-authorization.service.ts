@@ -249,6 +249,7 @@ export class EventAuthorizationService {
 			return false;
 		}
 
+		// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 		const serversInRoom = await this.stateService.getServerSetInRoom(roomId, state);
 		if (serversInRoom.has(serverName)) {
 			this.logger.debug(`Server ${serverName} is in room, allowing access`);

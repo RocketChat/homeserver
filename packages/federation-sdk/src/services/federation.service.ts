@@ -5,15 +5,9 @@ import { singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
+import { FederationSenderService } from './federation-sender.service';
 import { StateService } from './state.service';
-import {
-	FederationEndpoints,
-	type MakeJoinResponse,
-	type SendJoinResponse,
-	type SendTransactionResponse,
-	type Transaction,
-	type Version,
-} from '../specs/federation-api';
+import { FederationEndpoints, type MakeJoinResponse, type SendJoinResponse, type Version } from '../specs/federation-api';
 
 @singleton()
 export class FederationService {
@@ -23,6 +17,7 @@ export class FederationService {
 		private readonly configService: ConfigService,
 		private readonly requestService: FederationRequestService,
 		private readonly stateService: StateService,
+		private readonly federationSenderService: FederationSenderService,
 	) {}
 
 	/**
@@ -97,39 +92,6 @@ export class FederationService {
 			await this.requestService.put<void>(residentServer, uri, leaveEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendLeave failed', err: error });
-			throw error;
-		}
-	}
-
-	/**
-	 * Send a transaction to a remote server
-	 */
-	async sendTransaction(domain: string, transaction: Transaction): Promise<SendTransactionResponse> {
-		try {
-			const txnId = Date.now().toString();
-			const uri = FederationEndpoints.sendTransaction(txnId);
-
-			return await this.requestService.put<SendTransactionResponse>(domain, uri, transaction);
-		} catch (error: any) {
-			this.logger.error({ msg: 'sendTransaction failed', err: error });
-			throw error;
-		}
-	}
-
-	/**
-	 * Send an event to a remote server
-	 */
-	async sendEvent<T extends Pdu>(domain: string, event: T): Promise<SendTransactionResponse> {
-		try {
-			const transaction: Transaction = {
-				origin: this.configService.serverName,
-				origin_server_ts: Date.now(),
-				pdus: [event],
-			};
-
-			return await this.sendTransaction(domain, transaction);
-		} catch (error: any) {
-			this.logger.error({ msg: 'sendEvent failed', err: error });
 			throw error;
 		}
 	}
@@ -235,90 +197,55 @@ export class FederationService {
 	}
 
 	async sendEventToAllServersInRoom(event: PersistentEventBase) {
+		// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
 		if (event.stateKey) {
 			const server = extractDomainFromId(event.stateKey);
-			// TODO: fgetser
 			if (!servers.has(server)) {
 				servers.add(server);
 			}
 		}
 
-		for await (const server of servers) {
-			if (server === event.origin) {
-				this.logger.info(`Skipping transaction to event origin: ${event.origin}`);
-				continue;
-			}
+		// Sign the event once before queuing
+		await this.stateService.signEvent(event);
 
-			if (server === this.configService.serverName) {
-				this.logger.info(`Skipping transaction to local server: ${server}`);
-				continue;
-			}
+		// Filter out the event origin and local server
+		const destinations = Array.from(servers).filter((server) => server !== event.origin && server !== this.configService.serverName);
 
-			// TODO: signing should happen here over local persisting
-			// should be handled in transaction queue implementation
-			await this.stateService.signEvent(event);
-
-			const txn: Transaction = {
-				origin: this.configService.serverName,
-				origin_server_ts: Date.now(),
-				pdus: [event.event],
-				edus: [],
-			};
-
-			this.logger.info({
-				transaction: txn,
-				msg: `Sending event ${event.eventId} to server: ${server}`,
-			});
-
-			try {
-				await this.sendTransaction(server, txn);
-			} catch (error) {
-				this.logger.error({
-					msg: `Failed to send event ${event.eventId} to server: ${server}`,
-					err: error,
-				});
-			}
+		if (destinations.length === 0) {
+			this.logger.debug(`No destinations to send event ${event.eventId}`);
+			return;
 		}
+
+		this.logger.info(`Queueing event ${event.eventId} for ${destinations.length} destinations`);
+
+		// Queue the event for all destinations
+		this.federationSenderService.sendPDUToMultiple(destinations, event.event);
 	}
 
 	async sendEDUToServers(edus: BaseEDU[], servers: string[]): Promise<void> {
-		// Process servers sequentially to avoid concurrent transactions per Matrix spec
-		for await (const server of servers) {
-			if (server === this.configService.serverName) {
-				this.logger.info(`Skipping EDU to local server: ${server}`);
-				continue;
-			}
+		// Filter out local server
+		const destinations = servers.filter((server) => server !== this.configService.serverName);
 
-			// Respect Matrix spec transaction limits: max 100 EDUs per transaction
-			const maxEDUsPerTransaction = 100;
-			const batches = [];
-
-			for (let i = 0; i < edus.length; i += maxEDUsPerTransaction) {
-				batches.push(edus.slice(i, i + maxEDUsPerTransaction));
-			}
-
-			for await (const batch of batches) {
-				const txn: Transaction = {
-					origin: this.configService.serverName,
-					origin_server_ts: Date.now(),
-					pdus: [],
-					edus: batch,
-				};
-
-				this.logger.info(`Sending ${batch.length} EDUs to server: ${server}`);
-
-				try {
-					await this.sendTransaction(server, txn);
-				} catch (error) {
-					this.logger.error({
-						msg: `Failed to send EDUs to server: ${server}`,
-						err: error,
-					});
-					// Continue with next batch/server even if one fails
-				}
-			}
+		if (destinations.length === 0) {
+			this.logger.debug('No destinations to send EDUs');
+			return;
 		}
+
+		this.logger.info(`Queueing ${edus.length} EDUs for ${destinations.length} destinations`);
+
+		// Queue EDUs for all destinations
+		// The per-destination queue will handle batching and retry logic
+		this.federationSenderService.sendEDUToMultiple(destinations, edus);
+	}
+
+	/**
+	 * Notify that a remote server is back online.
+	 * This clears backoff and triggers immediate retry for pending events.
+	 * Should be called when receiving an incoming request from the remote server.
+	 */
+	notifyRemoteServerUp(serverName: string): void {
+		this.federationSenderService.notifyRemoteServerUp(serverName);
 	}
 }
