@@ -31,7 +31,7 @@ jobs:
       - run: bun run build
       - run: bun lint
       - run: bun tsc --noEmit
-      - uses: supercharge/mongodb-github-action@1.12.0
+      - uses: supercharge/mongodb-github-action@1.12.1
       - run: RUN_MONGO_TESTS=1 bun test packages/federation-sdk/src/services/state.service.spec.ts packages/federation-sdk/src/services/room.service.spec.ts
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
