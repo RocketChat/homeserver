@@ -1,24 +1,33 @@
 import type { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 
-type QueueHandler = (roomId: RoomID) => Promise<void>;
+import { LockRepository } from '../repositories/lock.repository';
+import { ConfigService } from '../services/config.service';
+
+type QueueHandler = (roomId: RoomID) => AsyncGenerator<unknown | undefined>;
 
 @singleton()
 export class StagingAreaQueue {
-	private queue: RoomID[] = [];
+	private queue: Set<RoomID> = new Set();
 
-	private handlers: QueueHandler[] = [];
+	private handler: QueueHandler | null = null;
 
 	private processing = false;
 
+	constructor(
+		@inject(delay(() => LockRepository))
+		private readonly lockRepository: LockRepository,
+		private readonly configService: ConfigService,
+	) {}
+
 	enqueue(roomId: RoomID): void {
-		this.queue.push(roomId);
+		this.queue.add(roomId);
 		this.processQueue();
 	}
 
 	registerHandler(handler: QueueHandler): void {
-		this.handlers.push(handler);
+		this.handler = handler;
 	}
 
 	private async processQueue(): Promise<void> {
@@ -26,23 +35,38 @@ export class StagingAreaQueue {
 			return;
 		}
 
+		if (!this.handler) {
+			throw new Error('No handler registered for StagingAreaQueue');
+		}
+
 		this.processing = true;
 
 		try {
-			while (this.queue.length > 0) {
-				const roomId = this.queue.shift() as RoomID;
+			while (this.queue.size > 0) {
+				const [roomId] = this.queue;
 				if (!roomId) continue;
+				this.queue.delete(roomId);
 
-				for (const handler of this.handlers) {
-					// eslint-disable-next-line no-await-in-loop
-					await handler(roomId);
+				// eslint-disable-next-line no-await-in-loop, prettier/prettier
+				await using lock = await this.lockRepository.lock(
+					roomId,
+					this.configService.instanceId,
+				);
+
+				if (!lock.success) {
+					continue;
+				}
+
+				// eslint-disable-next-line no-await-in-loop --- this is valid since this.handler is an async generator
+				for await (const _ of this.handler(roomId)) {
+					await lock.update();
 				}
 			}
 		} finally {
 			this.processing = false;
 
 			// Check if new items were added while processing
-			if (this.queue.length > 0) {
+			if (this.queue.size > 0) {
 				this.processQueue();
 			}
 		}

@@ -26,7 +26,6 @@ import {
 	RoomID,
 	RoomState,
 	RoomVersion,
-	type State,
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
@@ -39,7 +38,6 @@ import type { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { LockRepository } from '../repositories/lock.repository';
 import { eventSchemas } from '../utils/event-schemas';
 
 export interface AuthEventParams {
@@ -65,8 +63,6 @@ export class EventService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
-		@inject(delay(() => LockRepository))
-		private readonly lockRepository: LockRepository,
 	) {}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(eventId: EventID, type?: T): Promise<P | null> {
@@ -196,16 +192,6 @@ export class EventService {
 
 					// save the event as staged to be processed
 					await this.eventStagingRepository.create(eventId, origin, event);
-
-					// acquire a lock for processing the event
-					const lock = await this.lockRepository.getLock(roomId, this.configService.instanceId);
-					if (!lock) {
-						this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
-						continue;
-					}
-
-					// if we have a lock, we can process the event
-					// void this.stagingAreaService.processEventForRoom(roomId);
 
 					// TODO change this to call stagingAreaService directly (line above)
 					this.stagingAreaQueue.enqueue(roomId);
@@ -637,15 +623,6 @@ export class EventService {
 
 		// not we try to process one room at a time
 		for await (const roomId of rooms) {
-			const lock = await this.lockRepository.getLock(roomId, this.configService.instanceId);
-			if (!lock) {
-				this.logger.debug(`Couldn't acquire a lock for room ${roomId}`);
-				continue;
-			}
-
-			// if we have a lock, we can process the event
-			// void this.stagingAreaService.processEventForRoom(roomId);
-
 			// TODO change this to call stagingAreaService directly (line above)
 			this.stagingAreaQueue.enqueue(roomId);
 
