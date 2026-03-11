@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # Main repo NPM package
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 10
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+
+  - package-ecosystem: npm
+    directory: '/packages'
+    schedule:
+      interval: daily
+    groups:
+      monorepo-dependencies:
+        group-by: dependency-name
