@@ -20,7 +20,7 @@
 		"@rocket.chat/federation-core": "workspace:*",
 		"@rocket.chat/federation-crypto": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*",
-		"mongodb": "^6.16.0",
+		"mongodb": "^7.1.0",
 		"reflect-metadata": "^0.2.2",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3",
