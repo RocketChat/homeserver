@@ -90,8 +90,6 @@ export class StagingAreaService {
 				continue;
 			}
 
-			yield event;
-
 			this.logger.info({ msg: 'Processing event', eventId: event._id });
 
 			try {
@@ -140,6 +138,8 @@ export class StagingAreaService {
 					});
 				}
 			}
+
+			yield event;
 
 			// TODO: what should we do to avoid infinite loops in case the next event is always the same event
 		} while (event);
