@@ -1,4 +1,4 @@
-import dts from 'rollup-plugin-dts';
+import { dts } from 'rollup-plugin-dts';
 
 // Defina o ponto de entrada (entry point) do seu pacote
 const input = './packages/federation-sdk/dist/index.d.ts';
