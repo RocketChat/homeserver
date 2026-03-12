@@ -522,17 +522,13 @@ export class RoomService {
 		logger.info(`User ${senderId} leaving room ${roomId}`);
 
 		const state = await this.stateService.getLatestRoomState(roomId);
-		const powerLevelsEvent = getStateByMapKey(state, { type: 'm.room.power_levels' });
 
-		if (!powerLevelsEvent?.isPowerLevelEvent?.()) {
-			logger.warn(`No power_levels event found for room ${roomId}, cannot verify permission to leave.`);
-			throw new HttpException('Cannot verify permission to leave room.', HttpStatus.FORBIDDEN);
-		}
-
-		const canLeaveRoom = await this.eventService.checkUserPermission(powerLevelsEvent.eventId, senderId, 'm.room.member');
-
-		if (!canLeaveRoom) {
-			logger.warn(`User ${senderId} does not have permission to send m.room.member events in ${roomId} (i.e., to leave).`);
+		// If the sender’s current membership state is not join, reject.
+		const senderMembership = getStateByMapKey(state, {
+			type: 'm.room.member',
+			state_key: senderId,
+		});
+		if (!['join', 'invite'].includes(senderMembership?.getMembership() ?? '')) {
 			throw new HttpException("You don't have permission to leave this room.", HttpStatus.FORBIDDEN);
 		}
 
