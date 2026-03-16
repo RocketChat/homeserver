@@ -115,9 +115,7 @@ export class FederationSDK {
 		return this.messageService.updateMessage(...args);
 	}
 
-	updateMemberProfile(
-		...args: Parameters<typeof this.roomService.updateMemberProfile>
-	) {
+	updateMemberProfile(...args: Parameters<typeof this.roomService.updateMemberProfile>) {
 		return this.roomService.updateMemberProfile(...args);
 	}
 
@@ -161,17 +159,7 @@ export class FederationSDK {
 		return this.roomService.rejectInvite(...args);
 	}
 
-	acceptInvite(...args: Parameters<typeof this.roomService.acceptInvite>) {
-		return this.roomService.acceptInvite(...args);
-	}
-
-	rejectInvite(...args: Parameters<typeof this.roomService.rejectInvite>) {
-		return this.roomService.rejectInvite(...args);
-	}
-
-	updateUserProfile(
-		...args: Parameters<typeof this.roomService.updateUserProfile>
-	) {
+	updateUserProfile(...args: Parameters<typeof this.roomService.updateUserProfile>) {
 		return this.roomService.updateUserProfile(...args);
 	}
 

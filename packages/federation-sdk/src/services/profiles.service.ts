@@ -2,8 +2,8 @@ import { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.c
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
-import { UserRepository } from '../repositories/user.repository';
 import { StateService } from './state.service';
+import { UserRepository } from '../repositories/user.repository';
 
 @singleton()
 export class ProfilesService {
@@ -18,9 +18,7 @@ export class ProfilesService {
 		avatar_url: string;
 		displayname?: string;
 	} | null> {
-		const [username, serverName] = userId.startsWith('@')
-			? userId.split(':', 2)
-			: [userId, this.configService.serverName];
+		const [username, serverName] = userId.startsWith('@') ? userId.split(':', 2) : [userId, this.configService.serverName];
 
 		if (serverName !== this.configService.serverName) {
 			return null;

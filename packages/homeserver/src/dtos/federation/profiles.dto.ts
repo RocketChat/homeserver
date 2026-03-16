@@ -4,9 +4,7 @@ import { RoomIdDto, ServerNameDto, TimestampDto, UsernameDto } from '../common/v
 
 export const QueryProfileQueryDto = t.Object({
 	user_id: UsernameDto,
-	field: t.Optional(
-		t.Union([t.Literal('displayname'), t.Literal('avatar_url')]),
-	),
+	field: t.Optional(t.Union([t.Literal('displayname'), t.Literal('avatar_url')])),
 });
 
 export const QueryProfileResponseDto = t.Object({

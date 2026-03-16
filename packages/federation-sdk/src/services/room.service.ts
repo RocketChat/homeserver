@@ -28,7 +28,6 @@ import {
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
-import { UserRepository } from '../repositories/user.repository';
 import { ConfigService } from './config.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -41,6 +40,7 @@ import { RoomInfoNotReadyError, StateService, UnknownRoomError } from './state.s
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
+import { UserRepository } from '../repositories/user.repository';
 
 @singleton()
 export class RoomService {
@@ -68,9 +68,7 @@ export class RoomService {
 	/**
 	 * Get avatar URL for a user (local users only)
 	 */
-	private async getAvatarUrlForUser(
-		userId: UserID,
-	): Promise<string | undefined> {
+	private async getAvatarUrlForUser(userId: UserID): Promise<string | undefined> {
 		const userDomain = extractDomainFromId(userId);
 		const localDomain = this.configService.serverName;
 
@@ -226,25 +224,24 @@ export class RoomService {
 		const avatarUrl = await this.getAvatarUrlForUser(username);
 		const displayname = username.split(':')[0]?.slice(1);
 
-		const creatorMembershipEvent =
-			await stateService.buildEvent<'m.room.member'>(
-				{
-					type: 'm.room.member',
-					content: {
-						membership: 'join',
-						...(displayname && { displayname }),
-						...(avatarUrl && { avatar_url: avatarUrl }),
-					},
-					room_id: roomCreateEvent.roomId,
-					state_key: username,
-					auth_events: [],
-					depth: 0,
-					prev_events: [],
-					origin_server_ts: Date.now(),
-					sender: username,
+		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership: 'join',
+					...(displayname && { displayname }),
+					...(avatarUrl && { avatar_url: avatarUrl }),
 				},
-				PersistentEventFactory.defaultRoomVersion,
-			);
+				room_id: roomCreateEvent.roomId,
+				state_key: username,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: username,
+			},
+			PersistentEventFactory.defaultRoomVersion,
+		);
 
 		await stateService.handlePdu(creatorMembershipEvent);
 

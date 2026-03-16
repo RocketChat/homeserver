@@ -20,9 +20,7 @@ export type User = {
 
 @singleton()
 export class UserRepository {
-	constructor(
-		@inject('UserCollection') private readonly collection: Collection<User>,
-	) {}
+	constructor(@inject('UserCollection') private readonly collection: Collection<User>) {}
 
 	async findByUsername(username: string): Promise<User | null> {
 		return this.collection.findOne(
