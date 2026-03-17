@@ -7,6 +7,8 @@ import { ConfigService } from '../services/config.service';
 
 type QueueHandler = (roomId: RoomID) => AsyncGenerator<unknown | undefined>;
 
+const QUEUE_MAX_TIME_PER_ROOM = parseInt(process.env.FEDERATION_QUEUE_MAX_TIME_PER_ROOM || '30', 10) * 1000;
+
 @singleton()
 export class StagingAreaQueue {
 	private queue: Set<RoomID> = new Set();
@@ -57,8 +59,18 @@ export class StagingAreaQueue {
 					continue;
 				}
 
+				const startTime = Date.now();
+
 				// eslint-disable-next-line no-await-in-loop --- this is valid since this.handler is an async generator
 				for await (const _ of this.handler(roomId)) {
+					// remove the item from the queue in case it was re-enqueued while processing
+					this.queue.delete(roomId);
+
+					const elapsed = Date.now() - startTime;
+					if (elapsed > QUEUE_MAX_TIME_PER_ROOM) {
+						this.queue.add(roomId);
+						break;
+					}
 					await lock.update();
 				}
 			}
