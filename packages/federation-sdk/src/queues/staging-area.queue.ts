@@ -47,13 +47,14 @@ export class StagingAreaQueue {
 		this.processing = true;
 		while (this.queue.size > 0) {
 			for (const roomId of this.queue) {
-				if (this.queueItems.size < DEFAULT_QUEUE_CONCURRENCY) {
-					this.queueItems.set(roomId, this.processQueueItem(roomId).catch(() => {
-						this.queue.add(roomId);
-					}).finally(() => {
-						this.queueItems.delete(roomId);
-					}));
+				if (this.queueItems.size >= DEFAULT_QUEUE_CONCURRENCY) {
+					break;
 				}
+				this.queueItems.set(roomId, this.processQueueItem(roomId).catch(() => {
+					this.queue.add(roomId);
+				}).finally(() => {
+					this.queueItems.delete(roomId);
+				}));
 			}
 			while (this.queueItems.size > 0) {
 				// eslint-disable-next-line no-await-in-loop
