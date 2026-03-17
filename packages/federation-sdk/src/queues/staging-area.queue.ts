@@ -1,3 +1,4 @@
+import { createLogger } from '@rocket.chat/federation-core';
 import type { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
 import { delay, inject, singleton } from 'tsyringe';
@@ -5,15 +6,33 @@ import { delay, inject, singleton } from 'tsyringe';
 import { LockRepository } from '../repositories/lock.repository';
 import { ConfigService } from '../services/config.service';
 
+
 type QueueHandler = (roomId: RoomID) => AsyncGenerator<unknown | undefined>;
 
 const QUEUE_MAX_TIME_PER_ROOM = parseInt(process.env.FEDERATION_QUEUE_MAX_TIME_PER_ROOM || '30', 10) * 1000;
 
+const DEFAULT_QUEUE_CONCURRENCY = Math.max(
+	1,
+	parseInt(process.env.FEDERATION_QUEUE_CONCURRENCY || '10', 10) || 10,
+);
+
+
+class TimeoutError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'TimeoutError';
+	}
+}
+
 @singleton()
 export class StagingAreaQueue {
+	private logger;
+
 	private queue: Set<RoomID> = new Set();
 
 	private handler: QueueHandler | null = null;
+
+	private queueItems: Map<RoomID, Promise<void>> = new Map();
 
 	private processing = false;
 
@@ -21,7 +40,9 @@ export class StagingAreaQueue {
 		@inject(delay(() => LockRepository))
 		private readonly lockRepository: LockRepository,
 		private readonly configService: ConfigService,
-	) {}
+	) {
+		this.logger = createLogger('StagingAreaQueue');
+	}
 
 	enqueue(roomId: RoomID): void {
 		this.queue.add(roomId);
@@ -37,50 +58,68 @@ export class StagingAreaQueue {
 			return;
 		}
 
+		this.processing = true;
+		while (this.queue.size > 0 || this.queueItems.size > 0) {
+			for (const roomId of this.queue) {
+				if (this.queueItems.size >= DEFAULT_QUEUE_CONCURRENCY) {
+					break;
+				}
+				this.queue.delete(roomId);
+				if (this.queueItems.has(roomId)) {
+					continue;
+				}
+				this.queueItems.set(roomId, this.processQueueItem(roomId).catch((e) => {
+					if (e instanceof TimeoutError) {
+						this.queue.add(roomId);
+					}
+					throw e;
+				}).finally(() => {
+					this.queueItems.delete(roomId);
+				}));
+			}
+			if (this.queueItems.size > 0) {
+				// eslint-disable-next-line no-await-in-loop
+				await Promise.race(Array.from(this.queueItems.values())).catch((err) => {
+					this.logger.error({
+						msg: 'Error processing item',
+						err,
+					});
+				});
+			}
+		}
+
+		this.processing = false;
+	}
+
+	private async processQueueItem(roomId: RoomID): Promise<void> {
+
 		if (!this.handler) {
 			throw new Error('No handler registered for StagingAreaQueue');
 		}
 
-		this.processing = true;
 
-		try {
-			while (this.queue.size > 0) {
-				const [roomId] = this.queue;
-				if (!roomId) continue;
-				this.queue.delete(roomId);
+		// eslint-disable-next-line no-await-in-loop, prettier/prettier
+		await using lock = await this.lockRepository.lock(
+			roomId,
+			this.configService.instanceId,
+		);
 
-				// eslint-disable-next-line no-await-in-loop, prettier/prettier
-				await using lock = await this.lockRepository.lock(
-					roomId,
-					this.configService.instanceId,
-				);
+		if (!lock.success) {
+			return;
+		}
 
-				if (!lock.success) {
-					continue;
-				}
+		const startTime = Date.now();
 
-				const startTime = Date.now();
+		// eslint-disable-next-line no-await-in-loop --- this is valid since this.handler is an async generator
+		for await (const _ of this.handler(roomId)) {
+			// remove the item from the queue in case it was re-enqueued while processing
+			this.queue.delete(roomId);
 
-				// eslint-disable-next-line no-await-in-loop --- this is valid since this.handler is an async generator
-				for await (const _ of this.handler(roomId)) {
-					// remove the item from the queue in case it was re-enqueued while processing
-					this.queue.delete(roomId);
-
-					const elapsed = Date.now() - startTime;
-					if (elapsed > QUEUE_MAX_TIME_PER_ROOM) {
-						this.queue.add(roomId);
-						break;
-					}
-					await lock.update();
-				}
+			const elapsed = Date.now() - startTime;
+			if (elapsed > QUEUE_MAX_TIME_PER_ROOM) {
+				throw new TimeoutError('Queue item took too long to process');
 			}
-		} finally {
-			this.processing = false;
-
-			// Check if new items were added while processing
-			if (this.queue.size > 0) {
-				this.processQueue();
-			}
+			await lock.update();
 		}
 	}
 }
