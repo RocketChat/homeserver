@@ -46,23 +46,25 @@ export class StagingAreaQueue {
 
 		this.processing = true;
 		while (this.queue.size > 0) {
-			while (this.queueItems.size < DEFAULT_QUEUE_CONCURRENCY) {
-				try {
-					const [roomId] = this.queue;
-					if (!roomId) continue;
-					this.queue.delete(roomId);
-					this.queueItems.set(roomId, this.processQueueItem(roomId).finally(() => this.queueItems.delete(roomId)));
-				} catch (err) {
-					console.error({
-						msg: 'Error processing item',
-						err,
-					});
-					throw err;
+			for (const roomId of this.queue) {
+				while (this.queueItems.size < DEFAULT_QUEUE_CONCURRENCY) {
+					try {
+						this.queueItems.set(roomId, this.processQueueItem(roomId).finally(() => {
+							this.queueItems.delete(roomId);
+							this.queue.delete(roomId);
+						}));
+					} catch (err) {
+						console.error({
+							msg: 'Error processing item',
+							err,
+						});
+						throw err;
+					}
 				}
-			}
-			while (this.queueItems.size > 0) {
-				// eslint-disable-next-line no-await-in-loop
-				await Promise.race(Array.from(this.queueItems.values()));
+				while (this.queueItems.size > 0) {
+					// eslint-disable-next-line no-await-in-loop
+					await Promise.race(Array.from(this.queueItems.values()));
+				}
 			}
 		}
 		this.processing = false;
