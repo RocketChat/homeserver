@@ -72,6 +72,7 @@ export class StagingAreaQueue {
 					if (e instanceof TimeoutError) {
 						this.queue.add(roomId);
 					}
+					throw e;
 				}).finally(() => {
 					this.queueItems.delete(roomId);
 				}));
