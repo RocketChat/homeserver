@@ -48,7 +48,6 @@ export class StagingAreaQueue {
 		while (this.queue.size > 0) {
 			for (const roomId of this.queue) {
 				while (this.queueItems.size < DEFAULT_QUEUE_CONCURRENCY) {
-					this.queue.delete(roomId);
 					this.queueItems.set(roomId, this.processQueueItem(roomId).catch(() => {
 						this.queue.add(roomId);
 					}).finally(() => {
@@ -95,8 +94,7 @@ export class StagingAreaQueue {
 
 			const elapsed = Date.now() - startTime;
 			if (elapsed > QUEUE_MAX_TIME_PER_ROOM) {
-				this.queue.add(roomId);
-				break;
+				throw new Error('Queue item took too long to process');
 			}
 			await lock.update();
 		}
