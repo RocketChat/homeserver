@@ -50,6 +50,7 @@ export class StagingAreaQueue {
 				if (this.queueItems.size >= DEFAULT_QUEUE_CONCURRENCY) {
 					break;
 				}
+				this.queue.delete(roomId);
 				this.queueItems.set(roomId, this.processQueueItem(roomId).catch(() => {
 					this.queue.add(roomId);
 				}).finally(() => {
