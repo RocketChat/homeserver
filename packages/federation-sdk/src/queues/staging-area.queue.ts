@@ -59,6 +59,9 @@ export class StagingAreaQueue {
 					break;
 				}
 				this.queue.delete(roomId);
+				if (this.queueItems.has(roomId)) {
+					continue;
+				}
 				this.queueItems.set(roomId, this.processQueueItem(roomId).catch((e) => {
 					if (e instanceof TimeoutError) {
 						this.queue.add(roomId);
