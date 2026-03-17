@@ -48,9 +48,11 @@ export class StagingAreaQueue {
 		while (this.queue.size > 0) {
 			for (const roomId of this.queue) {
 				while (this.queueItems.size < DEFAULT_QUEUE_CONCURRENCY) {
-					this.queueItems.set(roomId, this.processQueueItem(roomId).finally(() => {
+					this.queue.delete(roomId);
+					this.queueItems.set(roomId, this.processQueueItem(roomId).catch(() => {
+						this.queue.add(roomId);
+					}).finally(() => {
 						this.queueItems.delete(roomId);
-						this.queue.delete(roomId);
 					}));
 				}
 				while (this.queueItems.size > 0) {
