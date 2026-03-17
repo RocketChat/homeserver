@@ -1,9 +1,11 @@
+import { createLogger } from '@rocket.chat/federation-core';
 import type { RoomID } from '@rocket.chat/federation-room';
 import 'reflect-metadata';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { LockRepository } from '../repositories/lock.repository';
 import { ConfigService } from '../services/config.service';
+
 
 type QueueHandler = (roomId: RoomID) => AsyncGenerator<unknown | undefined>;
 
@@ -24,6 +26,8 @@ class TimeoutError extends Error {
 
 @singleton()
 export class StagingAreaQueue {
+	private logger;
+
 	private queue: Set<RoomID> = new Set();
 
 	private handler: QueueHandler | null = null;
@@ -36,7 +40,9 @@ export class StagingAreaQueue {
 		@inject(delay(() => LockRepository))
 		private readonly lockRepository: LockRepository,
 		private readonly configService: ConfigService,
-	) {}
+	) {
+		this.logger = createLogger('StagingAreaQueue');
+	}
 
 	enqueue(roomId: RoomID): void {
 		this.queue.add(roomId);
@@ -73,7 +79,7 @@ export class StagingAreaQueue {
 			if (this.queueItems.size > 0) {
 				// eslint-disable-next-line no-await-in-loop
 				await Promise.race(Array.from(this.queueItems.values())).catch((err) => {
-					console.error({
+					this.logger.error({
 						msg: 'Error processing item',
 						err,
 					});
