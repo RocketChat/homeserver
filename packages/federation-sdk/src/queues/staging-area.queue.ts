@@ -45,7 +45,7 @@ export class StagingAreaQueue {
 		}
 
 		this.processing = true;
-		while (this.queue.size > 0) {
+		while (this.queue.size > 0 || this.queueItems.size > 0) {
 			for (const roomId of this.queue) {
 				if (this.queueItems.size >= DEFAULT_QUEUE_CONCURRENCY) {
 					break;
@@ -57,7 +57,7 @@ export class StagingAreaQueue {
 					this.queueItems.delete(roomId);
 				}));
 			}
-			while (this.queueItems.size > 0) {
+			if (this.queueItems.size > 0) {
 				// eslint-disable-next-line no-await-in-loop
 				await Promise.race(Array.from(this.queueItems.values())).catch((err) => {
 					console.error({
@@ -67,6 +67,7 @@ export class StagingAreaQueue {
 				});
 			}
 		}
+
 		this.processing = false;
 	}
 
