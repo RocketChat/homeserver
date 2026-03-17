@@ -54,15 +54,15 @@ export class StagingAreaQueue {
 						this.queueItems.delete(roomId);
 					}));
 				}
-				while (this.queueItems.size > 0) {
-					// eslint-disable-next-line no-await-in-loop
-					await Promise.race(Array.from(this.queueItems.values())).catch((err) => {
-						console.error({
-							msg: 'Error processing item',
-							err,
-						});
+			}
+			while (this.queueItems.size > 0) {
+				// eslint-disable-next-line no-await-in-loop
+				await Promise.race(Array.from(this.queueItems.values())).catch((err) => {
+					console.error({
+						msg: 'Error processing item',
+						err,
 					});
-				}
+				});
 			}
 		}
 		this.processing = false;
