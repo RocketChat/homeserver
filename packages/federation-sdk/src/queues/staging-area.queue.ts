@@ -14,6 +14,14 @@ const DEFAULT_QUEUE_CONCURRENCY = Math.max(
 	parseInt(process.env.FEDERATION_QUEUE_CONCURRENCY || '10', 10) || 10,
 );
 
+
+class TimeoutError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'TimeoutError';
+	}
+}
+
 @singleton()
 export class StagingAreaQueue {
 	private queue: Set<RoomID> = new Set();
@@ -51,8 +59,10 @@ export class StagingAreaQueue {
 					break;
 				}
 				this.queue.delete(roomId);
-				this.queueItems.set(roomId, this.processQueueItem(roomId).catch(() => {
-					this.queue.add(roomId);
+				this.queueItems.set(roomId, this.processQueueItem(roomId).catch((e) => {
+					if (e instanceof TimeoutError) {
+						this.queue.add(roomId);
+					}
 				}).finally(() => {
 					this.queueItems.delete(roomId);
 				}));
@@ -97,7 +107,7 @@ export class StagingAreaQueue {
 
 			const elapsed = Date.now() - startTime;
 			if (elapsed > QUEUE_MAX_TIME_PER_ROOM) {
-				throw new Error('Queue item took too long to process');
+				throw new TimeoutError('Queue item took too long to process');
 			}
 			await lock.update();
 		}
