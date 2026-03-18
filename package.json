@@ -23,7 +23,7 @@
 		"rollup-plugin-dts": "^6.2.3",
 		"sinon": "^20.0.0",
 		"tsconfig-paths": "^4.2.0",
-		"turbo": "~2.8.16",
+		"turbo": "~2.8.17",
 		"typescript": "~5.9.3"
 	},
 	"workspaces": ["packages/*"],
