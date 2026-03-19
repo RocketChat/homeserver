@@ -1533,4 +1533,46 @@ export class RoomService {
 			return null;
 		}
 	}
+
+	async updateRoomMembership({
+		roomId,
+		userId,
+		membership,
+		content,
+	}: {
+		roomId: RoomID;
+		userId: UserID;
+		membership: 'join' | 'leave' | 'ban';
+		content?: PduForType<'m.room.member'>['content'];
+	}) {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+
+		const membershipEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					membership,
+					...content,
+				},
+				room_id: roomId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: userId,
+			},
+			roomVersion,
+		);
+
+		await this.stateService.handlePdu(membershipEvent);
+
+		if (membershipEvent.rejected) {
+			throw new Error(`Failed to update room membership: ${membershipEvent.rejectReason}`);
+		}
+
+		void this.federationService.sendEventToAllServersInRoom(membershipEvent);
+
+		return membershipEvent.eventId;
+	}
 }
