@@ -274,4 +274,8 @@ export class FederationSDK {
 	notifyRemoteServerUp(...args: Parameters<typeof this.federationService.notifyRemoteServerUp>) {
 		return this.federationService.notifyRemoteServerUp(...args);
 	}
+
+	updateRoomMembership(...args: Parameters<typeof this.roomService.updateRoomMembership>) {
+		return this.roomService.updateRoomMembership(...args);
+	}
 }
