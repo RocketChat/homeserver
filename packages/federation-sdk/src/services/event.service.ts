@@ -369,7 +369,7 @@ export class EventService {
 
 				const { event_ids, data } = receiptData;
 
-				this.logger.debug('Processing read receipt', { roomId, userId, event_ids, thread_id: data.thread_id });
+				this.logger.debug({ roomId, userId, event_ids, thread_id: data.thread_id }, 'Processing read receipt');
 
 				await this.eventEmitterService.emit('homeserver.matrix.receipt', {
 					room_id: roomId,
