@@ -96,15 +96,16 @@ export class ProfilesService {
 		}
 
 		const profile = await this.queryProfile(userId);
+		const content = {
+			membership: 'join' as const,
+			...(profile?.displayname && { displayname: profile.displayname }),
+			...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+		};
 
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
-				content: {
-					membership: 'join',
-					...(profile?.displayname && { displayname: profile.displayname }),
-					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
-				},
+				content,
 				room_id: roomId,
 				state_key: userId,
 				auth_events: [],

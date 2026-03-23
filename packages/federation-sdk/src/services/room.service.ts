@@ -36,6 +36,7 @@ import { EventService } from './event.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
+import { ProfilesService } from './profiles.service';
 import { RoomInfoNotReadyError, StateService, UnknownRoomError } from './state.service';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
@@ -54,6 +55,7 @@ export class RoomService {
 		private readonly inviteService: InviteService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly eventFetcherService: EventFetcherService,
+		private readonly profilesService: ProfilesService,
 		@inject(delay(() => RoomRepository))
 		private readonly roomRepository: RoomRepository,
 		@inject(delay(() => EventRepository))
@@ -727,17 +729,18 @@ export class RoomService {
 				throw new Error('Room create event not found when trying to join a room');
 			}
 
-			const avatarUrl = await this.getAvatarUrlForUser(userId);
-			const displayname = userId.split(':')[0]?.slice(1);
+			const profile = await this.profilesService.queryProfile(userId);
+
+			const content = {
+				membership: 'join' as const,
+				...(profile?.displayname && { displayname: profile.displayname }),
+				...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+			};
 
 			const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
-					content: {
-						membership: 'join',
-						...(displayname && { displayname }),
-						...(avatarUrl && { avatar_url: avatarUrl }),
-					},
+					content,
 					room_id: roomId,
 					state_key: userId,
 					auth_events: [],
@@ -775,6 +778,15 @@ export class RoomService {
 			userId,
 			roomVersion, // NOTE: check the comment in the called method
 		);
+
+		// // after receiving the join event we need to populate with local user profile
+		// const profile = await this.profilesService.queryProfile(userId);
+
+		// makeJoinResponse.event.content = {
+		// 	membership: 'join' as const,
+		// 	...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+		// 	...(profile?.displayname && { displayname: profile.displayname }),
+		// };
 
 		// ^ have the template for the join event now
 

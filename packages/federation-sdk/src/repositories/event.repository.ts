@@ -424,4 +424,8 @@ export class EventRepository {
 	findPartialsByRoomId(roomId: RoomID) {
 		return this.collection.find({ 'event.room_id': roomId, 'partial': true }, { sort: { 'event.depth': 1, 'createdAt': 1 } });
 	}
+
+	setAsOutlier(eventId: EventID): Promise<UpdateResult> {
+		return this.collection.updateOne({ _id: eventId }, { $set: { outlier: true } });
+	}
 }

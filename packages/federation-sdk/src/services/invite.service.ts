@@ -58,6 +58,7 @@ export class InviteService {
 			return undefined;
 		}
 
+		// TODO create a helper function to extract username and domain from userId and reuse in other places, e.g. ProfilesService
 		const username = userId.split(':')[0]?.slice(1);
 		if (!username) {
 			return undefined;
@@ -253,7 +254,7 @@ export class InviteService {
 			await this.stateService.handlePdu(inviteEvent);
 		} else {
 			// otherwise we save as outlier only so we can deal with it later
-			await this.eventRepository.insertOutlierEvent(inviteEvent.eventId, inviteEvent.event, residentServer);
+			await this.eventRepository.setAsOutlier(inviteEvent.eventId);
 		}
 
 		await this.emitterService.emit('homeserver.matrix.membership', {
