@@ -167,12 +167,19 @@ export class EventService {
 					try {
 						await this.validateEvent(event);
 					} catch (err) {
-						this.logger.error({
-							msg: 'Event validation failed',
-							origin,
-							event,
-							err,
-						});
+						if (err instanceof Error && err.name === 'UnknownRoomError' && event.type === 'm.room.member') {
+							await this.eventEmitterService.emit('homeserver.matrix.membership.rejected', {
+								event,
+								reason: err.message,
+							});
+						} else {
+							this.logger.error({
+								msg: 'Event validation failed',
+								origin,
+								event,
+								err,
+							});
+						}
 						continue;
 					}
 
