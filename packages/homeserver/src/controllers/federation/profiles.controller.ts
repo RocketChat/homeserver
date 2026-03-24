@@ -10,6 +10,7 @@ import {
 	ErrorResponseDto,
 	EventAuthParamsDto,
 	EventAuthResponseDto,
+	FederationErrorResponseDto,
 	GetDevicesParamsDto,
 	GetDevicesResponseDto,
 	GetMissingEventsBodyDto,
@@ -29,17 +30,37 @@ export const profilesPlugin = (app: Elysia) => {
 			.group('/_matrix', (app) =>
 				app
 					.use(isAuthenticatedMiddleware())
-					.get('/federation/v1/query/profile', ({ query: { user_id } }) => federationSDK.queryProfile(user_id as UserID), {
-						query: QueryProfileQueryDto,
-						response: {
-							200: QueryProfileResponseDto,
+					.get(
+						'/federation/v1/query/profile',
+						async ({ query: { user_id }, set }) => {
+							const response = await federationSDK.queryProfile(user_id as UserID);
+
+							if (!response) {
+								set.status = 404;
+								return {
+									errcode: 'M_NOT_FOUND',
+									error: `User ${user_id} not found`,
+								};
+							}
+
+							return {
+								displayname: response.displayname,
+								avatar_url: response.avatar_url,
+							};
 						},
-						detail: {
-							tags: ['Federation'],
-							summary: 'Query profile',
-							description: "Query a user's profile",
+						{
+							query: QueryProfileQueryDto,
+							response: {
+								200: QueryProfileResponseDto,
+								404: FederationErrorResponseDto,
+							},
+							detail: {
+								tags: ['Federation'],
+								summary: 'Query profile',
+								description: "Query a user's profile",
+							},
 						},
-					})
+					)
 					.post(
 						'/federation/v1/user/keys/query',
 						async ({ set }) => {

@@ -16,6 +16,7 @@ import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
+import { ProfilesService } from './profiles.service';
 import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 
@@ -40,6 +41,7 @@ export class InviteService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => FederationValidationService)) // need to delay to be able to inject during tests
 		private readonly federationValidationService: FederationValidationService,
+		private readonly profilesService: ProfilesService,
 	) {}
 
 	/**
@@ -63,7 +65,10 @@ export class InviteService {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		// Extract displayname from userId for direct messages
+		// TODO get displayname from profile service instead of extracting from userId
 		const displayname = isDirectMessage ? userId.split(':').shift()?.slice(1) : undefined;
+
+		const profile = await this.profilesService.queryProfile(userId);
 
 		const inviteEvent = await stateService.buildEvent<'m.room.member'>(
 			{
@@ -72,8 +77,10 @@ export class InviteService {
 					membership: 'invite',
 					...(isDirectMessage && {
 						is_direct: true,
+						// TODO set displayname even if not DM
 						displayname,
 					}),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				room_id: roomId,
 				state_key: userId,

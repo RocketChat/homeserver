@@ -35,6 +35,7 @@ import { EventService } from './event.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
+import { ProfilesService } from './profiles.service';
 import { RoomInfoNotReadyError, StateService, UnknownRoomError } from './state.service';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
@@ -52,13 +53,13 @@ export class RoomService {
 		private readonly inviteService: InviteService,
 		private readonly eventEmitterService: EventEmitterService,
 		private readonly eventFetcherService: EventFetcherService,
+		private readonly profilesService: ProfilesService,
 		@inject(delay(() => RoomRepository))
 		private readonly roomRepository: RoomRepository,
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
-		private readonly emitterService: EventEmitterService,
 		private readonly federationValidationService: FederationValidationService,
 	) {}
 
@@ -195,10 +196,16 @@ export class RoomService {
 
 		await stateService.handlePdu(roomCreateEvent);
 
+		const profile = await this.profilesService.queryProfile(username);
+
 		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
-				content: { membership: 'join' },
+				content: {
+					membership: 'join',
+					...(profile?.displayname && { displayname: profile.displayname }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+				},
 				room_id: roomCreateEvent.roomId,
 				state_key: username,
 				auth_events: [],
@@ -512,7 +519,7 @@ export class RoomService {
 
 		void this.federationService.sendEventToAllServersInRoom(leaveEvent);
 
-		await this.emitterService.emit('homeserver.matrix.membership', {
+		await this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
@@ -588,48 +595,6 @@ export class RoomService {
 		return kickEvent.eventId;
 	}
 
-	async updateMemberProfile(
-		roomId: RoomID,
-		userId: UserID,
-		displayName: string,
-	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-		const currentState = await this.stateService.getLatestRoomState(roomId);
-
-		const currentMembership = currentState.get(`m.room.member:${userId}`);
-		if (!currentMembership || currentMembership.getMembership() !== 'join') {
-			throw new Error(`User ${userId} is not a member of room ${roomId}`);
-		}
-
-		const memberEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: {
-					membership: 'join', // SAME membership (not changing)
-					displayname: displayName, // NEW displayname
-				},
-				room_id: roomId,
-				sender: userId,
-				state_key: userId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-			},
-			roomInfo.room_version,
-		);
-
-		await this.stateService.handlePdu(memberEvent);
-
-		if (memberEvent.rejected) {
-			throw new Error(`Member profile update rejected: ${memberEvent.rejectReason}`);
-		}
-
-		void this.federationService.sendEventToAllServersInRoom(memberEvent);
-
-		return memberEvent;
-	}
-
 	async banUser(roomId: RoomID, bannedUserId: UserID, senderId: UserID, reason?: string): Promise<EventID> {
 		logger.info(`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`);
 
@@ -694,10 +659,18 @@ export class RoomService {
 				throw new Error('Room create event not found when trying to join a room');
 			}
 
+			const profile = await this.profilesService.queryProfile(userId);
+
+			const content = {
+				membership: 'join' as const,
+				...(profile?.displayname && { displayname: profile.displayname }),
+				...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+			};
+
 			const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
-					content: { membership: 'join' },
+					content,
 					room_id: roomId,
 					state_key: userId,
 					auth_events: [],
@@ -717,7 +690,7 @@ export class RoomService {
 
 			void federationService.sendEventToAllServersInRoom(membershipEvent);
 
-			await this.emitterService.emit('homeserver.matrix.membership', {
+			await this.eventEmitterService.emit('homeserver.matrix.membership', {
 				event_id: membershipEvent.eventId,
 				event: membershipEvent.event,
 			});
@@ -725,6 +698,7 @@ export class RoomService {
 			return membershipEvent.eventId;
 		}
 
+		// Resident server is remote, need to do join flow
 		const roomVersion = '10' as const;
 
 		// trying to join room from another server
@@ -735,13 +709,21 @@ export class RoomService {
 			roomVersion, // NOTE: check the comment in the called method
 		);
 
+		// after receiving the join event we need to populate with local user profile
+		const profile = await this.profilesService.queryProfile(userId);
+
+		makeJoinResponse.event.content = {
+			...makeJoinResponse.event.content,
+			...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+			...(profile?.displayname && { displayname: profile.displayname }),
+		};
+
 		// ^ have the template for the join event now
 
 		const joinEvent = PersistentEventFactory.createFromRawEvent(makeJoinResponse.event, makeJoinResponse.room_version);
 
-		// const signedJoinEvent = await stateService.signEvent(joinEvent);
+		await stateService.signEvent(joinEvent);
 
-		// TODO: sign the event here vvv
 		// currently makeSignedRequest does the signing
 		const { state, auth_chain: authChain, event, servers_in_room: serversInRoom = [] } = await federationService.sendJoin(joinEvent);
 
@@ -885,6 +867,50 @@ export class RoomService {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
+	}
+
+	/**
+	 * Update user profile (displayname/avatar) in a room by sending a membership event
+	 */
+	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }): Promise<void> {
+		const roomInfo = await this.stateService.getRoomInformation(roomId);
+
+		const state = await this.stateService.getLatestRoomState(roomId);
+		const membershipEvent = state.get(`m.room.member:${userId}`);
+		if (!membershipEvent || membershipEvent.getMembership() !== 'join') {
+			throw new Error(`User ${userId} is not a member of room ${roomId}`);
+		}
+
+		const newMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				content: {
+					...membershipEvent.event.content,
+					...profile,
+				},
+				room_id: roomId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: userId,
+			},
+			roomInfo.room_version,
+		);
+
+		await this.stateService.handlePdu(newMembershipEvent);
+
+		if (newMembershipEvent.rejected) {
+			throw new Error(newMembershipEvent.rejectReason);
+		}
+
+		this.eventEmitterService.emit('homeserver.matrix.membership', {
+			event_id: newMembershipEvent.eventId,
+			event: newMembershipEvent.event,
+		});
+
+		void this.federationService.sendEventToAllServersInRoom(newMembershipEvent);
 	}
 
 	private async _fetchFullBranch(
@@ -1165,6 +1191,8 @@ export class RoomService {
 
 		await this.stateService.handlePdu(roomCreateEvent);
 
+		const profile = await this.profilesService.queryProfile(creatorUserId);
+
 		const creatorMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -1174,7 +1202,8 @@ export class RoomService {
 				content: {
 					membership: 'join',
 					is_direct: true,
-					displayname: creatorUserId.split(':').shift()?.slice(1),
+					...(profile?.displayname && { displayname: profile.displayname }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				depth: 2,
 				room_id: roomCreateEvent.roomId,
@@ -1280,6 +1309,7 @@ export class RoomService {
 		let memberDepthCounter = 7;
 
 		for await (const member of members) {
+			// TODO we need to query profile for each member to get displayname and avatar
 			const targetMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
@@ -1349,6 +1379,7 @@ export class RoomService {
 
 		// Extract displayname from userId for direct messages
 		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
+		const profile = await this.profilesService.queryProfile(creatorUserId);
 
 		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
@@ -1357,6 +1388,7 @@ export class RoomService {
 					membership: 'join',
 					is_direct: true,
 					displayname: creatorDisplayname,
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				room_id: roomCreateEvent.roomId,
 				state_key: creatorUserId,
@@ -1463,7 +1495,9 @@ export class RoomService {
 			);
 		} else {
 			// Extract displayname from userId for direct messages
+			// TODO get displayname from profile service instead
 			const displayname = targetUserId.split(':').shift()?.slice(1);
+			const profile = await this.profilesService.queryProfile(targetUserId);
 
 			const targetMembershipEvent = await stateService.buildEvent<'m.room.member'>(
 				{
@@ -1472,6 +1506,7 @@ export class RoomService {
 						membership: 'join',
 						is_direct: true,
 						displayname,
+						...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 					},
 					room_id: roomCreateEvent.roomId,
 					state_key: targetUserId,

@@ -1,20 +1,40 @@
-import { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { EventID, extractDomainFromId, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
+import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
 import { StateService } from './state.service';
+import { UserRepository } from '../repositories/user.repository';
 
 @singleton()
 export class ProfilesService {
-	constructor(private readonly configService: ConfigService, private readonly stateService: StateService) {}
+	constructor(
+		private readonly configService: ConfigService,
+		private readonly stateService: StateService,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
+	) {}
 
 	async queryProfile(userId: string): Promise<{
-		avatar_url: string;
+		avatar_url?: string;
 		displayname: string;
-	}> {
+	} | null> {
+		const domain = extractDomainFromId(userId);
+		if (domain !== this.configService.serverName) {
+			return null;
+		}
+
+		const username = userId.split(':')[0]?.slice(1);
+
+		const user = await this.userRepository.findByUsername(username);
+
+		if (!user) {
+			// this.logger.debug(`Local user ${userId} not found in repository`);
+			return null;
+		}
+
 		return {
-			avatar_url: 'mxc://matrix.org/MyC00lAvatar',
-			displayname: userId,
+			...(user.avatarETag && { avatar_url: `mxc://${this.configService.serverName}/${user.avatarETag}` }),
+			displayname: user.name || user.username!, // username is guaranteed to be present if user is found
 		};
 	}
 
@@ -73,7 +93,9 @@ export class ProfilesService {
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
-				content: { membership: 'join' },
+				content: {
+					membership: 'join',
+				},
 				room_id: roomId,
 				state_key: userId,
 				auth_events: [],

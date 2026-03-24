@@ -46,8 +46,6 @@ export class FederationService {
 	 */
 	async sendJoin(joinEvent: PersistentEventBase, omitMembers = false): Promise<SendJoinResponse> {
 		try {
-			const { event } = joinEvent;
-
 			const uri = FederationEndpoints.sendJoinV2(joinEvent.roomId, joinEvent.eventId);
 			const queryParams = omitMembers ? { omit_members: 'true' } : undefined;
 
@@ -58,7 +56,7 @@ export class FederationService {
 				throw new Error(`invalid room_id ${joinEvent.roomId}, no server_name part`);
 			}
 
-			return await this.requestService.put<SendJoinResponse>(residentServer, uri, event, queryParams);
+			return await this.requestService.put<SendJoinResponse>(residentServer, uri, undefined, queryParams, joinEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendJoin failed', err: error });
 			throw error;
