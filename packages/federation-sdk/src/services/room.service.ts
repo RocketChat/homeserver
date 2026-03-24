@@ -883,11 +883,18 @@ export class RoomService {
 
 		const newMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
-				...membershipEvent.event,
+				type: 'm.room.member',
 				content: {
 					...membershipEvent.event.content,
 					...profile,
 				},
+				room_id: roomId,
+				state_key: userId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: userId,
 			},
 			roomInfo.room_version,
 		);
