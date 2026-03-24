@@ -16,9 +16,9 @@ import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
+import { ProfilesService } from './profiles.service';
 import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
-import { UserRepository } from '../repositories/user.repository';
 
 export class NotAllowedError extends Error {
 	constructor(message: string) {
@@ -41,34 +41,8 @@ export class InviteService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => FederationValidationService)) // need to delay to be able to inject during tests
 		private readonly federationValidationService: FederationValidationService,
-		@inject(delay(() => UserRepository))
-		private readonly userRepository: UserRepository,
-		private readonly eventEmitterService: EventEmitterService,
+		private readonly profilesService: ProfilesService,
 	) {}
-
-	/**
-	 * Get avatar URL for a user (local users only)
-	 */
-	private async getAvatarUrlForUser(userId: UserID): Promise<string | undefined> {
-		const userDomain = extractDomainFromId(userId);
-		const localDomain = this.configService.serverName;
-
-		if (userDomain !== localDomain) {
-			return undefined;
-		}
-
-		// TODO create a helper function to extract username and domain from userId and reuse in other places, e.g. ProfilesService
-		const username = userId.split(':')[0]?.slice(1);
-		if (!username) {
-			return undefined;
-		}
-
-		// Fetch user to get avatarETag
-		const user = await this.userRepository.findByUsername(username);
-		const avatarIdentifier = user?.avatarETag || username;
-
-		return `mxc://${localDomain}/avatar${avatarIdentifier}`;
-	}
 
 	/**
 	 * Invite a user to an existing room
@@ -91,9 +65,10 @@ export class InviteService {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		// Extract displayname from userId for direct messages
+		// TODO get displayname from profile service instead of extracting from userId
 		const displayname = isDirectMessage ? userId.split(':').shift()?.slice(1) : undefined;
 
-		const avatarUrl = await this.getAvatarUrlForUser(userId);
+		const profile = await this.profilesService.queryProfile(userId);
 
 		const inviteEvent = await stateService.buildEvent<'m.room.member'>(
 			{
@@ -102,9 +77,10 @@ export class InviteService {
 					membership: 'invite',
 					...(isDirectMessage && {
 						is_direct: true,
+						// TODO set displayname even if not DM
 						displayname,
 					}),
-					...(avatarUrl && { avatar_url: avatarUrl }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				room_id: roomId,
 				state_key: userId,

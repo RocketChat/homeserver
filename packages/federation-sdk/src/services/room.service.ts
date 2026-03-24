@@ -63,29 +63,6 @@ export class RoomService {
 		private readonly federationValidationService: FederationValidationService,
 	) {}
 
-	/**
-	 * Get avatar URL for a user (local users only)
-	 */
-	private async getAvatarUrlForUser(userId: UserID): Promise<string | undefined> {
-		const userDomain = extractDomainFromId(userId);
-		const localDomain = this.configService.serverName;
-
-		if (userDomain !== localDomain) {
-			return undefined;
-		}
-
-		const username = userId.split(':')[0]?.slice(1);
-		if (!username) {
-			return undefined;
-		}
-
-		// Fetch user to get avatarETag
-		const user = await this.userRepository.findByUsername(username);
-		const avatarIdentifier = user?.avatarETag || username;
-
-		return `mxc://${localDomain}/avatar${avatarIdentifier}`;
-	}
-
 	private validatePowerLevelChange(
 		currentPowerLevelsContent: PduForType<'m.room.power_levels'>['content'],
 		senderId: string,
@@ -219,7 +196,8 @@ export class RoomService {
 
 		await stateService.handlePdu(roomCreateEvent);
 
-		const avatarUrl = await this.getAvatarUrlForUser(username);
+		const profile = await this.profilesService.queryProfile(username);
+		// TODO get displayname from profile service instead of extracting from userId
 		const displayname = username.split(':')[0]?.slice(1);
 
 		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
@@ -228,7 +206,7 @@ export class RoomService {
 				content: {
 					membership: 'join',
 					...(displayname && { displayname }),
-					...(avatarUrl && { avatar_url: avatarUrl }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				room_id: roomCreateEvent.roomId,
 				state_key: username,
@@ -617,48 +595,6 @@ export class RoomService {
 		void this.federationService.sendEventToAllServersInRoom(kickEvent);
 
 		return kickEvent.eventId;
-	}
-
-	async updateMemberProfile(
-		roomId: RoomID,
-		userId: UserID,
-		displayName: string,
-	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-		const currentState = await this.stateService.getLatestRoomState(roomId);
-
-		const currentMembership = currentState.get(`m.room.member:${userId}`);
-		if (!currentMembership || currentMembership.getMembership() !== 'join') {
-			throw new Error(`User ${userId} is not a member of room ${roomId}`);
-		}
-
-		const memberEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: {
-					membership: 'join', // SAME membership (not changing)
-					displayname: displayName, // NEW displayname
-				},
-				room_id: roomId,
-				sender: userId,
-				state_key: userId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-			},
-			roomInfo.room_version,
-		);
-
-		await this.stateService.handlePdu(memberEvent);
-
-		if (memberEvent.rejected) {
-			throw new Error(`Member profile update rejected: ${memberEvent.rejectReason}`);
-		}
-
-		void this.federationService.sendEventToAllServersInRoom(memberEvent);
-
-		return memberEvent;
 	}
 
 	async banUser(roomId: RoomID, bannedUserId: UserID, senderId: UserID, reason?: string): Promise<EventID> {
@@ -1434,8 +1370,9 @@ export class RoomService {
 		await stateService.handlePdu(roomCreateEvent);
 
 		// Extract displayname from userId for direct messages
+		// TODO get displayname from profile service instead
 		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
-		const creatorAvatarUrl = await this.getAvatarUrlForUser(creatorUserId);
+		const profile = await this.profilesService.queryProfile(creatorUserId);
 
 		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
@@ -1444,7 +1381,7 @@ export class RoomService {
 					membership: 'join',
 					is_direct: true,
 					displayname: creatorDisplayname,
-					...(creatorAvatarUrl && { avatar_url: creatorAvatarUrl }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				room_id: roomCreateEvent.roomId,
 				state_key: creatorUserId,
@@ -1551,8 +1488,9 @@ export class RoomService {
 			);
 		} else {
 			// Extract displayname from userId for direct messages
+			// TODO get displayname from profile service instead
 			const displayname = targetUserId.split(':').shift()?.slice(1);
-			const targetAvatarUrl = await this.getAvatarUrlForUser(targetUserId);
+			const profile = await this.profilesService.queryProfile(targetUserId);
 
 			const targetMembershipEvent = await stateService.buildEvent<'m.room.member'>(
 				{
@@ -1561,7 +1499,7 @@ export class RoomService {
 						membership: 'join',
 						is_direct: true,
 						displayname,
-						...(targetAvatarUrl && { avatar_url: targetAvatarUrl }),
+						...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 					},
 					room_id: roomCreateEvent.roomId,
 					state_key: targetUserId,
