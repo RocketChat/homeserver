@@ -197,15 +197,13 @@ export class RoomService {
 		await stateService.handlePdu(roomCreateEvent);
 
 		const profile = await this.profilesService.queryProfile(username);
-		// TODO get displayname from profile service instead of extracting from userId
-		const displayname = username.split(':')[0]?.slice(1);
 
 		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
 				content: {
 					membership: 'join',
-					...(displayname && { displayname }),
+					...(profile?.displayname && { displayname: profile.displayname }),
 					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				room_id: roomCreateEvent.roomId,
@@ -1186,6 +1184,8 @@ export class RoomService {
 
 		await this.stateService.handlePdu(roomCreateEvent);
 
+		const profile = await this.profilesService.queryProfile(creatorUserId);
+
 		const creatorMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -1195,7 +1195,8 @@ export class RoomService {
 				content: {
 					membership: 'join',
 					is_direct: true,
-					displayname: creatorUserId.split(':').shift()?.slice(1),
+					...(profile?.displayname && { displayname: profile.displayname }),
+					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 				},
 				depth: 2,
 				room_id: roomCreateEvent.roomId,
@@ -1301,6 +1302,7 @@ export class RoomService {
 		let memberDepthCounter = 7;
 
 		for await (const member of members) {
+			// TODO we need to query profile for each member to get displayname and avatar
 			const targetMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 				{
 					type: 'm.room.member',
