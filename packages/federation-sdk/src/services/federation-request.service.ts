@@ -19,6 +19,7 @@ interface SignedRequest {
 	domain: string;
 	uri: string;
 	body?: Record<string, unknown>;
+	signedBody?: Record<string, unknown>;
 	queryString?: string;
 }
 
@@ -48,7 +49,7 @@ export class FederationRequestService {
 
 	constructor(private readonly configService: ConfigService) {}
 
-	async makeSignedRequest<T>({ method, domain, uri, body, queryString }: SignedRequest): Promise<FetchResponse<T>> {
+	async makeSignedRequest<T>({ method, domain, uri, body, signedBody, queryString }: SignedRequest): Promise<FetchResponse<T>> {
 		const serverName = this.configService.getConfig('serverName');
 		const signingKeyBase64 = await this.configService.getSigningKeyBase64();
 		const signingKeyId = await this.configService.getSigningKeyId();
@@ -72,8 +73,8 @@ export class FederationRequestService {
 
 		this.logger.debug(`Making ${method} request to ${url.toString()}`);
 
-		let signedBody: Record<string, unknown> | undefined;
-		if (body) {
+		// if we got a body but not a signed body, sign the body
+		if (body && !signedBody) {
 			signedBody = await signJson(body.hashes ? body : computeAndMergeHash({ ...body, signatures: {} }), signingKey, serverName);
 		}
 
@@ -116,6 +117,7 @@ export class FederationRequestService {
 		endpoint: string,
 		body?: Record<string, unknown>,
 		queryParams?: Record<string, string | string[]>,
+		signedBody?: Record<string, unknown>,
 	) {
 		let queryString = '';
 
@@ -143,6 +145,7 @@ export class FederationRequestService {
 				domain: targetServer,
 				uri: endpoint,
 				body,
+				signedBody,
 				queryString,
 			})
 		).json();
@@ -152,12 +155,25 @@ export class FederationRequestService {
 		return this.request<T>('GET', targetServer, endpoint, undefined, queryParams);
 	}
 
-	async put<T>(targetServer: string, endpoint: string, body: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
-		return this.request<T>('PUT', targetServer, endpoint, body, queryParams);
+	// TODO convert to object params so body and signedBody can be mutually exclusive in the type system
+	async put<T>(
+		targetServer: string,
+		endpoint: string,
+		body?: Record<string, unknown>,
+		queryParams?: Record<string, string>,
+		signedBody?: Record<string, unknown>,
+	): Promise<T> {
+		return this.request<T>('PUT', targetServer, endpoint, body, queryParams, signedBody);
 	}
 
-	async post<T>(targetServer: string, endpoint: string, body: Record<string, unknown>, queryParams?: Record<string, string>): Promise<T> {
-		return this.request<T>('POST', targetServer, endpoint, body, queryParams);
+	async post<T>(
+		targetServer: string,
+		endpoint: string,
+		body?: Record<string, unknown>,
+		queryParams?: Record<string, string>,
+		signedBody?: Record<string, unknown>,
+	): Promise<T> {
+		return this.request<T>('POST', targetServer, endpoint, body, queryParams, signedBody);
 	}
 
 	async requestBinaryData(

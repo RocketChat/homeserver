@@ -779,22 +779,21 @@ export class RoomService {
 			roomVersion, // NOTE: check the comment in the called method
 		);
 
-		// // after receiving the join event we need to populate with local user profile
-		// const profile = await this.profilesService.queryProfile(userId);
+		// after receiving the join event we need to populate with local user profile
+		const profile = await this.profilesService.queryProfile(userId);
 
-		// makeJoinResponse.event.content = {
-		// 	membership: 'join' as const,
-		// 	...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
-		// 	...(profile?.displayname && { displayname: profile.displayname }),
-		// };
+		makeJoinResponse.event.content = {
+			membership: 'join' as const,
+			...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+			...(profile?.displayname && { displayname: profile.displayname }),
+		};
 
 		// ^ have the template for the join event now
 
 		const joinEvent = PersistentEventFactory.createFromRawEvent(makeJoinResponse.event, makeJoinResponse.room_version);
 
-		// const signedJoinEvent = await stateService.signEvent(joinEvent);
+		await stateService.signEvent(joinEvent);
 
-		// TODO: sign the event here vvv
 		// currently makeSignedRequest does the signing
 		const { state, auth_chain: authChain, event, servers_in_room: serversInRoom = [] } = await federationService.sendJoin(joinEvent);
 
