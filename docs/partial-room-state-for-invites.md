@@ -52,3 +52,45 @@ Store partial room state from `unsigned.invite_room_state` when processing incom
 4. **On invite rejection/retraction**: clean up partial state
 
 This would align our behavior with the spec and with Synapse, enabling proper processing of all room events for rooms where the server has pending invites.
+
+---
+
+# Server Set Routing After Ban
+
+## Problem
+
+`getServerSetInRoom` (in `StateService`) only includes servers that have at least one user with `membership: 'join'` in the room state. When a user is banned, their membership changes from `join` to `ban`. If they were the only user from their server in the room, their server is excluded from the destination set for subsequent events.
+
+This means events that happen **after** the ban — including the unban (kick/leave) event — are never sent to the banned user's server.
+
+### What happens today
+
+1. Server A bans a user from Server B
+2. Ban event is sent to Server B via `sendEventToAllServersInRoom` (the user still had `join` membership when the server set was computed for sending the ban)
+3. Server B processes the ban event, state updates membership to `ban`
+4. Server A unbans the user (sends a `membership: leave` via `kickUser`)
+5. `sendEventToAllServersInRoom` computes the server set — Server B has no users with `join` membership → **Server B is excluded from destinations**
+6. The leave (unban) event is never delivered to Server B
+7. Later, Server A tries to re-invite the user — builds an invite event whose `prev_events` reference the leave event
+8. Server A sends the invite to Server B via the `/v2/invite` endpoint
+9. Server B has the `m.room.create` event (user had previously joined), so `processInvite` calls `handlePdu`
+10. `handlePdu` → `_resolveStateAtEvent` → looks for `stateId` of `prev_events` → the leave event was never received → **"no previous state for event"** error
+11. Invite processing fails, Server A gets a 500 response
+
+### Impact
+
+- After a ban+unban cycle in a federated room, the user cannot be re-invited
+- The state chain on the remote server becomes broken because intermediate events are missing
+- This affects RC ↔ RC federation. RC ↔ Element (Synapse) works because Synapse handles server routing differently
+
+### Root cause
+
+The Matrix spec states that servers should continue receiving events for rooms where they have **any** membership state (join, invite, ban, leave with prior membership). Our `getServerSetInRoom` only considers `join` membership, which is too restrictive.
+
+### Proposed fix
+
+`getServerSetInRoom` should include servers that have users with `ban` or `invite` membership in addition to `join`. A banned user's server still needs to receive room events (at minimum the unban event) to maintain a consistent state chain.
+
+From the spec perspective, the set of servers that should receive events ("resident servers") includes any server that has at least one user in the room with membership `join` or `invite`. For `ban`, the server should receive at minimum the events needed to transition out of the banned state.
+
+A simpler alternative: when sending a ban-related event (membership: leave after ban), explicitly add the target user's server to the destination set regardless of their current membership.
