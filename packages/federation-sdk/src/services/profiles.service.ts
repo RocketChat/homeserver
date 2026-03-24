@@ -1,4 +1,4 @@
-import { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
+import { EventID, extractDomainFromId, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
@@ -18,14 +18,14 @@ export class ProfilesService {
 		avatar_url: string;
 		displayname?: string;
 	} | null> {
-		const [username, serverName] = userId.startsWith('@') ? userId.split(':', 2) : [userId, this.configService.serverName];
-
-		if (serverName !== this.configService.serverName) {
+		const domain = extractDomainFromId(userId);
+		if (domain !== this.configService.serverName) {
 			return null;
 		}
 
-		const usernameWithoutAt = username.replace('@', '');
-		const user = await this.userRepository.findByUsername(usernameWithoutAt);
+		const username = userId.split(':')[0]?.slice(1);
+
+		const user = await this.userRepository.findByUsername(username);
 
 		if (!user) {
 			// this.logger.debug(`Local user ${userId} not found in repository`);
@@ -36,7 +36,7 @@ export class ProfilesService {
 		// RC stores avatars in GridFS accessed via /avatar/{username}
 		// for Matrix, we use the pattern: mxc://{server}/avatar{avatarETag}
 		// Using avatarETag ensures remote servers re-fetch when avatar changes
-		const avatarIdentifier = user.avatarETag || usernameWithoutAt;
+		const avatarIdentifier = user.avatarETag || username;
 		return {
 			avatar_url: `mxc://${this.configService.serverName}/avatar${avatarIdentifier}`,
 			displayname: user.name || user.username,

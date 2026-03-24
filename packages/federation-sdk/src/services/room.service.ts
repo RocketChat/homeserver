@@ -715,7 +715,7 @@ export class RoomService {
 		const profile = await this.profilesService.queryProfile(userId);
 
 		makeJoinResponse.event.content = {
-			membership: 'join' as const,
+			...makeJoinResponse.event.content,
 			...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 			...(profile?.displayname && { displayname: profile.displayname }),
 		};
@@ -897,14 +897,14 @@ export class RoomService {
 
 		await this.stateService.handlePdu(membershipEvent);
 
+		if (membershipEvent.rejected) {
+			throw new Error(membershipEvent.rejectReason);
+		}
+
 		this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: membershipEvent.eventId,
 			event: membershipEvent.event,
 		});
-
-		if (membershipEvent.rejected) {
-			throw new Error(membershipEvent.rejectReason);
-		}
 
 		void this.federationService.sendEventToAllServersInRoom(membershipEvent);
 	}
