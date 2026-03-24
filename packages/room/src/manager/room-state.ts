@@ -59,10 +59,8 @@ export class RoomState {
 		const nameEvent = getStateByMapKey(this.stateMap, {
 			type: 'm.room.name',
 		});
-
-		// DMs do not have a name event, so we return undefined
 		if (!nameEvent || !nameEvent.isNameEvent()) {
-			return undefined;
+			throw new Error('Room name event not found');
 		}
 
 		return nameEvent.getContent().name;

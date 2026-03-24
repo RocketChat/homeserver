@@ -355,24 +355,6 @@ export class EventRepository {
 		);
 	}
 
-	forceInsertOrUpdateEventWithStateId(eventId: EventID, event: Pdu, stateId: StateID, partial = false): Promise<UpdateResult> {
-		return this.collection.updateOne(
-			{ _id: eventId },
-			{
-				$setOnInsert: {
-					nextEventId: '',
-					createdAt: new Date(),
-				},
-				$set: {
-					event,
-					stateId,
-					partial,
-				},
-			},
-			{ upsert: true },
-		);
-	}
-
 	async findStateIdByEventId(eventId: EventID): Promise<StateID | undefined> {
 		const result = await this.collection.findOne<Pick<EventStore, 'stateId'>>({ _id: eventId }, { projection: { stateId: 1 } });
 
@@ -423,9 +405,5 @@ export class EventRepository {
 
 	findPartialsByRoomId(roomId: RoomID) {
 		return this.collection.find({ 'event.room_id': roomId, 'partial': true }, { sort: { 'event.depth': 1, 'createdAt': 1 } });
-	}
-
-	setAsOutlier(eventId: EventID): Promise<UpdateResult> {
-		return this.collection.updateOne({ _id: eventId }, { $set: { outlier: true } });
 	}
 }

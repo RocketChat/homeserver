@@ -21,7 +21,6 @@ import {
 	EventStore as RoomEventStore,
 	RoomID,
 	RoomVersion,
-	StateID,
 	UserID,
 	extractDomainFromId,
 	getStateByMapKey,
@@ -41,7 +40,6 @@ import { RoomInfoNotReadyError, StateService, UnknownRoomError } from './state.s
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
-import { UserRepository } from '../repositories/user.repository';
 
 @singleton()
 export class RoomService {
@@ -63,8 +61,6 @@ export class RoomService {
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly federationValidationService: FederationValidationService,
-		@inject(delay(() => UserRepository))
-		private readonly userRepository: UserRepository,
 	) {}
 
 	/**

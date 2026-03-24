@@ -9,7 +9,7 @@ export const QueryProfileQueryDto = t.Object({
 
 export const QueryProfileResponseDto = t.Object({
 	displayname: t.Optional(t.String({ description: 'User display name' })),
-	avatar_url: t.String({ description: 'User avatar URL (MXC URL)' }),
+	avatar_url: t.Optional(t.String({ description: 'User avatar URL (MXC URL)' })),
 });
 
 export const QueryKeysBodyDto = t.Object({

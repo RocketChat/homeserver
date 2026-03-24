@@ -6,7 +6,6 @@ import {
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
-	StateID,
 	UserID,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
@@ -169,7 +168,6 @@ export class InviteService {
 			| 'm.room.join_rules'
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
-			| 'm.room.member'
 		>[],
 	): Promise<void> {
 		const isRoomNonPrivate = strippedStateEvents.some(
@@ -198,7 +196,6 @@ export class InviteService {
 			| 'm.room.join_rules'
 			| 'm.room.canonical_alias'
 			| 'm.room.encryption'
-			| 'm.room.member'
 		>[],
 	): Promise<PersistentEventBase<RoomVersion, 'm.room.member'>> {
 		await this.shouldProcessInvite(strippedStateEvents);
@@ -224,13 +221,6 @@ export class InviteService {
 			return inviteEvent;
 		}
 
-		await this.eventRepository.forceInsertOrUpdateEventWithStateId(
-			inviteEvent.eventId,
-			inviteEvent.event,
-			'' as StateID,
-			true, // partial = true
-		);
-
 		const invitedServer = extractDomainFromId(event.state_key);
 		if (!invitedServer) {
 			throw new Error(`invalid state_key ${event.state_key}, no server_name part`);
@@ -254,7 +244,7 @@ export class InviteService {
 			await this.stateService.handlePdu(inviteEvent);
 		} else {
 			// otherwise we save as outlier only so we can deal with it later
-			await this.eventRepository.setAsOutlier(inviteEvent.eventId);
+			await this.eventRepository.insertOutlierEvent(inviteEvent.eventId, inviteEvent.event, residentServer);
 		}
 
 		await this.emitterService.emit('homeserver.matrix.membership', {

@@ -24,6 +24,7 @@ export class EventStagingRepository {
 		return this.collection.updateOne(
 			{
 				_id: eventId,
+				origin,
 			},
 			{
 				$setOnInsert: {
@@ -32,7 +33,6 @@ export class EventStagingRepository {
 					got: 0,
 				},
 				$set: {
-					origin,
 					event,
 					from,
 				},
