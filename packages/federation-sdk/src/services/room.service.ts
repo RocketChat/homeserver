@@ -1371,7 +1371,6 @@ export class RoomService {
 		await stateService.handlePdu(roomCreateEvent);
 
 		// Extract displayname from userId for direct messages
-		// TODO get displayname from profile service instead
 		const creatorDisplayname = creatorUserId.split(':').shift()?.slice(1);
 		const profile = await this.profilesService.queryProfile(creatorUserId);
 
