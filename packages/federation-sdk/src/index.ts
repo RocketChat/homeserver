@@ -168,8 +168,8 @@ export async function init({
 		useValue: db.collection<Upload>('rocketchat_uploads'),
 	});
 
-	container.register<Collection<Upload>>('AvatarCollection', {
-		useValue: db.collection<Upload>('rocketchat_avatars'),
+	container.register<Collection<{ etag: string }>>('AvatarCollection', {
+		useValue: db.collection<{ etag: string }>('rocketchat_avatars'),
 	});
 
 	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
