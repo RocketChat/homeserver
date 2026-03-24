@@ -877,36 +877,35 @@ export class RoomService {
 	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }): Promise<void> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
-		const membershipEvent = await this.stateService.buildEvent<'m.room.member'>(
+		const state = await this.stateService.getLatestRoomState(roomId);
+		const membershipEvent = state.get(`m.room.member:${userId}`);
+		if (!membershipEvent || membershipEvent.getMembership() !== 'join') {
+			throw new Error(`User ${userId} is not a member of room ${roomId}`);
+		}
+
+		const newMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
-				type: 'm.room.member',
+				...membershipEvent.event,
 				content: {
-					membership: 'join',
+					...membershipEvent.event.content,
 					...profile,
 				},
-				room_id: roomId,
-				state_key: userId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: userId,
 			},
 			roomInfo.room_version,
 		);
 
-		await this.stateService.handlePdu(membershipEvent);
+		await this.stateService.handlePdu(newMembershipEvent);
 
-		if (membershipEvent.rejected) {
-			throw new Error(membershipEvent.rejectReason);
+		if (newMembershipEvent.rejected) {
+			throw new Error(newMembershipEvent.rejectReason);
 		}
 
 		this.eventEmitterService.emit('homeserver.matrix.membership', {
-			event_id: membershipEvent.eventId,
-			event: membershipEvent.event,
+			event_id: newMembershipEvent.eventId,
+			event: newMembershipEvent.event,
 		});
 
-		void this.federationService.sendEventToAllServersInRoom(membershipEvent);
+		void this.federationService.sendEventToAllServersInRoom(newMembershipEvent);
 	}
 
 	private async _fetchFullBranch(
