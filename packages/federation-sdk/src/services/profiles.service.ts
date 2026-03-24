@@ -15,8 +15,8 @@ export class ProfilesService {
 	) {}
 
 	async queryProfile(userId: string): Promise<{
-		avatar_url: string;
-		displayname?: string;
+		avatar_url?: string;
+		displayname: string;
 	} | null> {
 		const domain = extractDomainFromId(userId);
 		if (domain !== this.configService.serverName) {
@@ -32,14 +32,9 @@ export class ProfilesService {
 			return null;
 		}
 
-		// construct MXC URL based on avatarETag (or fallback to username for backwards compatibility)
-		// RC stores avatars in GridFS accessed via /avatar/{username}
-		// for Matrix, we use the pattern: mxc://{server}/avatar{avatarETag}
-		// Using avatarETag ensures remote servers re-fetch when avatar changes
-		const avatarIdentifier = user.avatarETag || username;
 		return {
-			avatar_url: `mxc://${this.configService.serverName}/avatar${avatarIdentifier}`,
-			displayname: user.name || user.username,
+			...(user.avatarETag && { avatar_url: `mxc://${this.configService.serverName}/${user.avatarETag}` }),
+			displayname: user.name || user.username!, // username is guaranteed to be present if user is found
 		};
 	}
 

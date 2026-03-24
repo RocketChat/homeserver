@@ -168,6 +168,10 @@ export async function init({
 		useValue: db.collection<Upload>('rocketchat_uploads'),
 	});
 
+	container.register<Collection<Upload>>('AvatarCollection', {
+		useValue: db.collection<Upload>('rocketchat_avatars'),
+	});
+
 	container.register<Collection<StateGraphStore>>('StateGraphCollection', {
 		useValue: db.collection<StateGraphStore>('rocketchat_federation_state_graphs'),
 	});

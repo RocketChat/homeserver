@@ -6,6 +6,7 @@ import { ConfigService } from './config.service';
 import { EventService } from './event.service';
 import { ServerService } from './server.service';
 import { StateService } from './state.service';
+import { AvatarRepository } from '../repositories/avatar.repository';
 import { UploadRepository } from '../repositories/upload.repository';
 
 export class AclDeniedError extends Error {
@@ -26,6 +27,8 @@ export class EventAuthorizationService {
 		private readonly serverService: ServerService,
 		@inject(delay(() => UploadRepository))
 		private readonly uploadRepository: UploadRepository,
+		@inject(delay(() => AvatarRepository))
+		private readonly avatarRepository: AvatarRepository,
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
@@ -296,6 +299,12 @@ export class EventAuthorizationService {
 	}
 
 	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {
+		// check if media is avatar of a user
+		const avatar = await this.avatarRepository.findOneByETag(mediaId);
+		if (avatar) {
+			return true;
+		}
+
 		const rcUpload = await this.uploadRepository.findByMediaId(mediaId);
 		if (!rcUpload) {
 			this.logger.debug(`Media ${mediaId} not found in any room`);
@@ -323,12 +332,6 @@ export class EventAuthorizationService {
 		}
 
 		if (entityType === 'media') {
-			// avatars are publicly accessible and don't require access control
-			if (entityId.startsWith('avatar')) {
-				// TODO: add avatar access control once we have a way to check if the user is allowed to access the avatar
-				return true;
-			}
-
 			return this.canAccessMedia(entityId, serverName);
 		}
 
