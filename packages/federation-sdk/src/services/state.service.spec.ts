@@ -2262,7 +2262,7 @@ describe('StateService', async () => {
 			expect(servers.size).toBe(1);
 		});
 
-		it('should exclude servers with non-joined members', async () => {
+		it('should include servers with banned or invited members but exclude left', async () => {
 			const { roomCreateEvent } = await createRoom('public');
 
 			const creator = '@alice:example.com'; // Room creator with admin permissions
@@ -2284,9 +2284,9 @@ describe('StateService', async () => {
 
 			expect(servers.has('joined.com')).toBe(true);
 			expect(servers.has('left.com')).toBe(false);
-			expect(servers.has('banned.com')).toBe(false);
-			expect(servers.has('invited.com')).toBe(false);
-			expect(servers.size).toBe(2); // example.com (creator) + joined.com
+			expect(servers.has('banned.com')).toBe(true);
+			expect(servers.has('invited.com')).toBe(true);
+			expect(servers.size).toBe(4); // example.com (creator) + joined.com + banned.com + invited.com
 		});
 
 		it('should return creator server for room with only creator', async () => {
