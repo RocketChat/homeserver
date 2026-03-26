@@ -34,11 +34,11 @@ jobs:
       - uses: supercharge/mongodb-github-action@1.12.1
       - run: RUN_MONGO_TESTS=1 bun test packages/federation-sdk/src/services/state.service.spec.ts packages/federation-sdk/src/services/room.service.spec.ts
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
       - run: bun test:coverage
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
