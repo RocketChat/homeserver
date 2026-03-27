@@ -383,6 +383,18 @@ export class StateService {
 			eventCache.set(event.eventId, event);
 		}
 
+		const store = this._getStore(version);
+
+		// Collect IDs of events that already exist in the DB so we can skip re-emitting them.
+		// This is important for re-join scenarios where the room already exists and most events
+		// were already processed and emitted. Without this, we could send duplicated
+		// join/leave/membership events and mess up room history.
+		// IMPORTANT: this query must run BEFORE the create event is saved below, otherwise the
+		// create event would be incorrectly treated as pre-existing and never notified.
+		const allEventIds = [...authChainCache.keys(), ...eventCache.keys()];
+		const existingEvents = await store.getEvents(allEventIds);
+		const knownEventIds = new Set(existingEvents.map((e) => e.eventId));
+
 		// handle create separately
 		const createEvent = PersistentEventFactory.createFromRawEvent(create, version);
 		const stateId = await this.stateRepository.createDelta(createEvent, '' as StateID);
@@ -400,8 +412,6 @@ export class StateService {
 			}, new Map<StateMapKey, PersistentEventBase>());
 		};
 
-		const store = this._getStore(version);
-
 		const sortedEvents = Array.from(eventCache.values())
 			.concat(Array.from(authChainCache.values()))
 			.sort((e1, e2) => {
@@ -415,14 +425,6 @@ export class StateService {
 
 				return e1.eventId.localeCompare(e2.eventId);
 			});
-
-		// Collect IDs of events that already exist in the DB so we can skip re-emitting them.
-		// This is important for re-join scenarios where the room already exists and most events
-		// were already processed and emitted. Without this, we could send duplicated
-		// join/leave/membership events and mess up room history.
-		const allEventIds = sortedEvents.map((e) => e.eventId);
-		const existingEvents = await store.getEvents(allEventIds);
-		const knownEventIds = new Set(existingEvents.map((e) => e.eventId));
 
 		let previousStateId = stateId;
 
