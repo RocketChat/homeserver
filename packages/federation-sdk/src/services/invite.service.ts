@@ -216,10 +216,13 @@ export class InviteService {
 		// check if we are already in the room, if so we can handlePdu because we have the state and should save
 		// the invite in the state as well
 		const createEvent = await this.eventRepository.findByRoomIdAndType(event.room_id, 'm.room.create');
-		if (createEvent) {
+		if (createEvent && (await this.canResolveEventState(inviteEvent))) {
 			await this.stateService.handlePdu(inviteEvent);
 		} else {
 			// otherwise we save as outlier only so we can deal with it later
+			// this also handles the case where we have the room create event but the invite's
+			// prev_events reference events we don't have (e.g. user was re-invited after leaving
+			// and missing events were sent while the user was not in the room)
 			await this.eventRepository.insertOutlierEvent(inviteEvent.eventId, inviteEvent.event, residentServer);
 		}
 
@@ -231,5 +234,21 @@ export class InviteService {
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
 		return inviteEvent;
+	}
+
+	/**
+	 * Checks whether the invite event's prev_events exist locally so that
+	 * handlePdu can resolve the state at the event. When the local server
+	 * left a room and missed events, the invite's prev_events will reference
+	 * events we never received, making state resolution impossible.
+	 */
+	private async canResolveEventState(event: PersistentEventBase): Promise<boolean> {
+		const prevEventIds = event.getPreviousEventIds();
+		if (prevEventIds.length === 0) {
+			return true;
+		}
+
+		const found = await this.eventRepository.findByIds(prevEventIds).toArray();
+		return found.length === prevEventIds.length;
 	}
 }
