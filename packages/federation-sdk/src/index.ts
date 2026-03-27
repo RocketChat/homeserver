@@ -125,6 +125,10 @@ export type HomeserverEventSignatures = {
 		room_id: string; // room where the change happened
 		role: 'moderator' | 'owner' | 'user'; // 50, 100, 0
 	};
+	'homeserver.matrix.membership.rejected': {
+		event: PduForType<'m.room.member'>;
+		reason: string;
+	};
 };
 
 export { roomIdSchema, userIdSchema, eventIdSchema, extractDomainFromId } from '@rocket.chat/federation-room';
