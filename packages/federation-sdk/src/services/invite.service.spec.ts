@@ -296,6 +296,112 @@ describe('InviteService', async () => {
 			expect(storedJoinEvent!.event.type).toBe('m.room.member');
 			expect(storedJoinEvent!.event.content.membership).toBe('join');
 		});
+		it('should notify all events including m.room.create on first-time join (fresh room)', async () => {
+			const remoteCreator = '@alice:remote.server.com' as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			// 1. Build room state PDUs manually (simulating what send_join returns on first join)
+			const roomVersion = PersistentEventFactory.defaultRoomVersion;
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(remoteCreator, roomVersion);
+
+			const creatorMemberEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomCreateEvent.roomId,
+					sender: remoteCreator,
+					state_key: remoteCreator,
+					content: { membership: 'join' },
+					auth_events: [roomCreateEvent.eventId],
+					prev_events: [roomCreateEvent.eventId],
+					origin_server_ts: Date.now(),
+					depth: 1,
+				},
+				roomVersion,
+			);
+
+			const powerLevelEvent = PersistentEventFactory.createFromRawEvent<'m.room.power_levels'>(
+				{
+					type: 'm.room.power_levels',
+					room_id: roomCreateEvent.roomId,
+					sender: remoteCreator,
+					state_key: '',
+					content: {
+						users: { [remoteCreator]: 100 },
+						users_default: 0,
+						events: {},
+						events_default: 0,
+						state_default: 50,
+						ban: 50,
+						kick: 50,
+						redact: 50,
+						invite: 50,
+					},
+					auth_events: [roomCreateEvent.eventId, creatorMemberEvent.eventId],
+					prev_events: [creatorMemberEvent.eventId],
+					origin_server_ts: Date.now(),
+					depth: 2,
+				},
+				roomVersion,
+			);
+
+			const joinRuleEvent = PersistentEventFactory.createFromRawEvent<'m.room.join_rules'>(
+				{
+					type: 'm.room.join_rules',
+					room_id: roomCreateEvent.roomId,
+					sender: remoteCreator,
+					state_key: '',
+					content: { join_rule: 'invite' },
+					auth_events: [roomCreateEvent.eventId, creatorMemberEvent.eventId, powerLevelEvent.eventId],
+					prev_events: [powerLevelEvent.eventId],
+					origin_server_ts: Date.now(),
+					depth: 3,
+				},
+				roomVersion,
+			);
+
+			const inviteEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomCreateEvent.roomId,
+					sender: remoteCreator,
+					state_key: localUser,
+					content: { membership: 'invite' },
+					auth_events: [roomCreateEvent.eventId, creatorMemberEvent.eventId, powerLevelEvent.eventId, joinRuleEvent.eventId],
+					prev_events: [joinRuleEvent.eventId],
+					origin_server_ts: Date.now(),
+					depth: 4,
+				},
+				roomVersion,
+			);
+
+			// 2. Track notify calls
+			const notifyCalls: Array<{ eventId: string; type: string }> = [];
+			const notifySpy = spyOn(stateService.eventService as any, 'notify').mockImplementation(
+				async (event: { eventId: string; event: { type: string } }) => {
+					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
+				},
+			);
+
+			// 3. Call processInitialState on a FRESH room (no prior state)
+			const statePdus = [creatorMemberEvent.event, powerLevelEvent.event, joinRuleEvent.event, inviteEvent.event];
+			const authChain = [roomCreateEvent.event, creatorMemberEvent.event, powerLevelEvent.event, joinRuleEvent.event];
+
+			await stateService.processInitialState(statePdus, authChain);
+
+			// 4. ALL events should be notified, including m.room.create
+			const notifiedTypes = notifyCalls.map((c) => c.type);
+			expect(notifiedTypes).toContain('m.room.create');
+			expect(notifiedTypes).toContain('m.room.member');
+			expect(notifiedTypes).toContain('m.room.power_levels');
+			expect(notifiedTypes).toContain('m.room.join_rules');
+
+			// The create event specifically must be notified
+			const createNotification = notifyCalls.find((c) => c.eventId === roomCreateEvent.eventId);
+			expect(createNotification).toBeDefined();
+			expect(createNotification!.type).toBe('m.room.create');
+
+			notifySpy.mockRestore();
+		});
 	});
 
 	describe('processInvite - re-invite after leave', () => {
