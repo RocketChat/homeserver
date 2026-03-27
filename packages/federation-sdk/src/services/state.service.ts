@@ -416,6 +416,14 @@ export class StateService {
 				return e1.eventId.localeCompare(e2.eventId);
 			});
 
+		// Collect IDs of events that already exist in the DB so we can skip re-emitting them.
+		// This is important for re-join scenarios where the room already exists and most events
+		// were already processed and emitted. Without this, we could send duplicated
+		// join/leave/membership events and mess up room history.
+		const allEventIds = sortedEvents.map((e) => e.eventId);
+		const existingEvents = await store.getEvents(allEventIds);
+		const knownEventIds = new Set(existingEvents.map((e) => e.eventId));
+
 		let previousStateId = stateId;
 
 		for await (const event of sortedEvents) {
@@ -450,7 +458,9 @@ export class StateService {
 			previousStateId = await this.stateRepository.createDelta(event, previousStateId);
 			await this.addToRoomGraph(event, previousStateId);
 
-			await this.eventService.notify(event);
+			if (!knownEventIds.has(event.eventId)) {
+				await this.eventService.notify(event);
+			}
 		}
 
 		return previousStateId;
