@@ -237,18 +237,30 @@ export class InviteService {
 	}
 
 	/**
-	 * Checks whether the invite event's prev_events exist locally so that
-	 * handlePdu can resolve the state at the event. When the local server
-	 * left a room and missed events, the invite's prev_events will reference
-	 * events we never received, making state resolution impossible.
+	 * Checks whether the invite event's prev_events and auth_events exist
+	 * locally with fully materialized state so that handlePdu can resolve
+	 * the state at the event. When the local server left a room and missed
+	 * events, references may point to events we never received or to outlier
+	 * events (stateId == ''), making state resolution impossible.
 	 */
 	private async canResolveEventState(event: PersistentEventBase): Promise<boolean> {
 		const prevEventIds = event.getPreviousEventIds();
-		if (prevEventIds.length === 0) {
+		const authEventIds = event.getAuthEventIds();
+
+		if (prevEventIds.length === 0 && authEventIds.length === 0) {
 			return true;
 		}
 
-		const found = await this.eventRepository.findByIds(prevEventIds).toArray();
-		return found.length === prevEventIds.length;
+		const [prevEvents, authEvents] = await Promise.all([
+			prevEventIds.length > 0 ? this.eventRepository.findByIds(prevEventIds).toArray() : Promise.resolve([]),
+			authEventIds.length > 0 ? this.eventRepository.findByIds(authEventIds).toArray() : Promise.resolve([]),
+		]);
+
+		if (prevEvents.length !== prevEventIds.length || authEvents.length !== authEventIds.length) {
+			return false;
+		}
+
+		const allMaterialized = [...prevEvents, ...authEvents].every((e) => !!e.stateId);
+		return allMaterialized;
 	}
 }

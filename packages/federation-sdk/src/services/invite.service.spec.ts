@@ -525,6 +525,116 @@ describe('InviteService', async () => {
 			expect(storedEvent!.outlier).toBe(true);
 		});
 
+		it('should store as outlier when prev_events exist but are themselves outliers (empty stateId)', async () => {
+			const remoteServer = 'remote.server.com';
+			const remoteCreator = `@alice:${remoteServer}` as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			// 1. Set up room
+			const { roomCreateEvent, roomVersion } = await createRoom('invite', remoteCreator);
+			const { roomId } = roomCreateEvent;
+
+			// 2. Insert an outlier event that the invite's prev_events will reference
+			const outlierWrapped = PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+				{
+					type: 'm.room.message',
+					content: { body: 'test', msgtype: 'm.text' },
+					room_id: roomId,
+					sender: remoteCreator,
+					auth_events: [],
+					prev_events: [],
+					depth: 50,
+					origin_server_ts: Date.now(),
+				},
+				roomVersion,
+			);
+			const outlierEventId = outlierWrapped.eventId;
+			await eventRepository.insertOutlierEvent(outlierEventId, outlierWrapped.event, remoteServer);
+
+			// 3. Build re-invite referencing the outlier as prev_event
+			const latestEvents = await eventRepository.findLatestEvents(roomId);
+			const latestAuthEvents = latestEvents.map((e) => e._id);
+
+			const reInviteEventRaw = {
+				type: 'm.room.member' as const,
+				content: { membership: 'invite' as const },
+				room_id: roomId,
+				state_key: localUser,
+				sender: remoteCreator,
+				auth_events: latestAuthEvents,
+				prev_events: [outlierEventId],
+				depth: 51,
+				origin_server_ts: Date.now(),
+				unsigned: {},
+			} as room.Pdu;
+
+			const reInviteEventInstance = PersistentEventFactory.createFromRawEvent(reInviteEventRaw, roomVersion);
+
+			const result = await inviteService.processInvite(reInviteEventRaw as any, reInviteEventInstance.eventId, roomVersion, [
+				{
+					content: { join_rule: 'invite' },
+					sender: remoteCreator,
+					state_key: '',
+					type: 'm.room.join_rules',
+				},
+			] as any);
+
+			expect(result).toBeDefined();
+
+			// Should be stored as outlier because the prev_event has stateId == ''
+			const storedEvent = await eventRepository.findById(reInviteEventInstance.eventId);
+			expect(storedEvent).not.toBeNull();
+			expect(storedEvent!.outlier).toBe(true);
+		});
+
+		it('should store as outlier when auth_events are missing from the database', async () => {
+			const remoteServer = 'remote.server.com';
+			const remoteCreator = `@alice:${remoteServer}` as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			// 1. Set up room
+			const { roomCreateEvent, roomVersion } = await createRoom('invite', remoteCreator);
+			const { roomId } = roomCreateEvent;
+
+			// 2. Get the latest known events for prev_events (these are real, materialized)
+			const latestEvents = await eventRepository.findLatestEvents(roomId);
+			const latestPrevEvents = latestEvents.map((e) => e._id);
+
+			// 3. Build re-invite with auth_events pointing to unknown events
+			const unknownAuthEvent = '$unknown-auth:remote.server.com' as EventID;
+
+			const reInviteEventRaw = {
+				type: 'm.room.member' as const,
+				content: { membership: 'invite' as const },
+				room_id: roomId,
+				state_key: localUser,
+				sender: remoteCreator,
+				auth_events: [unknownAuthEvent],
+				prev_events: latestPrevEvents,
+				depth: 100,
+				origin_server_ts: Date.now(),
+				unsigned: {},
+			} as room.Pdu;
+
+			const reInviteEventInstance = PersistentEventFactory.createFromRawEvent(reInviteEventRaw, roomVersion);
+
+			const result = await inviteService.processInvite(reInviteEventRaw as any, reInviteEventInstance.eventId, roomVersion, [
+				{
+					content: { join_rule: 'invite' },
+					sender: remoteCreator,
+					state_key: '',
+					type: 'm.room.join_rules',
+				},
+			] as any);
+
+			expect(result).toBeDefined();
+
+			// Should be stored as outlier because auth_events are missing
+			const storedEvent = await eventRepository.findById(reInviteEventInstance.eventId);
+			expect(storedEvent).not.toBeNull();
+			expect(storedEvent!.outlier).toBe(true);
+		});
+
 		it('should handle a full invite-join-leave-reinvite cycle without errors', async () => {
 			const remoteServer = 'remote.server.com';
 			const remoteCreator = `@alice:${remoteServer}` as room.UserID;
