@@ -167,7 +167,14 @@ export class EventService {
 					try {
 						await this.validateEvent(event);
 					} catch (err) {
-						if (err instanceof Error && err.name === 'UnknownRoomError' && event.type === 'm.room.member') {
+						// this is a very specific use case where a remove server invites and then bans/kicks a user,
+						// we need to emit something so the client can update the membership status to rejected instead of invite
+						if (
+							err instanceof Error &&
+							err.name === 'UnknownRoomError' &&
+							event.type === 'm.room.member' &&
+							['ban', 'leave'].includes(event.content.membership)
+						) {
 							await this.eventEmitterService.emit('homeserver.matrix.membership.rejected', {
 								event,
 								reason: err.message,
