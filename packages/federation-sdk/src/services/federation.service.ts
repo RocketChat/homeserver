@@ -194,7 +194,7 @@ export class FederationService {
 		});
 	}
 
-	async sendEventToAllServersInRoom(event: PersistentEventBase) {
+	async sendEventToAllServersInRoom(event: PersistentEventBase, omitDestinations: string[] = []): Promise<void> {
 		// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
@@ -205,16 +205,18 @@ export class FederationService {
 			}
 		}
 
-		// Sign the event once before queuing
-		await this.stateService.signEvent(event);
-
-		// Filter out the event origin and local server
-		const destinations = Array.from(servers).filter((server) => server !== event.origin && server !== this.configService.serverName);
+		// Filter out the event origin, local server, and any additional omitted destinations
+		const destinations = Array.from(servers).filter(
+			(server) => server !== event.origin && server !== this.configService.serverName && !omitDestinations.includes(server),
+		);
 
 		if (destinations.length === 0) {
 			this.logger.debug(`No destinations to send event ${event.eventId}`);
 			return;
 		}
+
+		// Sign the event once before queuing
+		await this.stateService.signEvent(event);
 
 		this.logger.info(`Queueing event ${event.eventId} for ${destinations.length} destinations`);
 

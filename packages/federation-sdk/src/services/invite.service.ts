@@ -125,8 +125,8 @@ export class InviteService {
 		// can only invite if already part of the room
 		await stateService.handlePdu(PersistentEventFactory.createFromRawEvent(inviteResponse.event, roomVersion));
 
-		// let everyone know
-		void federationService.sendEventToAllServersInRoom(inviteEvent);
+		// let everyone else know
+		void federationService.sendEventToAllServersInRoom(inviteEvent, [invitedServer]);
 
 		return {
 			event_id: inviteEvent.eventId,
