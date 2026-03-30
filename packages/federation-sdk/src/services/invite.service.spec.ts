@@ -168,7 +168,7 @@ describe('InviteService', async () => {
 		membership: room.PduMembershipEventContent['membership'],
 		sender?: string,
 	) => {
-		const roomVersion = await stateService.getRoomVersion(roomId);
+		const roomVersion = await stateService.getRoomVersion(roomId as room.RoomID);
 		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -205,7 +205,7 @@ describe('InviteService', async () => {
 
 			// 3. Track notify calls
 			const notifyCalls: Array<{ eventId: string; type: string }> = [];
-			const notifySpy = spyOn(stateService.eventService as any, 'notify').mockImplementation(
+			const notifySpy = spyOn((stateService as any).eventService, 'notify').mockImplementation(
 				async (event: { eventId: string; event: { type: string } }) => {
 					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
 				},
@@ -294,7 +294,7 @@ describe('InviteService', async () => {
 			const storedJoinEvent = await eventRepository.findById(rejoinEvent.eventId);
 			expect(storedJoinEvent).not.toBeNull();
 			expect(storedJoinEvent!.event.type).toBe('m.room.member');
-			expect(storedJoinEvent!.event.content.membership).toBe('join');
+			expect((storedJoinEvent!.event.content as any).membership).toBe('join');
 		});
 		it('should notify all events including m.room.create on first-time join (fresh room)', async () => {
 			const remoteCreator = '@alice:remote.server.com' as room.UserID;
@@ -376,7 +376,7 @@ describe('InviteService', async () => {
 
 			// 2. Track notify calls
 			const notifyCalls: Array<{ eventId: string; type: string }> = [];
-			const notifySpy = spyOn(stateService.eventService as any, 'notify').mockImplementation(
+			const notifySpy = spyOn((stateService as any).eventService, 'notify').mockImplementation(
 				async (event: { eventId: string; event: { type: string } }) => {
 					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
 				},
@@ -465,7 +465,7 @@ describe('InviteService', async () => {
 			const storedEvent = await eventRepository.findById(reInviteEventId);
 			expect(storedEvent).not.toBeNull();
 			expect(storedEvent!.outlier).toBe(true);
-			expect(storedEvent!.stateId).toBe('');
+			expect(storedEvent!.stateId).toBe('' as room.StateID);
 		});
 
 		it('should use handlePdu when prev_events are known locally (normal invite flow)', async () => {
@@ -492,22 +492,23 @@ describe('InviteService', async () => {
 			const localUser = `@johnny:${localServerName}` as room.UserID;
 			const unknownRoomId = '!unknown-room:remote.server.com' as room.RoomID;
 
-			const inviteEventRaw = {
-				type: 'm.room.member' as const,
-				content: { membership: 'invite' as const },
-				room_id: unknownRoomId,
-				state_key: localUser,
-				sender: remoteCreator,
-				auth_events: [],
-				prev_events: ['$some-event:remote.server.com' as EventID],
-				depth: 5,
-				origin_server_ts: Date.now(),
-				unsigned: {},
-			} as room.Pdu;
+			const inviteEventInstance = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'invite' as const },
+					room_id: unknownRoomId,
+					state_key: localUser,
+					sender: remoteCreator,
+					auth_events: [],
+					prev_events: ['$some-event:remote.server.com' as EventID],
+					depth: 5,
+					origin_server_ts: Date.now(),
+					unsigned: {},
+				},
+				'10',
+			);
 
-			const inviteEventInstance = PersistentEventFactory.createFromRawEvent(inviteEventRaw, '10');
-
-			const result = await inviteService.processInvite(inviteEventRaw as any, inviteEventInstance.eventId, '10', [
+			const result = await inviteService.processInvite(inviteEventInstance.event, inviteEventInstance.eventId, '10', [
 				{
 					content: { join_rule: 'invite' },
 					sender: remoteCreator,
