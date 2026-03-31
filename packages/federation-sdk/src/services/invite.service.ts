@@ -216,10 +216,13 @@ export class InviteService {
 		// check if we are already in the room, if so we can handlePdu because we have the state and should save
 		// the invite in the state as well
 		const createEvent = await this.eventRepository.findByRoomIdAndType(event.room_id, 'm.room.create');
-		if (createEvent) {
+		if (createEvent && (await this.canResolveEventState(inviteEvent))) {
 			await this.stateService.handlePdu(inviteEvent);
 		} else {
 			// otherwise we save as outlier only so we can deal with it later
+			// this also handles the case where we have the room create event but the invite's
+			// prev_events reference events we don't have (e.g. user was re-invited after leaving
+			// and missing events were sent while the user was not in the room)
 			await this.eventRepository.insertOutlierEvent(inviteEvent.eventId, inviteEvent.event, residentServer);
 		}
 
@@ -231,5 +234,33 @@ export class InviteService {
 		// we are not the host of the server
 		// so being the origin of the user, we sign the event and send it to the asking server, let them handle the transactions
 		return inviteEvent;
+	}
+
+	/**
+	 * Checks whether the invite event's prev_events and auth_events exist
+	 * locally with fully materialized state so that handlePdu can resolve
+	 * the state at the event. When the local server left a room and missed
+	 * events, references may point to events we never received or to outlier
+	 * events (stateId == ''), making state resolution impossible.
+	 */
+	private async canResolveEventState(event: PersistentEventBase): Promise<boolean> {
+		const prevEventIds = event.getPreviousEventIds();
+		const authEventIds = event.getAuthEventIds();
+
+		if (prevEventIds.length === 0 && authEventIds.length === 0) {
+			return true;
+		}
+
+		const [prevEvents, authEvents] = await Promise.all([
+			prevEventIds.length > 0 ? this.eventRepository.findByIds(prevEventIds).toArray() : Promise.resolve([]),
+			authEventIds.length > 0 ? this.eventRepository.findByIds(authEventIds).toArray() : Promise.resolve([]),
+		]);
+
+		if (prevEvents.length !== prevEventIds.length || authEvents.length !== authEventIds.length) {
+			return false;
+		}
+
+		const allMaterialized = [...prevEvents, ...authEvents].every((e) => !!e.stateId);
+		return allMaterialized;
 	}
 }

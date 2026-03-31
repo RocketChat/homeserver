@@ -731,17 +731,23 @@ export class RoomService {
 
 		// run through state res
 		// validate all auth chain events
+		// Always process initial state, even for existing rooms (re-join after leave).
+		// When a user leaves and re-joins, the room exists locally but we may have missed
+		// events sent while the user was away. processInitialState stores the new state/auth_chain
+		// from send_join and calls notify() for each event, which is how Rocket.Chat learns about
+		// the join. Without this, events go through the staging area where they get stuck on
+		// missing prev_events and are eventually silently dropped after MAX_EVENT_RETRY.
 		try {
 			await stateService.getRoomVersion(roomId);
-
-			this.logger.info({ roomId }, 'state already exists');
+			this.logger.info({ roomId }, 'state already exists, updating with new state from send_join (re-join)');
 		} catch (error) {
-			if (error instanceof UnknownRoomError) {
-				// if already in room, skip this, walk join event to fill the state
-				this.logger.info({ roomId }, 'room not found, processing initial state');
-				await stateService.processInitialState(state, authChain);
+			if (!(error instanceof UnknownRoomError)) {
+				throw error;
 			}
+			this.logger.info({ roomId }, 'room not found, processing initial state');
 		}
+
+		await stateService.processInitialState(state, authChain);
 
 		if (await stateService.isRoomStatePartial(roomId)) {
 			this.logger.info({ roomId }, 'received incomplete graph of state from send_join, completing state before processing join');
