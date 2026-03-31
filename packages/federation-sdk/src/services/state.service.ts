@@ -709,8 +709,10 @@ export class StateService {
 
 		const servers = new Set<string>();
 
+		const residentMemberships = new Set(['join', 'invite', 'ban']);
+
 		for (const event of state.values()) {
-			if (!event.isMembershipEvent() || event.getMembership() !== 'join') {
+			if (!event.isMembershipEvent() || !residentMemberships.has(event.getMembership() ?? '')) {
 				continue;
 			}
 
