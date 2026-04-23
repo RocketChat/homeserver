@@ -41,11 +41,6 @@ export class AppServiceStateRepository {
 		});
 	}
 
-	async getLastTxnId(asId: string): Promise<number> {
-		const state = await this.getState(asId);
-		return state?.lastTxnId ?? 0;
-	}
-
 	async incrementTxnId(asId: string): Promise<number> {
 		const result = await this.collection.findOneAndUpdate(
 			{ _id: asId },

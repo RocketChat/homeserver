@@ -28,16 +28,4 @@ export class AppServiceTransactionRepository {
 			.sort({ txnId: 1 })
 			.toArray();
 	}
-
-	async cleanOld(olderThan: Date): Promise<number> {
-		const result = await this.collection.deleteMany({
-			status: 'sent',
-			sentAt: { $lt: olderThan },
-		});
-		return result.deletedCount;
-	}
-
-	async removeByAppService(asId: string): Promise<void> {
-		await this.collection.deleteMany({ asId });
-	}
 }
