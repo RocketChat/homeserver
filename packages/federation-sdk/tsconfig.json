@@ -9,5 +9,10 @@
 		"tsBuildInfoFile": "./.tsbuildinfo"
 	},
 	"include": ["src/**/*"],
+	"references": [
+		{ "path": "../appservice" },
+		{ "path": "../core" },
+		{ "path": "../room" }
+	],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }

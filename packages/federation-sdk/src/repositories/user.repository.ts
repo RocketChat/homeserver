@@ -8,6 +8,7 @@ export type User = {
 	avatarUrl?: string;
 	avatarETag?: string;
 	federated?: boolean;
+	appserviceId?: string;
 	federation?: {
 		version?: number;
 		mui?: string;

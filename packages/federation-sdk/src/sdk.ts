@@ -1,3 +1,4 @@
+import { BridgeQueryService, NamespaceMatcherService, PingService, RegistrationService } from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
 import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -41,6 +42,10 @@ export class FederationSDK {
 		private readonly federationService: FederationService,
 		public readonly eventEmitterService: EventEmitterService,
 		private readonly federationValidationService: FederationValidationService,
+		private readonly registrationService: RegistrationService,
+		private readonly bridgeQueryService: BridgeQueryService,
+		private readonly namespaceMatcherService: NamespaceMatcherService,
+		private readonly pingService: PingService,
 	) {}
 
 	/**
@@ -281,5 +286,59 @@ export class FederationSDK {
 
 	updateRoomMembership(...args: Parameters<typeof this.roomService.updateRoomMembership>) {
 		return this.roomService.updateRoomMembership(...args);
+	}
+
+	// --- Application Service ---
+
+	getAllRegistrations(...args: Parameters<typeof this.registrationService.getAll>) {
+		return this.registrationService.getAll(...args);
+	}
+
+	getRegistrationById(...args: Parameters<typeof this.registrationService.getById>) {
+		return this.registrationService.getById(...args);
+	}
+
+	getRegistrationByAsToken(...args: Parameters<typeof this.registrationService.getByAsToken>) {
+		return this.registrationService.getByAsToken(...args);
+	}
+
+	registerAppService(...args: Parameters<typeof this.registrationService.register>) {
+		return this.registrationService.register(...args);
+	}
+
+	unregisterAppService(...args: Parameters<typeof this.registrationService.unregister>) {
+		return this.registrationService.unregister(...args);
+	}
+
+	getAllProtocols(...args: Parameters<typeof this.bridgeQueryService.getAllProtocols>) {
+		return this.bridgeQueryService.getAllProtocols(...args);
+	}
+
+	queryThirdPartyProtocol(...args: Parameters<typeof this.bridgeQueryService.queryThirdPartyProtocol>) {
+		return this.bridgeQueryService.queryThirdPartyProtocol(...args);
+	}
+
+	queryThirdPartyUser(...args: Parameters<typeof this.bridgeQueryService.queryThirdPartyUser>) {
+		return this.bridgeQueryService.queryThirdPartyUser(...args);
+	}
+
+	queryThirdPartyLocation(...args: Parameters<typeof this.bridgeQueryService.queryThirdPartyLocation>) {
+		return this.bridgeQueryService.queryThirdPartyLocation(...args);
+	}
+
+	isExclusiveNamespace(...args: Parameters<typeof this.namespaceMatcherService.isExclusive>) {
+		return this.namespaceMatcherService.isExclusive(...args);
+	}
+
+	isUserInAppServiceNamespace(...args: Parameters<typeof this.namespaceMatcherService.isUserInNamespace>) {
+		return this.namespaceMatcherService.isUserInNamespace(...args);
+	}
+
+	pingAppService(...args: Parameters<typeof this.pingService.ping>) {
+		return this.pingService.ping(...args);
+	}
+
+	getAppServiceState(...args: Parameters<typeof this.registrationService.getState>) {
+		return this.registrationService.getState(...args);
 	}
 }

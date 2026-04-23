@@ -5,11 +5,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { swagger } from '@elysiajs/swagger';
+import { initAppService, resolveAppServices } from '@rocket.chat/appservice';
 import type { Emitter } from '@rocket.chat/emitter';
-import { type HomeserverEventSignatures, federationSDK, init } from '@rocket.chat/federation-sdk';
+import { type HomeserverEventSignatures, EventEmitterService, federationSDK, init } from '@rocket.chat/federation-sdk';
 import * as dotenv from 'dotenv';
 import Elysia from 'elysia';
+import { container } from 'tsyringe';
 
+import { adminAppServicePlugin } from './controllers/admin/appservice.controller';
+import { clientDirectoryPlugin } from './controllers/client/directory.controller';
+import { clientEventsPlugin } from './controllers/client/events.controller';
+import { clientAppservicePingPlugin } from './controllers/client/ping.controller';
+import { clientProfilePlugin } from './controllers/client/profile.controller';
+import { clientRegisterPlugin } from './controllers/client/register.controller';
+import { clientRoomsPlugin } from './controllers/client/rooms.controller';
+import { clientThirdPartyPlugin } from './controllers/client/thirdparty.controller';
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { mediaPlugin } from './controllers/federation/media.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
@@ -33,16 +43,21 @@ export async function setup() {
 		dotenv.config({ path: envPath });
 	}
 
+	const dbUri = process.env.MONGO_URL || 'mongodb://localhost:27017/matrix';
+	const dbPoolSize = Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10);
+
 	await init({
 		dbConfig: {
-			uri: process.env.MONGO_URL || 'mongodb://localhost:27017/matrix',
-			poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+			uri: dbUri,
+			poolSize: dbPoolSize,
 		},
 	});
 
+	const serverName = process.env.SERVER_NAME || 'rc1';
+
 	federationSDK.setConfig({
 		instanceId: crypto.randomUUID(),
-		serverName: process.env.SERVER_NAME || 'rc1',
+		serverName,
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
 		matrixDomain: process.env.MATRIX_DOMAIN || 'rc1',
 		keyRefreshInterval: Number.parseInt(process.env.MATRIX_KEY_REFRESH_INTERVAL || '60', 10),
@@ -77,7 +92,44 @@ export async function setup() {
 			processPresence: process.env.EDU_PROCESS_PRESENCE === 'true',
 			processReceipt: process.env.EDU_PROCESS_RECEIPT === 'true',
 		},
+		appservice: {
+			configDir: process.env.APPSERVICE_CONFIG_DIR,
+			batchWindowMs: process.env.APPSERVICE_BATCH_WINDOW_MS ? Number.parseInt(process.env.APPSERVICE_BATCH_WINDOW_MS, 10) : 100,
+		},
 	});
+
+	// Initialize Application Service support
+	// Re-use the same DB connection by getting it from the federation-sdk's init
+	const { MongoClient } = await import('mongodb');
+	const mongoClient = new MongoClient(dbUri, { maxPoolSize: dbPoolSize });
+	const db = mongoClient.db();
+	await initAppService(db);
+
+	// Wire up event routing for appservices
+	const appServices = resolveAppServices();
+
+	// Set up resolvers for room aliases and members
+	// These provide the data the event router needs for interest detection
+	appServices.eventRouter.setResolvers(
+		async (roomId: string) => {
+			// TODO: Implement alias lookup from room state
+			return [];
+		},
+		async (roomId: string) => {
+			// TODO: Implement member list from room state
+			return [];
+		},
+	);
+
+	// Subscribe event router to homeserver events via the federation SDK's event emitter
+	const emitter = container.resolve(EventEmitterService);
+	appServices.eventRouter.subscribe(emitter);
+
+	// Load YAML registrations from config directory if configured
+	const configDir = federationSDK.getConfig('appservice')?.configDir;
+	if (configDir) {
+		await appServices.registrationService.loadAllFromDirectory(configDir);
+	}
 
 	const app = new Elysia();
 
@@ -88,17 +140,19 @@ export async function setup() {
 					info: {
 						title: 'Matrix Homeserver API',
 						version: '1.0.0',
-						description: 'Matrix Protocol Implementation - Federation and Internal APIs',
+						description: 'Matrix Protocol Implementation - Federation, Client-Server, and Application Service APIs',
 					},
 				},
 			}),
 		)
+		// Federation API
 		.use(invitePlugin)
 		.use(statePlugin)
 		.use(profilesPlugin)
 		.use(sendJoinPlugin)
 		.use(transactionsPlugin)
 		.use(versionsPlugin)
+		// Internal API
 		.use(internalDirectMessagePlugin)
 		.use(internalInvitePlugin)
 		.use(internalMessagePlugin)
@@ -108,7 +162,17 @@ export async function setup() {
 		.use(wellKnownPlugin)
 		.use(roomPlugin)
 		.use(mediaPlugin)
-		.use(internalRequestPlugin);
+		.use(internalRequestPlugin)
+		// Client-Server API (for bridges)
+		.use(clientRegisterPlugin(serverName))
+		.use(clientEventsPlugin(serverName))
+		.use(clientRoomsPlugin(serverName))
+		.use(clientProfilePlugin(serverName))
+		.use(clientDirectoryPlugin(serverName))
+		.use(clientThirdPartyPlugin(serverName))
+		.use(clientAppservicePingPlugin(serverName))
+		// Admin API
+		.use(adminAppServicePlugin);
 
 	return { app };
 }

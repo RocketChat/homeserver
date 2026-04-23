@@ -12,6 +12,7 @@
 		{ "path": "./packages/crypto" },
 		{ "path": "./packages/federation-sdk" },
 		{ "path": "./packages/homeserver" },
-		{ "path": "./packages/room" }
+		{ "path": "./packages/room" },
+		{ "path": "./packages/appservice" }
 	]
 }

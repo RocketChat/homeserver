@@ -1,0 +1,72 @@
+import type { Collection } from 'mongodb';
+import { inject, singleton } from 'tsyringe';
+
+import type { AppServiceState } from '../models/appservice.model';
+
+@singleton()
+export class AppServiceStateRepository {
+	constructor(
+		@inject('AppServiceStateCollection')
+		private readonly collection: Collection<AppServiceState>,
+	) {}
+
+	async getState(asId: string): Promise<AppServiceState | null> {
+		return this.collection.findOne({ _id: asId });
+	}
+
+	async upsertState(asId: string, updates: Partial<Omit<AppServiceState, '_id'>>): Promise<void> {
+		await this.collection.updateOne(
+			{ _id: asId },
+			{
+				$set: { ...updates, updatedAt: new Date() },
+				$setOnInsert: { _id: asId },
+			},
+			{ upsert: true },
+		);
+	}
+
+	async markUp(asId: string): Promise<void> {
+		await this.upsertState(asId, {
+			state: 'up',
+			lastError: undefined,
+			lastErrorAt: undefined,
+		});
+	}
+
+	async markDown(asId: string, error: string): Promise<void> {
+		await this.upsertState(asId, {
+			state: 'down',
+			lastError: error,
+			lastErrorAt: new Date(),
+		});
+	}
+
+	async getLastTxnId(asId: string): Promise<number> {
+		const state = await this.getState(asId);
+		return state?.lastTxnId ?? 0;
+	}
+
+	async incrementTxnId(asId: string): Promise<number> {
+		const result = await this.collection.findOneAndUpdate(
+			{ _id: asId },
+			{
+				$inc: { lastTxnId: 1 },
+				$set: { updatedAt: new Date() },
+				$setOnInsert: {
+					_id: asId,
+					state: 'up' as const,
+					streamOrdering: 0,
+					readReceiptStreamId: 0,
+					presenceStreamId: 0,
+					toDeviceStreamId: 0,
+				},
+			},
+			{ upsert: true, returnDocument: 'after' },
+		);
+		return result?.lastTxnId ?? 1;
+	}
+
+	async remove(asId: string): Promise<void> {
+		await this.collection.deleteOne({ _id: asId });
+	}
+}

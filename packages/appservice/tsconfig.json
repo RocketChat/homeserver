@@ -10,10 +10,7 @@
 	},
 	"references": [
 		{ "path": "../core" },
-		{ "path": "../crypto" },
-		{ "path": "../federation-sdk" },
-		{ "path": "../room" },
-		{ "path": "../appservice" }
+		{ "path": "../room" }
 	],
 	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]

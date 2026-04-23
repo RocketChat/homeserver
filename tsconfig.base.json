@@ -51,6 +51,9 @@
 			],
 			"@rocket.chat/federation-room/*": [
 				"packages/room/src/*"
+			],
+			"@rocket.chat/appservice/*": [
+				"packages/appservice/src/*"
 			]
 		}
 	},

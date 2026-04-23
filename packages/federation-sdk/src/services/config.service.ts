@@ -30,6 +30,12 @@ export interface AppConfig {
 		processPresence: boolean;
 		processReceipt?: boolean;
 	};
+	appservice?: {
+		configDir?: string;
+		batchWindowMs?: number;
+		maxRetries?: number;
+		maxBackoffMs?: number;
+	};
 	userCheckTimeoutMs?: number;
 	networkCheckTimeoutMs?: number;
 }
@@ -62,6 +68,14 @@ export const AppConfigSchema = z.object({
 		processPresence: z.boolean(),
 		processReceipt: z.boolean().optional(),
 	}),
+	appservice: z
+		.object({
+			configDir: z.string().optional(),
+			batchWindowMs: z.number().int().min(0).default(100).optional(),
+			maxRetries: z.number().int().min(1).default(10).optional(),
+			maxBackoffMs: z.number().int().min(1000).default(60000).optional(),
+		})
+		.optional(),
 	networkCheckTimeoutMs: z.number().int().min(1000, 'Network check timeout must be at least 1000ms').default(5000).optional(),
 	userCheckTimeoutMs: z.number().int().min(1000, 'User check timeout must be at least 1000ms').default(10000).optional(),
 });

@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 
 import type { EventStagingStore } from '@rocket.chat/federation-core';
-import type { EventID, EventStore, PduForType } from '@rocket.chat/federation-room';
+import type { EventStore } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
@@ -19,6 +19,10 @@ import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 
 export { FederationRequestError } from './services/federation-request.service';
+export { EventEmitterService } from './services/event-emitter.service';
+
+export type { CachedAppService, AppServiceRegistration, AppServiceState } from '@rocket.chat/appservice';
+export type { PingResult, PingError } from '@rocket.chat/appservice';
 
 export type {
 	Pdu,
@@ -52,84 +56,7 @@ export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
 export { FederationValidationService, FederationValidationError } from './services/federation-validation.service';
 
-export type HomeserverEventSignatures = {
-	'homeserver.ping': {
-		message: string;
-	};
-	'homeserver.matrix.typing': {
-		room_id: string;
-		user_id: string;
-		typing: boolean;
-		origin?: string;
-	};
-	'homeserver.matrix.presence': {
-		user_id: string;
-		presence: 'online' | 'offline' | 'unavailable';
-		last_active_ago?: number;
-		origin?: string;
-	};
-	'homeserver.matrix.receipt': {
-		room_id: string;
-		user_id: string;
-		event_ids: string[];
-		ts: number;
-		thread_id?: string;
-	};
-	'homeserver.matrix.encryption': {
-		event_id: EventID;
-		event: PduForType<'m.room.encryption'>;
-	};
-	'homeserver.matrix.encrypted': {
-		event_id: EventID;
-		event: PduForType<'m.room.encrypted'>;
-	};
-	'homeserver.matrix.room.create': {
-		event: PduForType<'m.room.create'>;
-		event_id: EventID;
-	};
-	'homeserver.matrix.message': {
-		event_id: EventID;
-		event: PduForType<'m.room.message'>;
-	};
-	'homeserver.matrix.reaction': {
-		event_id: EventID;
-		event: PduForType<'m.reaction'>;
-	};
-	'homeserver.matrix.redaction': {
-		event_id: EventID;
-		event: PduForType<'m.room.redaction'>;
-	};
-	'homeserver.matrix.membership': {
-		event_id: EventID;
-		event: PduForType<'m.room.member'>;
-	};
-	'homeserver.matrix.room.name': {
-		event_id: EventID;
-		event: PduForType<'m.room.name'>;
-	};
-	'homeserver.matrix.room.topic': {
-		event_id: EventID;
-		event: PduForType<'m.room.topic'>;
-	};
-	'homeserver.matrix.room.server_acl': {
-		event_id: EventID;
-		event: PduForType<'m.room.server_acl'>;
-	};
-	'homeserver.matrix.room.power_levels': {
-		event_id: EventID;
-		event: PduForType<'m.room.power_levels'>;
-	};
-	'homeserver.matrix.room.role': {
-		sender_id: string; // who changed
-		user_id: string; // whose changed
-		room_id: string; // room where the change happened
-		role: 'moderator' | 'owner' | 'user'; // 50, 100, 0
-	};
-	'homeserver.matrix.membership.rejected': {
-		event: PduForType<'m.room.member'>;
-		reason: string;
-	};
-};
+export type { HomeserverEventSignatures } from '@rocket.chat/federation-core';
 
 export { roomIdSchema, userIdSchema, eventIdSchema, extractDomainFromId } from '@rocket.chat/federation-room';
 
