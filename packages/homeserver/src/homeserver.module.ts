@@ -5,12 +5,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { swagger } from '@elysiajs/swagger';
-import { initAppService, resolveAppServices } from '@rocket.chat/appservice';
-import type { Emitter } from '@rocket.chat/emitter';
-import { type HomeserverEventSignatures, EventEmitterService, federationSDK, init } from '@rocket.chat/federation-sdk';
+import { federationSDK, init } from '@rocket.chat/federation-sdk';
 import * as dotenv from 'dotenv';
 import Elysia from 'elysia';
-import { container } from 'tsyringe';
 
 import { adminAppServicePlugin } from './controllers/admin/appservice.controller';
 import { clientDirectoryPlugin } from './controllers/client/directory.controller';
@@ -98,37 +95,10 @@ export async function setup() {
 		},
 	});
 
-	// Initialize Application Service support
-	// Re-use the same DB connection by getting it from the federation-sdk's init
-	const { MongoClient } = await import('mongodb');
-	const mongoClient = new MongoClient(dbUri, { maxPoolSize: dbPoolSize });
-	const db = mongoClient.db();
-	await initAppService(db);
-
-	// Wire up event routing for appservices
-	const appServices = resolveAppServices();
-
-	// Set up resolvers for room aliases and members
-	// These provide the data the event router needs for interest detection
-	appServices.eventRouter.setResolvers(
-		async (roomId: string) => {
-			// TODO: Implement alias lookup from room state
-			return [];
-		},
-		async (roomId: string) => {
-			// TODO: Implement member list from room state
-			return [];
-		},
-	);
-
-	// Subscribe event router to homeserver events via the federation SDK's event emitter
-	const emitter = container.resolve(EventEmitterService);
-	appServices.eventRouter.subscribe(emitter);
-
 	// Load YAML registrations from config directory if configured
 	const configDir = federationSDK.getConfig('appservice')?.configDir;
 	if (configDir) {
-		await appServices.registrationService.loadAllFromDirectory(configDir);
+		await federationSDK.loadAppServiceRegistrationsFromDirectory(configDir);
 	}
 
 	const app = new Elysia();

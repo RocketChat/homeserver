@@ -310,6 +310,10 @@ export class FederationSDK {
 		return this.registrationService.unregister(...args);
 	}
 
+	loadAppServiceRegistrationsFromDirectory(...args: Parameters<typeof this.registrationService.loadAllFromDirectory>) {
+		return this.registrationService.loadAllFromDirectory(...args);
+	}
+
 	getAllProtocols(...args: Parameters<typeof this.bridgeQueryService.getAllProtocols>) {
 		return this.bridgeQueryService.getAllProtocols(...args);
 	}

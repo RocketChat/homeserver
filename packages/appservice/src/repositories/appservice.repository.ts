@@ -8,7 +8,9 @@ export class AppServiceRepository {
 	constructor(
 		@inject('AppServiceCollection')
 		private readonly collection: Collection<AppServiceRegistration>,
-	) {}
+	) {
+		this.collection.createIndex({ asToken: 1 }, { unique: true });
+	}
 
 	async findAll(): Promise<AppServiceRegistration[]> {
 		return this.collection.find().toArray();

@@ -1,5 +1,12 @@
 import 'reflect-metadata';
 
+import {
+	type AppServiceRegistration,
+	type AppServiceState,
+	type AppServiceTransaction,
+	EventRouterService,
+	RegistrationService,
+} from '@rocket.chat/appservice';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
@@ -111,8 +118,33 @@ export async function init({
 		useValue: db.collection<User>('users'),
 	});
 
+	container.register<Collection<AppServiceRegistration>>('AppServiceCollection', {
+		useValue: db.collection<AppServiceRegistration>('rocketchat_appservices'),
+	});
+
+	container.register<Collection<AppServiceState>>('AppServiceStateCollection', {
+		useValue: db.collection<AppServiceState>('rocketchat_appservices_state'),
+	});
+
+	container.register<Collection<AppServiceTransaction>>('AppServiceTxnCollection', {
+		useValue: db.collection<AppServiceTransaction>('rocketchat_appservices_txns'),
+	});
+
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);
+
+	// Load any existing appservice registrations into cache.
+	await container.resolve(RegistrationService).initialize();
+
+	// Wire the event router into the homeserver event emitter so appservices
+	// receive transactions for events in their namespaces.
+	const eventRouter = container.resolve(EventRouterService);
+	// TODO: replace these stubs with real lookups against room state once exposed by the SDK.
+	eventRouter.setResolvers(
+		async () => [],
+		async () => [],
+	);
+	eventRouter.subscribe(container.resolve(EventEmitterService));
 
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {

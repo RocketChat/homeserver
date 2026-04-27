@@ -8,7 +8,10 @@ export class AppServiceTransactionRepository {
 	constructor(
 		@inject('AppServiceTxnCollection')
 		private readonly collection: Collection<AppServiceTransaction>,
-	) {}
+	) {
+		this.collection.createIndex({ asId: 1, txnId: 1 }, { unique: true });
+		this.collection.createIndex({ asId: 1, status: 1 });
+	}
 
 	async create(txn: AppServiceTransaction): Promise<void> {
 		await this.collection.insertOne(txn);
