@@ -38,6 +38,12 @@ export class RegistrationService {
 		return this.registerFromYaml(yaml);
 	}
 
+	/**
+	 * Reload all YAML-source registrations from a directory. Existing
+	 * registrations marked `source: 'yaml'` that no longer have a matching
+	 * file are removed (matches Synapse semantics where the YAML files are
+	 * the source of truth). API-source registrations are left untouched.
+	 */
 	async loadAllFromDirectory(dirPath: string): Promise<number> {
 		if (!fs.existsSync(dirPath)) {
 			this.logger.warn({ msg: `Appservice config directory not found: ${dirPath}` });
@@ -45,8 +51,13 @@ export class RegistrationService {
 		}
 
 		const files = fs.readdirSync(dirPath).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
-		let loaded = 0;
 
+		// Drop the previous YAML set from DB and cache before reloading from disk.
+		const removedIds = await this.appServiceRepo.removeBySource('yaml');
+		await Promise.all(removedIds.map((id) => this.stateRepo.remove(id)));
+		for (const id of removedIds) this.evictFromCache(id);
+
+		let loaded = 0;
 		const results = await Promise.allSettled(files.map((file) => this.loadFromYaml(path.join(dirPath, file))));
 		for (let i = 0; i < results.length; i++) {
 			if (results[i].status === 'fulfilled') {
@@ -59,7 +70,9 @@ export class RegistrationService {
 			}
 		}
 
-		this.logger.info({ msg: `Loaded ${loaded} appservice registrations from ${dirPath}` });
+		this.logger.info({
+			msg: `Loaded ${loaded} appservice registrations from ${dirPath} (removed ${removedIds.length} stale)`,
+		});
 		return loaded;
 	}
 
@@ -87,7 +100,7 @@ export class RegistrationService {
 		}
 
 		this.cacheRegistration(registration);
-		this.logger.info({ msg: `Registered appservice: ${registration._id}` });
+		this.logger.info({ msg: `Registered appservice: ${registration._id} (source: ${registration.source})` });
 
 		return registration;
 	}
@@ -96,14 +109,18 @@ export class RegistrationService {
 		const removed = await this.appServiceRepo.remove(id);
 		if (removed) {
 			await this.stateRepo.remove(id);
-			const cached = this.cache.get(id);
-			if (cached) {
-				this.tokenIndex.delete(cached.registration.asToken);
-			}
-			this.cache.delete(id);
+			this.evictFromCache(id);
 			this.logger.info({ msg: `Unregistered appservice: ${id}` });
 		}
 		return removed;
+	}
+
+	private evictFromCache(id: string): void {
+		const cached = this.cache.get(id);
+		if (cached) {
+			this.tokenIndex.delete(cached.registration.asToken);
+		}
+		this.cache.delete(id);
 	}
 
 	getAll(): CachedAppService[] {
@@ -192,6 +209,7 @@ export class RegistrationService {
 			protocols: yaml.protocols ?? [],
 			rateLimited: yaml.rate_limited ?? true,
 			receiveEphemeral: yaml['de.sorunome.msc2409.push_ephemeral'] ?? false,
+			source: 'yaml',
 			createdAt: now,
 			updatedAt: now,
 		};

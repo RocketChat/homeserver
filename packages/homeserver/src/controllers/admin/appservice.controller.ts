@@ -43,6 +43,7 @@ export const adminAppServicePlugin = (app: Elysia) => {
 						protocols: body.protocols ?? [],
 						rateLimited: body.rate_limited ?? true,
 						receiveEphemeral: body.receive_ephemeral ?? false,
+						source: 'api',
 						createdAt: now,
 						updatedAt: now,
 					};
@@ -122,6 +123,7 @@ export const adminAppServicePlugin = (app: Elysia) => {
 								sender_localpart: as.registration.senderLocalpart,
 								protocols: as.registration.protocols,
 								namespaces: as.registration.namespaces,
+								source: as.registration.source,
 								state: state?.state ?? 'unknown',
 								last_txn_id: state?.lastTxnId ?? 0,
 							};
@@ -159,6 +161,7 @@ export const adminAppServicePlugin = (app: Elysia) => {
 						namespaces: as.registration.namespaces,
 						rate_limited: as.registration.rateLimited,
 						receive_ephemeral: as.registration.receiveEphemeral,
+						source: as.registration.source,
 						state: state?.state ?? 'unknown',
 						last_txn_id: state?.lastTxnId ?? 0,
 						last_error: state?.lastError,

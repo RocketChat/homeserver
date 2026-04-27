@@ -1,3 +1,5 @@
+export type AppServiceSource = 'yaml' | 'api';
+
 export interface AppServiceRegistration {
 	_id: string;
 	url: string | null;
@@ -8,6 +10,7 @@ export interface AppServiceRegistration {
 	protocols: string[];
 	rateLimited: boolean;
 	receiveEphemeral: boolean;
+	source: AppServiceSource;
 	createdAt: Date;
 	updatedAt: Date;
 }
