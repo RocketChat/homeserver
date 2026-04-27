@@ -32,9 +32,6 @@ export interface AppConfig {
 	};
 	appservice?: {
 		configDir?: string;
-		batchWindowMs?: number;
-		maxRetries?: number;
-		maxBackoffMs?: number;
 	};
 	userCheckTimeoutMs?: number;
 	networkCheckTimeoutMs?: number;
@@ -71,9 +68,6 @@ export const AppConfigSchema = z.object({
 	appservice: z
 		.object({
 			configDir: z.string().optional(),
-			batchWindowMs: z.number().int().min(0).default(100).optional(),
-			maxRetries: z.number().int().min(1).default(10).optional(),
-			maxBackoffMs: z.number().int().min(1000).default(60000).optional(),
 		})
 		.optional(),
 	networkCheckTimeoutMs: z.number().int().min(1000, 'Network check timeout must be at least 1000ms').default(5000).optional(),

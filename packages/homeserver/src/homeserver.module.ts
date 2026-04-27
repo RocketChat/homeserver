@@ -91,7 +91,6 @@ export async function setup() {
 		},
 		appservice: {
 			configDir: process.env.APPSERVICE_CONFIG_DIR,
-			batchWindowMs: process.env.APPSERVICE_BATCH_WINDOW_MS ? Number.parseInt(process.env.APPSERVICE_BATCH_WINDOW_MS, 10) : 100,
 		},
 	});
 

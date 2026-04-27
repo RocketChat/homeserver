@@ -11,7 +11,7 @@ interface EventBatch {
 	timer: ReturnType<typeof setTimeout> | null;
 }
 
-const DEFAULT_BATCH_WINDOW_MS = 100;
+const BATCH_WINDOW_MS = 100;
 const MAX_BATCH_SIZE = 50;
 
 @singleton()
@@ -19,8 +19,6 @@ export class EventRouterService {
 	private readonly logger = createLogger('EventRouterService');
 
 	private batches: Map<string, EventBatch> = new Map();
-
-	private batchWindowMs = DEFAULT_BATCH_WINDOW_MS;
 
 	// Callback to resolve room aliases and members for interest detection
 	private roomAliasResolver?: (roomId: string) => Promise<string[]>;
@@ -36,10 +34,6 @@ export class EventRouterService {
 	setResolvers(aliasResolver: (roomId: string) => Promise<string[]>, memberResolver: (roomId: string) => Promise<string[]>): void {
 		this.roomAliasResolver = aliasResolver;
 		this.roomMemberResolver = memberResolver;
-	}
-
-	setBatchWindowMs(ms: number): void {
-		this.batchWindowMs = ms;
 	}
 
 	/**
@@ -150,7 +144,7 @@ export class EventRouterService {
 		if (!batch.timer) {
 			batch.timer = setTimeout(() => {
 				this.flushBatch(appservice);
-			}, this.batchWindowMs);
+			}, BATCH_WINDOW_MS);
 		}
 	}
 
