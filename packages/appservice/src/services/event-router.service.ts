@@ -1,13 +1,39 @@
 import { createLogger, type EventHandlerOf, type HomeserverEventSignatures } from '@rocket.chat/federation-core';
+import type { Pdu } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { NamespaceMatcherService } from './namespace-matcher.service';
 import { TransactionSenderService } from './transaction-sender.service';
 import type { CachedAppService } from '../models/appservice.model';
 
+const PERSISTENT_EVENT_NAMES = [
+	'homeserver.matrix.message',
+	'homeserver.matrix.membership',
+	'homeserver.matrix.room.create',
+	'homeserver.matrix.reaction',
+	'homeserver.matrix.redaction',
+	'homeserver.matrix.room.name',
+	'homeserver.matrix.room.topic',
+	'homeserver.matrix.room.power_levels',
+	'homeserver.matrix.room.server_acl',
+	'homeserver.matrix.encryption',
+	'homeserver.matrix.encrypted',
+] as const satisfies readonly (keyof HomeserverEventSignatures)[];
+
+const EPHEMERAL_EVENT_NAMES = [
+	'homeserver.matrix.typing',
+	'homeserver.matrix.presence',
+	'homeserver.matrix.receipt',
+] as const satisfies readonly (keyof HomeserverEventSignatures)[];
+
+type PersistentEventName = (typeof PERSISTENT_EVENT_NAMES)[number];
+type EphemeralEventName = (typeof EPHEMERAL_EVENT_NAMES)[number];
+type PersistentEventPayload = HomeserverEventSignatures[PersistentEventName];
+type EphemeralEventPayload = HomeserverEventSignatures[EphemeralEventName];
+
 interface EventBatch {
-	events: Record<string, unknown>[];
-	ephemeral: Record<string, unknown>[];
+	events: Pdu[];
+	ephemeral: EphemeralEventPayload[];
 	timer: ReturnType<typeof setTimeout> | null;
 }
 
@@ -45,47 +71,23 @@ export class EventRouterService {
 			handler: EventHandlerOf<HomeserverEventSignatures, K>,
 		): (() => void) | undefined;
 	}): void {
-		// Persistent events
-		const persistentEvents: (keyof HomeserverEventSignatures)[] = [
-			'homeserver.matrix.message',
-			'homeserver.matrix.membership',
-			'homeserver.matrix.room.create',
-			'homeserver.matrix.reaction',
-			'homeserver.matrix.redaction',
-			'homeserver.matrix.room.name',
-			'homeserver.matrix.room.topic',
-			'homeserver.matrix.room.power_levels',
-			'homeserver.matrix.room.server_acl',
-			'homeserver.matrix.encryption',
-			'homeserver.matrix.encrypted',
-		];
-
-		for (const eventName of persistentEvents) {
-			emitter.on(eventName, (async (data: any) => {
-				await this.routeEvent(data.event, false);
-			}) as any);
+		for (const name of PERSISTENT_EVENT_NAMES) {
+			emitter.on(name, async (data: PersistentEventPayload) => {
+				await this.routePersistent(data.event);
+			});
 		}
 
-		// Ephemeral events
-		const ephemeralEvents: (keyof HomeserverEventSignatures)[] = [
-			'homeserver.matrix.typing',
-			'homeserver.matrix.presence',
-			'homeserver.matrix.receipt',
-		];
-
-		for (const eventName of ephemeralEvents) {
-			emitter.on(eventName, (async (data: any) => {
-				await this.routeEphemeralEvent(data);
-			}) as any);
+		for (const name of EPHEMERAL_EVENT_NAMES) {
+			emitter.on(name, async (data: EphemeralEventPayload) => {
+				await this.routeEphemeral(data);
+			});
 		}
 
 		this.logger.info({ msg: 'EventRouter subscribed to homeserver events' });
 	}
 
-	private async routeEvent(event: Record<string, unknown>, isEphemeral: boolean): Promise<void> {
-		const roomId = event.room_id as string;
-		const sender = event.sender as string;
-
+	private async routePersistent(event: Pdu): Promise<void> {
+		const { room_id: roomId, sender } = event;
 		if (!roomId || !sender) return;
 
 		const [aliases, members] = await Promise.all([this.roomAliasResolver?.(roomId) ?? [], this.roomMemberResolver?.(roomId) ?? []]);
@@ -93,16 +95,15 @@ export class EventRouterService {
 		const interested = this.namespaceMatcher.getInterestedAppServices(roomId, sender, aliases, members);
 
 		for (const as of interested) {
-			if (isEphemeral && !as.registration.receiveEphemeral) continue;
-			this.addToBatch(as, event, isEphemeral);
+			const batch = this.getOrCreateBatch(as);
+			batch.events.push(event);
+			this.afterAppend(as, batch);
 		}
 	}
 
-	private async routeEphemeralEvent(data: Record<string, unknown>): Promise<void> {
-		// Build a minimal event-like object from EDU data
-		const event = { ...data };
-		const roomId = (data.room_id as string) || '';
-		const sender = (data.user_id as string) || '';
+	private async routeEphemeral(payload: EphemeralEventPayload): Promise<void> {
+		const roomId = 'room_id' in payload ? payload.room_id : '';
+		const sender = payload.user_id;
 
 		const [aliases, members] = await Promise.all([
 			roomId ? this.roomAliasResolver?.(roomId) ?? [] : [],
@@ -113,34 +114,27 @@ export class EventRouterService {
 
 		for (const as of interested) {
 			if (!as.registration.receiveEphemeral) continue;
-			this.addToBatch(as, event, true);
+			const batch = this.getOrCreateBatch(as);
+			batch.ephemeral.push(payload);
+			this.afterAppend(as, batch);
 		}
 	}
 
-	private addToBatch(appservice: CachedAppService, event: Record<string, unknown>, isEphemeral: boolean): void {
+	private getOrCreateBatch(appservice: CachedAppService): EventBatch {
 		const asId = appservice.registration._id;
 		let batch = this.batches.get(asId);
-
 		if (!batch) {
 			batch = { events: [], ephemeral: [], timer: null };
 			this.batches.set(asId, batch);
 		}
+		return batch;
+	}
 
-		if (isEphemeral) {
-			batch.ephemeral.push(event);
-		} else {
-			batch.events.push(event);
-		}
-
-		const totalSize = batch.events.length + batch.ephemeral.length;
-
-		// Flush immediately if batch is full
-		if (totalSize >= MAX_BATCH_SIZE) {
+	private afterAppend(appservice: CachedAppService, batch: EventBatch): void {
+		if (batch.events.length + batch.ephemeral.length >= MAX_BATCH_SIZE) {
 			this.flushBatch(appservice);
 			return;
 		}
-
-		// Set up timer for batch window
 		if (!batch.timer) {
 			batch.timer = setTimeout(() => {
 				this.flushBatch(appservice);
