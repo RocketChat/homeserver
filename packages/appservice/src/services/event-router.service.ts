@@ -46,20 +46,15 @@ export class EventRouterService {
 
 	private batches: Map<string, EventBatch> = new Map();
 
-	// Callback to resolve room aliases and members for interest detection
-	private roomAliasResolver?: (roomId: string) => Promise<string[]>;
-
-	private roomMemberResolver?: (roomId: string) => Promise<string[]>;
+	// Resolves the aliases and joined members of a room — needed for namespace
+	// interest detection. Injected from federation-sdk since the appservice
+	// package doesn't own room state.
+	private roomStateResolver?: (roomId: string) => Promise<{ aliases: string[]; members: string[] }>;
 
 	constructor(private readonly namespaceMatcher: NamespaceMatcherService, private readonly transactionSender: TransactionSenderService) {}
 
-	/**
-	 * Set resolvers for room aliases and members. These are injected from the
-	 * homeserver layer since the appservice package doesn't own room state.
-	 */
-	setResolvers(aliasResolver: (roomId: string) => Promise<string[]>, memberResolver: (roomId: string) => Promise<string[]>): void {
-		this.roomAliasResolver = aliasResolver;
-		this.roomMemberResolver = memberResolver;
+	setRoomStateResolver(resolver: (roomId: string) => Promise<{ aliases: string[]; members: string[] }>): void {
+		this.roomStateResolver = resolver;
 	}
 
 	/**
@@ -105,10 +100,9 @@ export class EventRouterService {
 		const roomId = 'room_id' in payload ? payload.room_id : '';
 		const sender = payload.user_id;
 
-		const [aliases, members] = await Promise.all([
-			roomId ? this.roomAliasResolver?.(roomId) ?? [] : [],
-			roomId ? this.roomMemberResolver?.(roomId) ?? [] : [],
-		]);
+		const { aliases, members } = roomId
+			? (await this.roomStateResolver?.(roomId)) ?? { aliases: [], members: [] }
+			: { aliases: [], members: [] };
 
 		const interested = this.namespaceMatcher.getInterestedAppServices(roomId, sender, aliases, members);
 

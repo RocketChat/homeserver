@@ -157,6 +157,21 @@ export class RoomState {
 		return users;
 	}
 
+	// Aliases this room advertises via m.room.canonical_alias (canonical + alternates).
+	// Does not include aliases registered only in a homeserver's local directory.
+	getCanonicalAliases(): string[] {
+		const event = getStateByMapKey(this.stateMap, {
+			type: 'm.room.canonical_alias',
+		});
+		if (!event || !event.isCanonicalAliasEvent()) return [];
+
+		const content = event.getContent();
+		const aliases: string[] = [];
+		if (content.alias) aliases.push(content.alias);
+		if (content.alt_aliases?.length) aliases.push(...content.alt_aliases);
+		return aliases;
+	}
+
 	getMemberJoinEvents() {
 		const events = [] as PersistentEventBase<RoomVersion, 'm.room.member'>[];
 		for (const event of this.stateMap.values()) {

@@ -8,7 +8,7 @@ import {
 	RegistrationService,
 } from '@rocket.chat/appservice';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
-import type { EventStore } from '@rocket.chat/federation-room';
+import type { EventStore, RoomID } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
@@ -24,6 +24,7 @@ import { FederationSDK } from './sdk';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
+import { StateService } from './services/state.service';
 
 export { FederationRequestError } from './services/federation-request.service';
 export { EventEmitterService } from './services/event-emitter.service';
@@ -139,11 +140,15 @@ export async function init({
 	// Wire the event router into the homeserver event emitter so appservices
 	// receive transactions for events in their namespaces.
 	const eventRouter = container.resolve(EventRouterService);
-	// TODO: replace these stubs with real lookups against room state once exposed by the SDK.
-	eventRouter.setResolvers(
-		async () => [],
-		async () => [],
-	);
+	const stateService = container.resolve(StateService);
+	eventRouter.setRoomStateResolver(async (roomId) => {
+		try {
+			const state = await stateService.getLatestRoomState2(roomId as RoomID);
+			return { aliases: state.getCanonicalAliases(), members: state.members };
+		} catch {
+			return { aliases: [], members: [] };
+		}
+	});
 	eventRouter.subscribe(container.resolve(EventEmitterService));
 
 	// once the db is initialized we look for old staged events and try to process them
