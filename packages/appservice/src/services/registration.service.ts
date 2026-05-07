@@ -52,11 +52,6 @@ export class RegistrationService {
 
 		const files = fs.readdirSync(dirPath).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
 
-		// Drop the previous YAML set from DB and cache before reloading from disk.
-		const removedIds = await this.appServiceRepo.removeBySource('yaml');
-		await Promise.all(removedIds.map((id) => this.stateRepo.remove(id)));
-		for (const id of removedIds) this.evictFromCache(id);
-
 		let loaded = 0;
 		const results = await Promise.allSettled(files.map((file) => this.loadFromYaml(path.join(dirPath, file))));
 		for (let i = 0; i < results.length; i++) {
@@ -71,7 +66,7 @@ export class RegistrationService {
 		}
 
 		this.logger.info({
-			msg: `Loaded ${loaded} appservice registrations from ${dirPath} (removed ${removedIds.length} stale)`,
+			msg: `Loaded ${loaded} appservice registrations from ${dirPath}`,
 		});
 		return loaded;
 	}
@@ -86,18 +81,9 @@ export class RegistrationService {
 
 		await this.appServiceRepo.upsert(registration);
 
-		// Initialize state if not exists
-		const state = await this.stateRepo.getState(registration._id);
-		if (!state) {
-			await this.stateRepo.upsertState(registration._id, {
-				state: 'up',
-				lastTxnId: 0,
-				streamOrdering: 0,
-				readReceiptStreamId: 0,
-				presenceStreamId: 0,
-				toDeviceStreamId: 0,
-			});
-		}
+		await this.stateRepo.upsertState(registration._id, {
+			state: 'up',
+		});
 
 		this.cacheRegistration(registration);
 		this.logger.info({ msg: `Registered appservice: ${registration._id} (source: ${registration.source})` });

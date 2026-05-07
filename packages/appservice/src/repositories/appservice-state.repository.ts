@@ -19,7 +19,7 @@ export class AppServiceStateRepository {
 			{ _id: asId },
 			{
 				$set: { ...updates, updatedAt: new Date() },
-				$setOnInsert: { _id: asId },
+				$setOnInsert: { _id: asId, lastTxnId: 0, streamOrdering: 0, readReceiptStreamId: 0, presenceStreamId: 0, toDeviceStreamId: 0 },
 			},
 			{ upsert: true },
 		);
