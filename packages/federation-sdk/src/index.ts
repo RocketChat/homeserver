@@ -165,7 +165,6 @@ export async function init({
 			return { aliases: [], members: [] };
 		}
 	});
-	eventRouter.subscribe(container.resolve(EventEmitterService));
 
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {

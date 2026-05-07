@@ -1,3 +1,4 @@
+import { EventRouterService } from '@rocket.chat/appservice';
 import { ForbiddenError, createLogger } from '@rocket.chat/federation-core';
 import { type EventID, type PersistentEventBase, RoomID, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -52,6 +53,7 @@ export class MessageService {
 		private readonly federationService: FederationService,
 		private readonly roomService: RoomService,
 		private readonly stateService: StateService,
+		private readonly eventRouterService: EventRouterService,
 	) {}
 
 	private buildReplyContent(reply: Reply) {
@@ -126,6 +128,7 @@ export class MessageService {
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
+		void this.eventRouterService.routeEvent(event);
 
 		return event;
 	}

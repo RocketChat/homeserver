@@ -1,24 +1,10 @@
-import { createLogger, type EventHandlerOf, type HomeserverEventSignatures } from '@rocket.chat/federation-core';
-import type { Pdu } from '@rocket.chat/federation-room';
+import { createLogger, type HomeserverEventSignatures } from '@rocket.chat/federation-core';
+import type { PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { NamespaceMatcherService } from './namespace-matcher.service';
 import { TransactionSenderService } from './transaction-sender.service';
 import type { CachedAppService } from '../models/appservice.model';
-
-const PERSISTENT_EVENT_NAMES = [
-	'homeserver.matrix.message',
-	'homeserver.matrix.membership',
-	'homeserver.matrix.room.create',
-	'homeserver.matrix.reaction',
-	'homeserver.matrix.redaction',
-	'homeserver.matrix.room.name',
-	'homeserver.matrix.room.topic',
-	'homeserver.matrix.room.power_levels',
-	'homeserver.matrix.room.server_acl',
-	'homeserver.matrix.encryption',
-	'homeserver.matrix.encrypted',
-] as const satisfies readonly (keyof HomeserverEventSignatures)[];
 
 const EPHEMERAL_EVENT_NAMES = [
 	'homeserver.matrix.typing',
@@ -26,13 +12,11 @@ const EPHEMERAL_EVENT_NAMES = [
 	'homeserver.matrix.receipt',
 ] as const satisfies readonly (keyof HomeserverEventSignatures)[];
 
-type PersistentEventName = (typeof PERSISTENT_EVENT_NAMES)[number];
 type EphemeralEventName = (typeof EPHEMERAL_EVENT_NAMES)[number];
-type PersistentEventPayload = HomeserverEventSignatures[PersistentEventName];
 type EphemeralEventPayload = HomeserverEventSignatures[EphemeralEventName];
 
 interface EventBatch {
-	events: Pdu[];
+	events: PersistentEventBase[];
 	ephemeral: EphemeralEventPayload[];
 	timer: ReturnType<typeof setTimeout> | null;
 }
@@ -57,35 +41,16 @@ export class EventRouterService {
 		this.roomStateResolver = resolver;
 	}
 
-	/**
-	 * Subscribe to all relevant events from the EventEmitterService.
-	 */
-	subscribe(emitter: {
-		on<K extends keyof HomeserverEventSignatures>(
-			event: K,
-			handler: EventHandlerOf<HomeserverEventSignatures, K>,
-		): (() => void) | undefined;
-	}): void {
-		for (const name of PERSISTENT_EVENT_NAMES) {
-			emitter.on(name, async (data: PersistentEventPayload) => {
-				await this.routePersistent(data.event);
-			});
-		}
-
-		for (const name of EPHEMERAL_EVENT_NAMES) {
-			emitter.on(name, async (data: EphemeralEventPayload) => {
-				await this.routeEphemeral(data);
-			});
-		}
-
-		this.logger.info({ msg: 'EventRouter subscribed to homeserver events' });
+	async routeEvent(event: PersistentEventBase): Promise<void> {
+		// check if event is persistent or ephemeral based on event type and route accordingly
+		await this.routePersistent(event);
 	}
 
-	private async routePersistent(event: Pdu): Promise<void> {
-		const { room_id: roomId, sender } = event;
+	private async routePersistent(event: PersistentEventBase): Promise<void> {
+		const { roomId, sender } = event;
 		if (!roomId || !sender) return;
 
-		const [aliases, members] = await Promise.all([this.roomAliasResolver?.(roomId) ?? [], this.roomMemberResolver?.(roomId) ?? []]);
+		const { aliases, members } = (await this.roomStateResolver?.(roomId)) ?? { aliases: [], members: [] };
 
 		const interested = this.namespaceMatcher.getInterestedAppServices(roomId, sender, aliases, members);
 

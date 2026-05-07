@@ -1,7 +1,8 @@
 import { createLogger, fetch } from '@rocket.chat/federation-core';
+import { Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
-import type { AppServiceTransaction, CachedAppService } from '../models/appservice.model';
+import type { CachedAppService } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
 import { AppServiceTransactionRepository } from '../repositories/appservice-txn.repository';
 
@@ -24,11 +25,7 @@ export class TransactionSenderService {
 	 * Queues it first, then attempts delivery. On failure, marks the bridge as DOWN
 	 * and schedules retries with exponential backoff.
 	 */
-	async sendTransaction(
-		appservice: CachedAppService,
-		events: Record<string, unknown>[],
-		ephemeral?: Record<string, unknown>[],
-	): Promise<void> {
+	async sendTransaction(appservice: CachedAppService, events: PersistentEventBase[], ephemeral?: Record<string, unknown>[]): Promise<void> {
 		const { registration } = appservice;
 
 		if (!registration.url) {
@@ -36,9 +33,10 @@ export class TransactionSenderService {
 		}
 
 		const txnId = await this.stateRepo.incrementTxnId(registration._id);
-		const eventIds = events.map((e) => (e as { event_id?: string }).event_id).filter(Boolean) as string[];
 
-		const txn: AppServiceTransaction = {
+		const eventIds = events.map((e) => e.eventId).filter(Boolean);
+
+		await this.txnRepo.create({
 			_id: `${registration._id}:${txnId}`,
 			asId: registration._id,
 			txnId,
@@ -47,10 +45,14 @@ export class TransactionSenderService {
 			status: 'pending',
 			attempts: 0,
 			createdAt: new Date(),
-		};
+		});
 
-		await this.txnRepo.create(txn);
-		await this.attemptDelivery(appservice, txnId, events, ephemeral);
+		await this.attemptDelivery(
+			appservice,
+			txnId,
+			events.map((e) => e.event),
+			ephemeral,
+		);
 	}
 
 	/**
@@ -74,7 +76,7 @@ export class TransactionSenderService {
 	private async attemptDelivery(
 		appservice: CachedAppService,
 		txnId: number,
-		events: Record<string, unknown>[],
+		events: Pdu[],
 		ephemeral?: Record<string, unknown>[],
 	): Promise<boolean> {
 		const body: Record<string, unknown> = { events };
