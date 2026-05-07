@@ -17,6 +17,7 @@ import { container } from 'tsyringe';
 import { StagingAreaListener } from './listeners/staging-area.listener';
 import { Key } from './repositories/key.repository';
 import { Lock } from './repositories/lock.repository';
+import { RoomAlias } from './repositories/room-alias.repository';
 import { Room } from './repositories/room.repository';
 import { Server } from './repositories/server.repository';
 import { StateGraphStore } from './repositories/state-graph.repository';
@@ -108,6 +109,10 @@ export async function init({
 
 	container.register<Collection<Room>>('RoomCollection', {
 		useValue: db.collection<Room>('rocketchat_federation_rooms'),
+	});
+
+	container.register<Collection<RoomAlias>>('RoomAliasCollection', {
+		useValue: db.collection<RoomAlias>('rocketchat_federation_room_aliases'),
 	});
 
 	container.register<Collection<Server>>('ServerCollection', {

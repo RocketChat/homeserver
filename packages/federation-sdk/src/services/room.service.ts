@@ -28,6 +28,7 @@ import {
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
+import { DirectoryService } from './directory.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
@@ -61,6 +62,7 @@ export class RoomService {
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly federationValidationService: FederationValidationService,
+		private readonly directoryService: DirectoryService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -171,21 +173,18 @@ export class RoomService {
 		}
 	}
 
-	/**
-	 * Create a new room with the given sender and username
-	 */
-	async createRoom(
-		username: UserID,
-		name: string,
-		joinRule: PduJoinRuleEventContent['join_rule'],
-		powers: {
+	async createRoomV2(data: {
+		name: string;
+		owner: UserID;
+		joinRule: PduJoinRuleEventContent['join_rule'];
+		powersLevels?: {
 			users?: Record<UserID, number>;
 			events?: Record<string, number>;
-		} = {
-			users: {},
-			events: {},
-		},
-	) {
+		};
+		alias?: string;
+	}) {
+		const { name, owner: username, joinRule, powersLevels: powers = {}, alias } = data;
+
 		logger.debug(`Creating room for ${username} with ${name} join_rule: ${joinRule}`);
 
 		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username, PersistentEventFactory.defaultRoomVersion);
@@ -285,11 +284,20 @@ export class RoomService {
 
 		await stateService.handlePdu(joinRuleEvent);
 
+		if (alias) {
+			const existing = await this.directoryService.resolveAlias(alias);
+			if (existing) {
+				throw new Error(`Alias ${alias} already exists, cannot create room with this alias.`);
+			}
+
+			await this.directoryService.setAlias(alias, roomCreateEvent.roomId);
+		}
+
 		const canonicalAliasEvent = await stateService.buildEvent<'m.room.canonical_alias'>(
 			{
 				type: 'm.room.canonical_alias',
 				content: {
-					alias: `#${name}:${this.configService.serverName}`,
+					alias: `#${alias || name}:${this.configService.serverName}`,
 					alt_aliases: [],
 				},
 				room_id: roomCreateEvent.roomId,
@@ -309,6 +317,29 @@ export class RoomService {
 			room_id: roomCreateEvent.roomId,
 			event_id: roomCreateEvent.eventId,
 		};
+	}
+
+	/**
+	 * Create a new room with the given sender and username
+	 */
+	async createRoom(
+		username: UserID,
+		name: string,
+		joinRule: PduJoinRuleEventContent['join_rule'],
+		powers: {
+			users?: Record<UserID, number>;
+			events?: Record<string, number>;
+		} = {
+			users: {},
+			events: {},
+		},
+	) {
+		return this.createRoomV2({
+			name,
+			owner: username,
+			joinRule,
+			powersLevels: powers,
+		});
 	}
 
 	async updateRoomName(roomId: RoomID, name: string, senderId: UserID) {

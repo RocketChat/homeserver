@@ -4,6 +4,7 @@ import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { AppConfig, ConfigService } from './services/config.service';
+import { DirectoryService } from './services/directory.service';
 import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
@@ -46,6 +47,7 @@ export class FederationSDK {
 		private readonly bridgeQueryService: BridgeQueryService,
 		private readonly namespaceMatcherService: NamespaceMatcherService,
 		private readonly pingService: PingService,
+		public readonly directoryService: DirectoryService,
 	) {}
 
 	/**
@@ -64,6 +66,10 @@ export class FederationSDK {
 
 	createRoom(...args: Parameters<typeof this.roomService.createRoom>) {
 		return this.roomService.createRoom(...args);
+	}
+
+	createRoomV2(...args: Parameters<typeof this.roomService.createRoomV2>) {
+		return this.roomService.createRoomV2(...args);
 	}
 
 	inviteUserToRoom(...args: Parameters<typeof this.inviteService.inviteUserToRoom>) {
