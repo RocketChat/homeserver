@@ -1,0 +1,37 @@
+packages/appservice/src/index.ts
+  0eb1d1d598344e40 25-26
+packages/federation-sdk/src/index.ts
+  0eb1d1d598344e40 4-5,26,32-39
+packages/appservice/src/services/namespace-matcher.service.ts
+  0eb1d1d598344e40 1,4,11-14,82
+  h_3b4d628c7b932e 83,113
+packages/appservice/src/config-provider.ts
+  0eb1d1d598344e40 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "577a7d02dac2b3cc2dae9ec0ca9095f9eb0befe6",
+  "prompts": {
+    "0eb1d1d598344e40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d9833f4-fb07-4a46-a3d5-b75419762faf",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>",
+      "total_additions": 571,
+      "total_deletions": 45,
+      "accepted_lines": 25,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
