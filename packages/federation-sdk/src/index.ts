@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 
 import {
+	APPSERVICE_CONFIG_PROVIDER,
+	type AppServiceConfigProvider,
 	type AppServiceRegistration,
 	type AppServiceState,
 	type AppServiceTransaction,
@@ -21,10 +23,19 @@ import { StateGraphStore } from './repositories/state-graph.repository';
 import { Upload } from './repositories/upload.repository';
 import { User } from './repositories/user.repository';
 import { FederationSDK } from './sdk';
+import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 import { StateService } from './services/state.service';
+
+container.register<AppServiceConfigProvider>(APPSERVICE_CONFIG_PROVIDER, {
+	useValue: {
+		get serverName() {
+			return container.resolve(ConfigService).serverName;
+		},
+	},
+});
 
 export { FederationRequestError } from './services/federation-request.service';
 export { EventEmitterService } from './services/event-emitter.service';

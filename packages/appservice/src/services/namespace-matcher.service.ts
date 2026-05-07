@@ -1,13 +1,17 @@
-import { singleton } from 'tsyringe';
+import { inject, singleton } from 'tsyringe';
 
 import { RegistrationService } from './registration.service';
+import { APPSERVICE_CONFIG_PROVIDER, type AppServiceConfigProvider } from '../config-provider';
 import type { CachedAppService } from '../models/appservice.model';
 
 type NamespaceType = 'users' | 'aliases' | 'rooms';
 
 @singleton()
 export class NamespaceMatcherService {
-	constructor(private readonly registrationService: RegistrationService) {}
+	constructor(
+		private readonly registrationService: RegistrationService,
+		@inject(APPSERVICE_CONFIG_PROVIDER) private readonly config: AppServiceConfigProvider,
+	) {}
 
 	/**
 	 * Check if a value matches any appservice's namespace of the given type.
@@ -75,6 +79,8 @@ export class NamespaceMatcherService {
 		const interested = new Map<string, CachedAppService>();
 
 		for (const as of this.registrationService.getAll()) {
+			const asUserId = `@${as.registration.senderLocalpart}:${this.config.serverName}`;
+
 			if (interested.has(as.registration._id)) continue;
 
 			// 1. Room ID matches room namespace
@@ -104,7 +110,7 @@ export class NamespaceMatcherService {
 			for (const member of roomMembers) {
 				let found = false;
 				for (const ns of as.compiledNamespaces.users) {
-					if (ns.regex.test(member)) {
+					if (member === asUserId && ns.regex.test(member)) {
 						interested.set(as.registration._id, as);
 						found = true;
 						break;
