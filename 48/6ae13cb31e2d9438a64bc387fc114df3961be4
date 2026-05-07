@@ -1,0 +1,35 @@
+packages/federation-sdk/src/services/message.service.ts
+  h_4c386397e672f4 1,56,131
+packages/appservice/src/services/transaction-sender.service.ts
+  h_4c386397e672f4 2,28,37,39,48,53-54,79
+packages/appservice/src/services/event-router.service.ts
+  h_4c386397e672f4 2,19,44-46,49
+  ee26c26d6e5dc30f 53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "486ae13cb31e2d9438a64bc387fc114df3961be4",
+  "prompts": {
+    "ee26c26d6e5dc30f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b0057c5-6895-42a5-a858-28bfc9ce841a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 17,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
