@@ -1,0 +1,40 @@
+packages/federation-sdk/src/repositories/room-alias.repository.ts
+  s_efc26dd12af93d::t_678995b4d24eb1 1-29
+packages/federation-sdk/src/index.ts
+  s_efc26dd12af93d::t_fa43478f93f3f0 114-117
+  s_efc26dd12af93d::t_4320b96344ee13 20
+packages/federation-sdk/src/services/directory.service.ts
+  s_efc26dd12af93d::t_a0533f9eab1e02 2-7,10-27
+  h_4c386397e672f4 1,8-9
+packages/federation-sdk/src/sdk.ts
+  s_efc26dd12af93d::t_543b1957cd9f45 7
+  h_4c386397e672f4 71-74
+  s_efc26dd12af93d::t_a126313cfecda5 50
+packages/federation-sdk/src/services/room.service.ts
+  s_efc26dd12af93d::t_5274bd93b0f105 65
+  h_4c386397e672f4 31,177-179,183-184,287-294,300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "0dd4a937b8643e48aff2159cbcd8ba671593d571",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_efc26dd12af93d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc1baa70-750b-4d36-978c-2b6c23d24985",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
