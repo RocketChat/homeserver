@@ -351,4 +351,8 @@ export class FederationSDK {
 	getAppServiceState(...args: Parameters<typeof this.registrationService.getState>) {
 		return this.registrationService.getState(...args);
 	}
+
+	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
+		return this.roomService.joinUser(...args);
+	}
 }
