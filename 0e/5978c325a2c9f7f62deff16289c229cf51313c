@@ -1,0 +1,17 @@
+packages/appservice/src/services/transaction-sender.service.ts
+  h_4c386397e672f4 50,74,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.9",
+  "base_commit_sha": "0e5978c325a2c9f7f62deff16289c229cf51313c",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
