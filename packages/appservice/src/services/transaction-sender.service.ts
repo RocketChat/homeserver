@@ -47,12 +47,7 @@ export class TransactionSenderService {
 			createdAt: new Date(),
 		});
 
-		await this.attemptDelivery(
-			appservice,
-			txnId,
-			events.map((e) => e.event),
-			ephemeral,
-		);
+		await this.attemptDelivery(appservice, txnId, events, ephemeral);
 	}
 
 	/**
@@ -76,10 +71,10 @@ export class TransactionSenderService {
 	private async attemptDelivery(
 		appservice: CachedAppService,
 		txnId: number,
-		events: Pdu[],
+		events: PersistentEventBase[],
 		ephemeral?: Record<string, unknown>[],
 	): Promise<boolean> {
-		const body: Record<string, unknown> = { events };
+		const body: Record<string, unknown> = { events: events.map((e) => ({ event_id: e.eventId, ...e.event })) };
 		if (ephemeral?.length) {
 			body['de.sorunome.msc2409.ephemeral'] = ephemeral;
 		}
