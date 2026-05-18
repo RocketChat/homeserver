@@ -23,9 +23,16 @@ export class ProfilesService {
 			return null;
 		}
 
-		const username = userId.split(':')[0]?.slice(1);
+		const user = await (async () => {
+			// try to find with full userId first, then fallback to localpart only
+			const found = await this.userRepository.findByUsername(userId);
+			if (found) {
+				return found;
+			}
 
-		const user = await this.userRepository.findByUsername(username);
+			// this is for querying local users which does not have the server name in the username field
+			return this.userRepository.findByUsername(userId.split(':')[0]?.slice(1));
+		})();
 
 		if (!user) {
 			// this.logger.debug(`Local user ${userId} not found in repository`);
