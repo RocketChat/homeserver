@@ -183,6 +183,7 @@ export class MessageService {
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
+		void this.eventRouterService.routeEvent(event);
 
 		return event;
 	}
@@ -263,6 +264,7 @@ export class MessageService {
 		await this.stateService.handlePdu(reactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
+		void this.eventRouterService.routeEvent(reactionEvent);
 
 		return reactionEvent.eventId;
 	}
@@ -290,6 +292,7 @@ export class MessageService {
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		void this.eventRouterService.routeEvent(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
@@ -335,6 +338,7 @@ export class MessageService {
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		void this.eventRouterService.routeEvent(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
@@ -373,6 +377,7 @@ export class MessageService {
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		void this.eventRouterService.routeEvent(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
