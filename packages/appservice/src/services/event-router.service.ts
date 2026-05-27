@@ -1,4 +1,4 @@
-import { createLogger, type HomeserverEventSignatures } from '@rocket.chat/federation-core';
+import { createLogger, PresenceEDU, ReceiptEDU, TypingEDU } from '@rocket.chat/federation-core';
 import type { PersistentEventBase } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
@@ -6,18 +6,9 @@ import { NamespaceMatcherService } from './namespace-matcher.service';
 import { TransactionSenderService } from './transaction-sender.service';
 import type { CachedAppService } from '../models/appservice.model';
 
-const EPHEMERAL_EVENT_NAMES = [
-	'homeserver.matrix.typing',
-	'homeserver.matrix.presence',
-	'homeserver.matrix.receipt',
-] as const satisfies readonly (keyof HomeserverEventSignatures)[];
-
-type EphemeralEventName = (typeof EPHEMERAL_EVENT_NAMES)[number];
-type EphemeralEventPayload = HomeserverEventSignatures[EphemeralEventName];
-
 interface EventBatch {
 	events: PersistentEventBase[];
-	ephemeral: EphemeralEventPayload[];
+	ephemeral: (ReceiptEDU | TypingEDU | PresenceEDU)[];
 	timer: ReturnType<typeof setTimeout> | null;
 }
 
@@ -61,15 +52,9 @@ export class EventRouterService {
 		}
 	}
 
-	private async routeEphemeral(payload: EphemeralEventPayload): Promise<void> {
-		const roomId = 'room_id' in payload ? payload.room_id : '';
-		const sender = payload.user_id;
-
-		const { aliases, members } = roomId
-			? (await this.roomStateResolver?.(roomId)) ?? { aliases: [], members: [] }
-			: { aliases: [], members: [] };
-
-		const interested = this.namespaceMatcher.getInterestedAppServices(roomId, sender, aliases, members);
+	async routeEphemeral(payload: ReceiptEDU | TypingEDU | PresenceEDU): Promise<void> {
+		const targets = this.extractEphemeralTargets(payload);
+		const interested = await this.findInterestedForTargets(targets);
 
 		for (const as of interested) {
 			if (!as.registration.receiveEphemeral) continue;
@@ -77,6 +62,53 @@ export class EventRouterService {
 			batch.ephemeral.push(payload);
 			this.afterAppend(as, batch);
 		}
+	}
+
+	// Returns the (roomId, userId) pairs that should be checked against
+	// appservice namespaces for a given EDU. Each EDU shape exposes its
+	// room/user references differently — presence has no rooms, receipts can
+	// span many rooms and many users.
+	private extractEphemeralTargets(payload: ReceiptEDU | TypingEDU | PresenceEDU): Array<{ roomId: string; userId: string }> {
+		if (payload.edu_type === 'm.typing') {
+			return [{ roomId: payload.content.room_id, userId: payload.content.user_id }];
+		}
+
+		if (payload.edu_type === 'm.presence') {
+			return payload.content.push.map((update) => ({ roomId: '', userId: update.user_id }));
+		}
+
+		const targets: Array<{ roomId: string; userId: string }> = [];
+		for (const [roomId, readByUser] of Object.entries(payload.content)) {
+			const userIds = Object.keys(readByUser?.['m.read'] ?? {});
+			if (userIds.length === 0) {
+				targets.push({ roomId, userId: '' });
+				continue;
+			}
+			for (const userId of userIds) {
+				targets.push({ roomId, userId });
+			}
+		}
+		return targets;
+	}
+
+	private async findInterestedForTargets(targets: Array<{ roomId: string; userId: string }>): Promise<CachedAppService[]> {
+		const emptyState = { aliases: [] as string[], members: [] as string[] };
+		const uniqueRoomIds = Array.from(new Set(targets.map((t) => t.roomId).filter(Boolean)));
+
+		const resolved = await Promise.all(
+			uniqueRoomIds.map(async (roomId) => [roomId, (await this.roomStateResolver?.(roomId)) ?? emptyState] as const),
+		);
+		const stateByRoom = new Map(resolved);
+
+		const interested = new Map<string, CachedAppService>();
+		for (const { roomId, userId } of targets) {
+			const state = roomId ? stateByRoom.get(roomId) ?? emptyState : emptyState;
+			for (const as of this.namespaceMatcher.getInterestedAppServices(roomId, userId, state.aliases, state.members)) {
+				interested.set(as.registration._id, as);
+			}
+		}
+
+		return Array.from(interested.values());
 	}
 
 	private getOrCreateBatch(appservice: CachedAppService): EventBatch {

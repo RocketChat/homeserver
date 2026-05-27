@@ -1,10 +1,11 @@
-import { createLogger, fetch } from '@rocket.chat/federation-core';
+import { createLogger, fetch, PresenceEDU, ReceiptEDU, TypingEDU } from '@rocket.chat/federation-core';
 import { Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
-import type { CachedAppService } from '../models/appservice.model';
+import type { AppServiceEphemeralEvent, CachedAppService } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
 import { AppServiceTransactionRepository } from '../repositories/appservice-txn.repository';
+import { eduBatchToAppServiceEphemeral } from '../utils/edu-to-appservice';
 
 const MAX_BACKOFF_MS = 60_000;
 const INITIAL_BACKOFF_MS = 1_000;
@@ -25,7 +26,11 @@ export class TransactionSenderService {
 	 * Queues it first, then attempts delivery. On failure, marks the bridge as DOWN
 	 * and schedules retries with exponential backoff.
 	 */
-	async sendTransaction(appservice: CachedAppService, events: PersistentEventBase[], ephemeral?: Record<string, unknown>[]): Promise<void> {
+	async sendTransaction(
+		appservice: CachedAppService,
+		events: PersistentEventBase[],
+		ephemeral?: (ReceiptEDU | TypingEDU | PresenceEDU)[],
+	): Promise<void> {
 		const { registration } = appservice;
 
 		if (!registration.url) {
@@ -36,18 +41,20 @@ export class TransactionSenderService {
 
 		const eventIds = events.map((e) => e.eventId).filter(Boolean);
 
+		const ephemeralEvents = ephemeral && ephemeral.length > 0 ? eduBatchToAppServiceEphemeral(ephemeral) : undefined;
+
 		await this.txnRepo.create({
 			_id: `${registration._id}:${txnId}`,
 			asId: registration._id,
 			txnId,
 			eventIds,
-			ephemeralEvents: ephemeral,
+			...(ephemeralEvents && { ephemeralEvents }),
 			status: 'pending',
 			attempts: 0,
 			createdAt: new Date(),
 		});
 
-		await this.attemptDelivery(appservice, txnId, events, ephemeral);
+		await this.attemptDelivery(appservice, txnId, events, ephemeralEvents);
 	}
 
 	/**
@@ -72,11 +79,14 @@ export class TransactionSenderService {
 		appservice: CachedAppService,
 		txnId: number,
 		events: PersistentEventBase[],
-		ephemeral?: Record<string, unknown>[],
+		ephemeral?: AppServiceEphemeralEvent[],
 	): Promise<boolean> {
 		const body: Record<string, unknown> = { events: events.map((e) => ({ event_id: e.eventId, ...e.event })) };
 		if (ephemeral?.length) {
+			// Send under both the unstable MSC2409 key (what Synapse emits and most bridges read)
+			// and the stable spec key (Matrix v1.13+).
 			body['de.sorunome.msc2409.ephemeral'] = ephemeral;
+			body.ephemeral = ephemeral;
 		}
 
 		return this.attemptDeliveryRaw(appservice, txnId, body);

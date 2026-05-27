@@ -39,12 +39,19 @@ export interface AppServiceState {
 	updatedAt: Date;
 }
 
+export interface AppServiceEphemeralEvent {
+	type: string;
+	room_id?: string;
+	sender?: string;
+	content: Record<string, unknown>;
+}
+
 export interface AppServiceTransaction {
 	_id: string;
 	asId: string;
 	txnId: number;
 	eventIds: string[];
-	ephemeralEvents?: Record<string, unknown>[];
+	ephemeralEvents?: AppServiceEphemeralEvent[];
 	status: 'pending' | 'sent' | 'failed';
 	attempts: number;
 	createdAt: Date;

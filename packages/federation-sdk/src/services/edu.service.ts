@@ -1,3 +1,4 @@
+import { EventRouterService } from '@rocket.chat/appservice';
 import type { PresenceUpdate, ReceiptEDU } from '@rocket.chat/federation-core';
 import { createPresenceEDU, createTypingEDU, createLogger } from '@rocket.chat/federation-core';
 import { RoomID } from '@rocket.chat/federation-room';
@@ -15,6 +16,7 @@ export class EduService {
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
 		private readonly stateService: StateService,
+		private readonly eventRouterService: EventRouterService,
 	) {}
 
 	async sendTypingNotification(roomId: RoomID, userId: string, typing: boolean): Promise<void> {
@@ -29,6 +31,7 @@ export class EduService {
 			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
 			await this.federationService.sendEDUToServers([typingEDU], uniqueServers);
+			void this.eventRouterService.routeEphemeral(typingEDU);
 
 			this.logger.debug(`Sent typing notification to ${uniqueServers.length} unique servers for room ${roomId}`);
 		} catch (error) {
@@ -61,6 +64,7 @@ export class EduService {
 			);
 
 			await this.federationService.sendEDUToServers([presenceEDU], Array.from(uniqueServers));
+			void this.eventRouterService.routeEphemeral(presenceEDU);
 
 			this.logger.debug(`Sent presence updates to ${uniqueServers.size} unique servers for ${roomIds.length} rooms`);
 		} catch (error) {
@@ -111,6 +115,7 @@ export class EduService {
 			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
 			await this.federationService.sendEDUToServers([receiptEDU], uniqueServers);
+			void this.eventRouterService.routeEphemeral(receiptEDU);
 
 			this.logger.debug(`Sent read receipt to ${uniqueServers.length} unique servers for room ${roomId}`);
 		} catch (error) {
