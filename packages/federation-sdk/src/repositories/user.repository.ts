@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
@@ -14,6 +16,7 @@ export type User = {
 		mui?: string;
 		origin?: string;
 		avatarUrl?: string;
+		appserviceId?: string;
 	};
 	createdAt: Date;
 	_updatedAt: Date;
@@ -27,7 +30,7 @@ export class UserRepository {
 		return this.collection.findOne(
 			{
 				username,
-				$or: [{ federated: { $exists: false } }, { federated: false }],
+				$or: [{ federated: { $exists: false } }, { federated: false }, { 'federation.appserviceId': { $exists: true } }],
 			},
 			{
 				projection: {
@@ -42,6 +45,44 @@ export class UserRepository {
 					_updatedAt: 1,
 				},
 			},
+		);
+	}
+
+	/**
+	 * Idempotently create the bot user that represents an appservice
+	 * (its `sender_localpart`). Safe to call on every load / boot — it
+	 * preserves `createdAt` and only refreshes `_updatedAt` and the
+	 * `appserviceId` linkage on subsequent calls.
+	 */
+	async ensureSenderUser(localpart: string, serverName: string, appserviceId: string): Promise<void> {
+		const now = new Date();
+		const username = `@${localpart}:${serverName}`;
+		await this.collection.updateOne(
+			{ 'federation.appserviceId': appserviceId },
+			{
+				$set: {
+					username,
+					name: username,
+					type: 'user' as const,
+					status: 'offline' as const,
+					active: true,
+					roles: ['federated-external'],
+					requirePasswordChange: false,
+					federated: true,
+					federation: {
+						version: 1,
+						mui: username,
+						origin: serverName,
+						appserviceId,
+					},
+					_updatedAt: new Date(),
+				},
+				$setOnInsert: {
+					_id: crypto.randomUUID(),
+					createdAt: now,
+				},
+			},
+			{ upsert: true },
 		);
 	}
 }

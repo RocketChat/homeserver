@@ -150,8 +150,11 @@ export async function init({
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);
 
-	// Load any existing appservice registrations into cache.
+	// Load any existing appservice registrations into cache, then make sure
+	// each registration's bot user (`sender_localpart`) exists. Idempotent —
+	// safe across reboots and covers installs upgrading into this change.
 	await container.resolve(RegistrationService).initialize();
+	await container.resolve(FederationSDK).ensureSenderUsersForAllRegistrations();
 
 	// Wire the event router into the homeserver event emitter so appservices
 	// receive transactions for events in their namespaces.

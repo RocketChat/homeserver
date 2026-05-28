@@ -1,8 +1,15 @@
-import { BridgeQueryService, NamespaceMatcherService, PingService, RegistrationService } from '@rocket.chat/appservice';
+import {
+	type AppServiceRegistration,
+	BridgeQueryService,
+	NamespaceMatcherService,
+	PingService,
+	RegistrationService,
+} from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
 import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 
+import { UserRepository } from './repositories/user.repository';
 import { AppConfig, ConfigService } from './services/config.service';
 import { DirectoryService } from './services/directory.service';
 import { EduService } from './services/edu.service';
@@ -48,7 +55,19 @@ export class FederationSDK {
 		private readonly namespaceMatcherService: NamespaceMatcherService,
 		private readonly pingService: PingService,
 		public readonly directoryService: DirectoryService,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
 	) {}
+
+	/**
+	 * Ensure the bot user (`sender_localpart`) backing an appservice
+	 * exists. Called from every path that brings a registration into the
+	 * cache so the bot user is always materialised — load from YAML,
+	 * admin-API register, and boot-time rehydrate from the DB.
+	 */
+	private async ensureSenderUser(registration: AppServiceRegistration): Promise<void> {
+		await this.userRepository.ensureSenderUser(registration.senderLocalpart, this.configService.serverName, registration._id);
+	}
 
 	/**
 	 * @deprecated use createDirectMessage instead
@@ -308,16 +327,31 @@ export class FederationSDK {
 		return this.registrationService.getByAsToken(...args);
 	}
 
-	registerAppService(...args: Parameters<typeof this.registrationService.register>) {
-		return this.registrationService.register(...args);
+	async registerAppService(...args: Parameters<typeof this.registrationService.register>) {
+		const registration = await this.registrationService.register(...args);
+		await this.ensureSenderUser(registration);
+		return registration;
 	}
 
 	unregisterAppService(...args: Parameters<typeof this.registrationService.unregister>) {
+		// Intentionally leaves the sender user in place — matches Synapse,
+		// keeps message history attributable, and lets re-registration reuse it.
 		return this.registrationService.unregister(...args);
 	}
 
-	loadAppServiceRegistrationsFromDirectory(...args: Parameters<typeof this.registrationService.loadAllFromDirectory>) {
-		return this.registrationService.loadAllFromDirectory(...args);
+	async loadAppServiceRegistrationsFromDirectory(...args: Parameters<typeof this.registrationService.loadAllFromDirectory>) {
+		const loaded = await this.registrationService.loadAllFromDirectory(...args);
+		await this.ensureSenderUsersForAllRegistrations();
+		return loaded;
+	}
+
+	/**
+	 * Walk every cached registration and ensure its sender user exists.
+	 * Used by load-from-directory and by boot rehydrate; idempotent.
+	 */
+	async ensureSenderUsersForAllRegistrations(): Promise<void> {
+		const registrations = this.registrationService.getAll();
+		await Promise.all(registrations.map((cached) => this.ensureSenderUser(cached.registration)));
 	}
 
 	getAllProtocols(...args: Parameters<typeof this.bridgeQueryService.getAllProtocols>) {
