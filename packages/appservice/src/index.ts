@@ -2,7 +2,6 @@ import 'reflect-metadata';
 
 export type {
 	AppServiceRegistration,
-	AppServiceRegistrationYaml,
 	AppServiceNamespaces,
 	AppServiceState,
 	AppServiceTransaction,
@@ -11,7 +10,6 @@ export type {
 	Namespace,
 } from './models/appservice.model';
 
-export { AppServiceRepository } from './repositories/appservice.repository';
 export { AppServiceStateRepository } from './repositories/appservice-state.repository';
 export { AppServiceTransactionRepository } from './repositories/appservice-txn.repository';
 

@@ -30,11 +30,13 @@ export interface AppConfig {
 		processPresence: boolean;
 		processReceipt?: boolean;
 	};
-	appservice?: {
-		configDir?: string;
-	};
 	userCheckTimeoutMs?: number;
 	networkCheckTimeoutMs?: number;
+	xmpp?: {
+		bridgeURL: string;
+		hsToken: string;
+		asToken: string;
+	};
 }
 
 export const AppConfigSchema = z.object({
@@ -65,9 +67,11 @@ export const AppConfigSchema = z.object({
 		processPresence: z.boolean(),
 		processReceipt: z.boolean().optional(),
 	}),
-	appservice: z
+	xmpp: z
 		.object({
-			configDir: z.string().optional(),
+			bridgeURL: z.string().min(1, 'Bridge URL is required'),
+			hsToken: z.string().min(1, 'hs_token is required'),
+			asToken: z.string().min(1, 'as_token is required'),
 		})
 		.optional(),
 	networkCheckTimeoutMs: z.number().int().min(1000, 'Network check timeout must be at least 1000ms').default(5000).optional(),

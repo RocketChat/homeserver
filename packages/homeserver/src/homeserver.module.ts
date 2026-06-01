@@ -9,7 +9,6 @@ import { federationSDK, init } from '@rocket.chat/federation-sdk';
 import * as dotenv from 'dotenv';
 import Elysia from 'elysia';
 
-import { adminAppServicePlugin } from './controllers/admin/appservice.controller';
 import { clientDirectoryPlugin } from './controllers/client/directory.controller';
 import { clientEventsPlugin } from './controllers/client/events.controller';
 import { clientAppservicePingPlugin } from './controllers/client/ping.controller';
@@ -52,7 +51,7 @@ export async function setup() {
 
 	const serverName = process.env.SERVER_NAME || 'rc1';
 
-	federationSDK.setConfig({
+	await federationSDK.setConfig({
 		instanceId: crypto.randomUUID(),
 		serverName,
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
@@ -89,16 +88,7 @@ export async function setup() {
 			processPresence: process.env.EDU_PROCESS_PRESENCE === 'true',
 			processReceipt: process.env.EDU_PROCESS_RECEIPT === 'true',
 		},
-		appservice: {
-			configDir: process.env.APPSERVICE_CONFIG_DIR,
-		},
 	});
-
-	// Load YAML registrations from config directory if configured
-	const configDir = federationSDK.getConfig('appservice')?.configDir;
-	if (configDir) {
-		await federationSDK.loadAppServiceRegistrationsFromDirectory(configDir);
-	}
 
 	const app = new Elysia();
 
@@ -139,9 +129,7 @@ export async function setup() {
 		.use(clientProfilePlugin(serverName))
 		.use(clientDirectoryPlugin(serverName))
 		.use(clientThirdPartyPlugin(serverName))
-		.use(clientAppservicePingPlugin(serverName))
-		// Admin API
-		.use(adminAppServicePlugin);
+		.use(clientAppservicePingPlugin(serverName));
 
 	return { app };
 }

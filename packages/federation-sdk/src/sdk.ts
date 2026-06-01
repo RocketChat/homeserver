@@ -289,8 +289,13 @@ export class FederationSDK {
 		return this.profilesService.eventAuth(...args);
 	}
 
-	setConfig(...args: Parameters<typeof this.configService.setConfig>) {
-		return this.configService.setConfig(...args);
+	async setConfig(...args: Parameters<typeof this.configService.setConfig>) {
+		this.configService.setConfig(...args);
+		// Config is the sole source of bridge configuration, so rebuild the
+		// appservice registration whenever it changes — this also covers the
+		// boot path, where `init()` runs before the first `setConfig`.
+		await this.registrationService.initialize();
+		await this.ensureSenderUsersForAllRegistrations();
 	}
 
 	queryKeys(...args: Parameters<typeof this.profilesService.queryKeys>) {
@@ -327,27 +332,9 @@ export class FederationSDK {
 		return this.registrationService.getByAsToken(...args);
 	}
 
-	async registerAppService(...args: Parameters<typeof this.registrationService.register>) {
-		const registration = await this.registrationService.register(...args);
-		await this.ensureSenderUser(registration);
-		return registration;
-	}
-
-	unregisterAppService(...args: Parameters<typeof this.registrationService.unregister>) {
-		// Intentionally leaves the sender user in place — matches Synapse,
-		// keeps message history attributable, and lets re-registration reuse it.
-		return this.registrationService.unregister(...args);
-	}
-
-	async loadAppServiceRegistrationsFromDirectory(...args: Parameters<typeof this.registrationService.loadAllFromDirectory>) {
-		const loaded = await this.registrationService.loadAllFromDirectory(...args);
-		await this.ensureSenderUsersForAllRegistrations();
-		return loaded;
-	}
-
 	/**
 	 * Walk every cached registration and ensure its sender user exists.
-	 * Used by load-from-directory and by boot rehydrate; idempotent.
+	 * Called at boot once the registration is built from config; idempotent.
 	 */
 	async ensureSenderUsersForAllRegistrations(): Promise<void> {
 		const registrations = this.registrationService.getAll();

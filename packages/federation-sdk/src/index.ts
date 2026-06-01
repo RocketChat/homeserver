@@ -3,11 +3,9 @@ import 'reflect-metadata';
 import {
 	APPSERVICE_CONFIG_PROVIDER,
 	type AppServiceConfigProvider,
-	type AppServiceRegistration,
 	type AppServiceState,
 	type AppServiceTransaction,
 	EventRouterService,
-	RegistrationService,
 } from '@rocket.chat/appservice';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type { EventStore, RoomID } from '@rocket.chat/federation-room';
@@ -34,6 +32,9 @@ container.register<AppServiceConfigProvider>(APPSERVICE_CONFIG_PROVIDER, {
 	useValue: {
 		get serverName() {
 			return container.resolve(ConfigService).serverName;
+		},
+		get xmpp() {
+			return container.resolve(ConfigService).getConfig('xmpp');
 		},
 	},
 });
@@ -135,10 +136,6 @@ export async function init({
 		useValue: db.collection<User>('users'),
 	});
 
-	container.register<Collection<AppServiceRegistration>>('AppServiceCollection', {
-		useValue: db.collection<AppServiceRegistration>('rocketchat_appservices'),
-	});
-
 	container.register<Collection<AppServiceState>>('AppServiceStateCollection', {
 		useValue: db.collection<AppServiceState>('rocketchat_appservices_state'),
 	});
@@ -149,12 +146,6 @@ export async function init({
 
 	// this is required to initialize the listener and register the queue handler
 	container.resolve(StagingAreaListener);
-
-	// Load any existing appservice registrations into cache, then make sure
-	// each registration's bot user (`sender_localpart`) exists. Idempotent —
-	// safe across reboots and covers installs upgrading into this change.
-	await container.resolve(RegistrationService).initialize();
-	await container.resolve(FederationSDK).ensureSenderUsersForAllRegistrations();
 
 	// Wire the event router into the homeserver event emitter so appservices
 	// receive transactions for events in their namespaces.

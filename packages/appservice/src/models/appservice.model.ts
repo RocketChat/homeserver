@@ -1,5 +1,3 @@
-export type AppServiceSource = 'yaml' | 'api';
-
 export interface AppServiceRegistration {
 	_id: string;
 	url: string | null;
@@ -10,7 +8,6 @@ export interface AppServiceRegistration {
 	protocols: string[];
 	rateLimited: boolean;
 	receiveEphemeral: boolean;
-	source: AppServiceSource;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -56,27 +53,6 @@ export interface AppServiceTransaction {
 	attempts: number;
 	createdAt: Date;
 	sentAt?: Date;
-}
-
-/**
- * YAML registration file format as defined by the Matrix spec.
- * Used for parsing bridge registration files for backward compatibility.
- */
-export interface AppServiceRegistrationYaml {
-	'id': string;
-	'url'?: string | null;
-	'as_token': string;
-	'hs_token': string;
-	'sender_localpart': string;
-	'namespaces'?: {
-		users?: { regex: string; exclusive?: boolean }[];
-		aliases?: { regex: string; exclusive?: boolean }[];
-		rooms?: { regex: string; exclusive?: boolean }[];
-	};
-	'protocols'?: string[];
-	'rate_limited'?: boolean;
-	'de.sorunome.msc2409.push_ephemeral'?: boolean;
-	'org.matrix.msc3202'?: boolean;
 }
 
 /**

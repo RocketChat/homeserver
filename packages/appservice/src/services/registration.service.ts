@@ -1,13 +1,17 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
 import { createLogger } from '@rocket.chat/federation-core';
 import { delay, inject, singleton } from 'tsyringe';
-import YAML from 'yaml';
 
-import type { AppServiceRegistration, AppServiceRegistrationYaml, CachedAppService, CompiledNamespace } from '../models/appservice.model';
+import { APPSERVICE_CONFIG_PROVIDER, type AppServiceConfigProvider } from '../config-provider';
+import type { AppServiceRegistration, CachedAppService, CompiledNamespace } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
-import { AppServiceRepository } from '../repositories/appservice.repository';
+
+/**
+ * XMPP is the only supported bridge. Its registration is built entirely from
+ * `ConfigService` (URL + tokens); the remaining fields are fixed constants
+ * derived from the `_xmpp_` prefix used throughout the codebase.
+ */
+const XMPP_APPSERVICE_ID = 'xmpp';
+const XMPP_SENDER_LOCALPART = '_xmpp_bot';
 
 @singleton()
 export class RegistrationService {
@@ -18,95 +22,49 @@ export class RegistrationService {
 	private tokenIndex: Map<string, string> = new Map(); // asToken -> asId
 
 	constructor(
-		@inject(delay(() => AppServiceRepository))
-		private readonly appServiceRepo: AppServiceRepository,
 		@inject(delay(() => AppServiceStateRepository))
 		private readonly stateRepo: AppServiceStateRepository,
+		@inject(APPSERVICE_CONFIG_PROVIDER)
+		private readonly config: AppServiceConfigProvider,
 	) {}
 
-	async initialize(): Promise<void> {
-		const registrations = await this.appServiceRepo.findAll();
-		for (const reg of registrations) {
-			this.cacheRegistration(reg);
-		}
-		this.logger.info({ msg: `Loaded ${registrations.length} appservice registrations` });
-	}
-
-	async loadFromYaml(filePath: string): Promise<AppServiceRegistration> {
-		const content = fs.readFileSync(filePath, 'utf-8');
-		const yaml = YAML.parse(content) as AppServiceRegistrationYaml;
-		return this.registerFromYaml(yaml);
-	}
-
 	/**
-	 * Reload all YAML-source registrations from a directory. Existing
-	 * registrations marked `source: 'yaml'` that no longer have a matching
-	 * file are removed (matches Synapse semantics where the YAML files are
-	 * the source of truth). API-source registrations are left untouched.
+	 * (Re)build the in-memory registration from the current config. Safe to
+	 * call repeatedly — clears prior cache so a config change (e.g. a later
+	 * `setConfig`) is reflected.
 	 */
-	async loadAllFromDirectory(dirPath: string): Promise<number> {
-		if (!fs.existsSync(dirPath)) {
-			this.logger.warn({ msg: `Appservice config directory not found: ${dirPath}` });
-			return 0;
+	async initialize(): Promise<void> {
+		this.cache.clear();
+		this.tokenIndex.clear();
+
+		const { xmpp } = this.config;
+		if (!xmpp) {
+			this.logger.info({ msg: 'No bridge configured; skipping appservice registration' });
+			return;
 		}
 
-		const files = fs.readdirSync(dirPath).filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
-
-		let loaded = 0;
-		const results = await Promise.allSettled(files.map((file) => this.loadFromYaml(path.join(dirPath, file))));
-		for (let i = 0; i < results.length; i++) {
-			if (results[i].status === 'fulfilled') {
-				loaded++;
-			} else {
-				this.logger.error({
-					msg: `Failed to load appservice registration from ${files[i]}`,
-					err: (results[i] as PromiseRejectedResult).reason,
-				});
-			}
-		}
-
-		this.logger.info({
-			msg: `Loaded ${loaded} appservice registrations from ${dirPath}`,
-		});
-		return loaded;
-	}
-
-	async registerFromYaml(yaml: AppServiceRegistrationYaml): Promise<AppServiceRegistration> {
-		const registration = this.yamlToRegistration(yaml);
-		return this.register(registration);
-	}
-
-	async register(registration: AppServiceRegistration): Promise<AppServiceRegistration> {
-		this.validateRegistration(registration);
-
-		await this.appServiceRepo.upsert(registration);
-
-		await this.stateRepo.upsertState(registration._id, {
-			state: 'up',
-		});
+		const now = new Date();
+		const registration: AppServiceRegistration = {
+			_id: XMPP_APPSERVICE_ID,
+			url: xmpp.bridgeURL,
+			asToken: xmpp.asToken,
+			hsToken: xmpp.hsToken,
+			senderLocalpart: XMPP_SENDER_LOCALPART,
+			namespaces: {
+				users: [{ regex: '@_xmpp_.*', exclusive: true }],
+				aliases: [{ regex: '#_xmpp_.*', exclusive: true }],
+				rooms: [],
+			},
+			protocols: ['xmpp'],
+			rateLimited: false,
+			receiveEphemeral: true,
+			createdAt: now,
+			updatedAt: now,
+		};
 
 		this.cacheRegistration(registration);
-		this.logger.info({ msg: `Registered appservice: ${registration._id} (source: ${registration.source})` });
-
-		return registration;
-	}
-
-	async unregister(id: string): Promise<boolean> {
-		const removed = await this.appServiceRepo.remove(id);
-		if (removed) {
-			await this.stateRepo.remove(id);
-			this.evictFromCache(id);
-			this.logger.info({ msg: `Unregistered appservice: ${id}` });
-		}
-		return removed;
-	}
-
-	private evictFromCache(id: string): void {
-		const cached = this.cache.get(id);
-		if (cached) {
-			this.tokenIndex.delete(cached.registration.asToken);
-		}
-		this.cache.delete(id);
+		await this.stateRepo.upsertState(registration._id, { state: 'up' });
+		this.logger.info({ msg: `Loaded appservice registration: ${registration._id}` });
 	}
 
 	getAll(): CachedAppService[] {
@@ -144,60 +102,6 @@ export class RegistrationService {
 		return {
 			regex: new RegExp(ns.regex),
 			exclusive: ns.exclusive,
-		};
-	}
-
-	private validateRegistration(reg: AppServiceRegistration): void {
-		if (!reg._id) throw new Error('Registration id is required');
-		if (!reg.asToken) throw new Error('as_token is required');
-		if (!reg.hsToken) throw new Error('hs_token is required');
-		if (!reg.senderLocalpart) throw new Error('sender_localpart is required');
-
-		// Check for token conflicts with other registrations
-		const existingByToken = this.tokenIndex.get(reg.asToken);
-		if (existingByToken && existingByToken !== reg._id) {
-			throw new Error(`as_token conflict: token already used by appservice ${existingByToken}`);
-		}
-
-		// Validate namespace regexes compile
-		const allNamespaces = [...reg.namespaces.users, ...reg.namespaces.aliases, ...reg.namespaces.rooms];
-		for (const ns of allNamespaces) {
-			try {
-				new RegExp(ns.regex);
-			} catch {
-				throw new Error(`Invalid namespace regex: ${ns.regex}`);
-			}
-		}
-	}
-
-	private yamlToRegistration(yaml: AppServiceRegistrationYaml): AppServiceRegistration {
-		const now = new Date();
-		return {
-			_id: yaml.id,
-			url: yaml.url ?? null,
-			asToken: yaml.as_token,
-			hsToken: yaml.hs_token,
-			senderLocalpart: yaml.sender_localpart,
-			namespaces: {
-				users: (yaml.namespaces?.users ?? []).map((ns) => ({
-					regex: ns.regex,
-					exclusive: ns.exclusive ?? false,
-				})),
-				aliases: (yaml.namespaces?.aliases ?? []).map((ns) => ({
-					regex: ns.regex,
-					exclusive: ns.exclusive ?? false,
-				})),
-				rooms: (yaml.namespaces?.rooms ?? []).map((ns) => ({
-					regex: ns.regex,
-					exclusive: ns.exclusive ?? false,
-				})),
-			},
-			protocols: yaml.protocols ?? [],
-			rateLimited: yaml.rate_limited ?? true,
-			receiveEphemeral: yaml['de.sorunome.msc2409.push_ephemeral'] ?? false,
-			source: 'yaml',
-			createdAt: now,
-			updatedAt: now,
 		};
 	}
 }
