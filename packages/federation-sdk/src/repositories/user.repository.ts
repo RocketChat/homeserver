@@ -10,13 +10,12 @@ export type User = {
 	avatarUrl?: string;
 	avatarETag?: string;
 	federated?: boolean;
-	appserviceId?: string;
 	federation?: {
 		version?: number;
 		mui?: string;
 		origin?: string;
 		avatarUrl?: string;
-		appserviceId?: string;
+		asId?: string;
 	};
 	createdAt: Date;
 	_updatedAt: Date;
@@ -30,7 +29,7 @@ export class UserRepository {
 		return this.collection.findOne(
 			{
 				username,
-				$or: [{ federated: { $exists: false } }, { federated: false }, { 'federation.appserviceId': { $exists: true } }],
+				$or: [{ federated: { $exists: false } }, { federated: false }, { 'federation.asId': { $exists: true } }],
 			},
 			{
 				projection: {
@@ -58,12 +57,12 @@ export class UserRepository {
 		const now = new Date();
 		const username = `@${localpart}:${serverName}`;
 		await this.collection.updateOne(
-			{ 'federation.appserviceId': appserviceId },
+			{ 'federation.asId': appserviceId },
 			{
 				$set: {
 					username,
 					name: username,
-					type: 'user' as const,
+					type: 'bot' as const,
 					status: 'offline' as const,
 					active: true,
 					roles: ['federated-external'],
@@ -73,7 +72,7 @@ export class UserRepository {
 						version: 1,
 						mui: username,
 						origin: serverName,
-						appserviceId,
+						asId: appserviceId,
 					},
 					_updatedAt: new Date(),
 				},
