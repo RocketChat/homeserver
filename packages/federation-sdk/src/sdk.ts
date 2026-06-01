@@ -6,7 +6,7 @@ import {
 	RegistrationService,
 } from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
-import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
+import type { PduForType, PduType, RoomID, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { UserRepository } from './repositories/user.repository';
@@ -375,5 +375,24 @@ export class FederationSDK {
 
 	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
 		return this.roomService.joinUser(...args);
+	}
+
+	async joinXMPPChatRoom(roomAlias: string, sender: UserID) {
+		const localAlias = `_xmpp_${roomAlias}`;
+
+		const fullRoomAlias = `#${localAlias}:${this.configService.serverName}`;
+
+		const interested = this.namespaceMatcherService.getInterestedAppServices('', sender, [fullRoomAlias], []);
+
+		for await (const as of interested) {
+			await this.bridgeQueryService.queryRoomAlias(as.registration._id, fullRoomAlias);
+
+			const resolved = await this.directoryService.resolveAlias(localAlias);
+			if (!resolved) {
+				throw new Error(`Failed to resolve room alias ${roomAlias} after bridge query response`);
+			}
+
+			await this.roomService.joinUser(resolved.roomId as RoomID, sender);
+		}
 	}
 }
