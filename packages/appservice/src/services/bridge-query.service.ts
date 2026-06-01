@@ -25,7 +25,7 @@ export class BridgeQueryService {
 	 * Query a bridge about an unknown room alias in its namespace.
 	 * Returns true if the bridge claims the alias (200), false otherwise.
 	 */
-	async queryRoomAlias(asId: string, roomAlias: string): Promise<boolean> {
+	async queryRoomAlias(asId: string, roomAlias: string): Promise<any> {
 		const as = this.registrationService.getById(asId);
 		if (!as?.registration.url) return false;
 
@@ -91,16 +91,19 @@ export class BridgeQueryService {
 		return result;
 	}
 
-	private async queryBridge(as: CachedAppService, path: string): Promise<boolean> {
+	private async queryBridge(as: CachedAppService, path: string): Promise<any> {
 		try {
-			const response = await fetch(new URL(`${as.registration.url}${path}`), {
+			const url = new URL(`${as.registration.url}${path}`);
+
+			const response = await fetch(url, {
 				method: 'GET',
 				headers: {
 					Authorization: `Bearer ${as.registration.hsToken}`,
+					Host: url.host,
 				},
 			});
 
-			return response.ok;
+			return response;
 		} catch (err) {
 			this.logger.error({
 				msg: 'Bridge query failed',

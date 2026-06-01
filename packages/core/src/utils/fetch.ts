@@ -1,4 +1,4 @@
-import { type IncomingHttpHeaders } from 'node:http';
+import http, { type IncomingHttpHeaders, type IncomingMessage } from 'node:http';
 import https from 'node:https';
 
 type RequestOptions = Parameters<typeof https.request>[1];
@@ -116,9 +116,77 @@ export type FetchResponse<T> = {
 	body: () => Promise<Buffer>;
 };
 
-// this fetch is used when connecting to a multihome server, same server hosting multiple homeservers, and we need to verify the cert with the right SNI (hostname), or else, cert check will fail due to connecting through ip and not hostname (due to matrix spec).
+// lazily reads the full response body once, enforcing a size limit and cleaning up listeners
+function readBody(res: IncomingMessage): () => Promise<Buffer> {
+	let body: Promise<Buffer>;
+
+	return () => {
+		if (!body) {
+			body = new Promise<Buffer>((resolve, reject) => {
+				const chunks: Buffer[] = [];
+
+				// TODO: Make @hs/core fetch size limit configurable
+				let total = 0;
+				const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
+
+				const onData = (chunk: Buffer) => {
+					total += chunk.length;
+					if (total > MAX_RESPONSE_BYTES) {
+						const err = new Error('Response exceeds size limit');
+						res.destroy(err);
+						cleanup();
+						reject(err);
+						return;
+					}
+					chunks.push(chunk);
+				};
+				const onEnd = () => {
+					cleanup();
+					resolve(Buffer.concat(chunks));
+				};
+				const onErr = (err: Error) => {
+					cleanup();
+					reject(err);
+				};
+				const onAborted = () => onErr(new Error('Response aborted'));
+				const cleanup = () => {
+					res.off('data', onData);
+					res.off('end', onEnd);
+					res.off('error', onErr);
+					res.off('aborted', onAborted);
+				};
+				res.on('data', onData);
+				res.once('end', onEnd);
+				res.once('error', onErr);
+				res.once('aborted', onAborted);
+				res.resume();
+			});
+		}
+
+		return body;
+	};
+}
+
+// fallback response returned when the request never produced a usable response
+function errorResponse<T>(reason: string): FetchResponse<T> {
+	return {
+		ok: false,
+		status: undefined,
+		headers: {},
+		buffer: () => Promise.reject(reason),
+		json: () => Promise.reject(reason),
+		text: () => Promise.reject(reason),
+		multipart: () => Promise.reject(reason),
+		body: () => Promise.reject(reason),
+	};
+}
+
+// works for both http and https. for https on a multihomed server (same server hosting
+// multiple homeservers) we must verify the cert with the right SNI (hostname), or else the
+// cert check fails because we connect through the ip and not the hostname (due to matrix spec).
 export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchResponse<T>> {
-	const serverName = new URL(`http://${(options.headers as IncomingHttpHeaders).Host}` as string).hostname;
+	const isHttps = url.protocol === 'https:';
+	const transport = isHttps ? https : http;
 
 	const requestParams: RequestOptions = {
 		// for ipv6 remove square brackets as they come due to url standard
@@ -127,8 +195,14 @@ export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchRes
 		method: options.method,
 		path: url.pathname + url.search,
 		headers: options.headers as IncomingHttpHeaders,
-		servername: serverName,
 	};
+
+	if (isHttps) {
+		const host = (options.headers as IncomingHttpHeaders | undefined)?.Host;
+		if (host) {
+			requestParams.servername = new URL(`http://${host}`).hostname;
+		}
+	}
 
 	try {
 		const response: {
@@ -136,61 +210,14 @@ export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchRes
 			body: () => Promise<Buffer>;
 			headers: IncomingHttpHeaders;
 		} = await new Promise((resolve, reject) => {
-			const request = https.request(requestParams, (res) => {
-				const chunks: Buffer[] = [];
-
+			const request = transport.request(requestParams, (res) => {
 				res.once('error', reject);
-
 				res.pause();
-
-				let body: Promise<Buffer>;
 
 				resolve({
 					statusCode: res.statusCode,
 					headers: res.headers,
-					body() {
-						if (!body) {
-							body = new Promise<Buffer>((resBody, rejBody) => {
-								// TODO: Make @hs/core fetch size limit configurable
-								let total = 0;
-								const MAX_RESPONSE_BYTES = 50 * 1024 * 1024; // 50 MB
-
-								const onData = (chunk: Buffer) => {
-									total += chunk.length;
-									if (total > MAX_RESPONSE_BYTES) {
-										const err = new Error('Response exceeds size limit');
-										res.destroy(err);
-										cleanup();
-										rejBody(err);
-										return;
-									}
-									chunks.push(chunk);
-								};
-								const onEnd = () => {
-									cleanup();
-									resBody(Buffer.concat(chunks));
-								};
-								const onErr = (err: Error) => {
-									cleanup();
-									rejBody(err);
-								};
-								const onAborted = () => onErr(new Error('Response aborted'));
-								const cleanup = () => {
-									res.off('data', onData);
-									res.off('end', onEnd);
-									res.off('error', onErr);
-									res.off('aborted', onAborted);
-								};
-								res.on('data', onData);
-								res.once('end', onEnd);
-								res.once('error', onErr);
-								res.once('aborted', onAborted);
-								res.resume();
-							});
-						}
-
-						return body;
-					},
+					body: readBody(res),
 				});
 			});
 
@@ -228,15 +255,6 @@ export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchRes
 	} catch (err) {
 		const reason = err instanceof Error ? err.message : String(err);
 
-		return {
-			ok: false,
-			status: undefined,
-			headers: {},
-			buffer: () => Promise.reject(reason),
-			json: () => Promise.reject(reason),
-			text: () => Promise.reject(reason),
-			multipart: () => Promise.reject(reason),
-			body: () => Promise.reject(reason),
-		};
+		return errorResponse<T>(reason);
 	}
 }
