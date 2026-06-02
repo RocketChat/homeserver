@@ -39,7 +39,9 @@ export class EventRouterService {
 
 	private async routePersistent(event: PersistentEventBase): Promise<void> {
 		const { roomId, sender } = event;
-		if (!roomId || !sender) return;
+		if (!roomId || !sender) {
+			return;
+		}
 
 		const { aliases, members } = (await this.roomStateResolver?.(roomId)) ?? { aliases: [], members: [] };
 
@@ -57,7 +59,9 @@ export class EventRouterService {
 		const interested = await this.findInterestedForTargets(targets);
 
 		for (const as of interested) {
-			if (!as.registration.receiveEphemeral) continue;
+			if (!as.registration.receiveEphemeral) {
+				continue;
+			}
 			const batch = this.getOrCreateBatch(as);
 			batch.ephemeral.push(payload);
 			this.afterAppend(as, batch);

@@ -163,12 +163,20 @@ export class RoomState {
 		const event = getStateByMapKey(this.stateMap, {
 			type: 'm.room.canonical_alias',
 		});
-		if (!event || !event.isCanonicalAliasEvent()) return [];
+
+		if (!event?.isCanonicalAliasEvent()) {
+			return [];
+		}
 
 		const content = event.getContent();
 		const aliases: string[] = [];
-		if (content.alias) aliases.push(content.alias);
-		if (content.alt_aliases?.length) aliases.push(...content.alt_aliases);
+
+		if (content.alias) {
+			aliases.push(content.alias);
+		}
+		if (content.alt_aliases?.length) {
+			aliases.push(...content.alt_aliases);
+		}
 		return aliases;
 	}
 

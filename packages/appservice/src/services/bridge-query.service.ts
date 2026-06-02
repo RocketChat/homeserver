@@ -16,7 +16,9 @@ export class BridgeQueryService {
 	 */
 	async queryUser(asId: string, userId: string): Promise<boolean> {
 		const as = this.registrationService.getById(asId);
-		if (!as?.registration.url) return false;
+		if (!as?.registration.url) {
+			return false;
+		}
 
 		return this.queryBridge(as, `/_matrix/app/v1/users/${encodeURIComponent(userId)}`);
 	}
@@ -27,7 +29,9 @@ export class BridgeQueryService {
 	 */
 	async queryRoomAlias(asId: string, roomAlias: string): Promise<any> {
 		const as = this.registrationService.getById(asId);
-		if (!as?.registration.url) return false;
+		if (!as?.registration.url) {
+			return false;
+		}
 
 		return this.queryBridge(as, `/_matrix/app/v1/rooms/${encodeURIComponent(roomAlias)}`);
 	}
@@ -37,7 +41,9 @@ export class BridgeQueryService {
 	 */
 	async queryThirdPartyProtocol(asId: string, protocol: string): Promise<Record<string, unknown> | null> {
 		const as = this.registrationService.getById(asId);
-		if (!as?.registration.url) return null;
+		if (!as?.registration.url) {
+			return null;
+		}
 
 		return this.queryBridgeJson(as, `/_matrix/app/v1/thirdparty/protocol/${encodeURIComponent(protocol)}`);
 	}
@@ -47,7 +53,9 @@ export class BridgeQueryService {
 	 */
 	async queryThirdPartyUser(asId: string, protocol: string, fields: Record<string, string>): Promise<Record<string, unknown>[] | null> {
 		const as = this.registrationService.getById(asId);
-		if (!as?.registration.url) return null;
+		if (!as?.registration.url) {
+			return null;
+		}
 
 		const params = new URLSearchParams(fields).toString();
 		const path = protocol
@@ -62,7 +70,9 @@ export class BridgeQueryService {
 	 */
 	async queryThirdPartyLocation(asId: string, protocol: string, fields: Record<string, string>): Promise<Record<string, unknown>[] | null> {
 		const as = this.registrationService.getById(asId);
-		if (!as?.registration.url) return null;
+		if (!as?.registration.url) {
+			return null;
+		}
 
 		const params = new URLSearchParams(fields).toString();
 		const path = protocol
@@ -124,7 +134,10 @@ export class BridgeQueryService {
 				},
 			});
 
-			if (!response.ok) return null;
+			if (!response.ok) {
+				return null;
+			}
+
 			return response.json() as Promise<Record<string, unknown>>;
 		} catch (err) {
 			this.logger.error({

@@ -62,9 +62,16 @@ function transformReceipts(edus: ReceiptEDU[]): AppServiceEphemeralEvent[] {
 			}
 			for (const [user_id, userReceipt] of Object.entries(readMap)) {
 				for (const event_id of userReceipt.event_ids) {
-					if (!acc[event_id]) acc[event_id] = { 'm.read': {} };
+					if (!acc[event_id]) {
+						acc[event_id] = { 'm.read': {} };
+					}
+
 					const userEntry: ReceiptUser = { ts: userReceipt.data.ts };
-					if (userReceipt.data.thread_id) userEntry.thread_id = userReceipt.data.thread_id;
+
+					if (userReceipt.data.thread_id) {
+						userEntry.thread_id = userReceipt.data.thread_id;
+					}
+
 					acc[event_id]['m.read'][user_id] = userEntry;
 				}
 			}
