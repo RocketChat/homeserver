@@ -1,0 +1,23 @@
+packages/room/src/manager/room-state.ts
+  h_4c386397e672f4 166-167,169,173-174,176-177,179
+packages/appservice/src/services/bridge-query.service.ts
+  h_4c386397e672f4 19,21,32-34,44,46,56,58,73,75,137,139-140
+packages/appservice/src/utils/edu-to-appservice.ts
+  h_4c386397e672f4 65,67-68,70-71,73-74
+packages/appservice/src/services/event-router.service.ts
+  h_4c386397e672f4 42,44,62,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "427bb443f0c550a7505f4cb1110067d0eb3d2d16",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
