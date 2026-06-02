@@ -1,0 +1,14 @@
+packages/appservice/src/repositories/appservice-state.repository.ts
+  122a8bcf527946a7 1,3-8,10-21,23-41,44-67
+  7e7b4691259a4d92 2,9
+packages/appservice/src/repositories/appservice-txn.repository.ts
+  122a8bcf527946a7 1,3-8,10,12-17,19-21,23-29,31
+  7e7b4691259a4d92 2,9
+  96788aa63ecf486e 18,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "952577ede27d614fd1138266fce6cc23cd58f6cb",
+  "prompts": {}
+}

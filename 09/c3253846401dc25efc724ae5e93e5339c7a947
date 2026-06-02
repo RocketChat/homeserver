@@ -1,0 +1,18 @@
+packages/federation-sdk/src/services/profiles.service.ts
+  h_3b4d628c7b932e 26-31,34-35
+  h_4c386397e672f4 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09c3253846401dc25efc724ae5e93e5339c7a947",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

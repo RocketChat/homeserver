@@ -1,0 +1,20 @@
+packages/appservice/src/services/bridge-query.service.ts
+  122a8bcf527946a7 1-4,6-18,22,24-29,31,35,37-41,43,47,49-53,55,59-70,72,76-90,93-96,100-103,105,109-111,113-115,117-127,129-135,141-152,20-21,33-34,45-46,57-58,74-75
+  96788aa63ecf486e 5,23,36,42,48,54,71,91-92,97-99,128
+  h_4c386397e672f4 136,107,19,32,44,56,73,137,139-140
+  h_3b4d628c7b932e 106,108,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "439056114f4a93eabf67684091ba52604bfeedfe",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+packages/appservice/src/services/registration.service.ts
+  122a8bcf527946a7 4,7,9,11-19,26,31,34,101-102,126-135,137-139,144-158,160,215-217,59,124-125
+  7e7b4691259a4d92 5,20,23-25,140-143
+  ee26c26d6e5dc30f 116-117,41,46
+  h_4c386397e672f4 122
+packages/appservice/src/models/appservice.model.ts
+  122a8bcf527946a7 3-12,14-46,48-51,73-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "22d6b3845dc31a39970fdfe8d9bb2d3d8119ee01",
+  "prompts": {
+    "122a8bcf527946a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15993551-2181-4e64-967d-fee6087afa62",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 3075,
+      "total_deletions": 699,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "ee26c26d6e5dc30f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b0057c5-6895-42a5-a858-28bfc9ce841a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 57,
+      "total_deletions": 21,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

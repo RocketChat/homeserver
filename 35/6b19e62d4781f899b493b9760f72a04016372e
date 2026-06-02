@@ -1,0 +1,64 @@
+packages/federation-sdk/src/repositories/user.repository.ts
+  s_a5345fc2246477::t_bbba4a80a3742f 46-49,2,50-58,60,62-63,79-80,82-87
+  h_4c386397e672f4 1,59,64-65,67-75,77-78,81
+packages/federation-sdk/src/sdk.ts
+  7e7b4691259a4d92 53-56,315-329,357-386
+  s_a5345fc2246477::t_08f335ae7fa5bd 72,59,63-66,68-69
+  ee26c26d6e5dc30f 340-341
+  h_4c386397e672f4 387,90-93,388-391,10,58,70-71,346-347
+  s_efc26dd12af93d::t_543b1957cd9f45 14
+  s_efc26dd12af93d::t_a126313cfecda5 57
+  s_a5345fc2246477::t_3850a73380e11b 1-7
+  s_a5345fc2246477::t_48cd24b24c7f53 12
+  s_a5345fc2246477::t_19eb82361fd90e 62,67,348-349,351-354
+  s_fc20346843d7d0::t_9254e47a23bf46 344
+packages/federation-sdk/src/index.ts
+  0eb1d1d598344e40 32,4-5,27,33-36,38-39
+  122a8bcf527946a7 42
+  7e7b4691259a4d92 44-45,79
+  ee26c26d6e5dc30f 136-137,140-142,144-146,148-149,158-161,171,167-170,40,116-117
+  h_3b4d628c7b932e 166
+  s_fc20346843d7d0::t_eb21e842bd9bbd 37
+  s_efc26dd12af93d::t_4320b96344ee13 20
+  s_efc26dd12af93d::t_fa43478f93f3f0 114-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "356b19e62d4781f899b493b9760f72a04016372e",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a5345fc2246477": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a171eca-5d1a-4ea3-b5d5-633a786f00d2",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_efc26dd12af93d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc1baa70-750b-4d36-978c-2b6c23d24985",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_fc20346843d7d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94dc3123-321e-4f2b-b60f-6dfba8fdae94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

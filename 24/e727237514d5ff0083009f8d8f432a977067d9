@@ -1,0 +1,109 @@
+packages/appservice/src/services/event-router.service.ts
+  96788aa63ecf486e 3,7,38
+  122a8bcf527946a7 4-6,8,18,21-23,26-32,39,42-43,47,54,56-57,61-63,83-88,94-99,101-114,118-122,90
+  s_56f3c1bdb01226::t_5accde71520cf8 67,71,73,79
+  s_f94c88fd4872a2::t_a0e6627c00c313 115,14,17
+  ee26c26d6e5dc30f 24,100,58-60,76-78,82,89,92-93,53
+  h_4c386397e672f4 2,19,44-46,49
+packages/federation-sdk/src/index.ts
+  0eb1d1d598344e40 32,4-5,27,33-36,38-39
+  122a8bcf527946a7 42
+  7e7b4691259a4d92 44-45,79
+  ee26c26d6e5dc30f 136-137,140-142,144-146,148-149,155-158,168,164-167,40,116-117
+  h_3b4d628c7b932e 163
+  s_fc20346843d7d0::t_eb21e842bd9bbd 37
+  s_efc26dd12af93d::t_4320b96344ee13 20
+  s_efc26dd12af93d::t_fa43478f93f3f0 114-115
+packages/federation-sdk/src/services/message.service.ts
+  h_4c386397e672f4 1,56,131
+packages/appservice/src/services/transaction-sender.service.ts
+  7e7b4691259a4d92 3,16-21
+  122a8bcf527946a7 4,6-15,22-27,29-36,40-43,45-47,49,56-63,70,74-78,81,83-89,91-100,102-131,133-136,38,52
+  96788aa63ecf486e 64-69,71-73,90,101,132,48
+  h_4c386397e672f4 2,37,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24e727237514d5ff0083009f8d8f432a977067d9",
+  "prompts": {
+    "122a8bcf527946a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15993551-2181-4e64-967d-fee6087afa62",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 3075,
+      "total_deletions": 699,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "96788aa63ecf486e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "35d3ec97-2b96-45c9-89b6-236cb8cf8456",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 598,
+      "total_deletions": 517,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "ee26c26d6e5dc30f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b0057c5-6895-42a5-a858-28bfc9ce841a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_56f3c1bdb01226": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cc5fdcb-28ab-4fc5-be08-7fcf9587881c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_efc26dd12af93d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc1baa70-750b-4d36-978c-2b6c23d24985",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_f94c88fd4872a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c7bb861-3696-4c59-87d1-40204084db7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_fc20346843d7d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94dc3123-321e-4f2b-b60f-6dfba8fdae94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
