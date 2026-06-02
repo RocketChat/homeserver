@@ -1,0 +1,31 @@
+packages/appservice/src/services/registration.service.ts
+  122a8bcf527946a7 1,3,6,15-23,30,64-65,70-79,83-85,90-104,106,109,68-69,7,57,63
+  7e7b4691259a4d92 2,24-26,29,86-89
+  ee26c26d6e5dc30f 31,35
+  s_fc20346843d7d0::t_53a55f267b4b3e 4-5,8-14,27-28,41-43,46-56,58-62,66-67
+  s_fc20346843d7d0::t_a87308f6245245 32-33,37-38
+  s_fc20346843d7d0::t_f4930a53285d5f 34
+  s_fc20346843d7d0::t_e2589fd3ee57c4 40
+  h_4c386397e672f4 80,82,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "82b6c7c6f945bd86eda6101f6d92a42eebedfc79",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_fc20346843d7d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94dc3123-321e-4f2b-b60f-6dfba8fdae94",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

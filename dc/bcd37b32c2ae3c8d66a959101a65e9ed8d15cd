@@ -1,0 +1,88 @@
+packages/appservice/src/services/bridge-query.service.ts
+  122a8bcf527946a7 1-4,6-18,22,24-29,31,35,37-41,43,47,49-53,55,59-70,72,76-90,93-96,100-103,105,109-111,113-115,117-127,129-135,141-152,20-21,33-34,45-46,57-58,74-75
+  96788aa63ecf486e 5,23,36,42,48,54,71,91-92,97-99,128
+  h_4c386397e672f4 136,107,19,32,44,56,73,137,139-140
+  h_3b4d628c7b932e 106,108,112
+packages/appservice/src/utils/edu-to-appservice.ts
+  s_0ee042e2f0cfc6::t_69d2dfa1b44263 1-2,5-11,13-64,69,75-99,68,70,74
+  s_0ee042e2f0cfc6::t_78c48c6c3755f8 3-4
+  s_0ee042e2f0cfc6::t_2009d6b88204b4 12
+  h_4c386397e672f4 65,67,71,73
+packages/appservice/src/services/event-router.service.ts
+  96788aa63ecf486e 3,7,29
+  122a8bcf527946a7 4-6,8-9,12-14,17-23,30,33-34,38,47,49-50,54-56,119-124,130-135,137-150,154-158,126,78,82,94,96,113,116,43-44
+  s_56f3c1bdb01226::t_5accde71520cf8 60,68,58-59,71-77,80-81,84-89,91-92,95,98,110-111,115,63
+  s_f94c88fd4872a2::t_a0e6627c00c313 151,79,83,90,93,97,101,106,112,114,117,64
+  ee26c26d6e5dc30f 15,136,128-129,46
+  h_4c386397e672f4 2,10,35-37,40,1,11,57,42,62
+  s_56f3c1bdb01226::t_0578d69c5187d3 99-100,102-105,107-109
+packages/room/src/manager/room-state.ts
+  ee26c26d6e5dc30f 160-161,163-165,171-172,180-182,173
+  h_3b4d628c7b932e 162
+  h_4c386397e672f4 170,167,169,174,176-177,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dcbcd37b32c2ae3c8d66a959101a65e9ed8d15cd",
+  "prompts": {
+    "122a8bcf527946a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15993551-2181-4e64-967d-fee6087afa62",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 3075,
+      "total_deletions": 699,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    },
+    "ee26c26d6e5dc30f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b0057c5-6895-42a5-a858-28bfc9ce841a",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 37,
+      "total_deletions": 25,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0ee042e2f0cfc6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "840b92a8-c69d-4b98-85ad-5b9447078b77",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_56f3c1bdb01226": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5cc5fdcb-28ab-4fc5-be08-7fcf9587881c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_f94c88fd4872a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c7bb861-3696-4c59-87d1-40204084db7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

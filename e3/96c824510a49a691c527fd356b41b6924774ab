@@ -1,0 +1,14 @@
+packages/federation-sdk/src/services/message.service.ts
+  h_4c386397e672f4 1,56,131,186,267,295,341,380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e396c824510a49a691c527fd356b41b6924774ab",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

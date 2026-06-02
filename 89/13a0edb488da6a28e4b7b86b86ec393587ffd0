@@ -1,0 +1,22 @@
+packages/appservice/TODO.md
+  7e7b4691259a4d92 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8913a0edb488da6a28e4b7b86b86ec393587ffd0",
+  "prompts": {
+    "7e7b4691259a4d92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ae60dc8-4989-49ce-a640-b5030c2a1ec1",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Diego Sampaio",
+      "total_additions": 49,
+      "total_deletions": 0,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    }
+  }
+}
