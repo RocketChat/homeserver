@@ -1,0 +1,14 @@
+.github/workflows/release.yml
+  h_4c386397e672f4 5-8,37-42,63,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "905205709f2ff398b02fadfcd5494d2325cc999c",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
