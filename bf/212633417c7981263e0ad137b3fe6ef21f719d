@@ -1,0 +1,17 @@
+packages/appservice/src/services/bridge-query.service.ts
+  h_4c386397e672f4 30,104,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bf212633417c7981263e0ad137b3fe6ef21f719d",
+  "prompts": {},
+  "humans": {
+    "h_3b4d628c7b932e": {
+      "author": "Diego Sampaio"
+    },
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
