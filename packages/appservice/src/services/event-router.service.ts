@@ -13,13 +13,19 @@ interface EventBatch {
 }
 
 const BATCH_WINDOW_MS = 100;
-const MAX_BATCH_SIZE = 50;
+export const MAX_BATCH_SIZE = 50;
 
 @singleton()
 export class EventRouterService {
 	private readonly logger = createLogger('EventRouterService');
 
 	private batches: Map<string, EventBatch> = new Map();
+
+	// Tail of the in-flight send chain per appservice. Flushed batches are
+	// appended to this chain so transactions for a given bridge are delivered
+	// strictly in order (txnId allocation happens inside sendTransaction, so
+	// serializing the calls also keeps txnIds monotonic with delivery order).
+	private sendChains: Map<string, Promise<void>> = new Map();
 
 	// Resolves the aliases and joined members of a room — needed for namespace
 	// interest detection. Injected from federation-sdk since the appservice
@@ -149,10 +155,35 @@ export class EventRouterService {
 
 		if (batch.events.length === 0 && batch.ephemeral.length === 0) return;
 
-		this.transactionSender
-			.sendTransaction(appservice, batch.events, batch.ephemeral.length > 0 ? batch.ephemeral : undefined)
+		this.enqueueSend(appservice, batch.events, batch.ephemeral.length > 0 ? batch.ephemeral : undefined);
+	}
+
+	// Appends a transaction send to the per-appservice chain so sends run one
+	// at a time, in flush order. A failed send is logged but does not break the
+	// chain — the next batch still goes out (and its delivery resets up/down
+	// state via the sender).
+	private enqueueSend(
+		appservice: CachedAppService,
+		events: PersistentEventBase[],
+		ephemeral: (ReceiptEDU | TypingEDU | PresenceEDU)[] | undefined,
+	): void {
+		const asId = appservice.registration._id;
+		const prev = this.sendChains.get(asId) ?? Promise.resolve();
+
+		const next = prev
+			.then(() => this.transactionSender.sendTransaction(appservice, events, ephemeral))
 			.catch((err) => {
 				this.logger.error({ msg: 'Failed to send transaction batch', asId, err });
 			});
+
+		this.sendChains.set(asId, next);
+
+		// Drop the chain entry once it settles and nothing newer was queued,
+		// so the map doesn't retain resolved promises for idle bridges.
+		void next.finally(() => {
+			if (this.sendChains.get(asId) === next) {
+				this.sendChains.delete(asId);
+			}
+		});
 	}
 }
