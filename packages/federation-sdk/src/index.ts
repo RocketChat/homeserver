@@ -137,11 +137,11 @@ export async function init({
 	});
 
 	container.register<Collection<AppServiceState>>('AppServiceStateCollection', {
-		useValue: db.collection<AppServiceState>('rocketchat_appservices_state'),
+		useValue: db.collection<AppServiceState>('rocketchat_federation_appservices_state'),
 	});
 
 	container.register<Collection<AppServiceTransaction>>('AppServiceTxnCollection', {
-		useValue: db.collection<AppServiceTransaction>('rocketchat_appservices_txns'),
+		useValue: db.collection<AppServiceTransaction>('rocketchat_federation_appservices_txns'),
 	});
 
 	// this is required to initialize the listener and register the queue handler
