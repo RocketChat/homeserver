@@ -45,4 +45,15 @@ jobs:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_CONFIG_TOKEN }}
         run: |
           cd ./federation-bundle
-          bun publish --access public
+          VERSION=$(jq -r '.version' package.json)
+          if [[ "$VERSION" == *-* ]]; then
+            # Prerelease (e.g. 0.7.0-beta.0): publish under its prerelease dist-tag,
+            # never "latest". Tag = identifier before the first dot (beta, rc, alpha...).
+            PRERELEASE="${VERSION#*-}"
+            TAG="${PRERELEASE%%.*}"
+            echo "Publishing prerelease $VERSION with dist-tag: $TAG"
+            bun publish --access public --tag "$TAG"
+          else
+            echo "Publishing release $VERSION with dist-tag: latest"
+            bun publish --access public
+          fi
