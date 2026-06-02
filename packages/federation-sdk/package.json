@@ -29,6 +29,10 @@
 	},
 	"license": "AGPL-3.0",
 	"author": "Rocket.Chat Technologies Corp. <contact@rocket.chat>",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/RocketChat/homeserver"
+	},
 	"files": ["dist"],
 	"peerDependencies": {
 		"typescript": "~5.9.2"
