@@ -2,6 +2,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
 name: Release
 jobs:
   release:
@@ -30,6 +34,12 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false  # never use caching in release builds
+
       - run: bun install
 
       - run: bun run build
@@ -41,8 +51,6 @@ jobs:
       - run: bun run bundle:sdk
 
       - name: Publish to NPM
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_CONFIG_TOKEN }}
         run: |
           cd ./federation-bundle
           VERSION=$(jq -r '.version' package.json)
@@ -52,8 +60,8 @@ jobs:
             PRERELEASE="${VERSION#*-}"
             TAG="${PRERELEASE%%.*}"
             echo "Publishing prerelease $VERSION with dist-tag: $TAG"
-            bun publish --access public --tag "$TAG"
+            npm publish --access public --tag "$TAG"
           else
             echo "Publishing release $VERSION with dist-tag: latest"
-            bun publish --access public
+            npm publish --access public
           fi
