@@ -89,15 +89,33 @@ Authorization: Bearer <hs_token>
       "content": {"user_ids": ["@user:example.com"]}
     }
   ],
+  "ephemeral": [
+    {
+      "type": "m.typing",
+      "room_id": "!room123:example.com",
+      "content": {"user_ids": ["@user:example.com"]}
+    }
+  ],
   "de.sorunome.msc2409.to_device": [],
   "org.matrix.msc3202.device_one_time_key_counts": {},
   "org.matrix.msc3202.device_lists": {"changed": [], "left": []}
 }
 ```
 
+> **Ephemeral events under two keys.** Ephemeral events (typing, receipts, presence) are sent under *both* the unstable `de.sorunome.msc2409.ephemeral` key (what Synapse emits and most bridges read) and the stable `ephemeral` key (Matrix v1.13+). Sending both maximizes bridge compatibility. See `transaction-sender.service.ts`.
+
 **Bridge must respond:** HTTP 200 with `{}` on success.
 
 **Transaction ID (`txnId`)**: Monotonically increasing. Bridges should deduplicate by `txnId` in case the homeserver retries.
+
+### Batching
+
+Events are not pushed one-at-a-time. The router accumulates events and EDUs per appservice into a batch that flushes when **either** limit is hit:
+
+- **Batch window**: 100 ms since the first event in the batch (`BATCH_WINDOW_MS`).
+- **Max batch size**: 50 events/EDUs combined (`MAX_BATCH_SIZE`).
+
+This keeps transaction volume low while bounding delivery latency. See `event-router.service.ts`.
 
 ### What Events to Push
 
@@ -112,24 +130,27 @@ The homeserver must determine which bridges are "interested" in each event. A br
 
 If a bridge is unreachable:
 
-1. Mark the bridge as DOWN.
-2. Queue events for later delivery.
-3. Use exponential backoff for retries.
-4. When the bridge comes back (responds 200), mark it as UP and flush the queue.
-5. Track stream position per bridge so it can resume from where it left off.
+1. Persist the transaction (status `pending`) before attempting delivery, so it survives a restart.
+2. On a non-2xx response or network error, mark the transaction `failed` and the bridge `down` (recording the error).
+3. On a 2xx response, mark the transaction `sent` and the bridge `up`.
+4. Retry eligible pending/failed transactions with **exponential backoff**: `min(1000 * 2^attempts, 60000)` ms (initial 1 s, capped at 60 s).
+5. Track per-bridge state so it can resume from where it left off.
+
+> **Implementation caveat (retries).** This homeserver stores only the event *IDs* in the transaction record, not the full event bodies. Retries therefore send an **empty** transaction body purely to test connectivity and reset the bridge to `up`; the missed events are not re-delivered. A more complete implementation would persist enough to replay the original payload. See `transaction-sender.service.ts` (`retryPending`).
 
 ### State Tracking (per bridge)
 
-The homeserver must track per-bridge stream positions:
+The homeserver tracks per-bridge delivery state (`AppServiceState`):
 
 | Field | Purpose |
 |-------|---------|
-| `stream_ordering` | Last event stream position delivered |
-| `read_receipt_stream_id` | Last read receipt delivered |
-| `presence_stream_id` | Last presence update delivered |
-| `to_device_stream_id` | Last to-device message delivered |
-| `device_list_stream_id` | Last device list change delivered |
-| `state` | UP or DOWN |
+| `state` | `up` or `down` |
+| `lastTxnId` | Last transaction ID allocated (monotonic counter) |
+| `streamOrdering` | Last event stream position delivered |
+| `readReceiptStreamId` | Last read receipt delivered |
+| `presenceStreamId` | Last presence update delivered |
+| `toDeviceStreamId` | Last to-device message delivered |
+| `lastError` / `lastErrorAt` | Last delivery error and when it occurred |
 
 ---
 
@@ -333,7 +354,9 @@ def get_interested_bridges(event, all_bridges):
     return interested
 ```
 
----
+To resolve a room's aliases and members for steps 2 and 3, the router uses an injected **room-state resolver** callback that reads the latest resolved room state (canonical aliases + members). See `event-router.service.ts` and the resolver wired up in `federation-sdk/src/index.ts`.
+
+> **Implementation note (member matching).** In this codebase the member-based check (step 3) is narrower than the generic algorithm: a member only triggers interest when it equals the bridge's *own* bot user ID (`@{senderLocalpart}:{serverName}`) **and** matches the user namespace regex (commit "match user id with server name"). In practice, interest is driven mainly by room ID, alias, and sender matches; the bridge bot's presence in a room counts, but other ghost members do not by themselves. See `namespace-matcher.service.ts` (`getInterestedAppServices`).
 
 ## 7. Complete Message Flow Examples
 
@@ -407,6 +430,8 @@ def get_interested_bridges(event, all_bridges):
 - [ ] Push presence updates to interested bridges
 - [ ] Push to-device messages to interested bridges
 - [ ] Respect `de.sorunome.msc2409.push_ephemeral` flag
+- [ ] Send ephemeral events under both the unstable (`de.sorunome.msc2409.ephemeral`) and stable (`ephemeral`) keys for compatibility
+- [ ] Convert federation EDUs to client-server ephemeral shapes (coalesce typing, re-key receipts, fan out presence)
 
 ### Database Schema
 
@@ -494,3 +519,69 @@ Studying how these SDKs interact with the homeserver is useful for understanding
 - [Client-Server API — Registration](https://spec.matrix.org/latest/client-server-api/#registration)
 - [MSC2409 — Ephemeral events for appservices](https://github.com/matrix-org/matrix-spec-proposals/pull/2409)
 - [MSC3202 — Device list changes for appservices](https://github.com/matrix-org/matrix-spec-proposals/pull/3202)
+
+---
+
+## 12. This Homeserver's Implementation
+
+The Application Service support in this repository lives in the `@rocket.chat/federation-appservice` package, with supporting changes in `federation-sdk`, `federation-core`, and `federation-room`. It currently powers an **XMPP bridge**. This section maps the concepts above onto the actual code.
+
+### Source File Reference
+
+| File | Purpose |
+|------|---------|
+| `packages/appservice/src/models/appservice.model.ts` | `AppServiceRegistration`, `AppServiceNamespaces`, `AppServiceState`, `AppServiceTransaction`, `AppServiceEphemeralEvent`, and the in-memory `CachedAppService` (with compiled regexes) |
+| `packages/appservice/src/services/registration.service.ts` | Loads registrations from config, caches them with compiled namespaces, indexes by `asToken`, tracks state |
+| `packages/appservice/src/services/namespace-matcher.service.ts` | Namespace/exclusivity matching and `getInterestedAppServices()` interest detection |
+| `packages/appservice/src/services/event-router.service.ts` | Routes persistent + ephemeral events to interested bridges; batching (100 ms / 50 events) |
+| `packages/appservice/src/services/transaction-sender.service.ts` | `PUT /_matrix/app/v1/transactions/{txnId}` with `hs_token` auth; retry/backoff; up/down state |
+| `packages/appservice/src/services/bridge-query.service.ts` | Bridge query endpoints: user, room alias, third-party protocol/user/location |
+| `packages/appservice/src/utils/edu-to-appservice.ts` (+ `.spec.ts`) | Converts federation EDUs (typing/receipt/presence) into client-server ephemeral events |
+| `packages/appservice/src/config-provider.ts` | `AppServiceConfigProvider` DI token — supplies `serverName` and XMPP config |
+| `packages/federation-sdk/src/sdk.ts` | Public SDK surface for appservice operations (see below) |
+| `packages/federation-sdk/src/services/directory.service.ts` + `repositories/room-alias.repository.ts` | Canonical room-alias storage and resolution |
+| `packages/room/src/manager/room-state.ts` | `setRoomStateResolver` — exposes canonical aliases + members used for interest matching |
+| `packages/core/src/utils/fetch.ts` | HTTP/HTTPS fetch used to reach bridges (see below) |
+
+### Config-Driven Registration (no YAML/DB)
+
+Unlike Synapse's YAML registration files, this homeserver builds the bridge registration **entirely from app config**. `RegistrationService.initialize()` reads `AppConfig.xmpp`:
+
+```ts
+xmpp?: {
+  bridgeURL: string;   // url
+  hsToken: string;     // HS → bridge auth
+  asToken: string;     // bridge → HS auth
+}
+```
+
+When present, it synthesizes a single registration with fixed values:
+
+- `_id`: `"xmpp"`, `senderLocalpart`: `"_xmpp_bot"`, `protocols`: `["xmpp"]`
+- Namespaces: users `@_xmpp_.*` (exclusive), aliases `#_xmpp_.*` (exclusive), rooms empty
+
+Re-running `setConfig()` re-initializes the cache and ensures the bridge bot user exists (`ensureSenderUsersForAllRegistrations()`). There is no `application_services` config-file parser yet — adding more bridges means extending the config schema and `RegistrationService`.
+
+### EDU → Ephemeral Event Conversion
+
+`eduBatchToAppServiceEphemeral()` translates federation EDUs into the client-server shapes bridges expect:
+
+- **`m.typing`** — coalesced per room; emits one event per room whose `content.user_ids` is the set of currently-typing users (last value per user in the batch wins).
+- **`m.receipt`** — re-keyed from the federation shape (`room → user → {data, event_ids}`) to the client-server shape (`event_id → "m.read" → user → {ts, thread_id?}`); receipts for the same room merge into one event.
+- **`m.presence`** — each entry in the EDU's `push` array fans out into its own `m.presence` event, hoisting `user_id` to a top-level `sender`.
+
+### SDK Surface (`federation-sdk`)
+
+The SDK exposes the appservice machinery to the rest of the homeserver and to the bridge-facing controllers:
+
+- Registration lookup: `getAllRegistrations()`, `getRegistrationById()`, `getRegistrationByAsToken()`
+- Startup: `ensureSenderUsersForAllRegistrations()` (creates/ensures the bridge bot user)
+- Queries: `getAllProtocols()`, `queryThirdPartyProtocol/User/Location()`, `pingAppService()`, `getAppServiceState()`
+- Namespace checks: `isExclusiveNamespace()`, `isUserInAppServiceNamespace()`
+- Room participation: `joinUser()` and `joinXMPPChatRoom()` — the latter builds an `#_xmpp_…` alias, queries the bridge, resolves the alias via the directory, and joins the user.
+
+The bridge bot user is created as a regular Rocket.Chat bot user on startup (commit "create appservice user as a rocketchat bot").
+
+### HTTP Support for Bridges
+
+`packages/core/src/utils/fetch.ts` selects the transport by URL scheme (`http` vs `https`), so bridges can be reached over plain **HTTP** (e.g. a local XMPP bridge at `http://localhost:…`). For HTTPS it sets the TLS `servername` (SNI) from the `Host` header so certificate verification works on multihomed servers.
