@@ -77,7 +77,9 @@ export class RegistrationService {
 
 	getByAsToken(asToken: string): CachedAppService | undefined {
 		const asId = this.tokenIndex.get(asToken);
-		if (!asId) return undefined;
+		if (!asId) {
+			return undefined;
+		}
 		return this.cache.get(asId);
 	}
 
@@ -100,7 +102,7 @@ export class RegistrationService {
 
 	private compileNamespace(ns: { regex: string; exclusive: boolean }): CompiledNamespace {
 		return {
-			regex: new RegExp(ns.regex),
+			regex: new RegExp(`^(?:${ns.regex})$`),
 			exclusive: ns.exclusive,
 		};
 	}
