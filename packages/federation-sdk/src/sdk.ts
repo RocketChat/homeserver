@@ -365,6 +365,10 @@ export class FederationSDK {
 		return this.namespaceMatcherService.isUserInNamespace(...args);
 	}
 
+	getAppServiceForUser(...args: Parameters<typeof this.namespaceMatcherService.getAppServiceForUser>) {
+		return this.namespaceMatcherService.getAppServiceForUser(...args);
+	}
+
 	pingAppService(...args: Parameters<typeof this.pingService.ping>) {
 		return this.pingService.ping(...args);
 	}
