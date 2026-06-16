@@ -1,0 +1,14 @@
+packages/appservice/src/services/registration.service.ts
+  h_4c386397e672f4 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "9161fa0b2f53263200af5edaba3b04133902e231",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
