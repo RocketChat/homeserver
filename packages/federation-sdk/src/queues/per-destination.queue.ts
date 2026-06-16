@@ -288,6 +288,14 @@ export class PerDestinationQueue {
 
 		// Clear any existing timer before scheduling a new retry
 		this.clearRetryTimer();
-		this.retryTimerId = setTimeout(() => this.processQueue(), backoff);
+		this.retryTimerId = setTimeout(() => {
+			// The timer firing means the backoff period has elapsed, so clear the
+			// gate and let processQueue() run instead of re-checking the wall clock.
+			// Re-checking Date.now() here is fragile under fake timers that advance
+			// the timer queue without advancing the mocked clock.
+			this.nextRetryAt = 0;
+			this.retryTimerId = null;
+			void this.processQueue();
+		}, backoff);
 	}
 }
