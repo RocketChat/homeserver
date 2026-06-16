@@ -11,7 +11,7 @@ import { AppServiceStateRepository } from '../repositories/appservice-state.repo
  * derived from the `_xmpp_` prefix used throughout the codebase.
  */
 const XMPP_APPSERVICE_ID = 'xmpp';
-const XMPP_SENDER_LOCALPART = '_xmpp_bot';
+const XMPP_SENDER_LOCALPART = 'xmpp';
 
 @singleton()
 export class RegistrationService {
