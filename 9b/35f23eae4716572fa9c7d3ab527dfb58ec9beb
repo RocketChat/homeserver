@@ -1,0 +1,24 @@
+packages/federation-sdk/src/queues/per-destination.queue.ts
+  s_763c80f6b94af4::t_5a2d0eb7ecfa6e 291-299
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "9b35f23eae4716572fa9c7d3ab527dfb58ec9beb",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_763c80f6b94af4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3facce85-b3d6-45fe-87c5-5ed5b88fefff",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
