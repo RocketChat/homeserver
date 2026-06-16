@@ -388,8 +388,16 @@ export class FederationSDK {
 
 		const interested = this.namespaceMatcherService.getInterestedAppServices('', sender, [fullRoomAlias], []);
 
+		let joined = false;
+
 		for await (const as of interested) {
-			await this.bridgeQueryService.queryRoomAlias(as.registration._id, fullRoomAlias);
+			const claimed = await this.bridgeQueryService.queryRoomAlias(as.registration._id, fullRoomAlias);
+			if (!claimed) {
+				// Bridge declined the alias or was unreachable (errors are swallowed and
+				// logged inside queryRoomAlias). Skip it rather than resolving a room it
+				// never created.
+				continue;
+			}
 
 			const resolved = await this.directoryService.resolveAlias(localAlias);
 			if (!resolved) {
@@ -397,6 +405,11 @@ export class FederationSDK {
 			}
 
 			await this.roomService.joinUser(resolved.roomId as RoomID, sender);
+			joined = true;
+		}
+
+		if (!joined) {
+			throw new Error(`No application service was able to provision room alias ${roomAlias}`);
 		}
 	}
 }
