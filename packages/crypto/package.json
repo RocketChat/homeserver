@@ -16,7 +16,7 @@
 		}
 	},
 	"dependencies": {
-		"@noble/ed25519": "^3.0.0"
+		"@noble/ed25519": "^3.0.1"
 	},
 	"devDependencies": {
 		"bun-types": "latest"
