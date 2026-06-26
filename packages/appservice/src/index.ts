@@ -19,6 +19,5 @@ export { TransactionSenderService } from './services/transaction-sender.service'
 export { EventRouterService } from './services/event-router.service';
 export { BridgeQueryService } from './services/bridge-query.service';
 export { PingService, type PingResult, type PingError } from './services/ping.service';
-export { NamespaceGuardService } from './services/namespace-guard.service';
 
 export { APPSERVICE_CONFIG_PROVIDER, type AppServiceConfigProvider } from './config-provider';

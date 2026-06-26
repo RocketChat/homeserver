@@ -363,6 +363,17 @@ export class FederationSDK {
 		return this.bridgeQueryService.queryThirdPartyLocation(...args);
 	}
 
+	/**
+	 * Ask the owning appservice whether it claims `userId`. On a positive
+	 * response the bridge registers the ghost via the register endpoint
+	 * asynchronously, so callers must resolve the local user afterwards
+	 * rather than assume it exists synchronously. Pair with
+	 * `getAppServiceForUser` to find the owning `asId` first.
+	 */
+	queryUser(...args: Parameters<typeof this.bridgeQueryService.queryUser>) {
+		return this.bridgeQueryService.queryUser(...args);
+	}
+
 	isExclusiveNamespace(...args: Parameters<typeof this.namespaceMatcherService.isExclusive>) {
 		return this.namespaceMatcherService.isExclusive(...args);
 	}
