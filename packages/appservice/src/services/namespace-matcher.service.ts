@@ -67,20 +67,32 @@ export class NamespaceMatcherService {
 	}
 
 	/**
+	 * Whether an appservice is interested in a user. An appservice is interested
+	 * in a user if it is the appservice's own sender_localpart (bot) user — which
+	 * it owns implicitly, regardless of namespaces — or if the user matches one
+	 * of the appservice's user namespaces.
+	 */
+	private isInterestedInUser(as: CachedAppService, userId: string): boolean {
+		const asUserId = `@${as.registration.senderLocalpart}:${this.config.serverName}`;
+		if (userId === asUserId) {
+			return true;
+		}
+		return as.compiledNamespaces.users.some((ns) => ns.regex.test(userId));
+	}
+
+	/**
 	 * Determine which appservices are interested in an event.
 	 *
 	 * A bridge is interested if any of the following match:
 	 * 1. Room ID matches the bridge's room namespace
 	 * 2. Any room alias matches the bridge's alias namespace
-	 * 3. Any room member matches the bridge's user namespace
-	 * 4. The event sender matches the bridge's user namespace
+	 * 3. Any room member belongs to the bridge (bot user or user namespace)
+	 * 4. The event sender belongs to the bridge (bot user or user namespace)
 	 */
 	getInterestedAppServices(roomId: string, sender: string, roomAliases: string[], roomMembers: string[]): CachedAppService[] {
 		const interested = new Map<string, CachedAppService>();
 
 		for (const as of this.registrationService.getAll()) {
-			const asUserId = `@${as.registration.senderLocalpart}:${this.config.serverName}`;
-
 			if (interested.has(as.registration._id)) continue;
 
 			// 1. Room ID matches room namespace
@@ -106,26 +118,18 @@ export class NamespaceMatcherService {
 			}
 			if (interested.has(as.registration._id)) continue;
 
-			// 3. Any room member matches user namespace
+			// 3. Any room member belongs to the appservice
 			for (const member of roomMembers) {
-				let found = false;
-				for (const ns of as.compiledNamespaces.users) {
-					if (member === asUserId && ns.regex.test(member)) {
-						interested.set(as.registration._id, as);
-						found = true;
-						break;
-					}
-				}
-				if (found) break;
-			}
-			if (interested.has(as.registration._id)) continue;
-
-			// 4. Event sender matches user namespace
-			for (const ns of as.compiledNamespaces.users) {
-				if (ns.regex.test(sender)) {
+				if (this.isInterestedInUser(as, member)) {
 					interested.set(as.registration._id, as);
 					break;
 				}
+			}
+			if (interested.has(as.registration._id)) continue;
+
+			// 4. Event sender belongs to the appservice
+			if (this.isInterestedInUser(as, sender)) {
+				interested.set(as.registration._id, as);
 			}
 		}
 

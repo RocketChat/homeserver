@@ -119,6 +119,17 @@ export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = {
 	'10': roomV10Schemas,
 };
 
+/**
+ * Resolve the validation schema for an event type. Known types resolve to their
+ * specific schema; unknown ("custom") types fall back to the permissive base
+ * schema, which the Matrix spec allows. Room versions without a dedicated schema
+ * set fall back to the canonical v10 schemas (currently the only set defined).
+ */
+export function getEventSchemaForType(eventType: string, roomVersion?: string): z.ZodSchema {
+	const versionSchemas = (roomVersion && eventSchemas[roomVersion]) || eventSchemas['10'];
+	return versionSchemas[eventType] ?? versionSchemas.default;
+}
+
 export { roomV10Schemas };
 
 export type BaseEventType = z.infer<typeof baseEventSchema>;
