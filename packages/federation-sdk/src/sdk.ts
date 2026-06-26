@@ -15,6 +15,7 @@ import { DirectoryService } from './services/directory.service';
 import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
+import { EventSenderService } from './services/event-sender.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationValidationService } from './services/federation-validation.service';
@@ -35,6 +36,7 @@ export class FederationSDK {
 	constructor(
 		private readonly roomService: RoomService,
 		private readonly messageService: MessageService,
+		private readonly eventSenderService: EventSenderService,
 		private readonly inviteService: InviteService,
 		private readonly eventService: EventService,
 		private readonly eduService: EduService,
@@ -101,6 +103,10 @@ export class FederationSDK {
 
 	sendMessage(...args: Parameters<typeof this.messageService.sendMessage>) {
 		return this.messageService.sendMessage(...args);
+	}
+
+	sendCustomEvent(...args: Parameters<typeof this.eventSenderService.sendCustomEvent>) {
+		return this.eventSenderService.sendCustomEvent(...args);
 	}
 
 	redactMessage(...args: Parameters<typeof this.messageService.redactMessage>) {
