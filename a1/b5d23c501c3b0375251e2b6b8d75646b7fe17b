@@ -1,0 +1,33 @@
+packages/appservice/src/services/namespace-matcher.service.spec.ts
+  s_705b987d3dbacc::t_3572ed679ba686 8
+  s_705b987d3dbacc::t_249b9f8628b946 1-7,9-105
+packages/appservice/src/services/namespace-matcher.service.ts
+  s_705b987d3dbacc::t_1600a01d2d605d 123,131
+  s_705b987d3dbacc::t_388223e2bb0d37 74,76-82,89-90,121,124-125,130,132
+  s_705b987d3dbacc::t_5fd916e7fdb62c 70-73,75
+  s_705b987d3dbacc::t_20ccc8620243c8 69
+packages/federation-sdk/src/utils/event-schemas.ts
+  s_705b987d3dbacc::t_c4647ec78a54d8 129
+  s_705b987d3dbacc::t_c4b25d0f004d8d 122-128,130-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "a1b5d23c501c3b0375251e2b6b8d75646b7fe17b",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_705b987d3dbacc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28883dac-d8cc-4b5d-9c16-65ba6d40793d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
