@@ -6,10 +6,11 @@ import {
 	RegistrationService,
 } from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
-import type { PduForType, PduType, RoomID, UserID } from '@rocket.chat/federation-room';
+import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { UserRepository } from './repositories/user.repository';
+import { AppServiceRoomService } from './services/appservice-room.service';
 import { AppConfig, ConfigService } from './services/config.service';
 import { DirectoryService } from './services/directory.service';
 import { EduService } from './services/edu.service';
@@ -57,6 +58,7 @@ export class FederationSDK {
 		private readonly namespaceMatcherService: NamespaceMatcherService,
 		private readonly pingService: PingService,
 		public readonly directoryService: DirectoryService,
+		private readonly appServiceRoomService: AppServiceRoomService,
 		@inject(delay(() => UserRepository))
 		private readonly userRepository: UserRepository,
 	) {}
@@ -398,35 +400,7 @@ export class FederationSDK {
 		return this.roomService.joinUser(...args);
 	}
 
-	async joinXMPPChatRoom(roomAlias: string, sender: UserID) {
-		const localAlias = `_xmpp_${roomAlias}`;
-
-		const fullRoomAlias = `#${localAlias}:${this.configService.serverName}`;
-
-		const interested = this.namespaceMatcherService.getInterestedAppServices('', sender, [fullRoomAlias], []);
-
-		let joined = false;
-
-		for await (const as of interested) {
-			const claimed = await this.bridgeQueryService.queryRoomAlias(as.registration._id, fullRoomAlias);
-			if (!claimed) {
-				// Bridge declined the alias or was unreachable (errors are swallowed and
-				// logged inside queryRoomAlias). Skip it rather than resolving a room it
-				// never created.
-				continue;
-			}
-
-			const resolved = await this.directoryService.resolveAlias(localAlias);
-			if (!resolved) {
-				throw new Error(`Failed to resolve room alias ${roomAlias} after bridge query response`);
-			}
-
-			await this.roomService.joinUser(resolved.roomId as RoomID, sender);
-			joined = true;
-		}
-
-		if (!joined) {
-			throw new Error(`No application service was able to provision room alias ${roomAlias}`);
-		}
+	joinXMPPChatRoom(...args: Parameters<typeof this.appServiceRoomService.joinXMPPChatRoom>) {
+		return this.appServiceRoomService.joinXMPPChatRoom(...args);
 	}
 }
