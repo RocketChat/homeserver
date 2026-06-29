@@ -1,0 +1,29 @@
+packages/federation-sdk/src/services/appservice-room.service.ts
+  s_f4d54f75be73fc::t_07714552ab8c09 1-50
+packages/federation-sdk/src/sdk.ts
+  s_f4d54f75be73fc::t_798a7c62deff27 403-404
+  s_f4d54f75be73fc::t_16b71c89af20c9 61
+  s_f4d54f75be73fc::t_d8faeae71849d4 9
+  s_f4d54f75be73fc::t_fc876db71df451 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "5922a6737670a31a19affd9c991273b313033dc7",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f4d54f75be73fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41e4f5f0-0a83-445f-861d-ffa17d4924fb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
