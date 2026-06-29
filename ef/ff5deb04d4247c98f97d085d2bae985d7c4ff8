@@ -1,0 +1,24 @@
+packages/appservice/src/services/transaction-sender.service.ts
+  s_f4d54f75be73fc::t_c0d9f560095f62 37-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "efff5deb04d4247c98f97d085d2bae985d7c4ff8",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f4d54f75be73fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41e4f5f0-0a83-445f-861d-ffa17d4924fb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
