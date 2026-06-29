@@ -34,7 +34,13 @@ export class TransactionSenderService {
 		const { registration } = appservice;
 
 		if (!registration.url) {
-			return; // No URL configured, skip
+			// A registration without a url is a valid receive-only appservice, but the
+			// events here are dropped (never queued), so surface it rather than fail silently.
+			this.logger.warn({
+				msg: 'Appservice has no URL configured; skipping transaction (receive-only mode)',
+				asId: registration._id,
+			});
+			return;
 		}
 
 		const txnId = await this.stateRepo.incrementTxnId(registration._id);
