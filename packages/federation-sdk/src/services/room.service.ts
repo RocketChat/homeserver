@@ -396,7 +396,13 @@ export class RoomService {
 
 		await this.stateService.handlePdu(topicEvent);
 
+		if (topicEvent.rejected) {
+			throw new Error(topicEvent.rejectReason);
+		}
+
 		void this.federationService.sendEventToAllServersInRoom(topicEvent);
+
+		return topicEvent;
 	}
 
 	private getEventByType<E extends PduType>(
@@ -527,7 +533,7 @@ export class RoomService {
 		};
 	}
 
-	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>): Promise<void> {
+	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>) {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while sending leave');
@@ -554,6 +560,8 @@ export class RoomService {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
+
+		return leaveEvent;
 	}
 
 	async leaveRoom(roomId: RoomID, senderId: UserID): Promise<EventID> {
@@ -872,7 +880,7 @@ export class RoomService {
 		return this.joinUser(roomId, userId);
 	}
 
-	async rejectInvite(roomId: RoomID, userId: UserID): Promise<void> {
+	async rejectInvite(roomId: RoomID, userId: UserID) {
 		const inviteEventStore = await this.eventService.findInviteEvent(roomId, userId);
 		if (!inviteEventStore) {
 			throw new Error(`Invite event not found for user ${userId} in room ${roomId}`);
@@ -886,8 +894,12 @@ export class RoomService {
 		// if inviting server is our own, we can handle the leave event ourselves
 		// otherwise, we need to send the leave event to the inviting server
 		if (invitingServer === this.configService.serverName) {
-			await this.leaveRoom(roomId, userId);
-			return;
+			const eventId = await this.leaveRoom(roomId, userId);
+			const localLeaveEvent = await this.stateService.getEvent(eventId);
+			if (!localLeaveEvent) {
+				throw new Error(`Leave event ${eventId} not found after rejecting invite for user ${userId} in room ${roomId}`);
+			}
+			return localLeaveEvent;
 		}
 
 		// important to note that on rejections from remote servers, we might not have the room state yet,
@@ -904,12 +916,14 @@ export class RoomService {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
+
+		return leaveEvent;
 	}
 
 	/**
 	 * Update user profile (displayname/avatar) in a room by sending a membership event
 	 */
-	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }): Promise<void> {
+	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }) {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const state = await this.stateService.getLatestRoomState(roomId);
@@ -948,6 +962,8 @@ export class RoomService {
 		});
 
 		void this.federationService.sendEventToAllServersInRoom(newMembershipEvent);
+
+		return newMembershipEvent;
 	}
 
 	private async _fetchFullBranch(
@@ -1218,7 +1234,13 @@ export class RoomService {
 
 		await this.stateService.handlePdu(event);
 
+		if (event.rejected) {
+			throw new Error(event.rejectReason);
+		}
+
 		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
 	}
 
 	async createDirectMessage({ creatorUserId, members }: { creatorUserId: UserID; members: UserID[] }) {
