@@ -1,0 +1,31 @@
+packages/federation-sdk/src/services/room.service.ts
+  s_142b4fdffbfdcf::t_c68b019db48587 536
+  s_142b4fdffbfdcf::t_ab058346d37c63 965-966
+  s_142b4fdffbfdcf::t_350a60959910b7 563-564
+  s_142b4fdffbfdcf::t_60835be619e2cd 883
+  s_142b4fdffbfdcf::t_ecfb79bf34e902 1237-1240,1242-1243
+  s_142b4fdffbfdcf::t_db3cdb199df409 919-920,926
+  h_4c386397e672f4 399-402,404-405
+  s_142b4fdffbfdcf::t_163a06625f7b85 897-902
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "caeab95b005e5f5a99134bcb669d137d80f1d59a",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_142b4fdffbfdcf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "33ce7bcb-2fce-4ea1-9437-eac20ac90e09",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
