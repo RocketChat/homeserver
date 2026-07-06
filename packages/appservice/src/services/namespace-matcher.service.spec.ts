@@ -39,6 +39,56 @@ function makeService(appservices: CachedAppService[]): NamespaceMatcherService {
 	return new NamespaceMatcherService(registrationService, config);
 }
 
+describe('NamespaceMatcherService.getAppServiceForUser', () => {
+	test('returns the appservice for its bot user even though no namespace matches it', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.getAppServiceForUser('@xmpp:rc.host')?.registration._id).toBe('xmpp');
+	});
+
+	test('returns the appservice for a ghost user via the user namespace', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.getAppServiceForUser('@_xmpp_alice:rc.host')?.registration._id).toBe('xmpp');
+	});
+
+	test('returns undefined for an unrelated user', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.getAppServiceForUser('@alice:rc.host')).toBeUndefined();
+	});
+});
+
+describe('NamespaceMatcherService.isUserInNamespace', () => {
+	test('matches the bot user, including when restricted to its own appservice', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.isUserInNamespace('@xmpp:rc.host')).toBe(true);
+		expect(service.isUserInNamespace('@xmpp:rc.host', 'xmpp')).toBe(true);
+		expect(service.isUserInNamespace('@xmpp:rc.host', 'other')).toBe(false);
+	});
+});
+
+describe('NamespaceMatcherService.isExclusive', () => {
+	test('treats the bot user as implicitly exclusive to its appservice', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.isExclusive('users', '@xmpp:rc.host')?.registration._id).toBe('xmpp');
+	});
+
+	test('returns the owning appservice for an exclusive ghost namespace', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.isExclusive('users', '@_xmpp_alice:rc.host')?.registration._id).toBe('xmpp');
+	});
+
+	test('returns undefined for an unrelated user', () => {
+		const service = makeService([xmppAppService()]);
+
+		expect(service.isExclusive('users', '@alice:rc.host')).toBeUndefined();
+	});
+});
+
 describe('NamespaceMatcherService.getInterestedAppServices', () => {
 	const ROOM = '!random:rc.host';
 

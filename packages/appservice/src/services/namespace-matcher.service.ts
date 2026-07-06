@@ -15,7 +15,9 @@ export class NamespaceMatcherService {
 
 	/**
 	 * Check if a value matches any appservice's namespace of the given type.
-	 * Optionally restrict to a specific appservice.
+	 * Optionally restrict to a specific appservice. For the `users` type this
+	 * also matches each appservice's sender_localpart (bot) user, which it
+	 * owns implicitly regardless of namespaces.
 	 */
 	matches(type: NamespaceType, value: string, asId?: string): CachedAppService | undefined {
 		const appservices = asId
@@ -23,6 +25,12 @@ export class NamespaceMatcherService {
 			: this.registrationService.getAll();
 
 		for (const as of appservices) {
+			if (type === 'users') {
+				if (this.isInterestedInUser(as, value)) {
+					return as;
+				}
+				continue;
+			}
 			for (const ns of as.compiledNamespaces[type]) {
 				if (ns.regex.test(value)) {
 					return as;
@@ -35,9 +43,13 @@ export class NamespaceMatcherService {
 	/**
 	 * Check if a value falls within an exclusive namespace.
 	 * Returns the owning appservice if exclusive, undefined otherwise.
+	 * The sender_localpart (bot) user is implicitly exclusive to its appservice.
 	 */
 	isExclusive(type: NamespaceType, value: string): CachedAppService | undefined {
 		for (const as of this.registrationService.getAll()) {
+			if (type === 'users' && value === this.botUserId(as)) {
+				return as;
+			}
 			for (const ns of as.compiledNamespaces[type]) {
 				if (ns.exclusive && ns.regex.test(value)) {
 					return as;
@@ -47,6 +59,7 @@ export class NamespaceMatcherService {
 		return undefined;
 	}
 
+	/** Includes the appservice's sender_localpart (bot) user, not just namespace matches. */
 	isUserInNamespace(userId: string, asId?: string): boolean {
 		return this.matches('users', userId, asId) !== undefined;
 	}
@@ -60,7 +73,8 @@ export class NamespaceMatcherService {
 	}
 
 	/**
-	 * Get which appservice owns a user (if any).
+	 * Get which appservice owns a user (if any), either as its
+	 * sender_localpart (bot) user or via a user namespace.
 	 */
 	getAppServiceForUser(userId: string): CachedAppService | undefined {
 		return this.matches('users', userId);
@@ -73,11 +87,14 @@ export class NamespaceMatcherService {
 	 * of the appservice's user namespaces.
 	 */
 	private isInterestedInUser(as: CachedAppService, userId: string): boolean {
-		const asUserId = `@${as.registration.senderLocalpart}:${this.config.serverName}`;
-		if (userId === asUserId) {
+		if (userId === this.botUserId(as)) {
 			return true;
 		}
 		return as.compiledNamespaces.users.some((ns) => ns.regex.test(userId));
+	}
+
+	private botUserId(as: CachedAppService): string {
+		return `@${as.registration.senderLocalpart}:${this.config.serverName}`;
 	}
 
 	/**
