@@ -1,0 +1,30 @@
+packages/appservice/src/services/namespace-matcher.service.ts
+  s_82ba74b213ce16::t_e714cb045938bf 18-20,28-33,46,50-52
+  s_82ba74b213ce16::t_fd2c7448e45f3b 62
+  s_82ba74b213ce16::t_4b0793d1ebb970 90,96-97
+  s_82ba74b213ce16::t_c47add5cb1de9c 76-77
+  s_82ba74b213ce16::t_6ef394fb90c732 98-99
+packages/appservice/src/services/namespace-matcher.service.spec.ts
+  s_82ba74b213ce16::t_1af18dadb9e393 42-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4a60a35a67f0c7699b07b90174456ce0d8edc175",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_82ba74b213ce16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26145c0e-5a4f-401b-933f-0e693c4f9b4b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
