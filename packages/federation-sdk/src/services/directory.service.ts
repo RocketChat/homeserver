@@ -16,12 +16,4 @@ export class DirectoryService {
 	async setAlias(alias: string, roomId: string) {
 		return this.roomAliasRepository.upsert(alias, roomId);
 	}
-
-	async deleteAlias(alias: string) {
-		return this.roomAliasRepository.delete(alias);
-	}
-
-	async getAliasesForRoom(roomId: string) {
-		return this.roomAliasRepository.findByRoomId(roomId);
-	}
 }
