@@ -31,7 +31,9 @@ export class EduService {
 			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
 			await this.federationService.sendEDUToServers([typingEDU], uniqueServers);
-			void this.eventRouterService.routeEphemeral(typingEDU);
+			void this.eventRouterService
+				.routeEphemeral(typingEDU)
+				.catch((err) => this.logger.error({ msg: 'Failed to route typing notification to appservices', err }));
 
 			this.logger.debug(`Sent typing notification to ${uniqueServers.length} unique servers for room ${roomId}`);
 		} catch (error) {
@@ -64,7 +66,9 @@ export class EduService {
 			);
 
 			await this.federationService.sendEDUToServers([presenceEDU], Array.from(uniqueServers));
-			void this.eventRouterService.routeEphemeral(presenceEDU);
+			void this.eventRouterService
+				.routeEphemeral(presenceEDU)
+				.catch((err) => this.logger.error({ msg: 'Failed to route presence update to appservices', err }));
 
 			this.logger.debug(`Sent presence updates to ${uniqueServers.size} unique servers for ${roomIds.length} rooms`);
 		} catch (error) {
@@ -115,7 +119,9 @@ export class EduService {
 			const uniqueServers = Array.from(servers).filter((server) => server !== origin);
 
 			await this.federationService.sendEDUToServers([receiptEDU], uniqueServers);
-			void this.eventRouterService.routeEphemeral(receiptEDU);
+			void this.eventRouterService
+				.routeEphemeral(receiptEDU)
+				.catch((err) => this.logger.error({ msg: 'Failed to route read receipt to appservices', err }));
 
 			this.logger.debug(`Sent read receipt to ${uniqueServers.length} unique servers for room ${roomId}`);
 		} catch (error) {
