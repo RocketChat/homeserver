@@ -1,0 +1,39 @@
+packages/appservice/src/repositories/appservice-txn.repository.ts
+  s_99f2a3ed5a8d7d::t_bc1d2c9c9dce35 25
+packages/federation-sdk/src/index.ts
+  s_99f2a3ed5a8d7d::t_54add2c53e099b 184-189
+  s_99f2a3ed5a8d7d::t_1560a1c7c7908c 9
+packages/appservice/src/models/appservice.model.ts
+  s_99f2a3ed5a8d7d::t_7776ae23b1fe8c 56
+packages/appservice/src/services/transaction-sender.service.ts
+  s_99f2a3ed5a8d7d::t_3869906dc60105 24-25,31
+  s_99f2a3ed5a8d7d::t_e1f3e310217ead 13
+  s_99f2a3ed5a8d7d::t_3bd6eecf78f8d3 110-118
+  s_99f2a3ed5a8d7d::t_526cc614ee0939 90-91,93-100,102-109,119-137,139-149,156-164,169,171-175
+  h_4c386397e672f4 2
+  s_99f2a3ed5a8d7d::t_6f707fb6581db8 78-85
+  s_99f2a3ed5a8d7d::t_5c29dbf5c0f452 5
+  s_99f2a3ed5a8d7d::t_844fc7ec98952d 166-168,170
+  s_99f2a3ed5a8d7d::t_893ce03bafcd3d 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "738e406dfa10a1f51fa75c4fe8e24dcceb7f0d02",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_99f2a3ed5a8d7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8321c76-e3d6-46d7-a78c-ae945b3e510c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
