@@ -1,0 +1,26 @@
+packages/homeserver/src/homeserver.module.ts
+  s_4dbce871f66727::t_aa83ae9038321d 128
+packages/homeserver/src/controllers/client/directory.controller.ts
+  s_4dbce871f66727::t_151b9da50fe8e8 10-21,23-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "dfc5386286099122fce5bcbd604ed8a96a0379ee",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4dbce871f66727": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c06b1f4b-b8b9-4def-80b6-42709b276ba3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
