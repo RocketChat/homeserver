@@ -128,7 +128,7 @@ export class MessageService {
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
-		void this.eventRouterService.routeEvent(event);
+		void this.eventRouterService.routePersistent(event);
 
 		return event;
 	}
@@ -183,7 +183,7 @@ export class MessageService {
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
-		void this.eventRouterService.routeEvent(event);
+		void this.eventRouterService.routePersistent(event);
 
 		return event;
 	}
@@ -264,7 +264,7 @@ export class MessageService {
 		await this.stateService.handlePdu(reactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
-		void this.eventRouterService.routeEvent(reactionEvent);
+		void this.eventRouterService.routePersistent(reactionEvent);
 
 		return reactionEvent.eventId;
 	}
@@ -292,7 +292,7 @@ export class MessageService {
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
-		void this.eventRouterService.routeEvent(redactionEvent);
+		void this.eventRouterService.routePersistent(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
@@ -338,7 +338,7 @@ export class MessageService {
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
-		void this.eventRouterService.routeEvent(redactionEvent);
+		void this.eventRouterService.routePersistent(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
@@ -377,7 +377,7 @@ export class MessageService {
 		await this.stateService.handlePdu(redactionEvent);
 
 		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
-		void this.eventRouterService.routeEvent(redactionEvent);
+		void this.eventRouterService.routePersistent(redactionEvent);
 
 		return redactionEvent.eventId;
 	}

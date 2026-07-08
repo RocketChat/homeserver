@@ -38,12 +38,7 @@ export class EventRouterService {
 		this.roomStateResolver = resolver;
 	}
 
-	async routeEvent(event: PersistentEventBase): Promise<void> {
-		// check if event is persistent or ephemeral based on event type and route accordingly
-		await this.routePersistent(event);
-	}
-
-	private async routePersistent(event: PersistentEventBase): Promise<void> {
+	async routePersistent(event: PersistentEventBase): Promise<void> {
 		const { roomId, sender } = event;
 		if (!roomId || !sender) {
 			return;

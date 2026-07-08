@@ -37,7 +37,7 @@ function makeEvent(tag: string): PersistentEventBase {
 async function routeBatch(router: EventRouterService, tag: string): Promise<void> {
 	for (let i = 0; i < MAX_BATCH_SIZE; i++) {
 		// eslint-disable-next-line no-await-in-loop
-		await router.routeEvent(makeEvent(`${tag}:${i}`));
+		await router.routePersistent(makeEvent(`${tag}:${i}`));
 	}
 }
 
