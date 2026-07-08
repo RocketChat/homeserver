@@ -21,23 +21,24 @@ describe('RoomService', async () => {
 		return;
 	}
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		const databaseConfig = {
 			uri: process.env.MONGO_URI || 'mongodb://localhost:27017?directConnection=true',
 			name: 'matrix_test',
 			poolSize: 100,
 		};
 
-		init({
+		await init({
 			dbConfig: databaseConfig,
 		});
+
+		federationSDK.setConfig({
+			signingKey: '',
+			serverName: 'example.com',
+		} as AppConfig);
 	});
 
 	const configService = new ConfigService();
-	federationSDK.setConfig({
-		signingKey: '',
-		serverName: 'example.com',
-	} as AppConfig);
 
 	container.register(ConfigService, {
 		useValue: configService,
