@@ -127,8 +127,12 @@ export class MessageService {
 			throw new Error(event.rejectReason);
 		}
 
-		void this.federationService.sendEventToAllServersInRoom(event);
-		void this.eventRouterService.routePersistent(event);
+		void this.federationService
+			.sendEventToAllServersInRoom(event)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(event)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return event;
 	}
@@ -182,8 +186,12 @@ export class MessageService {
 			throw new Error(event.rejectReason);
 		}
 
-		void this.federationService.sendEventToAllServersInRoom(event);
-		void this.eventRouterService.routePersistent(event);
+		void this.federationService
+			.sendEventToAllServersInRoom(event)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(event)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return event;
 	}
@@ -263,8 +271,12 @@ export class MessageService {
 
 		await this.stateService.handlePdu(reactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
-		void this.eventRouterService.routePersistent(reactionEvent);
+		void this.federationService
+			.sendEventToAllServersInRoom(reactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(reactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return reactionEvent.eventId;
 	}
@@ -291,8 +303,12 @@ export class MessageService {
 
 		await this.stateService.handlePdu(redactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
-		void this.eventRouterService.routePersistent(redactionEvent);
+		void this.federationService
+			.sendEventToAllServersInRoom(redactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(redactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return redactionEvent.eventId;
 	}
@@ -337,8 +353,12 @@ export class MessageService {
 
 		await this.stateService.handlePdu(redactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
-		void this.eventRouterService.routePersistent(redactionEvent);
+		void this.federationService
+			.sendEventToAllServersInRoom(redactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(redactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return redactionEvent.eventId;
 	}
@@ -376,8 +396,12 @@ export class MessageService {
 
 		await this.stateService.handlePdu(redactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
-		void this.eventRouterService.routePersistent(redactionEvent);
+		void this.federationService
+			.sendEventToAllServersInRoom(redactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(redactionEvent)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return redactionEvent.eventId;
 	}

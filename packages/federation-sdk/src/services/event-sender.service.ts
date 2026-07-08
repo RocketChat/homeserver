@@ -1,4 +1,5 @@
 import { EventRouterService } from '@rocket.chat/appservice';
+import { createLogger } from '@rocket.chat/federation-core';
 import {
 	type PduForType,
 	type PduType,
@@ -15,6 +16,8 @@ import { getEventSchemaForType } from '../utils/event-schemas';
 
 @singleton()
 export class EventSenderService {
+	private readonly logger = createLogger('EventSenderService');
+
 	constructor(
 		private readonly stateService: StateService,
 		private readonly federationService: FederationService,
@@ -68,8 +71,12 @@ export class EventSenderService {
 			throw new Error(event.rejectReason);
 		}
 
-		void this.federationService.sendEventToAllServersInRoom(event);
-		void this.eventRouterService.routePersistent(event);
+		void this.federationService
+			.sendEventToAllServersInRoom(event)
+			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
+		void this.eventRouterService
+			.routePersistent(event)
+			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
 
 		return event;
 	}
