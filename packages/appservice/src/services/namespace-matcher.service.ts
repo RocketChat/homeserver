@@ -26,7 +26,7 @@ export class NamespaceMatcherService {
 
 		for (const as of appservices) {
 			if (type === 'users') {
-				if (this.isInterestedInUser(as, value)) {
+				if (this.ownsUser(as, value)) {
 					return as;
 				}
 				continue;
@@ -88,19 +88,29 @@ export class NamespaceMatcherService {
 	}
 
 	/**
-	 * Whether an appservice is interested in a user. An appservice is interested
-	 * in a user if it is the appservice's own sender_localpart (bot) user — which
-	 * it owns implicitly, regardless of namespaces — or if the user matches one
-	 * of the appservice's user namespaces.
+	 * Whether `as` owns a user — its own sender_localpart (bot) user, or a user in
+	 * its namespace. A bot user is owned exclusively by its appservice, so no other
+	 * appservice can claim it via a namespace regex; this keeps ownership
+	 * resolution (getAppServiceForUser) deterministic regardless of iteration order.
 	 */
-	private isInterestedInUser(as: CachedAppService, userId: string): boolean {
-		// A bot user is owned exclusively by its appservice; no other appservice
-		// may claim it via a namespace regex.
+	private ownsUser(as: CachedAppService, userId: string): boolean {
 		const owner = this.botUserOwner(userId);
 		if (owner) {
 			return owner.registration._id === as.registration._id;
 		}
 		return as.compiledNamespaces.users.some((ns) => ns.regex.test(userId));
+	}
+
+	/**
+	 * Whether `as` is interested in receiving events about a user (event routing).
+	 * Interest is not exclusive: any appservice whose user namespace matches is
+	 * interested, plus the appservice that owns the user as its bot. This honours
+	 * non-exclusive namespace overlaps — a broad `@.*` namespace still receives
+	 * events about another appservice's bot user — and is O(1) per check (no
+	 * cross-appservice bot-owner scan).
+	 */
+	private isInterestedInUser(as: CachedAppService, userId: string): boolean {
+		return userId === this.botUserId(as) || as.compiledNamespaces.users.some((ns) => ns.regex.test(userId));
 	}
 
 	private botUserOwner(userId: string): CachedAppService | undefined {

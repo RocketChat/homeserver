@@ -174,6 +174,16 @@ describe('NamespaceMatcherService.getInterestedAppServices', () => {
 		expect(interested.map((as) => as.registration._id)).toEqual(['xmpp']);
 	});
 
+	test("another appservice's bot user still matches this bridge's namespace (non-exclusive overlap)", () => {
+		const service = makeService([greedyAppService(), xmppAppService()]);
+
+		// xmpp owns its bot user, but greedy's `@.*` namespace also matches it —
+		// ownership by one bridge must not suppress another's namespace interest.
+		const interested = service.getInterestedAppServices(ROOM, '@alice:rc.host', [], ['@xmpp:rc.host']);
+
+		expect(interested.map((as) => as.registration._id).sort()).toEqual(['greedy', 'xmpp']);
+	});
+
 	test('returns each interested appservice once even when several rules match', () => {
 		const service = makeService([xmppAppService()]);
 
