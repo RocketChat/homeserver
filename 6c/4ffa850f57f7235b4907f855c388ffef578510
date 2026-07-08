@@ -1,0 +1,26 @@
+packages/federation-sdk/src/services/edu.service.ts
+  s_21a701baceda59::t_191269b80b9ada 34-36
+  s_21a701baceda59::t_d105a71b9fa4a6 69-71
+  s_21a701baceda59::t_d7ffb1fdf55bd0 122-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6c4ffa850f57f7235b4907f855c388ffef578510",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_21a701baceda59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c58aa63c-0dc8-44ff-9557-974aa0d3ef7b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
