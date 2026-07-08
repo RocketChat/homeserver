@@ -321,8 +321,20 @@ export class RoomService {
 			};
 		} catch (error) {
 			if (alias) {
-				// release the alias we reserved so a failed create doesn't leak it
-				await this.directoryService.removeAlias(alias);
+				// Release the alias we reserved so a failed create doesn't leak it.
+				// Scope the delete to this room so we never clobber a mapping a
+				// concurrent op may have written for the same alias, and isolate
+				// cleanup failures so they don't mask the original error.
+				try {
+					await this.directoryService.removeAlias(alias, roomCreateEvent.roomId);
+				} catch (cleanupError) {
+					logger.error({
+						msg: 'Failed to release reserved alias after room creation failure',
+						alias,
+						roomId: roomCreateEvent.roomId,
+						err: cleanupError,
+					});
+				}
 			}
 			throw error;
 		}

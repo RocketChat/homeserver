@@ -29,8 +29,8 @@ export class RoomAliasRepository {
 		return result.upsertedCount === 1;
 	}
 
-	async delete(alias: string): Promise<boolean> {
-		const result = await this.collection.deleteOne({ _id: alias });
+	async delete(alias: string, roomId: string): Promise<boolean> {
+		const result = await this.collection.deleteOne({ _id: alias, roomId });
 		return result.deletedCount > 0;
 	}
 }

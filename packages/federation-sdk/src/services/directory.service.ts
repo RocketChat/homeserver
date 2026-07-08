@@ -21,7 +21,7 @@ export class DirectoryService {
 		return this.roomAliasRepository.reserve(alias, roomId);
 	}
 
-	async removeAlias(alias: string) {
-		return this.roomAliasRepository.delete(alias);
+	async removeAlias(alias: string, roomId: string) {
+		return this.roomAliasRepository.delete(alias, roomId);
 	}
 }
