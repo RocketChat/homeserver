@@ -69,7 +69,7 @@ export class EventSenderService {
 		}
 
 		void this.federationService.sendEventToAllServersInRoom(event);
-		void this.eventRouterService.routePersistent(event).catch((e) => console.error(e));
+		void this.eventRouterService.routePersistent(event);
 
 		return event;
 	}
