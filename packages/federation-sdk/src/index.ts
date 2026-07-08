@@ -8,6 +8,7 @@ import {
 	EventRouterService,
 	TransactionSenderService,
 } from '@rocket.chat/appservice';
+import { createLogger } from '@rocket.chat/federation-core';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type { EventID, EventStore, RoomID } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
@@ -25,7 +26,6 @@ import { User } from './repositories/user.repository';
 import { FederationSDK } from './sdk';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
-import { EventEmitterService } from './services/event-emitter.service';
 import { EventService } from './services/event.service';
 import { StateService } from './services/state.service';
 
@@ -152,11 +152,15 @@ export async function init({
 	// receive transactions for events in their namespaces.
 	const eventRouter = container.resolve(EventRouterService);
 	const stateService = container.resolve(StateService);
+	const routingLogger = createLogger('AppServiceRouting');
 	eventRouter.setRoomStateResolver(async (roomId) => {
 		try {
 			const state = await stateService.getLatestRoomState2(roomId as RoomID);
 			return { aliases: state.getCanonicalAliases(), members: state.members };
-		} catch {
+		} catch (error) {
+			// This resolver only runs for rooms whose state was just persisted, so a
+			// failure here is anomalous (not the routine unknown-room case) — surface it.
+			routingLogger.error({ msg: 'Failed to resolve room state for appservice routing', roomId, err: error });
 			return { aliases: [], members: [] };
 		}
 	});
