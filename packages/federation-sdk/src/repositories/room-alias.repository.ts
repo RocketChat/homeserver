@@ -22,6 +22,13 @@ export class RoomAliasRepository {
 		await this.collection.updateOne({ _id: alias }, { $set: { _id: alias, roomId } }, { upsert: true });
 	}
 
+	// Atomically claim an alias. Returns false if it was already taken, so callers
+	// can fail fast without a separate (racy) check-then-set.
+	async reserve(alias: string, roomId: string): Promise<boolean> {
+		const result = await this.collection.updateOne({ _id: alias }, { $setOnInsert: { roomId } }, { upsert: true });
+		return result.upsertedCount === 1;
+	}
+
 	async delete(alias: string): Promise<boolean> {
 		const result = await this.collection.deleteOne({ _id: alias });
 		return result.deletedCount > 0;

@@ -16,4 +16,12 @@ export class DirectoryService {
 	async setAlias(alias: string, roomId: string) {
 		return this.roomAliasRepository.upsert(alias, roomId);
 	}
+
+	async reserveAlias(alias: string, roomId: string) {
+		return this.roomAliasRepository.reserve(alias, roomId);
+	}
+
+	async removeAlias(alias: string) {
+		return this.roomAliasRepository.delete(alias);
+	}
 }
