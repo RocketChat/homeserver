@@ -1,0 +1,27 @@
+packages/core/src/utils/fetch.ts
+  s_21a701baceda59::t_01acc47ea8e990 48-49,62-63
+  s_21a701baceda59::t_131789a9f52109 233-244,248
+  s_21a701baceda59::t_efaf92c54ce001 158-165,170,175
+  s_21a701baceda59::t_eeaa0027a2df21 123-126,129-130,182-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0897ad75d92a0d33f4b9a5253e0d30735fcdcf7a",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_21a701baceda59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c58aa63c-0dc8-44ff-9557-974aa0d3ef7b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
