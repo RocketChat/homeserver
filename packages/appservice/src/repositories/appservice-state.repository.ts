@@ -15,10 +15,21 @@ export class AppServiceStateRepository {
 	}
 
 	async upsertState(asId: string, updates: Partial<Omit<AppServiceState, '_id'>>): Promise<void> {
+		const set: Record<string, unknown> = { updatedAt: new Date() };
+		const unset: Record<string, 1> = {};
+		for (const [key, value] of Object.entries(updates)) {
+			if (value === undefined) {
+				unset[key] = 1;
+			} else {
+				set[key] = value;
+			}
+		}
+
 		await this.collection.updateOne(
 			{ _id: asId },
 			{
-				$set: { ...updates, updatedAt: new Date() },
+				$set: set,
+				...(Object.keys(unset).length > 0 && { $unset: unset }),
 				$setOnInsert: { _id: asId, lastTxnId: 0, streamOrdering: 0, readReceiptStreamId: 0, presenceStreamId: 0, toDeviceStreamId: 0 },
 			},
 			{ upsert: true },
