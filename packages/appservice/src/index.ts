@@ -5,6 +5,7 @@ export type {
 	AppServiceNamespaces,
 	AppServiceState,
 	AppServiceTransaction,
+	AppServiceEphemeralEvent,
 	CachedAppService,
 	CompiledNamespace,
 	Namespace,
