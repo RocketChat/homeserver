@@ -1,0 +1,14 @@
+packages/federation-sdk/src/services/event-sender.service.ts
+  h_4c386397e672f4 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2e8cb6a51b9d8788fc521aeff58d325ab1bdbf42",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
