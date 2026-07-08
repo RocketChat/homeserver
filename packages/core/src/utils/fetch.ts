@@ -45,6 +45,8 @@ function parseMultipart(buffer: Buffer, boundary: string): MultipartResult {
 
 async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): Promise<T> {
 	if (!contentType.includes('application/json')) {
+		// drain the body so the socket is released before bailing out
+		await body().catch(() => undefined);
 		throw new Error('Content-Type is not application/json');
 	}
 
@@ -57,6 +59,8 @@ async function handleJson<T>(contentType: string, body: () => Promise<Buffer>): 
 
 async function handleText(contentType: string, body: () => Promise<Buffer>): Promise<string> {
 	if (!contentType.includes('text/')) {
+		// drain the body so the socket is released before bailing out
+		await body().catch(() => undefined);
 		return '';
 	}
 
@@ -116,11 +120,14 @@ export type FetchResponse<T> = {
 	body: () => Promise<Buffer>;
 };
 
-// lazily reads the full response body once, enforcing a size limit and cleaning up listeners
-function readBody(res: IncomingMessage): () => Promise<Buffer> {
+// lazily reads the full response body once, enforcing a size limit and cleaning up listeners.
+// `isConsumed` lets fetch() drain an untouched body so the paused socket is always released.
+function readBody(res: IncomingMessage): { read: () => Promise<Buffer>; isConsumed: () => boolean } {
+	let consumed = false;
 	let body: Promise<Buffer>;
 
-	return () => {
+	const read = () => {
+		consumed = true;
 		if (!body) {
 			body = new Promise<Buffer>((resolve, reject) => {
 				const chunks: Buffer[] = [];
@@ -148,23 +155,32 @@ function readBody(res: IncomingMessage): () => Promise<Buffer> {
 					cleanup();
 					reject(err);
 				};
-				const onAborted = () => onErr(new Error('Response aborted'));
+				// 'aborted' is deprecated on IncomingMessage; 'close' fires on both normal
+				// completion and premature termination, so reject only when the stream
+				// closed without finishing (onEnd removes this listener on success).
+				const onClose = () => {
+					if (!res.readableEnded) {
+						onErr(new Error('Response closed before it finished'));
+					}
+				};
 				const cleanup = () => {
 					res.off('data', onData);
 					res.off('end', onEnd);
 					res.off('error', onErr);
-					res.off('aborted', onAborted);
+					res.off('close', onClose);
 				};
 				res.on('data', onData);
 				res.once('end', onEnd);
 				res.once('error', onErr);
-				res.once('aborted', onAborted);
+				res.once('close', onClose);
 				res.resume();
 			});
 		}
 
 		return body;
 	};
+
+	return { read, isConsumed: () => consumed };
 }
 
 // fallback response returned when the request never produced a usable response
@@ -214,10 +230,22 @@ export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchRes
 				res.once('error', reject);
 				res.pause();
 
+				const bodyReader = readBody(res);
+
+				// Safety net: if the caller never reads the body, drain it on the next
+				// tick so the paused socket is released instead of leaking. Callers are
+				// expected to read the body (if at all) within the same turn as the
+				// response, so a consumed body will have flagged itself before this runs.
+				setImmediate(() => {
+					if (!bodyReader.isConsumed()) {
+						res.resume();
+					}
+				});
+
 				resolve({
 					statusCode: res.statusCode,
 					headers: res.headers,
-					body: readBody(res),
+					body: bodyReader.read,
 				});
 			});
 
