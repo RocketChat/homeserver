@@ -27,6 +27,12 @@ export class EventRouterService {
 	// serializing the calls also keeps txnIds monotonic with delivery order).
 	private sendChains: Map<string, Promise<void>> = new Map();
 
+	// Tail of the in-flight intake chain per room. Persistent events resolve
+	// room state before batching; serializing that resolution per room keeps a
+	// slow lookup for an earlier event from letting a later event overtake it
+	// in the batch (call order == batch order == delivery order).
+	private roomIntakeChains: Map<string, Promise<void>> = new Map();
+
 	// Resolves the aliases and joined members of a room — needed for namespace
 	// interest detection. Injected from federation-sdk since the appservice
 	// package doesn't own room state.
@@ -44,6 +50,23 @@ export class EventRouterService {
 			return;
 		}
 
+		const prev = this.roomIntakeChains.get(roomId) ?? Promise.resolve();
+		const next = prev.then(() => this.intakePersistent(roomId, sender, event));
+
+		// Swallow failures on the stored tail so one rejected intake doesn't
+		// break ordering for the next event in the room.
+		const chained = next.catch(() => {});
+		this.roomIntakeChains.set(roomId, chained);
+		void chained.finally(() => {
+			if (this.roomIntakeChains.get(roomId) === chained) {
+				this.roomIntakeChains.delete(roomId);
+			}
+		});
+
+		return next;
+	}
+
+	private async intakePersistent(roomId: string, sender: string, event: PersistentEventBase): Promise<void> {
 		const { aliases, members } = (await this.roomStateResolver?.(roomId)) ?? { aliases: [], members: [] };
 
 		const interested = this.namespaceMatcher.getInterestedAppServices(roomId, sender, aliases, members);
