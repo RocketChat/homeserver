@@ -49,6 +49,15 @@ export class PingService {
 
 			const durationMs = Date.now() - startTime;
 
+			// The core fetch helper never rejects on transport errors — it resolves
+			// with status undefined instead (see errorResponse in utils/fetch.ts).
+			if (response.status === undefined) {
+				return {
+					errcode: 'M_CONNECTION_FAILED',
+					error: 'Failed to connect to appservice',
+				};
+			}
+
 			if (!response.ok) {
 				return {
 					errcode: 'M_BAD_STATUS',
@@ -58,15 +67,6 @@ export class PingService {
 
 			return { duration_ms: durationMs };
 		} catch (err) {
-			const durationMs = Date.now() - startTime;
-
-			if (durationMs > 30_000) {
-				return {
-					errcode: 'M_CONNECTION_TIMEOUT',
-					error: 'Connection to appservice timed out',
-				};
-			}
-
 			return {
 				errcode: 'M_CONNECTION_FAILED',
 				error: err instanceof Error ? err.message : 'Connection failed',
