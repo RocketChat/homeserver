@@ -148,11 +148,6 @@ export class TransactionSenderService {
 	 */
 	async retryPending(appservice: CachedAppService): Promise<void> {
 		const resolveEvents = this.eventResolver;
-		if (!resolveEvents) {
-			this.logger.warn({ msg: 'No event resolver configured; skipping transaction retry', asId: appservice.registration._id });
-			return;
-		}
-
 		const pending = await this.txnRepo.getPending(appservice.registration._id);
 		const now = new Date();
 
@@ -163,10 +158,24 @@ export class TransactionSenderService {
 				break; // oldest txn isn't due yet; deliver strictly in order
 			}
 
-			// Serial by design: a bridge must receive transactions in txnId order,
-			// so we deliver one at a time rather than fanning out with Promise.all.
-			// eslint-disable-next-line no-await-in-loop
-			const events = await resolveEvents(txn.eventIds);
+			// Only event-bearing txns need rehydration; ephemeral-only txns
+			// (eventIds: []) can be delivered without a resolver.
+			let events: Record<string, unknown>[] = [];
+			if (txn.eventIds.length > 0) {
+				if (!resolveEvents) {
+					this.logger.warn({
+						msg: 'No event resolver configured; cannot rebuild transaction, stopping drain',
+						asId: appservice.registration._id,
+						txnId: txn.txnId,
+					});
+					break; // can't reconstruct in order — stop so later txns don't overtake it
+				}
+				// Serial by design: a bridge must receive transactions in txnId order,
+				// so we deliver one at a time rather than fanning out with Promise.all.
+				// eslint-disable-next-line no-await-in-loop
+				events = await resolveEvents(txn.eventIds);
+			}
+
 			// eslint-disable-next-line no-await-in-loop
 			const delivered = await this.attemptDeliveryRaw(appservice, txn.txnId, this.buildBody(events, txn.ephemeralEvents));
 			if (!delivered) {
