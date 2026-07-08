@@ -53,6 +53,7 @@ export interface AppServiceTransaction {
 	attempts: number;
 	createdAt: Date;
 	sentAt?: Date;
+	lastAttemptAt?: Date;
 }
 
 /**

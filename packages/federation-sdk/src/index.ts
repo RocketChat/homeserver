@@ -6,6 +6,7 @@ import {
 	type AppServiceState,
 	type AppServiceTransaction,
 	EventRouterService,
+	RegistrationService,
 	TransactionSenderService,
 } from '@rocket.chat/appservice';
 import { createLogger } from '@rocket.chat/federation-core';
@@ -179,6 +180,12 @@ export async function init({
 			})
 			.filter((event): event is Record<string, unknown> => event !== null);
 	});
+
+	// Drive appservice transaction retries and bridge-health recovery in the
+	// background. The poller drains each bridge's queue with backoff and pings
+	// bridges marked down to detect when they come back.
+	const registrationService = container.resolve(RegistrationService);
+	transactionSender.startRetryScheduler(() => registrationService.getAll());
 
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {

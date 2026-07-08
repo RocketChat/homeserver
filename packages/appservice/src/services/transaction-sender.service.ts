@@ -1,7 +1,8 @@
 import { createLogger, fetch, PresenceEDU, ReceiptEDU, TypingEDU } from '@rocket.chat/federation-core';
-import { Pdu, PersistentEventBase } from '@rocket.chat/federation-room';
+import { PersistentEventBase } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
+import { PingService } from './ping.service';
 import type { AppServiceEphemeralEvent, CachedAppService } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
 import { AppServiceTransactionRepository } from '../repositories/appservice-txn.repository';
@@ -9,6 +10,7 @@ import { eduBatchToAppServiceEphemeral } from '../utils/edu-to-appservice';
 
 const MAX_BACKOFF_MS = 60_000;
 const INITIAL_BACKOFF_MS = 1_000;
+const RETRY_POLL_INTERVAL_MS = 15_000;
 
 @singleton()
 export class TransactionSenderService {
@@ -19,11 +21,14 @@ export class TransactionSenderService {
 	// package doesn't own the event store.
 	private eventResolver?: (eventIds: string[]) => Promise<Record<string, unknown>[]>;
 
+	private retryTimer: ReturnType<typeof setInterval> | null = null;
+
 	constructor(
 		@inject(delay(() => AppServiceStateRepository))
 		private readonly stateRepo: AppServiceStateRepository,
 		@inject(delay(() => AppServiceTransactionRepository))
 		private readonly txnRepo: AppServiceTransactionRepository,
+		private readonly pingService: PingService,
 	) {}
 
 	setEventResolver(resolver: (eventIds: string[]) => Promise<Record<string, unknown>[]>): void {
@@ -70,34 +75,104 @@ export class TransactionSenderService {
 			createdAt: new Date(),
 		});
 
+		// If the bridge is down, don't attempt inline delivery — it would land
+		// this txn ahead of the queued backlog once the bridge recovers. Leave it
+		// pending for the ordered drain in retryPending.
+		const state = await this.stateRepo.getState(registration._id);
+		if (state?.state === 'down') {
+			return;
+		}
+
 		await this.attemptDeliveryRaw(appservice, txnId, this.buildBody(serializedEvents, ephemeralEvents));
 	}
 
 	/**
-	 * Retry all pending/failed transactions for an appservice.
+	 * Start the background poller that drives retries and bridge-health
+	 * recovery. Idempotent — a second call while running is a no-op.
+	 */
+	startRetryScheduler(getAppServices: () => CachedAppService[], intervalMs: number = RETRY_POLL_INTERVAL_MS): void {
+		if (this.retryTimer) {
+			return;
+		}
+		this.retryTimer = setInterval(() => {
+			void this.pollAll(getAppServices());
+		}, intervalMs);
+	}
+
+	stopRetryScheduler(): void {
+		if (this.retryTimer) {
+			clearInterval(this.retryTimer);
+			this.retryTimer = null;
+		}
+	}
+
+	private async pollAll(appservices: CachedAppService[]): Promise<void> {
+		// Appservices are independent, so poll them concurrently; ordering only
+		// matters within a single bridge's queue (enforced in retryPending).
+		await Promise.all(
+			appservices.map((appservice) =>
+				this.pollAppService(appservice).catch((err) => {
+					this.logger.error({ msg: 'Retry poll failed', asId: appservice.registration._id, err });
+				}),
+			),
+		);
+	}
+
+	/**
+	 * One poll tick for a single appservice. A bridge marked `down` is probed
+	 * with a cheap ping rather than by replaying its queue; only once the ping
+	 * confirms connectivity do we drain pending transactions. This avoids
+	 * hammering a dead bridge with a burst of failing deliveries each cycle.
+	 */
+	private async pollAppService(appservice: CachedAppService): Promise<void> {
+		const asId = appservice.registration._id;
+		const state = await this.stateRepo.getState(asId);
+
+		if (state?.state === 'down') {
+			const probe = await this.pingService.ping(asId);
+			if ('errcode' in probe) {
+				return; // still unreachable — wait for the next tick
+			}
+			await this.stateRepo.markUp(asId);
+		}
+
+		await this.retryPending(appservice);
+	}
+
+	/**
+	 * Drain an appservice's pending/failed transactions in strict txnId order,
+	 * honouring per-transaction exponential backoff. Delivery is serial (never
+	 * parallel) so the bridge receives transactions in creation order; the first
+	 * not-yet-due or failing transaction stops the drain so later transactions
+	 * never overtake an earlier one.
 	 */
 	async retryPending(appservice: CachedAppService): Promise<void> {
-		const pending = await this.txnRepo.getPending(appservice.registration._id);
-
-		const now = new Date();
-		const eligible = pending.filter((txn) => {
-			const backoffMs = Math.min(INITIAL_BACKOFF_MS * 2 ** txn.attempts, MAX_BACKOFF_MS);
-			const nextAttemptAt = new Date((txn.sentAt ?? txn.createdAt).getTime() + backoffMs);
-			return now >= nextAttemptAt;
-		});
-
 		const resolveEvents = this.eventResolver;
 		if (!resolveEvents) {
 			this.logger.warn({ msg: 'No event resolver configured; skipping transaction retry', asId: appservice.registration._id });
 			return;
 		}
 
-		await Promise.all(
-			eligible.map(async (txn) => {
-				const events = await resolveEvents(txn.eventIds);
-				await this.attemptDeliveryRaw(appservice, txn.txnId, this.buildBody(events, txn.ephemeralEvents));
-			}),
-		);
+		const pending = await this.txnRepo.getPending(appservice.registration._id);
+		const now = new Date();
+
+		for (const txn of pending) {
+			const backoffMs = Math.min(INITIAL_BACKOFF_MS * 2 ** txn.attempts, MAX_BACKOFF_MS);
+			const nextAttemptAt = new Date((txn.lastAttemptAt ?? txn.createdAt).getTime() + backoffMs);
+			if (now < nextAttemptAt) {
+				break; // oldest txn isn't due yet; deliver strictly in order
+			}
+
+			// Serial by design: a bridge must receive transactions in txnId order,
+			// so we deliver one at a time rather than fanning out with Promise.all.
+			// eslint-disable-next-line no-await-in-loop
+			const events = await resolveEvents(txn.eventIds);
+			// eslint-disable-next-line no-await-in-loop
+			const delivered = await this.attemptDeliveryRaw(appservice, txn.txnId, this.buildBody(events, txn.ephemeralEvents));
+			if (!delivered) {
+				break; // attemptDeliveryRaw marked the bridge down; stop so ordering holds
+			}
+		}
 	}
 
 	private buildBody(events: Record<string, unknown>[], ephemeral?: AppServiceEphemeralEvent[]): Record<string, unknown> {

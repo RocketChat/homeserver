@@ -22,7 +22,7 @@ export class AppServiceTransactionRepository {
 	}
 
 	async markFailed(asId: string, txnId: number): Promise<void> {
-		await this.collection.updateOne({ asId, txnId }, { $set: { status: 'failed' }, $inc: { attempts: 1 } });
+		await this.collection.updateOne({ asId, txnId }, { $set: { status: 'failed', lastAttemptAt: new Date() }, $inc: { attempts: 1 } });
 	}
 
 	async getPending(asId: string): Promise<AppServiceTransaction[]> {
