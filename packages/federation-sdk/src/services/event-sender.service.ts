@@ -71,13 +71,23 @@ export class EventSenderService {
 			throw new Error(event.rejectReason);
 		}
 
+		this.dispatch(event);
+
+		return event;
+	}
+
+	/**
+	 * Fan a persisted event out to every federated server in the room and to
+	 * interested appservices. Fire-and-forget: each channel's failure is logged,
+	 * never thrown, so a problem on one channel blocks neither the caller nor the
+	 * other channel.
+	 */
+	dispatch(event: PersistentEventBase): void {
 		void this.federationService
 			.sendEventToAllServersInRoom(event)
 			.catch((err) => this.logger.error({ msg: 'Failed to send event to servers in room', err }));
 		void this.eventRouterService
 			.routePersistent(event)
 			.catch((err) => this.logger.error({ msg: 'Failed to route event to appservices', err }));
-
-		return event;
 	}
 }
