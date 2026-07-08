@@ -30,6 +30,22 @@ function xmppAppService(): CachedAppService {
 	} as CachedAppService;
 }
 
+// A greedy bridge whose exclusive user namespace matches every user on the
+// server, including other appservices' bot users.
+function greedyAppService(): CachedAppService {
+	return {
+		registration: {
+			_id: 'greedy',
+			senderLocalpart: 'greedy',
+		} as AppServiceRegistration,
+		compiledNamespaces: {
+			users: [compile('@.*')],
+			aliases: [],
+			rooms: [],
+		},
+	} as CachedAppService;
+}
+
 function makeService(appservices: CachedAppService[]): NamespaceMatcherService {
 	const registrationService = {
 		getAll: () => appservices,
@@ -56,6 +72,12 @@ describe('NamespaceMatcherService.getAppServiceForUser', () => {
 		const service = makeService([xmppAppService()]);
 
 		expect(service.getAppServiceForUser('@alice:rc.host')).toBeUndefined();
+	});
+
+	test("resolves the bot user to its owner even when another appservice's namespace matches it", () => {
+		const service = makeService([greedyAppService(), xmppAppService()]);
+
+		expect(service.getAppServiceForUser('@xmpp:rc.host')?.registration._id).toBe('xmpp');
 	});
 });
 
@@ -86,6 +108,14 @@ describe('NamespaceMatcherService.isExclusive', () => {
 		const service = makeService([xmppAppService()]);
 
 		expect(service.isExclusive('users', '@alice:rc.host')).toBeUndefined();
+	});
+
+	test("a broad exclusive namespace cannot claim another appservice's bot user", () => {
+		// The greedy bridge is iterated first and its `@.*` regex matches the xmpp
+		// bot user, yet the bot user must remain exclusive to xmpp.
+		const service = makeService([greedyAppService(), xmppAppService()]);
+
+		expect(service.isExclusive('users', '@xmpp:rc.host')?.registration._id).toBe('xmpp');
 	});
 });
 

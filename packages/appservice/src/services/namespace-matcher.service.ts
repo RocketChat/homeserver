@@ -46,10 +46,17 @@ export class NamespaceMatcherService {
 	 * The sender_localpart (bot) user is implicitly exclusive to its appservice.
 	 */
 	isExclusive(type: NamespaceType, value: string): CachedAppService | undefined {
-		for (const as of this.registrationService.getAll()) {
-			if (type === 'users' && value === this.botUserId(as)) {
-				return as;
+		// A bot user is implicitly exclusive to its own appservice. Resolve this
+		// across all appservices before any namespace matching, otherwise a broad
+		// exclusive regex on an earlier-iterated appservice could claim another
+		// appservice's bot user.
+		if (type === 'users') {
+			const owner = this.botUserOwner(value);
+			if (owner) {
+				return owner;
 			}
+		}
+		for (const as of this.registrationService.getAll()) {
 			for (const ns of as.compiledNamespaces[type]) {
 				if (ns.exclusive && ns.regex.test(value)) {
 					return as;
@@ -87,10 +94,22 @@ export class NamespaceMatcherService {
 	 * of the appservice's user namespaces.
 	 */
 	private isInterestedInUser(as: CachedAppService, userId: string): boolean {
-		if (userId === this.botUserId(as)) {
-			return true;
+		// A bot user is owned exclusively by its appservice; no other appservice
+		// may claim it via a namespace regex.
+		const owner = this.botUserOwner(userId);
+		if (owner) {
+			return owner.registration._id === as.registration._id;
 		}
 		return as.compiledNamespaces.users.some((ns) => ns.regex.test(userId));
+	}
+
+	private botUserOwner(userId: string): CachedAppService | undefined {
+		for (const as of this.registrationService.getAll()) {
+			if (userId === this.botUserId(as)) {
+				return as;
+			}
+		}
+		return undefined;
 	}
 
 	private botUserId(as: CachedAppService): string {
