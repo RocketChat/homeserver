@@ -112,10 +112,10 @@ The homeserver must determine which bridges are "interested" in each event. A br
 
 If a bridge is unreachable:
 
-1. Mark the bridge as DOWN.
+1. Mark the bridge as `down`.
 2. Queue events for later delivery.
 3. Use exponential backoff for retries.
-4. When the bridge comes back (responds 200), mark it as UP and flush the queue.
+4. When the bridge comes back (responds 200), mark it as `up` and flush the queue.
 5. Track stream position per bridge so it can resume from where it left off.
 
 ### State Tracking (per bridge)
@@ -129,7 +129,7 @@ The homeserver must track per-bridge stream positions:
 | `presence_stream_id` | Last presence update delivered |
 | `to_device_stream_id` | Last to-device message delivered |
 | `device_list_stream_id` | Last device list change delivered |
-| `state` | UP or DOWN |
+| `state` | `up` or `down` |
 
 ---
 
