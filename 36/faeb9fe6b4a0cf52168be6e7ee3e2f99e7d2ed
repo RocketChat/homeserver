@@ -1,0 +1,32 @@
+packages/appservice/src/services/namespace-matcher.service.ts
+  s_5fa4918d31484c::t_456226217a0fe0 97-101,106-112
+  s_5fa4918d31484c::t_5201b1c832d3b4 49-56,58-59
+  s_5fa4918d31484c::t_3f343d6905abac 113-114
+packages/appservice/src/services/namespace-matcher.service.spec.ts
+  s_5fa4918d31484c::t_82c345bacf9d26 76-80
+  s_5fa4918d31484c::t_7d17bfb6c1343d 112-118
+  s_5fa4918d31484c::t_f4cfa9d1d576c0 33-48
+  s_5fa4918d31484c::t_4413cfd62f613e 81
+  s_5fa4918d31484c::t_65c6a822cebf97 119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "36faeb9fe6b4a0cf52168be6e7ee3e2f99e7d2ed",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_5fa4918d31484c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a639cc25-1d7b-4dbc-9b4c-9a3e9a56b62e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
