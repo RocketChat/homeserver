@@ -1,0 +1,24 @@
+docs/bridge-architecture-guide.md
+  s_a657c3e342f692::t_223a95dfda8ce5 115-119,123,127-132,336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bbae8a5719ca43a96fbedc34e48c198fa7a2c09b",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a657c3e342f692": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0aebf4e9-57b9-4391-8961-8095e2ebfcaa",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
