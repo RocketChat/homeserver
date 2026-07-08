@@ -54,8 +54,9 @@ export class EventRouterService {
 		const next = prev.then(() => this.intakePersistent(roomId, sender, event));
 
 		// Swallow failures on the stored tail so one rejected intake doesn't
-		// break ordering for the next event in the room.
-		const chained = next.catch(() => {});
+		// break ordering for the next event in the room. The real error still
+		// surfaces to the caller through `next`.
+		const chained = next.catch(() => undefined);
 		this.roomIntakeChains.set(roomId, chained);
 		void chained.finally(() => {
 			if (this.roomIntakeChains.get(roomId) === chained) {
