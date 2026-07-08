@@ -1,0 +1,20 @@
+packages/federation-sdk/src/services/event-sender.service.ts
+  h_4c386397e672f4 72
+packages/federation-sdk/src/services/message.service.ts
+  h_4c386397e672f4 131,186,267,295,341,380
+packages/appservice/src/services/event-router.service.ts
+  h_4c386397e672f4 41
+packages/appservice/src/services/event-router.service.spec.ts
+  h_4c386397e672f4 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c751b882c1bde6b80cd3a3477a40a935c1128217",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
