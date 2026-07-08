@@ -170,10 +170,25 @@ export class TransactionSenderService {
 					});
 					break; // can't reconstruct in order — stop so later txns don't overtake it
 				}
-				// Serial by design: a bridge must receive transactions in txnId order,
-				// so we deliver one at a time rather than fanning out with Promise.all.
-				// eslint-disable-next-line no-await-in-loop
-				events = await resolveEvents(txn.eventIds);
+				try {
+					// Serial by design: a bridge must receive transactions in txnId order,
+					// so we deliver one at a time rather than fanning out with Promise.all.
+					// eslint-disable-next-line no-await-in-loop
+					events = await resolveEvents(txn.eventIds);
+				} catch (err) {
+					// Payload couldn't be fully rebuilt (e.g. a referenced event is gone).
+					// Record the failed attempt so backoff advances, and stop the drain so
+					// later txns don't overtake this one. Never deliver a partial payload.
+					this.logger.error({
+						msg: 'Failed to rebuild transaction payload for retry',
+						asId: appservice.registration._id,
+						txnId: txn.txnId,
+						err,
+					});
+					// eslint-disable-next-line no-await-in-loop
+					await this.txnRepo.markFailed(appservice.registration._id, txn.txnId);
+					break;
+				}
 			}
 
 			// eslint-disable-next-line no-await-in-loop

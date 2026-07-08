@@ -173,12 +173,16 @@ export async function init({
 	transactionSender.setEventResolver(async (eventIds) => {
 		const found = await eventService.getEventsByIds(eventIds as EventID[]);
 		const byId = new Map(found.map(({ _id, event }) => [_id as string, event]));
-		return eventIds
-			.map((id): Record<string, unknown> | null => {
-				const event = byId.get(id);
-				return event ? { event_id: id, ...event } : null;
-			})
-			.filter((event): event is Record<string, unknown> => event !== null);
+		return eventIds.map((id): Record<string, unknown> => {
+			const event = byId.get(id);
+			if (!event) {
+				// Delivering a partial payload would let attemptDeliveryRaw mark the txn
+				// sent while silently dropping events — surface it so the txn is retried
+				// instead of falsely completed.
+				throw new Error(`Failed to resolve event ${id} for appservice transaction retry`);
+			}
+			return { event_id: id, ...event };
+		});
 	});
 
 	// Drive appservice transaction retries and bridge-health recovery in the
