@@ -18,7 +18,7 @@ describe('EventSenderService.sendCustomEvent', () => {
 	let getRoomVersion: ReturnType<typeof mock>;
 	let handlePdu: ReturnType<typeof mock>;
 	let sendEventToAllServersInRoom: ReturnType<typeof mock>;
-	let routeEvent: ReturnType<typeof mock>;
+	let routePersistent: ReturnType<typeof mock>;
 
 	// buildEvent echoes back the raw event it was handed so assertions can read
 	// the type/content that would be persisted, plus the rejection fields the
@@ -33,11 +33,11 @@ describe('EventSenderService.sendCustomEvent', () => {
 		});
 		handlePdu = mock(async () => undefined);
 		sendEventToAllServersInRoom = mock(async () => undefined);
-		routeEvent = mock(async () => undefined);
+		routePersistent = mock(async () => undefined);
 
 		const stateService = { getRoomVersion, buildEvent, handlePdu } as unknown as StateService;
 		const federationService = { sendEventToAllServersInRoom } as unknown as FederationService;
-		const eventRouterService = { routeEvent } as unknown as EventRouterService;
+		const eventRouterService = { routePersistent } as unknown as EventRouterService;
 
 		service = new EventSenderService(stateService, federationService, eventRouterService);
 	});
@@ -56,7 +56,7 @@ describe('EventSenderService.sendCustomEvent', () => {
 
 		expect(handlePdu).toHaveBeenCalledTimes(1);
 		expect(sendEventToAllServersInRoom).toHaveBeenCalledWith(builtEvent);
-		expect(routeEvent).toHaveBeenCalledWith(builtEvent);
+		expect(routePersistent).toHaveBeenCalledWith(builtEvent);
 		expect(result).toBe(builtEvent);
 	});
 
@@ -66,7 +66,7 @@ describe('EventSenderService.sendCustomEvent', () => {
 		await service.sendCustomEvent(ROOM_ID, 'm.room.message', content, SENDER);
 
 		expect(buildEvent).toHaveBeenCalledTimes(1);
-		expect(routeEvent).toHaveBeenCalledTimes(1);
+		expect(routePersistent).toHaveBeenCalledTimes(1);
 	});
 
 	test('rejects a known event type with invalid content before building or sending', async () => {
@@ -76,7 +76,7 @@ describe('EventSenderService.sendCustomEvent', () => {
 		expect(buildEvent).not.toHaveBeenCalled();
 		expect(handlePdu).not.toHaveBeenCalled();
 		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
-		expect(routeEvent).not.toHaveBeenCalled();
+		expect(routePersistent).not.toHaveBeenCalled();
 	});
 
 	test('throws when the room version cannot be resolved', async () => {
@@ -97,6 +97,6 @@ describe('EventSenderService.sendCustomEvent', () => {
 
 		expect(handlePdu).toHaveBeenCalledTimes(1);
 		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
-		expect(routeEvent).not.toHaveBeenCalled();
+		expect(routePersistent).not.toHaveBeenCalled();
 	});
 });
