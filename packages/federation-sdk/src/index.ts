@@ -6,9 +6,10 @@ import {
 	type AppServiceState,
 	type AppServiceTransaction,
 	EventRouterService,
+	TransactionSenderService,
 } from '@rocket.chat/appservice';
 import type { EventStagingStore } from '@rocket.chat/federation-core';
-import type { EventStore, RoomID } from '@rocket.chat/federation-room';
+import type { EventID, EventStore, RoomID } from '@rocket.chat/federation-room';
 import { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
@@ -158,6 +159,21 @@ export async function init({
 		} catch {
 			return { aliases: [], members: [] };
 		}
+	});
+
+	// Lets the appservice transaction sender rebuild retry payloads from the
+	// event store (it only persists event ids on the transaction record).
+	const eventService = container.resolve(EventService);
+	const transactionSender = container.resolve(TransactionSenderService);
+	transactionSender.setEventResolver(async (eventIds) => {
+		const found = await eventService.getEventsByIds(eventIds as EventID[]);
+		const byId = new Map(found.map(({ _id, event }) => [_id as string, event]));
+		return eventIds
+			.map((id): Record<string, unknown> | null => {
+				const event = byId.get(id);
+				return event ? { event_id: id, ...event } : null;
+			})
+			.filter((event): event is Record<string, unknown> => event !== null);
 	});
 
 	// once the db is initialized we look for old staged events and try to process them

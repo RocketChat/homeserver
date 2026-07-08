@@ -14,12 +14,21 @@ const INITIAL_BACKOFF_MS = 1_000;
 export class TransactionSenderService {
 	private readonly logger = createLogger('TransactionSenderService');
 
+	// Resolves persisted event bodies by id — needed to rebuild transaction
+	// payloads on retry. Injected from federation-sdk since the appservice
+	// package doesn't own the event store.
+	private eventResolver?: (eventIds: string[]) => Promise<Record<string, unknown>[]>;
+
 	constructor(
 		@inject(delay(() => AppServiceStateRepository))
 		private readonly stateRepo: AppServiceStateRepository,
 		@inject(delay(() => AppServiceTransactionRepository))
 		private readonly txnRepo: AppServiceTransactionRepository,
 	) {}
+
+	setEventResolver(resolver: (eventIds: string[]) => Promise<Record<string, unknown>[]>): void {
+		this.eventResolver = resolver;
+	}
 
 	/**
 	 * Send a transaction to an appservice.
@@ -46,6 +55,7 @@ export class TransactionSenderService {
 		const txnId = await this.stateRepo.incrementTxnId(registration._id);
 
 		const eventIds = events.map((e) => e.eventId).filter(Boolean);
+		const serializedEvents = events.map((e) => ({ event_id: e.eventId, ...e.event }));
 
 		const ephemeralEvents = ephemeral && ephemeral.length > 0 ? eduBatchToAppServiceEphemeral(ephemeral) : undefined;
 
@@ -60,7 +70,7 @@ export class TransactionSenderService {
 			createdAt: new Date(),
 		});
 
-		await this.attemptDelivery(appservice, txnId, events, ephemeralEvents);
+		await this.attemptDeliveryRaw(appservice, txnId, this.buildBody(serializedEvents, ephemeralEvents));
 	}
 
 	/**
@@ -76,26 +86,29 @@ export class TransactionSenderService {
 			return now >= nextAttemptAt;
 		});
 
-		// We don't have the full events stored in the txn (only IDs),
-		// so for retries we send an empty transaction to test connectivity.
-		await Promise.all(eligible.map((txn) => this.attemptDeliveryRaw(appservice, txn.txnId, { events: [] })));
+		const resolveEvents = this.eventResolver;
+		if (!resolveEvents) {
+			this.logger.warn({ msg: 'No event resolver configured; skipping transaction retry', asId: appservice.registration._id });
+			return;
+		}
+
+		await Promise.all(
+			eligible.map(async (txn) => {
+				const events = await resolveEvents(txn.eventIds);
+				await this.attemptDeliveryRaw(appservice, txn.txnId, this.buildBody(events, txn.ephemeralEvents));
+			}),
+		);
 	}
 
-	private async attemptDelivery(
-		appservice: CachedAppService,
-		txnId: number,
-		events: PersistentEventBase[],
-		ephemeral?: AppServiceEphemeralEvent[],
-	): Promise<boolean> {
-		const body: Record<string, unknown> = { events: events.map((e) => ({ event_id: e.eventId, ...e.event })) };
+	private buildBody(events: Record<string, unknown>[], ephemeral?: AppServiceEphemeralEvent[]): Record<string, unknown> {
+		const body: Record<string, unknown> = { events };
 		if (ephemeral?.length) {
 			// Send under both the unstable MSC2409 key (what Synapse emits and most bridges read)
 			// and the stable spec key (Matrix v1.13+).
 			body['de.sorunome.msc2409.ephemeral'] = ephemeral;
 			body.ephemeral = ephemeral;
 		}
-
-		return this.attemptDeliveryRaw(appservice, txnId, body);
+		return body;
 	}
 
 	private async attemptDeliveryRaw(appservice: CachedAppService, txnId: number, body: Record<string, unknown>): Promise<boolean> {
