@@ -31,4 +31,8 @@ export class AppServiceTransactionRepository {
 			.sort({ txnId: 1 })
 			.toArray();
 	}
+
+	async removeAll(asId: string): Promise<void> {
+		await this.collection.deleteMany({ asId });
+	}
 }

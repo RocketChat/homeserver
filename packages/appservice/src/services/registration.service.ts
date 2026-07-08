@@ -4,6 +4,7 @@ import { delay, inject, singleton } from 'tsyringe';
 import { APPSERVICE_CONFIG_PROVIDER, type AppServiceConfigProvider } from '../config-provider';
 import type { AppServiceRegistration, CachedAppService, CompiledNamespace } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
+import { AppServiceTransactionRepository } from '../repositories/appservice-txn.repository';
 
 /**
  * XMPP is the only supported bridge. Its registration is built entirely from
@@ -24,6 +25,8 @@ export class RegistrationService {
 	constructor(
 		@inject(delay(() => AppServiceStateRepository))
 		private readonly stateRepo: AppServiceStateRepository,
+		@inject(delay(() => AppServiceTransactionRepository))
+		private readonly txnRepo: AppServiceTransactionRepository,
 		@inject(APPSERVICE_CONFIG_PROVIDER)
 		private readonly config: AppServiceConfigProvider,
 	) {}
@@ -39,6 +42,11 @@ export class RegistrationService {
 
 		const { xmpp } = this.config;
 		if (!xmpp) {
+			// Bridge config was removed — drop persisted state and any queued
+			// transactions so nothing reports or replays an appservice that is no
+			// longer registered.
+			await this.stateRepo.remove(XMPP_APPSERVICE_ID);
+			await this.txnRepo.removeAll(XMPP_APPSERVICE_ID);
 			this.logger.info({ msg: 'No bridge configured; skipping appservice registration' });
 			return;
 		}
