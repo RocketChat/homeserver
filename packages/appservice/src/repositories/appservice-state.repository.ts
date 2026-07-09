@@ -14,7 +14,7 @@ export class AppServiceStateRepository {
 		return this.collection.findOne({ _id: asId });
 	}
 
-	async upsertState(asId: string, updates: Partial<Omit<AppServiceState, '_id'>>): Promise<void> {
+	async upsertState(asId: string, updates: Partial<Omit<AppServiceState, '_id' | 'updatedAt'>>): Promise<void> {
 		const set: Record<string, unknown> = { updatedAt: new Date() };
 		const unset: Record<string, 1> = {};
 		for (const [key, value] of Object.entries(updates)) {

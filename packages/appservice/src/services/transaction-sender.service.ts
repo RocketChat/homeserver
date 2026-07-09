@@ -97,6 +97,8 @@ export class TransactionSenderService {
 		this.retryTimer = setInterval(() => {
 			void this.pollAll(getAppServices());
 		}, intervalMs);
+		// Don't let the poller by itself keep the process (or a test runner) alive.
+		this.retryTimer.unref?.();
 	}
 
 	stopRetryScheduler(): void {
