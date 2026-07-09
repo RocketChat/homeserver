@@ -69,7 +69,7 @@ export const AppConfigSchema = z.object({
 	}),
 	xmpp: z
 		.object({
-			bridgeURL: z.string().min(1, 'Bridge URL is required'),
+			bridgeURL: z.url({ protocol: /^https?$/, message: 'Bridge URL must be a valid HTTP or HTTPS URL' }),
 			hsToken: z.string().min(1, 'hs_token is required'),
 			asToken: z.string().min(1, 'as_token is required'),
 		})
