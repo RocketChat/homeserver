@@ -66,10 +66,22 @@ export class TransactionSenderService {
 
 		const isUp = (await this.stateRepo.getState(registration._id))?.state !== 'down';
 
-		// Ephemeral events are never persisted, so an ephemeral-only batch for a
-		// down bridge has nothing to queue — drop it without creating a txn.
-		if (!isUp && events.length === 0) {
-			return;
+		if (!isUp) {
+			// The bridge is down but no recoverer lives in this process — the instance
+			// that marked it down may be gone (multi-instance) or its recoverer died.
+			// Adopt recovery so the shared backlog isn't stranded until next boot.
+			// Two instances draining concurrently is safe: txn delivery is idempotent
+			// by txnId and complete/markUp are idempotent.
+			if (!this.recoverers.has(registration._id)) {
+				this.logger.info({ msg: 'Appservice down with no live recoverer; adopting recovery', asId: registration._id });
+				this.scheduleRetry(this.createRecoverer(appservice));
+			}
+
+			// Ephemeral events are never persisted, so an ephemeral-only batch for a
+			// down bridge has nothing to queue — drop it without creating a txn.
+			if (events.length === 0) {
+				return;
+			}
 		}
 
 		const txnId = await this.stateRepo.incrementTxnId(registration._id);
