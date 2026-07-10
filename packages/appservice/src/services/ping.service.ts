@@ -8,8 +8,11 @@ export interface PingResult {
 }
 
 export interface PingError {
-	errcode: string;
+	errcode: 'M_NOT_FOUND' | 'M_URL_NOT_SET' | 'M_BAD_STATUS' | 'M_CONNECTION_TIMEOUT' | 'M_CONNECTION_FAILED';
 	error: string;
+	// MSC2659: M_BAD_STATUS responses carry the bridge's status and body.
+	status?: number;
+	body?: string;
 }
 
 @singleton()
@@ -50,18 +53,22 @@ export class PingService {
 			const durationMs = Date.now() - startTime;
 
 			// The core fetch helper never rejects on transport errors — it resolves
-			// with status undefined instead (see errorResponse in utils/fetch.ts).
+			// with status undefined, and the failure reason is only retrievable
+			// through the rejecting body accessors (see errorResponse in utils/fetch.ts).
 			if (response.status === undefined) {
-				return {
-					errcode: 'M_CONNECTION_FAILED',
-					error: 'Failed to connect to appservice',
-				};
+				const reason = await response.text().catch((r) => String(r));
+				if (/timed out/i.test(reason)) {
+					return { errcode: 'M_CONNECTION_TIMEOUT', error: reason };
+				}
+				return { errcode: 'M_CONNECTION_FAILED', error: reason || 'Failed to connect to appservice' };
 			}
 
 			if (!response.ok) {
 				return {
 					errcode: 'M_BAD_STATUS',
 					error: `Appservice returned HTTP ${response.status}`,
+					status: response.status,
+					body: await response.text().catch(() => ''),
 				};
 			}
 

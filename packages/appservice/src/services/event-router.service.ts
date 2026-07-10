@@ -13,7 +13,9 @@ interface EventBatch {
 }
 
 const BATCH_WINDOW_MS = 100;
-export const MAX_BATCH_SIZE = 50;
+// Per-transaction caps, matching Synapse's scheduler.
+export const MAX_PERSISTENT_EVENTS_PER_TXN = 100;
+export const MAX_EPHEMERAL_EVENTS_PER_TXN = 100;
 
 @singleton()
 export class EventRouterService {
@@ -151,7 +153,7 @@ export class EventRouterService {
 	}
 
 	private afterAppend(appservice: CachedAppService, batch: EventBatch): void {
-		if (batch.events.length + batch.ephemeral.length >= MAX_BATCH_SIZE) {
+		if (batch.events.length >= MAX_PERSISTENT_EVENTS_PER_TXN || batch.ephemeral.length >= MAX_EPHEMERAL_EVENTS_PER_TXN) {
 			this.flushBatch(appservice);
 			return;
 		}

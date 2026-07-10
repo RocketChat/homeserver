@@ -71,7 +71,9 @@ export class RegistrationService {
 		};
 
 		this.cacheRegistration(registration);
-		await this.stateRepo.upsertState(registration._id, { state: 'up' });
+		// Insert-only: a bridge persisted as `down` must keep that state across
+		// boots so its recoverer resumes instead of being reset to `up`.
+		await this.stateRepo.ensureState(registration._id);
 		this.logger.info({ msg: `Loaded appservice registration: ${registration._id}` });
 	}
 

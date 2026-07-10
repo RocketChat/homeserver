@@ -4,13 +4,13 @@ import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import type { PersistentEventBase } from '@rocket.chat/federation-room';
 
-import { EventRouterService, MAX_BATCH_SIZE } from './event-router.service';
+import { EventRouterService, MAX_PERSISTENT_EVENTS_PER_TXN } from './event-router.service';
 import type { NamespaceMatcherService } from './namespace-matcher.service';
 import type { TransactionSenderService } from './transaction-sender.service';
 import type { CachedAppService } from '../models/appservice.model';
 
-// Flushes a batch synchronously: afterAppend() flushes once events + ephemeral
-// reach MAX_BATCH_SIZE, so no fake timers are needed.
+// Flushes a batch synchronously: afterAppend() flushes once events reach
+// MAX_PERSISTENT_EVENTS_PER_TXN, so no fake timers are needed.
 
 type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void; reject: (err: unknown) => void };
 
@@ -35,7 +35,7 @@ function makeEvent(tag: string): PersistentEventBase {
 // Routes a full batch tagged so the first event's id identifies which batch a
 // sendTransaction call corresponds to.
 async function routeBatch(router: EventRouterService, tag: string): Promise<void> {
-	for (let i = 0; i < MAX_BATCH_SIZE; i++) {
+	for (let i = 0; i < MAX_PERSISTENT_EVENTS_PER_TXN; i++) {
 		// eslint-disable-next-line no-await-in-loop
 		await router.routePersistent(makeEvent(`${tag}:${i}`));
 	}

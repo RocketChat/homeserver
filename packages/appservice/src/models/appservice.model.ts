@@ -43,17 +43,17 @@ export interface AppServiceEphemeralEvent {
 	content: Record<string, unknown>;
 }
 
+/**
+ * An unsent transaction. Row existence means "not yet delivered" — rows are
+ * deleted on successful delivery. Only persistent event IDs are stored;
+ * ephemeral events are never persisted and are not resent on retry.
+ */
 export interface AppServiceTransaction {
-	_id: string;
+	_id: string; // `${asId}:${txnId}`
 	asId: string;
 	txnId: number;
 	eventIds: string[];
-	ephemeralEvents?: AppServiceEphemeralEvent[];
-	status: 'pending' | 'sent' | 'failed';
-	attempts: number;
 	createdAt: Date;
-	sentAt?: Date;
-	lastAttemptAt?: Date;
 }
 
 /**

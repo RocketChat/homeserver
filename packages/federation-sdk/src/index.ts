@@ -6,7 +6,6 @@ import {
 	type AppServiceState,
 	type AppServiceTransaction,
 	EventRouterService,
-	RegistrationService,
 	TransactionSenderService,
 } from '@rocket.chat/appservice';
 import { createLogger } from '@rocket.chat/federation-core';
@@ -176,20 +175,14 @@ export async function init({
 		return eventIds.map((id): Record<string, unknown> => {
 			const event = byId.get(id);
 			if (!event) {
-				// Delivering a partial payload would let attemptDeliveryRaw mark the txn
-				// sent while silently dropping events — surface it so the txn is retried
+				// Delivering a partial payload would let the recoverer complete the txn
+				// while silently dropping events — surface it so the txn is retried
 				// instead of falsely completed.
 				throw new Error(`Failed to resolve event ${id} for appservice transaction retry`);
 			}
 			return { event_id: id, ...event };
 		});
 	});
-
-	// Drive appservice transaction retries and bridge-health recovery in the
-	// background. The poller drains each bridge's queue with backoff and pings
-	// bridges marked down to detect when they come back.
-	const registrationService = container.resolve(RegistrationService);
-	transactionSender.startRetryScheduler(() => registrationService.getAll());
 
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {

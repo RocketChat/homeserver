@@ -4,6 +4,7 @@ import {
 	NamespaceMatcherService,
 	PingService,
 	RegistrationService,
+	TransactionSenderService,
 } from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
 import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
@@ -57,6 +58,7 @@ export class FederationSDK {
 		private readonly bridgeQueryService: BridgeQueryService,
 		private readonly namespaceMatcherService: NamespaceMatcherService,
 		private readonly pingService: PingService,
+		private readonly transactionSenderService: TransactionSenderService,
 		public readonly directoryService: DirectoryService,
 		private readonly appServiceRoomService: AppServiceRoomService,
 		@inject(delay(() => UserRepository))
@@ -304,6 +306,10 @@ export class FederationSDK {
 		// boot path, where `init()` runs before the first `setConfig`.
 		await this.registrationService.initialize();
 		await this.ensureSenderUsersForAllRegistrations();
+		// Registrations only exist after the config is applied, so this is the
+		// boot hook for resuming recovery of bridges persisted as down. Idempotent
+		// (per-bridge recoverer guard), so repeated setConfig calls are safe.
+		await this.transactionSenderService.startRecoverersForDownServices(this.registrationService.getAll());
 	}
 
 	queryKeys(...args: Parameters<typeof this.profilesService.queryKeys>) {
@@ -390,6 +396,10 @@ export class FederationSDK {
 
 	pingAppService(...args: Parameters<typeof this.pingService.ping>) {
 		return this.pingService.ping(...args);
+	}
+
+	forceRetryAppService(...args: Parameters<typeof this.transactionSenderService.forceRetry>) {
+		return this.transactionSenderService.forceRetry(...args);
 	}
 
 	getAppServiceState(...args: Parameters<typeof this.registrationService.getState>) {

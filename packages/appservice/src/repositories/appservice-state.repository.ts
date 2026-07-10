@@ -36,6 +36,30 @@ export class AppServiceStateRepository {
 		);
 	}
 
+	/**
+	 * Insert-only initializer: creates the state doc as `up` if missing but
+	 * never overwrites an existing state, so a bridge persisted as `down`
+	 * survives restarts and its recoverer can resume.
+	 */
+	async ensureState(asId: string): Promise<void> {
+		await this.collection.updateOne(
+			{ _id: asId },
+			{
+				$set: { updatedAt: new Date() },
+				$setOnInsert: {
+					_id: asId,
+					state: 'up' as const,
+					lastTxnId: 0,
+					streamOrdering: 0,
+					readReceiptStreamId: 0,
+					presenceStreamId: 0,
+					toDeviceStreamId: 0,
+				},
+			},
+			{ upsert: true },
+		);
+	}
+
 	async markUp(asId: string): Promise<void> {
 		await this.upsertState(asId, {
 			state: 'up',
