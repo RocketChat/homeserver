@@ -337,6 +337,32 @@ describe('TransactionSenderService', () => {
 		expect(received.map((r) => r.path)).toEqual(['/moved/_matrix/app/v1/transactions/1']);
 	});
 
+	test('a transaction inserted during mark-up is caught by the post-markUp re-check', async () => {
+		respondStatus = 500;
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		received = [];
+
+		// Straggler lands while markUp commits — the window where a sender saw
+		// 'down' but the recoverer had already found the queue empty.
+		let injected = false;
+		stateRepo.markUp = mock(async (asId: string) => {
+			states.set(asId, 'up');
+			if (!injected) {
+				injected = true;
+				txns.push({ _id: `${AS_ID}:99`, asId: AS_ID, txnId: 99, eventIds: ['$e2'], createdAt: new Date() });
+			}
+		});
+
+		respondStatus = 200;
+		scheduled[0].cb();
+		// The re-check spots the straggler and schedules a fresh recoverer.
+		await waitUntil(() => scheduled.length >= 2);
+		scheduled[1].cb();
+		await waitUntil(() => txns.length === 0);
+
+		expect(received.map((r) => r.path)).toEqual(['/_matrix/app/v1/transactions/1', '/_matrix/app/v1/transactions/99']);
+	});
+
 	test('recoverer discards itself when the bridge is unregistered, without marking up', async () => {
 		respondStatus = 500;
 		await service.sendTransaction(appservice, [makeEvent('$e1')]);

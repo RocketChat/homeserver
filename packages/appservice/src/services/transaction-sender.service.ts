@@ -71,22 +71,12 @@ export class TransactionSenderService {
 
 		const isUp = (await this.stateRepo.getState(registration._id))?.state !== 'down';
 
-		if (!isUp) {
-			// The bridge is down but no recoverer lives in this process — the instance
-			// that marked it down may be gone (multi-instance) or its recoverer died.
-			// Adopt recovery so the shared backlog isn't stranded until next boot.
-			// Two instances draining concurrently is safe: txn delivery is idempotent
-			// by txnId and complete/markUp are idempotent.
-			if (!this.recoverers.has(registration._id)) {
-				this.logger.info({ msg: 'Appservice down with no live recoverer; adopting recovery', asId: registration._id });
-				this.scheduleRetry(this.createRecoverer(registration._id));
-			}
-
-			// Ephemeral events are never persisted, so an ephemeral-only batch for a
-			// down bridge has nothing to queue — drop it without creating a txn.
-			if (events.length === 0) {
-				return;
-			}
+		// Ephemeral events are never persisted, so an ephemeral-only batch for a
+		// down bridge has nothing to queue — drop it without creating a txn.
+		// Still adopt: ephemeral traffic can rescue a backlog with no live recoverer.
+		if (!isUp && events.length === 0) {
+			this.ensureRecoverer(registration._id);
+			return;
 		}
 
 		const txnId = await this.stateRepo.incrementTxnId(registration._id);
@@ -105,6 +95,9 @@ export class TransactionSenderService {
 		});
 
 		if (!isUp) {
+			// Adoption must happen after the row is persisted — it pairs with the
+			// recoverer's post-markUp re-check to close the empty-queue/markUp race.
+			this.ensureRecoverer(registration._id);
 			return;
 		}
 
@@ -176,6 +169,20 @@ export class TransactionSenderService {
 		return recoverer;
 	}
 
+	/**
+	 * Adopt recovery of a DOWN bridge with no recoverer in this process — the
+	 * instance that marked it down may be gone (multi-instance) or its
+	 * recoverer died. Two instances draining concurrently is safe: txn
+	 * delivery is idempotent by txnId and complete/markUp are idempotent.
+	 */
+	private ensureRecoverer(asId: string): void {
+		if (this.recoverers.has(asId)) {
+			return;
+		}
+		this.logger.info({ msg: 'Appservice down with no live recoverer; adopting recovery', asId });
+		this.scheduleRetry(this.createRecoverer(asId));
+	}
+
 	private scheduleRetry(recoverer: Recoverer): void {
 		const delayMs = 2 ** recoverer.backoffCounter * 1000;
 		recoverer.timer = setTimeout(() => {
@@ -221,6 +228,14 @@ export class TransactionSenderService {
 					// eslint-disable-next-line no-await-in-loop
 					await this.stateRepo.markUp(asId);
 					this.logger.info({ msg: 'Appservice backlog drained; marked up', asId });
+					// A sender that saw 'down' may have inserted a row between the empty
+					// check and markUp while this recoverer was still registered (so it
+					// didn't adopt). One re-check after markUp closes that window.
+					// eslint-disable-next-line no-await-in-loop
+					if (await this.txnRepo.getOldestPending(asId)) {
+						this.logger.info({ msg: 'Transaction arrived while marking up; resuming recovery', asId });
+						this.ensureRecoverer(asId);
+					}
 					return;
 				}
 
