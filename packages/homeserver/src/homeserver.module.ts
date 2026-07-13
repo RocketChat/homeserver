@@ -11,6 +11,7 @@ import Elysia from 'elysia';
 
 import { clientDirectoryPlugin } from './controllers/client/directory.controller';
 import { clientEventsPlugin } from './controllers/client/events.controller';
+import { clientAppservicePingPlugin } from './controllers/client/ping.controller';
 import { clientProfilePlugin } from './controllers/client/profile.controller';
 import { clientRegisterPlugin } from './controllers/client/register.controller';
 import { clientRoomsPlugin } from './controllers/client/rooms.controller';
@@ -125,7 +126,8 @@ export async function setup() {
 		.use(clientEventsPlugin(serverName))
 		.use(clientRoomsPlugin(serverName))
 		.use(clientProfilePlugin(serverName))
-		.use(clientDirectoryPlugin(serverName));
+		.use(clientDirectoryPlugin(serverName))
+		.use(clientAppservicePingPlugin(serverName));
 
 	return { app };
 }
