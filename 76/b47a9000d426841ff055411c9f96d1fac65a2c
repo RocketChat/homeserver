@@ -1,0 +1,27 @@
+packages/homeserver/src/homeserver.module.ts
+  s_92b3aa1e5e9d66::t_e6a31fa544e940 14
+  s_92b3aa1e5e9d66::t_bf3d9c99bf5de8 129-130
+packages/homeserver/src/controllers/client/ping.controller.ts
+  s_92b3aa1e5e9d66::t_ca92e8183db795 1-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "76b47a9000d426841ff055411c9f96d1fac65a2c",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_92b3aa1e5e9d66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b7195dc-b967-4113-933b-f6cd1c796122",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
