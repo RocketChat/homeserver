@@ -1,0 +1,29 @@
+packages/appservice/src/services/transaction-sender.service.ts
+  s_d9c80b98ced800::t_daeadd5ee75d26 213-216,222,228-238
+  s_d9c80b98ced800::t_d1538f6a0aade4 56-58
+packages/appservice/src/services/ping.service.ts
+  s_d9c80b98ced800::t_3a7e83de9d5fa2 48-50
+packages/appservice/src/services/transaction-sender.service.spec.ts
+  s_d9c80b98ced800::t_62fdd4a28da145 437-462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f329e214d590597a493e0c9a4b729b59b22047fd",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d9c80b98ced800": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "911be514-cb56-4182-a1a7-b1bd44968448",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
