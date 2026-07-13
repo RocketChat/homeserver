@@ -434,6 +434,32 @@ describe('TransactionSenderService', () => {
 		expect(txns).toHaveLength(0);
 	});
 
+	test('a config change mid-drain applies to the next transaction in the same drain', async () => {
+		respondStatus = 500;
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		await service.sendTransaction(appservice, [makeEvent('$e2')]);
+		received = [];
+
+		// URL rotates after the first per-iteration lookup — the second txn of
+		// the same drain must already go to the new URL.
+		let lookups = 0;
+		registrationService.getById = mock(() => {
+			lookups++;
+			if (lookups >= 2) {
+				return {
+					registration: { ...appservice.registration, url: `http://127.0.0.1:${server.port}/v2` },
+				} as unknown as CachedAppService;
+			}
+			return appservice;
+		});
+
+		respondStatus = 200;
+		scheduled[0].cb();
+		await waitUntil(() => states.get(AS_ID) === 'up');
+
+		expect(received.map((r) => r.path)).toEqual(['/_matrix/app/v1/transactions/1', '/v2/_matrix/app/v1/transactions/2']);
+	});
+
 	test('recoverer discards itself when the bridge is unregistered, without marking up', async () => {
 		respondStatus = 500;
 		await service.sendTransaction(appservice, [makeEvent('$e1')]);

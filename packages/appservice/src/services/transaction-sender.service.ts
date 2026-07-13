@@ -53,8 +53,9 @@ export class TransactionSenderService {
 	 * any delivery attempt; while the bridge is up it is pushed inline and the
 	 * row deleted on success. The first failed push marks the bridge DOWN and
 	 * starts a recoverer that drains the backlog with exponential backoff.
-	 * While DOWN, transactions are only persisted — never pushed — so the
-	 * recoverer delivers them strictly in txnId order.
+	 * While DOWN, transactions are only persisted — never pushed — and the
+	 * recoverer delivers them in txnId order (best-effort at recovery
+	 * boundaries; see retry()).
 	 */
 	async sendTransaction(
 		appservice: CachedAppService,
@@ -209,28 +210,32 @@ export class TransactionSenderService {
 	 * Drain the backlog oldest-first, one transaction in flight. Each success
 	 * deletes the row and resets the backoff; a failure reschedules with the
 	 * next backoff step. Only when the queue is empty is the bridge marked UP
-	 * and the recoverer removed — live delivery then resumes.
+	 * and the recoverer removed — live delivery then resumes. Delivery order
+	 * follows txnId but is best-effort across recovery boundaries: concurrent
+	 * drainers (multi-instance) and live sends racing a straggler drain can
+	 * briefly reorder or duplicate; bridges must dedupe by txnId per spec.
 	 */
 	private async retry(recoverer: Recoverer): Promise<void> {
 		if (recoverer.retrying) {
 			return;
 		}
+		recoverer.retrying = true;
 
 		const { asId } = recoverer;
 
-		const appservice = this.registrationService.getById(asId);
-		if (!appservice) {
-			// Bridge was unregistered — initialize() already dropped its state doc
-			// and queue; discard the recoverer without marking anything up.
-			this.logger.info({ msg: 'Appservice no longer registered; discarding recoverer', asId });
-			this.recoverers.delete(asId);
-			return;
-		}
-
-		recoverer.retrying = true;
-
 		try {
 			for (;;) {
+				// Re-resolve every iteration so a mid-drain config change (new
+				// URL/token) applies immediately and a removed bridge stops here.
+				const appservice = this.registrationService.getById(asId);
+				if (!appservice) {
+					// initialize() already dropped the state doc and queue; discard
+					// the recoverer without marking anything up.
+					this.logger.info({ msg: 'Appservice no longer registered; discarding recoverer', asId });
+					this.recoverers.delete(asId);
+					return;
+				}
+
 				// eslint-disable-next-line no-await-in-loop
 				const txn = await this.txnRepo.getOldestPending(asId);
 				if (!txn) {

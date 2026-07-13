@@ -45,9 +45,9 @@ export class PingService {
 					'Authorization': `Bearer ${as.registration.hsToken}`,
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({
-					transaction_id: transactionId ?? `ping-${Date.now()}`,
-				}),
+				// transaction_id is copied directly from the bridge's client-API ping
+				// (MSC2659) — never invented, some bridge SDKs verify it matches.
+				body: JSON.stringify(transactionId !== undefined ? { transaction_id: transactionId } : {}),
 			});
 
 			const durationMs = Date.now() - startTime;
