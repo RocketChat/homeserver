@@ -154,9 +154,23 @@ describe('TransactionSenderService', () => {
 		await service.sendTransaction(appservice, [makeEvent('$e1')]);
 
 		expect(stateRepo.markDown).toHaveBeenCalledTimes(1);
+		expect(stateRepo.markDown).toHaveBeenCalledWith(AS_ID, expect.stringContaining('HTTP 500'));
 		expect(txns).toHaveLength(1);
 		expect(scheduled).toHaveLength(1);
 		expect(scheduled[0].delayMs).toBe(2000);
+	});
+
+	test('each failed retry refreshes the persisted error with the latest cause', async () => {
+		respondStatus = 500;
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		expect(stateRepo.markDown).toHaveBeenLastCalledWith(AS_ID, expect.stringContaining('HTTP 500'));
+
+		respondStatus = 502;
+		scheduled[0].cb();
+		await waitUntil(() => scheduled.length >= 2);
+
+		expect(stateRepo.markDown).toHaveBeenCalledTimes(2);
+		expect(stateRepo.markDown).toHaveBeenLastCalledWith(AS_ID, expect.stringContaining('HTTP 502'));
 	});
 
 	test('while down, event transactions are persisted but never pushed', async () => {

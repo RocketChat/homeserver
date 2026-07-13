@@ -21,6 +21,10 @@ interface Recoverer {
 	retrying: boolean;
 }
 
+// Failure reason feeds the persisted lastError so operators see the actual
+// cause (HTTP status / transport error), not a generic delivery message.
+type PutResult = { sent: true } | { sent: false; reason: string };
+
 @singleton()
 export class TransactionSenderService {
 	private readonly logger = createLogger('TransactionSenderService');
@@ -101,14 +105,14 @@ export class TransactionSenderService {
 			return;
 		}
 
-		const sent = await this.putTransaction(appservice, txnId, this.buildBody(serializedEvents, ephemeralEvents));
-		if (sent) {
+		const result = await this.putTransaction(appservice, txnId, this.buildBody(serializedEvents, ephemeralEvents));
+		if (result.sent) {
 			await this.txnRepo.complete(registration._id, txnId);
 			return;
 		}
 
 		// The row stays as the head of the backlog; its ephemeral riders are lost.
-		await this.startRecoverer(registration._id, `Failed to deliver transaction ${txnId}`);
+		await this.startRecoverer(registration._id, `Failed to deliver transaction ${txnId}: ${result.reason}`);
 	}
 
 	/**
@@ -265,8 +269,12 @@ export class TransactionSenderService {
 				}
 
 				// eslint-disable-next-line no-await-in-loop
-				const sent = await this.putTransaction(appservice, txn.txnId, this.buildBody(events));
-				if (!sent) {
+				const result = await this.putTransaction(appservice, txn.txnId, this.buildBody(events));
+				if (!result.sent) {
+					// Keep persisted diagnostics pointing at the most recent failure; also
+					// re-marks DOWN if a straggler drain is failing while the state says up.
+					// eslint-disable-next-line no-await-in-loop
+					await this.stateRepo.markDown(asId, `Failed to deliver transaction ${txn.txnId}: ${result.reason}`);
 					this.backoffAndReschedule(recoverer);
 					return;
 				}
@@ -309,10 +317,10 @@ export class TransactionSenderService {
 		return body;
 	}
 
-	private async putTransaction(appservice: CachedAppService, txnId: number, body: Record<string, unknown>): Promise<boolean> {
+	private async putTransaction(appservice: CachedAppService, txnId: number, body: Record<string, unknown>): Promise<PutResult> {
 		const { registration } = appservice;
 
-		if (!registration.url) return false;
+		if (!registration.url) return { sent: false, reason: 'Appservice has no URL configured' };
 
 		const url = new URL(`${registration.url}/_matrix/app/v1/transactions/${txnId}`);
 
@@ -327,7 +335,7 @@ export class TransactionSenderService {
 			});
 
 			if (response.ok) {
-				return true;
+				return { sent: true };
 			}
 
 			this.logger.warn({
@@ -336,7 +344,7 @@ export class TransactionSenderService {
 				txnId,
 				status: response.status,
 			});
-			return false;
+			return { sent: false, reason: `HTTP ${response.status}` };
 		} catch (err) {
 			this.logger.error({
 				msg: `Transaction delivery error`,
@@ -344,7 +352,7 @@ export class TransactionSenderService {
 				txnId,
 				err,
 			});
-			return false;
+			return { sent: false, reason: err instanceof Error ? err.message : String(err) };
 		}
 	}
 }
