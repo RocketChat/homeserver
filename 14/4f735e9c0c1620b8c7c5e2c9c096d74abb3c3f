@@ -1,0 +1,38 @@
+packages/appservice/src/services/transaction-sender.service.ts
+  s_d9c80b98ced800::t_095c31883166a8 159,163,170,173-175
+  s_d9c80b98ced800::t_9c927cf9390136 14-16,18
+  s_d9c80b98ced800::t_88fe0b5857da21 82
+  s_d9c80b98ced800::t_1e3680d0f9f177 118
+  s_d9c80b98ced800::t_1aed906aee5986 202-213
+  s_d9c80b98ced800::t_7efaed8db3eedf 253
+  s_d9c80b98ced800::t_c9d823b96f2d9d 184
+  s_d9c80b98ced800::t_abd87df25db464 40
+  s_d9c80b98ced800::t_0690360625aa55 5
+packages/appservice/src/services/transaction-sender.service.spec.ts
+  s_d9c80b98ced800::t_c20774c07287de 303-359
+  s_d9c80b98ced800::t_02e2bc114eeb5e 124-127
+  s_d9c80b98ced800::t_ec71cb2a3e9745 82
+  s_d9c80b98ced800::t_07d0422f60c18c 8
+  s_d9c80b98ced800::t_38509d99255c5b 131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "144f735e9c0c1620b8c7c5e2c9c096d74abb3c3f",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d9c80b98ced800": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "911be514-cb56-4182-a1a7-b1bd44968448",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
