@@ -363,6 +363,34 @@ describe('TransactionSenderService', () => {
 		expect(received.map((r) => r.path)).toEqual(['/_matrix/app/v1/transactions/1', '/_matrix/app/v1/transactions/99']);
 	});
 
+	test('a transient DB error reschedules the recoverer instead of killing it', async () => {
+		respondStatus = 500;
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		received = [];
+
+		const realGetOldestPending = txnRepo.getOldestPending;
+		let failures = 1;
+		txnRepo.getOldestPending = mock(async (asId: string) => {
+			if (failures > 0) {
+				failures--;
+				throw new Error('mongo hiccup');
+			}
+			return realGetOldestPending(asId);
+		});
+
+		respondStatus = 200;
+		scheduled[0].cb();
+		await waitUntil(() => scheduled.length >= 2);
+		expect(scheduled[1].delayMs).toBe(4000);
+		expect(states.get(AS_ID)).toBe('down');
+
+		scheduled[1].cb();
+		await waitUntil(() => states.get(AS_ID) === 'up');
+
+		expect(received.map((r) => r.path)).toEqual(['/_matrix/app/v1/transactions/1']);
+		expect(txns).toHaveLength(0);
+	});
+
 	test('recoverer discards itself when the bridge is unregistered, without marking up', async () => {
 		respondStatus = 500;
 		await service.sendTransaction(appservice, [makeEvent('$e1')]);

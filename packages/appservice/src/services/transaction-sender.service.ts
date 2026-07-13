@@ -275,6 +275,17 @@ export class TransactionSenderService {
 				await this.txnRepo.complete(asId, txn.txnId);
 				recoverer.backoffCounter = 1;
 			}
+		} catch (err) {
+			// A DB error escaping the loop must never kill recovery: a dead-but-
+			// registered recoverer would also block ensureRecoverer's adoption.
+			this.logger.error({ msg: 'Recoverer retry failed; rescheduling', asId, err });
+			if (this.recoverers.get(asId) === recoverer) {
+				this.backoffAndReschedule(recoverer);
+			} else {
+				// Deleted mid-retry (e.g. markUp threw after the empty-queue delete) —
+				// make sure someone still owns recovery.
+				this.ensureRecoverer(asId);
+			}
 		} finally {
 			recoverer.retrying = false;
 		}
