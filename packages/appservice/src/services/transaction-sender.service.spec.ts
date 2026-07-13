@@ -351,6 +351,35 @@ describe('TransactionSenderService', () => {
 		expect(received.map((r) => r.path)).toEqual(['/moved/_matrix/app/v1/transactions/1']);
 	});
 
+	test('adoption while markDown is in flight never installs a second recoverer', async () => {
+		respondStatus = 500;
+
+		let releaseMarkDown!: () => void;
+		stateRepo.markDown = mock(
+			(asId: string) =>
+				new Promise<void>((resolve) => {
+					// State becomes visible to readers before the write resolves,
+					// mirroring the window where another sender sees 'down' while
+					// startRecoverer is still awaiting markDown.
+					states.set(asId, 'down');
+					releaseMarkDown = () => resolve();
+				}),
+		);
+
+		const inlineFailure = service.sendTransaction(appservice, [makeEvent('$e1')]);
+		await waitUntil(() => stateRepo.markDown.mock.calls.length === 1);
+
+		// Sees 'down', adopts synchronously while markDown is still pending.
+		await service.sendTransaction(appservice, [makeEvent('$e2')]);
+		expect(scheduled).toHaveLength(1);
+
+		releaseMarkDown();
+		await inlineFailure;
+
+		// startRecoverer must not overwrite the adopted recoverer with a second timer.
+		expect(scheduled).toHaveLength(1);
+	});
+
 	test('a transaction inserted during mark-up is caught by the post-markUp re-check', async () => {
 		respondStatus = 500;
 		await service.sendTransaction(appservice, [makeEvent('$e1')]);

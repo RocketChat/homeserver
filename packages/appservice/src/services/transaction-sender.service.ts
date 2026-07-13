@@ -153,7 +153,7 @@ export class TransactionSenderService {
 			}
 
 			this.logger.info({ msg: 'Appservice persisted as down; resuming recoverer', asId });
-			this.scheduleRetry(this.createRecoverer(asId));
+			this.ensureRecoverer(asId);
 		}
 	}
 
@@ -164,7 +164,7 @@ export class TransactionSenderService {
 
 		await this.stateRepo.markDown(asId, error);
 		this.logger.warn({ msg: 'Appservice marked down; starting recoverer', asId, error });
-		this.scheduleRetry(this.createRecoverer(asId));
+		this.ensureRecoverer(asId);
 	}
 
 	private createRecoverer(asId: string): Recoverer {
@@ -174,7 +174,13 @@ export class TransactionSenderService {
 	}
 
 	/**
-	 * Adopt recovery of a DOWN bridge with no recoverer in this process — the
+	 * The single creation gate for recoverers: the has()+create pair is
+	 * synchronous, so no interleaved path can ever install a second recoverer
+	 * (and second timer) for the same bridge on this instance. Any path that
+	 * awaits before starting recovery (markDown, getState) must funnel through
+	 * here rather than creating directly.
+	 *
+	 * Also serves adoption: a DOWN bridge with no local recoverer — the
 	 * instance that marked it down may be gone (multi-instance) or its
 	 * recoverer died. Two instances draining concurrently is safe: txn
 	 * delivery is idempotent by txnId and complete/markUp are idempotent.
@@ -183,7 +189,7 @@ export class TransactionSenderService {
 		if (this.recoverers.has(asId)) {
 			return;
 		}
-		this.logger.info({ msg: 'Appservice down with no live recoverer; adopting recovery', asId });
+		this.logger.info({ msg: 'Recoverer scheduled', asId });
 		this.scheduleRetry(this.createRecoverer(asId));
 	}
 
