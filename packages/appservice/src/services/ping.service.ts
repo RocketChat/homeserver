@@ -57,7 +57,10 @@ export class PingService {
 			// through the rejecting body accessors (see errorResponse in utils/fetch.ts).
 			if (response.status === undefined) {
 				const reason = await response.text().catch((r) => String(r));
-				if (/timed out/i.test(reason)) {
+				// Covers the fetch wrapper's inactivity timeout ("Request timed out
+				// after 20s") plus Node transport timeouts ("connect ETIMEDOUT ...",
+				// "Socket connection timeout").
+				if (/timed out|timeout|ETIMEDOUT/i.test(reason)) {
 					return { errcode: 'M_CONNECTION_TIMEOUT', error: reason };
 				}
 				return { errcode: 'M_CONNECTION_FAILED', error: reason || 'Failed to connect to appservice' };
