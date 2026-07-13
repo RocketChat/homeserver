@@ -2,6 +2,7 @@ import { createLogger, fetch, PresenceEDU, ReceiptEDU, TypingEDU } from '@rocket
 import { PersistentEventBase } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
+import { RegistrationService } from './registration.service';
 import type { AppServiceEphemeralEvent, CachedAppService } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
 import { AppServiceTransactionRepository } from '../repositories/appservice-txn.repository';
@@ -10,8 +11,11 @@ import { eduBatchToAppServiceEphemeral } from '../utils/edu-to-appservice';
 // Backoff doubles per consecutive failure: 2^1 = 2s up to 2^9 = 512s (matches Synapse).
 const MAX_BACKOFF_EXPONENT = 9;
 
+// Holds only the asId — the registration is resolved fresh from
+// RegistrationService on every retry so a config change (new URL/token)
+// applies to the backlog and a removed bridge stops being retried.
 interface Recoverer {
-	appservice: CachedAppService;
+	asId: string;
 	backoffCounter: number;
 	timer: ReturnType<typeof setTimeout> | null;
 	retrying: boolean;
@@ -33,6 +37,7 @@ export class TransactionSenderService {
 		private readonly stateRepo: AppServiceStateRepository,
 		@inject(delay(() => AppServiceTransactionRepository))
 		private readonly txnRepo: AppServiceTransactionRepository,
+		private readonly registrationService: RegistrationService,
 	) {}
 
 	setEventResolver(resolver: (eventIds: string[]) => Promise<Record<string, unknown>[]>): void {
@@ -74,7 +79,7 @@ export class TransactionSenderService {
 			// by txnId and complete/markUp are idempotent.
 			if (!this.recoverers.has(registration._id)) {
 				this.logger.info({ msg: 'Appservice down with no live recoverer; adopting recovery', asId: registration._id });
-				this.scheduleRetry(this.createRecoverer(appservice));
+				this.scheduleRetry(this.createRecoverer(registration._id));
 			}
 
 			// Ephemeral events are never persisted, so an ephemeral-only batch for a
@@ -110,7 +115,7 @@ export class TransactionSenderService {
 		}
 
 		// The row stays as the head of the backlog; its ephemeral riders are lost.
-		await this.startRecoverer(appservice, `Failed to deliver transaction ${txnId}`);
+		await this.startRecoverer(registration._id, `Failed to deliver transaction ${txnId}`);
 	}
 
 	/**
@@ -151,24 +156,23 @@ export class TransactionSenderService {
 			}
 
 			this.logger.info({ msg: 'Appservice persisted as down; resuming recoverer', asId });
-			this.scheduleRetry(this.createRecoverer(appservice));
+			this.scheduleRetry(this.createRecoverer(asId));
 		}
 	}
 
-	private async startRecoverer(appservice: CachedAppService, error: string): Promise<void> {
-		const asId = appservice.registration._id;
+	private async startRecoverer(asId: string, error: string): Promise<void> {
 		if (this.recoverers.has(asId)) {
 			return;
 		}
 
 		await this.stateRepo.markDown(asId, error);
 		this.logger.warn({ msg: 'Appservice marked down; starting recoverer', asId, error });
-		this.scheduleRetry(this.createRecoverer(appservice));
+		this.scheduleRetry(this.createRecoverer(asId));
 	}
 
-	private createRecoverer(appservice: CachedAppService): Recoverer {
-		const recoverer: Recoverer = { appservice, backoffCounter: 1, timer: null, retrying: false };
-		this.recoverers.set(appservice.registration._id, recoverer);
+	private createRecoverer(asId: string): Recoverer {
+		const recoverer: Recoverer = { asId, backoffCounter: 1, timer: null, retrying: false };
+		this.recoverers.set(asId, recoverer);
 		return recoverer;
 	}
 
@@ -177,7 +181,7 @@ export class TransactionSenderService {
 		recoverer.timer = setTimeout(() => {
 			recoverer.timer = null;
 			void this.retry(recoverer).catch((err) => {
-				this.logger.error({ msg: 'Recoverer retry failed', asId: recoverer.appservice.registration._id, err });
+				this.logger.error({ msg: 'Recoverer retry failed', asId: recoverer.asId, err });
 			});
 		}, delayMs);
 		// Don't let a pending retry by itself keep the process (or a test runner) alive.
@@ -194,9 +198,19 @@ export class TransactionSenderService {
 		if (recoverer.retrying) {
 			return;
 		}
-		recoverer.retrying = true;
 
-		const asId = recoverer.appservice.registration._id;
+		const { asId } = recoverer;
+
+		const appservice = this.registrationService.getById(asId);
+		if (!appservice) {
+			// Bridge was unregistered — initialize() already dropped its state doc
+			// and queue; discard the recoverer without marking anything up.
+			this.logger.info({ msg: 'Appservice no longer registered; discarding recoverer', asId });
+			this.recoverers.delete(asId);
+			return;
+		}
+
+		recoverer.retrying = true;
 
 		try {
 			for (;;) {
@@ -236,7 +250,7 @@ export class TransactionSenderService {
 				}
 
 				// eslint-disable-next-line no-await-in-loop
-				const sent = await this.putTransaction(recoverer.appservice, txn.txnId, this.buildBody(events));
+				const sent = await this.putTransaction(appservice, txn.txnId, this.buildBody(events));
 				if (!sent) {
 					this.backoffAndReschedule(recoverer);
 					return;

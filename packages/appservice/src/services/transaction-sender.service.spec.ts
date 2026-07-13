@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, tes
 import type { TypingEDU } from '@rocket.chat/federation-core';
 import type { PersistentEventBase } from '@rocket.chat/federation-room';
 
+import type { RegistrationService } from './registration.service';
 import { TransactionSenderService } from './transaction-sender.service';
 import type { AppServiceTransaction, CachedAppService } from '../models/appservice.model';
 import type { AppServiceStateRepository } from '../repositories/appservice-state.repository';
@@ -78,6 +79,7 @@ describe('TransactionSenderService', () => {
 		getOldestPending: ReturnType<typeof mock>;
 		complete: ReturnType<typeof mock>;
 	};
+	let registrationService: { getById: ReturnType<typeof mock> };
 
 	beforeEach(() => {
 		respondStatus = 200;
@@ -119,9 +121,14 @@ describe('TransactionSenderService', () => {
 			}),
 		};
 
+		// Resolves at call time so tests can reassign `appservice` (fresh config)
+		// or return undefined (bridge removed) to exercise the per-retry lookup.
+		registrationService = { getById: mock((asId: string) => (asId === AS_ID ? appservice : undefined)) };
+
 		service = new TransactionSenderService(
 			stateRepo as unknown as AppServiceStateRepository,
 			txnRepo as unknown as AppServiceTransactionRepository,
+			registrationService as unknown as RegistrationService,
 		);
 		service.setEventResolver(async (eventIds) => eventIds.map((id) => ({ event_id: id, type: 'm.room.message' })));
 		appservice = makeAppService();
@@ -292,5 +299,62 @@ describe('TransactionSenderService', () => {
 
 		expect(scheduled).toHaveLength(0);
 		expect(stateRepo.markUp).not.toHaveBeenCalled();
+	});
+
+	test('sending while down with no live recoverer adopts recovery and drains the backlog', async () => {
+		states.set(AS_ID, 'down');
+
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		await service.sendTransaction(appservice, [makeEvent('$e2')]);
+
+		expect(received).toHaveLength(0);
+		// One recoverer adopted on the first send; the second send sees it and skips.
+		expect(scheduled).toHaveLength(1);
+		// Adoption must not overwrite the original persisted error.
+		expect(stateRepo.markDown).not.toHaveBeenCalled();
+
+		scheduled[0].cb();
+		await waitUntil(() => states.get(AS_ID) === 'up');
+
+		expect(received.map((r) => r.path)).toEqual(['/_matrix/app/v1/transactions/1', '/_matrix/app/v1/transactions/2']);
+		expect(txns).toHaveLength(0);
+	});
+
+	test('retry resolves the registration fresh so a config change applies to the backlog', async () => {
+		respondStatus = 500;
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		received = [];
+
+		// Simulate setConfig rebuilding the registration with a new bridge URL.
+		appservice = {
+			registration: { ...appservice.registration, url: `http://127.0.0.1:${server.port}/moved` },
+		} as unknown as CachedAppService;
+
+		respondStatus = 200;
+		scheduled[0].cb();
+		await waitUntil(() => states.get(AS_ID) === 'up');
+
+		expect(received.map((r) => r.path)).toEqual(['/moved/_matrix/app/v1/transactions/1']);
+	});
+
+	test('recoverer discards itself when the bridge is unregistered, without marking up', async () => {
+		respondStatus = 500;
+		await service.sendTransaction(appservice, [makeEvent('$e1')]);
+		received = [];
+
+		registrationService.getById = mock(() => undefined);
+
+		respondStatus = 200;
+		// The discard path is synchronous (no await before the lookup).
+		scheduled[0].cb();
+
+		expect(received).toHaveLength(0);
+		expect(stateRepo.markUp).not.toHaveBeenCalled();
+		// Backlog cleanup is initialize()'s job, not the recoverer's.
+		expect(txns).toHaveLength(1);
+
+		// The recoverer is gone from the map, so forceRetry finds nothing to drive.
+		await service.forceRetry(AS_ID);
+		expect(received).toHaveLength(0);
 	});
 });
