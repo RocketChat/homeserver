@@ -1,0 +1,24 @@
+packages/appservice/src/services/ping.service.ts
+  s_d9c80b98ced800::t_d30b92039a5b44 60-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1afe59b7411f87053aee12243fa46528a42254e4",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d9c80b98ced800": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "911be514-cb56-4182-a1a7-b1bd44968448",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
