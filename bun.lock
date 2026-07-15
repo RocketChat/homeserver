@@ -79,10 +79,10 @@
     },
     "packages/federation-sdk": {
       "name": "@rocket.chat/federation-sdk",
-      "version": "0.6.3",
+      "version": "0.7.0-beta.7",
       "dependencies": {
         "@rocket.chat/appservice": "workspace:*",
-        "@rocket.chat/emitter": "^0.32.0",
+        "@rocket.chat/emitter": "^0.33.0",
         "@rocket.chat/federation-core": "workspace:*",
         "@rocket.chat/federation-crypto": "workspace:*",
         "@rocket.chat/federation-room": "workspace:*",
@@ -103,7 +103,7 @@
         "@bogeychan/elysia-etag": "^0.0.6",
         "@bogeychan/elysia-logger": "^0.1.10",
         "@elysiajs/swagger": "^1.3.0",
-        "@rocket.chat/emitter": "^0.32.0",
+        "@rocket.chat/emitter": "^0.33.0",
         "@rocket.chat/federation-core": "workspace:*",
         "@rocket.chat/federation-room": "workspace:*",
         "@rocket.chat/federation-sdk": "workspace:*",
@@ -223,7 +223,7 @@
 
     "@rocket.chat/appservice": ["@rocket.chat/appservice@workspace:packages/appservice"],
 
-    "@rocket.chat/emitter": ["@rocket.chat/emitter@0.32.0", "", {}, "sha512-QCXNGDm5xjJPePMeP9GknMAZne5xhNmLLD/ZVVqNgOyeWdfQKddwBUqtMiWDaFCRq1bC22kNf3WQLqt89CO6fg=="],
+    "@rocket.chat/emitter": ["@rocket.chat/emitter@0.33.0", "", {}, "sha512-IpbDrRZ9EwwbDgU6ZflQ/BGjfWPHn6yT63QoPQ3t35X22WuFCv1n/ie0zPXb4AHjcorK0o8GVXvTO8DH4s4lAg=="],
 
     "@rocket.chat/eslint-config": ["@rocket.chat/eslint-config@0.7.0", "", { "dependencies": { "@babel/core": "^7.20.7", "@babel/eslint-parser": "~7.23.3", "@types/eslint": "~8.44.6", "@types/prettier": "^2.6.3", "@typescript-eslint/eslint-plugin": "~5.60.1", "@typescript-eslint/parser": "~5.60.1", "eslint": "~8.45.0", "eslint-config-prettier": "~8.8.0", "eslint-plugin-anti-trojan-source": "~1.1.1", "eslint-plugin-import": "~2.26.0", "eslint-plugin-jest": "~27.2.3", "eslint-plugin-jsx-a11y": "^6.8.0", "eslint-plugin-prettier": "~4.2.1", "prettier": "~2.8.8" } }, "sha512-6AlE/MpJfITicLVNmgToK8hjp7doB4UtJdkDXm58JQZcDuU4Vt7co5/xUpg8tUhT7OouzlqdPr9keNuGm6Wi7A=="],
 
@@ -475,7 +475,7 @@
 
     "bson": ["bson@6.10.4", "", {}, "sha512-WIsKqkSC0ABoBJuT1LEX+2HEvNmNKKgnTAyd0fL8qzK4SH2i9NXg+t08YtdZp/V9IZ33cxe3iV4yM0qg8lMQng=="],
 
-    "bun-types": ["bun-types@1.3.13", "", { "dependencies": { "@types/node": "*" } }, "sha512-QXKeHLlOLqQX9LgYaHJfzdBaV21T63HhFJnvuRCcjZiaUDpbs5ED1MgxbMra71CsryN/1dAoXuJJJwIv/2drVA=="],
+    "bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
 
     "call-bind": ["call-bind@1.0.8", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.0", "es-define-property": "^1.0.0", "get-intrinsic": "^1.2.4", "set-function-length": "^1.2.2" } }, "sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww=="],
 
