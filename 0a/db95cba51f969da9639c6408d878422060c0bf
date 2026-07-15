@@ -1,0 +1,16 @@
+packages/federation-sdk/package.json
+  h_4c386397e672f4 20
+packages/homeserver/package.json
+  h_4c386397e672f4 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0adb95cba51f969da9639c6408d878422060c0bf",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
