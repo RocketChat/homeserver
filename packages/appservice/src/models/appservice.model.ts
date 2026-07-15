@@ -8,8 +8,6 @@ export interface AppServiceRegistration {
 	protocols: string[];
 	rateLimited: boolean;
 	receiveEphemeral: boolean;
-	createdAt: Date;
-	updatedAt: Date;
 }
 
 export interface AppServiceNamespaces {

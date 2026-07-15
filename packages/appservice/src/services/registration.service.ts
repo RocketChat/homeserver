@@ -1,18 +1,9 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import { delay, inject, singleton } from 'tsyringe';
 
-import { APPSERVICE_CONFIG_PROVIDER, type AppServiceConfigProvider } from '../config-provider';
 import type { AppServiceRegistration, CachedAppService, CompiledNamespace } from '../models/appservice.model';
 import { AppServiceStateRepository } from '../repositories/appservice-state.repository';
 import { AppServiceTransactionRepository } from '../repositories/appservice-txn.repository';
-
-/**
- * XMPP is the only supported bridge. Its registration is built entirely from
- * `ConfigService` (URL + tokens); the remaining fields are fixed constants
- * derived from the `_xmpp_` prefix used throughout the codebase.
- */
-const XMPP_APPSERVICE_ID = 'xmpp';
-const XMPP_SENDER_LOCALPART = 'xmpp';
 
 @singleton()
 export class RegistrationService {
@@ -27,54 +18,52 @@ export class RegistrationService {
 		private readonly stateRepo: AppServiceStateRepository,
 		@inject(delay(() => AppServiceTransactionRepository))
 		private readonly txnRepo: AppServiceTransactionRepository,
-		@inject(APPSERVICE_CONFIG_PROVIDER)
-		private readonly config: AppServiceConfigProvider,
 	) {}
 
 	/**
-	 * (Re)build the in-memory registration from the current config. Safe to
-	 * call repeatedly — clears prior cache so a config change (e.g. a later
-	 * `setConfig`) is reflected.
+	 * Add or update an appservice registration in the in-memory cache. Re-registering
+	 * the same `_id` overwrites the previous entry (used for updates that change the
+	 * token or namespaces).
 	 */
-	async initialize(): Promise<void> {
-		this.cache.clear();
-		this.tokenIndex.clear();
-
-		const { xmpp } = this.config;
-		if (!xmpp) {
-			// Bridge config was removed — drop persisted state and any queued
-			// transactions so nothing reports or replays an appservice that is no
-			// longer registered.
-			await this.stateRepo.remove(XMPP_APPSERVICE_ID);
-			await this.txnRepo.removeAll(XMPP_APPSERVICE_ID);
-			this.logger.info({ msg: 'No bridge configured; skipping appservice registration' });
-			return;
+	async register(reg: AppServiceRegistration): Promise<CachedAppService> {
+		const tokenOwner = this.tokenIndex.get(reg.asToken);
+		if (tokenOwner && tokenOwner !== reg._id) {
+			throw new Error(`asToken already registered to appservice ${tokenOwner}`);
 		}
 
-		const now = new Date();
-		const registration: AppServiceRegistration = {
-			_id: XMPP_APPSERVICE_ID,
-			url: xmpp.bridgeURL,
-			asToken: xmpp.asToken,
-			hsToken: xmpp.hsToken,
-			senderLocalpart: XMPP_SENDER_LOCALPART,
-			namespaces: {
-				users: [{ regex: '@_xmpp_.*', exclusive: true }],
-				aliases: [{ regex: '#_xmpp_.*', exclusive: true }],
-				rooms: [],
-			},
-			protocols: ['xmpp'],
-			rateLimited: false,
-			receiveEphemeral: true,
-			createdAt: now,
-			updatedAt: now,
-		};
+		// Drop the previous token→id mapping so a changed token doesn't leave a stale entry.
+		const existing = this.cache.get(reg._id);
+		if (existing) {
+			this.tokenIndex.delete(existing.registration.asToken);
+		}
 
-		this.cacheRegistration(registration);
+		this.cacheRegistration(reg);
 		// Insert-only: a bridge persisted as `down` must keep that state across
 		// boots so its recoverer resumes instead of being reset to `up`.
-		await this.stateRepo.ensureState(registration._id);
-		this.logger.info({ msg: `Loaded appservice registration: ${registration._id}` });
+		await this.stateRepo.ensureState(reg._id);
+		this.logger.info({ msg: `Registered appservice: ${reg._id}` });
+
+		return this.cache.get(reg._id) as CachedAppService;
+	}
+
+	/**
+	 * Remove an appservice registration and drop its persisted state and any queued
+	 * transactions so nothing reports or replays an appservice that is no longer
+	 * registered. Returns whether the registration existed.
+	 */
+	async unregister(id: string): Promise<boolean> {
+		const existing = this.cache.get(id);
+		if (!existing) {
+			return false;
+		}
+
+		this.cache.delete(id);
+		this.tokenIndex.delete(existing.registration.asToken);
+		await this.stateRepo.remove(id);
+		await this.txnRepo.removeAll(id);
+		this.logger.info({ msg: `Unregistered appservice: ${id}` });
+
+		return true;
 	}
 
 	getAll(): CachedAppService[] {

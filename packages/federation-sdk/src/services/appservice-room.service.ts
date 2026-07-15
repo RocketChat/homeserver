@@ -16,10 +16,8 @@ export class AppServiceRoomService {
 		private readonly roomService: RoomService,
 	) {}
 
-	async joinXMPPChatRoom(roomAlias: string, sender: UserID) {
-		const localAlias = `_xmpp_${roomAlias}`;
-
-		const fullRoomAlias = `#${localAlias}:${this.configService.serverName}`;
+	async joinAppServiceRoom(roomAlias: string, sender: UserID) {
+		const fullRoomAlias = `#${roomAlias}:${this.configService.serverName}`;
 
 		const interested = this.namespaceMatcherService.getInterestedAppServices('', sender, [fullRoomAlias], []);
 
@@ -34,7 +32,7 @@ export class AppServiceRoomService {
 				continue;
 			}
 
-			const resolved = await this.directoryService.resolveAlias(localAlias);
+			const resolved = await this.directoryService.resolveAlias(roomAlias);
 			if (!resolved) {
 				throw new Error(`Failed to resolve room alias ${roomAlias} after bridge query response`);
 			}

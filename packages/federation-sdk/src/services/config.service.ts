@@ -32,11 +32,6 @@ export interface AppConfig {
 	};
 	userCheckTimeoutMs?: number;
 	networkCheckTimeoutMs?: number;
-	xmpp?: {
-		bridgeURL: string;
-		hsToken: string;
-		asToken: string;
-	};
 }
 
 export const AppConfigSchema = z.object({
@@ -67,13 +62,6 @@ export const AppConfigSchema = z.object({
 		processPresence: z.boolean(),
 		processReceipt: z.boolean().optional(),
 	}),
-	xmpp: z
-		.object({
-			bridgeURL: z.url({ protocol: /^https?$/, message: 'Bridge URL must be a valid HTTP or HTTPS URL' }),
-			hsToken: z.string().min(1, 'hs_token is required'),
-			asToken: z.string().min(1, 'as_token is required'),
-		})
-		.optional(),
 	networkCheckTimeoutMs: z.number().int().min(1000, 'Network check timeout must be at least 1000ms').default(5000).optional(),
 	userCheckTimeoutMs: z.number().int().min(1000, 'User check timeout must be at least 1000ms').default(10000).optional(),
 });

@@ -34,9 +34,6 @@ container.register<AppServiceConfigProvider>(APPSERVICE_CONFIG_PROVIDER, {
 		get serverName() {
 			return container.resolve(ConfigService).serverName;
 		},
-		get xmpp() {
-			return container.resolve(ConfigService).getConfig('xmpp');
-		},
 	},
 });
 

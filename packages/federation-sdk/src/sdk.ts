@@ -299,17 +299,8 @@ export class FederationSDK {
 		return this.profilesService.eventAuth(...args);
 	}
 
-	async setConfig(...args: Parameters<typeof this.configService.setConfig>) {
+	setConfig(...args: Parameters<typeof this.configService.setConfig>) {
 		this.configService.setConfig(...args);
-		// Config is the sole source of bridge configuration, so rebuild the
-		// appservice registration whenever it changes — this also covers the
-		// boot path, where `init()` runs before the first `setConfig`.
-		await this.registrationService.initialize();
-		await this.ensureSenderUsersForAllRegistrations();
-		// Registrations only exist after the config is applied, so this is the
-		// boot hook for resuming recovery of bridges persisted as down. Idempotent
-		// (per-bridge recoverer guard), so repeated setConfig calls are safe.
-		await this.transactionSenderService.startRecoverersForDownServices(this.registrationService.getAll());
 	}
 
 	queryKeys(...args: Parameters<typeof this.profilesService.queryKeys>) {
@@ -347,12 +338,23 @@ export class FederationSDK {
 	}
 
 	/**
-	 * Walk every cached registration and ensure its sender user exists.
-	 * Called at boot once the registration is built from config; idempotent.
+	 * Register (or update) an appservice at runtime. Materialises its bot user and
+	 * resumes recovery if the appservice is persisted as down from a previous run.
 	 */
-	async ensureSenderUsersForAllRegistrations(): Promise<void> {
-		const registrations = this.registrationService.getAll();
-		await Promise.all(registrations.map((cached) => this.ensureSenderUser(cached.registration)));
+	async registerAppService(registration: AppServiceRegistration) {
+		const cached = await this.registrationService.register(registration);
+		await this.ensureSenderUser(registration);
+		await this.transactionSenderService.startRecoverersForDownServices([cached]);
+		return cached;
+	}
+
+	/**
+	 * Remove an appservice registration and its persisted state/queued transactions.
+	 * Any running recoverer self-terminates on its next iteration once the
+	 * registration is gone. Returns whether the registration existed.
+	 */
+	unregisterAppService(...args: Parameters<typeof this.registrationService.unregister>) {
+		return this.registrationService.unregister(...args);
 	}
 
 	getAllProtocols(...args: Parameters<typeof this.bridgeQueryService.getAllProtocols>) {
@@ -410,7 +412,7 @@ export class FederationSDK {
 		return this.roomService.joinUser(...args);
 	}
 
-	joinXMPPChatRoom(...args: Parameters<typeof this.appServiceRoomService.joinXMPPChatRoom>) {
-		return this.appServiceRoomService.joinXMPPChatRoom(...args);
+	joinAppServiceRoom(...args: Parameters<typeof this.appServiceRoomService.joinAppServiceRoom>) {
+		return this.appServiceRoomService.joinAppServiceRoom(...args);
 	}
 }
