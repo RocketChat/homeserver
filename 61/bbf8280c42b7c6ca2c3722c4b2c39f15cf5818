@@ -1,0 +1,33 @@
+packages/appservice/src/services/registration.service.ts
+  s_4a8134708d19fa::t_d31402e49ca4b2 24-26,28-31,34-38,40,43-66
+packages/federation-sdk/src/services/appservice-room.service.ts
+  s_4a8134708d19fa::t_a4bd4c214547a1 19
+  h_4c386397e672f4 20,35
+packages/federation-sdk/src/sdk.ts
+  s_4a8134708d19fa::t_52f4882a068931 341-342,344-357
+  s_4a8134708d19fa::t_7668d9e7828041 415-416
+  s_4a8134708d19fa::t_25fa3843299199 302
+packages/appservice/src/services/registration.service.spec.ts
+  s_4a8134708d19fa::t_25ef5a854fdd77 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "61bbf8280c42b7c6ca2c3722c4b2c39f15cf5818",
+  "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4a8134708d19fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68e5a2c1-8e73-4c55-8899-1e5ce1891b26",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
