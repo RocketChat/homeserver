@@ -1,0 +1,22 @@
+packages/federation-sdk/src/services/event.service.ts
+  s_8a988bf47bc5fa::t_c58841d07c2670 25
+  s_8a988bf47bc5fa::t_9be2cf3bb25671 817-821
+packages/federation-sdk/src/services/staging-area.service.ts
+  s_8a988bf47bc5fa::t_c51b01991b1f91 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "df4b9ce84816bc4f6f55ea4a8af0a1c126e63d6a",
+  "prompts": {},
+  "sessions": {
+    "s_8a988bf47bc5fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2a061b0-41a8-4371-9586-a187550960d3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
