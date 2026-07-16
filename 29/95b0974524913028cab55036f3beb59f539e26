@@ -1,0 +1,24 @@
+packages/federation-sdk/src/services/event-notifier.service.ts
+  s_8a988bf47bc5fa::t_e7c8a0ebca7556 13
+  s_8a988bf47bc5fa::t_d762b963181bae 1-12,14-212
+packages/federation-sdk/src/services/event.service.ts
+  s_8a988bf47bc5fa::t_218b6967e85b00 819
+  s_8a988bf47bc5fa::t_956bc3199f1c5a 66
+  s_8a988bf47bc5fa::t_ce111d5ac5573c 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2995b0974524913028cab55036f3beb59f539e26",
+  "prompts": {},
+  "sessions": {
+    "s_8a988bf47bc5fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2a061b0-41a8-4371-9586-a187550960d3",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
