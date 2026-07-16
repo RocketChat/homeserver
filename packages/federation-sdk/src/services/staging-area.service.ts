@@ -102,12 +102,7 @@ export class StagingAreaService {
 				}
 
 				// eslint-disable-next-line no-await-in-loop
-				await this.stateService.handlePdu(await toEventBase(event.event));
-				// eslint-disable-next-line no-await-in-loop
-				await this.eventService.notify({
-					eventId: event._id,
-					event: event.event,
-				});
+				await this.eventService.authorizeAndPersist(await toEventBase(event.event));
 				// eslint-disable-next-line no-await-in-loop
 				await this.eventService.markEventAsUnstaged(event);
 

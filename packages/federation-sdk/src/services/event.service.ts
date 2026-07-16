@@ -22,6 +22,7 @@ import {
 	type Pdu,
 	type PduForType,
 	type PduType,
+	type PersistentEventBase,
 	PersistentEventFactory,
 	RoomID,
 	RoomVersion,
@@ -813,7 +814,10 @@ export class EventService {
 		}
 	}
 
-	async notify(event: { eventId: EventID; event: Pdu }) {
-		return this.eventNotifierService.notify(event);
+	// single entry point for the staging-area hot path: authorize/persist the
+	// event through the state graph, then notify listeners
+	async authorizeAndPersist(event: PersistentEventBase): Promise<void> {
+		await this.stateService.handlePdu(event);
+		await this.eventNotifierService.notify(event);
 	}
 }
