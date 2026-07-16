@@ -34,7 +34,7 @@ import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventNotifierService } from './event-notifier.service';
 import { ServerService } from './server.service';
-import type { StateService } from './state.service';
+import { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
@@ -54,8 +54,6 @@ export class EventService {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly stagingAreaQueue: StagingAreaQueue,
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		@inject(delay(() => require('./state.service').StateService))
 		private readonly stateService: StateService,
 		private readonly serverService: ServerService,
 		private readonly eventEmitterService: EventEmitterService,

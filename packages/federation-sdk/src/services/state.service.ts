@@ -25,7 +25,7 @@ import {
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
-import type { EventService } from './event.service';
+import type { EventNotifierService } from './event-notifier.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 
@@ -79,9 +79,6 @@ export class StateService {
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
 		private readonly configService: ConfigService,
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		@inject(delay(() => require('./event.service').EventService))
-		private readonly eventService: EventService,
 	) {}
 
 	// TODO: this is a very vague method, better would be to use exactly what needed,
@@ -353,7 +350,9 @@ export class StateService {
 
 	// saves a full/partial state
 	// returns the final state id
-	async processInitialState(pdus: Pdu[], authChain: Pdu[]) {
+	// notifier is a parameter (not a constructor dependency) because EventNotifierService
+	// depends on this service for power-level diffs — injecting it would recreate the cycle
+	async processInitialState(pdus: Pdu[], authChain: Pdu[], notifier: EventNotifierService) {
 		const create = authChain.find((pdu) => pdu.type === 'm.room.create');
 		if (create?.type !== 'm.room.create') {
 			throw new Error('No create event found in auth chain to save');
@@ -461,7 +460,7 @@ export class StateService {
 			await this.addToRoomGraph(event, previousStateId);
 
 			if (!knownEventIds.has(event.eventId)) {
-				await this.eventService.notify(event);
+				await notifier.notify(event);
 			}
 		}
 
