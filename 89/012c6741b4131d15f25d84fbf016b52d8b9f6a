@@ -1,0 +1,20 @@
+packages/federation-sdk/src/services/invite.service.spec.ts
+  s_8a988bf47bc5fa::t_eb8251d8dd7add 210-212,379,381
+  s_8a988bf47bc5fa::t_242b74e616b395 380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "89012c6741b4131d15f25d84fbf016b52d8b9f6a",
+  "prompts": {},
+  "sessions": {
+    "s_8a988bf47bc5fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2a061b0-41a8-4371-9586-a187550960d3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
