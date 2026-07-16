@@ -207,11 +207,9 @@ describe('InviteService', async () => {
 
 			// 3. Track notify calls
 			const notifyCalls: Array<{ eventId: string; type: string }> = [];
-			const notifySpy = spyOn((stateService as any).eventService, 'notify').mockImplementation(
-				async (event: { eventId: string; event: { type: string } }) => {
-					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
-				},
-			);
+			const notifySpy = spyOn(notifierStub, 'notify').mockImplementation(async (event: { eventId: string; event: { type: string } }) => {
+				notifyCalls.push({ eventId: event.eventId, type: event.event.type });
+			});
 
 			// 4. Build state from send_join with a new join event
 			const existingState = await stateService.getLatestRoomState(roomId);
@@ -378,11 +376,9 @@ describe('InviteService', async () => {
 
 			// 2. Track notify calls
 			const notifyCalls: Array<{ eventId: string; type: string }> = [];
-			const notifySpy = spyOn((stateService as any).eventService, 'notify').mockImplementation(
-				async (event: { eventId: string; event: { type: string } }) => {
-					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
-				},
-			);
+			const notifySpy = spyOn(notifierStub, 'notify').mockImplementation(async (event: { eventId: string; event: { type: string } }) => {
+				notifyCalls.push({ eventId: event.eventId, type: event.event.type });
+			});
 
 			// 3. Call processInitialState on a FRESH room (no prior state)
 			const statePdus = [creatorMemberEvent.event, powerLevelEvent.event, joinRuleEvent.event, inviteEvent.event];
