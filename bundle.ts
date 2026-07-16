@@ -30,7 +30,7 @@ const filterWorkspace = (deps: Record<string, unknown>) =>
 	Object.fromEntries(Object.entries(deps || {}).filter(([, value]) => typeof value === 'string' && !value.startsWith('workspace:')));
 
 // TODO get list of packages programmatically
-const packages = ['core', 'crypto', 'federation-sdk', 'room'];
+const packages = ['core', 'crypto', 'federation-sdk', 'room', 'appservice'];
 
 const localPackagesNames = getLocalPackages(packages);
 

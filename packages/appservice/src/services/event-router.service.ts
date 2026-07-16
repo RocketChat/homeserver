@@ -1,0 +1,210 @@
+import { createLogger, PresenceEDU, ReceiptEDU, TypingEDU } from '@rocket.chat/federation-core';
+import type { PersistentEventBase } from '@rocket.chat/federation-room';
+import { singleton } from 'tsyringe';
+
+import { NamespaceMatcherService } from './namespace-matcher.service';
+import { TransactionSenderService } from './transaction-sender.service';
+import type { CachedAppService } from '../models/appservice.model';
+
+interface EventBatch {
+	events: PersistentEventBase[];
+	ephemeral: (ReceiptEDU | TypingEDU | PresenceEDU)[];
+	timer: ReturnType<typeof setTimeout> | null;
+}
+
+const BATCH_WINDOW_MS = 100;
+// Per-transaction caps, matching Synapse's scheduler.
+export const MAX_PERSISTENT_EVENTS_PER_TXN = 100;
+export const MAX_EPHEMERAL_EVENTS_PER_TXN = 100;
+
+@singleton()
+export class EventRouterService {
+	private readonly logger = createLogger('EventRouterService');
+
+	private batches: Map<string, EventBatch> = new Map();
+
+	// Tail of the in-flight send chain per appservice. Flushed batches are
+	// appended to this chain so transactions for a given bridge are delivered
+	// strictly in order (txnId allocation happens inside sendTransaction, so
+	// serializing the calls also keeps txnIds monotonic with delivery order).
+	private sendChains: Map<string, Promise<void>> = new Map();
+
+	// Tail of the in-flight intake chain per room. Persistent events resolve
+	// room state before batching; serializing that resolution per room keeps a
+	// slow lookup for an earlier event from letting a later event overtake it
+	// in the batch (call order == batch order == delivery order).
+	private roomIntakeChains: Map<string, Promise<void>> = new Map();
+
+	// Resolves the aliases and joined members of a room — needed for namespace
+	// interest detection. Injected from federation-sdk since the appservice
+	// package doesn't own room state.
+	private roomStateResolver?: (roomId: string) => Promise<{ aliases: string[]; members: string[] }>;
+
+	constructor(private readonly namespaceMatcher: NamespaceMatcherService, private readonly transactionSender: TransactionSenderService) {}
+
+	setRoomStateResolver(resolver: (roomId: string) => Promise<{ aliases: string[]; members: string[] }>): void {
+		this.roomStateResolver = resolver;
+	}
+
+	async routePersistent(event: PersistentEventBase): Promise<void> {
+		const { roomId, sender } = event;
+		if (!roomId || !sender) {
+			return;
+		}
+
+		const prev = this.roomIntakeChains.get(roomId) ?? Promise.resolve();
+		const next = prev.then(() => this.intakePersistent(roomId, sender, event));
+
+		// Swallow failures on the stored tail so one rejected intake doesn't
+		// break ordering for the next event in the room. The real error still
+		// surfaces to the caller through `next`.
+		const chained = next.catch(() => undefined);
+		this.roomIntakeChains.set(roomId, chained);
+		void chained.finally(() => {
+			if (this.roomIntakeChains.get(roomId) === chained) {
+				this.roomIntakeChains.delete(roomId);
+			}
+		});
+
+		return next;
+	}
+
+	private async intakePersistent(roomId: string, sender: string, event: PersistentEventBase): Promise<void> {
+		const { aliases, members } = (await this.roomStateResolver?.(roomId)) ?? { aliases: [], members: [] };
+
+		const interested = this.namespaceMatcher.getInterestedAppServices(roomId, sender, aliases, members);
+
+		for (const as of interested) {
+			const batch = this.getOrCreateBatch(as);
+			batch.events.push(event);
+			this.afterAppend(as, batch);
+		}
+	}
+
+	async routeEphemeral(payload: ReceiptEDU | TypingEDU | PresenceEDU): Promise<void> {
+		const targets = this.extractEphemeralTargets(payload);
+		const interested = await this.findInterestedForTargets(targets);
+
+		for (const as of interested) {
+			if (!as.registration.receiveEphemeral) {
+				continue;
+			}
+			const batch = this.getOrCreateBatch(as);
+			batch.ephemeral.push(payload);
+			this.afterAppend(as, batch);
+		}
+	}
+
+	// Returns the (roomId, userId) pairs that should be checked against
+	// appservice namespaces for a given EDU. Each EDU shape exposes its
+	// room/user references differently — presence has no rooms, receipts can
+	// span many rooms and many users.
+	private extractEphemeralTargets(payload: ReceiptEDU | TypingEDU | PresenceEDU): Array<{ roomId: string; userId: string }> {
+		if (payload.edu_type === 'm.typing') {
+			return [{ roomId: payload.content.room_id, userId: payload.content.user_id }];
+		}
+
+		if (payload.edu_type === 'm.presence') {
+			return payload.content.push.map((update) => ({ roomId: '', userId: update.user_id }));
+		}
+
+		const targets: Array<{ roomId: string; userId: string }> = [];
+		for (const [roomId, readByUser] of Object.entries(payload.content)) {
+			const userIds = Object.keys(readByUser?.['m.read'] ?? {});
+			if (userIds.length === 0) {
+				targets.push({ roomId, userId: '' });
+				continue;
+			}
+			for (const userId of userIds) {
+				targets.push({ roomId, userId });
+			}
+		}
+		return targets;
+	}
+
+	private async findInterestedForTargets(targets: Array<{ roomId: string; userId: string }>): Promise<CachedAppService[]> {
+		const emptyState = { aliases: [] as string[], members: [] as string[] };
+		const uniqueRoomIds = Array.from(new Set(targets.map((t) => t.roomId).filter(Boolean)));
+
+		const resolved = await Promise.all(
+			uniqueRoomIds.map(async (roomId) => [roomId, (await this.roomStateResolver?.(roomId)) ?? emptyState] as const),
+		);
+		const stateByRoom = new Map(resolved);
+
+		const interested = new Map<string, CachedAppService>();
+		for (const { roomId, userId } of targets) {
+			const state = roomId ? stateByRoom.get(roomId) ?? emptyState : emptyState;
+			for (const as of this.namespaceMatcher.getInterestedAppServices(roomId, userId, state.aliases, state.members)) {
+				interested.set(as.registration._id, as);
+			}
+		}
+
+		return Array.from(interested.values());
+	}
+
+	private getOrCreateBatch(appservice: CachedAppService): EventBatch {
+		const asId = appservice.registration._id;
+		let batch = this.batches.get(asId);
+		if (!batch) {
+			batch = { events: [], ephemeral: [], timer: null };
+			this.batches.set(asId, batch);
+		}
+		return batch;
+	}
+
+	private afterAppend(appservice: CachedAppService, batch: EventBatch): void {
+		if (batch.events.length >= MAX_PERSISTENT_EVENTS_PER_TXN || batch.ephemeral.length >= MAX_EPHEMERAL_EVENTS_PER_TXN) {
+			this.flushBatch(appservice);
+			return;
+		}
+		if (!batch.timer) {
+			batch.timer = setTimeout(() => {
+				this.flushBatch(appservice);
+			}, BATCH_WINDOW_MS);
+		}
+	}
+
+	private flushBatch(appservice: CachedAppService): void {
+		const asId = appservice.registration._id;
+		const batch = this.batches.get(asId);
+		if (!batch) return;
+
+		if (batch.timer) {
+			clearTimeout(batch.timer);
+		}
+		this.batches.delete(asId);
+
+		if (batch.events.length === 0 && batch.ephemeral.length === 0) return;
+
+		this.enqueueSend(appservice, batch.events, batch.ephemeral.length > 0 ? batch.ephemeral : undefined);
+	}
+
+	// Appends a transaction send to the per-appservice chain so sends run one
+	// at a time, in flush order. A failed send is logged but does not break the
+	// chain — the next batch still goes out (and its delivery resets up/down
+	// state via the sender).
+	private enqueueSend(
+		appservice: CachedAppService,
+		events: PersistentEventBase[],
+		ephemeral: (ReceiptEDU | TypingEDU | PresenceEDU)[] | undefined,
+	): void {
+		const asId = appservice.registration._id;
+		const prev = this.sendChains.get(asId) ?? Promise.resolve();
+
+		const next = prev
+			.then(() => this.transactionSender.sendTransaction(appservice, events, ephemeral))
+			.catch((err) => {
+				this.logger.error({ msg: 'Failed to send transaction batch', asId, err });
+			});
+
+		this.sendChains.set(asId, next);
+
+		// Drop the chain entry once it settles and nothing newer was queued,
+		// so the map doesn't retain resolved promises for idle bridges.
+		void next.finally(() => {
+			if (this.sendChains.get(asId) === next) {
+				this.sendChains.delete(asId);
+			}
+		});
+	}
+}

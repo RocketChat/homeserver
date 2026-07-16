@@ -23,9 +23,10 @@ export class ProfilesService {
 			return null;
 		}
 
-		const username = userId.split(':')[0]?.slice(1);
-
-		const user = await this.userRepository.findByUsername(username);
+		// appservice bot users are stored with the full userId; local users with the
+		// localpart only, so try the full id first and fall back to the localpart.
+		const user =
+			(await this.userRepository.findByUsername(userId)) ?? (await this.userRepository.findByUsername(userId.split(':')[0]?.slice(1)));
 
 		if (!user) {
 			// this.logger.debug(`Local user ${userId} not found in repository`);

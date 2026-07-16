@@ -1,7 +1,7 @@
 {
-	"name": "@rocket.chat/federation-sdk",
-	"version": "0.7.0-beta.8",
-	"description": "Matrix Federation SDK for server-to-server communication",
+	"name": "@rocket.chat/appservice",
+	"version": "0.1.0",
+	"description": "Matrix Application Service API for bridge support",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
@@ -16,23 +16,15 @@
 		"test": "bun test"
 	},
 	"dependencies": {
-		"@rocket.chat/appservice": "workspace:*",
-		"@rocket.chat/emitter": "^0.33.0",
 		"@rocket.chat/federation-core": "workspace:*",
-		"@rocket.chat/federation-crypto": "workspace:*",
 		"@rocket.chat/federation-room": "workspace:*",
 		"mongodb": "^6.16.0",
 		"reflect-metadata": "^0.2.2",
 		"tsyringe": "^4.10.0",
-		"tweetnacl": "^1.0.3",
-		"zod": "~4.3.6"
+		"yaml": "^2.7.1"
 	},
 	"license": "AGPL-3.0",
 	"author": "Rocket.Chat Technologies Corp. <contact@rocket.chat>",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/RocketChat/homeserver"
-	},
 	"files": ["dist"],
 	"peerDependencies": {
 		"typescript": "~5.9.2"

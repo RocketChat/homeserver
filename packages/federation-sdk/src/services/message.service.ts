@@ -2,8 +2,8 @@ import { ForbiddenError, createLogger } from '@rocket.chat/federation-core';
 import { type EventID, type PersistentEventBase, RoomID, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
+import { EventSenderService } from './event-sender.service';
 import { EventService } from './event.service';
-import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
 
@@ -49,9 +49,9 @@ export class MessageService {
 
 	constructor(
 		private readonly eventService: EventService,
-		private readonly federationService: FederationService,
 		private readonly roomService: RoomService,
 		private readonly stateService: StateService,
+		private readonly eventSenderService: EventSenderService,
 	) {}
 
 	private buildReplyContent(reply: Reply) {
@@ -125,7 +125,7 @@ export class MessageService {
 			throw new Error(event.rejectReason);
 		}
 
-		void this.federationService.sendEventToAllServersInRoom(event);
+		this.eventSenderService.dispatch(event);
 
 		return event;
 	}
@@ -179,7 +179,7 @@ export class MessageService {
 			throw new Error(event.rejectReason);
 		}
 
-		void this.federationService.sendEventToAllServersInRoom(event);
+		this.eventSenderService.dispatch(event);
 
 		return event;
 	}
@@ -259,7 +259,7 @@ export class MessageService {
 
 		await this.stateService.handlePdu(reactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(reactionEvent);
+		this.eventSenderService.dispatch(reactionEvent);
 
 		return reactionEvent.eventId;
 	}
@@ -286,7 +286,7 @@ export class MessageService {
 
 		await this.stateService.handlePdu(redactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		this.eventSenderService.dispatch(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
@@ -331,7 +331,7 @@ export class MessageService {
 
 		await this.stateService.handlePdu(redactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		this.eventSenderService.dispatch(redactionEvent);
 
 		return redactionEvent.eventId;
 	}
@@ -369,7 +369,7 @@ export class MessageService {
 
 		await this.stateService.handlePdu(redactionEvent);
 
-		void this.federationService.sendEventToAllServersInRoom(redactionEvent);
+		this.eventSenderService.dispatch(redactionEvent);
 
 		return redactionEvent.eventId;
 	}

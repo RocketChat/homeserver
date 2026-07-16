@@ -5,11 +5,16 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { swagger } from '@elysiajs/swagger';
-import type { Emitter } from '@rocket.chat/emitter';
-import { type HomeserverEventSignatures, federationSDK, init } from '@rocket.chat/federation-sdk';
+import { federationSDK, init } from '@rocket.chat/federation-sdk';
 import * as dotenv from 'dotenv';
 import Elysia from 'elysia';
 
+import { clientDirectoryPlugin } from './controllers/client/directory.controller';
+import { clientEventsPlugin } from './controllers/client/events.controller';
+import { clientAppservicePingPlugin } from './controllers/client/ping.controller';
+import { clientProfilePlugin } from './controllers/client/profile.controller';
+import { clientRegisterPlugin } from './controllers/client/register.controller';
+import { clientRoomsPlugin } from './controllers/client/rooms.controller';
 import { invitePlugin } from './controllers/federation/invite.controller';
 import { mediaPlugin } from './controllers/federation/media.controller';
 import { profilesPlugin } from './controllers/federation/profiles.controller';
@@ -33,16 +38,21 @@ export async function setup() {
 		dotenv.config({ path: envPath });
 	}
 
+	const dbUri = process.env.MONGO_URL || 'mongodb://localhost:27017/matrix';
+	const dbPoolSize = Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10);
+
 	await init({
 		dbConfig: {
-			uri: process.env.MONGO_URL || 'mongodb://localhost:27017/matrix',
-			poolSize: Number.parseInt(process.env.DATABASE_POOL_SIZE || '10', 10),
+			uri: dbUri,
+			poolSize: dbPoolSize,
 		},
 	});
 
-	federationSDK.setConfig({
+	const serverName = process.env.SERVER_NAME || 'rc1';
+
+	await federationSDK.setConfig({
 		instanceId: crypto.randomUUID(),
-		serverName: process.env.SERVER_NAME || 'rc1',
+		serverName,
 		port: Number.parseInt(process.env.SERVER_PORT || '8080', 10),
 		matrixDomain: process.env.MATRIX_DOMAIN || 'rc1',
 		keyRefreshInterval: Number.parseInt(process.env.MATRIX_KEY_REFRESH_INTERVAL || '60', 10),
@@ -88,17 +98,19 @@ export async function setup() {
 					info: {
 						title: 'Matrix Homeserver API',
 						version: '1.0.0',
-						description: 'Matrix Protocol Implementation - Federation and Internal APIs',
+						description: 'Matrix Protocol Implementation - Federation, Client-Server, and Application Service APIs',
 					},
 				},
 			}),
 		)
+		// Federation API
 		.use(invitePlugin)
 		.use(statePlugin)
 		.use(profilesPlugin)
 		.use(sendJoinPlugin)
 		.use(transactionsPlugin)
 		.use(versionsPlugin)
+		// Internal API
 		.use(internalDirectMessagePlugin)
 		.use(internalInvitePlugin)
 		.use(internalMessagePlugin)
@@ -108,7 +120,14 @@ export async function setup() {
 		.use(wellKnownPlugin)
 		.use(roomPlugin)
 		.use(mediaPlugin)
-		.use(internalRequestPlugin);
+		.use(internalRequestPlugin)
+		// Client-Server API (for bridges)
+		.use(clientRegisterPlugin(serverName))
+		.use(clientEventsPlugin(serverName))
+		.use(clientRoomsPlugin(serverName))
+		.use(clientProfilePlugin(serverName))
+		.use(clientDirectoryPlugin(serverName))
+		.use(clientAppservicePingPlugin(serverName));
 
 	return { app };
 }

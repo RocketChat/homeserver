@@ -28,6 +28,7 @@ import {
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
+import { DirectoryService } from './directory.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
@@ -61,6 +62,7 @@ export class RoomService {
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly federationValidationService: FederationValidationService,
+		private readonly directoryService: DirectoryService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -171,6 +173,173 @@ export class RoomService {
 		}
 	}
 
+	async createRoomV2(data: {
+		name: string;
+		owner: UserID;
+		joinRule: PduJoinRuleEventContent['join_rule'];
+		powersLevels?: {
+			users?: Record<UserID, number>;
+			events?: Record<string, number>;
+		};
+		alias?: string;
+	}) {
+		const { name, owner: username, joinRule, powersLevels: powers = {}, alias } = data;
+
+		logger.debug(`Creating room for ${username} with ${name} join_rule: ${joinRule}`);
+
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username, PersistentEventFactory.defaultRoomVersion);
+
+		const { stateService } = this;
+
+		// Reserve the alias up front: the claim is atomic (no check-then-set race)
+		// and a conflict fails fast, before any room state is persisted, so we never
+		// leave an orphaned room behind.
+		if (alias) {
+			const reserved = await this.directoryService.reserveAlias(alias, roomCreateEvent.roomId);
+			if (!reserved) {
+				throw new Error(`Alias ${alias} already exists, cannot create room with this alias.`);
+			}
+		}
+
+		try {
+			await stateService.signEvent(roomCreateEvent);
+
+			await stateService.handlePdu(roomCreateEvent);
+
+			const profile = await this.profilesService.queryProfile(username);
+
+			const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: {
+						membership: 'join',
+						...(profile?.displayname && { displayname: profile.displayname }),
+						...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: username,
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			await stateService.handlePdu(creatorMembershipEvent);
+
+			const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
+				{
+					type: 'm.room.name',
+					content: { name },
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			await stateService.handlePdu(roomNameEvent);
+
+			const powerLevelEvent = await stateService.buildEvent<'m.room.power_levels'>(
+				{
+					type: 'm.room.power_levels',
+					content: {
+						users: {
+							...powers.users,
+							[username]: 100,
+						},
+						users_default: 0,
+						events: {
+							...powers.events,
+						},
+						events_default: 0,
+						state_default: 50,
+						ban: 50,
+						kick: 50,
+						redact: 50,
+						invite: 50,
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			await stateService.handlePdu(powerLevelEvent);
+
+			const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
+				{
+					type: 'm.room.join_rules',
+					content: { join_rule: joinRule },
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			await stateService.handlePdu(joinRuleEvent);
+
+			const canonicalAliasEvent = await stateService.buildEvent<'m.room.canonical_alias'>(
+				{
+					type: 'm.room.canonical_alias',
+					content: {
+						alias: `#${alias || name}:${this.configService.serverName}`,
+						alt_aliases: [],
+					},
+					room_id: roomCreateEvent.roomId,
+					state_key: '',
+					auth_events: [],
+					depth: 0,
+					prev_events: [],
+					origin_server_ts: Date.now(),
+					sender: username,
+				},
+				PersistentEventFactory.defaultRoomVersion,
+			);
+
+			await stateService.handlePdu(canonicalAliasEvent);
+
+			return {
+				room_id: roomCreateEvent.roomId,
+				event_id: roomCreateEvent.eventId,
+			};
+		} catch (error) {
+			if (alias) {
+				// Release the alias we reserved so a failed create doesn't leak it.
+				// Scope the delete to this room so we never clobber a mapping a
+				// concurrent op may have written for the same alias, and isolate
+				// cleanup failures so they don't mask the original error.
+				try {
+					await this.directoryService.removeAlias(alias, roomCreateEvent.roomId);
+				} catch (cleanupError) {
+					logger.error({
+						msg: 'Failed to release reserved alias after room creation failure',
+						alias,
+						roomId: roomCreateEvent.roomId,
+						err: cleanupError,
+					});
+				}
+			}
+			throw error;
+		}
+	}
+
 	/**
 	 * Create a new room with the given sender and username
 	 */
@@ -186,129 +355,12 @@ export class RoomService {
 			events: {},
 		},
 	) {
-		logger.debug(`Creating room for ${username} with ${name} join_rule: ${joinRule}`);
-
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username, PersistentEventFactory.defaultRoomVersion);
-
-		const { stateService } = this;
-
-		await stateService.signEvent(roomCreateEvent);
-
-		await stateService.handlePdu(roomCreateEvent);
-
-		const profile = await this.profilesService.queryProfile(username);
-
-		const creatorMembershipEvent = await stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: {
-					membership: 'join',
-					...(profile?.displayname && { displayname: profile.displayname }),
-					...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
-				},
-				room_id: roomCreateEvent.roomId,
-				state_key: username,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: username,
-			},
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.handlePdu(creatorMembershipEvent);
-
-		const roomNameEvent = await stateService.buildEvent<'m.room.name'>(
-			{
-				type: 'm.room.name',
-				content: { name },
-				room_id: roomCreateEvent.roomId,
-				state_key: '',
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: username,
-			},
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.handlePdu(roomNameEvent);
-
-		const powerLevelEvent = await stateService.buildEvent<'m.room.power_levels'>(
-			{
-				type: 'm.room.power_levels',
-				content: {
-					users: {
-						...powers.users,
-						[username]: 100,
-					},
-					users_default: 0,
-					events: {
-						...powers.events,
-					},
-					events_default: 0,
-					state_default: 50,
-					ban: 50,
-					kick: 50,
-					redact: 50,
-					invite: 50,
-				},
-				room_id: roomCreateEvent.roomId,
-				state_key: '',
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: username,
-			},
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.handlePdu(powerLevelEvent);
-
-		const joinRuleEvent = await stateService.buildEvent<'m.room.join_rules'>(
-			{
-				type: 'm.room.join_rules',
-				content: { join_rule: joinRule },
-				room_id: roomCreateEvent.roomId,
-				state_key: '',
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: username,
-			},
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.handlePdu(joinRuleEvent);
-
-		const canonicalAliasEvent = await stateService.buildEvent<'m.room.canonical_alias'>(
-			{
-				type: 'm.room.canonical_alias',
-				content: {
-					alias: `#${name}:${this.configService.serverName}`,
-					alt_aliases: [],
-				},
-				room_id: roomCreateEvent.roomId,
-				state_key: '',
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: username,
-			},
-			PersistentEventFactory.defaultRoomVersion,
-		);
-
-		await stateService.handlePdu(canonicalAliasEvent);
-
-		return {
-			room_id: roomCreateEvent.roomId,
-			event_id: roomCreateEvent.eventId,
-		};
+		return this.createRoomV2({
+			name,
+			owner: username,
+			joinRule,
+			powersLevels: powers,
+		});
 	}
 
 	async updateRoomName(roomId: RoomID, name: string, senderId: UserID) {
@@ -365,7 +417,13 @@ export class RoomService {
 
 		await this.stateService.handlePdu(topicEvent);
 
+		if (topicEvent.rejected) {
+			throw new Error(topicEvent.rejectReason);
+		}
+
 		void this.federationService.sendEventToAllServersInRoom(topicEvent);
+
+		return topicEvent;
 	}
 
 	private getEventByType<E extends PduType>(
@@ -496,7 +554,7 @@ export class RoomService {
 		};
 	}
 
-	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>): Promise<void> {
+	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>) {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		if (!roomVersion) {
 			throw new Error('Room version not found while sending leave');
@@ -523,6 +581,8 @@ export class RoomService {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
+
+		return leaveEvent;
 	}
 
 	async leaveRoom(roomId: RoomID, senderId: UserID): Promise<EventID> {
@@ -841,7 +901,7 @@ export class RoomService {
 		return this.joinUser(roomId, userId);
 	}
 
-	async rejectInvite(roomId: RoomID, userId: UserID): Promise<void> {
+	async rejectInvite(roomId: RoomID, userId: UserID) {
 		const inviteEventStore = await this.eventService.findInviteEvent(roomId, userId);
 		if (!inviteEventStore) {
 			throw new Error(`Invite event not found for user ${userId} in room ${roomId}`);
@@ -855,8 +915,12 @@ export class RoomService {
 		// if inviting server is our own, we can handle the leave event ourselves
 		// otherwise, we need to send the leave event to the inviting server
 		if (invitingServer === this.configService.serverName) {
-			await this.leaveRoom(roomId, userId);
-			return;
+			const eventId = await this.leaveRoom(roomId, userId);
+			const localLeaveEvent = await this.stateService.getEvent(eventId);
+			if (!localLeaveEvent) {
+				throw new Error(`Leave event ${eventId} not found after rejecting invite for user ${userId} in room ${roomId}`);
+			}
+			return localLeaveEvent;
 		}
 
 		// important to note that on rejections from remote servers, we might not have the room state yet,
@@ -873,12 +937,14 @@ export class RoomService {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
+
+		return leaveEvent;
 	}
 
 	/**
 	 * Update user profile (displayname/avatar) in a room by sending a membership event
 	 */
-	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }): Promise<void> {
+	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }) {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
 
 		const state = await this.stateService.getLatestRoomState(roomId);
@@ -917,6 +983,8 @@ export class RoomService {
 		});
 
 		void this.federationService.sendEventToAllServersInRoom(newMembershipEvent);
+
+		return newMembershipEvent;
 	}
 
 	private async _fetchFullBranch(
@@ -1187,7 +1255,13 @@ export class RoomService {
 
 		await this.stateService.handlePdu(event);
 
+		if (event.rejected) {
+			throw new Error(event.rejectReason);
+		}
+
 		void this.federationService.sendEventToAllServersInRoom(event);
+
+		return event;
 	}
 
 	async createDirectMessage({ creatorUserId, members }: { creatorUserId: UserID; members: UserID[] }) {

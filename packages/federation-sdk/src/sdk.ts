@@ -1,11 +1,23 @@
+import {
+	type AppServiceRegistration,
+	BridgeQueryService,
+	NamespaceMatcherService,
+	PingService,
+	RegistrationService,
+	TransactionSenderService,
+} from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
 import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
-import { singleton } from 'tsyringe';
+import { delay, inject, singleton } from 'tsyringe';
 
+import { UserRepository } from './repositories/user.repository';
+import { AppServiceRoomService } from './services/appservice-room.service';
 import { AppConfig, ConfigService } from './services/config.service';
+import { DirectoryService } from './services/directory.service';
 import { EduService } from './services/edu.service';
 import { EventAuthorizationService } from './services/event-authorization.service';
 import { EventEmitterService } from './services/event-emitter.service';
+import { EventSenderService } from './services/event-sender.service';
 import { EventService } from './services/event.service';
 import { FederationRequestService } from './services/federation-request.service';
 import { FederationValidationService } from './services/federation-validation.service';
@@ -26,6 +38,7 @@ export class FederationSDK {
 	constructor(
 		private readonly roomService: RoomService,
 		private readonly messageService: MessageService,
+		private readonly eventSenderService: EventSenderService,
 		private readonly inviteService: InviteService,
 		private readonly eventService: EventService,
 		private readonly eduService: EduService,
@@ -41,7 +54,26 @@ export class FederationSDK {
 		private readonly federationService: FederationService,
 		public readonly eventEmitterService: EventEmitterService,
 		private readonly federationValidationService: FederationValidationService,
+		private readonly registrationService: RegistrationService,
+		private readonly bridgeQueryService: BridgeQueryService,
+		private readonly namespaceMatcherService: NamespaceMatcherService,
+		private readonly pingService: PingService,
+		private readonly transactionSenderService: TransactionSenderService,
+		public readonly directoryService: DirectoryService,
+		private readonly appServiceRoomService: AppServiceRoomService,
+		@inject(delay(() => UserRepository))
+		private readonly userRepository: UserRepository,
 	) {}
+
+	/**
+	 * Ensure the bot user (`sender_localpart`) backing an appservice
+	 * exists. Called from every path that brings a registration into the
+	 * cache so the bot user is always materialised — load from YAML,
+	 * admin-API register, and boot-time rehydrate from the DB.
+	 */
+	private async ensureSenderUser(registration: AppServiceRegistration): Promise<void> {
+		await this.userRepository.ensureSenderUser(registration.senderLocalpart, this.configService.serverName, registration._id);
+	}
 
 	/**
 	 * @deprecated use createDirectMessage instead
@@ -61,6 +93,10 @@ export class FederationSDK {
 		return this.roomService.createRoom(...args);
 	}
 
+	createRoomV2(...args: Parameters<typeof this.roomService.createRoomV2>) {
+		return this.roomService.createRoomV2(...args);
+	}
+
 	inviteUserToRoom(...args: Parameters<typeof this.inviteService.inviteUserToRoom>) {
 		return this.inviteService.inviteUserToRoom(...args);
 	}
@@ -71,6 +107,10 @@ export class FederationSDK {
 
 	sendMessage(...args: Parameters<typeof this.messageService.sendMessage>) {
 		return this.messageService.sendMessage(...args);
+	}
+
+	sendCustomEvent(...args: Parameters<typeof this.eventSenderService.sendCustomEvent>) {
+		return this.eventSenderService.sendCustomEvent(...args);
 	}
 
 	redactMessage(...args: Parameters<typeof this.messageService.redactMessage>) {
@@ -260,7 +300,7 @@ export class FederationSDK {
 	}
 
 	setConfig(...args: Parameters<typeof this.configService.setConfig>) {
-		return this.configService.setConfig(...args);
+		this.configService.setConfig(...args);
 	}
 
 	queryKeys(...args: Parameters<typeof this.profilesService.queryKeys>) {
@@ -281,5 +321,98 @@ export class FederationSDK {
 
 	updateRoomMembership(...args: Parameters<typeof this.roomService.updateRoomMembership>) {
 		return this.roomService.updateRoomMembership(...args);
+	}
+
+	// --- Application Service ---
+
+	getAllRegistrations(...args: Parameters<typeof this.registrationService.getAll>) {
+		return this.registrationService.getAll(...args);
+	}
+
+	getRegistrationById(...args: Parameters<typeof this.registrationService.getById>) {
+		return this.registrationService.getById(...args);
+	}
+
+	getRegistrationByAsToken(...args: Parameters<typeof this.registrationService.getByAsToken>) {
+		return this.registrationService.getByAsToken(...args);
+	}
+
+	/**
+	 * Register (or update) an appservice at runtime. Materialises its bot user and
+	 * resumes recovery if the appservice is persisted as down from a previous run.
+	 */
+	async registerAppService(registration: AppServiceRegistration) {
+		const cached = await this.registrationService.register(registration);
+		await this.ensureSenderUser(registration);
+		await this.transactionSenderService.startRecoverersForDownServices([cached]);
+		return cached;
+	}
+
+	/**
+	 * Remove an appservice registration and its persisted state/queued transactions.
+	 * Any running recoverer self-terminates on its next iteration once the
+	 * registration is gone. Returns whether the registration existed.
+	 */
+	unregisterAppService(...args: Parameters<typeof this.registrationService.unregister>) {
+		return this.registrationService.unregister(...args);
+	}
+
+	getAllProtocols(...args: Parameters<typeof this.bridgeQueryService.getAllProtocols>) {
+		return this.bridgeQueryService.getAllProtocols(...args);
+	}
+
+	queryThirdPartyProtocol(...args: Parameters<typeof this.bridgeQueryService.queryThirdPartyProtocol>) {
+		return this.bridgeQueryService.queryThirdPartyProtocol(...args);
+	}
+
+	queryThirdPartyUser(...args: Parameters<typeof this.bridgeQueryService.queryThirdPartyUser>) {
+		return this.bridgeQueryService.queryThirdPartyUser(...args);
+	}
+
+	queryThirdPartyLocation(...args: Parameters<typeof this.bridgeQueryService.queryThirdPartyLocation>) {
+		return this.bridgeQueryService.queryThirdPartyLocation(...args);
+	}
+
+	/**
+	 * Ask the owning appservice whether it claims `userId`. On a positive
+	 * response the bridge registers the ghost via the register endpoint
+	 * asynchronously, so callers must resolve the local user afterwards
+	 * rather than assume it exists synchronously. Pair with
+	 * `getAppServiceForUser` to find the owning `asId` first.
+	 */
+	queryUser(...args: Parameters<typeof this.bridgeQueryService.queryUser>) {
+		return this.bridgeQueryService.queryUser(...args);
+	}
+
+	isExclusiveNamespace(...args: Parameters<typeof this.namespaceMatcherService.isExclusive>) {
+		return this.namespaceMatcherService.isExclusive(...args);
+	}
+
+	isUserInAppServiceNamespace(...args: Parameters<typeof this.namespaceMatcherService.isUserInNamespace>) {
+		return this.namespaceMatcherService.isUserInNamespace(...args);
+	}
+
+	getAppServiceForUser(...args: Parameters<typeof this.namespaceMatcherService.getAppServiceForUser>) {
+		return this.namespaceMatcherService.getAppServiceForUser(...args);
+	}
+
+	pingAppService(...args: Parameters<typeof this.pingService.ping>) {
+		return this.pingService.ping(...args);
+	}
+
+	forceRetryAppService(...args: Parameters<typeof this.transactionSenderService.forceRetry>) {
+		return this.transactionSenderService.forceRetry(...args);
+	}
+
+	getAppServiceState(...args: Parameters<typeof this.registrationService.getState>) {
+		return this.registrationService.getState(...args);
+	}
+
+	joinUser(...args: Parameters<typeof this.roomService.joinUser>) {
+		return this.roomService.joinUser(...args);
+	}
+
+	joinAppServiceRoom(...args: Parameters<typeof this.appServiceRoomService.joinAppServiceRoom>) {
+		return this.appServiceRoomService.joinAppServiceRoom(...args);
 	}
 }

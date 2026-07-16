@@ -1,8 +1,6 @@
 import { Emitter } from '@rocket.chat/emitter';
-import { AsyncDispatcher, type EventHandlerOf, type EventOf, logger } from '@rocket.chat/federation-core';
+import { AsyncDispatcher, type EventHandlerOf, type EventOf, type HomeserverEventSignatures, logger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
-
-import type { HomeserverEventSignatures } from '..';
 
 @singleton()
 export class EventEmitterService {
