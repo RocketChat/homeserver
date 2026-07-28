@@ -10,7 +10,7 @@ import type { ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
 import type { EventAuthorizationService } from './event-authorization.service';
 import type { EventEmitterService } from './event-emitter.service';
-import type { EventService } from './event.service';
+import type { EventNotifierService } from './event-notifier.service';
 import type { FederationValidationService } from './federation-validation.service';
 import type { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
@@ -64,9 +64,11 @@ describe('InviteService', async () => {
 	const eventRepository = new EventRepository(eventCollection);
 	const stateGraphRepository = new StateGraphRepository(stateGraphCollection);
 
-	const stateService = new StateService(stateGraphRepository, eventRepository, configServiceInstance, {
+	const stateService = new StateService(stateGraphRepository, eventRepository, configServiceInstance);
+
+	const notifierStub = {
 		notify: () => Promise.resolve(),
-	} as unknown as EventService);
+	} as unknown as EventNotifierService;
 
 	const emitterService = {
 		emit: () => Promise.resolve(),
@@ -205,11 +207,9 @@ describe('InviteService', async () => {
 
 			// 3. Track notify calls
 			const notifyCalls: Array<{ eventId: string; type: string }> = [];
-			const notifySpy = spyOn((stateService as any).eventService, 'notify').mockImplementation(
-				async (event: { eventId: string; event: { type: string } }) => {
-					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
-				},
-			);
+			const notifySpy = spyOn(notifierStub, 'notify').mockImplementation(async (event: { eventId: string; event: { type: string } }) => {
+				notifyCalls.push({ eventId: event.eventId, type: event.event.type });
+			});
 
 			// 4. Build state from send_join with a new join event
 			const existingState = await stateService.getLatestRoomState(roomId);
@@ -235,7 +235,7 @@ describe('InviteService', async () => {
 			const authChain = [createPdu.event, creatorMemberPdu.event, powerLevelsPdu.event, joinRulesPdu.event, reInviteEvent.event];
 
 			// 5. Call processInitialState on the EXISTING room
-			await stateService.processInitialState(statePdus, authChain);
+			await stateService.processInitialState(statePdus, authChain, notifierStub);
 
 			// 6. Only the new join event should be notified — NOT the already-known events
 			// (create, power_levels, join_rules, creator membership, invite, leave, re-invite)
@@ -288,7 +288,7 @@ describe('InviteService', async () => {
 			const authChain = [createPdu.event, creatorMemberPdu.event, powerLevelsPdu.event, joinRulesPdu.event, reInviteEvent.event];
 
 			// 4. Call processInitialState on existing room
-			await stateService.processInitialState(statePdus, authChain);
+			await stateService.processInitialState(statePdus, authChain, notifierStub);
 
 			// 5. Verify the join event is now stored in the DB
 			const storedJoinEvent = await eventRepository.findById(rejoinEvent.eventId);
@@ -376,17 +376,15 @@ describe('InviteService', async () => {
 
 			// 2. Track notify calls
 			const notifyCalls: Array<{ eventId: string; type: string }> = [];
-			const notifySpy = spyOn((stateService as any).eventService, 'notify').mockImplementation(
-				async (event: { eventId: string; event: { type: string } }) => {
-					notifyCalls.push({ eventId: event.eventId, type: event.event.type });
-				},
-			);
+			const notifySpy = spyOn(notifierStub, 'notify').mockImplementation(async (event: { eventId: string; event: { type: string } }) => {
+				notifyCalls.push({ eventId: event.eventId, type: event.event.type });
+			});
 
 			// 3. Call processInitialState on a FRESH room (no prior state)
 			const statePdus = [creatorMemberEvent.event, powerLevelEvent.event, joinRuleEvent.event, inviteEvent.event];
 			const authChain = [roomCreateEvent.event, creatorMemberEvent.event, powerLevelEvent.event, joinRuleEvent.event];
 
-			await stateService.processInitialState(statePdus, authChain);
+			await stateService.processInitialState(statePdus, authChain, notifierStub);
 
 			// 4. ALL events should be notified, including m.room.create
 			const notifiedTypes = notifyCalls.map((c) => c.type);

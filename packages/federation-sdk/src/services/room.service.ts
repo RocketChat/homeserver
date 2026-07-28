@@ -32,6 +32,7 @@ import { DirectoryService } from './directory.service';
 import { EventAuthorizationService } from './event-authorization.service';
 import { EventEmitterService } from './event-emitter.service';
 import { EventFetcherService } from './event-fetcher.service';
+import { EventNotifierService } from './event-notifier.service';
 import { EventService } from './event.service';
 import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
@@ -63,6 +64,7 @@ export class RoomService {
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly federationValidationService: FederationValidationService,
 		private readonly directoryService: DirectoryService,
+		private readonly eventNotifierService: EventNotifierService,
 	) {}
 
 	private validatePowerLevelChange(
@@ -807,7 +809,7 @@ export class RoomService {
 			this.logger.info({ roomId }, 'room not found, processing initial state');
 		}
 
-		await stateService.processInitialState(state, authChain);
+		await stateService.processInitialState(state, authChain, this.eventNotifierService);
 
 		if (await stateService.isRoomStatePartial(roomId)) {
 			this.logger.info({ roomId }, 'received incomplete graph of state from send_join, completing state before processing join');

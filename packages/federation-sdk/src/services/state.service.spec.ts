@@ -17,7 +17,7 @@ import { type WithId } from 'mongodb';
 
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
-import type { EventService } from './event.service';
+import type { EventNotifierService } from './event-notifier.service';
 import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
@@ -129,9 +129,11 @@ describe('StateService', async () => {
 	const stateGraphRepository = new StateGraphRepository(stateGraphCollection);
 
 	// TODO: use IStateService
-	stateService = new StateService(stateGraphRepository, eventRepository, configServiceInstance, {
+	stateService = new StateService(stateGraphRepository, eventRepository, configServiceInstance);
+
+	const notifierStub = {
 		notify: () => Promise.resolve(),
-	} as unknown as EventService);
+	} as unknown as EventNotifierService;
 
 	const createRoom = async (
 		joinRule: PduJoinRuleEventContent['join_rule'],
@@ -2121,6 +2123,7 @@ describe('StateService', async () => {
 				const stateId = await stateService.processInitialState(
 					events.map((e) => e.event),
 					authChain.map((e) => e.event),
+					notifierStub,
 				);
 
 				console.log(state.ourUserJoinEvent.eventId);
@@ -2138,6 +2141,7 @@ describe('StateService', async () => {
 				await stateService.processInitialState(
 					events.map((e) => e.event),
 					authChain.map((e) => e.event),
+					notifierStub,
 				);
 
 				expect(stateService.isRoomStatePartial(events[0].roomId)).resolves.toBeTrue();
@@ -2149,6 +2153,7 @@ describe('StateService', async () => {
 				await stateService.processInitialState(
 					Object.values(state).map((e) => e.event),
 					authChain.map((e) => e.event),
+					notifierStub,
 				);
 
 				expect(stateService.isRoomStatePartial(state.roomCreateEvent.roomId)).resolves.toBeTrue();
