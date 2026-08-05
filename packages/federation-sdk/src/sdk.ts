@@ -259,6 +259,10 @@ export class FederationSDK {
 		return this.stateService.getLatestRoomState(...args);
 	}
 
+	getRoomVersion(...args: Parameters<typeof this.stateService.getRoomVersion>) {
+		return this.stateService.getRoomVersion(...args);
+	}
+
 	handlePdu(...args: Parameters<typeof this.stateService.handlePdu>) {
 		return this.stateService.handlePdu(...args);
 	}

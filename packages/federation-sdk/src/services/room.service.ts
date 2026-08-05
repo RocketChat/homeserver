@@ -440,6 +440,8 @@ export class RoomService {
 	async updateUserPowerLevel(roomId: RoomID, userId: UserID, powerLevel: number, senderId: UserID): Promise<string> {
 		logger.info(`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`);
 
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+
 		const authEventIds = await this.eventService.getAuthEventIds('m.room.power_levels', { roomId, senderId });
 
 		const powerLevelsAuthResult = this.getEventByType(authEventIds, 'm.room.power_levels');
@@ -512,7 +514,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: eventToSign.sender,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(event);
@@ -741,7 +743,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: userId,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				createEvent.version,
 			);
 
 			await stateService.handlePdu(membershipEvent);
@@ -760,16 +762,23 @@ export class RoomService {
 			return membershipEvent.eventId;
 		}
 
-		// Resident server is remote, need to do join flow
-		const roomVersion = '10' as const;
+		// Resident server is remote, need to do join flow.
+		// If we already have local state for this room (re-join), hint our known
+		// version to the resident server instead of asking it to pick from the
+		// full supported list.
+		let knownRoomVersion: RoomVersion | undefined;
+		let isRejoin = false;
+		try {
+			knownRoomVersion = await stateService.getRoomVersion(roomId);
+			isRejoin = true;
+		} catch (error) {
+			if (!(error instanceof UnknownRoomError)) {
+				throw error;
+			}
+		}
 
 		// trying to join room from another server
-		const makeJoinResponse = await federationService.makeJoin(
-			residentServer,
-			roomId,
-			userId,
-			roomVersion, // NOTE: check the comment in the called method
-		);
+		const makeJoinResponse = await federationService.makeJoin(residentServer, roomId, userId, knownRoomVersion);
 
 		// after receiving the join event we need to populate with local user profile
 		const profile = await this.profilesService.queryProfile(userId);
@@ -799,13 +808,9 @@ export class RoomService {
 		// from send_join and calls notify() for each event, which is how Rocket.Chat learns about
 		// the join. Without this, events go through the staging area where they get stuck on
 		// missing prev_events and are eventually silently dropped after MAX_EVENT_RETRY.
-		try {
-			await stateService.getRoomVersion(roomId);
+		if (isRejoin) {
 			this.logger.info({ roomId }, 'state already exists, updating with new state from send_join (re-join)');
-		} catch (error) {
-			if (!(error instanceof UnknownRoomError)) {
-				throw error;
-			}
+		} else {
 			this.logger.info({ roomId }, 'room not found, processing initial state');
 		}
 
@@ -1123,6 +1128,7 @@ export class RoomService {
 		if (!room) {
 			throw new HttpException('Room not found', HttpStatus.NOT_FOUND);
 		}
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		const isTombstoned = await this.isRoomTombstoned(roomId);
 		if (isTombstoned) {
 			logger.warn(`Attempted to delete an already tombstoned room: ${roomId}`);
@@ -1173,7 +1179,7 @@ export class RoomService {
 				signatures: {},
 				type: 'm.room.tombstone',
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomVersion,
 		);
 
 		const _stateId = await this.stateService.handlePdu(event);
