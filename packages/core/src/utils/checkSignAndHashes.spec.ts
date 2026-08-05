@@ -14,6 +14,7 @@ describe('checkSignAndHashes', () => {
 	const originalAtob = globalThis.atob;
 
 	const mockOrigin = 'example.com';
+	const roomVersion = '11';
 	const mockSignature = {
 		algorithm: EncryptionValidAlgorithm.ed25519,
 		version: 'key_version',
@@ -61,13 +62,43 @@ describe('checkSignAndHashes', () => {
 		const verifyJsonSpy = spyOn(signJson, 'verifyJsonSignature').mockReturnValue(true);
 		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(['sha256', mockHash]);
 
-		const result = await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock);
+		const result = await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock, roomVersion);
 
 		expect(getSignaturesSpy).toHaveBeenCalledWith(mockPdu, mockOrigin);
 		expect(verifyJsonSpy).toHaveBeenCalled();
 		expect(computeHashSpy).toHaveBeenCalledWith(mockPdu);
 
 		expect(result).toEqual(mockPdu);
+
+		getSignaturesSpy.mockRestore();
+		verifyJsonSpy.mockRestore();
+		computeHashSpy.mockRestore();
+	});
+
+	it('should redact according to the room version before verifying', async () => {
+		const createPdu = {
+			type: 'm.room.create',
+			state_key: '',
+			room_id: '!room:example.com',
+			sender: '@creator:example.com',
+			content: { 'room_version': '11', 'm.federate': false },
+			hashes: { sha256: mockHash },
+			signatures: mockPdu.signatures,
+		} as unknown as HashedEvent<SignedJson<EventBase>>;
+
+		const getSignaturesSpy = spyOn(signJson, 'getSignaturesFromRemote').mockResolvedValue([mockSignature]);
+		const verifyJsonSpy = spyOn(signJson, 'verifyJsonSignature').mockReturnValue(true);
+		const computeHashSpy = spyOn(authentication, 'computeHash').mockReturnValue(['sha256', mockHash]);
+
+		// v11 keeps the whole m.room.create content
+		await checkSignAndHashes(createPdu, mockOrigin, getPublicKeyFromServerMock, '11');
+		expect(verifyJsonSpy.mock.calls[0][0]).toMatchObject({
+			content: { 'room_version': '11', 'm.federate': false },
+		});
+
+		// before v11 only creator survives, so the same event redacts to an empty content
+		await checkSignAndHashes(createPdu, mockOrigin, getPublicKeyFromServerMock, '10');
+		expect(verifyJsonSpy.mock.calls[1][0]).toMatchObject({ content: {} });
 
 		getSignaturesSpy.mockRestore();
 		verifyJsonSpy.mockRestore();
@@ -81,7 +112,7 @@ describe('checkSignAndHashes', () => {
 
 		let error: Error | undefined;
 		try {
-			await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock);
+			await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock, roomVersion);
 		} catch (e) {
 			error = e as Error;
 		}
@@ -101,7 +132,7 @@ describe('checkSignAndHashes', () => {
 
 		let error: Error | undefined;
 		try {
-			await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock);
+			await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock, roomVersion);
 		} catch (e) {
 			error = e as Error;
 		}
@@ -121,7 +152,7 @@ describe('checkSignAndHashes', () => {
 
 		let error: Error | undefined;
 		try {
-			await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock);
+			await checkSignAndHashes(mockPdu, mockOrigin, getPublicKeyFromServerMock, roomVersion);
 		} catch (e) {
 			error = e as Error;
 		}

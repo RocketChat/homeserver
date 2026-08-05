@@ -256,9 +256,14 @@ export class EventService {
 			throw new Error('M_MISSING_SIGNATURES_OR_HASHES');
 		}
 
-		await checkSignAndHashes(event, origin, (origin, key) => {
-			return this.serverService.getPublicKey(origin, key);
-		});
+		await checkSignAndHashes(
+			event,
+			origin,
+			(origin, key) => {
+				return this.serverService.getPublicKey(origin, key);
+			},
+			roomVersion,
+		);
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
