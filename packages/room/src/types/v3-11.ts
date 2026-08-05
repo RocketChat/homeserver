@@ -1,7 +1,8 @@
 import * as z from 'zod';
 
-import type { PduForType } from './_common';
+import type { PduForType, UserID } from './_common';
 import { eventIdSchema, roomIdSchema, userIdSchema } from './_common';
+import type { RoomVersion } from '../manager/type';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -116,7 +117,7 @@ export const PduCreateEventContentSchema = z.object({
 		})
 		.optional(),
 	'room_version': z
-		.enum(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'])
+		.enum(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
 		.describe(" The version of the room. Defaults to '1' if the key does not exist.")
 		.optional()
 		.default('1'),
@@ -623,6 +624,22 @@ export const PduTimelineSchema = z.discriminatedUnion('type', [
 
 export const PduSchema = z.discriminatedUnion('type', [...PduTimelineSchema.options, ...PduStateEventSchema.options]);
 
-export type Pdu = z.infer<typeof PduSchema>;
+type PduV3To11 = z.infer<typeof PduSchema>;
+
+// SPEC: https://spec.matrix.org/v1.19/rooms/v12/
+// - `room_id` is derived from the m.room.create event's own event ID, so it is omitted from that event.
+// - `content.additional_creators` may list extra user IDs who are also treated as room creators.
+type PduCreateEventContentV12 = Omit<PduCreateEventContent, 'room_version'> & {
+	room_version: '12';
+	additional_creators?: UserID[];
+};
+
+type PduCreateEventV12 = Omit<Extract<PduV3To11, { type: 'm.room.create' }>, 'room_id' | 'content'> & {
+	content: PduCreateEventContentV12;
+};
+
+export type Pdu<V extends RoomVersion = Exclude<RoomVersion, '12'>> = V extends '12'
+	? Exclude<PduV3To11, { type: 'm.room.create' }> | PduCreateEventV12
+	: PduV3To11;
 
 export type PduContent<T extends PduType = PduType> = PduForType<T>['content'];

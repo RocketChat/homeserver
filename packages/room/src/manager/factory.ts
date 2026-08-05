@@ -8,6 +8,7 @@ import { PersistentEventV9 } from './v9';
 import { RoomID, roomIdSchema } from '../types/_common';
 import type { PduForType, UserID } from '../types/_common';
 import type { Pdu, PduType, PduCreateEventContent } from '../types/v3-11';
+import { PersistentEventV12 } from './v12';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -36,9 +37,10 @@ export class PersistentEventFactory {
 		'9',
 		'10',
 		'11',
+		'12',
 	];
 
-	static defaultRoomVersion = '10' as const; // same as synapse
+	static defaultRoomVersion = '12' as const; // same as synapse
 
 	static isSupportedRoomVersion(roomVersion: string): roomVersion is RoomVersion {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
@@ -68,6 +70,8 @@ export class PersistentEventFactory {
 				return new PersistentEventV9(event, roomVersion, partial);
 			case '11':
 				return new PersistentEventV11(event, roomVersion, partial);
+			case '12':
+				return new PersistentEventV12(event, roomVersion, partial);
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
