@@ -6,7 +6,7 @@ import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
-import type { EventID, PduForType, StateMapKey } from '../types/_common';
+import type { EventID, RoomID, PduForType, StateMapKey } from '../types/_common';
 import type { Pdu, PduContent, PduType, Signature, PduJoinRuleEventContent, PduMembershipEventContent } from '../types/v3-11';
 
 export function extractDomainFromId(identifier: string) {
@@ -85,10 +85,6 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return this.rawEvent.type as Type;
 	}
 
-	get roomId() {
-		return this.rawEvent.room_id;
-	}
-
 	get sender() {
 		return this.rawEvent.sender;
 	}
@@ -147,6 +143,7 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 
 	// v1 should have this already, others, generates it
 	abstract get eventId(): EventID;
+	abstract get roomId(): RoomID;
 
 	getContent<T extends PduContent<Type>>(): T {
 		return this.rawEvent.content as T;

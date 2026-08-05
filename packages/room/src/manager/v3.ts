@@ -2,12 +2,12 @@ import { toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 
 import { PersistentEventBase } from './event-wrapper';
 import type { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
-import type { RoomVersion3To11 } from './type';
-import type { EventID } from '../types/_common';
+import type { RoomVersion3To12 } from './type';
+import type { EventID, RoomID } from '../types/_common';
 import type { PduType } from '../types/v3-11';
 
 // v3 is where it changes first
-export class PersistentEventV3<Type extends PduType = PduType> extends PersistentEventBase<RoomVersion3To11, Type> {
+export class PersistentEventV3<Type extends PduType = PduType> extends PersistentEventBase<RoomVersion3To12, Type> {
 	private _eventId?: EventID;
 
 	get eventId(): EventID {
@@ -22,6 +22,10 @@ export class PersistentEventV3<Type extends PduType = PduType> extends Persisten
 		this._eventId = `\$${toUnpaddedBase64(referenceHash, { urlSafe: true })}` as EventID;
 		return this._eventId;
 	}
+	
+	get roomId(): RoomID {
+		return this.rawEvent.room_id as RoomID;
+	}	
 
 	getAllowedKeys(): string[] {
 		return [
