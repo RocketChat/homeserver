@@ -1173,6 +1173,29 @@ describe('authorization rules', () => {
 		expect(() => checkEventAuthWithoutState(create, [])).not.toThrow();
 	});
 
+	it("should allow the room creator's first join in a v11 room", async () => {
+		const create = new FakeStateEventCreator()
+			.asRoomCreate()
+			.withRoomId(roomId)
+			.withSender(creator)
+			.withContent({ room_version: '11' })
+			.build('11');
+
+		store.events.set(create.eventId, create);
+
+		// no join_rules event yet, so only the creator allowance can let this through
+		const join = new FakeStateEventCreator()
+			.asRoomMember()
+			.withRoomId(roomId)
+			.withStateKey(creator)
+			.withSender(creator)
+			.withContent({ membership: 'join' })
+			.withLastEvent(create)
+			.build('11');
+
+		await expect(checkEventAuthWithState(join, getStateMap([create]), store)).resolves.toBeUndefined();
+	});
+
 	it('should still require content.creator before v11', async () => {
 		const create = new FakeStateEventCreator()
 			.asRoomCreate()

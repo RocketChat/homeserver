@@ -152,7 +152,7 @@ async function isMembershipChangeAllowed(
 			if (previousEvents.length === 1) {
 				const [event] = previousEvents;
 
-				if (event.isCreateEvent() && event.getContent().creator === membershipEventToCheck.stateKey) {
+				if (event.isCreateEvent() && event.getCreator() === membershipEventToCheck.stateKey) {
 					return;
 				}
 			}
