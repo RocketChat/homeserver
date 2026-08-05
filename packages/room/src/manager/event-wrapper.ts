@@ -6,7 +6,7 @@ import { PowerLevelEvent } from './power-level-event-wrapper';
 import { type RoomVersion } from './type';
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
-import type { EventID, PduForType, StateMapKey } from '../types/_common';
+import type { EventID, PduForType, StateMapKey, UserID } from '../types/_common';
 import type { Pdu, PduContent, PduType, Signature, PduJoinRuleEventContent, PduMembershipEventContent } from '../types/v3-11';
 
 export function extractDomainFromId(identifier: string) {
@@ -230,6 +230,17 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 
 		return (this.getContent() as PduJoinRuleEventContent).join_rule;
 	}
+
+	// who created the room. where it is recorded changed in v11, hence the version specific resolution
+	getCreator(): UserID | undefined {
+		if (!this.isCreateEvent()) {
+			throw new Error('Event is not a create event');
+		}
+
+		return this.resolveCreator();
+	}
+
+	protected abstract resolveCreator(): UserID | undefined;
 
 	getUniqueStateIdentifier(): StateMapKey {
 		return `${this.type}:${this.stateKey || ''}`;

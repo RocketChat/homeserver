@@ -104,7 +104,8 @@ export const PduCreateEventContentSchema = z.object({
 		.string()
 		.describe(
 			' The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.',
-		),
+		)
+		.optional(),
 	'm.federate': z
 		.boolean()
 		.describe(' Whether users on other servers can join this room. Defaults to true if key does not exist.')

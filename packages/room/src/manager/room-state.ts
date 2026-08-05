@@ -18,7 +18,7 @@ export class RoomState {
 			throw new Error('Room create event not found');
 		}
 
-		return createEvent.getContent().creator;
+		return createEvent.getCreator();
 	}
 
 	getUserMembership(userId: string): PduMembershipEventContent['membership'] | undefined {

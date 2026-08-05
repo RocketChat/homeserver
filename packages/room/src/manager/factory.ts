@@ -1,5 +1,5 @@
 import type { PduWithHashesAndSignaturesOptional, PersistentEventBase } from './event-wrapper';
-import type { RoomVersion } from './type';
+import type { RoomVersion, RoomVersion3To11 } from './type';
 import { PersistentEventV11 } from './v11';
 import { PersistentEventV3 } from './v3';
 import { PersistentEventV6 } from './v6';
@@ -21,6 +21,16 @@ function createRoomIdPrefix(length: number) {
 }
 
 type PartialEvent<T extends Pdu = Pdu> = Omit<T, 'signatures' | 'hashes'>;
+
+// what the factory needs from a room version implementation: build events of that
+// version, and know how that version shapes the content of a new create event
+type PersistentEventClass = (new (
+	event: PduWithHashesAndSignaturesOptional,
+	roomVersion: RoomVersion3To11,
+	partial?: boolean,
+) => PersistentEventBase<RoomVersion3To11, PduType>) & {
+	newCreateEventContent(creator: UserID, roomVersion: RoomVersion): PduCreateEventContent;
+};
 
 // The idea is to ALWAYS use this to create different events
 export class PersistentEventFactory {
@@ -44,11 +54,8 @@ export class PersistentEventFactory {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
-	static createFromRawEvent<Type extends PduType>(
-		event: PduWithHashesAndSignaturesOptional,
-		roomVersion: string,
-		partial = false,
-	): PersistentEventBase<RoomVersion, Type> {
+	// the single place mapping a room version to the class implementing its rules
+	private static getEventClass(roomVersion: string): PersistentEventClass {
 		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 			throw new Error(`Room version ${roomVersion} is not supported`);
 		}
@@ -57,34 +64,37 @@ export class PersistentEventFactory {
 			case '3':
 			case '4':
 			case '5':
-				return new PersistentEventV3(event, roomVersion, partial);
+				return PersistentEventV3;
 			case '6':
 			case '7':
-				return new PersistentEventV6(event, roomVersion, partial);
+				return PersistentEventV6;
 			case '8':
-				return new PersistentEventV8(event, roomVersion, partial);
+				return PersistentEventV8;
 			case '9':
 			case '10':
-				return new PersistentEventV9(event, roomVersion, partial);
+				return PersistentEventV9;
 			case '11':
-				return new PersistentEventV11(event, roomVersion, partial);
+				return PersistentEventV11;
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
+	}
+
+	static createFromRawEvent<Type extends PduType>(
+		event: PduWithHashesAndSignaturesOptional,
+		roomVersion: string,
+		partial = false,
+	): PersistentEventBase<RoomVersion, Type> {
+		const EventClass = PersistentEventFactory.getEventClass(roomVersion);
+
+		return new EventClass(event, roomVersion as RoomVersion3To11, partial) as PersistentEventBase<RoomVersion, Type>;
 	}
 
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
 	static newCreateEvent(creator: UserID, roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion) {
-		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
-			throw new Error(`Room version ${roomVersion} is not supported`);
-		}
-
-		const createContent: PduCreateEventContent = {
-			room_version: roomVersion,
-			creator,
-		};
+		const createContent = PersistentEventFactory.getEventClass(roomVersion).newCreateEventContent(creator, roomVersion);
 
 		const domain = creator.split(':').pop();
 

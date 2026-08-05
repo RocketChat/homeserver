@@ -1,8 +1,19 @@
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
+import type { RoomVersion } from './type';
 import { PersistentEventV9 } from './v9';
-import { type PduType } from '../types/v3-11';
+import type { UserID } from '../types/_common';
+import { type PduCreateEventContent, type PduType } from '../types/v3-11';
 
 export class PersistentEventV11<Type extends PduType = PduType> extends PersistentEventV9<Type> {
+	// v11 removed m.room.create's content.creator, the sender is the creator instead
+	static newCreateEventContent(_creator: UserID, roomVersion: RoomVersion): PduCreateEventContent {
+		return { room_version: roomVersion };
+	}
+
+	protected resolveCreator(): UserID {
+		return this.sender as UserID;
+	}
+
 	getAllowedKeys(): string[] {
 		return [
 			'event_id',

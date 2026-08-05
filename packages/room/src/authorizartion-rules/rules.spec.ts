@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { checkEventAuthWithState, checkEventAuthWithoutState } from './rules';
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PersistentEventFactory } from '../manager/factory';
+import type { RoomVersion } from '../manager/type';
 import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
 import { type StateMapKey } from '../types/_common';
 import type { Pdu, PduContent, type PduType } from '../types/v3-11';
@@ -93,8 +94,8 @@ class FakeEventCreatorBase {
 		return this.withType('test');
 	}
 
-	build() {
-		return PersistentEventFactory.createFromRawEvent(this._event, '10');
+	build(roomVersion: RoomVersion = '10') {
+		return PersistentEventFactory.createFromRawEvent(this._event, roomVersion);
 	}
 }
 
@@ -1159,5 +1160,27 @@ describe('authorization rules', () => {
 
 		// should still allow
 		expect(() => checkEventAuthWithState(pl3, state2, store)).not.toThrow();
+	});
+
+	it('should accept a v11 create event without content.creator', async () => {
+		const create = new FakeStateEventCreator()
+			.asRoomCreate()
+			.withRoomId(roomId)
+			.withSender(creator)
+			.withContent({ room_version: '11' })
+			.build('11');
+
+		expect(() => checkEventAuthWithoutState(create, [])).not.toThrow();
+	});
+
+	it('should still require content.creator before v11', async () => {
+		const create = new FakeStateEventCreator()
+			.asRoomCreate()
+			.withRoomId(roomId)
+			.withSender(creator)
+			.withContent({ room_version: '10' })
+			.build('10');
+
+		expect(() => checkEventAuthWithoutState(create, [])).toThrow();
 	});
 });

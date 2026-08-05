@@ -24,7 +24,8 @@ const createEventSchema = baseEventSchema.extend({
 	content: z
 		.object({
 			room_version: z.string(),
-			creator: userIdSchema,
+			// removed in room version 11, where the create event's sender is the creator
+			creator: userIdSchema.optional(),
 		})
 		.and(z.record(z.string(), z.any())),
 	prev_events: z.array(z.any()).max(0).optional(),

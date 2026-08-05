@@ -2,13 +2,17 @@ import { toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 
 import { PersistentEventBase } from './event-wrapper';
 import type { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
-import type { RoomVersion3To11 } from './type';
-import type { EventID } from '../types/_common';
-import type { PduType } from '../types/v3-11';
+import type { RoomVersion, RoomVersion3To11 } from './type';
+import type { EventID, UserID } from '../types/_common';
+import type { PduCreateEventContent, PduType } from '../types/v3-11';
 
 // v3 is where it changes first
 export class PersistentEventV3<Type extends PduType = PduType> extends PersistentEventBase<RoomVersion3To11, Type> {
 	private _eventId?: EventID;
+
+	static newCreateEventContent(creator: UserID, roomVersion: RoomVersion): PduCreateEventContent {
+		return { room_version: roomVersion, creator };
+	}
 
 	get eventId(): EventID {
 		if (this._eventId) {
@@ -40,6 +44,10 @@ export class PersistentEventV3<Type extends PduType = PduType> extends Persisten
 			'prev_state',
 			'membership',
 		];
+	}
+
+	protected resolveCreator(): UserID | undefined {
+		return (this.getContent() as PduCreateEventContent).creator as UserID | undefined;
 	}
 
 	getAllowedContentKeys(): Record<string, string[] | typeof REDACT_ALLOW_ALL_KEYS> {
