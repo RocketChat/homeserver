@@ -756,7 +756,7 @@ describe('StateService', async () => {
 		const stateAtEvent = new Map<EventID, State>();
 
 		const { roomId } = roomCreateEvent;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 
 		const state = await stateService.getLatestRoomState(roomId);
 
@@ -806,7 +806,7 @@ describe('StateService', async () => {
 		const roomNameEvent2 = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomId,
-				sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+				sender: roomCreateEvent.getCreator() as room.UserID,
 				content: { name: newRoomName },
 				state_key: '',
 				type: 'm.room.name',
@@ -876,10 +876,7 @@ describe('StateService', async () => {
 
 		const { roomCreateEvent } = await createRoom('public');
 
-		expect(stateService.getRoomInformation(roomCreateEvent.roomId)).resolves.toHaveProperty(
-			'creator',
-			roomCreateEvent.getContent<PduCreateEventContent>().creator,
-		);
+		expect(stateService.getRoomInformation(roomCreateEvent.roomId)).resolves.toHaveProperty('creator', roomCreateEvent.getCreator());
 	});
 
 	it('02 should get the correct room version', async () => {
@@ -993,7 +990,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com' as room.UserID;
 
-		await inviteUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getContent<PduCreateEventContent>().creator);
+		await inviteUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getCreator());
 
 		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).isUserInvited(newUser)).toBeTrue();
 
@@ -1011,7 +1008,7 @@ describe('StateService', async () => {
 
 		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).isUserInRoom(newUser)).toBeTrue();
 
-		await banUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getContent<PduCreateEventContent>().creator);
+		await banUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getCreator());
 
 		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).getUserMembership(newUser)).toBe('ban');
 
@@ -1039,7 +1036,7 @@ describe('StateService', async () => {
 		const bob = '@bob:example.com' as room.UserID;
 		await joinUser(roomCreateEvent.roomId, bob);
 		// ban bob now
-		const banBobEvent = await banUser(roomCreateEvent.roomId, bob, roomCreateEvent.getContent<PduCreateEventContent>().creator);
+		const banBobEvent = await banUser(roomCreateEvent.roomId, bob, roomCreateEvent.getCreator());
 
 		const state1 = await stateService.getLatestRoomState2(roomCreateEvent.roomId);
 		expect(state1.getUserMembership(bob)).toBe('ban');
@@ -1213,7 +1210,7 @@ describe('StateService', async () => {
 			{
 				type: 'm.room.power_levels',
 				room_id: roomCreateEvent.roomId,
-				sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+				sender: roomCreateEvent.getCreator() as room.UserID,
 				state_key: '',
 				content: powerLevelContent,
 				...getDefaultFields(),
@@ -1254,7 +1251,7 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.member',
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+					sender: roomCreateEvent.getCreator() as room.UserID,
 					state_key: bob,
 					content: { membership: 'ban' },
 					...getDefaultFields(),
@@ -1301,7 +1298,7 @@ describe('StateService', async () => {
 			await stateService.buildEvent<'m.room.join_rules'>(
 				{
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+					sender: roomCreateEvent.getCreator() as room.UserID,
 					content: { join_rule: 'invite' },
 					type: 'm.room.join_rules',
 					state_key: '',
@@ -1383,7 +1380,7 @@ describe('StateService', async () => {
 
 	// 	const newPowerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
 	// 		roomCreateEvent.roomId,
-	// 		roomCreateEvent.getContent<PduCreateEventContent>().creator,
+	// 		roomCreateEvent.getCreator(),
 	// 		powerLevelContent,
 	// 		PersistentEventFactory.defaultRoomVersion,
 	// 	);
@@ -1480,7 +1477,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const { roomId } = roomCreateEvent;
 		const roomVersion = roomCreateEvent.getContent().room_version;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 
 		const referenceDepthEvent = await joinUser(roomId, '@dummy:example.com');
 
@@ -1538,7 +1535,7 @@ describe('StateService', async () => {
 	it('should consider previously rejected event as part of state if new out of order event allows it', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const { roomId } = roomCreateEvent;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 		const roomVersion = roomCreateEvent.version;
 
 		// make bob join
@@ -1603,7 +1600,7 @@ describe('StateService', async () => {
 
 		const { roomId } = roomCreateEvent;
 		const roomVersion = roomCreateEvent.version;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 
 		await joinUser(roomId, don);
 

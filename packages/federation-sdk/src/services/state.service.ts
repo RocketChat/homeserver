@@ -94,7 +94,17 @@ export class StateService {
 			throw new Error('Create event has no state id, something is very wrong');
 		}
 
-		return event.content;
+		// v11 rooms have no content.creator, so report the creator the room version resolves
+		// rather than handing callers an undefined field
+		const { room_version: roomVersion } = event.content;
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			return event.content;
+		}
+
+		return {
+			...event.content,
+			creator: PersistentEventFactory.createFromRawEvent<'m.room.create'>(event, roomVersion).getCreator(),
+		};
 	}
 
 	async getRoomVersion(roomId: RoomID): Promise<RoomVersion> {
