@@ -20,7 +20,6 @@ import {
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
-import type { z } from 'zod';
 
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -30,7 +29,7 @@ import { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { eventSchemas } from '../utils/event-schemas';
+import { getEventSchemaForType } from '../utils/event-schemas';
 
 export interface AuthEventParams {
 	roomId: string;
@@ -220,7 +219,7 @@ export class EventService {
 			throw new Error('Event sender is missing domain');
 		}
 
-		const eventSchema = this.getEventSchema(roomVersion, event.type);
+		const eventSchema = getEventSchemaForType(event.type, roomVersion);
 
 		const validationResult = eventSchema.safeParse(event);
 		if (!validationResult.success) {
@@ -447,20 +446,6 @@ export class EventService {
 
 	private async getRoomVersion(event: Pick<Pdu, 'room_id'>) {
 		return this.stateService.getRoomVersion(event.room_id) || PersistentEventFactory.defaultRoomVersion;
-	}
-
-	private getEventSchema(roomVersion: string, eventType: string): z.ZodSchema {
-		const versionSchemas = eventSchemas[roomVersion];
-		if (!versionSchemas) {
-			throw new Error(`Unsupported room version: ${roomVersion}`);
-		}
-
-		const schema = versionSchemas[eventType] || versionSchemas.default;
-		if (!schema) {
-			throw new Error(`No schema available for event type ${eventType} in room version ${roomVersion}`);
-		}
-
-		return schema;
 	}
 
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
