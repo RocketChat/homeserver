@@ -1,0 +1,59 @@
+packages/federation-sdk/src/services/event-authorization.service.ts
+  s_304c2333a03bd1::t_18d4157c01b282 35
+  s_304c2333a03bd1::t_5da8e56d5f39e3 1
+packages/core/src/events/m.room.guest_access.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 3-4
+  s_304c2333a03bd1::t_99af424bf04be9 58
+packages/core/src/events/m.room.create.spec.ts
+  s_304c2333a03bd1::t_99af424bf04be9 54
+packages/core/src/events/m.reaction.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 3-4,56
+packages/core/src/events/m.room.history_visibility.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 3-4
+  s_304c2333a03bd1::t_99af424bf04be9 60
+packages/core/src/events/m.room.member-invite.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 3-4,121
+packages/federation-sdk/src/services/event.service.ts
+  s_304c2333a03bd1::t_542497cb454a48 11
+  s_304c2333a03bd1::t_39e05e0db611b7 552
+packages/core/src/events/m.room.name.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 4-5
+  s_304c2333a03bd1::t_99af424bf04be9 3,13-14,62,80,99
+packages/core/src/events/m.room.tombstone.spec.ts
+  s_304c2333a03bd1::t_99af424bf04be9 127
+  s_304c2333a03bd1::t_aeb88463ac0d37 6
+  s_304c2333a03bd1::t_d881828ac02f40 3-4
+packages/core/src/events/m.room.join_rules.spec.ts
+  s_304c2333a03bd1::t_99af424bf04be9 58
+  s_304c2333a03bd1::t_d881828ac02f40 3-4
+packages/core/src/events/m.room.redaction.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 3-4,83
+packages/core/src/events/m.room.member.spec.ts
+  s_304c2333a03bd1::t_99af424bf04be9 3,11-12,44,69,87,103,125,159,193,213,233,259,299,333,353,373,399
+  s_304c2333a03bd1::t_d881828ac02f40 4-5
+packages/federation-sdk/src/services/event-fetcher.service.ts
+  s_304c2333a03bd1::t_c946b980a30731 60-61,63
+  s_304c2333a03bd1::t_3182cf10d760a6 79-84
+  s_304c2333a03bd1::t_c794c0917b4ac7 1-2
+packages/core/src/events/utils/createSignedEvent.spec.ts
+  s_304c2333a03bd1::t_520d7c576ec047 5,9,12,16-18,21,23
+packages/core/src/events/m.room.power_levels.spec.ts
+  s_304c2333a03bd1::t_d881828ac02f40 3-4
+  s_304c2333a03bd1::t_99af424bf04be9 118,172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f5d00c90fedde417ae3024ff19a8ba762312ec78",
+  "prompts": {},
+  "sessions": {
+    "s_304c2333a03bd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d272f64-88db-42ca-b7a6-037d1e681807",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
