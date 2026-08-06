@@ -1,0 +1,24 @@
+packages/federation-sdk/src/utils/event-schemas.ts
+  s_304c2333a03bd1::t_d9f4a61e50abf0 39,104-116,127-130,133-142,146,149,153
+  s_304c2333a03bd1::t_a8d76727e15c61 1
+  s_304c2333a03bd1::t_6832c106211a10 21-22,29,31,36-38
+  s_304c2333a03bd1::t_4c90d9691b918c 40
+packages/federation-sdk/src/utils/event-schemas.spec.ts
+  s_304c2333a03bd1::t_497677a271abfe 1-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a731e23b450d606f9402fd08531ad84a333bb2c2",
+  "prompts": {},
+  "sessions": {
+    "s_304c2333a03bd1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d272f64-88db-42ca-b7a6-037d1e681807",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
