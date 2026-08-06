@@ -37,7 +37,8 @@ export type RedactedEvent = EventBase & {
 };
 
 export const isRedactedEvent = (event: Pdu): event is PduForType<'m.room.redaction'> => {
-	return event.type === 'm.room.redaction' && 'redacts' in event;
+	// the target is a top level field before room version 11 and part of content from v11 on
+	return event.type === 'm.room.redaction';
 };
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface

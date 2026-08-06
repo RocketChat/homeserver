@@ -1,4 +1,4 @@
-import type { PduWithHashesAndSignaturesOptional, PersistentEventBase } from './event-wrapper';
+import type { PduWithHashesAndSignaturesOptional, PersistentEventBase, RedactionEventFields } from './event-wrapper';
 import type { RoomVersion, RoomVersion3To11 } from './type';
 import { PersistentEventV11 } from './v11';
 import { PersistentEventV3 } from './v3';
@@ -6,8 +6,8 @@ import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
 import { RoomID, roomIdSchema } from '../types/_common';
-import type { PduForType, UserID } from '../types/_common';
-import type { Pdu, PduType, PduCreateEventContent } from '../types/v3-11';
+import type { EventID, PduForType, UserID } from '../types/_common';
+import type { Pdu, PduType, PduCreateEventContent, PduRoomRedactionContent } from '../types/v3-11';
 
 // Utility function to create a random ID for room creation
 function createRoomIdPrefix(length: number) {
@@ -30,6 +30,7 @@ type PersistentEventClass = (new (
 	partial?: boolean,
 ) => PersistentEventBase<RoomVersion3To11, PduType>) & {
 	newCreateEventContent(creator: UserID, roomVersion: RoomVersion): PduCreateEventContent;
+	newRedactionEventFields(redacts: EventID, content: PduRoomRedactionContent): RedactionEventFields;
 };
 
 // The idea is to ALWAYS use this to create different events
@@ -113,6 +114,11 @@ export class PersistentEventFactory {
 		};
 
 		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(eventPartial, roomVersion);
+	}
+
+	// the target of a redaction is a top level field before v11 and part of content from v11 on
+	static newRedactionEventFields(redacts: EventID, content: PduRoomRedactionContent, roomVersion: RoomVersion): RedactionEventFields {
+		return PersistentEventFactory.getEventClass(roomVersion).newRedactionEventFields(redacts, content);
 	}
 
 	static newEvent<Type extends PduType>(

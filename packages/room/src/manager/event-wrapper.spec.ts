@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import { PersistentEventFactory } from './factory';
 import type { RoomVersion } from './type';
+import type { EventID } from '../types/_common';
 import type { Pdu } from '../types/v3-11';
 
 function runTest(event: Parameters<typeof PersistentEventFactory.createFromRawEvent>[0], expected: any, roomVersion: RoomVersion = '10') {
@@ -374,5 +375,41 @@ describe('[EventWrapper] Redaction', () => {
 
 		e2.addPrevEvents([e5, e4]); // intentional out of order
 		expect(e2.depth).toBe(8);
+	});
+});
+
+describe('[EventWrapper] Redaction target', () => {
+	const target = '$target:domain' as EventID;
+
+	it('is a top level field before v11', () => {
+		const fields = PersistentEventFactory.newRedactionEventFields(target, { reason: 'spam' }, '10');
+
+		expect(fields).toEqual({ redacts: target, content: { reason: 'spam' } });
+
+		const event = PersistentEventFactory.createFromRawEvent({ type: 'm.room.redaction', ...fields } as Pdu, '10');
+		expect(event.getRedacts()).toBe(target);
+	});
+
+	it('is part of content from v11 on', () => {
+		const fields = PersistentEventFactory.newRedactionEventFields(target, { reason: 'spam' }, '11');
+
+		expect(fields).toEqual({ content: { reason: 'spam', redacts: target } });
+
+		const event = PersistentEventFactory.createFromRawEvent({ type: 'm.room.redaction', ...fields } as Pdu, '11');
+		expect(event.getRedacts()).toBe(target);
+	});
+
+	it('ignores the location the room version does not use', () => {
+		const v11 = PersistentEventFactory.createFromRawEvent({ type: 'm.room.redaction', redacts: target, content: {} } as Pdu, '11');
+		expect(v11.getRedacts()).toBeUndefined();
+
+		const v10 = PersistentEventFactory.createFromRawEvent({ type: 'm.room.redaction', content: { redacts: target } } as Pdu, '10');
+		expect(v10.getRedacts()).toBeUndefined();
+	});
+
+	it('throws for events that are not redactions', () => {
+		const event = PersistentEventFactory.createFromRawEvent({ type: 'm.room.message', content: {} } as Pdu, '11');
+
+		expect(() => event.getRedacts()).toThrow('Event is not a redaction event');
 	});
 });

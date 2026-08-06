@@ -95,15 +95,21 @@ const joinRulesEventSchema = baseEventSchema.extend({
 		.and(z.record(z.string(), z.any())),
 });
 
-const redactionEventSchema = baseEventSchema.extend({
-	type: z.literal('m.room.redaction'),
-	redacts: eventIdSchema,
-	content: z
-		.object({
-			reason: z.string().optional(),
-		})
-		.and(z.record(z.string(), z.any())),
-});
+const redactionEventSchema = baseEventSchema
+	.extend({
+		type: z.literal('m.room.redaction'),
+		redacts: eventIdSchema.optional(),
+		content: z
+			.object({
+				reason: z.string().optional(),
+				// where the target lives from room version 11 on
+				redacts: eventIdSchema.optional(),
+			})
+			.and(z.record(z.string(), z.any())),
+	})
+	.refine((event) => Boolean(event.redacts ?? event.content.redacts), {
+		message: 'm.room.redaction must name the event it redacts',
+	});
 
 const roomV10Schemas = {
 	'm.room.create': createEventSchema,

@@ -1,5 +1,5 @@
 import { ForbiddenError, createLogger } from '@rocket.chat/federation-core';
-import { type EventID, type PersistentEventBase, RoomID, UserID } from '@rocket.chat/federation-room';
+import { type EventID, type PersistentEventBase, PersistentEventFactory, RoomID, UserID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { EventSenderService } from './event-sender.service';
@@ -270,10 +270,7 @@ export class MessageService {
 		const redactionEvent = await this.stateService.buildEvent<'m.room.redaction'>(
 			{
 				type: 'm.room.redaction',
-				content: {
-					reason: 'Unsetting reaction',
-				},
-				redacts: eventIdReactedTo,
+				...PersistentEventFactory.newRedactionEventFields(eventIdReactedTo, { reason: 'Unsetting reaction' }, roomInfo.room_version),
 				room_id: roomId,
 				auth_events: [],
 				depth: 0,
@@ -353,10 +350,11 @@ export class MessageService {
 		const redactionEvent = await this.stateService.buildEvent<'m.room.redaction'>(
 			{
 				type: 'm.room.redaction',
-				content: {
-					reason: `Deleting message: ${eventIdToRedact}`,
-				},
-				redacts: eventIdToRedact,
+				...PersistentEventFactory.newRedactionEventFields(
+					eventIdToRedact,
+					{ reason: `Deleting message: ${eventIdToRedact}` },
+					roomInfo.room_version,
+				),
 				room_id: roomId,
 				auth_events: [],
 				depth: 0,

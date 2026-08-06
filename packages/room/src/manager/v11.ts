@@ -1,8 +1,9 @@
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
+import type { RedactionEventFields } from './event-wrapper';
 import type { RoomVersion } from './type';
 import { PersistentEventV9 } from './v9';
-import type { UserID } from '../types/_common';
-import { type PduCreateEventContent, type PduType } from '../types/v3-11';
+import type { EventID, UserID } from '../types/_common';
+import { type PduCreateEventContent, type PduRoomRedactionContent, type PduType } from '../types/v3-11';
 
 export class PersistentEventV11<Type extends PduType = PduType> extends PersistentEventV9<Type> {
 	// v11 removed m.room.create's content.creator, the sender is the creator instead
@@ -10,8 +11,17 @@ export class PersistentEventV11<Type extends PduType = PduType> extends Persiste
 		return { room_version: roomVersion };
 	}
 
+	// v11 moved m.room.redaction's redacts from the top level into content
+	static newRedactionEventFields(redacts: EventID, content: PduRoomRedactionContent): RedactionEventFields {
+		return { content: { ...content, redacts } };
+	}
+
 	protected resolveCreator(): UserID {
 		return this.sender as UserID;
+	}
+
+	protected resolveRedacts(): EventID | undefined {
+		return (this.getContent() as PduRoomRedactionContent).redacts;
 	}
 
 	getAllowedKeys(): string[] {

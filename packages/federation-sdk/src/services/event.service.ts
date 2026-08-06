@@ -5,10 +5,9 @@ import type {
 	RoomPowerLevelsEvent,
 	ReceiptEDU,
 	TypingEDU,
-	RedactionEvent,
 	EventStore,
 } from '@rocket.chat/federation-core';
-import { isPresenceEDU, isReceiptEDU, isTypingEDU, pruneEventDict, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
+import { isPresenceEDU, isReceiptEDU, isTypingEDU, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type Pdu,
@@ -546,10 +545,12 @@ export class EventService {
 		return authEvents;
 	}
 
-	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
-		const eventIdToRedact = redactionEvent.redacts;
+	async processRedaction(redactionEvent: PduForType<'m.room.redaction'>): Promise<void> {
+		const roomVersion = await this.getRoomVersion(redactionEvent);
+
+		const eventIdToRedact = PersistentEventFactory.createFromRawEvent(redactionEvent, roomVersion).getRedacts();
 		if (!eventIdToRedact) {
-			this.logger.error(`[REDACTION] Event is missing 'redacts' field in room ${redactionEvent.room_id}`);
+			this.logger.error(`[REDACTION] Event is missing its redaction target in room ${redactionEvent.room_id}`);
 			return;
 		}
 
@@ -559,42 +560,13 @@ export class EventService {
 			return;
 		}
 
-		// Apply redaction rules according to Matrix spec for room versions 6 and above
-		// These parameters correspond to the features in newer room versions (v6+):
-		// - updated_redaction_rules: Uses stricter redaction rules from v6+
-		// - restricted_join_rule_fix: Preserves "authorising_user" field in membership events (v8+)
-		// - restricted_join_rule: Preserves "allow" field in join rules (v7+)
-		// - special_case_aliases_auth: Special handling for aliases events (v6+)
-		// - msc3389_relation_redactions: Preserves certain relation data per MSC3389 (v9+)
-		const redactedEventContent = pruneEventDict(eventToRedact.event, {
-			updated_redaction_rules: true,
-			restricted_join_rule_fix: true,
-			implicit_room_creator: false,
-			restricted_join_rule: true,
-			special_case_aliases_auth: true,
-			msc3389_relation_redactions: true,
-		});
+		const { redactedEvent } = PersistentEventFactory.createFromRawEvent(eventToRedact.event, roomVersion);
 
 		// According to Matrix spec, redacted events must contain a reference to what redacted them
 		// in the unsigned section of the event
-		if (!redactedEventContent.unsigned) {
-			redactedEventContent.unsigned = {};
-		}
+		redactedEvent.unsigned = { ...redactedEvent.unsigned, redacted_because: redactionEvent };
 
-		// Store the redaction event in the redacted_because field as specified in the Matrix spec
-		redactedEventContent.unsigned.redacted_because = redactionEvent;
-
-		await this.eventRepository.redactEvent(eventIdToRedact, {
-			...redactedEventContent,
-			room_id: eventToRedact.event.room_id,
-			sender: eventToRedact.event.sender,
-			// TODO: check what to do with origin
-			// origin: eventToRedact.event.sender.split(':')[1],
-			origin_server_ts: eventToRedact.event.origin_server_ts,
-			depth: eventToRedact.event.depth,
-			prev_events: eventToRedact.event.prev_events,
-			auth_events: eventToRedact.event.auth_events,
-		} as typeof eventToRedact.event);
+		await this.eventRepository.redactEvent(eventIdToRedact, redactedEvent as typeof eventToRedact.event);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}

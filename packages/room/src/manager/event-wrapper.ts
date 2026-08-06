@@ -7,7 +7,15 @@ import { type RoomVersion } from './type';
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
 import type { EventID, PduForType, StateMapKey, UserID } from '../types/_common';
-import type { Pdu, PduContent, PduType, Signature, PduJoinRuleEventContent, PduMembershipEventContent } from '../types/v3-11';
+import type {
+	Pdu,
+	PduContent,
+	PduType,
+	Signature,
+	PduJoinRuleEventContent,
+	PduMembershipEventContent,
+	PduRoomRedactionContent,
+} from '../types/v3-11';
 
 export function extractDomainFromId(identifier: string) {
 	const idx = identifier.indexOf(':');
@@ -28,6 +36,12 @@ export type Prettify<T> = {
 } & object;
 
 export type PduWithHashesAndSignaturesOptional<T extends Pdu = Pdu> = Prettify<MakeOptional<T, 'hashes' | 'signatures'>>;
+
+// the parts of a new m.room.redaction that carry its target, which moved into content in v11
+export type RedactionEventFields = {
+	redacts?: EventID;
+	content: PduRoomRedactionContent;
+};
 
 export const REDACT_ALLOW_ALL_KEYS: unique symbol = Symbol.for('all');
 
@@ -241,6 +255,17 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 	}
 
 	protected abstract resolveCreator(): UserID | undefined;
+
+	// which event a redaction targets. where it is recorded also changed in v11
+	getRedacts(): EventID | undefined {
+		if (this.type !== 'm.room.redaction') {
+			throw new Error('Event is not a redaction event');
+		}
+
+		return this.resolveRedacts();
+	}
+
+	protected abstract resolveRedacts(): EventID | undefined;
 
 	getUniqueStateIdentifier(): StateMapKey {
 		return `${this.type}:${this.stateKey || ''}`;
