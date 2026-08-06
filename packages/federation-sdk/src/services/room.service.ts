@@ -736,16 +736,10 @@ export class RoomService {
 			return membershipEvent.eventId;
 		}
 
-		// Resident server is remote, need to do join flow
-		const roomVersion = '10' as const;
-
-		// trying to join room from another server
-		const makeJoinResponse = await federationService.makeJoin(
-			residentServer,
-			roomId,
-			userId,
-			roomVersion, // NOTE: check the comment in the called method
-		);
+		// Resident server is remote, need to do join flow.
+		// no version argument, so the request advertises every version we support and the
+		// resident server answers with the room's actual version
+		const makeJoinResponse = await federationService.makeJoin(residentServer, roomId, userId);
 
 		// after receiving the join event we need to populate with local user profile
 		const profile = await this.profilesService.queryProfile(userId);
