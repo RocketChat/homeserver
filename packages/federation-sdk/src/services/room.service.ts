@@ -225,7 +225,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: username,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				roomCreateEvent.version,
 			);
 
 			await stateService.handlePdu(creatorMembershipEvent);
@@ -242,7 +242,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: username,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				roomCreateEvent.version,
 			);
 
 			await stateService.handlePdu(roomNameEvent);
@@ -274,7 +274,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: username,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				roomCreateEvent.version,
 			);
 
 			await stateService.handlePdu(powerLevelEvent);
@@ -291,7 +291,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: username,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				roomCreateEvent.version,
 			);
 
 			await stateService.handlePdu(joinRuleEvent);
@@ -311,7 +311,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: username,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				roomCreateEvent.version,
 			);
 
 			await stateService.handlePdu(canonicalAliasEvent);
@@ -491,7 +491,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			await this.stateService.getRoomVersion(roomId),
 		);
 
 		await this.stateService.handlePdu(event);
@@ -717,7 +717,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: userId,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				createEvent.version,
 			);
 
 			await stateService.handlePdu(membershipEvent);
@@ -1153,7 +1153,7 @@ export class RoomService {
 				signatures: {},
 				type: 'm.room.tombstone',
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			await this.stateService.getRoomVersion(roomId),
 		);
 
 		const _stateId = await this.stateService.handlePdu(event);
@@ -1460,7 +1460,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: creatorUserId,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomCreateEvent.version,
 		);
 
 		await stateService.handlePdu(creatorMembershipEvent);
@@ -1490,7 +1490,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: creatorUserId,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomCreateEvent.version,
 		);
 
 		await stateService.handlePdu(powerLevelsEvent);
@@ -1507,7 +1507,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: creatorUserId,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomCreateEvent.version,
 		);
 
 		await stateService.handlePdu(joinRulesEvent);
@@ -1524,7 +1524,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: creatorUserId,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomCreateEvent.version,
 		);
 
 		await stateService.handlePdu(historyVisibilityEvent);
@@ -1541,7 +1541,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: creatorUserId,
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			roomCreateEvent.version,
 		);
 
 		await stateService.handlePdu(guestAccessEvent);
@@ -1578,7 +1578,7 @@ export class RoomService {
 					origin_server_ts: Date.now(),
 					sender: creatorUserId,
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				roomCreateEvent.version,
 			);
 
 			await stateService.handlePdu(targetMembershipEvent);
