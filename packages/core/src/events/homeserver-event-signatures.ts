@@ -46,6 +46,8 @@ export type HomeserverEventSignatures = {
 	'homeserver.matrix.redaction': {
 		event_id: EventID;
 		event: PduForType<'m.room.redaction'>;
+		// resolved for the room's version, since v11 moved the target from the top level into content
+		redacts: EventID | undefined;
 	};
 	'homeserver.matrix.membership': {
 		event_id: EventID;

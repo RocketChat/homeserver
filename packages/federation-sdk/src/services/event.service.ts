@@ -62,6 +62,20 @@ export class EventService {
 		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;
 	}
 
+	// which event a redaction targets. consumers must not read the field themselves: it is a top
+	// level field before room v11 and lives in content from v11 on, and only the room knows which
+	async getRedactionTarget(eventId: EventID): Promise<EventID | undefined> {
+		const redaction = await this.getEventById(eventId, 'm.room.redaction');
+		if (!redaction) {
+			this.logger.warn(`No redaction event found with id ${eventId}`);
+			return undefined;
+		}
+
+		const roomVersion = await this.stateService.getRoomVersion(redaction.event.room_id);
+
+		return PersistentEventFactory.createFromRawEvent(redaction.event, roomVersion).getRedacts();
+	}
+
 	async checkIfEventsExists(eventIds: EventID[]): Promise<{ missing: EventID[]; found: EventID[] }> {
 		// TODO, return only the IDs, not the full events
 		const eventsCursor = this.eventRepository.findByIds(eventIds);
@@ -142,7 +156,7 @@ export class EventService {
 				return roomIdToRoomVersionmap.get(roomId) as RoomVersion;
 			}
 
-			const roomVersion = await this.getRoomVersion({ room_id: roomId });
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 			roomIdToRoomVersionmap.set(roomId, roomVersion);
 
@@ -205,10 +219,7 @@ export class EventService {
 	}
 
 	private async validateEvent(event: Pdu): Promise<void> {
-		const roomVersion = await this.getRoomVersion(event);
-		if (!roomVersion) {
-			throw new Error('M_UNKNOWN_ROOM_VERSION');
-		}
+		const roomVersion = await this.stateService.getRoomVersion(event.room_id);
 
 		if (event.type === 'm.room.member' && event.content.membership === 'invite' && 'third_party_invite' in event.content) {
 			throw new Error('Third party invites are not supported');
@@ -444,10 +455,6 @@ export class EventService {
 		return parts.length > 1 ? parts[1] : '';
 	}
 
-	private async getRoomVersion(event: Pick<Pdu, 'room_id'>) {
-		return this.stateService.getRoomVersion(event.room_id) || PersistentEventFactory.defaultRoomVersion;
-	}
-
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
 		return this.eventRepository.findLatestFromRoomId(roomId);
 	}
@@ -531,7 +538,7 @@ export class EventService {
 	}
 
 	async processRedaction(redactionEvent: PduForType<'m.room.redaction'>): Promise<void> {
-		const roomVersion = await this.getRoomVersion(redactionEvent);
+		const roomVersion = await this.stateService.getRoomVersion(redactionEvent.room_id);
 
 		const eventIdToRedact = PersistentEventFactory.createFromRawEvent(redactionEvent, roomVersion).getRedacts();
 		if (!eventIdToRedact) {
