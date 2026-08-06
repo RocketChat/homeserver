@@ -5,7 +5,6 @@ import {
 	SignedEvent,
 	TombstoneAuthEvents,
 	createLogger,
-	roomPowerLevelsEvent,
 	ForbiddenError,
 	HttpException,
 	HttpStatus,
@@ -474,43 +473,23 @@ export class RoomService {
 			throw new HttpException('Room has no history, cannot update power levels', HttpStatus.BAD_REQUEST);
 		}
 
-		const { serverName } = this.configService;
-		if (!serverName) {
-			logger.error('Server name is not configured. Cannot set event origin.');
-			throw new HttpException('Server configuration error for event origin.', HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-
-		const eventToSign = roomPowerLevelsEvent({
-			roomId,
-			members: [senderId, userId],
-			auth_events: {
-				'm.room.create': createAuthResult._id,
-				'm.room.power_levels': powerLevelsAuthResult._id,
-				'm.room.member': memberAuthResult._id,
-			},
-			prev_events: lastEventStore._id ? [lastEventStore._id] : [],
-			depth: lastEventStore.event.depth + 1,
-			content: {
-				...currentPowerLevelsEvent.event.content,
-				users: {
-					...(currentPowerLevelsEvent.event.content.users || {}),
-					[userId]: powerLevel,
-				},
-			},
-			ts: Date.now(),
-		}) as PduForType<'m.room.power_levels'>;
-
 		const event = await this.stateService.buildEvent<'m.room.power_levels'>(
 			{
 				type: 'm.room.power_levels',
-				content: eventToSign.content,
+				content: {
+					...currentPowerLevelsEvent.event.content,
+					users: {
+						...(currentPowerLevelsEvent.event.content.users || {}),
+						[userId]: powerLevel,
+					},
+				},
 				room_id: roomId,
 				state_key: '',
 				auth_events: [],
 				depth: 0,
 				prev_events: [],
 				origin_server_ts: Date.now(),
-				sender: eventToSign.sender,
+				sender: senderId,
 			},
 			PersistentEventFactory.defaultRoomVersion,
 		);
@@ -528,7 +507,7 @@ export class RoomService {
 		roomId: RoomID,
 		senderId: UserID,
 	): Promise<{
-		event: PduForType<'m.room.member'> & { origin: string };
+		event: PduForType<'m.room.member'>;
 		room_version: RoomVersion;
 	}> {
 		const roomInfo = await this.stateService.getRoomInformation(roomId);
@@ -548,10 +527,7 @@ export class RoomService {
 		);
 
 		return {
-			event: {
-				...leaveEvent.event,
-				origin: this.configService.serverName,
-			},
+			event: leaveEvent.event,
 			room_version: roomInfo.room_version,
 		};
 	}
@@ -774,15 +750,19 @@ export class RoomService {
 		// after receiving the join event we need to populate with local user profile
 		const profile = await this.profilesService.queryProfile(userId);
 
-		makeJoinResponse.event.content = {
-			...makeJoinResponse.event.content,
+		// origin is not a PDU field, drop whatever the resident server put in the template
+		// instead of signing it back
+		const { origin: _origin, ...template } = makeJoinResponse.event as PduForType<'m.room.member'> & { origin?: string };
+
+		template.content = {
+			...template.content,
 			...(profile?.avatar_url && { avatar_url: profile.avatar_url }),
 			...(profile?.displayname && { displayname: profile.displayname }),
 		};
 
 		// ^ have the template for the join event now
 
-		const joinEvent = PersistentEventFactory.createFromRawEvent(makeJoinResponse.event, makeJoinResponse.room_version);
+		const joinEvent = PersistentEventFactory.createFromRawEvent(template, makeJoinResponse.room_version);
 
 		await stateService.signEvent(joinEvent);
 

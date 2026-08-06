@@ -75,7 +75,7 @@ export class ProfilesService {
 		userId: UserID,
 		versions: RoomVersion[], // asking server supports these
 	): Promise<{
-		event: PduForType<'m.room.member'> & { origin: string };
+		event: PduForType<'m.room.member'>;
 		room_version: RoomVersion;
 	}> {
 		const { stateService } = this;
@@ -110,10 +110,7 @@ export class ProfilesService {
 
 		return {
 			room_version: roomVersion,
-			event: {
-				...membershipEvent.event,
-				origin: this.configService.serverName,
-			},
+			event: membershipEvent.event,
 		};
 	}
 
