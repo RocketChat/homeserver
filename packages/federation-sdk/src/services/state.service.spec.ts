@@ -9,6 +9,7 @@ import type {
 	PduPowerLevelsEventContent,
 	PduRoomNameEventContent,
 	PersistentEventBase,
+	RoomID,
 	RoomVersion,
 } from '@rocket.chat/federation-room';
 import * as room from '@rocket.chat/federation-room';
@@ -18,7 +19,7 @@ import { type WithId } from 'mongodb';
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
 import type { EventNotifierService } from './event-notifier.service';
-import { StateService } from './state.service';
+import { StateService, UnknownRoomError } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import type { StateGraphStore } from '../repositories/state-graph.repository';
@@ -871,12 +872,17 @@ describe('StateService', async () => {
 		compareStates(stateAtMessage, state9);
 	});
 
-	it('01 should return the correct room information for room id', async () => {
-		expect(stateService.getRoomInformation('abcd')).rejects.toThrowError(/Create event mapping not found/);
+	it('01 should return the create event wrapper for room id', async () => {
+		expect(stateService.getCreateEvent('abcd' as RoomID)).rejects.toThrowError(UnknownRoomError);
 
 		const { roomCreateEvent } = await createRoom('public');
 
-		expect(stateService.getRoomInformation(roomCreateEvent.roomId)).resolves.toHaveProperty('creator', roomCreateEvent.getCreator());
+		const createEvent = await stateService.getCreateEvent(roomCreateEvent.roomId);
+
+		expect(createEvent.eventId).toBe(roomCreateEvent.eventId);
+		expect(createEvent.version).toBe(roomCreateEvent.version);
+		// the accessor resolves the creator per version, callers never read content.creator
+		expect(createEvent.getCreator()).toBe(roomCreateEvent.getCreator());
 	});
 
 	it('02 should get the correct room version', async () => {
@@ -886,7 +892,7 @@ describe('StateService', async () => {
 
 		expect(roomVersion).toBe(roomCreateEvent.getContent<PduCreateEventContent>().room_version as RoomVersion);
 
-		expect(stateService.getRoomVersion('roomId')).rejects.toThrowError();
+		expect(stateService.getRoomVersion('roomId' as RoomID)).rejects.toThrowError(UnknownRoomError);
 	});
 
 	it('03 should find the correct state at an event', async () => {

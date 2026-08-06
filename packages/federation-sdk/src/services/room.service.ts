@@ -37,7 +37,7 @@ import { FederationValidationService } from './federation-validation.service';
 import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
 import { ProfilesService } from './profiles.service';
-import { RoomInfoNotReadyError, StateService, UnknownRoomError } from './state.service';
+import { StateService, UnknownRoomError } from './state.service';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { RoomRepository } from '../repositories/room.repository';
@@ -510,7 +510,7 @@ export class RoomService {
 		event: PduForType<'m.room.member'>;
 		room_version: RoomVersion;
 	}> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		const leaveEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -523,20 +523,17 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		return {
 			event: leaveEvent.event,
-			room_version: roomInfo.room_version,
+			room_version: roomVersion,
 		};
 	}
 
 	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>) {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
-		if (!roomVersion) {
-			throw new Error('Room version not found while sending leave');
-		}
 
 		const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(event, roomVersion);
 		if (leaveEvent.eventId !== eventId) {
@@ -592,8 +589,6 @@ export class RoomService {
 	async kickUser(roomId: RoomID, kickedUserId: UserID, senderId: UserID, reason?: string): Promise<EventID> {
 		logger.info(`User ${senderId} kicking user ${kickedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`);
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-
 		// Use resolved room state for power level (same state used when building the kick event's auth_events).
 		const state = await this.stateService.getLatestRoomState(roomId);
 		const powerLevelsEvent = getStateByMapKey(state, { type: 'm.room.power_levels' });
@@ -604,23 +599,20 @@ export class RoomService {
 
 		this.validateKickPermission(powerLevelsEvent.getContent(), senderId, kickedUserId);
 
-		const kickEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: {
-					membership: 'leave',
-					reason,
-				},
-				room_id: roomId,
-				state_key: kickedUserId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderId,
+		const kickEvent = await this.stateService.buildEvent<'m.room.member'>({
+			type: 'm.room.member',
+			content: {
+				membership: 'leave',
+				reason,
 			},
-			roomInfo.room_version,
-		);
+			room_id: roomId,
+			state_key: kickedUserId,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			sender: senderId,
+		});
 
 		await this.stateService.handlePdu(kickEvent);
 
@@ -636,8 +628,6 @@ export class RoomService {
 	async banUser(roomId: RoomID, bannedUserId: UserID, senderId: UserID, reason?: string): Promise<EventID> {
 		logger.info(`User ${senderId} banning user ${bannedUserId} from room ${roomId}. Reason: ${reason || 'No reason specified'}`);
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-
 		// Use resolved room state for power level (same state used when building the ban event's auth_events).
 		const state = await this.stateService.getLatestRoomState(roomId);
 		const powerLevelsEvent = getStateByMapKey(state, { type: 'm.room.power_levels' });
@@ -649,23 +639,20 @@ export class RoomService {
 
 		this.validateBanPermission(powerLevelsEvent.getContent(), senderId, bannedUserId);
 
-		const banEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: {
-					membership: 'ban',
-					reason,
-				},
-				room_id: roomId,
-				state_key: bannedUserId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderId,
+		const banEvent = await this.stateService.buildEvent<'m.room.member'>({
+			type: 'm.room.member',
+			content: {
+				membership: 'ban',
+				reason,
 			},
-			roomInfo.room_version,
-		);
+			room_id: roomId,
+			state_key: bannedUserId,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			sender: senderId,
+		});
 
 		await this.stateService.handlePdu(banEvent);
 
@@ -921,31 +908,26 @@ export class RoomService {
 	 * Update user profile (displayname/avatar) in a room by sending a membership event
 	 */
 	async updateUserProfile(roomId: RoomID, userId: UserID, profile: { displayname?: string; avatar_url?: string }) {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-
 		const state = await this.stateService.getLatestRoomState(roomId);
 		const membershipEvent = state.get(`m.room.member:${userId}`);
 		if (!membershipEvent || membershipEvent.getMembership() !== 'join') {
 			throw new Error(`User ${userId} is not a member of room ${roomId}`);
 		}
 
-		const newMembershipEvent = await this.stateService.buildEvent<'m.room.member'>(
-			{
-				type: 'm.room.member',
-				content: {
-					...membershipEvent.event.content,
-					...profile,
-				},
-				room_id: roomId,
-				state_key: userId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: userId,
+		const newMembershipEvent = await this.stateService.buildEvent<'m.room.member'>({
+			type: 'm.room.member',
+			content: {
+				...membershipEvent.event.content,
+				...profile,
 			},
-			roomInfo.room_version,
-		);
+			room_id: roomId,
+			state_key: userId,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			sender: userId,
+		});
 
 		await this.stateService.handlePdu(newMembershipEvent);
 

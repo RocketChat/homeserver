@@ -41,9 +41,6 @@ export class EventSenderService {
 		senderUserId: UserID,
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
-		if (!roomVersion) {
-			throw new Error(`Room version not found for room ${roomId} while trying to send custom event`);
-		}
 
 		const rawEvent = {
 			type: eventType,

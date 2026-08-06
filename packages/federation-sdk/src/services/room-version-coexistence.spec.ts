@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 
 import { type EventStore } from '@rocket.chat/federation-core';
-import type { EventID, PduCreateEventContent, RoomVersion, UserID } from '@rocket.chat/federation-room';
+import type { EventID, Pdu, PduCreateEventContent, RoomVersion, UserID } from '@rocket.chat/federation-room';
 import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { type WithId } from 'mongodb';
 
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
+import { EventFetcherService } from './event-fetcher.service';
 import type { EventService } from './event.service';
+import type { FederationService } from './federation.service';
 import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
@@ -114,9 +116,9 @@ describe('room version coexistence', async () => {
 		expect(v10.createEvent.getCreator()).toBe(alice);
 		expect(v11.createEvent.getCreator()).toBe(alice);
 
-		// and getRoomInformation reports a creator either way, so consumers keep working
-		expect(await stateService.getRoomInformation(v10.roomId)).toHaveProperty('creator', alice);
-		expect(await stateService.getRoomInformation(v11.roomId)).toHaveProperty('creator', alice);
+		// and the same holds through the service seam, so consumers never touch content.creator
+		expect((await stateService.getCreateEvent(v10.roomId)).getCreator()).toBe(alice);
+		expect((await stateService.getCreateEvent(v11.roomId)).getCreator()).toBe(alice);
 	});
 
 	it('keeps v10 and v11 rooms independent while both are used', async () => {
@@ -223,4 +225,37 @@ describe('room version coexistence', async () => {
 	it('bans in a v10 room', async () => expectBanWorks('10'));
 
 	it('bans in a v11 room', async () => expectBanWorks('11'));
+
+	// the fetcher used to resolve the version with its own read that fell back to
+	// defaultRoomVersion, so a v10 room's federated events got v10-invalid ids
+	it('identifies federation-fetched events at the room version, not the default', async () => {
+		const { roomId } = await createRoom('10');
+
+		// origin is a top level field v10 keeps under redaction and v11 drops, so the
+		// two versions disagree on this event's id
+		const fetched = {
+			type: 'm.room.message',
+			room_id: roomId,
+			sender: bob,
+			content: { msgtype: 'm.text', body: 'from federation' },
+			origin: 'example.com',
+			...defaults(),
+		} as unknown as Pdu;
+
+		const atRoomVersion = PersistentEventFactory.createFromRawEvent(fetched, '10').eventId;
+		const atDefaultVersion = PersistentEventFactory.createFromRawEvent(fetched, PersistentEventFactory.defaultRoomVersion).eventId;
+		expect(atRoomVersion).not.toBe(atDefaultVersion);
+
+		const fetcher = new EventFetcherService(
+			new EventRepository(eventCollection),
+			{ getEvent: async () => ({ pdus: [fetched] }) } as unknown as FederationService,
+			{ serverName: 'example.com' } as unknown as ConfigService,
+			stateService,
+		);
+
+		const { events } = await fetcher.fetchEventsByIds([atRoomVersion], roomId, 'remote.example.com');
+
+		expect(events).toHaveLength(1);
+		expect(events[0].eventId).toBe(atRoomVersion);
+	});
 });

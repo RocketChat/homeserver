@@ -439,11 +439,8 @@ export class EventService {
 
 			if (!event.content || !event.content.room_version) {
 				errors.push('Create event must specify a room_version');
-			} else {
-				const validRoomVersions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
-				if (typeof event.content.room_version !== 'string' || !validRoomVersions.includes(event.content.room_version)) {
-					errors.push(`Unsupported room version: ${event.content.room_version}`);
-				}
+			} else if (!PersistentEventFactory.isSupportedRoomVersion(event.content.room_version)) {
+				errors.push(`Unsupported room version: ${event.content.room_version}`);
 			}
 		}
 

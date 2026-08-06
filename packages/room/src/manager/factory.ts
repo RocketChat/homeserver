@@ -51,7 +51,7 @@ export class PersistentEventFactory {
 
 	static defaultRoomVersion = '11' as const;
 
-	static isSupportedRoomVersion(roomVersion: string): roomVersion is RoomVersion {
+	static isSupportedRoomVersion(roomVersion: string): roomVersion is RoomVersion3To11 {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
@@ -86,9 +86,13 @@ export class PersistentEventFactory {
 		roomVersion: string,
 		partial = false,
 	): PersistentEventBase<RoomVersion, Type> {
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new Error(`Room version ${roomVersion} is not supported`);
+		}
+
 		const EventClass = PersistentEventFactory.getEventClass(roomVersion);
 
-		return new EventClass(event, roomVersion as RoomVersion3To11, partial) as PersistentEventBase<RoomVersion, Type>;
+		return new EventClass(event, roomVersion, partial) as PersistentEventBase<RoomVersion, Type>;
 	}
 
 	// create individual events

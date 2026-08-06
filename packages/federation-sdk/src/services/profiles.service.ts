@@ -1,3 +1,4 @@
+import { UnsupportedRoomVersionError } from '@rocket.chat/federation-core';
 import { EventID, extractDomainFromId, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
@@ -79,12 +80,10 @@ export class ProfilesService {
 		room_version: RoomVersion;
 	}> {
 		const { stateService } = this;
-		const roomInformation = await stateService.getRoomInformation(roomId);
-
-		const roomVersion = roomInformation.room_version;
+		const roomVersion = await stateService.getRoomVersion(roomId);
 
 		if (!versions.includes(roomVersion)) {
-			throw new Error(`Unsupported room version: ${roomVersion}`);
+			throw new UnsupportedRoomVersionError(`Unsupported room version: ${roomVersion}`);
 		}
 
 		if (!(await this.stateService.getLatestRoomState2(roomId)).isUserInvited(userId)) {
@@ -105,7 +104,7 @@ export class ProfilesService {
 				origin_server_ts: Date.now(),
 				sender: userId,
 			},
-			roomInformation.room_version,
+			roomVersion,
 		);
 
 		return {

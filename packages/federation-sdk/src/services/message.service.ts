@@ -235,27 +235,22 @@ export class MessageService {
 			throw new ForbiddenError('Cannot react to a message in a tombstoned room');
 		}
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-
-		const reactionEvent = await this.stateService.buildEvent<'m.reaction'>(
-			{
-				type: 'm.reaction',
-				content: {
-					'm.relates_to': {
-						rel_type: 'm.annotation',
-						event_id: eventId,
-						key: emoji,
-					},
+		const reactionEvent = await this.stateService.buildEvent<'m.reaction'>({
+			type: 'm.reaction',
+			content: {
+				'm.relates_to': {
+					rel_type: 'm.annotation',
+					event_id: eventId,
+					key: emoji,
 				},
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderUserId,
 			},
-			roomInfo.room_version,
-		);
+			room_id: roomId,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			sender: senderUserId,
+		});
 
 		await this.stateService.handlePdu(reactionEvent);
 
@@ -265,12 +260,12 @@ export class MessageService {
 	}
 
 	async unsetReaction(roomId: RoomID, eventIdReactedTo: EventID, _emoji: string, senderUserId: UserID): Promise<string> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const redactionEvent = await this.stateService.buildEvent<'m.room.redaction'>(
 			{
 				type: 'm.room.redaction',
-				...PersistentEventFactory.newRedactionEventFields(eventIdReactedTo, { reason: 'Unsetting reaction' }, roomInfo.room_version),
+				...PersistentEventFactory.newRedactionEventFields(eventIdReactedTo, { reason: 'Unsetting reaction' }, roomVersion),
 				room_id: roomId,
 				auth_events: [],
 				depth: 0,
@@ -278,7 +273,7 @@ export class MessageService {
 				origin_server_ts: Date.now(),
 				sender: senderUserId,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(redactionEvent);
@@ -295,36 +290,31 @@ export class MessageService {
 		senderUserId: UserID,
 		eventIdToReplace: EventID,
 	): Promise<string> {
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
-
-		const redactionEvent = await this.stateService.buildEvent<'m.room.message'>(
-			{
-				type: 'm.room.message',
-				content: {
-					'msgtype': 'm.text',
-					'body': rawMessage,
-					'format': 'org.matrix.custom.html',
-					'formatted_body': formattedMessage,
-					'm.new_content': {
-						msgtype: 'm.text',
-						body: rawMessage,
-						format: 'org.matrix.custom.html',
-						formatted_body: formattedMessage,
-					},
-					'm.relates_to': {
-						rel_type: 'm.replace',
-						event_id: eventIdToReplace,
-					},
+		const redactionEvent = await this.stateService.buildEvent<'m.room.message'>({
+			type: 'm.room.message',
+			content: {
+				'msgtype': 'm.text',
+				'body': rawMessage,
+				'format': 'org.matrix.custom.html',
+				'formatted_body': formattedMessage,
+				'm.new_content': {
+					msgtype: 'm.text',
+					body: rawMessage,
+					format: 'org.matrix.custom.html',
+					formatted_body: formattedMessage,
 				},
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderUserId,
+				'm.relates_to': {
+					rel_type: 'm.replace',
+					event_id: eventIdToReplace,
+				},
 			},
-			roomInfo.room_version,
-		);
+			room_id: roomId,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			sender: senderUserId,
+		});
 
 		await this.stateService.handlePdu(redactionEvent);
 
@@ -340,7 +330,7 @@ export class MessageService {
 			throw new ForbiddenError('Cannot delete a message in a tombstoned room');
 		}
 
-		const roomInfo = await this.stateService.getRoomInformation(roomId);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const senderUserId = await this.eventService.getEventById(eventIdToRedact);
 		if (!senderUserId?.event.sender) {
@@ -350,11 +340,7 @@ export class MessageService {
 		const redactionEvent = await this.stateService.buildEvent<'m.room.redaction'>(
 			{
 				type: 'm.room.redaction',
-				...PersistentEventFactory.newRedactionEventFields(
-					eventIdToRedact,
-					{ reason: `Deleting message: ${eventIdToRedact}` },
-					roomInfo.room_version,
-				),
+				...PersistentEventFactory.newRedactionEventFields(eventIdToRedact, { reason: `Deleting message: ${eventIdToRedact}` }, roomVersion),
 				room_id: roomId,
 				auth_events: [],
 				depth: 0,
@@ -362,7 +348,7 @@ export class MessageService {
 				origin_server_ts: Date.now(),
 				sender: senderUserId.event.sender,
 			},
-			roomInfo.room_version,
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(redactionEvent);
