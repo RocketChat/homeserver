@@ -1,5 +1,5 @@
-import { isFederationEventWithPDUs, createLogger, generateId } from '@rocket.chat/federation-core';
-import { EventID, Pdu } from '@rocket.chat/federation-room';
+import { isFederationEventWithPDUs, createLogger } from '@rocket.chat/federation-core';
+import { EventID, Pdu, PersistentEventFactory, RoomVersion } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
@@ -57,8 +57,10 @@ export class EventFetcherService {
 			);
 			const federationEvents = await this.fetchEventsFromFederation(missingEventIds, originServer);
 
+			const roomVersion = await this.getRoomVersion(roomId);
+
 			const federationEventsWithIds = federationEvents.map((e) => ({
-				eventId: generateId(e),
+				eventId: PersistentEventFactory.createFromRawEvent(e, roomVersion).eventId,
 				event: e,
 			}));
 
@@ -72,6 +74,12 @@ export class EventFetcherService {
 			events: localEvents,
 			missingEventIds: [],
 		};
+	}
+
+	private async getRoomVersion(roomId: string): Promise<RoomVersion> {
+		const createEvent = await this.eventRepository.findByRoomIdAndType(roomId, 'm.room.create');
+
+		return createEvent?.event.content.room_version ?? PersistentEventFactory.defaultRoomVersion;
 	}
 
 	async fetchEventsFromFederation(eventIds: string[], targetServerName: string): Promise<Pdu[]> {

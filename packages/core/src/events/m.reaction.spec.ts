@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import { reactionEvent } from './m.reaction';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -52,7 +53,7 @@ test('reactionEvent', async () => {
 	});
 
 	const signedReaction = await signEvent(reaction, signature, 'rc1');
-	const reactionEventId = generateId(signedReaction);
+	const reactionEventId = PersistentEventFactory.createFromRawEvent(signedReaction as any, '10').eventId;
 
 	expect(signedReaction).toMatchObject(finalEvent);
 	expect(reactionEventId).toBe(reactionEventId);

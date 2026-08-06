@@ -8,15 +8,7 @@ import type {
 	RedactionEvent,
 	EventStore,
 } from '@rocket.chat/federation-core';
-import {
-	isPresenceEDU,
-	isReceiptEDU,
-	isTypingEDU,
-	generateId,
-	pruneEventDict,
-	checkSignAndHashes,
-	createLogger,
-} from '@rocket.chat/federation-core';
+import { isPresenceEDU, isReceiptEDU, isTypingEDU, pruneEventDict, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type Pdu,
@@ -557,7 +549,7 @@ export class EventService {
 	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
 		const eventIdToRedact = redactionEvent.redacts;
 		if (!eventIdToRedact) {
-			this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
+			this.logger.error(`[REDACTION] Event is missing 'redacts' field in room ${redactionEvent.room_id}`);
 			return;
 		}
 

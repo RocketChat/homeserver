@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import type { SignedEvent } from '../types';
 import { type RoomPowerLevelsEvent, roomPowerLevelsEvent } from './m.room.power_levels';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -114,7 +115,7 @@ test('roomPowerLevelsEvent', async () => {
 		'UBNpsQBCDX7t6cPHSj+g4bfAf/9Gb1TxYnme2MCXF4JgN7P3X0OUq0leFjrI5p/+sTR60/nuaZCX7OUYWTTLDA',
 	);
 
-	const eventId = generateId(signed);
+	const { eventId } = PersistentEventFactory.createFromRawEvent(signed as any, '10');
 
 	expect(eventId).toBe(finalEventId);
 });
@@ -168,7 +169,7 @@ test('roomPowerLevelsEvent with custom content', async () => {
 	});
 
 	const signed: Omit<SignedEvent<RoomPowerLevelsEvent>, 'event_id'> = await signEvent(event, signature, 'hs1');
-	const eventId = generateId(signed);
+	const { eventId } = PersistentEventFactory.createFromRawEvent(signed as any, '10');
 
 	expect(signed).toStrictEqual(finalCustomEvent);
 	expect(eventId).toBe(finalCustomEventId);

@@ -1,7 +1,6 @@
 import type { EventID } from '@rocket.chat/federation-room';
 
 import { type EventBase, createEventBase } from './eventBase';
-import { createEventWithId } from './utils/createSignedEvent';
 
 export interface RoomTombstoneEvent extends EventBase {
 	type: 'm.room.tombstone';
@@ -76,8 +75,6 @@ export const roomTombstoneEvent = ({
 		unsigned: { age_ts: ts },
 	});
 };
-
-export const createRoomTombstoneEvent = createEventWithId(roomTombstoneEvent);
 
 export const isRoomTombstoneEvent = (event: EventBase | null | undefined): event is RoomTombstoneEvent =>
 	Boolean(event && typeof event === 'object' && event.type === 'm.room.tombstone');

@@ -1,7 +1,6 @@
 import type { EventID } from '@rocket.chat/federation-room';
 
 import { type EventBase, createEventBase } from './eventBase';
-import { createEventWithId } from './utils/createSignedEvent';
 
 declare module './eventBase' {
 	interface Events {
@@ -44,5 +43,3 @@ export const roomGuestAccessEvent = ({
 		unsigned: { age_ts: ts },
 	});
 };
-
-export const createRoomGuestAccessEvent = createEventWithId(roomGuestAccessEvent);

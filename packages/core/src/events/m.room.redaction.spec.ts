@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import type { EventBase } from './eventBase';
 import { isRedactionEvent, redactionEvent } from './m.room.redaction';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -79,7 +80,7 @@ test('redactionEvent', async () => {
 	expect(redaction.redacts).toBe('$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA');
 
 	const signedRedaction = await signEvent(redaction, signature, 'rc1');
-	const redactionEventId = generateId(signedRedaction);
+	const redactionEventId = PersistentEventFactory.createFromRawEvent(signedRedaction as any, '10').eventId;
 
 	// Verify basic event structure after signing
 	expect(signedRedaction.type).toBe('m.room.redaction');

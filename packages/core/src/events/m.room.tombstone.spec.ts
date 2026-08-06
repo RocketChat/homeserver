@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import type { EventBase } from './eventBase';
-import { createRoomTombstoneEvent, isRoomTombstoneEvent, roomTombstoneEvent } from './m.room.tombstone';
-import { generateId } from '../utils/generateId';
+import { isRoomTombstoneEvent, roomTombstoneEvent } from './m.room.tombstone';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -123,37 +124,7 @@ describe('m.room.tombstone', () => {
 		expect(signed).toHaveProperty('signatures.hs1.ed25519:a_HDhg');
 		expect(signed.signatures.hs1['ed25519:a_HDhg']).toBe(expectedSignature);
 
-		const eventId = generateId(signed);
+		const { eventId } = PersistentEventFactory.createFromRawEvent(signed as any, '10');
 		expect(eventId).toBe(expectedEventId);
-	});
-
-	test('should create a room tombstone event with ID', async () => {
-		const signature = await generateKeyPairsFromString('ed25519 a_HDhg WntaJ4JP5WbZZjDShjeuwqCybQ5huaZAiowji7tnIEw');
-
-		const eventProps = {
-			roomId,
-			sender,
-			body,
-			replacementRoom,
-			depth,
-			auth_events,
-			prev_events,
-			ts: 1733107418713,
-			origin: 'hs1',
-		};
-
-		const { createSignedEvent } = await import('./utils/createSignedEvent');
-		const signEventFn = createSignedEvent(signature, 'hs1');
-		const createEventFn = createRoomTombstoneEvent(signEventFn);
-
-		const { event, _id: event_id } = await createEventFn(eventProps);
-
-		expect(event.type).toBe('m.room.tombstone');
-		expect(event.room_id).toBe(roomId);
-		expect(event.sender).toBe(sender);
-		expect(event.content.body).toBe(body);
-		expect(event.content.replacement_room).toBe(replacementRoom);
-		expect(event).toHaveProperty('signatures.hs1.ed25519:a_HDhg');
-		expect(event_id).toBe('$3Sw4iBWv9pil8BRt3ojPIWGLNQGpsKJoImxNoCmz7ME');
 	});
 });

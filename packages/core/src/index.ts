@@ -6,7 +6,6 @@ export type { SignedEvent, SigningKey } from './types';
 export { signEvent } from './utils/signEvent';
 
 // Authentication utilities
-export { generateId } from './utils/generateId';
 export { pruneEventDict } from './utils/pruneEventDict';
 export { checkSignAndHashes } from './utils/checkSignAndHashes';
 export {

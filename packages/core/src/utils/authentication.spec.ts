@@ -8,7 +8,6 @@ import {
 	signRequest,
 	validateAuthorizationHeader,
 } from './authentication';
-import { generateId } from './generateId';
 import { generateKeyPairsFromString } from './keys';
 import { signJson } from './signJson';
 
@@ -135,80 +134,4 @@ test('signRequest', async () => {
 	expect(signedRequest.signatures.hs2['ed25519:a_XRhW']).toBe(
 		'KDhgfpGp+34ElXpvFIBjsGO2kldNZKj1CWFEbSjyQR142ZYx+kIg+N3muLlMXEK0Fw76T/2vjihEWhwffsbcAg',
 	);
-
-	const id = generateId(event);
-
-	expect(id).toBe('$P4qGIj3TWoJBnr1IGzXEvgRd1IljQYqlFZkMI8_GmwY');
-});
-
-describe('generateId', () => {
-	test('should generate a consistent ID for the same event content', () => {
-		const event = {
-			type: 'm.room.message',
-			sender: '@alice:example.com',
-			room_id: '!someroom:example.com',
-			content: {
-				body: 'Hello world!',
-				msgtype: 'm.text',
-			},
-			origin_server_ts: 1234567890,
-		};
-		const id1 = generateId(event);
-		const id2 = generateId(event);
-
-		expect(id1).toBe(id2);
-	});
-
-	test('should generate different IDs for different event content', () => {
-		const event1 = {
-			type: 'm.room.message',
-			sender: '@alice:example.com',
-			room_id: '!someroom:example.com',
-			content: {
-				body: 'Hello world!',
-				msgtype: 'm.text',
-			},
-			origin_server_ts: 1234567890,
-		};
-		const event2 = {
-			type: 'm.room.message',
-			sender: '@bob:example.com', // Different sender
-			room_id: '!someroom:example.com',
-			content: {
-				body: 'Hello world!',
-				msgtype: 'm.text',
-			},
-			origin_server_ts: 1234567890,
-		};
-
-		const id1 = generateId(event1);
-		const id2 = generateId(event2);
-
-		expect(id1).not.toBe(id2);
-	});
-
-	test('should ignore fields like age_ts, unsigned, and signatures when generating ID', () => {
-		const eventBase = {
-			type: 'm.room.message',
-			sender: '@alice:example.com',
-			room_id: '!someroom:example.com',
-			content: {
-				body: 'Hello world!',
-				msgtype: 'm.text',
-			},
-			origin_server_ts: 1234567890,
-		};
-
-		const eventWithExtraFields = {
-			...eventBase,
-			age_ts: 1234567890,
-			unsigned: { age: 100 },
-			signatures: { 'example.com': { 'ed25519:key': 'signature' } },
-		};
-
-		const id1 = generateId(eventBase);
-		const id2 = generateId(eventWithExtraFields);
-
-		expect(id1).toBe(id2);
-	});
 });
