@@ -8,12 +8,19 @@ packages/federation-sdk/src/services/event.service.ts
   s_68342d02b1fc87::t_0e702912b0f75a 541
 packages/federation-sdk/src/sdk.ts
   s_3b041f6374c5d1::t_5491ef7a4bfc7f 134-137
+packages/federation-sdk/src/services/event-notifier.service.ts
+  h_4c386397e672f4 3,56-57,61
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.6.21",
   "base_commit_sha": "d80ec5ee96d73ade5851ab479a99559dca6fa536",
   "prompts": {},
+  "humans": {
+    "h_4c386397e672f4": {
+      "author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  },
   "sessions": {
     "s_3b041f6374c5d1": {
       "agent_id": {
