@@ -843,7 +843,7 @@ describe('StateService', async () => {
 			},
 			roomCreateEvent.getContent().room_version,
 		);
-		expect(stateService.handlePdu(roomNameEvent3)).rejects.toThrow();
+		await expect(stateService.handlePdu(roomNameEvent3)).rejects.toThrow();
 		const state8 = await stateService.getLatestRoomState(roomId);
 		expect(state8.size).toBe(9); // same as before, bob was banned can't change name
 		compareStates(state7, state8);
@@ -873,7 +873,7 @@ describe('StateService', async () => {
 	});
 
 	it('01 should return the create event wrapper for room id', async () => {
-		expect(stateService.getCreateEvent('abcd' as RoomID)).rejects.toThrowError(UnknownRoomError);
+		await expect(stateService.getCreateEvent('abcd' as RoomID)).rejects.toThrowError(UnknownRoomError);
 
 		const { roomCreateEvent } = await createRoom('public');
 
@@ -892,7 +892,7 @@ describe('StateService', async () => {
 
 		expect(roomVersion).toBe(roomCreateEvent.getContent<PduCreateEventContent>().room_version as RoomVersion);
 
-		expect(stateService.getRoomVersion('roomId' as RoomID)).rejects.toThrowError(UnknownRoomError);
+		await expect(stateService.getRoomVersion('roomId' as RoomID)).rejects.toThrowError(UnknownRoomError);
 	});
 
 	it('03 should find the correct state at an event', async () => {
@@ -986,7 +986,7 @@ describe('StateService', async () => {
 			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
 		);
 
-		expect(stateService.handlePdu(membershipEvent)).rejects.toThrow();
+		await expect(stateService.handlePdu(membershipEvent)).rejects.toThrow();
 
 		expect(membershipEvent.rejected).toBeTrue();
 		expect(membershipEvent.rejectCode).toBe(RejectCodes.AuthError);
@@ -1030,7 +1030,7 @@ describe('StateService', async () => {
 			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
 		);
 
-		expect(stateService.handlePdu(membershipEventJoin2)).rejects.toThrow();
+		await expect(stateService.handlePdu(membershipEventJoin2)).rejects.toThrow();
 		expect(membershipEventJoin2.rejected).toBeTrue();
 		expect(membershipEventJoin2.rejectCode).toBe(RejectCodes.AuthError);
 	});
@@ -1074,7 +1074,7 @@ describe('StateService', async () => {
 		// biome-ignore lint/complexity/noForEach: <explanation>
 		authEventsForBobBan.forEach((e) => bobLeaveEvent.authedBy(e));
 
-		expect(stateService.handlePdu(bobLeaveEvent)).rejects.toThrow();
+		await expect(stateService.handlePdu(bobLeaveEvent)).rejects.toThrow();
 		expect(bobLeaveEvent.rejected).toBeTrue();
 		expect(bobLeaveEvent.rejectCode).toBe(RejectCodes.AuthError);
 	});
@@ -1664,7 +1664,7 @@ describe('StateService', async () => {
 		// a new event that
 		roomName.addPrevEvents([bobJoin, donBan]);
 
-		expect(stateService.handlePdu(roomName)).rejects.toThrowError();
+		await expect(stateService.handlePdu(roomName)).rejects.toThrowError();
 
 		const state2 = await stateService.getStateAtEvent(roomName);
 		// must not be new name

@@ -87,5 +87,7 @@ test('redactionEvent', async () => {
 	expect(signedRedaction.content.reason).toBe('Inappropriate content');
 	expect(signedRedaction.room_id).toBe('!MZyyuzkUwHEaBBOXai:hs1');
 	expect(signedRedaction.sender).toBe('@user:rc1');
-	expect(redactionEventId).toBeDefined();
+	// pinned from this implementation rather than captured from Synapse: it guards against
+	// unintended changes to the id computation, it does not prove the id is spec correct
+	expect(redactionEventId).toBe('$eXeXxVHTKQn0Q52ro1_abGTKsRtLD2h1b-ZtyzeVNXA');
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
 
 import { type EventStore } from '@rocket.chat/federation-core';
 import type { EventID, Pdu, PduCreateEventContent, RoomVersion, UserID } from '@rocket.chat/federation-room';
@@ -38,6 +38,11 @@ describe('room version coexistence', async () => {
 
 	beforeEach(async () => {
 		await Promise.all([eventCollection.deleteMany({}), stateGraphCollection.deleteMany({})]);
+	});
+
+	// this suite owns its connection instead of the container's, so it has to close it
+	afterAll(async () => {
+		await database.disconnect();
 	});
 
 	const stateService = new StateService(

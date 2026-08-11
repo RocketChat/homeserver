@@ -53,8 +53,11 @@ describe('event schemas', () => {
 	});
 
 	it('resolves a schema for every supported room version', () => {
-		for (const roomVersion of ['3', '4', '5', '6', '7', '8', '9', '10']) {
-			expect(validate({ ...createEvent, content: { room_version: roomVersion, creator: '@admin:hs1' } }, roomVersion)).toBe(true);
+		for (const roomVersion of PersistentEventFactory.supportedRoomVersions) {
+			// creator is required before v11 and dropped from v11 on
+			const content = Number(roomVersion) < 11 ? { room_version: roomVersion, creator: '@admin:hs1' } : { room_version: roomVersion };
+
+			expect(validate({ ...createEvent, content }, roomVersion)).toBe(true);
 		}
 	});
 

@@ -92,13 +92,11 @@ describe('checkSignAndHashes', () => {
 
 		// v11 keeps the whole m.room.create content
 		await checkSignAndHashes(createPdu, mockOrigin, getPublicKeyFromServerMock, '11');
-		expect(verifyJsonSpy.mock.calls[0][0]).toMatchObject({
-			content: { 'room_version': '11', 'm.federate': false },
-		});
+		expect(verifyJsonSpy.mock.calls[0][0].content).toEqual({ 'room_version': '11', 'm.federate': false });
 
 		// before v11 only creator survives, so the same event redacts to an empty content
 		await checkSignAndHashes(createPdu, mockOrigin, getPublicKeyFromServerMock, '10');
-		expect(verifyJsonSpy.mock.calls[1][0]).toMatchObject({ content: {} });
+		expect(verifyJsonSpy.mock.calls[1][0].content).toEqual({});
 
 		getSignaturesSpy.mockRestore();
 		verifyJsonSpy.mockRestore();
