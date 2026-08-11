@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import { getEventSchemaForType } from './event-schemas';
 
 const base = {
@@ -14,6 +16,7 @@ const base = {
 const createEvent = { ...base, type: 'm.room.create', state_key: '' };
 const redaction = { ...base, type: 'm.room.redaction' };
 const target = '$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA';
+const otherTarget = '$AAAnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA';
 
 function validate(event: object, roomVersion: string) {
 	return getEventSchemaForType((event as { type: string }).type, roomVersion).safeParse(event).success;
@@ -37,6 +40,16 @@ describe('event schemas', () => {
 	it('takes the redaction target from content from v11 on', () => {
 		expect(validate({ ...redaction, content: { redacts: target } }, '11')).toBe(true);
 		expect(validate({ ...redaction, redacts: target, content: {} }, '11')).toBe(false);
+	});
+
+	// rejecting this would mean dropping an event the rest of the federation accepted, so a v11
+	// redaction carrying the legacy top level field is accepted and the field ignored
+	it('tolerates a legacy top level redacts in v11 and resolves the target from content', () => {
+		const withBoth = { ...redaction, redacts: otherTarget, content: { redacts: target } };
+
+		expect(validate(withBoth, '11')).toBe(true);
+
+		expect(PersistentEventFactory.createFromRawEvent(withBoth as never, '11').getRedacts()).toBe(target);
 	});
 
 	it('resolves a schema for every supported room version', () => {

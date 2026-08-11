@@ -107,7 +107,10 @@ const redactionEventSchema = baseEventSchema.extend({
 	content: z.object({ reason: z.string().optional() }).and(anyContent),
 });
 
-// v11 moved the redaction target from the top level into content
+// v11 moved the redaction target from the top level into content. A stray top-level `redacts` is
+// deliberately tolerated rather than rejected: this validates inbound federation traffic, and
+// refusing an event the rest of the federation accepted would drop it from our state and diverge.
+// The field is inert, since only resolveRedacts() reads the target and v11 reads it from content.
 const redactionEventSchemaV11 = baseEventSchema.extend({
 	type: z.literal('m.room.redaction'),
 	content: z.object({ redacts: eventIdSchema, reason: z.string().optional() }).and(anyContent),
