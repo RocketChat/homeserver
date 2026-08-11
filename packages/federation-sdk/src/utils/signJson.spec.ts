@@ -1,12 +1,7 @@
 import { describe, expect, it, test } from 'bun:test';
 
-import {
-	EncryptionValidAlgorithm,
-	generateKeyPairsFromString,
-	pruneEventDict,
-	signJson,
-	verifySignaturesFromRemote,
-} from '@rocket.chat/federation-core';
+import { EncryptionValidAlgorithm, generateKeyPairsFromString, signJson, verifySignaturesFromRemote } from '@rocket.chat/federation-core';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
 
 describe('verifySignaturesFromRemote', async () => {
 	test('it should verify a valid signature', async () => {
@@ -119,37 +114,42 @@ describe('verifySignaturesFromRemote', async () => {
 test('signJson send_join', async () => {
 	const signature = await generateKeyPairsFromString('ed25519 a_yNbw tBD7FfjyBHgT4TwhwzvyS9Dq2Z9ck38RRQKaZ6Sz2z8');
 
+	// the expected signature below comes from real Synapse output, so redacting through the
+	// versioned factory here doubles as a cross-check of our v10 redaction against Synapse
 	const signed = await signJson(
-		pruneEventDict({
-			auth_events: [
-				'$aokhD3KlL_EHZ67626nn_aHMPW9K3T7rvT7IkrZaMbI',
-				'$-aRadmHs-xyc4xVWx38FmlIaM6xafoJsqCj3fVbkO-Q',
-				'$NAL56UfuEcLlL2kjmOYZvd5dQJY59Sxxp3l42iBNenw',
-				'$smcGuuNx478aANd8STTp0bDI94ER93vldR-_mO_KLyU',
-			],
-			prev_events: ['$UqTWV2zA0fLTB2gj9iemXVyjamrt5X6GsSTnCQAtmik'],
-			type: 'm.room.member',
-			room_id: '!JVkUxGlBLsuOwTBUpN:synapse1',
-			sender: '@rodrigo2:synapse2',
-			depth: 10,
+		PersistentEventFactory.createFromRawEvent(
+			{
+				auth_events: [
+					'$aokhD3KlL_EHZ67626nn_aHMPW9K3T7rvT7IkrZaMbI',
+					'$-aRadmHs-xyc4xVWx38FmlIaM6xafoJsqCj3fVbkO-Q',
+					'$NAL56UfuEcLlL2kjmOYZvd5dQJY59Sxxp3l42iBNenw',
+					'$smcGuuNx478aANd8STTp0bDI94ER93vldR-_mO_KLyU',
+				],
+				prev_events: ['$UqTWV2zA0fLTB2gj9iemXVyjamrt5X6GsSTnCQAtmik'],
+				type: 'm.room.member',
+				room_id: '!JVkUxGlBLsuOwTBUpN:synapse1',
+				sender: '@rodrigo2:synapse2',
+				depth: 10,
 
-			content: {
-				membership: 'join',
-				avatar_url: null,
-				displayname: 'rodrigo2',
-			},
+				content: {
+					membership: 'join',
+					avatar_url: null,
+					displayname: 'rodrigo2',
+				},
 
-			hashes: {
-				sha256: 'YBZHC60WOdOVDB2ISkVTnbg/L7J9qYBKWY+lUSZYIUk',
-			},
-			origin: 'synapse2',
-			origin_server_ts: 1732999153019,
+				hashes: {
+					sha256: 'YBZHC60WOdOVDB2ISkVTnbg/L7J9qYBKWY+lUSZYIUk',
+				},
+				origin: 'synapse2',
+				origin_server_ts: 1732999153019,
 
-			state_key: '@rodrigo2:synapse2',
-			unsigned: {
-				age: 2,
+				state_key: '@rodrigo2:synapse2',
+				unsigned: {
+					age: 2,
+				},
 			},
-		}),
+			'10',
+		).redactedEvent,
 		signature,
 		'synapse2',
 	);

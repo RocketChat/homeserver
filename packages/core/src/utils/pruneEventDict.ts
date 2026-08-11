@@ -42,6 +42,10 @@ export type Prettify<T> = {
 	[K in keyof T]: T[K];
 };
 
+// Not exported from the package: this defaults to pre-v11 redaction rules and has no notion of the
+// room version, so signing a v11 event through it produces a signature the spec-correct redaction
+// will reject. Production signing goes through PersistentEventBase.redactedEvent instead; this only
+// survives as scaffolding for the core event specs.
 export function pruneEventDict<T extends Pdu | EventBase>(
 	eventDict: T,
 	roomVersion: RoomVersion = {
