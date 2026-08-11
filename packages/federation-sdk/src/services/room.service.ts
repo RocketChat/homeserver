@@ -890,7 +890,11 @@ export class RoomService {
 		// that's why we handle it manually instead of calling this.leaveRoom
 		const { event: leaveTemplate, room_version } = await this.federationService.makeLeave(invitingServer, roomId, userId);
 
-		const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(leaveTemplate, room_version);
+		// same as the make_join template: origin is not a PDU field, drop whatever the remote put
+		// there instead of signing their hostname back as the origin of our own event
+		const { origin: _origin, ...template } = leaveTemplate as PduForType<'m.room.member'> & { origin?: string };
+
+		const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(template, room_version);
 
 		await this.stateService.signEvent(leaveEvent);
 
