@@ -473,6 +473,8 @@ export class RoomService {
 			throw new HttpException('Room has no history, cannot update power levels', HttpStatus.BAD_REQUEST);
 		}
 
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+
 		const event = await this.stateService.buildEvent<'m.room.power_levels'>(
 			{
 				type: 'm.room.power_levels',
@@ -491,7 +493,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			await this.stateService.getRoomVersion(roomId),
+			roomVersion,
 		);
 
 		await this.stateService.handlePdu(event);
@@ -1116,6 +1118,8 @@ export class RoomService {
 
 		const authEventsArray = Object.values(authEventsMap).filter((event) => event !== undefined) as EventID[];
 
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+
 		const event = await this.stateService.buildEvent<'m.room.tombstone'>(
 			{
 				room_id: roomId,
@@ -1133,7 +1137,7 @@ export class RoomService {
 				signatures: {},
 				type: 'm.room.tombstone',
 			},
-			await this.stateService.getRoomVersion(roomId),
+			roomVersion,
 		);
 
 		const _stateId = await this.stateService.handlePdu(event);
