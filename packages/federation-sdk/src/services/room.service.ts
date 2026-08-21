@@ -733,9 +733,7 @@ export class RoomService {
 		// after receiving the join event we need to populate with local user profile
 		const profile = await this.profilesService.queryProfile(userId);
 
-		// origin is not a PDU field, drop whatever the resident server put in the template
-		// instead of signing it back
-		const { origin: _origin, ...template } = makeJoinResponse.event as PduForType<'m.room.member'> & { origin?: string };
+		const { event: template } = makeJoinResponse;
 
 		template.content = {
 			...template.content,
