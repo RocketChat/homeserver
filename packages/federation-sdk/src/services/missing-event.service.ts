@@ -1,5 +1,5 @@
 import { createLogger } from '@rocket.chat/federation-core';
-import { EventID } from '@rocket.chat/federation-room';
+import { EventID, RoomID } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { EventFetcherService } from './event-fetcher.service';
@@ -8,7 +8,7 @@ import { StateService } from './state.service';
 
 type MissingEventType = {
 	eventId: EventID;
-	roomId: string;
+	roomId: RoomID;
 	origin: string;
 };
 

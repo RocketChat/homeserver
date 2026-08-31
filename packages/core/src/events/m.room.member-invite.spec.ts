@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import { roomMemberEvent } from './m.room.member';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -117,7 +118,7 @@ test('roomMemberInviteEvent', async () => {
 		'8/qPp2d0PTc4bVMNdbTl32OSFnNqXan9ACQr1QcDV3SgdsDnm+sZv2mXW8rdhIOLOohRG2cED0+1aNxV7VH2Cw',
 	);
 
-	const memberEventId = generateId(signed);
+	const memberEventId = PersistentEventFactory.createFromRawEvent(signed as any, '10').eventId;
 
 	expect(memberEventId).toBe(finalEventId);
 });

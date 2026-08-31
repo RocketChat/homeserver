@@ -1,4 +1,4 @@
-import { createLogger, extractSignaturesFromHeader, generateId, validateAuthorizationHeader } from '@rocket.chat/federation-core';
+import { createLogger, extractSignaturesFromHeader, validateAuthorizationHeader } from '@rocket.chat/federation-core';
 import type { EventID, Pdu, PersistentEventBase, RoomID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
@@ -32,7 +32,7 @@ export class EventAuthorizationService {
 	) {}
 
 	async authorizeEvent(event: Pdu, authEvents: Pdu[]): Promise<boolean> {
-		this.logger.debug(`Authorizing event ${generateId(event)} of type ${event.type}`);
+		this.logger.debug(`Authorizing event of type ${event.type} in room ${event.room_id}`);
 
 		// Simple implementation - would need proper auth rules based on Matrix spec
 		// https://spec.matrix.org/v1.7/server-server-api/#checks-performed-on-receipt-of-a-pdu

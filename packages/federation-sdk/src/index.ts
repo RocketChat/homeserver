@@ -70,7 +70,7 @@ export type {
 // Utility exports
 export { getErrorMessage } from './utils/get-error-message';
 export { USERNAME_REGEX, ROOM_ID_REGEX } from './utils/validation-regex';
-export { eventSchemas, roomV10Schemas, type BaseEventType } from './utils/event-schemas';
+export { eventSchemas, roomV10Schemas, roomV11Schemas, type BaseEventType } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
 export { FederationValidationService, FederationValidationError } from './services/federation-validation.service';

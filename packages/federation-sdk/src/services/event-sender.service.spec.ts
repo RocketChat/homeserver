@@ -7,7 +7,7 @@ import type { PersistentEventBase, RoomID, UserID } from '@rocket.chat/federatio
 
 import { EventSenderService } from './event-sender.service';
 import type { FederationService } from './federation.service';
-import type { StateService } from './state.service';
+import { type StateService, UnknownRoomError } from './state.service';
 
 const ROOM_ID = '!room:example.com' as RoomID;
 const SENDER = '@bridge:example.com' as UserID;
@@ -79,12 +79,14 @@ describe('EventSenderService.sendCustomEvent', () => {
 		expect(routePersistent).not.toHaveBeenCalled();
 	});
 
-	test('throws when the room version cannot be resolved', async () => {
-		getRoomVersion.mockResolvedValueOnce(undefined);
+	test('propagates the error when the room version cannot be resolved', async () => {
+		// getRoomVersion throws on an unknown room rather than resolving undefined
+		getRoomVersion.mockRejectedValueOnce(new UnknownRoomError(ROOM_ID));
 
-		await expect(service.sendCustomEvent(ROOM_ID, 'org.matrix.bridge.ping', {}, SENDER)).rejects.toThrow(/Room version not found/);
+		await expect(service.sendCustomEvent(ROOM_ID, 'org.matrix.bridge.ping', {}, SENDER)).rejects.toThrow(UnknownRoomError);
 
 		expect(buildEvent).not.toHaveBeenCalled();
+		expect(handlePdu).not.toHaveBeenCalled();
 	});
 
 	test('throws and does not federate when the built event is rejected', async () => {

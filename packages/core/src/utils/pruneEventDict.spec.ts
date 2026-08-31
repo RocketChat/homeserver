@@ -38,6 +38,12 @@ const event = {
 	origin: 'synapse2',
 };
 
+// TODO: pruneEventDict and signEvent's `prune` flag should go away entirely, replaced by
+// PersistentEventFactory.createFromRawEvent(event, roomVersion).redactedEvent. Blocked on migrating
+// the 28 remaining signEvent(..., prune=true) call sites in packages/core/src/events/*.spec.ts.
+// m.room.create.spec.ts already signs the same fixture both ways and gets an identical signature, so
+// the migration should preserve every hardcoded signature fixture rather than require regenerating
+// them — a failure there would be a real divergence between the two redaction implementations.
 describe('pruneEventDict', () => {
 	test('m.room.member', () => {
 		const result = pruneEventDict(event.content);

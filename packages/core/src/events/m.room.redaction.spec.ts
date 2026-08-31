@@ -1,8 +1,9 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import type { EventBase } from './eventBase';
 import { isRedactionEvent, redactionEvent } from './m.room.redaction';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -79,12 +80,14 @@ test('redactionEvent', async () => {
 	expect(redaction.redacts).toBe('$8ftnUd9WTPTQGbdPgfOPea8bOEQ21qPvbcGqeOApQxA');
 
 	const signedRedaction = await signEvent(redaction, signature, 'rc1');
-	const redactionEventId = generateId(signedRedaction);
+	const redactionEventId = PersistentEventFactory.createFromRawEvent(signedRedaction as any, '10').eventId;
 
 	// Verify basic event structure after signing
 	expect(signedRedaction.type).toBe('m.room.redaction');
 	expect(signedRedaction.content.reason).toBe('Inappropriate content');
 	expect(signedRedaction.room_id).toBe('!MZyyuzkUwHEaBBOXai:hs1');
 	expect(signedRedaction.sender).toBe('@user:rc1');
-	expect(redactionEventId).toBeDefined();
+	// pinned from this implementation rather than captured from Synapse: it guards against
+	// unintended changes to the id computation, it does not prove the id is spec correct
+	expect(redactionEventId).toBe('$eXeXxVHTKQn0Q52ro1_abGTKsRtLD2h1b-ZtyzeVNXA');
 });

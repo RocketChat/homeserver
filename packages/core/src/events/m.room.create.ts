@@ -1,5 +1,4 @@
 import { type EventBase, createEventBase } from './eventBase';
-import { createEventWithId } from './utils/createSignedEvent';
 
 export interface RoomCreateEvent extends EventBase {
 	content: {
@@ -37,7 +36,5 @@ export const roomCreateEvent = ({ roomId, sender, ts = Date.now() }: RoomCreateE
 		origin_server_ts: ts,
 		unsigned: { age_ts: ts },
 	});
-
-export const createRoomCreateEvent = createEventWithId((...args: any[]) => roomCreateEvent(args[0]));
 
 export const isRoomCreateEvent = (event: EventBase): event is RoomCreateEvent => event.type === 'm.room.create';

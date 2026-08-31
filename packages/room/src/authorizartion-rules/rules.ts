@@ -51,11 +51,11 @@ function isCreateAllowed(createEvent: PersistentEventBase<RoomVersion, 'm.room.c
 		});
 	}
 
-	// If content has no creator property, reject.
-	if (!content.creator) {
+	// If the event has no creator, reject. Where the creator comes from is version specific.
+	if (!createEvent.getCreator()) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: createEvent,
-			reason: 'm.room.create event content has no creator property',
+			reason: 'm.room.create event has no creator',
 		});
 	}
 }
@@ -152,7 +152,7 @@ async function isMembershipChangeAllowed(
 			if (previousEvents.length === 1) {
 				const [event] = previousEvents;
 
-				if (event.isCreateEvent() && event.getContent().creator === membershipEventToCheck.stateKey) {
+				if (event.isCreateEvent() && event.getCreator() === membershipEventToCheck.stateKey) {
 					return;
 				}
 			}

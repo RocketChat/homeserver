@@ -104,7 +104,8 @@ export const PduCreateEventContentSchema = z.object({
 		.string()
 		.describe(
 			' The user_id of the room creator. Required for, and only present in, room versions 1 - 10. Starting with room version 11 the event sender should be used instead.',
-		),
+		)
+		.optional(),
 	'm.federate': z
 		.boolean()
 		.describe(' Whether users on other servers can join this room. Defaults to true if key does not exist.')
@@ -162,6 +163,8 @@ export type PduRoomTopicEventContent = z.infer<typeof PduRoomTopicEventContentSc
 
 export const PduRoomRedactionContentSchema = z.object({
 	reason: z.string().optional(),
+	// only present from room version 11 on, before that the target is a top level field
+	redacts: eventIdSchema.describe('The ID of the event that this event redacts.').optional(),
 });
 
 export type PduRoomRedactionContent = z.infer<typeof PduRoomRedactionContentSchema>;
@@ -564,7 +567,8 @@ const EventPduTypeRoomRedaction = z.object({
 	...PduNoContentTimelineEventSchema,
 	type: z.literal('m.room.redaction'),
 	content: PduRoomRedactionContentSchema,
-	redacts: eventIdSchema.describe('event id'),
+	// dropped as a top level field in room version 11, where it lives in content
+	redacts: eventIdSchema.describe('event id').optional(),
 });
 
 export const EventPduTypeRoomAvatar = z.object({

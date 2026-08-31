@@ -9,6 +9,7 @@ import type {
 	PduPowerLevelsEventContent,
 	PduRoomNameEventContent,
 	PersistentEventBase,
+	RoomID,
 	RoomVersion,
 } from '@rocket.chat/federation-room';
 import * as room from '@rocket.chat/federation-room';
@@ -18,7 +19,7 @@ import { type WithId } from 'mongodb';
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
 import type { EventNotifierService } from './event-notifier.service';
-import { StateService } from './state.service';
+import { StateService, UnknownRoomError } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import type { StateGraphStore } from '../repositories/state-graph.repository';
@@ -756,7 +757,7 @@ describe('StateService', async () => {
 		const stateAtEvent = new Map<EventID, State>();
 
 		const { roomId } = roomCreateEvent;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 
 		const state = await stateService.getLatestRoomState(roomId);
 
@@ -806,7 +807,7 @@ describe('StateService', async () => {
 		const roomNameEvent2 = await stateService.buildEvent<'m.room.name'>(
 			{
 				room_id: roomId,
-				sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+				sender: roomCreateEvent.getCreator() as room.UserID,
 				content: { name: newRoomName },
 				state_key: '',
 				type: 'm.room.name',
@@ -842,7 +843,7 @@ describe('StateService', async () => {
 			},
 			roomCreateEvent.getContent().room_version,
 		);
-		expect(stateService.handlePdu(roomNameEvent3)).rejects.toThrow();
+		await expect(stateService.handlePdu(roomNameEvent3)).rejects.toThrow();
 		const state8 = await stateService.getLatestRoomState(roomId);
 		expect(state8.size).toBe(9); // same as before, bob was banned can't change name
 		compareStates(state7, state8);
@@ -871,15 +872,17 @@ describe('StateService', async () => {
 		compareStates(stateAtMessage, state9);
 	});
 
-	it('01 should return the correct room information for room id', async () => {
-		expect(stateService.getRoomInformation('abcd')).rejects.toThrowError(/Create event mapping not found/);
+	it('01 should return the create event wrapper for room id', async () => {
+		await expect(stateService.getCreateEvent('abcd' as RoomID)).rejects.toThrowError(UnknownRoomError);
 
 		const { roomCreateEvent } = await createRoom('public');
 
-		expect(stateService.getRoomInformation(roomCreateEvent.roomId)).resolves.toHaveProperty(
-			'creator',
-			roomCreateEvent.getContent<PduCreateEventContent>().creator,
-		);
+		const createEvent = await stateService.getCreateEvent(roomCreateEvent.roomId);
+
+		expect(createEvent.eventId).toBe(roomCreateEvent.eventId);
+		expect(createEvent.version).toBe(roomCreateEvent.version);
+		// the accessor resolves the creator per version, callers never read content.creator
+		expect(createEvent.getCreator()).toBe(roomCreateEvent.getCreator());
 	});
 
 	it('02 should get the correct room version', async () => {
@@ -889,7 +892,7 @@ describe('StateService', async () => {
 
 		expect(roomVersion).toBe(roomCreateEvent.getContent<PduCreateEventContent>().room_version as RoomVersion);
 
-		expect(stateService.getRoomVersion('roomId')).rejects.toThrowError();
+		await expect(stateService.getRoomVersion('roomId' as RoomID)).rejects.toThrowError(UnknownRoomError);
 	});
 
 	it('03 should find the correct state at an event', async () => {
@@ -983,7 +986,7 @@ describe('StateService', async () => {
 			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
 		);
 
-		expect(stateService.handlePdu(membershipEvent)).rejects.toThrow();
+		await expect(stateService.handlePdu(membershipEvent)).rejects.toThrow();
 
 		expect(membershipEvent.rejected).toBeTrue();
 		expect(membershipEvent.rejectCode).toBe(RejectCodes.AuthError);
@@ -993,7 +996,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com' as room.UserID;
 
-		await inviteUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getContent<PduCreateEventContent>().creator);
+		await inviteUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getCreator());
 
 		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).isUserInvited(newUser)).toBeTrue();
 
@@ -1011,7 +1014,7 @@ describe('StateService', async () => {
 
 		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).isUserInRoom(newUser)).toBeTrue();
 
-		await banUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getContent<PduCreateEventContent>().creator);
+		await banUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getCreator());
 
 		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).getUserMembership(newUser)).toBe('ban');
 
@@ -1027,7 +1030,7 @@ describe('StateService', async () => {
 			roomCreateEvent.getContent<PduCreateEventContent>().room_version,
 		);
 
-		expect(stateService.handlePdu(membershipEventJoin2)).rejects.toThrow();
+		await expect(stateService.handlePdu(membershipEventJoin2)).rejects.toThrow();
 		expect(membershipEventJoin2.rejected).toBeTrue();
 		expect(membershipEventJoin2.rejectCode).toBe(RejectCodes.AuthError);
 	});
@@ -1039,7 +1042,7 @@ describe('StateService', async () => {
 		const bob = '@bob:example.com' as room.UserID;
 		await joinUser(roomCreateEvent.roomId, bob);
 		// ban bob now
-		const banBobEvent = await banUser(roomCreateEvent.roomId, bob, roomCreateEvent.getContent<PduCreateEventContent>().creator);
+		const banBobEvent = await banUser(roomCreateEvent.roomId, bob, roomCreateEvent.getCreator());
 
 		const state1 = await stateService.getLatestRoomState2(roomCreateEvent.roomId);
 		expect(state1.getUserMembership(bob)).toBe('ban');
@@ -1071,7 +1074,7 @@ describe('StateService', async () => {
 		// biome-ignore lint/complexity/noForEach: <explanation>
 		authEventsForBobBan.forEach((e) => bobLeaveEvent.authedBy(e));
 
-		expect(stateService.handlePdu(bobLeaveEvent)).rejects.toThrow();
+		await expect(stateService.handlePdu(bobLeaveEvent)).rejects.toThrow();
 		expect(bobLeaveEvent.rejected).toBeTrue();
 		expect(bobLeaveEvent.rejectCode).toBe(RejectCodes.AuthError);
 	});
@@ -1213,7 +1216,7 @@ describe('StateService', async () => {
 			{
 				type: 'm.room.power_levels',
 				room_id: roomCreateEvent.roomId,
-				sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+				sender: roomCreateEvent.getCreator() as room.UserID,
 				state_key: '',
 				content: powerLevelContent,
 				...getDefaultFields(),
@@ -1254,7 +1257,7 @@ describe('StateService', async () => {
 				{
 					type: 'm.room.member',
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+					sender: roomCreateEvent.getCreator() as room.UserID,
 					state_key: bob,
 					content: { membership: 'ban' },
 					...getDefaultFields(),
@@ -1301,7 +1304,7 @@ describe('StateService', async () => {
 			await stateService.buildEvent<'m.room.join_rules'>(
 				{
 					room_id: roomCreateEvent.roomId,
-					sender: roomCreateEvent.getContent<PduCreateEventContent>().creator as room.UserID,
+					sender: roomCreateEvent.getCreator() as room.UserID,
 					content: { join_rule: 'invite' },
 					type: 'm.room.join_rules',
 					state_key: '',
@@ -1383,7 +1386,7 @@ describe('StateService', async () => {
 
 	// 	const newPowerLevelEvent = PersistentEventFactory.newPowerLevelEvent(
 	// 		roomCreateEvent.roomId,
-	// 		roomCreateEvent.getContent<PduCreateEventContent>().creator,
+	// 		roomCreateEvent.getCreator(),
 	// 		powerLevelContent,
 	// 		PersistentEventFactory.defaultRoomVersion,
 	// 	);
@@ -1480,7 +1483,7 @@ describe('StateService', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const { roomId } = roomCreateEvent;
 		const roomVersion = roomCreateEvent.getContent().room_version;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 
 		const referenceDepthEvent = await joinUser(roomId, '@dummy:example.com');
 
@@ -1538,7 +1541,7 @@ describe('StateService', async () => {
 	it('should consider previously rejected event as part of state if new out of order event allows it', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const { roomId } = roomCreateEvent;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 		const roomVersion = roomCreateEvent.version;
 
 		// make bob join
@@ -1603,7 +1606,7 @@ describe('StateService', async () => {
 
 		const { roomId } = roomCreateEvent;
 		const roomVersion = roomCreateEvent.version;
-		const creator = roomCreateEvent.getContent().creator as room.UserID;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
 
 		await joinUser(roomId, don);
 
@@ -1661,7 +1664,7 @@ describe('StateService', async () => {
 		// a new event that
 		roomName.addPrevEvents([bobJoin, donBan]);
 
-		expect(stateService.handlePdu(roomName)).rejects.toThrowError();
+		await expect(stateService.handlePdu(roomName)).rejects.toThrowError();
 
 		const state2 = await stateService.getStateAtEvent(roomName);
 		// must not be new name

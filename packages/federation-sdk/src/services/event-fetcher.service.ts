@@ -1,9 +1,10 @@
-import { isFederationEventWithPDUs, createLogger, generateId } from '@rocket.chat/federation-core';
-import { EventID, Pdu } from '@rocket.chat/federation-room';
+import { isFederationEventWithPDUs, createLogger } from '@rocket.chat/federation-core';
+import { EventID, Pdu, PersistentEventFactory, RoomID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
 import { FederationService } from './federation.service';
+import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 
 export interface FetchedEvents {
@@ -20,9 +21,10 @@ export class EventFetcherService {
 		private readonly eventRepository: EventRepository,
 		private readonly federationService: FederationService,
 		private readonly configService: ConfigService,
+		private readonly stateService: StateService,
 	) {}
 
-	public async fetchEventsByIds(eventIds: EventID[], roomId: string, originServer: string): Promise<FetchedEvents> {
+	public async fetchEventsByIds(eventIds: EventID[], roomId: RoomID, originServer: string): Promise<FetchedEvents> {
 		this.logger.debug(`Fetching ${eventIds.length} events for room ${roomId}`);
 
 		if (!eventIds || eventIds.length === 0) {
@@ -57,8 +59,10 @@ export class EventFetcherService {
 			);
 			const federationEvents = await this.fetchEventsFromFederation(missingEventIds, originServer);
 
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
+
 			const federationEventsWithIds = federationEvents.map((e) => ({
-				eventId: generateId(e),
+				eventId: PersistentEventFactory.createFromRawEvent(e, roomVersion).eventId,
 				event: e,
 			}));
 

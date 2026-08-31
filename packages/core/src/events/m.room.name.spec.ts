@@ -1,12 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 
+import type { Pdu } from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import type { SignedEvent } from '../types';
 import { roomCreateEvent } from './m.room.create';
 import { roomMemberEvent } from './m.room.member';
 import { type RoomNameEvent, roomNameEvent } from './m.room.name';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
+
+const eventIdOf = (event: unknown) => PersistentEventFactory.createFromRawEvent(event as Pdu, '10').eventId;
 
 const finalEventId = '$JdX_s3d4CORV_BfkatJxF_lUfzJoKjzQXTP0NGtVj1E';
 const finalEventPlaceholder: SignedEvent<RoomNameEvent> = {
@@ -55,7 +59,7 @@ describe('roomNameEvent', () => {
 			ts: exampleTimestamp - 2000, // No explicit content needed here
 		});
 		const signedCreateEvent = await signEvent(createEventPayload, signingKey, serverName);
-		const createEventId = generateId(signedCreateEvent);
+		const createEventId = eventIdOf(signedCreateEvent);
 
 		// 2. Mock Power Levels Event ID (as in m.room.message.spec.ts)
 		const powerLevelsEventId = '$placeholder_power_levels_event_id';
@@ -73,7 +77,7 @@ describe('roomNameEvent', () => {
 			prev_events: [createEventId],
 		});
 		const signedMemberEvent = await signEvent(memberEventPayload, signingKey, serverName);
-		const memberEventId = generateId(signedMemberEvent);
+		const memberEventId = eventIdOf(signedMemberEvent);
 
 		// 4. Room Name Event
 		const roomNamePayload = roomNameEvent({
@@ -92,7 +96,7 @@ describe('roomNameEvent', () => {
 		});
 
 		const signedRoomNameEvent = await signEvent(roomNamePayload, signingKey, serverName);
-		const generatedEventId = generateId(signedRoomNameEvent);
+		const generatedEventId = eventIdOf(signedRoomNameEvent);
 
 		expect(finalEventId).toBe(generatedEventId);
 		expect({

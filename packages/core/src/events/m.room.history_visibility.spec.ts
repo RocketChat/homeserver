@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import { roomHistoryVisibilityEvent } from './m.room.history_visibility';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -56,7 +57,7 @@ test('roomHistoryVisibilityEvent', async () => {
 		'ZHzOfPU2BYDilKSrt5zqMBC9ohZtHph4uLldOIzBY/oTO1pZCp3D9CRr04h5eJ7zkkuzkNv4y8+N0TDPNMHFBg',
 	);
 
-	const eventId = generateId(signed);
+	const { eventId } = PersistentEventFactory.createFromRawEvent(signed as any, '10');
 
 	expect(eventId).toBe(finalEventId);
 });

@@ -1,7 +1,6 @@
 import type { EventID } from '@rocket.chat/federation-room';
 
 import { type EventBase, createEventBase } from './eventBase';
-import { createEventWithId } from './utils/createSignedEvent';
 
 export type TextMessageType = 'm.text' | 'm.emote' | 'm.notice';
 export type FileMessageType = 'm.image' | 'm.file' | 'm.audio' | 'm.video';
@@ -164,5 +163,3 @@ export const roomMessageEvent = ({
 		unsigned: { age_ts: ts, ...unsigned },
 	});
 };
-
-export const createRoomMessageEvent = createEventWithId(roomMessageEvent);

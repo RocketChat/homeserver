@@ -1,4 +1,4 @@
-import { eventIdSchema, roomIdSchema, userIdSchema } from '@rocket.chat/federation-room';
+import { PersistentEventFactory, eventIdSchema, roomIdSchema, userIdSchema } from '@rocket.chat/federation-room';
 import * as z from 'zod';
 
 const baseEventSchema = z.object({
@@ -18,6 +18,8 @@ const baseEventSchema = z.object({
 	unsigned: z.any().optional(),
 });
 
+const anyContent = z.record(z.string(), z.any());
+
 const createEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.create'),
 	state_key: z.literal(''),
@@ -26,9 +28,14 @@ const createEventSchema = baseEventSchema.extend({
 			room_version: z.string(),
 			creator: userIdSchema,
 		})
-		.and(z.record(z.string(), z.any())),
+		.and(anyContent),
 	prev_events: z.array(z.any()).max(0).optional(),
 	auth_events: z.array(z.any()).max(0).optional(),
+});
+
+// v11 removed content.creator, the create event's sender is the creator instead
+const createEventSchemaV11 = createEventSchema.extend({
+	content: z.object({ room_version: z.string() }).and(anyContent),
 });
 
 const memberEventSchema = baseEventSchema.extend({
@@ -97,14 +104,19 @@ const joinRulesEventSchema = baseEventSchema.extend({
 const redactionEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.redaction'),
 	redacts: eventIdSchema,
-	content: z
-		.object({
-			reason: z.string().optional(),
-		})
-		.and(z.record(z.string(), z.any())),
+	content: z.object({ reason: z.string().optional() }).and(anyContent),
 });
 
-const roomV10Schemas = {
+// v11 moved the redaction target from the top level into content. A stray top-level `redacts` is
+// deliberately tolerated rather than rejected: this validates inbound federation traffic, and
+// refusing an event the rest of the federation accepted would drop it from our state and diverge.
+// The field is inert, since only resolveRedacts() reads the target and v11 reads it from content.
+const redactionEventSchemaV11 = baseEventSchema.extend({
+	type: z.literal('m.room.redaction'),
+	content: z.object({ redacts: eventIdSchema, reason: z.string().optional() }).and(anyContent),
+});
+
+const roomV10Schemas: Record<string, z.ZodSchema> = {
 	'm.room.create': createEventSchema,
 	'm.room.member': memberEventSchema,
 	'm.room.message': messageEventSchema,
@@ -115,21 +127,32 @@ const roomV10Schemas = {
 	'default': baseEventSchema,
 };
 
-export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = {
-	'10': roomV10Schemas,
+const roomV11Schemas: Record<string, z.ZodSchema> = {
+	...roomV10Schemas,
+	'm.room.create': createEventSchemaV11,
+	'm.room.redaction': redactionEventSchemaV11,
 };
+
+// v11 is the only version that changed the shape of an event we validate, and later
+// versions inherit its format, so an unrecognised version resolves to the v11 set
+function schemasForRoomVersion(roomVersion?: string): Record<string, z.ZodSchema> {
+	return Number(roomVersion) < 11 ? roomV10Schemas : roomV11Schemas;
+}
+
+export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = Object.fromEntries(
+	PersistentEventFactory.supportedRoomVersions.map((roomVersion) => [roomVersion, schemasForRoomVersion(roomVersion)]),
+);
 
 /**
  * Resolve the validation schema for an event type. Known types resolve to their
  * specific schema; unknown ("custom") types fall back to the permissive base
- * schema, which the Matrix spec allows. Room versions without a dedicated schema
- * set fall back to the canonical v10 schemas (currently the only set defined).
+ * schema, which the Matrix spec allows.
  */
 export function getEventSchemaForType(eventType: string, roomVersion?: string): z.ZodSchema {
-	const versionSchemas = (roomVersion && eventSchemas[roomVersion]) || eventSchemas['10'];
+	const versionSchemas = schemasForRoomVersion(roomVersion);
 	return versionSchemas[eventType] ?? versionSchemas.default;
 }
 
-export { roomV10Schemas };
+export { roomV10Schemas, roomV11Schemas };
 
 export type BaseEventType = z.infer<typeof baseEventSchema>;

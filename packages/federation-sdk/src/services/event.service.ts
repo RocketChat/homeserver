@@ -5,18 +5,9 @@ import type {
 	RoomPowerLevelsEvent,
 	ReceiptEDU,
 	TypingEDU,
-	RedactionEvent,
 	EventStore,
 } from '@rocket.chat/federation-core';
-import {
-	isPresenceEDU,
-	isReceiptEDU,
-	isTypingEDU,
-	generateId,
-	pruneEventDict,
-	checkSignAndHashes,
-	createLogger,
-} from '@rocket.chat/federation-core';
+import { isPresenceEDU, isReceiptEDU, isTypingEDU, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type Pdu,
@@ -29,7 +20,6 @@ import {
 	getAuthChain,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
-import type { z } from 'zod';
 
 import { ConfigService } from './config.service';
 import { EventEmitterService } from './event-emitter.service';
@@ -39,7 +29,7 @@ import { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { eventSchemas } from '../utils/event-schemas';
+import { getEventSchemaForType } from '../utils/event-schemas';
 
 export interface AuthEventParams {
 	roomId: string;
@@ -70,6 +60,20 @@ export class EventService {
 			return (this.eventRepository.findByIdAndType(eventId, type) ?? null) as Promise<P>;
 		}
 		return (this.eventRepository.findById(eventId) ?? null) as Promise<P>;
+	}
+
+	// which event a redaction targets. consumers must not read the field themselves: it is a top
+	// level field before room v11 and lives in content from v11 on, and only the room knows which
+	async getRedactionTarget(eventId: EventID): Promise<EventID | undefined> {
+		const redaction = await this.getEventById(eventId, 'm.room.redaction');
+		if (!redaction) {
+			this.logger.warn(`No redaction event found with id ${eventId}`);
+			return undefined;
+		}
+
+		const roomVersion = await this.stateService.getRoomVersion(redaction.event.room_id);
+
+		return PersistentEventFactory.createFromRawEvent(redaction.event, roomVersion).getRedacts();
 	}
 
 	async checkIfEventsExists(eventIds: EventID[]): Promise<{ missing: EventID[]; found: EventID[] }> {
@@ -152,7 +156,7 @@ export class EventService {
 				return roomIdToRoomVersionmap.get(roomId) as RoomVersion;
 			}
 
-			const roomVersion = await this.getRoomVersion({ room_id: roomId });
+			const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 			roomIdToRoomVersionmap.set(roomId, roomVersion);
 
@@ -215,10 +219,7 @@ export class EventService {
 	}
 
 	private async validateEvent(event: Pdu): Promise<void> {
-		const roomVersion = await this.getRoomVersion(event);
-		if (!roomVersion) {
-			throw new Error('M_UNKNOWN_ROOM_VERSION');
-		}
+		const roomVersion = await this.stateService.getRoomVersion(event.room_id);
 
 		if (event.type === 'm.room.member' && event.content.membership === 'invite' && 'third_party_invite' in event.content) {
 			throw new Error('Third party invites are not supported');
@@ -229,7 +230,7 @@ export class EventService {
 			throw new Error('Event sender is missing domain');
 		}
 
-		const eventSchema = this.getEventSchema(roomVersion, event.type);
+		const eventSchema = getEventSchemaForType(event.type, roomVersion);
 
 		const validationResult = eventSchema.safeParse(event);
 		if (!validationResult.success) {
@@ -256,9 +257,14 @@ export class EventService {
 			throw new Error('M_MISSING_SIGNATURES_OR_HASHES');
 		}
 
-		await checkSignAndHashes(event, origin, (origin, key) => {
-			return this.serverService.getPublicKey(origin, key);
-		});
+		await checkSignAndHashes(
+			event,
+			origin,
+			(origin, key) => {
+				return this.serverService.getPublicKey(origin, key);
+			},
+			roomVersion,
+		);
 	}
 
 	private async processIncomingEDUs(edus: BaseEDU[]): Promise<void> {
@@ -433,11 +439,8 @@ export class EventService {
 
 			if (!event.content || !event.content.room_version) {
 				errors.push('Create event must specify a room_version');
-			} else {
-				const validRoomVersions = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
-				if (typeof event.content.room_version !== 'string' || !validRoomVersions.includes(event.content.room_version)) {
-					errors.push(`Unsupported room version: ${event.content.room_version}`);
-				}
+			} else if (!PersistentEventFactory.isSupportedRoomVersion(event.content.room_version)) {
+				errors.push(`Unsupported room version: ${event.content.room_version}`);
 			}
 		}
 
@@ -447,24 +450,6 @@ export class EventService {
 	private extractDomain(id: string): string {
 		const parts = id.split(':');
 		return parts.length > 1 ? parts[1] : '';
-	}
-
-	private async getRoomVersion(event: Pick<Pdu, 'room_id'>) {
-		return this.stateService.getRoomVersion(event.room_id) || PersistentEventFactory.defaultRoomVersion;
-	}
-
-	private getEventSchema(roomVersion: string, eventType: string): z.ZodSchema {
-		const versionSchemas = eventSchemas[roomVersion];
-		if (!versionSchemas) {
-			throw new Error(`Unsupported room version: ${roomVersion}`);
-		}
-
-		const schema = versionSchemas[eventType] || versionSchemas.default;
-		if (!schema) {
-			throw new Error(`No schema available for event type ${eventType} in room version ${roomVersion}`);
-		}
-
-		return schema;
 	}
 
 	async getLastEventForRoom(roomId: string): Promise<EventStore | null> {
@@ -549,10 +534,12 @@ export class EventService {
 		return authEvents;
 	}
 
-	async processRedaction(redactionEvent: RedactionEvent): Promise<void> {
-		const eventIdToRedact = redactionEvent.redacts;
+	async processRedaction(redactionEvent: PduForType<'m.room.redaction'>): Promise<void> {
+		const roomVersion = await this.stateService.getRoomVersion(redactionEvent.room_id);
+
+		const eventIdToRedact = PersistentEventFactory.createFromRawEvent(redactionEvent, roomVersion).getRedacts();
 		if (!eventIdToRedact) {
-			this.logger.error(`[REDACTION] Event is missing 'redacts' field: ${generateId(redactionEvent)}`);
+			this.logger.error(`[REDACTION] Event is missing its redaction target in room ${redactionEvent.room_id}`);
 			return;
 		}
 
@@ -562,42 +549,13 @@ export class EventService {
 			return;
 		}
 
-		// Apply redaction rules according to Matrix spec for room versions 6 and above
-		// These parameters correspond to the features in newer room versions (v6+):
-		// - updated_redaction_rules: Uses stricter redaction rules from v6+
-		// - restricted_join_rule_fix: Preserves "authorising_user" field in membership events (v8+)
-		// - restricted_join_rule: Preserves "allow" field in join rules (v7+)
-		// - special_case_aliases_auth: Special handling for aliases events (v6+)
-		// - msc3389_relation_redactions: Preserves certain relation data per MSC3389 (v9+)
-		const redactedEventContent = pruneEventDict(eventToRedact.event, {
-			updated_redaction_rules: true,
-			restricted_join_rule_fix: true,
-			implicit_room_creator: false,
-			restricted_join_rule: true,
-			special_case_aliases_auth: true,
-			msc3389_relation_redactions: true,
-		});
+		const { redactedEvent } = PersistentEventFactory.createFromRawEvent(eventToRedact.event, roomVersion);
 
 		// According to Matrix spec, redacted events must contain a reference to what redacted them
 		// in the unsigned section of the event
-		if (!redactedEventContent.unsigned) {
-			redactedEventContent.unsigned = {};
-		}
+		redactedEvent.unsigned = { ...redactedEvent.unsigned, redacted_because: redactionEvent };
 
-		// Store the redaction event in the redacted_because field as specified in the Matrix spec
-		redactedEventContent.unsigned.redacted_because = redactionEvent;
-
-		await this.eventRepository.redactEvent(eventIdToRedact, {
-			...redactedEventContent,
-			room_id: eventToRedact.event.room_id,
-			sender: eventToRedact.event.sender,
-			// TODO: check what to do with origin
-			// origin: eventToRedact.event.sender.split(':')[1],
-			origin_server_ts: eventToRedact.event.origin_server_ts,
-			depth: eventToRedact.event.depth,
-			prev_events: eventToRedact.event.prev_events,
-			auth_events: eventToRedact.event.auth_events,
-		} as typeof eventToRedact.event);
+		await this.eventRepository.redactEvent(eventIdToRedact, redactedEvent as typeof eventToRedact.event);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
 	}

@@ -1,10 +1,14 @@
 import { expect, test } from 'bun:test';
 
+import type { Pdu } from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import { roomCreateEvent } from './m.room.create';
 import { roomMemberEvent } from './m.room.member';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
+
+const eventIdOf = (event: unknown) => PersistentEventFactory.createFromRawEvent(event as Pdu, '10').eventId;
 
 const finalEventId = '$tZRt2bwceX4sG913Ee67tJiwe-gk859kY2mCeYSncw8';
 const finalEvent = {
@@ -37,7 +41,7 @@ test('roomMemberEvent', async () => {
 	});
 	const signedCreateEvent = await signEvent(createEvent, signature, 'hs1');
 
-	const createEventId = generateId(signedCreateEvent);
+	const createEventId = eventIdOf(signedCreateEvent);
 	const memberEvent = roomMemberEvent({
 		membership: 'join',
 		roomId: '!uTqsSSWabZzthsSCNf:hs1',
@@ -62,7 +66,7 @@ test('roomMemberEvent', async () => {
 		'y/qV5T9PeXvqgwRafZDSygtk4XRMstdt04qusZWJSu77Juxzzz4Ijyk+JsJ5NNV0/WWYMT9IhmVb7/EEBH4vDQ',
 	);
 
-	const memberEventId = generateId(signed);
+	const memberEventId = eventIdOf(signed);
 
 	expect(memberEventId).toBe(finalEventId);
 });
@@ -80,7 +84,7 @@ test('roomMemberEvent - leave', async () => {
 		ts: ts - 1000,
 	});
 	const signedCreateEvent = await signEvent(createEventPayload, signature, serverName);
-	const createEventId = generateId(signedCreateEvent);
+	const createEventId = eventIdOf(signedCreateEvent);
 
 	// A user usually joins before they can leave
 	const joinMemberEventPayload = roomMemberEvent({
@@ -96,7 +100,7 @@ test('roomMemberEvent - leave', async () => {
 		origin: serverName,
 	});
 	const signedJoinEvent = await signEvent(joinMemberEventPayload, signature, serverName);
-	const joinEventId = generateId(signedJoinEvent);
+	const joinEventId = eventIdOf(signedJoinEvent);
 
 	// Now, the leave event
 	const leaveMemberEventPayload = roomMemberEvent({
@@ -118,7 +122,7 @@ test('roomMemberEvent - leave', async () => {
 	});
 
 	const signedLeaveEvent = await signEvent(leaveMemberEventPayload, signature, serverName);
-	const leaveEventId = generateId(signedLeaveEvent);
+	const leaveEventId = eventIdOf(signedLeaveEvent);
 
 	expect(signedLeaveEvent.type).toBe('m.room.member');
 	expect(signedLeaveEvent.room_id).toBe(roomId);
@@ -152,7 +156,7 @@ test('roomMemberEvent - kick', async () => {
 		ts: ts - 4000,
 	});
 	const signedCreateEvent = await signEvent(createEventPayload, kickerSignature, serverName);
-	const createEventId = generateId(signedCreateEvent);
+	const createEventId = eventIdOf(signedCreateEvent);
 	let lastEventId = createEventId;
 	let currentDepth = 1;
 
@@ -186,7 +190,7 @@ test('roomMemberEvent - kick', async () => {
 		origin_server_ts: ts - 3000,
 	};
 	const signedPowerLevelsEvent = await signEvent(powerLevelsEventPayload, kickerSignature, serverName);
-	const powerLevelsEventId = generateId(signedPowerLevelsEvent);
+	const powerLevelsEventId = eventIdOf(signedPowerLevelsEvent);
 	lastEventId = powerLevelsEventId;
 
 	// 3. Kicker Joins (sent by kicker)
@@ -206,7 +210,7 @@ test('roomMemberEvent - kick', async () => {
 		origin: serverName,
 	});
 	const signedKickerJoinEvent = await signEvent(kickerJoinEventPayload, kickerSignature, serverName);
-	const kickerJoinEventId = generateId(signedKickerJoinEvent);
+	const kickerJoinEventId = eventIdOf(signedKickerJoinEvent);
 	lastEventId = kickerJoinEventId;
 
 	// 4. UserToKick Joins (sent by userToKick)
@@ -226,7 +230,7 @@ test('roomMemberEvent - kick', async () => {
 		origin: serverName,
 	});
 	const signedUserToKickJoinEvent = await signEvent(userToKickJoinEventPayload, userToKickSignature, serverName);
-	const userToKickJoinEventId = generateId(signedUserToKickJoinEvent);
+	const userToKickJoinEventId = eventIdOf(signedUserToKickJoinEvent);
 	lastEventId = userToKickJoinEventId;
 
 	// 5. Kick Event (sent by kicker, targets userToKick)
@@ -252,7 +256,7 @@ test('roomMemberEvent - kick', async () => {
 	});
 
 	const signedKickEvent = await signEvent(kickMemberEventPayload, kickerSignature, serverName);
-	const kickEventId = generateId(signedKickEvent);
+	const kickEventId = eventIdOf(signedKickEvent);
 
 	// Assertions
 	expect(signedKickEvent.type).toBe('m.room.member');
@@ -292,7 +296,7 @@ test('roomMemberEvent - ban', async () => {
 		ts: ts - 4000,
 	});
 	const signedCreateEvent = await signEvent(createEventPayload, bannerSignature, serverName);
-	const createEventId = generateId(signedCreateEvent);
+	const createEventId = eventIdOf(signedCreateEvent);
 	let lastEventId = createEventId;
 	let currentDepth = 1;
 
@@ -326,7 +330,7 @@ test('roomMemberEvent - ban', async () => {
 		origin_server_ts: ts - 3000,
 	};
 	const signedPowerLevelsEvent = await signEvent(powerLevelsEventPayload, bannerSignature, serverName);
-	const powerLevelsEventId = generateId(signedPowerLevelsEvent);
+	const powerLevelsEventId = eventIdOf(signedPowerLevelsEvent);
 	lastEventId = powerLevelsEventId;
 
 	// 3. Banner Joins (sent by banner)
@@ -346,7 +350,7 @@ test('roomMemberEvent - ban', async () => {
 		origin: serverName,
 	});
 	const signedBannerJoinEvent = await signEvent(bannerJoinEventPayload, bannerSignature, serverName);
-	const bannerJoinEventId = generateId(signedBannerJoinEvent);
+	const bannerJoinEventId = eventIdOf(signedBannerJoinEvent);
 	lastEventId = bannerJoinEventId;
 
 	// 4. UserToBan Joins (sent by userToBan)
@@ -366,7 +370,7 @@ test('roomMemberEvent - ban', async () => {
 		origin: serverName,
 	});
 	const signedUserToBanJoinEvent = await signEvent(userToBanJoinEventPayload, userToBanSignature, serverName);
-	const userToBanJoinEventId = generateId(signedUserToBanJoinEvent);
+	const userToBanJoinEventId = eventIdOf(signedUserToBanJoinEvent);
 	lastEventId = userToBanJoinEventId;
 
 	// 5. Ban Event (sent by banner, targets userToBan)
@@ -392,7 +396,7 @@ test('roomMemberEvent - ban', async () => {
 	});
 
 	const signedBanEvent = await signEvent(banMemberEventPayload, bannerSignature, serverName);
-	const banEventId = generateId(signedBanEvent);
+	const banEventId = eventIdOf(signedBanEvent);
 
 	// Assertions
 	expect(signedBanEvent.type).toBe('m.room.member');

@@ -1,4 +1,3 @@
-import { generateId } from '@rocket.chat/federation-core';
 import type { EventStore } from '@rocket.chat/federation-core';
 import type { Pdu, PduForType, PduType, RejectCode, RoomID, StateID, EventID } from '@rocket.chat/federation-room';
 import type { Collection, FindCursor, FindOptions, InsertOneResult, UpdateResult, WithId } from 'mongodb';
@@ -83,19 +82,6 @@ export class EventRepository {
 			{ _id: eventId },
 			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
 		);
-	}
-
-	async upsert(event: Pdu): Promise<string> {
-		const id = generateId(event);
-
-		await this.collection.updateOne(
-			{ _id: id },
-			// TODO: _id is really required here?
-			{ $set: { _id: id, event } },
-			{ upsert: true },
-		);
-
-		return id;
 	}
 
 	public async findPowerLevelsEventByRoomId(roomId: string): Promise<EventStore<PduForType<'m.room.power_levels'>> | null> {

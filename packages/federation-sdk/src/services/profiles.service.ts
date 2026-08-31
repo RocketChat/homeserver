@@ -1,3 +1,4 @@
+import { IncompatibleRoomVersionError } from '@rocket.chat/federation-core';
 import { EventID, extractDomainFromId, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
@@ -75,16 +76,18 @@ export class ProfilesService {
 		userId: UserID,
 		versions: RoomVersion[], // asking server supports these
 	): Promise<{
-		event: PduForType<'m.room.member'> & { origin: string };
+		event: PduForType<'m.room.member'>;
 		room_version: RoomVersion;
 	}> {
 		const { stateService } = this;
-		const roomInformation = await stateService.getRoomInformation(roomId);
+		const roomVersion = await stateService.getRoomVersion(roomId);
 
-		const roomVersion = roomInformation.room_version;
-
+		// SPEC: make_join answers a version the asking server cannot handle with
+		// M_INCOMPATIBLE_ROOM_VERSION and the room's actual version, so it knows what it would need
 		if (!versions.includes(roomVersion)) {
-			throw new Error(`Unsupported room version: ${roomVersion}`);
+			throw new IncompatibleRoomVersionError('Your homeserver does not support the features required to join this room', {
+				roomVersion,
+			});
 		}
 
 		if (!(await this.stateService.getLatestRoomState2(roomId)).isUserInvited(userId)) {
@@ -105,15 +108,12 @@ export class ProfilesService {
 				origin_server_ts: Date.now(),
 				sender: userId,
 			},
-			roomInformation.room_version,
+			roomVersion,
 		);
 
 		return {
 			room_version: roomVersion,
-			event: {
-				...membershipEvent.event,
-				origin: this.configService.serverName,
-			},
+			event: membershipEvent.event,
 		};
 	}
 

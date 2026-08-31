@@ -131,6 +131,10 @@ export class FederationSDK {
 		return this.eventService.getEventById(...args);
 	}
 
+	getRedactionTarget(...args: Parameters<typeof this.eventService.getRedactionTarget>) {
+		return this.eventService.getRedactionTarget(...args);
+	}
+
 	makeLeave(...args: Parameters<typeof this.roomService.makeLeave>) {
 		return this.roomService.makeLeave(...args);
 	}

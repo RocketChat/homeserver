@@ -1,7 +1,8 @@
 import { expect, test } from 'bun:test';
 
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+
 import { isRoomJoinRulesEvent, roomJoinRulesEvent } from './m.room.join_rules';
-import { generateId } from '../utils/generateId';
 import { generateKeyPairsFromString } from '../utils/keys';
 import { signEvent } from '../utils/signEvent';
 
@@ -54,7 +55,7 @@ test('roomJoinRulesEvent', async () => {
 		'egXzghr88RZMZYG4/DUrIf92NiUiC59GhgmvB1zV5oSuDuCGXgYnVBmXOfQ54ElXx1AFc8ajwPmfupXoYkHaAg',
 	);
 
-	const eventId = generateId(signed);
+	const { eventId } = PersistentEventFactory.createFromRawEvent(signed as any, '10');
 
 	expect(eventId).toBe(finalEventId);
 });

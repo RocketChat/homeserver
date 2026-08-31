@@ -1,10 +1,9 @@
-import { createLogger, signEvent } from '@rocket.chat/federation-core';
+import { UnsupportedRoomVersionError, createLogger, signEvent } from '@rocket.chat/federation-core';
 import {
 	type EventID,
 	type EventStore,
 	Pdu,
 	type PduContent,
-	PduCreateEventContent,
 	PduForType,
 	type PduType,
 	PduWithHashesAndSignaturesOptional,
@@ -14,6 +13,7 @@ import {
 	RoomID,
 	RoomState,
 	RoomVersion,
+	type RoomVersion3To11,
 	State,
 	type StateID,
 	type StateMapKey,
@@ -62,12 +62,6 @@ export class UnknownRoomError extends Error {
 		this.name = 'UnknownRoomError';
 	}
 }
-export class RoomInfoNotReadyError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'RoomInfoNotReadyError';
-	}
-}
 
 @singleton()
 export class StateService {
@@ -81,29 +75,36 @@ export class StateService {
 		private readonly configService: ConfigService,
 	) {}
 
-	// TODO: this is a very vague method, better would be to use exactly what needed,
-	// or getCreateEvent.
-	// currently AFAIK mostly is used for just room version
-	async getRoomInformation(roomId: string): Promise<PduCreateEventContent> {
-		const { event, stateId } = (await this.eventRepository.findByRoomIdAndType(roomId, 'm.room.create')) ?? {};
-		if (event?.type !== 'm.room.create') {
-			throw new RoomInfoNotReadyError('Create event mapping not found for room information');
-		}
-
-		if (!stateId) {
-			throw new Error('Create event has no state id, something is very wrong');
-		}
-
-		return event.content;
-	}
-
-	async getRoomVersion(roomId: RoomID): Promise<RoomVersion> {
+	// reading room_version off raw content is unavoidable here: you need the version before
+	// you can build the version aware wrapper that would otherwise hand it to you. this is
+	// the only place that does it, so it is also where an unsupported version is caught
+	private async findCreateEvent(roomId: RoomID) {
 		const createEvent = await this.eventRepository.findByRoomIdAndType(roomId, 'm.room.create');
 		if (!createEvent) {
 			throw new UnknownRoomError(roomId);
 		}
 
-		return createEvent.event.content.room_version;
+		const { room_version: roomVersion } = createEvent.event.content;
+		if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+			throw new UnsupportedRoomVersionError(`Room ${roomId} is at unsupported version ${roomVersion}`);
+		}
+
+		return { event: createEvent.event, roomVersion };
+	}
+
+	async getRoomVersion(roomId: RoomID): Promise<RoomVersion3To11> {
+		const { roomVersion } = await this.findCreateEvent(roomId);
+
+		return roomVersion;
+	}
+
+	// the seam for anything derived from a room's create event. returns the version aware
+	// wrapper rather than raw content so format changes (v11 moved the creator from
+	// content to sender) stay inside the version classes instead of leaking to callers
+	async getCreateEvent(roomId: RoomID): Promise<PersistentEventBase<RoomVersion, 'm.room.create'>> {
+		const { event, roomVersion } = await this.findCreateEvent(roomId);
+
+		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(event, roomVersion);
 	}
 
 	// helps with logging state
@@ -240,11 +241,14 @@ export class StateService {
 		};
 	}
 
+	// roomVersion is optional: callers that already hold it save a lookup, everyone else
+	// should not have to know rooms have versions at all
 	async buildEvent<T extends PduType>(
 		event: PduWithHashesAndSignaturesOptional<PduForType<T>>,
-		roomVersion: RoomVersion,
+		roomVersion?: RoomVersion,
 	): Promise<PersistentEventBase<RoomVersion, T>> {
-		const instance = PersistentEventFactory.createFromRawEvent<T>(event, roomVersion);
+		const version = roomVersion ?? (await this.getRoomVersion(event.room_id));
+		const instance = PersistentEventFactory.createFromRawEvent<T>(event, version);
 		await Promise.all([
 			instance.event.auth_events.length === 0 && this.addAuthEvents(instance),
 			instance.event.prev_events.length === 0 && this.addPrevEvents(instance),
@@ -269,9 +273,6 @@ export class StateService {
 
 	async addPrevEvents(event: PersistentEventBase) {
 		const roomVersion = await this.getRoomVersion(event.roomId);
-		if (!roomVersion) {
-			throw new Error('Room version not found while filling prev events');
-		}
 
 		const prevEvents = await this.eventRepository.findLatestEvents(event.roomId);
 
