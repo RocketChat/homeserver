@@ -12,7 +12,7 @@ jobs:
     name: Build and Publish
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # check if tagged version matches federation-sdk version
       - name: Check version
