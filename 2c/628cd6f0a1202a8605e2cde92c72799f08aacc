@@ -1,0 +1,39 @@
+packages/federation-sdk/src/services/invite.service.spec.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 110,304
+packages/room/src/manager/factory.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 99
+packages/federation-sdk/src/services/room.service.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 1232
+  s_9a810c380be95b::t_db1a60a02d98fc 191,1418
+packages/federation-sdk/src/services/state.service.spec.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 147,243,384,542,1224,1243,1313,1391,1424
+packages/federation-sdk/src/services/room-version-coexistence.spec.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 235,251-252
+  s_9a810c380be95b::t_9c89aea0b0685c 237,250
+packages/federation-sdk/src/sdk.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 186-189
+packages/homeserver/src/controllers/internal/external-federation-request.controller.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 64,206
+packages/federation-sdk/src/services/config.service.ts
+  s_9a810c380be95b::t_6df41f97c2bcbb 6-7,118
+  s_9a810c380be95b::t_8780636f7e42f8 117,119-120
+  s_9a810c380be95b::t_6774cefd17d787 72-75
+  s_9a810c380be95b::t_e14fb4e21fdf81 2
+  s_9a810c380be95b::t_383a1845e6bd1d 38-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2c628cd6f0a1202a8605e2cde92c72799f08aacc",
+  "prompts": {},
+  "sessions": {
+    "s_9a810c380be95b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13e1e900-6cab-4229-b20b-73dbe22d7906",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
