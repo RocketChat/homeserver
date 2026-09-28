@@ -183,6 +183,10 @@ export class FederationSDK {
 		return this.configService.getConfig(config);
 	}
 
+	getDefaultRoomVersion() {
+		return this.configService.defaultRoomVersion;
+	}
+
 	processInvite(...args: Parameters<typeof this.inviteService.processInvite>) {
 		return this.inviteService.processInvite(...args);
 	}

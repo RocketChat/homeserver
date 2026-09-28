@@ -188,7 +188,7 @@ export class RoomService {
 
 		logger.debug(`Creating room for ${username} with ${name} join_rule: ${joinRule}`);
 
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username, PersistentEventFactory.defaultRoomVersion);
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username, this.configService.defaultRoomVersion);
 
 		const { stateService } = this;
 
@@ -1229,7 +1229,7 @@ export class RoomService {
 	}
 
 	async createDirectMessage({ creatorUserId, members }: { creatorUserId: UserID; members: UserID[] }) {
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(creatorUserId);
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(creatorUserId, this.configService.defaultRoomVersion);
 
 		await this.stateService.signEvent(roomCreateEvent);
 
@@ -1415,7 +1415,7 @@ export class RoomService {
 
 		const { stateService } = this;
 
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(creatorUserId, PersistentEventFactory.defaultRoomVersion);
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(creatorUserId, this.configService.defaultRoomVersion);
 
 		await stateService.signEvent(roomCreateEvent);
 

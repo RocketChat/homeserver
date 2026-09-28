@@ -107,7 +107,7 @@ describe('InviteService', async () => {
 	});
 
 	const createRoom = async (joinRule: 'public' | 'invite', creator: room.UserID = '@alice:remote.server.com' as room.UserID) => {
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(creator, PersistentEventFactory.defaultRoomVersion);
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(creator, '10');
 		await stateService.handlePdu(roomCreateEvent);
 
 		const roomVersion: RoomVersion = roomCreateEvent.getContent<PduCreateEventContent>().room_version;
@@ -301,7 +301,7 @@ describe('InviteService', async () => {
 			const localUser = `@johnny:${localServerName}` as room.UserID;
 
 			// 1. Build room state PDUs manually (simulating what send_join returns on first join)
-			const roomVersion = PersistentEventFactory.defaultRoomVersion;
+			const roomVersion = '10';
 			const roomCreateEvent = PersistentEventFactory.newCreateEvent(remoteCreator, roomVersion);
 
 			const creatorMemberEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
