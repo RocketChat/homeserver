@@ -49,8 +49,6 @@ export class PersistentEventFactory {
 		'11',
 	];
 
-	static defaultRoomVersion = '11' as const;
-
 	static isSupportedRoomVersion(roomVersion: string): roomVersion is RoomVersion3To11 {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
@@ -98,7 +96,7 @@ export class PersistentEventFactory {
 	// create individual events
 
 	// a m.room.create event, adds the roomId too
-	static newCreateEvent(creator: UserID, roomVersion: RoomVersion = PersistentEventFactory.defaultRoomVersion) {
+	static newCreateEvent(creator: UserID, roomVersion: RoomVersion) {
 		const createContent = PersistentEventFactory.getEventClass(roomVersion).newCreateEventContent(creator, roomVersion);
 
 		const domain = creator.split(':').pop();

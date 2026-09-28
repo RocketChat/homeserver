@@ -232,9 +232,9 @@ describe('room version coexistence', async () => {
 	it('bans in a v11 room', async () => expectBanWorks('11'));
 
 	// the fetcher used to resolve the version with its own read that fell back to
-	// defaultRoomVersion, so a v10 room's federated events got v10-invalid ids
+	// the default version, so a non-default room's federated events got invalid ids
 	it('identifies federation-fetched events at the room version, not the default', async () => {
-		const { roomId } = await createRoom('10');
+		const { roomId } = await createRoom('11');
 
 		// origin is a top level field v10 keeps under redaction and v11 drops, so the
 		// two versions disagree on this event's id
@@ -247,9 +247,9 @@ describe('room version coexistence', async () => {
 			...defaults(),
 		} as unknown as Pdu;
 
-		const atRoomVersion = PersistentEventFactory.createFromRawEvent(fetched, '10').eventId;
-		const atDefaultVersion = PersistentEventFactory.createFromRawEvent(fetched, PersistentEventFactory.defaultRoomVersion).eventId;
-		expect(atRoomVersion).not.toBe(atDefaultVersion);
+		const atRoomVersion = PersistentEventFactory.createFromRawEvent(fetched, '11').eventId;
+		const atOtherVersion = PersistentEventFactory.createFromRawEvent(fetched, '10').eventId;
+		expect(atRoomVersion).not.toBe(atOtherVersion);
 
 		const fetcher = new EventFetcherService(
 			new EventRepository(eventCollection),

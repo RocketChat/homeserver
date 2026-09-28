@@ -144,7 +144,7 @@ describe('StateService', async () => {
 		const username = '@alice:example.com';
 		const name = 'Test Room';
 
-		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username as room.UserID, PersistentEventFactory.defaultRoomVersion);
+		const roomCreateEvent = PersistentEventFactory.newCreateEvent(username as room.UserID, '10');
 		await stateService.handlePdu(roomCreateEvent);
 
 		const roomVersion: RoomVersion = roomCreateEvent.getContent<PduCreateEventContent>().room_version;
@@ -240,7 +240,7 @@ describe('StateService', async () => {
 			const username = '@alice:anotherserver.com' as room.UserID;
 			const name = 'Test Partial State Room';
 
-			const roomCreateEvent = PersistentEventFactory.newCreateEvent(username as room.UserID, PersistentEventFactory.defaultRoomVersion);
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(username as room.UserID, '10');
 
 			const roomVersion = roomCreateEvent.version;
 
@@ -381,7 +381,7 @@ describe('StateService', async () => {
 			const username = '@alice:anotherserver.com' as room.UserID;
 			const name = 'Test Partial State Room';
 
-			const roomCreateEvent = PersistentEventFactory.newCreateEvent(username as room.UserID, PersistentEventFactory.defaultRoomVersion);
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(username as room.UserID, '10');
 
 			const roomVersion = roomCreateEvent.version;
 
@@ -539,7 +539,7 @@ describe('StateService', async () => {
 			const creator = '@alice:anotherserver.com' as room.UserID;
 			const name = 'Test Partial State Room';
 
-			const roomCreateEvent = PersistentEventFactory.newCreateEvent(creator as room.UserID, PersistentEventFactory.defaultRoomVersion);
+			const roomCreateEvent = PersistentEventFactory.newCreateEvent(creator as room.UserID, '10');
 
 			const roomVersion = roomCreateEvent.version;
 
@@ -1221,7 +1221,7 @@ describe('StateService', async () => {
 				content: powerLevelContent,
 				...getDefaultFields(),
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			'10',
 		);
 
 		await stateService.handlePdu(newPowerLevelEvent);
@@ -1240,7 +1240,7 @@ describe('StateService', async () => {
 				type: 'm.room.name',
 				...getDefaultFields(),
 			},
-			PersistentEventFactory.defaultRoomVersion,
+			'10',
 		);
 
 		await stateService.handlePdu(roomNameEventByBob);
@@ -1310,7 +1310,7 @@ describe('StateService', async () => {
 					state_key: '',
 					...getDefaultFields(),
 				},
-				PersistentEventFactory.defaultRoomVersion,
+				'10',
 			),
 		);
 
@@ -1388,7 +1388,7 @@ describe('StateService', async () => {
 	// 		roomCreateEvent.roomId,
 	// 		roomCreateEvent.getCreator(),
 	// 		powerLevelContent,
-	// 		PersistentEventFactory.defaultRoomVersion,
+	// 		'10',
 	// 	);
 
 	// 	await Promise.all([
@@ -1421,7 +1421,7 @@ describe('StateService', async () => {
 	// 		roomCreateEvent.roomId,
 	// 		bob,
 	// 		'Bob Changed Name',
-	// 		PersistentEventFactory.defaultRoomVersion,
+	// 		'10',
 	// 	);
 
 	// 	await Promise.all([
