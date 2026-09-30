@@ -1,20 +1,26 @@
 import { describe, expect, it, mock, spyOn } from 'bun:test';
 
 import { FEDERATION_REQUEST_TIMEOUT_MS } from '@rocket.chat/federation-core';
+import type { FetchResponse } from '@rocket.chat/federation-core';
 
 import type { ConfigService } from './config.service';
+import { FederationRequestError } from './federation-request.service';
 import type { FederationRequestService } from './federation-request.service';
-import { MediaService, resolveDownloadTimeoutMs } from './media.service';
+import { MediaService, isUnknownEndpoint, resolveDownloadTimeoutMs } from './media.service';
 
 const buildService = (requestBinaryData: unknown) =>
 	new MediaService({} as ConfigService, { requestBinaryData } as unknown as FederationRequestService);
+
+const federationError = (status: number, body = '') => new FederationRequestError({ status } as FetchResponse<unknown>, body);
+
+const unknownEndpoint = () => federationError(404, JSON.stringify({ errcode: 'M_UNRECOGNIZED' }));
 
 describe('MediaService.downloadFromRemoteServer', () => {
 	it('asks the origin to wait for an upload that is still being committed', async () => {
 		const calls: { endpoint: string; queryParams?: Record<string, string> }[] = [];
 		const requestBinaryData = mock(async (_method: string, _server: string, endpoint: string, queryParams?: Record<string, string>) => {
 			calls.push({ endpoint, queryParams });
-			throw new Error('not found');
+			throw unknownEndpoint();
 		});
 
 		await buildService(requestBinaryData)
@@ -31,7 +37,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 		const calls: { endpoint: string; queryParams?: Record<string, string> }[] = [];
 		const requestBinaryData = mock(async (_method: string, _server: string, endpoint: string, queryParams?: Record<string, string>) => {
 			calls.push({ endpoint, queryParams });
-			throw new Error('not found');
+			throw unknownEndpoint();
 		});
 
 		await buildService(requestBinaryData)
@@ -51,7 +57,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 			const calls: (Record<string, string> | undefined)[] = [];
 			const requestBinaryData = mock(async (_method: string, _server: string, _endpoint: string, queryParams?: Record<string, string>) => {
 				calls.push(queryParams);
-				throw new Error('not found');
+				throw unknownEndpoint();
 			});
 
 			await buildService(requestBinaryData)
@@ -76,7 +82,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 			const calls: (Record<string, string> | undefined)[] = [];
 			const requestBinaryData = mock(async (_method: string, _server: string, _endpoint: string, queryParams?: Record<string, string>) => {
 				calls.push(queryParams);
-				throw new Error('not found');
+				throw unknownEndpoint();
 			});
 
 			await buildService(requestBinaryData)
@@ -100,7 +106,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 		try {
 			const service = buildService(
 				mock(async () => {
-					throw new Error('not found');
+					throw unknownEndpoint();
 				}),
 			);
 			const { logger } = service as unknown as { logger: { warn: (...args: unknown[]) => void } };
@@ -125,6 +131,71 @@ describe('MediaService.downloadFromRemoteServer', () => {
 
 	it('does not warn when the configured timeout fits', async () => {
 		expect(await countTimeoutWarnings('9000')).toBe(0);
+	});
+
+	it('stops at the first endpoint when the origin answers that the media is not uploaded yet', async () => {
+		const requestBinaryData = mock(async () => {
+			throw federationError(504, JSON.stringify({ errcode: 'M_NOT_YET_UPLOADED', error: 'Media has not been uploaded yet' }));
+		});
+
+		await expect(buildService(requestBinaryData).downloadFromRemoteServer('remote.example', 'abc')).rejects.toThrow(
+			'Failed to download media abc from remote.example',
+		);
+		expect(requestBinaryData).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops at the first endpoint when the origin does not have the media', async () => {
+		const requestBinaryData = mock(async () => {
+			throw federationError(404, JSON.stringify({ errcode: 'M_NOT_FOUND', error: 'Not found' }));
+		});
+
+		await buildService(requestBinaryData)
+			.downloadFromRemoteServer('remote.example', 'abc')
+			.catch(() => undefined);
+
+		expect(requestBinaryData).toHaveBeenCalledTimes(1);
+	});
+
+	it('stops at the first endpoint when the origin could not be reached', async () => {
+		const requestBinaryData = mock(async () => {
+			throw new Error('Request timed out after 20000ms');
+		});
+
+		await buildService(requestBinaryData)
+			.downloadFromRemoteServer('remote.example', 'abc')
+			.catch(() => undefined);
+
+		expect(requestBinaryData).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the origin answer as the cause of the failure', async () => {
+		const answer = federationError(504, JSON.stringify({ errcode: 'M_NOT_YET_UPLOADED' }));
+		const requestBinaryData = mock(async () => {
+			throw answer;
+		});
+
+		const failure = await buildService(requestBinaryData)
+			.downloadFromRemoteServer('remote.example', 'abc')
+			.catch((err: unknown) => err);
+
+		expect((failure as Error).cause).toBe(answer);
+	});
+
+	it('moves on to the legacy endpoint when the federation one is not implemented', async () => {
+		const content = Buffer.from('file-bytes');
+		const endpoints: string[] = [];
+		const requestBinaryData = mock(async (_method: string, _server: string, endpoint: string) => {
+			endpoints.push(endpoint);
+			if (endpoint.startsWith('/_matrix/federation/')) {
+				throw unknownEndpoint();
+			}
+			return { content };
+		});
+
+		const result = await buildService(requestBinaryData).downloadFromRemoteServer('remote.example', 'abc');
+
+		expect(result).toBe(content);
+		expect(endpoints).toEqual(['/_matrix/federation/v1/media/download/abc', '/_matrix/media/v3/download/remote.example/abc']);
 	});
 
 	it('still returns the content from the first endpoint that answers', async () => {
@@ -161,5 +232,24 @@ describe('resolveDownloadTimeoutMs', () => {
 		for (const raw of ['20s', '1.5', '-1', 'abc', 'Infinity']) {
 			expect(() => resolveDownloadTimeoutMs(raw)).toThrow('Invalid FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS value');
 		}
+	});
+});
+
+describe('isUnknownEndpoint', () => {
+	it('recognises the ways a server says it does not implement an endpoint', () => {
+		expect(isUnknownEndpoint(federationError(404, JSON.stringify({ errcode: 'M_UNRECOGNIZED' })))).toBe(true);
+		expect(isUnknownEndpoint(federationError(405, JSON.stringify({ errcode: 'M_UNRECOGNIZED' })))).toBe(true);
+		expect(isUnknownEndpoint(federationError(404, ''))).toBe(true);
+		expect(isUnknownEndpoint(federationError(404, '<html>Not Found</html>'))).toBe(true);
+		expect(isUnknownEndpoint(federationError(400, JSON.stringify({ errcode: 'M_UNRECOGNIZED' })))).toBe(true);
+	});
+
+	it('treats every other answer as the origin speaking about the media', () => {
+		expect(isUnknownEndpoint(federationError(404, JSON.stringify({ errcode: 'M_NOT_FOUND' })))).toBe(false);
+		expect(isUnknownEndpoint(federationError(504, JSON.stringify({ errcode: 'M_NOT_YET_UPLOADED' })))).toBe(false);
+		expect(isUnknownEndpoint(federationError(502, ''))).toBe(false);
+		expect(isUnknownEndpoint(federationError(400, JSON.stringify({ errcode: 'M_BAD_JSON' })))).toBe(false);
+		expect(isUnknownEndpoint(federationError(403, JSON.stringify({ errcode: 'M_FORBIDDEN' })))).toBe(false);
+		expect(isUnknownEndpoint(new Error('socket hang up'))).toBe(false);
 	});
 });

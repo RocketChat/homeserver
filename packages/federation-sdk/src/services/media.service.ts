@@ -2,7 +2,7 @@ import { FEDERATION_REQUEST_TIMEOUT_MS, createLogger } from '@rocket.chat/federa
 import { singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
-import { FederationRequestService } from './federation-request.service';
+import { FederationRequestError, FederationRequestService } from './federation-request.service';
 
 const TRANSPORT_HEADROOM_MS = 2_000;
 const MAX_DOWNLOAD_TIMEOUT_MS = FEDERATION_REQUEST_TIMEOUT_MS - TRANSPORT_HEADROOM_MS;
@@ -19,6 +19,23 @@ export function resolveDownloadTimeoutMs(raw: string | undefined): number {
 	}
 
 	return Math.min(value, MAX_DOWNLOAD_TIMEOUT_MS);
+}
+
+// Matrix v1.6 answers an unknown endpoint with 404/405 M_UNRECOGNIZED; older servers send a
+// non-JSON or errcode-less 404, and older Synapse a 400 M_UNRECOGNIZED. Anything else is the
+// origin's real answer about this media (e.g. 504 M_NOT_YET_UPLOADED), which the next endpoint
+// would only repeat after waiting out timeout_ms again.
+export function isUnknownEndpoint(err: unknown): boolean {
+	if (!(err instanceof FederationRequestError)) {
+		return false;
+	}
+
+	const { status } = err.response;
+	if (status === 404 || status === 405) {
+		return err.errcode === undefined || err.errcode === 'M_UNRECOGNIZED';
+	}
+
+	return status === 400 && err.errcode === 'M_UNRECOGNIZED';
 }
 
 @singleton()
@@ -82,6 +99,9 @@ export class MediaService {
 				return response.content;
 			} catch (err) {
 				this.logger.debug(`Endpoint ${endpoint} failed: ${err instanceof Error ? err.message : String(err)}`);
+				if (!isUnknownEndpoint(err)) {
+					throw new Error(`Failed to download media ${mediaId} from ${serverName}`, { cause: err });
+				}
 			}
 		}
 
