@@ -5,21 +5,8 @@ import { ConfigService } from './config.service';
 import { FederationRequestError, FederationRequestService } from './federation-request.service';
 
 const TRANSPORT_HEADROOM_MS = 2_000;
-const MAX_DOWNLOAD_TIMEOUT_MS = FEDERATION_REQUEST_TIMEOUT_MS - TRANSPORT_HEADROOM_MS;
-const DEFAULT_DOWNLOAD_TIMEOUT_MS = MAX_DOWNLOAD_TIMEOUT_MS;
-
-export function resolveDownloadTimeoutMs(raw: string | undefined): number {
-	if (!raw?.trim()) {
-		return DEFAULT_DOWNLOAD_TIMEOUT_MS;
-	}
-
-	const value = Number(raw);
-	if (!Number.isSafeInteger(value) || value < 0) {
-		throw new Error('Invalid FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS value');
-	}
-
-	return Math.min(value, MAX_DOWNLOAD_TIMEOUT_MS);
-}
+// the origin has to answer before our transport gives up on the request
+const DOWNLOAD_TIMEOUT_MS = FEDERATION_REQUEST_TIMEOUT_MS - TRANSPORT_HEADROOM_MS;
 
 // Matrix v1.6 answers an unknown endpoint with 404/405 M_UNRECOGNIZED; older servers send a
 // non-JSON or errcode-less 404, and older Synapse a 400 M_UNRECOGNIZED. Anything else is the
@@ -42,39 +29,10 @@ export function isUnknownEndpoint(err: unknown): boolean {
 export class MediaService {
 	private readonly logger = createLogger('MediaService');
 
-	private downloadTimeoutMs?: number;
-
 	constructor(private readonly configService: ConfigService, private readonly federationRequest: FederationRequestService) {}
 
-	private get timeoutMs(): number {
-		if (this.downloadTimeoutMs === undefined) {
-			const raw = process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
-			try {
-				this.downloadTimeoutMs = resolveDownloadTimeoutMs(raw);
-				if (Number(raw) > this.downloadTimeoutMs) {
-					this.logger.warn({
-						msg: 'FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS exceeds what the federation transport can wait for, capping it',
-						value: raw,
-						cappedMs: this.downloadTimeoutMs,
-						transportTimeoutMs: FEDERATION_REQUEST_TIMEOUT_MS,
-					});
-				}
-			} catch (err) {
-				this.downloadTimeoutMs = DEFAULT_DOWNLOAD_TIMEOUT_MS;
-				this.logger.warn({
-					msg: 'Ignoring invalid FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS, using the default',
-					value: raw,
-					defaultMs: DEFAULT_DOWNLOAD_TIMEOUT_MS,
-					err,
-				});
-			}
-		}
-
-		return this.downloadTimeoutMs;
-	}
-
 	async downloadFromRemoteServer(serverName: string, mediaId: string): Promise<Buffer | null> {
-		const timeoutMs = String(this.timeoutMs);
+		const timeoutMs = String(DOWNLOAD_TIMEOUT_MS);
 
 		const endpoints: { path: string; queryParams: Record<string, string> }[] = [
 			{
