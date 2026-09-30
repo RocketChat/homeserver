@@ -1,4 +1,6 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, mock, spyOn } from 'bun:test';
+
+import { FEDERATION_REQUEST_TIMEOUT_MS } from '@rocket.chat/federation-core';
 
 import type { ConfigService } from './config.service';
 import type { FederationRequestService } from './federation-request.service';
@@ -21,7 +23,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 
 		expect(calls).toHaveLength(3);
 		for (const call of calls) {
-			expect(call.queryParams?.timeout_ms).toBe('20000');
+			expect(call.queryParams?.timeout_ms).toBe('18000');
 		}
 	});
 
@@ -56,7 +58,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 				.downloadFromRemoteServer('remote.example', 'abc')
 				.catch(() => undefined);
 
-			expect(calls[0]?.timeout_ms).toBe('20000');
+			expect(calls[0]?.timeout_ms).toBe('18000');
 		} finally {
 			if (previous === undefined) {
 				delete process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
@@ -66,9 +68,9 @@ describe('MediaService.downloadFromRemoteServer', () => {
 		}
 	});
 
-	it('honours a valid configured timeout', async () => {
+	it('honours a valid configured timeout that is under the transport limit', async () => {
 		const previous = process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
-		process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS = '45000';
+		process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS = '9000';
 
 		try {
 			const calls: (Record<string, string> | undefined)[] = [];
@@ -81,7 +83,7 @@ describe('MediaService.downloadFromRemoteServer', () => {
 				.downloadFromRemoteServer('remote.example', 'abc')
 				.catch(() => undefined);
 
-			expect(calls[0]?.timeout_ms).toBe('45000');
+			expect(calls[0]?.timeout_ms).toBe('9000');
 		} finally {
 			if (previous === undefined) {
 				delete process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
@@ -89,6 +91,40 @@ describe('MediaService.downloadFromRemoteServer', () => {
 				process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS = previous;
 			}
 		}
+	});
+
+	const countTimeoutWarnings = async (raw: string) => {
+		const previous = process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
+		process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS = raw;
+
+		try {
+			const service = buildService(
+				mock(async () => {
+					throw new Error('not found');
+				}),
+			);
+			const { logger } = service as unknown as { logger: { warn: (...args: unknown[]) => void } };
+			const warn = spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+			await service.downloadFromRemoteServer('remote.example', 'abc').catch(() => undefined);
+			await service.downloadFromRemoteServer('remote.example', 'abc').catch(() => undefined);
+
+			return warn.mock.calls.length;
+		} finally {
+			if (previous === undefined) {
+				delete process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
+			} else {
+				process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS = previous;
+			}
+		}
+	};
+
+	it('warns once when the configured timeout is capped', async () => {
+		expect(await countTimeoutWarnings('60000')).toBe(1);
+	});
+
+	it('does not warn when the configured timeout fits', async () => {
+		expect(await countTimeoutWarnings('9000')).toBe(0);
 	});
 
 	it('still returns the content from the first endpoint that answers', async () => {
@@ -103,17 +139,20 @@ describe('MediaService.downloadFromRemoteServer', () => {
 });
 
 describe('resolveDownloadTimeoutMs', () => {
-	it('defaults to 20s, matching what other homeservers ask for', () => {
-		expect(resolveDownloadTimeoutMs(undefined)).toBe(20_000);
-		expect(resolveDownloadTimeoutMs('')).toBe(20_000);
-		expect(resolveDownloadTimeoutMs('   ')).toBe(20_000);
+	it('defaults to the longest wait the transport can actually honour', () => {
+		expect(resolveDownloadTimeoutMs(undefined)).toBe(18_000);
+		expect(resolveDownloadTimeoutMs('')).toBe(18_000);
+		expect(resolveDownloadTimeoutMs('   ')).toBe(18_000);
 	});
 
-	it('caps the wait so a request cannot be held open indefinitely', () => {
-		expect(resolveDownloadTimeoutMs('120000')).toBe(60_000);
+	// Asking for longer than the transport allows would promise the origin a wait we hang up on.
+	it('never advertises a longer wait than the transport allows', () => {
+		expect(resolveDownloadTimeoutMs('120000')).toBe(18_000);
+		expect(resolveDownloadTimeoutMs('60000')).toBe(18_000);
+		expect(resolveDownloadTimeoutMs(String(FEDERATION_REQUEST_TIMEOUT_MS))).toBeLessThan(FEDERATION_REQUEST_TIMEOUT_MS);
 	});
 
-	it('accepts a valid override', () => {
+	it('accepts a valid override below the limit', () => {
 		expect(resolveDownloadTimeoutMs('5000')).toBe(5_000);
 		expect(resolveDownloadTimeoutMs('0')).toBe(0);
 	});

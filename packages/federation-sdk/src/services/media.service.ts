@@ -1,11 +1,12 @@
-import { createLogger } from '@rocket.chat/federation-core';
+import { FEDERATION_REQUEST_TIMEOUT_MS, createLogger } from '@rocket.chat/federation-core';
 import { singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 
-const DEFAULT_DOWNLOAD_TIMEOUT_MS = 20_000;
-const MAX_DOWNLOAD_TIMEOUT_MS = 60_000;
+const TRANSPORT_HEADROOM_MS = 2_000;
+const MAX_DOWNLOAD_TIMEOUT_MS = FEDERATION_REQUEST_TIMEOUT_MS - TRANSPORT_HEADROOM_MS;
+const DEFAULT_DOWNLOAD_TIMEOUT_MS = MAX_DOWNLOAD_TIMEOUT_MS;
 
 export function resolveDownloadTimeoutMs(raw: string | undefined): number {
 	if (!raw?.trim()) {
@@ -30,13 +31,22 @@ export class MediaService {
 
 	private get timeoutMs(): number {
 		if (this.downloadTimeoutMs === undefined) {
+			const raw = process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS;
 			try {
-				this.downloadTimeoutMs = resolveDownloadTimeoutMs(process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS);
+				this.downloadTimeoutMs = resolveDownloadTimeoutMs(raw);
+				if (Number(raw) > this.downloadTimeoutMs) {
+					this.logger.warn({
+						msg: 'FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS exceeds what the federation transport can wait for, capping it',
+						value: raw,
+						cappedMs: this.downloadTimeoutMs,
+						transportTimeoutMs: FEDERATION_REQUEST_TIMEOUT_MS,
+					});
+				}
 			} catch (err) {
 				this.downloadTimeoutMs = DEFAULT_DOWNLOAD_TIMEOUT_MS;
 				this.logger.warn({
 					msg: 'Ignoring invalid FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS, using the default',
-					value: process.env.FEDERATION_MEDIA_DOWNLOAD_TIMEOUT_MS,
+					value: raw,
 					defaultMs: DEFAULT_DOWNLOAD_TIMEOUT_MS,
 					err,
 				});
