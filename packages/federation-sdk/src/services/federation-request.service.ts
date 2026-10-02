@@ -102,10 +102,8 @@ export class FederationRequestService {
 
 		if (!response.ok) {
 			// not response.text(): it yields '' for anything but text/*, and Matrix errors are application/json
-			const errorText = await response.buffer().then(
-				(body) => body.toString(),
-				() => '',
-			);
+			// a body that can't be read must fail the request: read as empty it would lose the errcode
+			const errorText = (await response.buffer()).toString();
 			const error = new FederationRequestError(response, errorText);
 			this.logger.error({
 				msg: 'Federation request failed',

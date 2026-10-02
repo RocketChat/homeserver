@@ -274,6 +274,19 @@ describe('FederationRequestService', async () => {
 			expect((failure as FederationRequestError).message).toContain('M_NOT_FOUND');
 		});
 
+		it('fails with the read error when the error body cannot be read', async () => {
+			const readError = new Error('Response closed before it finished');
+			spyOn(core, 'fetch').mockResolvedValue({
+				ok: false,
+				status: 404,
+				buffer: async () => {
+					throw readError;
+				},
+			} as unknown as core.FetchResponse<unknown>);
+
+			await expect(service.makeSignedRequest({ method: 'GET', domain: 'target.example.com', uri: '/test/path' })).rejects.toBe(readError);
+		});
+
 		it('should handle network errors properly', async () => {
 			globalThis.fetch = Object.assign(
 				async () => {
