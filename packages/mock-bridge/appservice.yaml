@@ -1,0 +1,20 @@
+id: mockbridge
+url: http://localhost:9000
+
+as_token: mock-as-token-123
+hs_token: mock-hs-token-456
+
+sender_localpart: mockbot
+
+namespaces:
+  users:
+    - regex: "@mock_.*"
+      exclusive: true
+
+  aliases:
+    - regex: "#mock_.*"
+      exclusive: true
+
+  rooms: []
+
+
