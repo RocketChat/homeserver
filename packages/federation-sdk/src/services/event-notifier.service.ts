@@ -1,10 +1,11 @@
 import { createLogger } from '@rocket.chat/federation-core';
 import type { EventID, Pdu } from '@rocket.chat/federation-room';
-import { PersistentEventFactory, RoomState } from '@rocket.chat/federation-room';
+import { RoomState } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
 import { EventEmitterService } from './event-emitter.service';
 import { StateService } from './state.service';
+import { findAllowedRedactionTarget, isNotifiableEdit } from '../utils/event-relations';
 
 @singleton()
 export class EventNotifierService {
@@ -28,6 +29,10 @@ export class EventNotifierService {
 				});
 				break;
 			case event.event.type === 'm.room.message':
+				if (!(await isNotifiableEdit(event, this.stateService))) {
+					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring invalid replacement event');
+					break;
+				}
 				await this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
 					event: event.event,
@@ -40,6 +45,10 @@ export class EventNotifierService {
 				});
 				break;
 			case event.event.type === 'm.room.encrypted':
+				if (!(await isNotifiableEdit(event, this.stateService))) {
+					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring invalid replacement event');
+					break;
+				}
 				await this.eventEmitterService.emit('homeserver.matrix.encrypted', {
 					event_id: eventId,
 					event: event.event,
@@ -53,12 +62,16 @@ export class EventNotifierService {
 				break;
 			}
 			case event.event.type === 'm.room.redaction': {
-				const roomVersion = await this.stateService.getRoomVersion(event.event.room_id);
+				const redacts = await findAllowedRedactionTarget(eventId, this.stateService);
+				if (!redacts) {
+					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring unauthorized redaction');
+					break;
+				}
 
 				await this.eventEmitterService.emit('homeserver.matrix.redaction', {
 					event_id: eventId,
 					event: event.event,
-					redacts: PersistentEventFactory.createFromRawEvent(event.event, roomVersion).getRedacts(),
+					redacts,
 				});
 				break;
 			}
