@@ -3,11 +3,19 @@ import 'reflect-metadata';
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import type { EventRouterService } from '@rocket.chat/appservice';
-import type { PersistentEventBase, RoomID, UserID } from '@rocket.chat/federation-room';
+import {
+	type Pdu,
+	type PersistentEventBase,
+	PersistentEventFactory,
+	RejectCodes,
+	type RoomID,
+	StateResolverAuthorizationError,
+	type UserID,
+} from '@rocket.chat/federation-room';
 
-import { EventSenderService } from './event-sender.service';
+import { EventRejectedError, EventSenderService } from './event-sender.service';
 import type { FederationService } from './federation.service';
-import { type StateService, UnknownRoomError } from './state.service';
+import { PartialStateResolutionError, type StateService, UnknownRoomError } from './state.service';
 
 const ROOM_ID = '!room:example.com' as RoomID;
 const SENDER = '@bridge:example.com' as UserID;
@@ -100,5 +108,101 @@ describe('EventSenderService.sendCustomEvent', () => {
 		expect(handlePdu).toHaveBeenCalledTimes(1);
 		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
 		expect(routePersistent).not.toHaveBeenCalled();
+	});
+});
+
+describe('EventSenderService.sendStateEvent', () => {
+	const CALL_MEMBER = 'org.matrix.msc3401.call.member';
+	const STATE_KEY = `_${SENDER}_DEVICE_m.call`;
+
+	let service: EventSenderService;
+	let buildEvent: ReturnType<typeof mock>;
+	let handlePdu: ReturnType<typeof mock>;
+	let sendEventToAllServersInRoom: ReturnType<typeof mock>;
+	let routePersistent: ReturnType<typeof mock>;
+	let builtEvent: PersistentEventBase;
+
+	beforeEach(() => {
+		buildEvent = mock(async (raw: unknown) => {
+			builtEvent = PersistentEventFactory.createFromRawEvent(raw as Pdu, '10');
+			return builtEvent;
+		});
+		handlePdu = mock(async () => undefined);
+		sendEventToAllServersInRoom = mock(async () => undefined);
+		routePersistent = mock(async () => undefined);
+
+		const stateService = { getRoomVersion: mock(async () => '10'), buildEvent, handlePdu } as unknown as StateService;
+		const federationService = { sendEventToAllServersInRoom } as unknown as FederationService;
+		const eventRouterService = { routePersistent } as unknown as EventRouterService;
+
+		service = new EventSenderService(stateService, federationService, eventRouterService);
+	});
+
+	test('persists a state event of any type under any state key and relays it everywhere', async () => {
+		const content = { application: 'm.call', call_id: '', device_id: 'DEVICE' };
+
+		const result = await service.sendStateEvent(ROOM_ID, CALL_MEMBER, STATE_KEY, content, SENDER);
+
+		expect(buildEvent).toHaveBeenCalledTimes(1);
+		expect(buildEvent.mock.calls[0][0]).toMatchObject({
+			type: CALL_MEMBER,
+			state_key: STATE_KEY,
+			content,
+			sender: SENDER,
+			room_id: ROOM_ID,
+		});
+		expect(builtEvent.isState()).toBe(true);
+		expect(handlePdu).toHaveBeenCalledWith(builtEvent);
+		expect(sendEventToAllServersInRoom).toHaveBeenCalledWith(builtEvent);
+		expect(routePersistent).toHaveBeenCalledWith(builtEvent);
+		expect(result).toEqual({ eventId: builtEvent.eventId });
+	});
+
+	test('accepts empty content', async () => {
+		await service.sendStateEvent(ROOM_ID, CALL_MEMBER, STATE_KEY, {}, SENDER);
+
+		expect(builtEvent.getContent()).toEqual({});
+		expect(sendEventToAllServersInRoom).toHaveBeenCalledWith(builtEvent);
+	});
+
+	test('rejects a known state type with invalid content before building or sending', async () => {
+		await expect(service.sendStateEvent(ROOM_ID, 'm.room.member', SENDER, { foo: 'bar' }, SENDER)).rejects.toThrow(
+			/failed schema validation/,
+		);
+
+		expect(buildEvent).not.toHaveBeenCalled();
+		expect(handlePdu).not.toHaveBeenCalled();
+	});
+
+	test('throws EventRejectedError and does not relay when authorization rejects the event', async () => {
+		handlePdu.mockImplementationOnce(async (event: PersistentEventBase) => {
+			event.reject(RejectCodes.AuthError, 'user power level 0 is less than event required power level 50');
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				reason: 'user power level 0 is less than event required power level 50',
+			});
+		});
+
+		const error = await service.sendStateEvent(ROOM_ID, CALL_MEMBER, STATE_KEY, {}, SENDER).catch((err: unknown) => err);
+
+		expect(error).toBeInstanceOf(EventRejectedError);
+		expect(error).toMatchObject({
+			eventId: builtEvent.eventId,
+			code: RejectCodes.AuthError,
+			reason: 'user power level 0 is less than event required power level 50',
+		});
+		expect((error as Error).cause).toBeInstanceOf(StateResolverAuthorizationError);
+		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
+		expect(routePersistent).not.toHaveBeenCalled();
+	});
+
+	test('passes through a failure that is not a rejection', async () => {
+		handlePdu.mockImplementationOnce(async (event: PersistentEventBase) => {
+			throw new PartialStateResolutionError(event);
+		});
+
+		await expect(service.sendStateEvent(ROOM_ID, CALL_MEMBER, STATE_KEY, {}, SENDER)).rejects.toBeInstanceOf(PartialStateResolutionError);
+
+		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
 	});
 });

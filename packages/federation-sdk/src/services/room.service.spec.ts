@@ -10,7 +10,7 @@ import type {
 } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 
-import { FederationValidationService, federationSDK, init } from '..';
+import { EventRejectedError, FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
@@ -353,6 +353,54 @@ describe('RoomService', async () => {
 			expect([...stateAfterReject.keys()]).toEqual(
 				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${invitedUsername}`]),
 			);
+		});
+	});
+
+	describe('sendStateEvent', () => {
+		const callMemberKey = (userId: UserID) => `_${userId}_DEVICE_m.call`;
+
+		it('should set state of any type under any state key, empty content included', async () => {
+			const username = '@alice:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(username, 'public');
+			const { roomId } = roomCreateEvent;
+			const stateMapKey = `org.matrix.msc3401.call.member:${callMemberKey(username)}` as StateMapKey;
+
+			const joined = await federationSDK.sendStateEvent(
+				roomId,
+				'org.matrix.msc3401.call.member',
+				callMemberKey(username),
+				{ application: 'm.call', call_id: '', device_id: 'DEVICE' },
+				username,
+			);
+
+			const stateAfterJoin = await stateService.getLatestRoomState(roomId);
+			expect(stateAfterJoin.get(stateMapKey)?.eventId).toBe(joined.eventId);
+
+			const left = await federationSDK.sendStateEvent(roomId, 'org.matrix.msc3401.call.member', callMemberKey(username), {}, username);
+
+			const stateAfterLeave = await stateService.getLatestRoomState(roomId);
+			expect(stateAfterLeave.get(stateMapKey)?.eventId).toBe(left.eventId);
+			expect(stateAfterLeave.get(stateMapKey)?.getContent()).toEqual({});
+		});
+
+		it('should reject state the sender lacks the power level for', async () => {
+			const username = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(username, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, secondaryUsername);
+
+			const error = await federationSDK
+				.sendStateEvent(roomId, 'org.example.restricted', '', { value: 1 }, secondaryUsername)
+				.catch((err: unknown) => err);
+
+			expect(error).toBeInstanceOf(EventRejectedError);
+			expect(error).toHaveProperty('code', 'auth_error');
+			expect((error as EventRejectedError).reason).toContain('power level');
+
+			const state = await stateService.getLatestRoomState(roomId);
+			expect(state.has('org.example.restricted:' as StateMapKey)).toBe(false);
 		});
 	});
 });

@@ -74,6 +74,7 @@ export { USERNAME_REGEX, ROOM_ID_REGEX } from './utils/validation-regex';
 export { eventSchemas, roomV10Schemas, roomV11Schemas, type BaseEventType } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
+export { EventRejectedError } from './services/event-sender.service';
 export { FederationValidationService, FederationValidationError } from './services/federation-validation.service';
 
 export type { HomeserverEventSignatures } from '@rocket.chat/federation-core';

@@ -7,7 +7,7 @@ import {
 	TransactionSenderService,
 } from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
-import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
+import type { PduForType, PduType, RoomID, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { UserRepository } from './repositories/user.repository';
@@ -111,6 +111,10 @@ export class FederationSDK {
 
 	sendCustomEvent(...args: Parameters<typeof this.eventSenderService.sendCustomEvent>) {
 		return this.eventSenderService.sendCustomEvent(...args);
+	}
+
+	sendStateEvent(roomId: RoomID, eventType: string, stateKey: string, content: Record<string, unknown>, senderUserId: UserID) {
+		return this.eventSenderService.sendStateEvent(roomId, eventType, stateKey, content, senderUserId);
 	}
 
 	redactMessage(...args: Parameters<typeof this.messageService.redactMessage>) {
