@@ -6,6 +6,7 @@ import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 
 @singleton()
 export class SendJoinService {
@@ -15,6 +16,7 @@ export class SendJoinService {
 		private readonly stateService: StateService,
 		private readonly configService: ConfigService,
 		private readonly federationService: FederationService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	async sendJoin(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>) {
@@ -41,6 +43,7 @@ export class SendJoinService {
 
 		// accepted? allow other servers to start processing already
 		void this.federationService.sendEventToAllServersInRoom(joinEvent);
+		void this.stickyEventService.catchUpIfNewServer(joinEvent, state);
 
 		const { configService } = this;
 

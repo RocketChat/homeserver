@@ -161,6 +161,7 @@ describe('authorizeAndPersist', () => {
 	function buildPersistingService(handlePdu: StateService['handlePdu']) {
 		const notify = mock(async () => undefined);
 		const markSticky = mock(async (): Promise<number | undefined> => undefined);
+		const catchUpIfNewServer = mock(async () => undefined);
 
 		const service = new EventService(
 			null as never,
@@ -171,10 +172,10 @@ describe('authorizeAndPersist', () => {
 			null as never,
 			null as never,
 			{ notify } as unknown as EventNotifierService,
-			{ markSticky } as unknown as StickyEventService,
+			{ markSticky, catchUpIfNewServer } as unknown as StickyEventService,
 		);
 
-		return { service, notify, markSticky };
+		return { service, notify, markSticky, catchUpIfNewServer };
 	}
 
 	it('notifies an event once it is persisted', async () => {
@@ -210,8 +211,16 @@ describe('authorizeAndPersist', () => {
 		expect(markSticky).not.toHaveBeenCalled();
 	});
 
+	it('lets a newly joined server catch up when the event brings one', async () => {
+		const { service, catchUpIfNewServer } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(catchUpIfNewServer).toHaveBeenCalledWith(callMember);
+	});
+
 	it('does not notify an event that was rejected', async () => {
-		const { service, notify, markSticky } = buildPersistingService(async (event) => {
+		const { service, notify, markSticky, catchUpIfNewServer } = buildPersistingService(async (event) => {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, { rejectedEvent: event, reason: 'insufficient power level' });
 		});
 
@@ -219,5 +228,6 @@ describe('authorizeAndPersist', () => {
 
 		expect(notify).not.toHaveBeenCalled();
 		expect(markSticky).not.toHaveBeenCalled();
+		expect(catchUpIfNewServer).not.toHaveBeenCalled();
 	});
 });

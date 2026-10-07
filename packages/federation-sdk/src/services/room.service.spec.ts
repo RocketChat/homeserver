@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
 import type {
 	Pdu,
@@ -10,13 +10,16 @@ import type {
 	StateMapKey,
 	UserID,
 } from '@rocket.chat/federation-room';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { container } from 'tsyringe';
 
 import { EventRejectedError, FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
 import { EventService } from './event.service';
+import { FederationSenderService } from './federation-sender.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { NEW_SERVER_CATCH_UP_DELAY_MS, StickyEventService } from './sticky-event.service';
 import { EventRepository } from '../repositories/event.repository';
 
 describe('RoomService', async () => {
@@ -585,6 +588,129 @@ describe('RoomService', async () => {
 			await container.resolve(EventRepository).redactEvent(sticky.eventId, sticky.redactedEvent as unknown as Pdu);
 
 			expect(await federationSDK.getActiveStickyEvents(roomId)).toEqual([]);
+		});
+	});
+
+	describe('catching up newly joined servers on sticky events', () => {
+		const alice = '@alice:example.com' as UserID;
+
+		let catchUps: (() => void)[];
+		let queued: [string, Pdu][];
+		let spies: { mockRestore(): void }[];
+
+		beforeEach(() => {
+			catchUps = [];
+			queued = [];
+
+			const realSetTimeout = globalThis.setTimeout;
+			spies = [
+				spyOn(globalThis, 'setTimeout').mockImplementation(((callback: () => void, delayMs?: number, ...args: unknown[]) => {
+					if (delayMs !== NEW_SERVER_CATCH_UP_DELAY_MS) {
+						return realSetTimeout(callback, delayMs, ...args);
+					}
+					catchUps.push(callback);
+					return { unref: () => undefined };
+				}) as unknown as typeof setTimeout),
+				spyOn(container.resolve(FederationSenderService), 'sendPDU').mockImplementation((destination: string, pdu: Pdu) => {
+					queued.push([destination, pdu]);
+				}),
+				spyOn(container.resolve(FederationSenderService), 'sendPDUToMultiple').mockImplementation(() => undefined),
+			];
+		});
+
+		afterEach(() => {
+			for (const spy of spies) {
+				spy.mockRestore();
+			}
+		});
+
+		// the catch-up runs in the background of the call that triggers it
+		const settle = async (until: () => boolean) => {
+			const deadline = Date.now() + 2_000;
+			while (!until() && Date.now() < deadline) {
+				// eslint-disable-next-line no-await-in-loop
+				await new Promise((resolve) => setImmediate(resolve));
+			}
+		};
+
+		// a public room on this server where alice is in a call
+		const createRoomWithOwnStickyEvent = async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'public');
+			const { roomId } = roomCreateEvent;
+
+			const { eventId } = await federationSDK.sendStickyEvent(
+				roomId,
+				'org.matrix.msc4143.rtc.member',
+				{ slot_id: 'm.call#ROOM', msc4354_sticky_key: 'member-1' },
+				alice,
+				3_600_000,
+			);
+
+			return { roomId, stickyEventId: eventId };
+		};
+
+		const buildJoin = (roomId: RoomID, userId: UserID) =>
+			stateService.buildEvent<'m.room.member'>({
+				type: 'm.room.member',
+				content: { membership: 'join' },
+				room_id: roomId,
+				state_key: userId,
+				sender: userId,
+				auth_events: [],
+				prev_events: [],
+				depth: 0,
+				origin_server_ts: Date.now(),
+			});
+
+		it('should push its own sticky events to a server whose first member joins through send_join', async () => {
+			const { roomId, stickyEventId } = await createRoomWithOwnStickyEvent();
+			const join = await buildJoin(roomId, '@dave:other.example.com' as UserID);
+
+			await federationSDK.sendJoin(roomId, join.eventId, join.event);
+			await settle(() => catchUps.length > 0);
+
+			expect(catchUps).toHaveLength(1);
+			expect(queued).toEqual([]);
+
+			catchUps[0]();
+			await settle(() => queued.length > 0);
+
+			expect(queued.map(([destination, pdu]) => [destination, pdu.type])).toEqual([['other.example.com', 'org.matrix.msc4143.rtc.member']]);
+			const [, pushed] = queued[0];
+			expect(pushed).toHaveProperty('msc4354_sticky', { duration_ms: 3_600_000 });
+			expect(PersistentEventFactory.createFromRawEvent(pushed, '10').eventId).toBe(stickyEventId);
+		});
+
+		it('should push its own sticky events to a server whose first member joins through an event it learns about', async () => {
+			const { roomId } = await createRoomWithOwnStickyEvent();
+
+			await container.resolve(EventService).authorizeAndPersist(await buildJoin(roomId, '@carol:remote.example.com' as UserID), Date.now());
+			await settle(() => catchUps.length > 0);
+
+			expect(catchUps).toHaveLength(1);
+			catchUps[0]();
+			await settle(() => queued.length > 0);
+
+			expect(queued.map(([destination]) => destination)).toEqual(['remote.example.com']);
+		});
+
+		it('should not push again when another member of an already joined server joins', async () => {
+			const { roomId } = await createRoomWithOwnStickyEvent();
+			const eventService = container.resolve(EventService);
+
+			await eventService.authorizeAndPersist(await buildJoin(roomId, '@carol:remote.example.com' as UserID), Date.now());
+			await settle(() => catchUps.length > 0);
+			const erinJoin = await buildJoin(roomId, '@erin:remote.example.com' as UserID);
+			const catchUp = spyOn(container.resolve(StickyEventService), 'catchUpIfNewServer');
+			try {
+				await eventService.authorizeAndPersist(erinJoin, Date.now());
+				await settle(() => catchUp.mock.calls.length > 0);
+				expect(await catchUp.mock.results[0].value).toBeUndefined();
+			} finally {
+				catchUp.mockRestore();
+			}
+
+			expect(catchUps).toHaveLength(1);
 		});
 	});
 });
