@@ -6,6 +6,7 @@ import { PersistentEventFactory, RejectCodes, StateResolverAuthorizationError } 
 import type { EventNotifierService } from './event-notifier.service';
 import { EventService } from './event.service';
 import type { StateService } from './state.service';
+import type { StickyEventService } from './sticky-event.service';
 import type { EventRepository } from '../repositories/event.repository';
 
 // a v10-shaped member event: pre-v11 redaction keeps origin/prev_state/membership at the top level,
@@ -58,6 +59,7 @@ function buildService(roomVersion: RoomVersion, storedEvent: Pdu) {
 		null as never,
 		null as never,
 		eventRepository,
+		null as never,
 		null as never,
 		null as never,
 	);
@@ -158,6 +160,7 @@ describe('authorizeAndPersist', () => {
 
 	function buildPersistingService(handlePdu: StateService['handlePdu']) {
 		const notify = mock(async () => undefined);
+		const markSticky = mock(async () => undefined);
 
 		const service = new EventService(
 			null as never,
@@ -168,9 +171,10 @@ describe('authorizeAndPersist', () => {
 			null as never,
 			null as never,
 			{ notify } as unknown as EventNotifierService,
+			{ markSticky } as unknown as StickyEventService,
 		);
 
-		return { service, notify };
+		return { service, notify, markSticky };
 	}
 
 	it('notifies an event once it is persisted', async () => {
@@ -181,13 +185,30 @@ describe('authorizeAndPersist', () => {
 		expect(notify).toHaveBeenCalledWith(callMember);
 	});
 
+	it('records the stickiness of an event against when it was received', async () => {
+		const { service, markSticky } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(markSticky).toHaveBeenCalledWith(callMember, 1732999154000);
+	});
+
+	it('never makes sticky an event whose receive time is unknown', async () => {
+		const { service, markSticky } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember);
+
+		expect(markSticky).not.toHaveBeenCalled();
+	});
+
 	it('does not notify an event that was rejected', async () => {
-		const { service, notify } = buildPersistingService(async (event) => {
+		const { service, notify, markSticky } = buildPersistingService(async (event) => {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, { rejectedEvent: event, reason: 'insufficient power level' });
 		});
 
-		await expect(service.authorizeAndPersist(callMember)).rejects.toThrow(StateResolverAuthorizationError);
+		await expect(service.authorizeAndPersist(callMember, 1732999154000)).rejects.toThrow(StateResolverAuthorizationError);
 
 		expect(notify).not.toHaveBeenCalled();
+		expect(markSticky).not.toHaveBeenCalled();
 	});
 });

@@ -75,6 +75,7 @@ export { eventSchemas, roomV10Schemas, roomV11Schemas, type BaseEventType } from
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
 export { EventRejectedError } from './services/event-sender.service';
+export type { ActiveStickyEvent } from './services/sticky-event.service';
 export { FederationValidationService, FederationValidationError } from './services/federation-validation.service';
 
 export type { HomeserverEventSignatures } from '@rocket.chat/federation-core';

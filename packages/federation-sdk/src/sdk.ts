@@ -30,6 +30,7 @@ import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
+import { StickyEventService } from './services/sticky-event.service';
 import { WellKnownService } from './services/well-known.service';
 
 // create a federation sdk class to export
@@ -61,6 +62,7 @@ export class FederationSDK {
 		private readonly transactionSenderService: TransactionSenderService,
 		public readonly directoryService: DirectoryService,
 		private readonly appServiceRoomService: AppServiceRoomService,
+		private readonly stickyEventService: StickyEventService,
 		@inject(delay(() => UserRepository))
 		private readonly userRepository: UserRepository,
 	) {}
@@ -286,6 +288,15 @@ export class FederationSDK {
 	 */
 	getJoinedServers(roomId: RoomID) {
 		return this.stateService.getJoinedServers(roomId);
+	}
+
+	/**
+	 * The sticky events (MSC4354) of a room that have not expired yet, from any
+	 * sender, oldest first; optionally only those of one event type. `now`
+	 * defaults to the current time.
+	 */
+	getActiveStickyEvents(roomId: RoomID, options?: { type?: string; now?: number }) {
+		return this.stickyEventService.getActiveStickyEvents(roomId, options);
 	}
 
 	handlePdu(...args: Parameters<typeof this.stateService.handlePdu>) {

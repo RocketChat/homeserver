@@ -102,7 +102,7 @@ export class StagingAreaService {
 				}
 
 				// eslint-disable-next-line no-await-in-loop
-				await this.eventService.authorizeAndPersist(await toEventBase(event.event));
+				await this.eventService.authorizeAndPersist(await toEventBase(event.event), event.createdAt?.getTime());
 				// eslint-disable-next-line no-await-in-loop
 				await this.eventService.markEventAsUnstaged(event);
 

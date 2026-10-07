@@ -31,6 +31,12 @@ export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
 	};
 
 	partial: boolean;
+
+	// set while the event can be sticky (MSC4354): when this server received it, and when its stickiness ends
+	sticky?: {
+		receivedAt: number;
+		expiresAt: number;
+	};
 }
 
 export interface EventStagingStore extends PersistentEventBase {

@@ -19,6 +19,13 @@ export class EventRepository {
 			'event.room_id': 1,
 			'event.type': 1,
 		});
+		this.collection.createIndex(
+			{
+				'event.room_id': 1,
+				'sticky.expiresAt': 1,
+			},
+			{ partialFilterExpression: { 'sticky.expiresAt': { $exists: true } } },
+		);
 	}
 
 	async findById(eventId: EventID): Promise<EventStore | null> {
@@ -80,8 +87,25 @@ export class EventRepository {
 	async redactEvent(eventId: EventID, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
-			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
+			// Purposefully replacing the entire event; a redacted event is no longer sticky
+			{ $set: { event: redactedEvent }, $unset: { sticky: '' } },
 		);
+	}
+
+	// keeps the first window recorded, and never makes a rejected event sticky
+	async setSticky(eventId: EventID, sticky: NonNullable<EventStore['sticky']>): Promise<void> {
+		await this.collection.updateOne({ _id: eventId, rejectCode: { $exists: false }, sticky: { $exists: false } }, { $set: { sticky } });
+	}
+
+	findActiveStickyByRoomId(roomId: RoomID, now: number, eventType?: string): FindCursor<EventStore> {
+		return this.collection
+			.find({
+				'event.room_id': roomId,
+				'sticky.expiresAt': { $gt: now },
+				'rejectCode': { $exists: false },
+				...(eventType && { 'event.type': eventType }),
+			})
+			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
 	public async findPowerLevelsEventByRoomId(roomId: string): Promise<EventStore<PduForType<'m.room.power_levels'>> | null> {

@@ -1,9 +1,11 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
 
 import type {
+	Pdu,
 	PduJoinRuleEventContent,
 	PduPowerLevelsEventContent,
 	PersistentEventBase,
+	RoomID,
 	RoomVersion,
 	StateMapKey,
 	UserID,
@@ -12,8 +14,10 @@ import { container } from 'tsyringe';
 
 import { EventRejectedError, FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
+import { EventService } from './event.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { EventRepository } from '../repositories/event.repository';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
@@ -448,6 +452,101 @@ describe('RoomService', async () => {
 
 			const state = await stateService.getLatestRoomState(roomId);
 			expect(state.has('org.example.restricted:' as StateMapKey)).toBe(false);
+		});
+	});
+
+	describe('sticky events', () => {
+		const remoteMember = '@carol:remote.example.com' as UserID;
+
+		// a room on this server with a member from another server, built without federating anything
+		const createRoomWithRemoteMember = async () => {
+			const { roomCreateEvent } = await createRoom('@alice:example.com' as UserID, 'public');
+			const { roomId } = roomCreateEvent;
+
+			const join = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'join' },
+					room_id: roomId,
+					state_key: remoteMember,
+					sender: remoteMember,
+					auth_events: [],
+					prev_events: [],
+					depth: 0,
+					origin_server_ts: Date.now(),
+				},
+				roomCreateEvent.version,
+			);
+			await stateService.handlePdu(join);
+
+			return roomId;
+		};
+
+		// an event as it arrives from the remote member's server
+		const receiveFromRemoteMember = async (roomId: RoomID, fields: Record<string, unknown>, receivedAt: number) => {
+			const event = await stateService.buildEvent({
+				type: 'org.matrix.msc4143.rtc.member',
+				content: { msc4354_sticky_key: 'member-1' },
+				room_id: roomId,
+				sender: remoteMember,
+				auth_events: [],
+				prev_events: [],
+				depth: 0,
+				origin_server_ts: receivedAt - 1_000,
+				...fields,
+			} as unknown as Pdu);
+
+			await container.resolve(EventService).authorizeAndPersist(event, receivedAt);
+
+			return event;
+		};
+
+		it('should keep a sticky event received over federation intact and list it until it expires', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			const receivedAt = Date.now();
+
+			const sticky = await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 3_600_000 } }, receivedAt);
+			await receiveFromRemoteMember(roomId, { content: { body: 'not sticky' } }, receivedAt);
+
+			const stored = await container.resolve(EventRepository).findById(sticky.eventId);
+			expect(stored?.event).toHaveProperty('msc4354_sticky', { duration_ms: 3_600_000 });
+
+			const expiresAt = receivedAt - 1_000 + 3_600_000;
+			const active = await federationSDK.getActiveStickyEvents(roomId);
+			expect(active).toEqual([
+				{ event_id: sticky.eventId, event: expect.objectContaining({ msc4354_sticky: { duration_ms: 3_600_000 } }), expiresAt },
+			]);
+
+			expect(await federationSDK.getActiveStickyEvents(roomId, { now: expiresAt })).toEqual([]);
+		});
+
+		it('should list only the sticky events of the requested type', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			const receivedAt = Date.now();
+
+			const member = await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 3_600_000 } }, receivedAt);
+			await receiveFromRemoteMember(
+				roomId,
+				{
+					type: 'org.matrix.msc4075.rtc.notification',
+					content: { msc4354_sticky_key: 'm.call#ROOM' },
+					msc4354_sticky: { duration_ms: 110_000 },
+				},
+				receivedAt,
+			);
+
+			const active = await federationSDK.getActiveStickyEvents(roomId, { type: 'org.matrix.msc4143.rtc.member' });
+
+			expect(active.map(({ event_id }) => event_id)).toEqual([member.eventId]);
+		});
+
+		it('should stop listing a sticky event once it is redacted', async () => {
+			const roomId = await createRoomWithRemoteMember();
+
+			const sticky = await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 3_600_000 } }, Date.now());
+			await container.resolve(EventRepository).redactEvent(sticky.eventId, sticky.redactedEvent as unknown as Pdu);
+
+			expect(await federationSDK.getActiveStickyEvents(roomId)).toEqual([]);
 		});
 	});
 });
