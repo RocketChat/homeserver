@@ -44,6 +44,12 @@ import { RoomRepository } from '../repositories/room.repository';
 
 const ROOM_LOCK_RETRY_MS = 200;
 
+// what rooms created here allow beyond the protocol defaults
+const DEFAULT_EVENT_POWER_LEVELS = {
+	// any member may publish their own MatrixRTC call membership, so anyone can join a call
+	'org.matrix.msc3401.call.member': 0,
+};
+
 @singleton()
 export class RoomService {
 	private readonly logger = createLogger('RoomService');
@@ -293,6 +299,7 @@ export class RoomService {
 						}),
 						users_default: 0,
 						events: {
+							...DEFAULT_EVENT_POWER_LEVELS,
 							...powers.events,
 						},
 						events_default: 0,
@@ -1357,6 +1364,7 @@ export class RoomService {
 					}),
 					users_default: 0,
 					events: {
+						...DEFAULT_EVENT_POWER_LEVELS,
 						'm.room.name': 50,
 						'm.room.power_levels': 100,
 						'm.room.history_visibility': 100,
@@ -1542,7 +1550,7 @@ export class RoomService {
 						[targetUserId]: 50,
 					}),
 					users_default: 0,
-					events: {},
+					events: { ...DEFAULT_EVENT_POWER_LEVELS },
 					events_default: 0,
 					state_default: 50,
 					ban: 50,
