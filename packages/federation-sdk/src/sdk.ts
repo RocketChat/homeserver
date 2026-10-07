@@ -119,6 +119,10 @@ export class FederationSDK {
 		return this.eventSenderService.sendStateEvent(roomId, eventType, stateKey, content, senderUserId);
 	}
 
+	sendStickyEvent(roomId: RoomID, eventType: string, content: Record<string, unknown>, senderUserId: UserID, durationMs: number) {
+		return this.eventSenderService.sendStickyEvent(roomId, eventType, content, senderUserId, durationMs);
+	}
+
 	redactMessage(...args: Parameters<typeof this.messageService.redactMessage>) {
 		return this.messageService.redactMessage(...args);
 	}

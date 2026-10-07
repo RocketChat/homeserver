@@ -15,7 +15,9 @@ import { singleton } from 'tsyringe';
 
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 import { getEventSchemaForType } from '../utils/event-schemas';
+import { MAX_STICKY_DURATION_MS, STICKY_EVENT_FIELD } from '../utils/sticky';
 
 // the room's authorization rules refused an event built on behalf of a local user
 export class EventRejectedError extends Error {
@@ -42,6 +44,7 @@ export class EventSenderService {
 		private readonly stateService: StateService,
 		private readonly federationService: FederationService,
 		private readonly eventRouterService: EventRouterService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	/**
@@ -127,6 +130,53 @@ export class EventSenderService {
 			},
 			roomVersion,
 		);
+
+		this.dispatch(event);
+
+		return { eventId: event.eventId };
+	}
+
+	/**
+	 * Send a sticky event (MSC4354) on behalf of a local user: a message event
+	 * that stays relevant to every member of the room for `durationMs` after it
+	 * is sent, whatever the history visibility, such as a MatrixRTC call
+	 * membership, ring or decline. The event is persisted, relayed to every
+	 * federated server in the room and routed to interested bridges.
+	 *
+	 * @throws {RangeError} when `durationMs` is not a whole number of
+	 * milliseconds between 1 and one hour
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
+	 */
+	async sendStickyEvent(
+		roomId: RoomID,
+		eventType: string,
+		content: Record<string, unknown>,
+		senderUserId: UserID,
+		durationMs: number,
+	): Promise<{ eventId: EventID }> {
+		if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > MAX_STICKY_DURATION_MS) {
+			throw new RangeError(`A sticky event lasts from 1 to ${MAX_STICKY_DURATION_MS} ms, not ${durationMs}`);
+		}
+
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+		const sentAt = Date.now();
+
+		const event = await this.buildAndPersist(
+			{
+				type: eventType,
+				content,
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: sentAt,
+				sender: senderUserId,
+				[STICKY_EVENT_FIELD]: { duration_ms: durationMs },
+			},
+			roomVersion,
+		);
+
+		await this.stickyEventService.markSticky(event, sentAt);
 
 		this.dispatch(event);
 

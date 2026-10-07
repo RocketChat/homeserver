@@ -16,6 +16,7 @@ import {
 import { EventRejectedError, EventSenderService } from './event-sender.service';
 import type { FederationService } from './federation.service';
 import { PartialStateResolutionError, type StateService, UnknownRoomError } from './state.service';
+import type { StickyEventService } from './sticky-event.service';
 
 const ROOM_ID = '!room:example.com' as RoomID;
 const SENDER = '@bridge:example.com' as UserID;
@@ -47,7 +48,7 @@ describe('EventSenderService.sendCustomEvent', () => {
 		const federationService = { sendEventToAllServersInRoom } as unknown as FederationService;
 		const eventRouterService = { routePersistent } as unknown as EventRouterService;
 
-		service = new EventSenderService(stateService, federationService, eventRouterService);
+		service = new EventSenderService(stateService, federationService, eventRouterService, {} as StickyEventService);
 	});
 
 	test('sends a custom (unknown) event type through the full pipeline', async () => {
@@ -135,7 +136,7 @@ describe('EventSenderService.sendStateEvent', () => {
 		const federationService = { sendEventToAllServersInRoom } as unknown as FederationService;
 		const eventRouterService = { routePersistent } as unknown as EventRouterService;
 
-		service = new EventSenderService(stateService, federationService, eventRouterService);
+		service = new EventSenderService(stateService, federationService, eventRouterService, {} as StickyEventService);
 	});
 
 	test('persists a state event of any type under any state key and relays it everywhere', async () => {
@@ -204,5 +205,75 @@ describe('EventSenderService.sendStateEvent', () => {
 		await expect(service.sendStateEvent(ROOM_ID, CALL_MEMBER, STATE_KEY, {}, SENDER)).rejects.toBeInstanceOf(PartialStateResolutionError);
 
 		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
+	});
+});
+
+describe('EventSenderService.sendStickyEvent', () => {
+	const RTC_MEMBER = 'org.matrix.msc4143.rtc.member';
+	const CONTENT = { slot_id: 'm.call#ROOM', msc4354_sticky_key: 'member-1' };
+
+	let service: EventSenderService;
+	let buildEvent: ReturnType<typeof mock>;
+	let handlePdu: ReturnType<typeof mock>;
+	let markSticky: ReturnType<typeof mock>;
+	let sendEventToAllServersInRoom: ReturnType<typeof mock>;
+	let routePersistent: ReturnType<typeof mock>;
+	let builtEvent: PersistentEventBase;
+
+	beforeEach(() => {
+		buildEvent = mock(async (raw: unknown) => {
+			builtEvent = PersistentEventFactory.createFromRawEvent(raw as Pdu, '10');
+			return builtEvent;
+		});
+		handlePdu = mock(async () => undefined);
+		markSticky = mock(async () => undefined);
+		sendEventToAllServersInRoom = mock(async () => undefined);
+		routePersistent = mock(async () => undefined);
+
+		const stateService = { getRoomVersion: mock(async () => '10'), buildEvent, handlePdu } as unknown as StateService;
+		const federationService = { sendEventToAllServersInRoom } as unknown as FederationService;
+		const eventRouterService = { routePersistent } as unknown as EventRouterService;
+		const stickyEventService = { markSticky } as unknown as StickyEventService;
+
+		service = new EventSenderService(stateService, federationService, eventRouterService, stickyEventService);
+	});
+
+	test('persists a message event that is sticky for the given duration and relays it everywhere', async () => {
+		const result = await service.sendStickyEvent(ROOM_ID, RTC_MEMBER, CONTENT, SENDER, 3_600_000);
+
+		const raw = buildEvent.mock.calls[0][0] as Record<string, unknown>;
+		expect(raw).toMatchObject({
+			type: RTC_MEMBER,
+			content: CONTENT,
+			sender: SENDER,
+			room_id: ROOM_ID,
+			msc4354_sticky: { duration_ms: 3_600_000 },
+		});
+		expect(raw).not.toHaveProperty('state_key');
+		expect(builtEvent.event).toHaveProperty('msc4354_sticky', { duration_ms: 3_600_000 });
+		expect(handlePdu).toHaveBeenCalledWith(builtEvent);
+		expect(markSticky).toHaveBeenCalledWith(builtEvent, raw.origin_server_ts);
+		expect(sendEventToAllServersInRoom).toHaveBeenCalledWith(builtEvent);
+		expect(routePersistent).toHaveBeenCalledWith(builtEvent);
+		expect(result).toEqual({ eventId: builtEvent.eventId });
+	});
+
+	test.each([0, -1, 1.5, 3_600_001, Number.NaN])('refuses a duration of %p ms before building anything', async (durationMs) => {
+		await expect(service.sendStickyEvent(ROOM_ID, RTC_MEMBER, CONTENT, SENDER, durationMs)).rejects.toBeInstanceOf(RangeError);
+
+		expect(buildEvent).not.toHaveBeenCalled();
+	});
+
+	test('throws EventRejectedError and neither records nor relays the event when authorization rejects it', async () => {
+		handlePdu.mockImplementationOnce(async (event: PersistentEventBase) => {
+			event.reject(RejectCodes.AuthError, "sender's membership is not join");
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, { rejectedEvent: event, reason: "sender's membership is not join" });
+		});
+
+		await expect(service.sendStickyEvent(ROOM_ID, RTC_MEMBER, CONTENT, SENDER, 110_000)).rejects.toBeInstanceOf(EventRejectedError);
+
+		expect(markSticky).not.toHaveBeenCalled();
+		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
+		expect(routePersistent).not.toHaveBeenCalled();
 	});
 });
