@@ -541,6 +541,23 @@ describe('RoomService', async () => {
 			}
 		});
 
+		it('should list a sticky event sent by a local member until it expires', async () => {
+			const { roomCreateEvent } = await createRoom('@alice:example.com' as UserID, 'public');
+			const { roomId } = roomCreateEvent;
+
+			const { eventId } = await federationSDK.sendStickyEvent(
+				roomId,
+				'org.matrix.msc4075.rtc.notification',
+				{ slot_id: 'm.call#ROOM', msc4354_sticky_key: 'm.call#ROOM' },
+				'@alice:example.com' as UserID,
+				110_000,
+			);
+
+			const [active] = await federationSDK.getActiveStickyEvents(roomId);
+			expect(active).toMatchObject({ event_id: eventId, event: { msc4354_sticky: { duration_ms: 110_000 } } });
+			expect(active.expiresAt).toBe(active.event.origin_server_ts + 110_000);
+		});
+
 		it('should list only the sticky events of the requested type', async () => {
 			const roomId = await createRoomWithRemoteMember();
 			const receivedAt = Date.now();
