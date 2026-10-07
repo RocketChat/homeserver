@@ -1,10 +1,12 @@
 import { EventRouterService } from '@rocket.chat/appservice';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
+	type EventID,
 	type PduForType,
 	type PduType,
 	type PduWithHashesAndSignaturesOptional,
 	type PersistentEventBase,
+	type RejectCode,
 	RoomID,
 	UserID,
 } from '@rocket.chat/federation-room';
@@ -13,6 +15,23 @@ import { singleton } from 'tsyringe';
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
 import { getEventSchemaForType } from '../utils/event-schemas';
+
+// the room's authorization rules refused an event built on behalf of a local user
+export class EventRejectedError extends Error {
+	readonly eventId: EventID;
+
+	readonly code: RejectCode;
+
+	readonly reason: string;
+
+	constructor(event: PersistentEventBase, options?: ErrorOptions) {
+		super(`Event ${event.eventId} was rejected: ${event.rejectReason}`, options);
+		this.name = 'EventRejectedError';
+		this.eventId = event.eventId;
+		this.code = event.rejectCode as RejectCode;
+		this.reason = event.rejectReason;
+	}
+}
 
 @singleton()
 export class EventSenderService {
@@ -71,6 +90,65 @@ export class EventSenderService {
 		this.dispatch(event);
 
 		return event;
+	}
+
+	/**
+	 * Set a piece of room state on behalf of a local user, of any event type and
+	 * under any state key. The event is persisted, relayed to every federated
+	 * server in the room and routed to interested bridges.
+	 *
+	 * Empty content is valid: it is how some state is withdrawn, e.g. a MatrixRTC
+	 * call membership when its member leaves the call.
+	 *
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the
+	 * event, e.g. because the sender lacks the power level its type requires
+	 */
+	async sendStateEvent(
+		roomId: RoomID,
+		eventType: string,
+		stateKey: string,
+		content: Record<string, unknown>,
+		senderUserId: UserID,
+	): Promise<{ eventId: EventID }> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+
+		const rawEvent = {
+			type: eventType,
+			state_key: stateKey,
+			content,
+			room_id: roomId,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			sender: senderUserId,
+		};
+
+		const validation = getEventSchemaForType(eventType, roomVersion).safeParse(rawEvent);
+		if (!validation.success) {
+			throw new Error(`State event of type ${eventType} failed schema validation: ${JSON.stringify(validation.error.format())}`);
+		}
+
+		const event = await this.stateService.buildEvent(
+			rawEvent as unknown as PduWithHashesAndSignaturesOptional<PduForType<PduType>>,
+			roomVersion,
+		);
+
+		try {
+			await this.stateService.handlePdu(event);
+		} catch (error) {
+			if (event.rejected) {
+				throw new EventRejectedError(event, { cause: error });
+			}
+			throw error;
+		}
+		if (event.rejected) {
+			throw new EventRejectedError(event);
+		}
+
+		this.dispatch(event);
+
+		return { eventId: event.eventId };
 	}
 
 	/**
