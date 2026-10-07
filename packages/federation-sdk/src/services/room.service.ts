@@ -584,6 +584,10 @@ export class RoomService {
 			event_id: leaveEvent.eventId,
 			event: leaveEvent.event,
 		});
+		await this.eventEmitterService.emit('homeserver.matrix.event', {
+			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+		});
 
 		return leaveEvent;
 	}

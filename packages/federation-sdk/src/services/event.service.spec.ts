@@ -1,10 +1,11 @@
-import { describe, expect, it, spyOn } from 'bun:test';
+import { describe, expect, it, mock, spyOn } from 'bun:test';
 
 import { generateKeyPairs, signEvent } from '@rocket.chat/federation-core';
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
-import { PersistentEventBase, PersistentEventFactory } from '@rocket.chat/federation-room';
+import { PersistentEventBase, PersistentEventFactory, RejectCodes, StateResolverAuthorizationError } from '@rocket.chat/federation-room';
 import type { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 
+import type { EventNotifierService } from './event-notifier.service';
 import { EventService } from './event.service';
 import type { ServerService } from './server.service';
 import type { StateService } from './state.service';
@@ -421,5 +422,57 @@ describe('processIncomingPDUs', () => {
 		await service.processIncomingPDUs(origin, [{ ...hashed, signatures } as Pdu]);
 
 		expect(staged).toHaveLength(expectStaged ? 1 : 0);
+	});
+});
+
+describe('authorizeAndPersist', () => {
+	const callMember = PersistentEventFactory.createFromRawEvent(
+		{
+			type: 'org.matrix.msc3401.call.member',
+			state_key: '_@alice:hs2_DEVICE_m.call',
+			content: {},
+			room_id: '!room:hs1',
+			sender: '@alice:hs2',
+			depth: 6,
+			auth_events: [],
+			prev_events: [],
+			origin_server_ts: 1732999153020,
+		} as unknown as Pdu,
+		'10',
+	);
+
+	function buildPersistingService(handlePdu: StateService['handlePdu']) {
+		const notify = mock(async () => undefined);
+
+		const service = new EventService(
+			null as never,
+			null as never,
+			{ handlePdu } as unknown as StateService,
+			null as never,
+			null as never,
+			null as never,
+			null as never,
+			{ notify } as unknown as EventNotifierService,
+		);
+
+		return { service, notify };
+	}
+
+	it('notifies an event once it is persisted', async () => {
+		const { service, notify } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember);
+
+		expect(notify).toHaveBeenCalledWith(callMember);
+	});
+
+	it('does not notify an event that was rejected', async () => {
+		const { service, notify } = buildPersistingService(async (event) => {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, { rejectedEvent: event, reason: 'insufficient power level' });
+		});
+
+		await expect(service.authorizeAndPersist(callMember)).rejects.toThrow(StateResolverAuthorizationError);
+
+		expect(notify).not.toHaveBeenCalled();
 	});
 });

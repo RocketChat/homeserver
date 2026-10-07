@@ -44,6 +44,7 @@ export type { CachedAppService, AppServiceRegistration, AppServiceState } from '
 export type { PingResult, PingError } from '@rocket.chat/appservice';
 
 export type {
+	AnyPdu,
 	Pdu,
 	PduForType,
 	PduMembershipEventContent,

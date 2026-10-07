@@ -68,6 +68,10 @@ export class SendJoinService {
 			event_id: eventId,
 			event: signedJoinEvent.event,
 		});
+		await this.emitterService.emit('homeserver.matrix.event', {
+			event_id: eventId,
+			event: signedJoinEvent.event,
+		});
 
 		return {
 			origin,

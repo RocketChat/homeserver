@@ -206,6 +206,10 @@ export class InviteService {
 				event_id: inviteEvent.eventId,
 				event: inviteEvent.event,
 			});
+			await this.emitterService.emit('homeserver.matrix.event', {
+				event_id: inviteEvent.eventId,
+				event: inviteEvent.event,
+			});
 
 			return inviteEvent;
 		}
@@ -233,6 +237,10 @@ export class InviteService {
 		}
 
 		await this.emitterService.emit('homeserver.matrix.membership', {
+			event_id: inviteEvent.eventId,
+			event: inviteEvent.event,
+		});
+		await this.emitterService.emit('homeserver.matrix.event', {
 			event_id: inviteEvent.eventId,
 			event: inviteEvent.event,
 		});
