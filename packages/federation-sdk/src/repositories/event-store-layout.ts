@@ -20,6 +20,10 @@ export class EventRoomIdLayout implements EventStoreLayout {
 	readonly indexes: IndexDescription[] = [
 		{ key: { 'event.room_id': 1, 'nextEventId': 1, 'event.depth': 1, 'createdAt': 1 } },
 		{ key: { 'event.room_id': 1, 'event.type': 1 } },
+		{
+			key: { 'event.room_id': 1, 'sticky.expiresAt': 1 },
+			partialFilterExpression: { 'sticky.expiresAt': { $exists: true } },
+		},
 	];
 
 	roomFilter(roomId: string): Filter<EventStore> {
@@ -41,6 +45,10 @@ export class TopLevelRoomIdLayout implements EventStoreLayout {
 		{
 			key: { 'roomId': 1, 'event.type': 1 },
 			partialFilterExpression: { roomId: { $exists: true } },
+		},
+		{
+			key: { 'roomId': 1, 'sticky.expiresAt': 1 },
+			partialFilterExpression: { 'roomId': { $exists: true }, 'sticky.expiresAt': { $exists: true } },
 		},
 	];
 

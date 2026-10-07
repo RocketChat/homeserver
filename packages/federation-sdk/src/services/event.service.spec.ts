@@ -9,6 +9,7 @@ import type { EventNotifierService } from './event-notifier.service';
 import { EventService } from './event.service';
 import type { ServerService } from './server.service';
 import type { StateService } from './state.service';
+import type { StickyEventService } from './sticky-event.service';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
 import type { EventStagingRepository } from '../repositories/event-staging.repository';
 import type { EventRepository } from '../repositories/event.repository';
@@ -63,6 +64,7 @@ function buildService(roomVersion: RoomVersion, storedEvent: Pdu) {
 		null as never,
 		null as never,
 		eventRepository,
+		null as never,
 		null as never,
 		null as never,
 	);
@@ -373,6 +375,7 @@ describe('processIncomingPDUs', () => {
 			{ findById: async () => null } as unknown as EventRepository,
 			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
 			null as never,
+			null as never,
 		);
 
 		await service.processIncomingPDUs(origin, [await sign(create), await sign(message)]);
@@ -417,6 +420,7 @@ describe('processIncomingPDUs', () => {
 			{ findById: async () => null } as unknown as EventRepository,
 			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
 			null as never,
+			null as never,
 		);
 
 		await service.processIncomingPDUs(origin, [{ ...hashed, signatures } as Pdu]);
@@ -443,6 +447,7 @@ describe('authorizeAndPersist', () => {
 
 	function buildPersistingService(handlePdu: StateService['handlePdu']) {
 		const notify = mock(async () => undefined);
+		const markSticky = mock(async () => undefined);
 
 		const service = new EventService(
 			null as never,
@@ -453,9 +458,10 @@ describe('authorizeAndPersist', () => {
 			null as never,
 			null as never,
 			{ notify } as unknown as EventNotifierService,
+			{ markSticky } as unknown as StickyEventService,
 		);
 
-		return { service, notify };
+		return { service, notify, markSticky };
 	}
 
 	it('notifies an event once it is persisted', async () => {
@@ -466,13 +472,30 @@ describe('authorizeAndPersist', () => {
 		expect(notify).toHaveBeenCalledWith(callMember);
 	});
 
+	it('records the stickiness of an event against when it was received', async () => {
+		const { service, markSticky } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(markSticky).toHaveBeenCalledWith(callMember, 1732999154000);
+	});
+
+	it('never makes sticky an event whose receive time is unknown', async () => {
+		const { service, markSticky } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember);
+
+		expect(markSticky).not.toHaveBeenCalled();
+	});
+
 	it('does not notify an event that was rejected', async () => {
-		const { service, notify } = buildPersistingService(async (event) => {
+		const { service, notify, markSticky } = buildPersistingService(async (event) => {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, { rejectedEvent: event, reason: 'insufficient power level' });
 		});
 
-		await expect(service.authorizeAndPersist(callMember)).rejects.toThrow(StateResolverAuthorizationError);
+		await expect(service.authorizeAndPersist(callMember, 1732999154000)).rejects.toThrow(StateResolverAuthorizationError);
 
 		expect(notify).not.toHaveBeenCalled();
+		expect(markSticky).not.toHaveBeenCalled();
 	});
 });
