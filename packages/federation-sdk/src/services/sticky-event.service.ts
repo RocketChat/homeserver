@@ -1,8 +1,22 @@
-import type { AnyPdu, EventID, PersistentEventBase, RoomID } from '@rocket.chat/federation-room';
+import { createLogger } from '@rocket.chat/federation-core';
+import {
+	type AnyPdu,
+	type EventID,
+	type PersistentEventBase,
+	type RoomID,
+	type State,
+	extractDomainFromId,
+} from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
+import { ConfigService } from './config.service';
+import { FederationSenderService } from './federation-sender.service';
+import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 import { getStickyExpiresAt } from '../utils/sticky';
+
+// how long a newly joined server is given to store the room before it is sent events for it
+export const NEW_SERVER_CATCH_UP_DELAY_MS = 10_000;
 
 export type ActiveStickyEvent = {
 	event_id: EventID;
@@ -14,9 +28,14 @@ export type ActiveStickyEvent = {
 // they are sent, whatever the history visibility, such as MatrixRTC call memberships
 @singleton()
 export class StickyEventService {
+	private readonly logger = createLogger('StickyEventService');
+
 	constructor(
 		@inject(delay(() => EventRepository))
 		private readonly eventRepository: EventRepository,
+		private readonly configService: ConfigService,
+		private readonly stateService: StateService,
+		private readonly federationSenderService: FederationSenderService,
 	) {}
 
 	/**
@@ -49,5 +68,65 @@ export class StickyEventService {
 		const stored = await this.eventRepository.findActiveStickyByRoomId(roomId, now, type).toArray();
 
 		return stored.flatMap(({ _id, event, sticky }) => (sticky ? [{ event_id: _id, event, expiresAt: sticky.expiresAt }] : []));
+	}
+
+	/**
+	 * MSC4354 asks a server to push its own unexpired sticky events to every server
+	 * that newly joins a room. Call it with every accepted event: when the event is
+	 * the join of the first member of another server, that server is caught up after
+	 * NEW_SERVER_CATCH_UP_DELAY_MS. `stateBefore` is the room state the event applies
+	 * to, looked up when not given. Resolves to the server being caught up, if any;
+	 * failures are logged, never thrown.
+	 */
+	async catchUpIfNewServer(event: PersistentEventBase, stateBefore?: State): Promise<string | undefined> {
+		if (!event.isMembershipEvent() || event.getMembership() !== 'join' || !event.stateKey) {
+			return undefined;
+		}
+
+		try {
+			const server = extractDomainFromId(event.stateKey);
+			if (server === this.configService.serverName) {
+				return undefined;
+			}
+
+			const serversBefore = await this.stateService.getServerSetInRoom(
+				event.roomId,
+				stateBefore ?? (await this.stateService.getStateBeforeEvent(event)),
+			);
+			if (serversBefore.has(server)) {
+				return undefined;
+			}
+
+			setTimeout(() => {
+				void this.pushOwnStickyEvents(event.roomId, server);
+			}, NEW_SERVER_CATCH_UP_DELAY_MS).unref?.();
+
+			return server;
+		} catch (err) {
+			this.logger.error({ msg: 'Failed to check whether a join brings a new server', eventId: event.eventId, err });
+			return undefined;
+		}
+	}
+
+	/**
+	 * Queue this server's own unexpired sticky events of a room to another server,
+	 * oldest first. Resolves to how many were queued; failures are logged, never thrown.
+	 */
+	async pushOwnStickyEvents(roomId: RoomID, destination: string): Promise<number> {
+		try {
+			const active = await this.eventRepository.findActiveStickyByRoomId(roomId, Date.now()).toArray();
+			const own = active.filter(({ event }) => extractDomainFromId(event.sender) === this.configService.serverName);
+
+			for (const { event } of own) {
+				this.federationSenderService.sendPDU(destination, event);
+			}
+
+			this.logger.info({ msg: 'Caught up a newly joined server on sticky events', roomId, destination, count: own.length });
+
+			return own.length;
+		} catch (err) {
+			this.logger.error({ msg: 'Failed to push sticky events to a newly joined server', roomId, destination, err });
+			return 0;
+		}
 	}
 }
