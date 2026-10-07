@@ -779,9 +779,7 @@ export class EventService {
 	// this server received the event; without it the event is never sticky
 	async authorizeAndPersist(event: PersistentEventBase, receivedAt?: number): Promise<void> {
 		await this.stateService.handlePdu(event);
-		if (receivedAt !== undefined) {
-			await this.stickyEventService.markSticky(event, receivedAt);
-		}
-		await this.eventNotifierService.notify(event);
+		const stickyExpiresAt = receivedAt === undefined ? undefined : await this.stickyEventService.markSticky(event, receivedAt);
+		await this.eventNotifierService.notify(event, stickyExpiresAt === undefined ? {} : { sticky: { expiresAt: stickyExpiresAt } });
 	}
 }

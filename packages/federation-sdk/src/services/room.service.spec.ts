@@ -520,6 +520,27 @@ describe('RoomService', async () => {
 			expect(await federationSDK.getActiveStickyEvents(roomId, { now: expiresAt })).toEqual([]);
 		});
 
+		it('should tell the consumer when the stickiness of a received sticky event ends', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			const receivedAt = Date.now();
+			const notified: { event_id: string; sticky?: { expiresAt: number } }[] = [];
+			const off = federationSDK.eventEmitterService.on('homeserver.matrix.event', ({ event_id, sticky }) => {
+				notified.push({ event_id, sticky });
+			});
+
+			try {
+				const sticky = await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 110_000 } }, receivedAt);
+				const plain = await receiveFromRemoteMember(roomId, { content: { body: 'not sticky' } }, receivedAt);
+
+				expect(notified).toEqual([
+					{ event_id: sticky.eventId, sticky: { expiresAt: receivedAt - 1_000 + 110_000 } },
+					{ event_id: plain.eventId, sticky: undefined },
+				]);
+			} finally {
+				off?.();
+			}
+		});
+
 		it('should list only the sticky events of the requested type', async () => {
 			const roomId = await createRoomWithRemoteMember();
 			const receivedAt = Date.now();

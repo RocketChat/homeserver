@@ -160,7 +160,7 @@ describe('authorizeAndPersist', () => {
 
 	function buildPersistingService(handlePdu: StateService['handlePdu']) {
 		const notify = mock(async () => undefined);
-		const markSticky = mock(async () => undefined);
+		const markSticky = mock(async (): Promise<number | undefined> => undefined);
 
 		const service = new EventService(
 			null as never,
@@ -182,7 +182,16 @@ describe('authorizeAndPersist', () => {
 
 		await service.authorizeAndPersist(callMember);
 
-		expect(notify).toHaveBeenCalledWith(callMember);
+		expect(notify).toHaveBeenCalledWith(callMember, {});
+	});
+
+	it('notifies a sticky event with when its stickiness ends', async () => {
+		const { service, notify, markSticky } = buildPersistingService(async () => undefined);
+		markSticky.mockImplementationOnce(async () => 1733002754000);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(notify).toHaveBeenCalledWith(callMember, { sticky: { expiresAt: 1733002754000 } });
 	});
 
 	it('records the stickiness of an event against when it was received', async () => {
