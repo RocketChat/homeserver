@@ -1,6 +1,13 @@
-import type { EventID, PduForType } from '@rocket.chat/federation-room';
+import type { AnyPdu, EventID, PduForType } from '@rocket.chat/federation-room';
 
 export type HomeserverEventSignatures = {
+	// every pdu accepted from federation and not rejected, whatever its type, so consumers can
+	// handle types the homeserver has no dedicated notification for. Emitted after the typed
+	// notification of the same pdu, if there is one.
+	'homeserver.matrix.event': {
+		event_id: EventID;
+		event: AnyPdu;
+	};
 	'homeserver.ping': {
 		message: string;
 	};
