@@ -8,6 +8,7 @@ import {
 	type PersistentEventBase,
 	type RejectCode,
 	RoomID,
+	type RoomVersion,
 	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -112,21 +113,34 @@ export class EventSenderService {
 	): Promise<{ eventId: EventID }> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
-		const rawEvent = {
-			type: eventType,
-			state_key: stateKey,
-			content,
-			room_id: roomId,
-			auth_events: [],
-			depth: 0,
-			prev_events: [],
-			origin_server_ts: Date.now(),
-			sender: senderUserId,
-		};
+		const event = await this.buildAndPersist(
+			{
+				type: eventType,
+				state_key: stateKey,
+				content,
+				room_id: roomId,
+				auth_events: [],
+				depth: 0,
+				prev_events: [],
+				origin_server_ts: Date.now(),
+				sender: senderUserId,
+			},
+			roomVersion,
+		);
 
-		const validation = getEventSchemaForType(eventType, roomVersion).safeParse(rawEvent);
+		this.dispatch(event);
+
+		return { eventId: event.eventId };
+	}
+
+	// an event of a local user, validated, signed, authorized and persisted
+	private async buildAndPersist(
+		rawEvent: { type: string } & Record<string, unknown>,
+		roomVersion: RoomVersion,
+	): Promise<PersistentEventBase> {
+		const validation = getEventSchemaForType(rawEvent.type, roomVersion).safeParse(rawEvent);
 		if (!validation.success) {
-			throw new Error(`State event of type ${eventType} failed schema validation: ${JSON.stringify(validation.error.format())}`);
+			throw new Error(`Event of type ${rawEvent.type} failed schema validation: ${JSON.stringify(validation.error.format())}`);
 		}
 
 		const event = await this.stateService.buildEvent(
@@ -146,9 +160,7 @@ export class EventSenderService {
 			throw new EventRejectedError(event);
 		}
 
-		this.dispatch(event);
-
-		return { eventId: event.eventId };
+		return event;
 	}
 
 	/**
