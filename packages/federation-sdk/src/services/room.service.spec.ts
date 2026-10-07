@@ -155,6 +155,33 @@ describe('RoomService', async () => {
 			expect(powerLevelEvent.getContent().events['rc.room.name']).toBe(10);
 		});
 
+		it('should let any member publish their call membership by default', async () => {
+			const username = '@alice:example.com' as UserID;
+			const { powerLevelEvent } = await createRoom(username, 'public');
+
+			expect(powerLevelEvent.getContent().events['org.matrix.msc3401.call.member']).toBe(0);
+		});
+
+		it('should let custom event powers override the default ones', async () => {
+			const username = '@alice:example.com' as UserID;
+			const { powerLevelEvent } = await createRoom(username, 'public', {
+				events: { 'org.matrix.msc3401.call.member': 50 },
+			});
+
+			expect(powerLevelEvent.getContent().events['org.matrix.msc3401.call.member']).toBe(50);
+		});
+
+		it('should let any member of a direct message publish their call membership', async () => {
+			const roomId = await federationSDK.createDirectMessage({
+				creatorUserId: '@alice:example.com' as UserID,
+				members: ['@bob:example.com' as UserID],
+			});
+
+			const state = await stateService.getLatestRoomState(roomId);
+
+			expect(state.get('m.room.power_levels:')?.getContent().events['org.matrix.msc3401.call.member']).toBe(0);
+		});
+
 		it.skip('should create direct message room correctly', async () => {
 			const username = '@alice:example.com' as UserID;
 			const targetUsername = '@bob:example.com' as UserID;
@@ -381,6 +408,26 @@ describe('RoomService', async () => {
 			const stateAfterLeave = await stateService.getLatestRoomState(roomId);
 			expect(stateAfterLeave.get(stateMapKey)?.eventId).toBe(left.eventId);
 			expect(stateAfterLeave.get(stateMapKey)?.getContent()).toEqual({});
+		});
+
+		it('should let a member without privileges publish their call membership', async () => {
+			const username = '@alice:example.com' as UserID;
+			const secondaryUsername = '@bob:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(username, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, secondaryUsername);
+
+			const { eventId } = await federationSDK.sendStateEvent(
+				roomId,
+				'org.matrix.msc3401.call.member',
+				callMemberKey(secondaryUsername),
+				{ application: 'm.call', call_id: '', device_id: 'DEVICE' },
+				secondaryUsername,
+			);
+
+			const state = await stateService.getLatestRoomState(roomId);
+			expect(state.get(`org.matrix.msc3401.call.member:${callMemberKey(secondaryUsername)}` as StateMapKey)?.eventId).toBe(eventId);
 		});
 
 		it('should reject state the sender lacks the power level for', async () => {
