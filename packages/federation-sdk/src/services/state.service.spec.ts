@@ -1479,6 +1479,52 @@ describe('StateService', async () => {
 		expect(servers4.size).toBe(2);
 	});
 
+	it('should tell whether a user is joined to a room', async () => {
+		const { roomCreateEvent } = await createRoom('invite');
+		const { roomId } = roomCreateEvent;
+		const creator = roomCreateEvent.getCreator() as room.UserID;
+
+		const bob = '@bob:example.com' as room.UserID;
+		const remoteUser = '@alice:remote.com' as room.UserID;
+
+		expect(await stateService.isUserJoined(roomId, creator)).toBe(true);
+		expect(await stateService.isUserJoined(roomId, bob)).toBe(false);
+
+		await inviteUser(roomId, bob, creator);
+		expect(await stateService.isUserJoined(roomId, bob)).toBe(false);
+
+		await joinUser(roomId, bob);
+		expect(await stateService.isUserJoined(roomId, bob)).toBe(true);
+
+		await leaveUser(roomId, bob);
+		expect(await stateService.isUserJoined(roomId, bob)).toBe(false);
+
+		await inviteUser(roomId, remoteUser, creator);
+		await joinUser(roomId, remoteUser);
+		expect(await stateService.isUserJoined(roomId, remoteUser)).toBe(true);
+	});
+
+	it('should tell nobody is joined to an unknown room', async () => {
+		expect(await stateService.isUserJoined('!unknown:example.com' as RoomID, '@alice:example.com' as room.UserID)).toBe(false);
+	});
+
+	it('should list the servers with users joined to a room', async () => {
+		const { roomCreateEvent } = await createRoom('public');
+		const { roomId } = roomCreateEvent;
+
+		expect(await stateService.getJoinedServers(roomId)).toEqual(['example.com']);
+
+		await joinUser(roomId, '@alice:remote.com');
+		expect((await stateService.getJoinedServers(roomId)).sort()).toEqual(['example.com', 'remote.com']);
+
+		await leaveUser(roomId, '@alice:remote.com');
+		expect(await stateService.getJoinedServers(roomId)).toEqual(['example.com']);
+	});
+
+	it('should list no servers for an unknown room', async () => {
+		expect(await stateService.getJoinedServers('!unknown:example.com' as RoomID)).toEqual([]);
+	});
+
 	it('should allow previously rejected events through multiple state resolutions', async () => {
 		const { roomCreateEvent } = await createRoom('public');
 		const { roomId } = roomCreateEvent;

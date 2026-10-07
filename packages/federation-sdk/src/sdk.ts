@@ -271,6 +271,23 @@ export class FederationSDK {
 		return this.stateService.getLatestRoomState(...args);
 	}
 
+	/**
+	 * Whether the user is joined to the room per its current state. Resolves to
+	 * false for a room this server does not know.
+	 */
+	isUserJoined(roomId: RoomID, userId: UserID) {
+		return this.stateService.isUserJoined(roomId, userId);
+	}
+
+	/**
+	 * The servers that have at least one user joined to the room per its current
+	 * state, this server included when it has joined users. Resolves to an empty
+	 * list for a room this server does not know.
+	 */
+	getJoinedServers(roomId: RoomID) {
+		return this.stateService.getJoinedServers(roomId);
+	}
+
 	handlePdu(...args: Parameters<typeof this.stateService.handlePdu>) {
 		return this.stateService.handlePdu(...args);
 	}
