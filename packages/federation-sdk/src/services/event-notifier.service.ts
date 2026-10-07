@@ -13,7 +13,7 @@ export class EventNotifierService {
 
 	constructor(private readonly eventEmitterService: EventEmitterService, private readonly stateService: StateService) {}
 
-	async notify(event: PersistentEventBase) {
+	async notify(event: PersistentEventBase, { sticky }: { sticky?: { expiresAt: number } } = {}) {
 		const { eventId, roomId } = event;
 
 		this.logger.debug(`Notifying clients about event ${eventId}`);
@@ -226,6 +226,7 @@ export class EventNotifierService {
 		await this.eventEmitterService.emit('homeserver.matrix.event', {
 			event_id: eventId,
 			event: event.event,
+			...(sticky && { sticky }),
 		});
 	}
 }

@@ -27,7 +27,7 @@ function receivedPdu(fields: Record<string, unknown>) {
 describe('EventNotifierService', () => {
 	let emitter: EventEmitterService;
 	let notifier: EventNotifierService;
-	const emitted: { name: string; payload: { event_id: string; event: Record<string, unknown> } }[] = [];
+	const emitted: { name: string; payload: { event_id: string; event: Record<string, unknown>; sticky?: { expiresAt: number } } }[] = [];
 
 	beforeEach(() => {
 		emitter = new EventEmitterService();
@@ -64,6 +64,23 @@ describe('EventNotifierService', () => {
 			origin_server_ts: 1700000000000,
 			unsigned: { age: 1234 },
 			sticky: { duration_ms: 3600000 },
+		});
+		expect(emitted[0].payload).not.toHaveProperty('sticky');
+	});
+
+	test('tells when the stickiness of a sticky pdu ends', async () => {
+		const pdu = receivedPdu({
+			type: 'org.matrix.msc4143.rtc.member',
+			content: { msc4354_sticky_key: 'member-1' },
+			msc4354_sticky: { duration_ms: 3600000 },
+		});
+
+		await notifier.notify(pdu, { sticky: { expiresAt: 1700003600000 } });
+
+		expect(emitted[0].payload).toMatchObject({
+			event_id: pdu.eventId,
+			event: { msc4354_sticky: { duration_ms: 3600000 } },
+			sticky: { expiresAt: 1700003600000 },
 		});
 	});
 
