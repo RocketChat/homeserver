@@ -1,5 +1,5 @@
 import { createLogger } from '@rocket.chat/federation-core';
-import type { EventID, Pdu } from '@rocket.chat/federation-room';
+import type { PersistentEventBase } from '@rocket.chat/federation-room';
 import { RoomState } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
@@ -13,7 +13,7 @@ export class EventNotifierService {
 
 	constructor(private readonly eventEmitterService: EventEmitterService, private readonly stateService: StateService) {}
 
-	async notify(event: { eventId: EventID; event: Pdu }) {
+	async notify(event: PersistentEventBase) {
 		const {
 			eventId,
 			event: { room_id: roomId },
@@ -62,7 +62,7 @@ export class EventNotifierService {
 				break;
 			}
 			case event.event.type === 'm.room.redaction': {
-				const redacts = await findAllowedRedactionTarget(eventId, this.stateService);
+				const redacts = await findAllowedRedactionTarget(event, this.stateService);
 				if (!redacts) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring unauthorized redaction');
 					break;

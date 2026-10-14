@@ -7,6 +7,11 @@ export interface EventLookup {
 	getStateBeforeEvent(event: PersistentEventBase): Promise<State>;
 }
 
+/** Whether `value` is a JSON object, rather than null, an array or a primitive. */
+export function isJsonObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function getRelation(event: Readonly<Pdu>) {
 	if (event.type === 'm.room.message' || event.type === 'm.room.encrypted') {
 		return event.content['m.relates_to'];
@@ -37,28 +42,21 @@ export function isValidReplacement(replacement: PersistentEventBase, original: P
 
 	// encrypted edits carry their new content inside the ciphertext
 	const edit = replacement.event;
-	return edit.type !== 'm.room.message' || typeof edit.content['m.new_content'] === 'object';
+	return edit.type !== 'm.room.message' || isJsonObject(edit.content['m.new_content']);
 }
 
 /**
  * Whether listeners may hear of `event`: anything but an edit, or an edit that is a valid
  * replacement of an event we know.
  */
-export async function isNotifiableEdit(
-	{ eventId, event }: { eventId: EventID; event: Readonly<Pdu> },
-	lookup: EventLookup,
-): Promise<boolean> {
-	const relation = getRelation(event);
+export async function isNotifiableEdit(event: PersistentEventBase, lookup: EventLookup): Promise<boolean> {
+	const relation = getRelation(event.event);
 	if (relation?.rel_type !== 'm.replace') {
 		return true;
 	}
 
-	const [replacement, original] = await Promise.all([
-		lookup.getEvent(eventId),
-		relation.event_id ? lookup.getEvent(relation.event_id) : null,
-	]);
-
-	return replacement !== null && isValidReplacement(replacement, original);
+	const original = relation.event_id ? await lookup.getEvent(relation.event_id) : null;
+	return isValidReplacement(event, original);
 }
 
 /**
@@ -92,12 +90,11 @@ export async function isRedactionAllowed(
 }
 
 /** The event a redaction removes, when its sender is allowed to remove it. */
-export async function findAllowedRedactionTarget(redactionId: EventID, lookup: EventLookup): Promise<EventID | undefined> {
-	const redaction = await lookup.getEvent(redactionId);
-	const redacts = redaction?.getRedacts();
+export async function findAllowedRedactionTarget(redaction: PersistentEventBase, lookup: EventLookup): Promise<EventID | undefined> {
+	const redacts = redaction.getRedacts();
 	const target = redacts ? await lookup.getEvent(redacts) : null;
 
-	if (redaction && redacts && target && (await isRedactionAllowed(redaction, target, lookup))) {
+	if (redacts && target && (await isRedactionAllowed(redaction, target, lookup))) {
 		return redacts;
 	}
 }

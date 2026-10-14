@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { eventIdSchema, PersistentEventFactory, RejectCodes, roomIdSchema, userIdSchema } from '@rocket.chat/federation-room';
+import { PersistentEventFactory, RejectCodes, roomIdSchema, userIdSchema } from '@rocket.chat/federation-room';
 import type {
 	EventID,
 	PduContent,
@@ -11,7 +11,7 @@ import type {
 	State,
 } from '@rocket.chat/federation-room';
 
-import { findAllowedRedactionTarget, isNotifiableEdit, isRedactionAllowed, isValidReplacement } from './event-relations';
+import { findAllowedRedactionTarget, isJsonObject, isNotifiableEdit, isRedactionAllowed, isValidReplacement } from './event-relations';
 import type { EventLookup } from './event-relations';
 
 const roomId = roomIdSchema.parse('!room:rc1');
@@ -73,10 +73,15 @@ function roomState(powerLevels?: PduContent<'m.room.power_levels'>): State {
 	return state;
 }
 
-function lookup(events: PersistentEventBase[], state: State = roomState()): EventLookup {
+function lookup(events: PersistentEventBase[], state: State = roomState()): EventLookup & { requested: EventID[] } {
 	const byId = new Map(events.map((event) => [event.eventId, event]));
+	const requested: EventID[] = [];
 	return {
-		getEvent: async (eventId) => byId.get(eventId) ?? null,
+		requested,
+		getEvent: async (eventId) => {
+			requested.push(eventId);
+			return byId.get(eventId) ?? null;
+		},
 		getStateBeforeEvent: async () => state,
 	};
 }
@@ -86,6 +91,27 @@ const powerLevels: PduContent<'m.room.power_levels'> = {
 	users_default: 0,
 	events: {},
 };
+
+describe('isJsonObject', () => {
+	// the SDK's ingest schema doesn't look at m.new_content, so any JSON shape can reach these checks
+	it('accepts an object', () => {
+		expect(isJsonObject({ msgtype: 'm.text', body: 'new' })).toBe(true);
+	});
+
+	it('rejects null', () => {
+		expect(isJsonObject(null)).toBe(false);
+	});
+
+	it('rejects an array', () => {
+		expect(isJsonObject([{ msgtype: 'm.text', body: 'new' }])).toBe(false);
+	});
+
+	it('rejects primitives and a missing value', () => {
+		expect(isJsonObject('new')).toBe(false);
+		expect(isJsonObject(1)).toBe(false);
+		expect(isJsonObject(undefined)).toBe(false);
+	});
+});
 
 describe('isValidReplacement', () => {
 	it('accepts an edit by the original sender', () => {
@@ -142,6 +168,18 @@ describe('isValidReplacement', () => {
 		expect(isValidReplacement(bareEdit, original)).toBe(false);
 	});
 
+	it('rejects a plaintext edit whose m.new_content is an array', () => {
+		const original = message('@alice:rc1');
+		const fields: { msgtype: 'm.text'; body: string } = { msgtype: 'm.text', body: 'new' };
+		const arrayEdit = message('@alice:rc1', {
+			'msgtype': 'm.text',
+			'body': '* new',
+			'm.new_content': Object.assign([], fields),
+			'm.relates_to': replaces(original.eventId),
+		});
+		expect(isValidReplacement(arrayEdit, original)).toBe(false);
+	});
+
 	it('rejects an edit of a rejected event', () => {
 		const original = message('@alice:rc1');
 		original.reject(RejectCodes.AuthError, 'not allowed');
@@ -158,24 +196,32 @@ describe('isNotifiableEdit', () => {
 	it('lets a valid edit of a known event through', async () => {
 		const original = message('@alice:rc1');
 		const valid = edit('@alice:rc1', original);
-		expect(await isNotifiableEdit(valid, lookup([original, valid]))).toBe(true);
+		expect(await isNotifiableEdit(valid, lookup([original]))).toBe(true);
+	});
+
+	it('looks up only the original, not the edit it was given', async () => {
+		const original = message('@alice:rc1');
+		const valid = edit('@alice:rc1', original);
+		const events = lookup([original]);
+		await isNotifiableEdit(valid, events);
+		expect(events.requested).toEqual([original.eventId]);
 	});
 
 	it('holds back an edit of somebody else’s message', async () => {
 		const original = message('@alice:rc1');
 		const forged = edit('@mallory:hs1', original);
-		expect(await isNotifiableEdit(forged, lookup([original, forged]))).toBe(false);
+		expect(await isNotifiableEdit(forged, lookup([original]))).toBe(false);
 	});
 
 	it('holds back an encrypted edit of somebody else’s message', async () => {
 		const original = encrypted('@alice:rc1');
 		const forged = encryptedEdit('@mallory:hs1', original);
-		expect(await isNotifiableEdit(forged, lookup([original, forged]))).toBe(false);
+		expect(await isNotifiableEdit(forged, lookup([original]))).toBe(false);
 	});
 
 	it('holds back an edit of an unknown event', async () => {
 		const valid = edit('@alice:rc1', message('@alice:rc1'));
-		expect(await isNotifiableEdit(valid, lookup([valid]))).toBe(false);
+		expect(await isNotifiableEdit(valid, lookup([]))).toBe(false);
 	});
 });
 
@@ -237,21 +283,25 @@ describe('findAllowedRedactionTarget', () => {
 	it('returns the target of an allowed redaction', async () => {
 		const target = message('@alice:rc1');
 		const allowed = redaction('@mod:hs1', target);
-		expect(await findAllowedRedactionTarget(allowed.eventId, lookup([target, allowed], roomState(powerLevels)))).toBe(target.eventId);
+		expect(await findAllowedRedactionTarget(allowed, lookup([target], roomState(powerLevels)))).toBe(target.eventId);
+	});
+
+	it('looks up only the target, not the redaction it was given', async () => {
+		const target = message('@alice:rc1');
+		const allowed = redaction('@mod:hs1', target);
+		const events = lookup([target], roomState(powerLevels));
+		await findAllowedRedactionTarget(allowed, events);
+		expect(events.requested).toEqual([target.eventId]);
 	});
 
 	it('returns nothing for a redaction its sender may not make', async () => {
 		const target = message('@alice:rc1');
 		const forged = redaction('@mallory:hs1', target);
-		expect(await findAllowedRedactionTarget(forged.eventId, lookup([target, forged], roomState(powerLevels)))).toBeUndefined();
+		expect(await findAllowedRedactionTarget(forged, lookup([target], roomState(powerLevels)))).toBeUndefined();
 	});
 
 	it('returns nothing for a redaction of an unknown event', async () => {
 		const forged = redaction('@mallory:hs1', message('@alice:rc1'));
-		expect(await findAllowedRedactionTarget(forged.eventId, lookup([forged], roomState(powerLevels)))).toBeUndefined();
-	});
-
-	it('returns nothing for an unknown redaction', async () => {
-		expect(await findAllowedRedactionTarget(eventIdSchema.parse('$missing'), lookup([]))).toBeUndefined();
+		expect(await findAllowedRedactionTarget(forged, lookup([], roomState(powerLevels)))).toBeUndefined();
 	});
 });
