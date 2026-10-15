@@ -7,7 +7,7 @@ import {
 	TransactionSenderService,
 } from '@rocket.chat/appservice';
 import type { EventStore } from '@rocket.chat/federation-core';
-import type { PduForType, PduType, UserID } from '@rocket.chat/federation-room';
+import type { PduForType, PduType, RoomID, UserID } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { UserRepository } from './repositories/user.repository';
@@ -30,6 +30,7 @@ import { RoomService } from './services/room.service';
 import { SendJoinService } from './services/send-join.service';
 import { ServerService } from './services/server.service';
 import { StateService } from './services/state.service';
+import { StickyEventService } from './services/sticky-event.service';
 import { WellKnownService } from './services/well-known.service';
 
 // create a federation sdk class to export
@@ -61,6 +62,7 @@ export class FederationSDK {
 		private readonly transactionSenderService: TransactionSenderService,
 		public readonly directoryService: DirectoryService,
 		private readonly appServiceRoomService: AppServiceRoomService,
+		private readonly stickyEventService: StickyEventService,
 		@inject(delay(() => UserRepository))
 		private readonly userRepository: UserRepository,
 	) {}
@@ -111,6 +113,14 @@ export class FederationSDK {
 
 	sendCustomEvent(...args: Parameters<typeof this.eventSenderService.sendCustomEvent>) {
 		return this.eventSenderService.sendCustomEvent(...args);
+	}
+
+	sendStateEvent(roomId: RoomID, eventType: string, stateKey: string, content: Record<string, unknown>, senderUserId: UserID) {
+		return this.eventSenderService.sendStateEvent(roomId, eventType, stateKey, content, senderUserId);
+	}
+
+	sendStickyEvent(roomId: RoomID, eventType: string, content: Record<string, unknown>, senderUserId: UserID, durationMs: number) {
+		return this.eventSenderService.sendStickyEvent(roomId, eventType, content, senderUserId, durationMs);
 	}
 
 	redactMessage(...args: Parameters<typeof this.messageService.redactMessage>) {
@@ -265,6 +275,32 @@ export class FederationSDK {
 
 	getLatestRoomState(...args: Parameters<typeof this.stateService.getLatestRoomState>) {
 		return this.stateService.getLatestRoomState(...args);
+	}
+
+	/**
+	 * Whether the user is joined to the room per its current state. Resolves to
+	 * false for a room this server does not know.
+	 */
+	isUserJoined(roomId: RoomID, userId: UserID) {
+		return this.stateService.isUserJoined(roomId, userId);
+	}
+
+	/**
+	 * The servers that have at least one user joined to the room per its current
+	 * state, this server included when it has joined users. Resolves to an empty
+	 * list for a room this server does not know.
+	 */
+	getJoinedServers(roomId: RoomID) {
+		return this.stateService.getJoinedServers(roomId);
+	}
+
+	/**
+	 * The sticky events (MSC4354) of a room that have not expired yet, from any
+	 * sender, oldest first; optionally only those of one event type. `now`
+	 * defaults to the current time.
+	 */
+	getActiveStickyEvents(roomId: RoomID, options?: { type?: string; now?: number }) {
+		return this.stickyEventService.getActiveStickyEvents(roomId, options);
 	}
 
 	handlePdu(...args: Parameters<typeof this.stateService.handlePdu>) {

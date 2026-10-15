@@ -12,7 +12,7 @@ export class EventNotifierService {
 
 	constructor(private readonly eventEmitterService: EventEmitterService, private readonly stateService: StateService) {}
 
-	async notify(event: { eventId: EventID; event: Pdu }) {
+	async notify(event: { eventId: EventID; event: Pdu }, { sticky }: { sticky?: { expiresAt: number } } = {}) {
 		const {
 			eventId,
 			event: { room_id: roomId },
@@ -208,8 +208,14 @@ export class EventNotifierService {
 				break;
 			}
 			default:
-				this.logger.warn(`Unknown event type: ${event.event.type} for emitterService for now`);
+				this.logger.debug(`No typed notification for event type ${event.event.type}`);
 				break;
 		}
+
+		await this.eventEmitterService.emit('homeserver.matrix.event', {
+			event_id: eventId,
+			event: event.event,
+			...(sticky && { sticky }),
+		});
 	}
 }

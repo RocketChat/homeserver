@@ -523,6 +523,45 @@ describe('InviteService', async () => {
 			expect(storedEvent!.outlier).toBe(true);
 		});
 
+		it('should notify the invite both as a membership change and generically', async () => {
+			const remoteCreator = '@alice:remote.server.com' as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			const inviteEventInstance = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'invite' as const },
+					room_id: '!unknown-room:remote.server.com' as room.RoomID,
+					state_key: localUser,
+					sender: remoteCreator,
+					auth_events: [],
+					prev_events: ['$some-event:remote.server.com' as EventID],
+					depth: 5,
+					origin_server_ts: Date.now(),
+					unsigned: {},
+				},
+				'10',
+			);
+
+			const emitSpy = spyOn(emitterService, 'emit');
+
+			try {
+				await inviteService.processInvite(inviteEventInstance.event, inviteEventInstance.eventId, '10', [
+					{
+						content: { join_rule: 'invite' },
+						sender: remoteCreator,
+						state_key: '',
+						type: 'm.room.join_rules',
+					},
+				] as any);
+
+				expect(emitSpy.mock.calls.map(([name]) => name)).toEqual(['homeserver.matrix.membership', 'homeserver.matrix.event']);
+				expect(emitSpy.mock.calls[1][1]).toEqual(emitSpy.mock.calls[0][1]);
+			} finally {
+				emitSpy.mockRestore();
+			}
+		});
+
 		it('should store as outlier when prev_events exist but are themselves outliers (empty stateId)', async () => {
 			const remoteServer = 'remote.server.com';
 			const remoteCreator = `@alice:${remoteServer}` as room.UserID;

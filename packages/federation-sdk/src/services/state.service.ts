@@ -18,6 +18,7 @@ import {
 	type StateID,
 	type StateMapKey,
 	StateResolverAuthorizationError,
+	type UserID,
 	checkEventAuthWithState,
 	extractDomainFromId,
 	resolveStateV2Plus,
@@ -729,6 +730,31 @@ export class StateService {
 		}
 
 		return servers;
+	}
+
+	// whether the user is joined per the room's current state; nobody is joined to a room we do not know
+	async isUserJoined(roomId: RoomID, userId: UserID): Promise<boolean> {
+		try {
+			const state = await this.getLatestRoomState2(roomId);
+			return state.isUserInRoom(userId);
+		} catch (error) {
+			if (error instanceof UnknownRoomError) {
+				return false;
+			}
+			throw error;
+		}
+	}
+
+	// the servers with at least one user joined per the room's current state, this one included
+	async getJoinedServers(roomId: RoomID): Promise<string[]> {
+		try {
+			return Array.from(await this.getServerSetInRoom(roomId));
+		} catch (error) {
+			if (error instanceof UnknownRoomError) {
+				return [];
+			}
+			throw error;
+		}
 	}
 
 	private async _isSameChain(stateIds: StateID[]) {

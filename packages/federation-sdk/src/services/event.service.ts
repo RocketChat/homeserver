@@ -26,6 +26,7 @@ import { EventEmitterService } from './event-emitter.service';
 import { EventNotifierService } from './event-notifier.service';
 import { ServerService } from './server.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
@@ -53,6 +54,7 @@ export class EventService {
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly eventNotifierService: EventNotifierService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(eventId: EventID, type?: T): Promise<P | null> {
@@ -773,9 +775,12 @@ export class EventService {
 	}
 
 	// single entry point for the staging-area hot path: authorize/persist the
-	// event through the state graph, then notify listeners
-	async authorizeAndPersist(event: PersistentEventBase): Promise<void> {
+	// event through the state graph, then notify listeners. `receivedAt` is when
+	// this server received the event; without it the event is never sticky
+	async authorizeAndPersist(event: PersistentEventBase, receivedAt?: number): Promise<void> {
 		await this.stateService.handlePdu(event);
-		await this.eventNotifierService.notify(event);
+		const stickyExpiresAt = receivedAt === undefined ? undefined : await this.stickyEventService.markSticky(event, receivedAt);
+		await this.eventNotifierService.notify(event, stickyExpiresAt === undefined ? {} : { sticky: { expiresAt: stickyExpiresAt } });
+		void this.stickyEventService.catchUpIfNewServer(event);
 	}
 }

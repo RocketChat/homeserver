@@ -629,4 +629,15 @@ export const PduSchema = z.discriminatedUnion('type', [...PduTimelineSchema.opti
 
 export type Pdu = z.infer<typeof PduSchema>;
 
+const PduCommonFieldsSchema = z.object(PduNoContentTimelineEventSchema);
+
+// a pdu of any type, including the ones this package has no schema for (custom and
+// unstable types): only the fields every pdu carries are typed, any other is kept as is
+export type AnyPdu = z.infer<typeof PduCommonFieldsSchema> & {
+	type: string;
+	content: Record<string, unknown>;
+	state_key?: string;
+	[key: string]: unknown;
+};
+
 export type PduContent<T extends PduType = PduType> = PduForType<T>['content'];
