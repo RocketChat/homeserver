@@ -61,7 +61,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 				roomId: RoomID;
 				sender: UserID;
 			};
-			const version = (query.version as RoomVersion | undefined) || PersistentEventFactory.defaultRoomVersion;
+			const version = (query.version as RoomVersion | undefined) || federationSDK.getDefaultRoomVersion();
 			switch (eventType) {
 				case 'm.room.member': {
 					const event = await federationSDK.buildEvent<'m.room.member'>(
@@ -203,7 +203,7 @@ export const internalRequestPlugin = (app: Elysia) => {
 		'/internal/event/send',
 		async ({ body, query }) => {
 			const event = body as Pdu;
-			const version = (query.version as RoomVersion | undefined) || PersistentEventFactory.defaultRoomVersion;
+			const version = (query.version as RoomVersion | undefined) || federationSDK.getDefaultRoomVersion();
 			if (!PersistentEventFactory.isSupportedRoomVersion(version)) {
 				throw new Error(`Room version ${version} is not supported`);
 			}
