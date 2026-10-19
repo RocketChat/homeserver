@@ -197,6 +197,8 @@ function errorResponse<T>(reason: string): FetchResponse<T> {
 	};
 }
 
+export const FEDERATION_REQUEST_TIMEOUT_MS = 20_000;
+
 // works for both http and https. for https on a multihomed server (same server hosting
 // multiple homeservers) we must verify the cert with the right SNI (hostname), or else the
 // cert check fails because we connect through the ip and not the hostname (due to matrix spec).
@@ -261,8 +263,8 @@ export async function fetch<T>(url: URL, options: RequestInit): Promise<FetchRes
 			});
 
 			// TODO: Make @hs/core fetch timeout configurable
-			request.setTimeout(20_000, () => {
-				request.destroy(new Error('Request timed out after 20s'));
+			request.setTimeout(FEDERATION_REQUEST_TIMEOUT_MS, () => {
+				request.destroy(new Error(`Request timed out after ${FEDERATION_REQUEST_TIMEOUT_MS}ms`));
 			});
 
 			request.end(options.body);
