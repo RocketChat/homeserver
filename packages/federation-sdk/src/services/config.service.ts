@@ -3,7 +3,7 @@ import { PersistentEventFactory, type RoomVersion3To11 } from '@rocket.chat/fede
 import { singleton } from 'tsyringe';
 import * as z from 'zod';
 
-const DEFAULT_ROOM_VERSION: RoomVersion3To11 = '10';
+const DEFAULT_ROOM_VERSION: RoomVersion3To11 = '11';
 
 export interface AppConfig {
 	serverName: string;
