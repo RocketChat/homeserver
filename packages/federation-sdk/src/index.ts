@@ -77,7 +77,7 @@ export { FederationValidationService, FederationValidationError } from './servic
 
 export type { HomeserverEventSignatures } from '@rocket.chat/federation-core';
 
-export { roomIdSchema, userIdSchema, eventIdSchema, extractDomainFromId } from '@rocket.chat/federation-room';
+export { roomIdSchema, userIdSchema, eventIdSchema, extractDomainFromId, PduSchema } from '@rocket.chat/federation-room';
 
 export async function init({
 	dbConfig,
