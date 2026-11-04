@@ -135,3 +135,66 @@ test('signRequest', async () => {
 		'KDhgfpGp+34ElXpvFIBjsGO2kldNZKj1CWFEbSjyQR142ZYx+kIg+N3muLlMXEK0Fw76T/2vjihEWhwffsbcAg',
 	);
 });
+
+describe('extractSignaturesFromHeader', () => {
+	it('parses a header with all values quoted', () => {
+		expect(extractSignaturesFromHeader('X-Matrix origin="hs2",destination="hs1",key="ed25519:a_XRhW",sig="ABC+/def"')).toEqual({
+			origin: 'hs2',
+			destination: 'hs1',
+			key: 'ed25519:a_XRhW',
+			signature: 'ABC+/def',
+		});
+	});
+
+	it('parses unquoted values in any order', () => {
+		expect(
+			extractSignaturesFromHeader(
+				'X-Matrix destination=rc.host,key="ed25519:0At8VROT",origin=hs2.host,sig="iVy5YXlaiuHiksEZ18ODR4Xkwd43fX2wiEdErb7DpXIDAUMfgy4bMShnf4yqd/kOgJu3+6frwZqMCaWpHSn8DQ"',
+			),
+		).toEqual({
+			origin: 'hs2.host',
+			destination: 'rc.host',
+			key: 'ed25519:0At8VROT',
+			signature: 'iVy5YXlaiuHiksEZ18ODR4Xkwd43fX2wiEdErb7DpXIDAUMfgy4bMShnf4yqd/kOgJu3+6frwZqMCaWpHSn8DQ',
+		});
+	});
+
+	it('accepts unquoted values containing colons', () => {
+		expect(extractSignaturesFromHeader('X-Matrix origin=example.com:1234,key=ed25519:key1,sig=dGVzdA')).toEqual({
+			origin: 'example.com:1234',
+			destination: undefined,
+			key: 'ed25519:key1',
+			signature: 'dGVzdA',
+		});
+	});
+
+	it('treats destination as optional', () => {
+		expect(extractSignaturesFromHeader('X-Matrix key="ed25519:key1",origin=origin.hs.example.com,sig=dGVzdA')).toEqual({
+			origin: 'origin.hs.example.com',
+			destination: undefined,
+			key: 'ed25519:key1',
+			signature: 'dGVzdA',
+		});
+	});
+
+	it('unescapes quoted values', () => {
+		expect(extractSignaturesFromHeader('X-Matrix origin=hs2,key="abc\\"def\\\\:ghi",sig=dGVzdA').key).toBe('abc"def\\:ghi');
+	});
+
+	it('matches parameter names case-insensitively and ignores unknown ones', () => {
+		expect(extractSignaturesFromHeader('X-Matrix Origin=hs2, KEY="ed25519:k", extra=1, Sig=dGVzdA')).toEqual({
+			origin: 'hs2',
+			destination: undefined,
+			key: 'ed25519:k',
+			signature: 'dGVzdA',
+		});
+	});
+
+	it.each([
+		['origin', 'X-Matrix key="ed25519:k",sig=dGVzdA'],
+		['key', 'X-Matrix origin=hs2,sig=dGVzdA'],
+		['sig', 'X-Matrix origin=hs2,key="ed25519:k"'],
+	])('throws when %s is missing', (_, header) => {
+		expect(() => extractSignaturesFromHeader(header)).toThrow('Invalid authorization header');
+	});
+});

@@ -11,24 +11,18 @@ import { signJson } from './signJson';
  * @param authorizationHeader The authorization header.
  * @returns An object containing the origin, destination, key, and signature.
  */
+// values may be quoted strings or bare tokens (RFC 9110); e.g. ruma only quotes values that need it
+const AUTH_PARAM_REGEX = /([A-Za-z]+)=(?:"((?:[^"\\]|\\.)*)"|([^\s,"]+))/g;
+
 export const extractSignaturesFromHeader = (authorizationHeader: string) => {
-	// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
-
-	const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
-	const {
-		origin,
-		destination,
-		key,
-		sig: signature,
-		...rest
-	} = Object.fromEntries([...authorizationHeader.matchAll(regex)].map(([, key, value]) => [key, value] as const));
-
-	if (Object.keys(rest).length) {
-		// it should never happen since the regex should match all the parameters
-		throw new Error('Invalid authorization header, unexpected parameters');
+	const params: Record<string, string> = {};
+	for (const [, name, quoted, token] of authorizationHeader.matchAll(AUTH_PARAM_REGEX)) {
+		params[name.toLowerCase()] = quoted !== undefined ? quoted.replace(/\\(.)/g, '$1') : token;
 	}
 
-	if ([origin, destination, key, signature].some((value) => !value)) {
+	// destination is optional: servers predating spec v1.3 don't send it
+	const { origin, destination, key, sig: signature } = params;
+	if (!origin || !key || !signature) {
 		throw new Error('Invalid authorization header');
 	}
 
