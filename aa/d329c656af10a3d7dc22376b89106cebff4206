@@ -1,0 +1,22 @@
+packages/core/src/utils/authentication.ts
+  s_5081f329486718::t_e80633bf2f2ded 14-15,17-20,23-25
+packages/core/src/utils/authentication.spec.ts
+  s_5081f329486718::t_b7c19e8c53a055 138-140,147-200
+  s_5081f329486718::t_491f233992dd42 141-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aad329c656af10a3d7dc22376b89106cebff4206",
+  "prompts": {},
+  "sessions": {
+    "s_5081f329486718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80706f9e-d85f-4ed1-9dcf-31a27e19a1fd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
