@@ -5,30 +5,25 @@ import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
 import { signJson } from './signJson';
 
+// values may be quoted strings or bare tokens (RFC 9110); e.g. ruma only quotes values that need it.
+// The lookbehind anchors names at token boundaries, so `x-origin` isn't read as `origin` and matching stays linear.
+const AUTH_PARAM_REGEX = /(?<![\w!#$%&'*+.^`|~-])([\w!#$%&'*+.^`|~-]+)=(?:"((?:[^"\\]|\\.)*)"|([^\s,"]+))/g;
+
 /**
  * Extracts the origin, destination, key, and signature from the authorization header.
  *
  * @param authorizationHeader The authorization header.
- * @returns An object containing the origin, destination, key, and signature.
+ * @returns An object containing the origin, optional destination, key, and signature.
  */
 export const extractSignaturesFromHeader = (authorizationHeader: string) => {
-	// `X-Matrix origin="${origin}",destination="${destination}",key="${key}",sig="${signed}"`
-
-	const regex = /\b(origin|destination|key|sig)="([^"]+)"/g;
-	const {
-		origin,
-		destination,
-		key,
-		sig: signature,
-		...rest
-	} = Object.fromEntries([...authorizationHeader.matchAll(regex)].map(([, key, value]) => [key, value] as const));
-
-	if (Object.keys(rest).length) {
-		// it should never happen since the regex should match all the parameters
-		throw new Error('Invalid authorization header, unexpected parameters');
+	const params: Partial<Record<string, string>> = {};
+	for (const [, name, quoted, token] of authorizationHeader.matchAll(AUTH_PARAM_REGEX)) {
+		params[name.toLowerCase()] = quoted !== undefined ? quoted.replace(/\\(.)/g, '$1') : token;
 	}
 
-	if ([origin, destination, key, signature].some((value) => !value)) {
+	// destination is optional: servers predating spec v1.3 don't send it
+	const { origin, destination, key, sig: signature } = params;
+	if (!origin || !key || !signature) {
 		throw new Error('Invalid authorization header');
 	}
 
