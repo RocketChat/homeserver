@@ -5,16 +5,16 @@ import nacl from 'tweetnacl';
 import { type SigningKey } from '../types';
 import { signJson } from './signJson';
 
-/**
- * Extracts the origin, destination, key, and signature from the authorization header.
- *
- * @param authorizationHeader The authorization header.
- * @returns An object containing the origin, destination, key, and signature.
- */
 // values may be quoted strings or bare tokens (RFC 9110); e.g. ruma only quotes values that need it.
 // The lookbehind anchors names at token boundaries, so `x-origin` isn't read as `origin` and matching stays linear.
 const AUTH_PARAM_REGEX = /(?<![\w!#$%&'*+.^`|~-])([\w!#$%&'*+.^`|~-]+)=(?:"((?:[^"\\]|\\.)*)"|([^\s,"]+))/g;
 
+/**
+ * Extracts the origin, destination, key, and signature from the authorization header.
+ *
+ * @param authorizationHeader The authorization header.
+ * @returns An object containing the origin, optional destination, key, and signature.
+ */
 export const extractSignaturesFromHeader = (authorizationHeader: string) => {
 	const params: Record<string, string> = {};
 	for (const [, name, quoted, token] of authorizationHeader.matchAll(AUTH_PARAM_REGEX)) {
