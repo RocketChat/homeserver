@@ -1,0 +1,14 @@
+{
+	"name": "@rocket.chat/mock-bridge",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"start": "bun run server.ts",
+		"dev": "bun run --watch server.ts",
+		"cli": "bun run cli.ts"
+	},
+	"devDependencies": {
+		"bun-types": "latest"
+	}
+}
