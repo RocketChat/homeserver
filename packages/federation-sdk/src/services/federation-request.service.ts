@@ -25,14 +25,22 @@ interface SignedRequest {
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 export class FederationRequestError extends Error {
+	readonly errcode?: string;
+
 	constructor(readonly response: FetchResponse<unknown>, errorText: string) {
 		let errorDetail = errorText;
+		let errcode: string | undefined;
 		try {
-			errorDetail = JSON.stringify(JSON.parse(errorText || ''));
+			const parsed: unknown = JSON.parse(errorText || '');
+			errorDetail = JSON.stringify(parsed);
+			if (parsed && typeof parsed === 'object' && 'errcode' in parsed && typeof parsed.errcode === 'string') {
+				errcode = parsed.errcode;
+			}
 		} catch {
 			/* use raw text if parsing fails */
 		}
 		super(`Federation request failed: ${response.status} ${errorDetail}`);
+		this.errcode = errcode;
 	}
 }
 
@@ -93,7 +101,9 @@ export class FederationRequestService {
 		});
 
 		if (!response.ok) {
-			const errorText = await response.text();
+			// not response.text(): it yields '' for anything but text/*, and Matrix errors are application/json
+			// a body that can't be read must fail the request: read as empty it would lose the errcode
+			const errorText = (await response.buffer()).toString();
 			const error = new FederationRequestError(response, errorText);
 			this.logger.error({
 				msg: 'Federation request failed',
