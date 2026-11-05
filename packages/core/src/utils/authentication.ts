@@ -16,7 +16,7 @@ const AUTH_PARAM_REGEX = /(?<![\w!#$%&'*+.^`|~-])([\w!#$%&'*+.^`|~-]+)=(?:"((?:[
  * @returns An object containing the origin, optional destination, key, and signature.
  */
 export const extractSignaturesFromHeader = (authorizationHeader: string) => {
-	const params: Record<string, string> = {};
+	const params: Partial<Record<string, string>> = {};
 	for (const [, name, quoted, token] of authorizationHeader.matchAll(AUTH_PARAM_REGEX)) {
 		params[name.toLowerCase()] = quoted !== undefined ? quoted.replace(/\\(.)/g, '$1') : token;
 	}
