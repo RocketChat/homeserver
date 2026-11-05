@@ -1,0 +1,19 @@
+packages/core/src/utils/authentication.ts
+  s_82c4de43389a0c::t_3852ee64179bb8 8-11,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "145600d9bb353654a83b0b8a60963bb7198d1875",
+  "prompts": {},
+  "sessions": {
+    "s_82c4de43389a0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "46b263e2-c3d3-4f48-a5e0-b71702e56379",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
