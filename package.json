@@ -31,7 +31,7 @@
 		"dotenv": "^17.3.1",
 		"memoize": "^10.2.0",
 		"reflect-metadata": "^0.2.2",
-		"rollup": "^4.52.4",
+		"rollup": "^4.59.0",
 		"tsyringe": "^4.10.0",
 		"tweetnacl": "^1.0.3"
 	},
