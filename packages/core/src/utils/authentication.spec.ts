@@ -190,6 +190,16 @@ describe('extractSignaturesFromHeader', () => {
 		});
 	});
 
+	it.each(['x-origin=evil', 'foo_origin=evil', 'x-y="a,origin=evil"'])('does not let unknown param %s override origin', (extra) => {
+		expect(extractSignaturesFromHeader(`X-Matrix origin=hs2,key=k,sig=s,${extra}`).origin).toBe('hs2');
+	});
+
+	it('rejects a long header without parameters in linear time', () => {
+		const start = performance.now();
+		expect(() => extractSignaturesFromHeader(`X-Matrix ${'a'.repeat(16000)}`)).toThrow('Invalid authorization header');
+		expect(performance.now() - start).toBeLessThan(50);
+	});
+
 	it.each([
 		['origin', 'X-Matrix key="ed25519:k",sig=dGVzdA'],
 		['key', 'X-Matrix origin=hs2,sig=dGVzdA'],

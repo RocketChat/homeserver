@@ -11,8 +11,9 @@ import { signJson } from './signJson';
  * @param authorizationHeader The authorization header.
  * @returns An object containing the origin, destination, key, and signature.
  */
-// values may be quoted strings or bare tokens (RFC 9110); e.g. ruma only quotes values that need it
-const AUTH_PARAM_REGEX = /([A-Za-z]+)=(?:"((?:[^"\\]|\\.)*)"|([^\s,"]+))/g;
+// values may be quoted strings or bare tokens (RFC 9110); e.g. ruma only quotes values that need it.
+// The lookbehind anchors names at token boundaries, so `x-origin` isn't read as `origin` and matching stays linear.
+const AUTH_PARAM_REGEX = /(?<![\w!#$%&'*+.^`|~-])([\w!#$%&'*+.^`|~-]+)=(?:"((?:[^"\\]|\\.)*)"|([^\s,"]+))/g;
 
 export const extractSignaturesFromHeader = (authorizationHeader: string) => {
 	const params: Record<string, string> = {};
