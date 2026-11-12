@@ -4,12 +4,12 @@
  * See: https://spec.matrix.org/v1.7/server-server-api/
  */
 
-import { EventPduTypeRoomMember, PduStateEventSchema } from '@rocket.chat/federation-room';
+import { EventPduTypeRoomMember, PduStateEventSchema, SUPPORTED_ROOM_VERSIONS } from '@rocket.chat/federation-room';
 import * as z from 'zod';
 
 // Common types
 export const EventIdSchema = z.string().regex(/^\$[A-Za-z0-9_-]+$/);
-export const RoomIdSchema = z.string().regex(/^![A-Za-z0-9_-]+:[A-Za-z0-9.-]+\.[A-Za-z]+$/);
+export const RoomIdSchema = z.string().regex(/^!(?:[A-Za-z0-9_-]+:[A-Za-z0-9.-]+\.[A-Za-z]+|[A-Za-z0-9_-]{43})$/);
 export const UserIdSchema = z.string().regex(/^@[A-Za-z0-9_=/.+-]+:[A-Za-z0-9.-]+\.[A-Za-z]+$/);
 export const ServerNameSchema = z.string().regex(/^[A-Za-z0-9.-]+\.[A-Za-z]+$/);
 
@@ -70,19 +70,7 @@ export const StateResponseSchema = z.object({
 	auth_chain: z.array(z.any()), // Auth events
 });
 
-export const RoomVersionSchema = z.union([
-	z.literal('1'),
-	z.literal('2'),
-	z.literal('3'),
-	z.literal('4'),
-	z.literal('5'),
-	z.literal('6'),
-	z.literal('7'),
-	z.literal('8'),
-	z.literal('9'),
-	z.literal('10'),
-	z.literal('11'),
-]);
+export const RoomVersionSchema = z.enum(['1', '2', ...SUPPORTED_ROOM_VERSIONS]);
 
 export const MakeJoinEventSchema = z.object({
 	content: z.object({

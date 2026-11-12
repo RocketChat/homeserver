@@ -7,6 +7,7 @@ import { EventService } from './event.service';
 import { ServerService } from './server.service';
 import { StateService } from './state.service';
 import { AvatarRepository } from '../repositories/avatar.repository';
+import { getStoredRoomId } from '../repositories/event.repository';
 import { UploadRepository } from '../repositories/upload.repository';
 
 export class AclDeniedError extends Error {
@@ -295,7 +296,7 @@ export class EventAuthorizationService {
 			return false;
 		}
 
-		return this.serverHasAccessToResource(event.event.room_id, serverName);
+		return this.serverHasAccessToResource(getStoredRoomId(event), serverName);
 	}
 
 	async canAccessMedia(mediaId: string, serverName: string): Promise<boolean> {

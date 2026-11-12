@@ -54,11 +54,42 @@ describe('event schemas', () => {
 
 	it('resolves a schema for every supported room version', () => {
 		for (const roomVersion of PersistentEventFactory.supportedRoomVersions) {
+			const { redactsInContent, roomIdFormat } = PersistentEventFactory.getCapabilities(roomVersion);
 			// creator is required before v11 and dropped from v11 on
-			const content = Number(roomVersion) < 11 ? { room_version: roomVersion, creator: '@admin:hs1' } : { room_version: roomVersion };
+			const content = redactsInContent ? { room_version: roomVersion } : { room_version: roomVersion, creator: '@admin:hs1' };
+			// the create event carries no room_id from v12 on
+			const { room_id: _roomId, ...withoutRoomId } = createEvent;
+			const event = roomIdFormat === 'create-event-hash' ? withoutRoomId : createEvent;
 
-			expect(validate({ ...createEvent, content }, roomVersion)).toBe(true);
+			expect(validate({ ...event, content }, roomVersion)).toBe(true);
 		}
+	});
+
+	describe('room v12', () => {
+		const { room_id: _roomId, ...createEventWithoutRoomId } = createEvent;
+
+		it('accepts m.room.create without a room_id', () => {
+			expect(validate({ ...createEventWithoutRoomId, content: { room_version: '12' } }, '12')).toBe(true);
+		});
+
+		it('rejects m.room.create with a room_id', () => {
+			expect(validate({ ...createEvent, content: { room_version: '12' } }, '12')).toBe(false);
+		});
+
+		it('accepts m.room.create with additional_creators', () => {
+			expect(validate({ ...createEventWithoutRoomId, content: { room_version: '12', additional_creators: ['@bob:hs2'] } }, '12')).toBe(
+				true,
+			);
+		});
+
+		it('still requires a room_id on m.room.create before v12', () => {
+			expect(validate({ ...createEventWithoutRoomId, content: { room_version: '11' } }, '11')).toBe(false);
+		});
+
+		it('keeps the v11 redaction format', () => {
+			expect(validate({ ...redaction, content: { redacts: target } }, '12')).toBe(true);
+			expect(validate({ ...redaction, redacts: target, content: {} }, '12')).toBe(false);
+		});
 	});
 
 	it('falls back to the permissive base schema for unknown event types', () => {

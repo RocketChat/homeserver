@@ -1,9 +1,10 @@
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 
 import type {
 	PduJoinRuleEventContent,
 	PduPowerLevelsEventContent,
 	PersistentEventBase,
+	RoomID,
 	RoomVersion,
 	StateMapKey,
 	UserID,
@@ -353,6 +354,90 @@ describe('RoomService', async () => {
 			expect([...stateAfterReject.keys()]).toEqual(
 				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${invitedUsername}`]),
 			);
+		});
+	});
+
+	describe('room v12', () => {
+		const alice = '@alice:example.com' as UserID;
+		const bob = '@bob:example.com' as UserID;
+
+		beforeAll(() => {
+			federationSDK.setConfig({ signingKey: '', serverName: 'example.com', defaultRoomVersion: '12' } as AppConfig);
+		});
+
+		afterAll(() => {
+			federationSDK.setConfig({ signingKey: '', serverName: 'example.com' } as AppConfig);
+		});
+
+		it('creates a room with a domainless id and leaves the creator out of power levels', async () => {
+			const { roomCreateEvent, powerLevelEvent } = await createRoom(alice, 'public', { users: { [alice]: 10, [bob]: 50 } });
+
+			expect(roomCreateEvent.roomId).toMatch(/^![A-Za-z0-9_-]{43}$/);
+			expect(await stateService.getRoomVersion(roomCreateEvent.roomId)).toBe('12');
+
+			expect(powerLevelEvent.getContent().users).toEqual({ [bob]: 50 });
+
+			const roomState = await stateService.getLatestRoomState2(roomCreateEvent.roomId);
+			expect(roomState.getUserPowerLevel(alice)).toBe(Infinity);
+			expect(roomState.getUserPowerLevel(bob)).toBe(50);
+		});
+
+		it('joins, kicks and bans in a local v12 room', async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, bob);
+			expect((await stateService.getLatestRoomState2(roomId)).isUserInRoom(bob)).toBeTrue();
+
+			await federationSDK.kickUser(roomId, bob, alice);
+			expect((await stateService.getLatestRoomState2(roomId)).getUserMembership(bob)).toBe('leave');
+
+			await federationSDK.banUser(roomId, bob, alice);
+			expect((await stateService.getLatestRoomState2(roomId)).getUserMembership(bob)).toBe('ban');
+		});
+
+		it('does not let a PL 100 member kick or ban the creator', async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'public', { users: { [bob]: 100 } });
+			const { roomId } = roomCreateEvent;
+			await roomService.joinUser(roomId, bob);
+
+			await expect(federationSDK.kickUser(roomId, alice, bob)).rejects.toThrow('greater than or equal to your own');
+			await expect(federationSDK.banUser(roomId, alice, bob)).rejects.toThrow('greater than or equal to your own');
+		});
+
+		it('updates a member power level without listing the creator', async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'public');
+			const { roomId } = roomCreateEvent;
+			await roomService.joinUser(roomId, bob);
+
+			await federationSDK.updateUserPowerLevel(roomId, bob, 50, alice);
+
+			const powerLevels = (await stateService.getLatestRoomState(roomId)).get('m.room.power_levels:')!.getContent();
+			expect(powerLevels).toHaveProperty('users', { [bob]: 50 });
+		});
+
+		it("refuses to change a creator's power level", async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await expect(federationSDK.updateUserPowerLevel(roomId, alice, 50, alice)).rejects.toThrow("creator's power level");
+			await expect(roomService.setPowerLevelForUser(roomId, alice, alice, 50)).rejects.toThrow('room creator');
+		});
+
+		it('cannot join an unknown v12 room without an invite', async () => {
+			const unknownRoomId = `!${'A'.repeat(43)}` as RoomID;
+
+			await expect(roomService.joinUser(unknownRoomId, bob)).rejects.toThrow('has no invite');
+		});
+
+		it('accepts an invite to a local v12 room', async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'invite');
+			const { roomId } = roomCreateEvent;
+
+			await federationSDK.inviteUserToRoom(bob, roomId, alice);
+			await federationSDK.acceptInvite(roomId, bob);
+
+			expect((await stateService.getLatestRoomState2(roomId)).isUserInRoom(bob)).toBeTrue();
 		});
 	});
 });

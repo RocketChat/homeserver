@@ -1,4 +1,5 @@
 import { type PersistentEventBase } from './event-wrapper';
+import { PowerLevelEvent } from './power-level-event-wrapper';
 import type { RoomVersion } from './type';
 import { getStateByMapKey } from '../state_resolution/definitions/definitions';
 import type { StateMapKey, UserID } from '../types/_common';
@@ -8,8 +9,7 @@ import type { PduJoinRuleEventContent, PduMembershipEventContent } from '../type
 export class RoomState {
 	constructor(private readonly stateMap: Map<StateMapKey, PersistentEventBase>) {}
 
-	// who created the room
-	get creator() {
+	private get createEvent() {
 		const createEvent = getStateByMapKey(this.stateMap, {
 			type: 'm.room.create',
 		});
@@ -18,7 +18,34 @@ export class RoomState {
 			throw new Error('Room create event not found');
 		}
 
-		return createEvent.getCreator();
+		return createEvent;
+	}
+
+	// who created the room
+	get creator() {
+		return this.createEvent.getCreator();
+	}
+
+	// everyone holding creator authority, v12 adds additional_creators to the sender
+	get creators(): Set<UserID> {
+		return this.createEvent.getCreators();
+	}
+
+	// creators who outrank every power level and cannot be listed in power_levels (v12+), empty before
+	get privilegedCreators(): Set<UserID> {
+		const { createEvent } = this;
+		return createEvent.capabilities.privilegedCreators ? createEvent.getCreators() : new Set();
+	}
+
+	// the power level the auth rules would give the user, Infinity for privileged creators
+	getUserPowerLevel(userId: string): number {
+		const powerLevelsEvent = getStateByMapKey(this.stateMap, {
+			type: 'm.room.power_levels',
+		});
+
+		const powerLevels = powerLevelsEvent?.isPowerLevelEvent() ? PowerLevelEvent.fromEvent(powerLevelsEvent) : PowerLevelEvent.fromDefault();
+
+		return powerLevels.getPowerLevelForUser(userId, this.createEvent);
 	}
 
 	getUserMembership(userId: string): PduMembershipEventContent['membership'] | undefined {

@@ -1,11 +1,10 @@
-import assert from 'node:assert';
-
 import { RejectCodes, StateResolverAuthorizationError } from './errors';
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
+import { SUPPORTED_ROOM_VERSIONS } from '../manager/type';
 import type { RoomVersion } from '../manager/type';
 import { type EventStore, getStateByMapKey } from '../state_resolution/definitions/definitions';
-import { type StateMapKey } from '../types/_common';
+import { type StateMapKey, type UserID } from '../types/_common';
 import { type PduType } from '../types/v3-11';
 
 // https://spec.matrix.org/v1.12/rooms/v1/#authorization-rules
@@ -20,6 +19,13 @@ import { type PduType } from '../types/v3-11';
 //   ].includes(type as PDUType); // FIXME: typing
 // }
 
+const RECOGNISED_ROOM_VERSIONS: readonly string[] = ['1', '2', ...SUPPORTED_ROOM_VERSIONS];
+
+// the same shape check applied to a sender, used for v12's additional_creators
+function isValidUserId(userId: unknown): userId is string {
+	return typeof userId === 'string' && userId.length <= 255 && /^@[^:]+:.+$/.test(userId);
+}
+
 function extractDomain(identifier: string) {
 	return identifier.split(':').pop();
 }
@@ -33,8 +39,18 @@ function isCreateAllowed(createEvent: PersistentEventBase<RoomVersion, 'm.room.c
 		});
 	}
 
-	// If the domain of the room_id does not match the domain of the sender, reject.
-	if (extractDomain(createEvent.roomId) !== extractDomain(createEvent.sender)) {
+	const { room_id: roomId } = createEvent.event;
+
+	if (createEvent.capabilities.roomIdFormat === 'create-event-hash') {
+		// v12: If the event has a room_id, reject.
+		if (roomId !== undefined) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: createEvent,
+				reason: 'm.room.create event must not have a room_id',
+			});
+		}
+	} else if (!roomId || extractDomain(roomId) !== extractDomain(createEvent.sender)) {
+		// If the domain of the room_id does not match the domain of the sender, reject.
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: createEvent,
 			reason: 'm.room.create event sender domain does not match room_id domain',
@@ -43,12 +59,23 @@ function isCreateAllowed(createEvent: PersistentEventBase<RoomVersion, 'm.room.c
 
 	const content = createEvent.getContent();
 
-	// If content.room_version is assert(verifier(event as V2Pdu, authEvents), "not allowed"present and is not a recognised version, reject.
-	if (content.room_version && !['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'].includes(content.room_version)) {
+	// If content.room_version is present and is not a recognised version, reject.
+	if (content.room_version && !RECOGNISED_ROOM_VERSIONS.includes(content.room_version)) {
 		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 			rejectedEvent: createEvent,
 			reason: `m.room.create event content.room_version is not a recognised version ${content.room_version}`,
 		});
+	}
+
+	// v12: If content.additional_creators is present and is not an array of strings where each string passes the same user ID validation applied to sender, reject.
+	if (createEvent.capabilities.privilegedCreators && content.additional_creators !== undefined) {
+		const additionalCreators: unknown = content.additional_creators;
+		if (!Array.isArray(additionalCreators) || !additionalCreators.every(isValidUserId)) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: createEvent,
+				reason: 'm.room.create event content.additional_creators is not a list of valid user ids',
+			});
+		}
 	}
 
 	// If the event has no creator, reject. Where the creator comes from is version specific.
@@ -58,6 +85,46 @@ function isCreateAllowed(createEvent: PersistentEventBase<RoomVersion, 'm.room.c
 			reason: 'm.room.create event has no creator',
 		});
 	}
+}
+
+// the room's create event. up to v11 it is one of the event's auth events; from v12 it is implied
+// by the room id, and the event is rejected unless the room id names an accepted create event (rule 2)
+export async function resolveCreateEvent(
+	event: PersistentEventBase,
+	authEventStateMap: ReadonlyMap<StateMapKey, PersistentEventBase>,
+	store: EventStore,
+): Promise<PersistentEventBase<RoomVersion, 'm.room.create'>> {
+	const createEventId = event.getCreateEventId();
+
+	if (!createEventId) {
+		const createEvent = getStateByMapKey(authEventStateMap as Map<StateMapKey, PersistentEventBase>, { type: 'm.room.create' });
+		if (!createEvent?.isCreateEvent()) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				reason: 'missing m.room.create event',
+			});
+		}
+		return createEvent;
+	}
+
+	const [createEvent] = await store.getEvents([createEventId]);
+
+	if (!createEvent?.isCreateEvent()) {
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			reason: 'room_id does not correspond to a known m.room.create event',
+		});
+	}
+
+	if (createEvent.rejected) {
+		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+			rejectedEvent: event,
+			rejectedBy: createEvent,
+			reason: "the room's m.room.create event was rejected",
+		});
+	}
+
+	return createEvent;
 }
 
 // TODO: better typing for alias event
@@ -83,6 +150,7 @@ async function isMembershipChangeAllowed(
 	membershipEventToCheck: PersistentEventBase<RoomVersion, 'm.room.member'>,
 	authEventStateMap: Map<StateMapKey, PersistentEventBase>,
 	store: EventStore,
+	roomCreateEvent: PersistentEventBase<RoomVersion, 'm.room.create'>,
 ): Promise<void> {
 	// If there is no state_key property, or no membership property in content, reject.
 	if (!membershipEventToCheck.stateKey || !membershipEventToCheck.isMembershipEvent()) {
@@ -126,12 +194,6 @@ async function isMembershipChangeAllowed(
 	const powerLevelEvent = powerLevelEventInAuthStateMap?.isPowerLevelEvent()
 		? PowerLevelEvent.fromEvent(powerLevelEventInAuthStateMap)
 		: PowerLevelEvent.fromDefault();
-
-	const roomCreateEvent = getStateByMapKey(authEventStateMap, {
-		type: 'm.room.create',
-	});
-
-	assert(roomCreateEvent, 'room create event not found'); // must exist
 
 	const content = membershipEventToCheck.getContent();
 
@@ -347,6 +409,20 @@ export function validatePowerLevelEvent(
 	authEventMap: Map<StateMapKey, PersistentEventBase>,
 ) {
 	// If the users property in content is not an object with keys that are valid user IDs with values that are integers (or a string that is an integer), reject.
+
+	// v12: If the users property in content contains the sender of the m.room.create event or any of the additional_creators array, reject.
+	if (roomCreateEvent.capabilities.privilegedCreators) {
+		const creators = roomCreateEvent.getCreators();
+		const listedCreator = powerLevelEvent.getUserIds().find((userId) => creators.has(userId as UserID));
+		if (listedCreator) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: powerLevelEvent.toEventBase()!,
+				rejectedBy: roomCreateEvent,
+				reason: `room creator ${listedCreator} must not be listed in power level users`,
+			});
+		}
+	}
+
 	// If there is no previous m.room.power_levels event in the room, allow.
 	const existinPowerLevelEvent = getStateByMapKey(authEventMap, {
 		type: 'm.room.power_levels',
@@ -614,9 +690,24 @@ export function checkEventAuthWithoutState(event: PersistentEventBase, authEvent
 	* 	If there are duplicate entries for a given type and state_key pair, reject.
 	* 	If there are entries whose type and state_key don’t match those specified by the auth events selection algorithm described in the server specification, reject.
 	* 	If there are entries which were themselves rejected under the checks performed on receipt of a PDU, reject.
-	* 	If there is no m.room.create event among the entries, reject.
+	* 	If there is no m.room.create event among the entries, reject. (up to v11)
+	* 	If there are entries whose room_id does not match the room_id of the event itself, reject.
+	* 	v12: m.room.create MUST NOT be among the entries, it is implied by the room id.
 
 	*/
+
+	const { createEventInAuthEvents } = event.capabilities;
+
+	if (!createEventInAuthEvents) {
+		const listedCreateEvent = authEvents.find((authEvent) => authEvent.isCreateEvent());
+		if (listedCreateEvent) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				rejectedBy: listedCreateEvent,
+				reason: 'm.room.create must not be listed in auth_events',
+			});
+		}
+	}
 
 	const stateKeysNeeded = new Map<StateMapKey, null>(event.getAuthEventStateKeys().map((key) => [key, null]));
 
@@ -629,6 +720,14 @@ export function checkEventAuthWithoutState(event: PersistentEventBase, authEvent
 				rejectedEvent: event,
 				reason: 'auth event required to authorize this event was rejected',
 				rejectedBy: authEvent,
+			});
+		}
+
+		if (authEvent.roomId !== event.roomId) {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: event,
+				rejectedBy: authEvent,
+				reason: 'auth event belongs to a different room',
 			});
 		}
 
@@ -652,6 +751,10 @@ export function checkEventAuthWithoutState(event: PersistentEventBase, authEvent
 		}
 
 		authEventStateMap.set(stateKey, authEvent);
+	}
+
+	if (!createEventInAuthEvents) {
+		return;
 	}
 
 	const roomCreateEvent = getStateByMapKey(authEventStateMap, {
@@ -678,18 +781,7 @@ export async function checkEventAuthWithState(
 		return;
 	}
 
-	const roomCreateEvent = getStateByMapKey(state, {
-		type: 'm.room.create',
-	});
-
-	assert(roomCreateEvent, 'missing m.room.create event');
-
-	if (!roomCreateEvent.isCreateEvent()) {
-		throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
-			rejectedEvent: event,
-			reason: 'm.room.create event not found',
-		});
-	}
+	const roomCreateEvent = await resolveCreateEvent(event, state, store);
 
 	// If the content of the m.room.create event in the room state has the property m.federate set to false, and the sender domain of the event does not match the sender domain of the create event, reject.
 	if (roomCreateEvent.getContent()['m.federate'] === false && event.origin !== roomCreateEvent.origin) {
@@ -705,7 +797,7 @@ export async function checkEventAuthWithState(
 	}
 
 	if (event.isMembershipEvent()) {
-		return isMembershipChangeAllowed(event, state, store);
+		return isMembershipChangeAllowed(event, state, store, roomCreateEvent);
 	}
 
 	// If the sender’s current membership state is not join, reject.

@@ -547,7 +547,7 @@ describe('InviteService', async () => {
 				roomVersion,
 			);
 			const outlierEventId = outlierWrapped.eventId;
-			await eventRepository.insertOutlierEvent(outlierEventId, outlierWrapped.event, remoteServer);
+			await eventRepository.insertOutlierEvent(outlierWrapped.roomId, outlierEventId, outlierWrapped.event, remoteServer);
 
 			// 3. Build re-invite referencing the outlier as prev_event
 			const latestEvents = await eventRepository.findLatestEvents(roomId);
@@ -707,6 +707,50 @@ describe('InviteService', async () => {
 			const storedEvent = await eventRepository.findById(reInviteEventInstance.eventId);
 			expect(storedEvent).not.toBeNull();
 			expect(storedEvent!.outlier).toBe(true);
+		});
+	});
+
+	describe('processInvite - room v12', () => {
+		it('stores an invite to a remote v12 room as an outlier findable by room id', async () => {
+			const remoteServer = 'remote.server.com';
+			const remoteCreator = `@alice:${remoteServer}` as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			// a room we know nothing about: its id names no server, only the invite's sender does
+			const remoteCreate = PersistentEventFactory.newCreateEvent(remoteCreator, '12');
+			const { roomId } = remoteCreate;
+
+			const inviteEventInstance = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'invite' as const },
+					room_id: roomId,
+					state_key: localUser,
+					sender: remoteCreator,
+					auth_events: [],
+					prev_events: [remoteCreate.eventId],
+					depth: 5,
+					origin_server_ts: Date.now(),
+					unsigned: {},
+				},
+				'12',
+			);
+
+			const result = await inviteService.processInvite(inviteEventInstance.event, inviteEventInstance.eventId, '12', [
+				{ content: { join_rule: 'invite' }, sender: remoteCreator, state_key: '', type: 'm.room.join_rules' },
+			] as any);
+
+			expect(result.eventId).toBe(inviteEventInstance.eventId);
+
+			const storedEvent = await eventRepository.findById(inviteEventInstance.eventId);
+			expect(storedEvent?.outlier).toBe(true);
+			expect(storedEvent?.roomId).toBe(roomId);
+			// recorded as coming from the inviting server, the room id names none
+			expect(storedEvent?.origin).toBe(remoteServer);
+
+			// what joinUser relies on to find a server to join a v12 room through
+			const invite = await eventRepository.findInviteEventsByRoomIdAndUserId(roomId, localUser);
+			expect(invite?._id).toBe(inviteEventInstance.eventId);
 		});
 	});
 });

@@ -1,24 +1,44 @@
 import type { EventStore } from '@rocket.chat/federation-core';
+import { isDomainlessRoomId } from '@rocket.chat/federation-room';
 import type { Pdu, PduForType, PduType, RejectCode, RoomID, StateID, EventID } from '@rocket.chat/federation-room';
-import type { Collection, FindCursor, FindOptions, InsertOneResult, UpdateResult, WithId } from 'mongodb';
+import type { Collection, Filter, FindCursor, FindOptions, InsertOneResult, UpdateResult, WithId } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+
+import { EventRoomIdLayout, type EventStoreLayout, TopLevelRoomIdLayout } from './event-store-layout';
+
+// the room a stored event belongs to, whichever layout stored it
+export function getStoredRoomId(stored: Pick<EventStore, 'roomId' | 'event'>): RoomID {
+	const roomId = stored.roomId ?? stored.event.room_id;
+	if (!roomId) {
+		throw new Error(`Stored event ${stored.event.type} has no room id`);
+	}
+	return roomId;
+}
 
 @singleton()
 export class EventRepository {
 	constructor(
 		@inject('EventCollection')
 		private readonly collection: Collection<EventStore>,
+		@inject(EventRoomIdLayout)
+		private readonly eventRoomIdLayout: EventStoreLayout = new EventRoomIdLayout(),
+		@inject(TopLevelRoomIdLayout)
+		private readonly topLevelRoomIdLayout: EventStoreLayout = new TopLevelRoomIdLayout(),
 	) {
-		this.collection.createIndex({
-			'event.room_id': 1,
-			'nextEventId': 1,
-			'event.depth': 1,
-			'createdAt': 1,
-		});
-		this.collection.createIndex({
-			'event.room_id': 1,
-			'event.type': 1,
-		});
+		for (const layout of [eventRoomIdLayout, topLevelRoomIdLayout]) {
+			for (const { key, ...options } of layout.indexes) {
+				void this.collection.createIndex(key, options);
+			}
+		}
+	}
+
+	// the room id's shape is known before the room version is, so it is what picks the layout
+	private layoutFor(roomId: string): EventStoreLayout {
+		return isDomainlessRoomId(roomId) ? this.topLevelRoomIdLayout : this.eventRoomIdLayout;
+	}
+
+	private roomFilter(roomId: string): Filter<EventStore> {
+		return this.layoutFor(roomId).roomFilter(roomId);
 	}
 
 	async findById(eventId: EventID): Promise<EventStore | null> {
@@ -35,17 +55,17 @@ export class EventRepository {
 	findAuthEvents(eventType: string, roomId: string, senderId: string): FindCursor<EventStore> {
 		const baseQueries = {
 			create: {
-				query: { 'event.room_id': roomId, 'event.type': 'm.room.create' },
+				query: { ...this.roomFilter(roomId), 'event.type': 'm.room.create' },
 			},
 			powerLevels: {
 				query: {
-					'event.room_id': roomId,
+					...this.roomFilter(roomId),
 					'event.type': 'm.room.power_levels',
 				},
 			},
 			membership: {
 				query: {
-					'event.room_id': roomId,
+					...this.roomFilter(roomId),
 					'event.type': 'm.room.member',
 					'event.state_key': senderId,
 					'event.content.membership': 'join',
@@ -74,7 +94,7 @@ export class EventRepository {
 	}
 
 	findByRoomId(roomId: string): FindCursor<EventStore> {
-		return this.collection.find({ 'event.room_id': roomId }, { sort: { 'event.depth': 1 } });
+		return this.collection.find(this.roomFilter(roomId), { sort: { 'event.depth': 1 } });
 	}
 
 	async redactEvent(eventId: EventID, redactedEvent: Pdu): Promise<void> {
@@ -86,7 +106,7 @@ export class EventRepository {
 
 	public async findPowerLevelsEventByRoomId(roomId: string): Promise<EventStore<PduForType<'m.room.power_levels'>> | null> {
 		return this.collection.findOne({
-			'event.room_id': roomId,
+			...this.roomFilter(roomId),
 			'event.type': 'm.room.power_levels',
 		}) as unknown as EventStore<PduForType<'m.room.power_levels'>> | null;
 	}
@@ -94,7 +114,7 @@ export class EventRepository {
 	public async findAllJoinedMembersEventsByRoomId(roomId: string): Promise<EventStore<PduForType<'m.room.member'>>[]> {
 		return this.collection
 			.find({
-				'event.room_id': roomId,
+				...this.roomFilter(roomId),
 				'event.type': 'm.room.member',
 				'event.content.membership': 'join',
 			})
@@ -104,7 +124,7 @@ export class EventRepository {
 	async findLatestEventByRoomIdBeforeTimestampWithAssociatedState(roomId: string, timestamp: number): Promise<EventStore | null> {
 		return this.collection.findOne(
 			{
-				'event.room_id': roomId,
+				...this.roomFilter(roomId),
 				'event.origin_server_ts': { $lt: timestamp }, // events before passed timestamp
 				'stateId': { $ne: '' as StateID },
 			},
@@ -119,7 +139,7 @@ export class EventRepository {
 	findEventsByRoomIdAfterTimestamp(roomId: string, timestamp: number): FindCursor<EventStore> {
 		return this.collection
 			.find({
-				'event.room_id': roomId,
+				...this.roomFilter(roomId),
 				'event.origin_server_ts': { $gt: timestamp },
 			})
 			.sort({
@@ -137,9 +157,9 @@ export class EventRepository {
 		return this.collection
 			.find(
 				{
-					'nextEventId': '',
-					'event.room_id': roomId,
-					'rejectCode': { $exists: false },
+					nextEventId: '',
+					...this.roomFilter(roomId),
+					rejectCode: { $exists: false },
 				},
 				{ sort: { 'event.depth': 1, 'createdAt': 1 } },
 			)
@@ -157,7 +177,7 @@ export class EventRepository {
 
 	findTombstoneEventsByRoomId(roomId: string): FindCursor<EventStore> {
 		return this.collection.find({
-			'event.room_id': roomId,
+			...this.roomFilter(roomId),
 			'event.type': 'm.room.tombstone',
 			'event.state_key': '',
 		});
@@ -183,7 +203,7 @@ export class EventRepository {
 
 	findByRoomIdAndTypes(roomId: string, eventTypes: string[]): FindCursor<EventStore> {
 		return this.collection.find({
-			'event.room_id': roomId,
+			...this.roomFilter(roomId),
 			'event.type': { $in: eventTypes },
 		});
 	}
@@ -201,7 +221,7 @@ export class EventRepository {
 
 	async findByRoomIdAndType<T extends PduType>(roomId: string, eventType: T): Promise<EventStore<PduForType<T>> | null> {
 		return this.collection.findOne({
-			'event.room_id': roomId,
+			...this.roomFilter(roomId),
 			'event.type': eventType,
 		}) as unknown as EventStore<PduForType<T>> | null;
 	}
@@ -209,8 +229,8 @@ export class EventRepository {
 	findByRoomIdExcludingEventIds(roomId: string, eventIdsToExclude: EventID[], limit: number): FindCursor<EventStore> {
 		return this.collection.find(
 			{
-				'event.room_id': roomId,
-				'_id': { $nin: eventIdsToExclude },
+				...this.roomFilter(roomId),
+				_id: { $nin: eventIdsToExclude },
 			},
 			{
 				limit,
@@ -221,7 +241,7 @@ export class EventRepository {
 	async findInviteEventsByRoomIdAndUserId(roomId: string, userId: string): Promise<EventStore | null> {
 		const result = this.collection.find(
 			{
-				'event.room_id': roomId,
+				...this.roomFilter(roomId),
 				'event.type': 'm.room.member',
 				'event.state_key': userId,
 				'event.content.membership': 'invite',
@@ -232,14 +252,14 @@ export class EventRepository {
 	}
 
 	async findLatestFromRoomId(roomId: string): Promise<EventStore | null> {
-		return this.collection.findOne({ 'event.room_id': roomId }, { sort: { 'event.depth': -1 } });
+		return this.collection.findOne(this.roomFilter(roomId), { sort: { 'event.depth': -1 } });
 	}
 
 	findEventsByIdsWithDepth(roomId: string, eventIds: EventID[]): FindCursor<EventStore<Pick<Pdu, 'depth'>>> {
 		return this.collection.find(
 			{
-				'event.room_id': roomId,
-				'_id': { $in: eventIds },
+				...this.roomFilter(roomId),
+				_id: { $in: eventIds },
 			},
 			{ projection: { '_id': 1, 'event.depth': 1 } },
 		);
@@ -255,7 +275,7 @@ export class EventRepository {
 		return this.collection
 			.find(
 				{
-					'event.room_id': roomId,
+					...this.roomFilter(roomId),
 					'event.depth': { $gte: minDepth, $lte: maxDepth },
 					'event_id': { $nin: excludeEventIds },
 				},
@@ -270,8 +290,8 @@ export class EventRepository {
 	async findNewestEventForBackfill(roomId: string, eventIds: EventID[]): Promise<EventStore | null> {
 		return this.collection.findOne(
 			{
-				'_id': { $in: eventIds },
-				'event.room_id': roomId,
+				_id: { $in: eventIds },
+				...this.roomFilter(roomId),
 			},
 			{
 				sort: {
@@ -285,8 +305,8 @@ export class EventRepository {
 	findEventsForBackfill(roomId: string, depth: number, originServerTs: number, limit: number) {
 		return this.collection
 			.find({
-				'event.room_id': roomId,
-				'$or': [
+				...this.roomFilter(roomId),
+				$or: [
 					{ 'event.depth': { $lt: depth } },
 					{
 						'event.depth': depth,
@@ -303,11 +323,13 @@ export class EventRepository {
 	// new ones
 	// -------------------
 
-	insertOrUpdateEventWithStateId(eventId: EventID, event: Pdu, stateId: StateID, partial = false): Promise<UpdateResult> {
+	// roomId is passed explicitly since a v12 create event has no room_id of its own
+	insertOrUpdateEventWithStateId(roomId: RoomID, eventId: EventID, event: Pdu, stateId: StateID, partial = false): Promise<UpdateResult> {
 		return this.collection.updateOne(
 			{ _id: eventId },
 			{
 				$setOnInsert: {
+					...this.layoutFor(roomId).roomFields(roomId),
 					event,
 					nextEventId: '',
 					createdAt: new Date(),
@@ -321,8 +343,9 @@ export class EventRepository {
 		);
 	}
 
-	insertOutlierEvent(eventId: EventID, event: Pdu, origin: string): Promise<InsertOneResult<EventStore>> {
+	insertOutlierEvent(roomId: RoomID, eventId: EventID, event: Pdu, origin: string): Promise<InsertOneResult<EventStore>> {
 		return this.collection.insertOne({
+			...this.layoutFor(roomId).roomFields(roomId),
 			_id: eventId,
 			event,
 			createdAt: new Date(),
@@ -348,6 +371,7 @@ export class EventRepository {
 	}
 
 	async rejectEvent(
+		roomId: RoomID,
 		eventId: EventID,
 		event: Pdu,
 		stateId: StateID,
@@ -361,6 +385,7 @@ export class EventRepository {
 			},
 			{
 				$setOnInsert: {
+					...this.layoutFor(roomId).roomFields(roomId),
 					event,
 					stateId,
 					nextEventId: '',
@@ -390,6 +415,6 @@ export class EventRepository {
 	}
 
 	findPartialsByRoomId(roomId: RoomID) {
-		return this.collection.find({ 'event.room_id': roomId, 'partial': true }, { sort: { 'event.depth': 1, 'createdAt': 1 } });
+		return this.collection.find({ ...this.roomFilter(roomId), partial: true }, { sort: { 'event.depth': 1, 'createdAt': 1 } });
 	}
 }

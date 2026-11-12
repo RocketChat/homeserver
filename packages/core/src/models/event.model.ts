@@ -1,4 +1,4 @@
-import type { EventID, Pdu, RejectCode, StateID } from '@rocket.chat/federation-room';
+import type { EventID, Pdu, RejectCode, RoomID, StateID } from '@rocket.chat/federation-room';
 
 import type { EventBase as CoreEventBase } from '../events/eventBase';
 
@@ -20,6 +20,9 @@ interface PersistentEventBase<E = Pdu> {
 
 // TODO: Merge with StagedEvent from event.service.ts
 export interface EventStore<E = Pdu> extends PersistentEventBase<E> {
+	// only stored for rooms with domainless ids (v12+), whose create event has no event.room_id
+	roomId?: RoomID;
+
 	stateId: StateID;
 	// for prev_events
 	nextEventId: EventID | '';

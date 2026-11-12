@@ -1,5 +1,5 @@
 import { extractDomainFromId, RoomState } from '@rocket.chat/federation-room';
-import type { EventID, Pdu, PersistentEventBase, State } from '@rocket.chat/federation-room';
+import type { EventID, Pdu, PersistentEventBase, State, UserID } from '@rocket.chat/federation-room';
 
 /** The room data the relation checks read; the state service provides it. */
 export interface EventLookup {
@@ -80,7 +80,7 @@ export async function isRedactionAllowed(
 	const stateBeforeRedaction = await lookup.getStateBeforeEvent(redaction);
 	const powerLevelsEvent = stateBeforeRedaction.get('m.room.power_levels:');
 	if (!powerLevelsEvent) {
-		return new RoomState(stateBeforeRedaction).creator === redaction.sender;
+		return new RoomState(stateBeforeRedaction).creators.has(redaction.sender as UserID);
 	}
 
 	const powerLevels = powerLevelsEvent.toPowerLevelEvent();

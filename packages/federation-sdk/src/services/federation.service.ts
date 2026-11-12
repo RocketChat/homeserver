@@ -42,21 +42,14 @@ export class FederationService {
 	}
 
 	/**
-	 * Send a join event to a remote server
+	 * Send a join event to the server that answered make_join. room ids no longer name a server from v12 on
 	 */
-	async sendJoin(joinEvent: PersistentEventBase, omitMembers = false): Promise<SendJoinResponse> {
+	async sendJoin(joinEvent: PersistentEventBase, domain: string, omitMembers = false): Promise<SendJoinResponse> {
 		try {
 			const uri = FederationEndpoints.sendJoinV2(joinEvent.roomId, joinEvent.eventId);
 			const queryParams = omitMembers ? { omit_members: 'true' } : undefined;
 
-			const residentServer = joinEvent.roomId.split(':').pop();
-
-			if (!residentServer) {
-				this.logger.debug({ msg: 'invalid room_id', event: joinEvent.event });
-				throw new Error(`invalid room_id ${joinEvent.roomId}, no server_name part`);
-			}
-
-			return await this.requestService.put<SendJoinResponse>(residentServer, uri, undefined, queryParams, joinEvent.event);
+			return await this.requestService.put<SendJoinResponse>(domain, uri, undefined, queryParams, joinEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendJoin failed', err: error });
 			throw error;
@@ -76,18 +69,12 @@ export class FederationService {
 		}
 	}
 
-	async sendLeave(leaveEvent: PersistentEventBase): Promise<void> {
+	// sent to the server that answered make_leave
+	async sendLeave(leaveEvent: PersistentEventBase, domain: string): Promise<void> {
 		try {
 			const uri = FederationEndpoints.sendLeave(leaveEvent.roomId, leaveEvent.eventId);
 
-			const residentServer = leaveEvent.roomId.split(':').pop();
-
-			if (!residentServer) {
-				this.logger.debug({ msg: 'invalid room_id', event: leaveEvent.event });
-				throw new Error(`invalid room_id ${leaveEvent.roomId}, no server_name part`);
-			}
-
-			await this.requestService.put<void>(residentServer, uri, leaveEvent.event);
+			await this.requestService.put<void>(domain, uri, leaveEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendLeave failed', err: error });
 			throw error;

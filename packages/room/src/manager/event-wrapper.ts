@@ -3,10 +3,11 @@ import crypto from 'node:crypto';
 import { encodeCanonicalJson, toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 
 import { PowerLevelEvent } from './power-level-event-wrapper';
-import { type RoomVersion } from './type';
+import { createEventIdFromRoomId, roomIdFromCreateEventId, roomServerName } from './room-id';
+import { type RoomVersion, type RoomVersionCapabilities } from './type';
 import { type RejectCode, RejectCodes } from '../authorizartion-rules/errors';
 import { type EventStore, getStateMapKey } from '../state_resolution/definitions/definitions';
-import type { EventID, PduForType, StateMapKey, UserID } from '../types/_common';
+import type { EventID, PduForType, RoomID, StateMapKey, UserID } from '../types/_common';
 import type {
 	Pdu,
 	PduContent,
@@ -99,8 +100,40 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return this.rawEvent.type as Type;
 	}
 
-	get roomId() {
-		return this.rawEvent.room_id;
+	// the rules of the room version this event belongs to, declared statically by each version class
+	get capabilities(): RoomVersionCapabilities {
+		return (this.constructor as unknown as { capabilities: RoomVersionCapabilities }).capabilities;
+	}
+
+	get roomId(): RoomID {
+		const roomId = this.findRoomId();
+		if (!roomId) {
+			throw new Error(`Event ${this.type} has no room_id`);
+		}
+
+		return roomId;
+	}
+
+	// undefined only for a malformed event, e.g. a pre-v12 create event without room_id
+	private findRoomId(): RoomID | undefined {
+		if (this.rawEvent.room_id) {
+			return this.rawEvent.room_id;
+		}
+
+		if (this.isCreateEvent() && this.capabilities.roomIdFormat === 'create-event-hash') {
+			return roomIdFromCreateEventId(this.eventId);
+		}
+
+		return undefined;
+	}
+
+	// when the room id is the create event's hash, the create event id can be derived from any event in the room
+	getCreateEventId(): EventID | undefined {
+		if (this.capabilities.roomIdFormat !== 'create-event-hash') {
+			return undefined;
+		}
+
+		return this.isCreateEvent() ? this.eventId : createEventIdFromRoomId(this.roomId);
 	}
 
 	get sender() {
@@ -117,12 +150,9 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return domain;
 	}
 
-	get residentServer() {
-		const residentServer = extractDomainFromId(this.rawEvent.room_id);
-		if (!residentServer) {
-			throw new Error('Invalid room_id, no domain found');
-		}
-		return residentServer;
+	// undefined from v12 on, room ids no longer name a server
+	get residentServer(): string | undefined {
+		return roomServerName(this.roomId);
 	}
 
 	get stateKey() {
@@ -255,6 +285,20 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 	}
 
 	protected abstract resolveCreator(): UserID | undefined;
+
+	// everyone holding creator authority. one user before v12, v12 adds content.additional_creators
+	getCreators(): Set<UserID> {
+		if (!this.isCreateEvent()) {
+			throw new Error('Event is not a create event');
+		}
+
+		return this.resolveCreators();
+	}
+
+	protected resolveCreators(): Set<UserID> {
+		const creator = this.resolveCreator();
+		return new Set(creator ? [creator] : []);
+	}
 
 	// which event a redaction targets. where it is recorded also changed in v11
 	getRedacts(): EventID | undefined {
@@ -393,10 +437,12 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 
 			// The sender's current m.room.member event, if any.
 			getStateMapKey({ type: 'm.room.member', state_key: this.sender }),
-
-			// The m.room.create event.
-			getStateMapKey({ type: 'm.room.create' }),
 		]);
+
+		// The m.room.create event, depending on the room version (from v12 it MUST NOT be selected).
+		if (this.capabilities.createEventInAuthEvents) {
+			authTypes.add(getStateMapKey({ type: 'm.room.create' }));
+		}
 
 		// If type is m.room.member:
 
@@ -475,7 +521,8 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return encodeCanonicalJson({
 			eventId: this.eventId,
 			type: this.type,
-			roomId: this.roomId,
+			// used to describe rejected events, so it must not throw on a malformed one
+			roomId: this.findRoomId(),
 			sender: this.sender,
 			stateKey: this.stateKey,
 		});

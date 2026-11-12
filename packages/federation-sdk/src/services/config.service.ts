@@ -1,9 +1,9 @@
 import { SigningKey, createLogger, generateKeyPairsFromString, toUnpaddedBase64 } from '@rocket.chat/federation-core';
-import { PersistentEventFactory, type RoomVersion3To11 } from '@rocket.chat/federation-room';
+import { PersistentEventFactory, type SupportedRoomVersion } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 import * as z from 'zod';
 
-const DEFAULT_ROOM_VERSION: RoomVersion3To11 = '11';
+const DEFAULT_ROOM_VERSION: SupportedRoomVersion = '11';
 
 export interface AppConfig {
 	serverName: string;
@@ -36,7 +36,7 @@ export interface AppConfig {
 	userCheckTimeoutMs?: number;
 	networkCheckTimeoutMs?: number;
 	// version of rooms created locally; rooms joined over federation keep their own
-	defaultRoomVersion?: RoomVersion3To11;
+	defaultRoomVersion?: SupportedRoomVersion;
 }
 
 export const AppConfigSchema = z.object({
@@ -114,7 +114,7 @@ export class ConfigService {
 		return this.config.instanceId;
 	}
 
-	get defaultRoomVersion(): RoomVersion3To11 {
+	get defaultRoomVersion(): SupportedRoomVersion {
 		return this.config.defaultRoomVersion ?? DEFAULT_ROOM_VERSION;
 	}
 

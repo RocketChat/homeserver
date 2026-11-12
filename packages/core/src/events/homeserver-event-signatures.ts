@@ -1,4 +1,4 @@
-import type { EventID, PduForType } from '@rocket.chat/federation-room';
+import type { EventID, PduForType, RoomID } from '@rocket.chat/federation-room';
 
 export type HomeserverEventSignatures = {
 	'homeserver.ping': {
@@ -34,6 +34,8 @@ export type HomeserverEventSignatures = {
 	'homeserver.matrix.room.create': {
 		event: PduForType<'m.room.create'>;
 		event_id: EventID;
+		// from room v12 the create event carries no room_id, the room id is derived from its hash
+		room_id: RoomID;
 	};
 	'homeserver.matrix.message': {
 		event_id: EventID;
