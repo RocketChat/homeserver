@@ -1,0 +1,160 @@
+packages/federation-sdk/src/services/config.service.ts
+  s_f58a7f295f16da::t_c41e844007f0f9 2,6,39,117
+packages/room/src/manager/power-level-event-wrapper.spec.ts
+  s_f58a7f295f16da::t_31725dc773ec71 1-71
+packages/room/src/manager/v11.ts
+  s_f58a7f295f16da::t_88f03e7969a4bb 3,9-13,15
+packages/federation-sdk/src/services/event-authorization.service.ts
+  s_f58a7f295f16da::t_c8982f162f09bb 299
+  s_f58a7f295f16da::t_c0e7768b6d7908 10
+packages/room/src/manager/room-id.spec.ts
+  s_f58a7f295f16da::t_f6e17db76ada7e 1-28
+packages/federation-sdk/src/index.ts
+  s_f58a7f295f16da::t_68e1b8704569c7 73
+packages/federation-sdk/src/services/state.service.ts
+  s_f58a7f295f16da::t_4f8a12d6e39ac3 112-124
+  s_f58a7f295f16da::t_27689b147b10dc 22,588-591
+  s_f58a7f295f16da::t_c41e844007f0f9 16,97
+  s_f58a7f295f16da::t_017a29ee685fb3 31,151,209,265-268,361,385,1031,1050
+  s_f58a7f295f16da::t_aba7001c57b5e2 25
+  s_f58a7f295f16da::t_1cbdeffe0f3ad6 376-377,379,383-384,827
+packages/federation-sdk/src/services/event-notifier.service.ts
+  s_f58a7f295f16da::t_c8982f162f09bb 17,25
+  s_f58a7f295f16da::t_4e10f65f8ef37c 2,134-135,142
+packages/federation-sdk/src/utils/event-schemas.spec.ts
+  s_f58a7f295f16da::t_6ad9263023f393 57,59-62,64,68-92
+  s_f58a7f295f16da::t_efeda1d01b6543 93-94
+packages/federation-sdk/src/utils/validation-regex.spec.ts
+  s_f58a7f295f16da::t_16843d0fcecf63 1-34
+packages/room/src/manager/v3.ts
+  s_f58a7f295f16da::t_88f03e7969a4bb 5,10-18,21
+packages/federation-sdk/src/services/send-join.service.ts
+  s_f58a7f295f16da::t_b4db1009f58fac 49,52-54,57-63
+packages/federation-sdk/src/services/state.service.spec.ts
+  s_f58a7f295f16da::t_8d3b9b5b72ee4f 2334-2416
+packages/federation-sdk/src/services/event.service.ts
+  s_f58a7f295f16da::t_20984c04b83a15 31,581-586
+  s_f58a7f295f16da::t_1bec4f2f5c3486 147-151,177,202,226-227
+  s_f58a7f295f16da::t_fc235a773d74d4 432-447
+packages/room/src/types/v3-11.ts
+  s_f58a7f295f16da::t_51f259378fe74d 121,126-129,469-470
+  s_f58a7f295f16da::t_282a3d3afdc8fe 5
+packages/federation-sdk/src/utils/event-schemas.ts
+  s_f58a7f295f16da::t_8209b2eb3fad87 41-51,147-152,154-163,180
+packages/room/src/manager/factory.ts
+  s_f58a7f295f16da::t_8844477da5fc89 1-2,4-5,7,12,16-17,21,32,34-36,40-44,47-49,74-75,81-84,101-104,106-108,110,123-126
+  s_f58a7f295f16da::t_0ee970703ac4c1 127
+packages/federation-sdk/src/services/room-version-coexistence.spec.ts
+  s_f58a7f295f16da::t_a750a19e83f008 291-293
+  s_f58a7f295f16da::t_98124c49edf62a 4,29,58-62,65-67,83,241-290,294,296-317,319-387
+  s_f58a7f295f16da::t_683420a4652e2d 295,318
+  s_f58a7f295f16da::t_29ddb953687473 388
+packages/room/src/authorizartion-rules/rules.ts
+  s_f58a7f295f16da::t_1f7f35a8205e84 4,7,22-28,42-53,62-63,70-80,90-129,153,412-425,704-705,708-710,727-728,731-732,758
+  s_f58a7f295f16da::t_5c0b9ad8cf8d66 693-695,699-703,706-707,711,726,729-730,733,756-757,759,784,800
+packages/federation-sdk/src/services/event.service.spec.ts
+  s_f58a7f295f16da::t_8a4d8cd56e0e49 3-5,8,10,145-190
+  s_f58a7f295f16da::t_a750a19e83f008 11
+  s_f58a7f295f16da::t_49f2a77397f6e3 191-192
+packages/room/src/state_resolution/definitions/algorithm/v2.1.spec.ts
+  s_f58a7f295f16da::t_b848c8d586ea5d 1-60,63-185
+  s_f58a7f295f16da::t_a750a19e83f008 61-62
+packages/federation-sdk/src/repositories/event.repository.ts
+  s_f58a7f295f16da::t_017a29ee685fb3 9-17
+  s_f58a7f295f16da::t_8ec9a7df026495 326-327,332,346,348,374,388
+  s_f58a7f295f16da::t_14148fa49db33a 160,162,233,262,293,309
+  s_f58a7f295f16da::t_bb265a119a8bae 2,4,7-8,23-26,28-41,58,62,68,97,109,117,127,142,161,180,206,224,232,244,255,261,278,294,308,418
+packages/room/src/manager/room-state.ts
+  s_f58a7f295f16da::t_a1749dea6bee7d 2,12,21-48
+packages/federation-sdk/src/services/room.service.ts
+  s_f58a7f295f16da::t_14148fa49db33a 799-804
+  s_f58a7f295f16da::t_1b501488f1385c 576,699-715,724,905-910,958
+  s_f58a7f295f16da::t_b521c7e5bf52f9 21,69-83,285,288,1157-1159,1177-1178,1227-1228,1246-1249,1321,1324,1507,1510
+  s_f58a7f295f16da::t_6f8e47aae4f781 85,91-96,111,134-141,157-164,485,487,491-492,494-496,633,673
+packages/room/src/state_resolution/definitions/algorithm/v2.spec.ts
+  s_f58a7f295f16da::t_6eda0ac67ec831 1,3,45-47,206,276-279
+  s_f58a7f295f16da::t_4557b8c3d9c2df 280
+packages/room/src/index.ts
+  s_f58a7f295f16da::t_308bb371af508f 3
+  s_f58a7f295f16da::t_38ebd8ab0eb8be 8
+packages/federation-sdk/src/services/staging-area.service.ts
+  s_f58a7f295f16da::t_29cacd5b41fae7 57,72,159-161,166,182
+  s_f58a7f295f16da::t_14148fa49db33a 168
+  s_f58a7f295f16da::t_246cc6c9ab28f8 167
+packages/core/src/events/homeserver-event-signatures.ts
+  s_f58a7f295f16da::t_c8982f162f09bb 1,37-38
+packages/room/src/manager/power-level-event-wrapper.ts
+  s_f58a7f295f16da::t_4e013c9a479d51 3,68-72,74,89,180-181
+  s_f58a7f295f16da::t_aa0871a0316321 182-183
+packages/room/src/state_resolution/definitions/definitions.ts
+  s_f58a7f295f16da::t_3007b28871fbd4 42-44,89-109
+  s_f58a7f295f16da::t_14148fa49db33a 177,189,191
+  s_f58a7f295f16da::t_8625f0cb3f2e48 110,113,159-176,178-188,190,192-206
+  s_f58a7f295f16da::t_bf2612b957bca1 111-112,114
+packages/homeserver/src/dtos/common/event.dto.ts
+  s_f58a7f295f16da::t_20a4d31947d6a1 23-24
+packages/core/src/utils/checkSignAndHashes.spec.ts
+  s_f58a7f295f16da::t_5c74716d889690 4-5,12-13,168-221
+  s_f58a7f295f16da::t_edfa0bce5fbb85 222
+packages/room/src/manager/room-id.ts
+  s_f58a7f295f16da::t_6bfce1b9ad0bd6 1-23
+packages/room/src/state_resolution/definitions/algorithm/v2.ts
+  s_f58a7f295f16da::t_1388aa6990e53e 69,83-84,86,90,92-93,159,163-171,232,234,297-298
+  s_f58a7f295f16da::t_3007b28871fbd4 75,139
+packages/room/src/authorizartion-rules/rules.spec.ts
+  s_f58a7f295f16da::t_a750a19e83f008 1377-1381,1389-1393,1400-1404,1416-1420,1423-1425,1458-1460
+  s_f58a7f295f16da::t_3238cf9d64aa70 3,63-68,1217-1376,1382-1388,1394-1399,1405-1415,1421-1422,1426-1457,1461-1506
+  s_f58a7f295f16da::t_987bb876beab19 1507
+packages/federation-sdk/src/services/federation.service.ts
+  s_f58a7f295f16da::t_1b501488f1385c 45,47,52,72-73,77
+packages/room/src/manager/v12.ts
+  s_f58a7f295f16da::t_b0a4fb00927720 1-37
+packages/federation-sdk/src/services/invite.service.ts
+  s_f58a7f295f16da::t_aba7001c57b5e2 185,187-188,218,226-231
+packages/federation-sdk/src/services/send-join.service.spec.ts
+  s_f58a7f295f16da::t_924ca4017270f1 1-113
+packages/federation-sdk/src/services/room.service.spec.ts
+  s_f58a7f295f16da::t_007a7b20b90933 404-405
+  s_f58a7f295f16da::t_57ffc8da9dea56 1,7,359-403,406-441
+  s_f58a7f295f16da::t_10874d1ba8539a 442
+packages/core/src/models/event.model.ts
+  s_f58a7f295f16da::t_8d7d674005a927 1,23-25
+packages/federation-sdk/src/repositories/event-store-layout.ts
+  s_f58a7f295f16da::t_fa2a19f92a6c9c 1-37,39-54
+  s_f58a7f295f16da::t_14148fa49db33a 38
+packages/federation-sdk/src/services/invite.service.spec.ts
+  s_f58a7f295f16da::t_506b0fa805ab58 712-755
+  s_f58a7f295f16da::t_d717531407bd96 550
+packages/room/src/manager/type.ts
+  s_f58a7f295f16da::t_33222351a48c3a 3-4,6-25
+packages/room/src/manager/event-wrapper.ts
+  s_f58a7f295f16da::t_64e165f1af9cae 6-7,10,103-108,119-126,128-136,153-155,289-302,442-445
+  s_f58a7f295f16da::t_6dc9c621b3832a 109-118,127,524-525
+  s_f58a7f295f16da::t_d536e625b93a64 446
+packages/federation-sdk/src/utils/event-relations.ts
+  s_f58a7f295f16da::t_6c143fe00e643c 2
+  s_f58a7f295f16da::t_4e10f65f8ef37c 83
+packages/room/src/manager/v12.spec.ts
+  s_f58a7f295f16da::t_d00c85d7e29712 1-135,176-185
+  s_f58a7f295f16da::t_a750a19e83f008 136-175
+packages/federation-sdk/src/specs/federation-api.ts
+  s_f58a7f295f16da::t_00c34e14e0eae1 7,12,73
+packages/federation-sdk/src/utils/validation-regex.ts
+  s_f58a7f295f16da::t_6f87014095b2d2 2-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b50342ec5d7d27c47541394c52b8c141181ebb0f",
+  "prompts": {},
+  "sessions": {
+    "s_f58a7f295f16da": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60900043-d341-474d-8ed3-d980a3714875",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
