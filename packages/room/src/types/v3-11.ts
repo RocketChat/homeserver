@@ -2,6 +2,7 @@ import * as z from 'zod';
 
 import type { PduForType } from './_common';
 import { eventIdSchema, roomIdSchema, userIdSchema } from './_common';
+import { SUPPORTED_ROOM_VERSIONS } from '../manager/type';
 
 // Copied from: https://github.com/element-hq/synapse/blob/2277df2a1eb685f85040ef98fa21d41aa4cdd389/synapse/api/constants.py#L103-L141
 
@@ -117,11 +118,15 @@ export const PduCreateEventContentSchema = z.object({
 		})
 		.optional(),
 	'room_version': z
-		.enum(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'])
+		.enum(['1', '2', ...SUPPORTED_ROOM_VERSIONS])
 		.describe(" The version of the room. Defaults to '1' if the key does not exist.")
 		.optional()
 		.default('1'),
 	'type': z.string().describe('The type of the event.').optional(),
+	'additional_creators': z
+		.array(z.string())
+		.describe('Users, beyond the sender, who are room creators. Only meaningful from room version 12.')
+		.optional(),
 });
 
 export type PduCreateEventContent = z.infer<typeof PduCreateEventContentSchema>;
@@ -461,6 +466,8 @@ export const PduNoContentEmptyStateKeyStateEventSchema = {
 
 export const EventPduTypeRoomCreate = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
+	// from v12 on the create event has no room_id, the room id is derived from its hash
+	room_id: roomIdSchema.optional(),
 	type: z.literal('m.room.create'),
 	content: PduCreateEventContentSchema,
 });

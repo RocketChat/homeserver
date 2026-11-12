@@ -1,5 +1,5 @@
 import { createLogger } from '@rocket.chat/federation-core';
-import type { PersistentEventBase } from '@rocket.chat/federation-room';
+import type { PersistentEventBase, UserID } from '@rocket.chat/federation-room';
 import { RoomState } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
@@ -14,10 +14,7 @@ export class EventNotifierService {
 	constructor(private readonly eventEmitterService: EventEmitterService, private readonly stateService: StateService) {}
 
 	async notify(event: PersistentEventBase) {
-		const {
-			eventId,
-			event: { room_id: roomId },
-		} = event;
+		const { eventId, roomId } = event;
 
 		this.logger.debug(`Notifying clients about event ${eventId}`);
 
@@ -25,6 +22,7 @@ export class EventNotifierService {
 			case event.event.type === 'm.room.create':
 				await this.eventEmitterService.emit('homeserver.matrix.room.create', {
 					event_id: eventId,
+					room_id: roomId,
 					event: event.event,
 				});
 				break;
@@ -133,15 +131,15 @@ export class EventNotifierService {
 
 				if (!changedUserPowers) {
 					this.logger.debug('No changed user powers, resetting all powers');
-					// everyone set to "user" except for the owner
-					const owner = oldRoomState.creator;
+					// everyone set to "user" except for the owners
+					const owners = oldRoomState.creators;
 					if (!oldPowerLevels) {
 						this.logger.debug('No current power levels, skipping');
 						break;
 					}
 
 					for await (const userId of Object.keys(oldPowerLevels)) {
-						if (userId === owner) {
+						if (owners.has(userId as UserID)) {
 							continue;
 						}
 

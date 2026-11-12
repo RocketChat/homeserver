@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
 
 import { type EventStore } from '@rocket.chat/federation-core';
-import type { EventID, Pdu, PduCreateEventContent, RoomVersion, UserID } from '@rocket.chat/federation-room';
+import type { EventID, Pdu, PduCreateEventContent, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import { type WithId } from 'mongodb';
 
@@ -26,6 +26,7 @@ describe('room version coexistence', async () => {
 
 	const alice = '@alice:example.com' as UserID;
 	const bob = '@bob:example.com' as UserID;
+	const carol = '@carol:example.com' as UserID;
 
 	const database = new DatabaseConnectionService({
 		uri: process.env.MONGO_URI || 'mongodb://localhost:27017?directConnection=true',
@@ -54,9 +55,15 @@ describe('room version coexistence', async () => {
 
 	const defaults = () => ({ auth_events: [], prev_events: [], origin_server_ts: Date.now(), depth: 0 });
 
-	async function createRoom(roomVersion: RoomVersion) {
-		const createEvent = PersistentEventFactory.newCreateEvent(alice, roomVersion);
+	async function createRoom(
+		roomVersion: RoomVersion,
+		{ additionalCreators, users = {} }: { additionalCreators?: UserID[]; users?: Record<string, number> } = {},
+	) {
+		const createEvent = PersistentEventFactory.newCreateEvent(alice, roomVersion, { additionalCreators });
 		await stateService.handlePdu(createEvent);
+
+		// from v12 creators are implicitly all powerful and must not be listed
+		const { privilegedCreators } = PersistentEventFactory.getCapabilities(roomVersion);
 
 		const { roomId } = createEvent;
 
@@ -73,7 +80,7 @@ describe('room version coexistence', async () => {
 				sender: alice,
 				state_key: '',
 				content: {
-					users: { [alice]: 100 },
+					users: privilegedCreators ? users : { [alice]: 100, ...users },
 					users_default: 0,
 					events: {},
 					events_default: 0,
@@ -230,6 +237,154 @@ describe('room version coexistence', async () => {
 	it('bans in a v10 room', async () => expectBanWorks('10'));
 
 	it('bans in a v11 room', async () => expectBanWorks('11'));
+
+	it('bans in a v12 room', async () => expectBanWorks('12'));
+
+	it('redacts in a v12 room with the target in content', async () => {
+		const wire = await expectRedactionRoundTrip('12');
+
+		expect(wire.redacts).toBeUndefined();
+		expect(wire.content).toHaveProperty('redacts');
+	});
+
+	describe('room v12', () => {
+		it('resolves the version and create event of a room whose create event has no room_id', async () => {
+			const v12 = await createRoom('12', { additionalCreators: [carol] });
+
+			expect(v12.createEvent.event.room_id).toBeUndefined();
+			expect(v12.roomId).toBe(`!${v12.createEvent.eventId.slice(1)}` as RoomID);
+
+			expect(await stateService.getRoomVersion(v12.roomId)).toBe('12');
+			expect((await stateService.getCreateEvent(v12.roomId)).eventId).toBe(v12.createEvent.eventId);
+			expect((await stateService.getLatestRoomState2(v12.roomId)).creators).toEqual(new Set([alice, carol]));
+		});
+
+		it('chains the first events to the create event and never lists it as an auth event', async () => {
+			const v11 = await createRoom('11');
+			const v12 = await createRoom('12');
+
+			expect(v12.join.getPreviousEventIds()).toEqual([v12.createEvent.eventId]);
+
+			for (const event of [v12.join, v12.powerLevels, v12.joinRules]) {
+				expect(event.getAuthEventIds()).not.toContain(v12.createEvent.eventId);
+			}
+			expect(v11.join.getAuthEventIds()).toContain(v11.createEvent.eventId);
+		});
+
+		it('stores v12 events with a top level roomId and leaves older rooms unchanged', async () => {
+			const v11 = await createRoom('11');
+			const v12 = await createRoom('12');
+
+			const v12Create = await eventCollection.findOne({ _id: v12.createEvent.eventId });
+			expect(v12Create?.roomId).toBe(v12.roomId);
+			expect(v12Create?.event.room_id).toBeUndefined();
+
+			const v12Join = await eventCollection.findOne({ _id: v12.join.eventId });
+			expect(v12Join?.roomId).toBe(v12.roomId);
+
+			const v11Create = await eventCollection.findOne({ _id: v11.createEvent.eventId });
+			expect(v11Create).not.toHaveProperty('roomId');
+			expect(v11Create?.event.room_id).toBe(v11.roomId);
+		});
+
+		it('keeps v10, v11 and v12 rooms independent while all are used', async () => {
+			const rooms = await Promise.all(
+				(['10', '11', '12'] as const).map(async (roomVersion) => ({ roomVersion, ...(await createRoom(roomVersion)) })),
+			);
+
+			for await (const { roomId, roomVersion } of rooms) {
+				const join = await stateService.buildEvent<'m.room.member'>(
+					{ type: 'm.room.member', room_id: roomId, sender: bob, state_key: bob, content: { membership: 'join' }, ...defaults() },
+					roomVersion,
+				);
+				await stateService.handlePdu(join);
+				const message = await sendMessage(roomId, roomVersion, `hello from ${roomVersion}`);
+
+				expect(join.rejected).toBeFalse();
+				expect(message.rejected).toBeFalse();
+				expect(await stateService.getRoomVersion(roomId)).toBe(roomVersion);
+			}
+
+			const stateIds = await Promise.all(
+				rooms.map(async ({ roomId }) => new Set([...(await stateService.getLatestRoomState(roomId)).values()].map((e) => e.eventId))),
+			);
+			const allIds = stateIds.flatMap((ids) => [...ids]);
+			expect(new Set(allIds).size).toBe(allIds.length);
+		});
+
+		it('lets an additional creator ban a PL 100 member, and not the other way round', async () => {
+			const { roomId } = await createRoom('12', { additionalCreators: [carol], users: { [bob]: 100 } });
+
+			for await (const user of [bob, carol]) {
+				const join = await stateService.buildEvent<'m.room.member'>(
+					{ type: 'm.room.member', room_id: roomId, sender: user, state_key: user, content: { membership: 'join' }, ...defaults() },
+					'12',
+				);
+				await stateService.handlePdu(join);
+			}
+
+			const bobBansCarol = await stateService.buildEvent<'m.room.member'>(
+				{ type: 'm.room.member', room_id: roomId, sender: bob, state_key: carol, content: { membership: 'ban' }, ...defaults() },
+				'12',
+			);
+			await expect(stateService.handlePdu(bobBansCarol)).rejects.toThrow();
+			expect(bobBansCarol.rejected).toBeTrue();
+
+			const carolBansBob = await stateService.buildEvent<'m.room.member'>(
+				{ type: 'm.room.member', room_id: roomId, sender: carol, state_key: bob, content: { membership: 'ban' }, ...defaults() },
+				'12',
+			);
+			await stateService.handlePdu(carolBansBob);
+
+			expect(carolBansBob.rejected).toBeFalse();
+			expect((await stateService.getLatestRoomState2(roomId)).getUserMembership(bob)).toBe('ban');
+		});
+
+		it('rejects a v12 event that lists the create event in auth_events', async () => {
+			const { roomId, createEvent, join, powerLevels } = await createRoom('12');
+
+			const message = await stateService.buildEvent<'m.room.message'>(
+				{
+					type: 'm.room.message',
+					room_id: roomId,
+					sender: alice,
+					content: { msgtype: 'm.text', body: 'listing the create event' },
+					...defaults(),
+					auth_events: [createEvent.eventId, powerLevels.eventId, join.eventId],
+				},
+				'12',
+			);
+
+			await expect(stateService.handlePdu(message)).rejects.toThrow('m.room.create must not be listed');
+			expect(message.rejected).toBeTrue();
+		});
+
+		it('identifies federation-fetched events at v12', async () => {
+			const { roomId } = await createRoom('12');
+
+			const fetched = {
+				type: 'm.room.message',
+				room_id: roomId,
+				sender: bob,
+				content: { msgtype: 'm.text', body: 'from federation' },
+				...defaults(),
+			} as unknown as Pdu;
+
+			const atRoomVersion = PersistentEventFactory.createFromRawEvent(fetched, '12').eventId;
+
+			const fetcher = new EventFetcherService(
+				new EventRepository(eventCollection),
+				{ getEvent: async () => ({ pdus: [fetched] }) } as unknown as FederationService,
+				{ serverName: 'example.com' } as unknown as ConfigService,
+				stateService,
+			);
+
+			const { events } = await fetcher.fetchEventsByIds([atRoomVersion], roomId, 'remote.example.com');
+
+			expect(events).toHaveLength(1);
+			expect(events[0].eventId).toBe(atRoomVersion);
+		});
+	});
 
 	// the fetcher used to resolve the version with its own read that fell back to
 	// the default version, so a non-default room's federated events got invalid ids

@@ -39,6 +39,9 @@ export function isPowerEvent(event: PersistentEventBase): boolean {
 //  Unconflicted state map and conflicted state set.
 // State map S_i is {S_1, S_2, S_3, ...}
 // iout map takes care of the non-duplication of a set
+// NOTE: it sees the events of all states merged, so a key missing from some states (and holding one
+// value in the others) ends up unconflicted, which the spec calls conflicted. kept as is for v2 rooms
+// for now, state res v2.1 uses partitionStateSets instead
 export function partitionState(events: Readonly<Iterable<PersistentEventBase>>): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
 	const unconflictedState: StateEventIdMap = new Map();
 
@@ -78,6 +81,32 @@ export function partitionState(events: Readonly<Iterable<PersistentEventBase>>):
 		} else {
 			unconflictedState.set(stateKey, eventId);
 		}
+	}
+
+	return [unconflictedState, conflictedStateEventsMap];
+}
+
+// If a given key K is present in every Si with the same value V in each state map, then the pair (K, V)
+// belongs to the unconflicted state map. Otherwise V belongs to the conflicted state set.
+export function partitionStateSets(
+	states: readonly ReadonlyMap<StateMapKey, PersistentEventBase>[],
+): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
+	const unconflictedState: StateEventIdMap = new Map();
+	const conflictedStateEventsMap: Map<StateMapKey, EventID[]> = new Map();
+
+	const keys = new Set(states.flatMap((state) => [...state.keys()]));
+
+	for (const key of keys) {
+		const values = new Set(states.map((state) => state.get(key)?.eventId));
+
+		const [value] = values;
+		if (values.size === 1 && value) {
+			unconflictedState.set(key, value);
+			continue;
+		}
+
+		values.delete(undefined);
+		conflictedStateEventsMap.set(key, [...values] as EventID[]);
 	}
 
 	return [unconflictedState, conflictedStateEventsMap];
@@ -125,6 +154,54 @@ export async function getAuthChain(event: PersistentEventBase, store: EventStore
 	};
 
 	return _getAuthChain(event, new Set([]));
+}
+
+// state res v2.1 (room v12): the union of every auth_events path between two events of the conflicted
+// state set, endpoints included. an event is on such a path when it is reachable from a conflicted
+// event and itself reaches a conflicted event, so a single memoised walk down the auth graph finds them all
+export async function getConflictedStateSubgraph(conflictedEventIds: ReadonlySet<EventID>, store: EventStore): Promise<Set<EventID>> {
+	const reachesConflicted = new Map<EventID, boolean>();
+
+	const visit = async (eventId: EventID): Promise<boolean> => {
+		const known = reachesConflicted.get(eventId);
+		if (known !== undefined) {
+			return known;
+		}
+
+		// provisional value, the auth graph is acyclic but a malformed one must not loop forever
+		reachesConflicted.set(eventId, conflictedEventIds.has(eventId));
+
+		const [event] = await store.getEvents([eventId]);
+
+		let reaches = conflictedEventIds.has(eventId);
+		for await (const authEventId of event?.getAuthEventIds() ?? []) {
+			if (await visit(authEventId)) {
+				reaches = true;
+			}
+		}
+
+		reachesConflicted.set(eventId, reaches);
+		return reaches;
+	};
+
+	const subgraph = new Set<EventID>();
+
+	for await (const conflictedEventId of conflictedEventIds) {
+		const [event] = await store.getEvents([conflictedEventId]);
+		for await (const authEventId of event?.getAuthEventIds() ?? []) {
+			if (await visit(authEventId)) {
+				subgraph.add(conflictedEventId);
+			}
+		}
+	}
+
+	for (const [eventId, reaches] of reachesConflicted) {
+		if (reaches) {
+			subgraph.add(eventId);
+		}
+	}
+
+	return subgraph;
 }
 
 // Auth difference

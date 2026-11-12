@@ -1,21 +1,24 @@
+import crypto from 'node:crypto';
+
 import type { PduWithHashesAndSignaturesOptional, PersistentEventBase, RedactionEventFields } from './event-wrapper';
-import type { RoomVersion, RoomVersion3To11 } from './type';
+import { SUPPORTED_ROOM_VERSIONS } from './type';
+import type { RoomVersion, RoomVersionCapabilities, SupportedRoomVersion } from './type';
 import { PersistentEventV11 } from './v11';
+import { PersistentEventV12 } from './v12';
 import { PersistentEventV3 } from './v3';
 import { PersistentEventV6 } from './v6';
 import { PersistentEventV8 } from './v8';
 import { PersistentEventV9 } from './v9';
-import { RoomID, roomIdSchema } from '../types/_common';
+import { roomIdSchema } from '../types/_common';
 import type { EventID, PduForType, UserID } from '../types/_common';
 import type { Pdu, PduType, PduCreateEventContent, PduRoomRedactionContent } from '../types/v3-11';
 
-// Utility function to create a random ID for room creation
+const ROOM_ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
 function createRoomIdPrefix(length: number) {
-	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 	let result = '';
 	for (let i = 0; i < length; i++) {
-		const randomIndex = Math.floor(Math.random() * characters.length);
-		result += characters[randomIndex];
+		result += ROOM_ID_ALPHABET[crypto.randomInt(ROOM_ID_ALPHABET.length)];
 	}
 	return result;
 }
@@ -26,30 +29,24 @@ type PartialEvent<T extends Pdu = Pdu> = Omit<T, 'signatures' | 'hashes'>;
 // version, and know how that version shapes the content of a new create event
 type PersistentEventClass = (new (
 	event: PduWithHashesAndSignaturesOptional,
-	roomVersion: RoomVersion3To11,
+	roomVersion: SupportedRoomVersion,
 	partial?: boolean,
-) => PersistentEventBase<RoomVersion3To11, PduType>) & {
-	newCreateEventContent(creator: UserID, roomVersion: RoomVersion): PduCreateEventContent;
+) => PersistentEventBase<SupportedRoomVersion, PduType>) & {
+	readonly capabilities: RoomVersionCapabilities;
+	newCreateEventContent(creator: UserID, roomVersion: RoomVersion, additionalCreators?: UserID[]): PduCreateEventContent;
 	newRedactionEventFields(redacts: EventID, content: PduRoomRedactionContent): RedactionEventFields;
+};
+
+export type NewCreateEventOptions = {
+	// users sharing creator authority with the sender, only supported where creators are privileged (v12+)
+	additionalCreators?: UserID[];
 };
 
 // The idea is to ALWAYS use this to create different events
 export class PersistentEventFactory {
-	static supportedRoomVersions = [
-		// '1',
-		// '2',
-		'3',
-		'4',
-		'5',
-		'6',
-		'7',
-		'8',
-		'9',
-		'10',
-		'11',
-	];
+	static supportedRoomVersions: string[] = [...SUPPORTED_ROOM_VERSIONS];
 
-	static isSupportedRoomVersion(roomVersion: string): roomVersion is RoomVersion3To11 {
+	static isSupportedRoomVersion(roomVersion: string): roomVersion is SupportedRoomVersion {
 		return PersistentEventFactory.supportedRoomVersions.includes(roomVersion);
 	}
 
@@ -74,9 +71,15 @@ export class PersistentEventFactory {
 				return PersistentEventV9;
 			case '11':
 				return PersistentEventV11;
+			case '12':
+				return PersistentEventV12;
 			default:
 				throw new Error(`Unknown room version: ${roomVersion}`);
 		}
+	}
+
+	static getCapabilities(roomVersion: string): RoomVersionCapabilities {
+		return PersistentEventFactory.getEventClass(roomVersion).capabilities;
 	}
 
 	static createFromRawEvent<Type extends PduType>(
@@ -95,13 +98,16 @@ export class PersistentEventFactory {
 
 	// create individual events
 
-	// a m.room.create event, adds the roomId too
-	static newCreateEvent(creator: UserID, roomVersion: RoomVersion) {
-		const createContent = PersistentEventFactory.getEventClass(roomVersion).newCreateEventContent(creator, roomVersion);
+	// a m.room.create event. before v12 it carries a newly generated room id, from v12 on
+	// the room id is the hash of this event, readable through .roomId once it is built
+	static newCreateEvent(creator: UserID, roomVersion: RoomVersion, options: NewCreateEventOptions = {}) {
+		const EventClass = PersistentEventFactory.getEventClass(roomVersion);
 
-		const domain = creator.split(':').pop();
+		if (options.additionalCreators?.length && !EventClass.capabilities.privilegedCreators) {
+			throw new Error(`Room version ${roomVersion} does not support additional creators`);
+		}
 
-		const roomId = roomIdSchema.parse(`!${createRoomIdPrefix(8)}:${domain}`);
+		const createContent = EventClass.newCreateEventContent(creator, roomVersion, options.additionalCreators);
 
 		const eventPartial: PartialEvent<PduForType<'m.room.create'>> = {
 			type: 'm.room.create',
@@ -109,11 +115,15 @@ export class PersistentEventFactory {
 			content: createContent,
 			sender: creator,
 			origin_server_ts: Date.now(),
-			room_id: roomId,
 			prev_events: [],
 			auth_events: [],
 			depth: 1,
 		};
+
+		if (EventClass.capabilities.roomIdFormat === 'random-with-domain') {
+			const domain = creator.split(':').pop();
+			eventPartial.room_id = roomIdSchema.parse(`!${createRoomIdPrefix(8)}:${domain}`);
+		}
 
 		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(eventPartial, roomVersion);
 	}

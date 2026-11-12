@@ -46,14 +46,21 @@ export class SendJoinService {
 
 		const origin = configService.serverName;
 
-		const authChain = [];
+		const authChain = new Set<EventID>();
 
 		for await (const event of state.values()) {
-			const authEvents = await getAuthChain(event, stateService._getStore(roomVersion));
-			authChain.push(...authEvents);
+			for (const authEventId of await getAuthChain(event, stateService._getStore(roomVersion))) {
+				authChain.add(authEventId);
+			}
 		}
 
-		const authChainEvents = await this.eventService.getEventsByIds(authChain);
+		// from v12 no event lists the create event as an auth event, so no auth chain reaches it
+		const createEventId = joinEvent.getCreateEventId();
+		if (createEventId) {
+			authChain.add(createEventId);
+		}
+
+		const authChainEvents = await this.eventService.getEventsByIds([...authChain]);
 
 		const signedJoinEvent = await stateService.signEvent(joinEvent);
 
