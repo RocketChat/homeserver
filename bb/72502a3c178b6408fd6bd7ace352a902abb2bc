@@ -1,0 +1,25 @@
+packages/federation-sdk/src/services/staging-area.service.spec.ts
+  s_78cd899dd2d212::t_3dc909b64dda29 1-100
+packages/federation-sdk/src/services/staging-area.service.ts
+  s_78cd899dd2d212::t_8c60cb59d6da32 13,175-195
+packages/federation-sdk/src/services/state.service.spec.ts
+  s_78cd899dd2d212::t_7d620fc1d71a37 22,1009-1042
+packages/federation-sdk/src/services/state.service.ts
+  s_78cd899dd2d212::t_abd4bf05768e43 59-65,569-580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb72502a3c178b6408fd6bd7ace352a902abb2bc",
+  "prompts": {},
+  "sessions": {
+    "s_78cd899dd2d212": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "67285eb9-cad2-412b-a1eb-92634bf90464",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
