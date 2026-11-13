@@ -108,7 +108,7 @@ const INITIAL_EVENTS = [
 	new FakeEvent('CREATE', ALICE, 'm.room.create', '', { creator: ALICE }),
 	new FakeEvent('IMA', ALICE, 'm.room.member', ALICE, MEMBERSHIP_CONTENT_JOIN),
 	new FakeEvent('IPOWER', ALICE, 'm.room.power_levels', '', {
-		users: { ALICE: 100 },
+		users: { [ALICE]: 100 },
 	}),
 	new FakeEvent('IJR', ALICE, 'm.room.join_rules', '', {
 		join_rule: 'public',

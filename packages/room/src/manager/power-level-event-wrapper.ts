@@ -86,7 +86,8 @@ class PowerLevelEvent<
 			return this._content.users_default;
 		}
 
-		return createEvent?.getCreator() === userId ? 100 : 0;
+		// the creator's implicit 100 only applies while no power levels event exists
+		return 0;
 	}
 
 	getRequiredPowerLevelForEvent(event: PersistentEventBase) {
