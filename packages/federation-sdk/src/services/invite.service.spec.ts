@@ -709,4 +709,48 @@ describe('InviteService', async () => {
 			expect(storedEvent!.outlier).toBe(true);
 		});
 	});
+
+	describe('processInvite - invite_room_state', () => {
+		it('keeps invite_room_state when the invite PDU arrives without unsigned', async () => {
+			const remoteCreator = '@alice:remote.server.com' as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			const inviteEventInstance = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'invite' as const },
+					room_id: '!unknown-room:remote.server.com' as room.RoomID,
+					state_key: localUser,
+					sender: remoteCreator,
+					auth_events: [],
+					prev_events: ['$some-event:remote.server.com' as EventID],
+					depth: 5,
+					origin_server_ts: Date.now(),
+				},
+				'10',
+			);
+
+			// some servers, like tuwunel, omit unsigned on a first invite
+			const { unsigned: _, ...wireEvent } = inviteEventInstance.event;
+
+			const strippedState = [
+				{ content: { join_rule: 'invite' }, sender: remoteCreator, state_key: '', type: 'm.room.join_rules' },
+				{ content: { name: 'a room' }, sender: remoteCreator, state_key: '', type: 'm.room.name' },
+			];
+
+			const emitSpy = spyOn(emitterService, 'emit');
+
+			await inviteService.processInvite(wireEvent as any, inviteEventInstance.eventId, '10', strippedState as any);
+
+			const storedEvent = await eventRepository.findById(inviteEventInstance.eventId);
+			expect(storedEvent?.event.unsigned?.invite_room_state).toEqual(strippedState);
+
+			expect(emitSpy).toHaveBeenCalledWith('homeserver.matrix.membership', {
+				event_id: inviteEventInstance.eventId,
+				event: expect.objectContaining({ unsigned: expect.objectContaining({ invite_room_state: strippedState }) }),
+			});
+
+			emitSpy.mockRestore();
+		});
+	});
 });
