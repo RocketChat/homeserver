@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 
 import { type EventStore } from '@rocket.chat/federation-core';
 import type { EventID, Pdu, PduCreateEventContent, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
@@ -379,7 +379,13 @@ describe('room version coexistence', async () => {
 				stateService,
 			);
 
+			// v11 and v12 hash non-create events the same way, so the id alone cannot tell which version was used
+			const getRoomVersion = spyOn(stateService, 'getRoomVersion');
 			const { events } = await fetcher.fetchEventsByIds([atRoomVersion], roomId, 'remote.example.com');
+
+			expect(getRoomVersion).toHaveBeenCalledWith(roomId);
+			expect(await getRoomVersion.mock.results[0].value).toBe('12');
+			getRoomVersion.mockRestore();
 
 			expect(events).toHaveLength(1);
 			expect(events[0].eventId).toBe(atRoomVersion);
