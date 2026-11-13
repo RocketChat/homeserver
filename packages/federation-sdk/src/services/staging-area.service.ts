@@ -10,7 +10,7 @@ import { EventEmitterService } from './event-emitter.service';
 import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { MissingEventService } from './missing-event.service';
-import { PartialStateResolutionError, StateService } from './state.service';
+import { MissingAuthorizationEventsError, PartialStateResolutionError, StateService } from './state.service';
 import { LockRepository } from '../repositories/lock.repository';
 
 const MAX_EVENT_RETRY =
@@ -24,13 +24,6 @@ const MAX_EVENT_RETRY =
 
 		throw new Error('Invalid MAX_EVENT_RETRY value');
 	})(process.env.MAX_EVENT_RETRY) ?? 10;
-
-class MissingAuthorizationEventsError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'MissingAuthorizationEventsError';
-	}
-}
 
 class MissingEventsError extends Error {
 	constructor(message: string) {
@@ -177,26 +170,29 @@ export class StagingAreaService {
 			await this.eventService.processIncomingPDUs(event.origin, missingEvents.events);
 
 			addedMissing = missingEvents.events.length > 0;
-		} else {
-			const found = await Promise.all(
-				missing.map((missingId) => {
-					this.logger.debug(`Adding missing event ${missingId} to missing events service`);
-
-					return this.missingEventsService.fetchMissingEvent({
-						eventId: missingId,
-						roomId: event.event.room_id,
-						origin: event.origin,
-					});
-				}),
-			);
-
-			addedMissing = found.some((f) => f === true);
 		}
 
-		// if the auth events are missing, the authorization stage will fail anyway,
-		// so to save some time we throw an error here, and the event processing will be postponed
-		if (addedMissing && authEvents.some((e) => missing.includes(e))) {
-			throw new MissingAuthorizationEventsError('Missing authorization events');
+		// get_missing_events only walks prev_events, so auth events off that path have to be fetched by id
+		const missingAuthEvents = missing.filter((missingId) => authEvents.includes(missingId));
+		const toFetchById = latestEvent ? missingAuthEvents : missing;
+
+		const found = await Promise.all(
+			toFetchById.map((missingId) => {
+				this.logger.debug(`Adding missing event ${missingId} to missing events service`);
+
+				return this.missingEventsService.fetchMissingEvent({
+					eventId: missingId,
+					roomId: event.event.room_id,
+					origin: event.origin,
+				});
+			}),
+		);
+
+		addedMissing = addedMissing || found.some((f) => f === true);
+
+		// fetched events are only staged, not persisted yet, so authorizing now would still miss them
+		if (missingAuthEvents.length > 0) {
+			throw new MissingAuthorizationEventsError(`Missing authorization events ${missingAuthEvents.join(', ')}`);
 		}
 
 		return addedMissing;

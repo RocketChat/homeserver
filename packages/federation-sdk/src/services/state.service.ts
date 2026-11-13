@@ -56,6 +56,13 @@ export class PartialStateResolutionError extends Error {
 	}
 }
 
+export class MissingAuthorizationEventsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'MissingAuthorizationEventsError';
+	}
+}
+
 export class UnknownRoomError extends Error {
 	constructor(roomId: RoomID) {
 		super(`Room ${roomId} does not exist`);
@@ -559,7 +566,18 @@ export class StateService {
 
 		const store = this._getStore(event.version);
 
-		const authEvents = await store.getEvents(event.getAuthEventIds());
+		const authEventIds = event.getAuthEventIds();
+		const authEvents = await store.getEvents(authEventIds);
+
+		// not knowing an auth event is not the same as it denying this event, and rejecting here would be
+		// permanent since a stored event is never processed again
+		const foundAuthEventIds = new Set(authEvents.map((authEvent) => authEvent.eventId));
+		const missingAuthEventIds = authEventIds.filter((authEventId) => !foundAuthEventIds.has(authEventId));
+		if (missingAuthEventIds.length > 0) {
+			throw new MissingAuthorizationEventsError(
+				`Cannot authorize event ${event.eventId}, missing auth events ${missingAuthEventIds.join(', ')}`,
+			);
+		}
 
 		try {
 			await checkEventAuthWithState(event, this.buildStateFromEvents(authEvents), this._getStore(event.version));
