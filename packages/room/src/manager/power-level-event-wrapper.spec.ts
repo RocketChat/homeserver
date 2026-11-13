@@ -60,6 +60,11 @@ describe('PowerLevelEvent.getPowerLevelForUser', () => {
 			expect(pl.getPowerLevelForUser(alice, create)).toBe(50);
 			expect(pl.getPowerLevelForUser(bob, create)).toBe(100);
 		});
+
+		it('drops the creator to users_default once a power levels event omits them', () => {
+			expect(powerLevels(create.roomId, '11', { users: { [bob]: 100 } }).getPowerLevelForUser(alice, create)).toBe(0);
+			expect(powerLevels(create.roomId, '11', { users: { [bob]: 100 }, users_default: 10 }).getPowerLevelForUser(alice, create)).toBe(10);
+		});
 	});
 
 	it('lists the users of the power levels content', () => {
