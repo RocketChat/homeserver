@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { beforeAll, describe, expect, it, spyOn } from 'bun:test';
 
 import type {
 	PduJoinRuleEventContent,
@@ -12,8 +12,11 @@ import { container } from 'tsyringe';
 
 import { FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
+import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { LockRepository } from '../repositories/lock.repository';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
@@ -353,6 +356,118 @@ describe('RoomService', async () => {
 			expect([...stateAfterReject.keys()]).toEqual(
 				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${invitedUsername}`]),
 			);
+		});
+	});
+
+	describe('joinUser - remote room', () => {
+		const remoteRoomId = '!remote-room:remote.com' as RoomID;
+		const bob = '@bob:example.com' as UserID;
+		const stagingInstance = 'staging-instance';
+
+		// resolved once init() in beforeAll has registered the collections
+		let lockRepository: LockRepository;
+		let federationService: FederationService;
+		let eventService: EventService;
+
+		beforeAll(() => {
+			lockRepository = container.resolve(LockRepository);
+			federationService = container.resolve(FederationService);
+			eventService = container.resolve(EventService);
+		});
+
+		// what the staging area queue does before processing a room
+		const stagingCanLock = async () => {
+			const acquired = await lockRepository.getLock(remoteRoomId, stagingInstance);
+			if (acquired) {
+				await lockRepository.releaseLock(remoteRoomId, stagingInstance);
+			}
+			return acquired;
+		};
+
+		const mockRemoteJoin = (onSendJoin?: () => void) => {
+			const template = {
+				type: 'm.room.member',
+				content: { membership: 'join' },
+				room_id: remoteRoomId,
+				sender: bob,
+				state_key: bob,
+				auth_events: [],
+				prev_events: [],
+				depth: 1,
+				origin_server_ts: Date.now(),
+			};
+
+			return [
+				spyOn(federationService, 'makeJoin').mockResolvedValue({ event: template, room_version: '10' } as any),
+				spyOn(federationService, 'sendJoin').mockImplementation(async (joinEvent) => {
+					onSendJoin?.();
+					return { state: [], auth_chain: [], event: joinEvent.event, servers_in_room: [] } as any;
+				}),
+			];
+		};
+
+		it('keeps the staging area out of the room until the send_join state is stored', async () => {
+			let stagingCouldLockDuringInitialState: boolean | undefined;
+			let stagingCouldLockWhenJoinIsStaged: Promise<boolean> | undefined;
+
+			const spies = [
+				...mockRemoteJoin(),
+				spyOn(stateService, 'processInitialState').mockImplementation(async () => {
+					stagingCouldLockDuringInitialState = await stagingCanLock();
+					return '' as any;
+				}),
+				spyOn(eventService, 'processIncomingPDUs').mockImplementation(() => {
+					stagingCouldLockWhenJoinIsStaged = stagingCanLock();
+					return Promise.resolve();
+				}),
+			];
+
+			try {
+				await roomService.joinUser(remoteRoomId, bob);
+			} finally {
+				spies.forEach((spy) => spy.mockRestore());
+			}
+
+			expect(stagingCouldLockDuringInitialState).toBe(false);
+			expect(await stagingCouldLockWhenJoinIsStaged).toBe(true);
+		});
+
+		it('releases the room lock when storing the state fails', async () => {
+			const spies = [...mockRemoteJoin(), spyOn(stateService, 'processInitialState').mockRejectedValue(new Error('bad state'))];
+
+			try {
+				await expect(roomService.joinUser(remoteRoomId, bob)).rejects.toThrow('bad state');
+			} finally {
+				spies.forEach((spy) => spy.mockRestore());
+			}
+
+			expect(await stagingCanLock()).toBe(true);
+		});
+
+		it('waits for the staging area to release the room before joining', async () => {
+			expect(await lockRepository.getLock(remoteRoomId, stagingInstance)).toBe(true);
+			const stagingDone = new Promise<void>((resolve) => {
+				setTimeout(() => resolve(lockRepository.releaseLock(remoteRoomId, stagingInstance)), 300);
+			});
+
+			let sendJoinCalledAt = 0;
+			const spies = [
+				...mockRemoteJoin(() => {
+					sendJoinCalledAt = Date.now();
+				}),
+				spyOn(stateService, 'processInitialState').mockResolvedValue('' as any),
+				spyOn(eventService, 'processIncomingPDUs').mockResolvedValue(),
+			];
+
+			const startedAt = Date.now();
+			try {
+				await roomService.joinUser(remoteRoomId, bob);
+			} finally {
+				spies.forEach((spy) => spy.mockRestore());
+			}
+			await stagingDone;
+
+			expect(sendJoinCalledAt - startedAt).toBeGreaterThanOrEqual(250);
 		});
 	});
 });
