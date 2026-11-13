@@ -149,7 +149,7 @@ const roomV12Schemas: Record<string, z.ZodSchema> = {
 	'm.room.create': createEventSchemaV12,
 };
 
-// an unrecognised version resolves to the v11 set, the newest format with a room_id on every event
+// an unrecognised version below 11 resolves to the v10 set; anything else (missing, non-numeric, newer) to the v11 set
 function schemasForRoomVersion(roomVersion?: string): Record<string, z.ZodSchema> {
 	if (!roomVersion || !PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 		return Number(roomVersion) < 11 ? roomV10Schemas : roomV11Schemas;
