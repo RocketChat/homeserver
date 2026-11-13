@@ -1,0 +1,23 @@
+packages/room/src/manager/power-level-event-wrapper.spec.ts
+  s_c7e9df7baa9e1f::t_578bb923d0e35e 63-67
+packages/room/src/state_resolution/definitions/algorithm/v2.spec.ts
+  s_c7e9df7baa9e1f::t_8c26ed9472d1b0 111
+packages/room/src/manager/power-level-event-wrapper.ts
+  s_c7e9df7baa9e1f::t_578bb923d0e35e 89-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0f9702e18a663157eab4e897f70e90277a3b6c5",
+  "prompts": {},
+  "sessions": {
+    "s_c7e9df7baa9e1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "870c1261-4388-4b13-ae0d-7944b02e16ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
