@@ -1,0 +1,20 @@
+packages/federation-sdk/src/services/room-version-coexistence.spec.ts
+  s_c7e9df7baa9e1f::t_420d22c96c028a 1,382-383,386-388
+  s_c7e9df7baa9e1f::t_356647d57a2bac 389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85aa63af3223f863ec9b6d1c02513bc6eb4d75c2",
+  "prompts": {},
+  "sessions": {
+    "s_c7e9df7baa9e1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "870c1261-4388-4b13-ae0d-7944b02e16ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
