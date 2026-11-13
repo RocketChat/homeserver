@@ -172,6 +172,9 @@ export async function getConflictedStateSubgraph(conflictedEventIds: ReadonlySet
 		reachesConflicted.set(eventId, conflictedEventIds.has(eventId));
 
 		const [event] = await store.getEvents([eventId]);
+		if (!event) {
+			console.warn('event not found in store or remote', eventId);
+		}
 
 		let reaches = conflictedEventIds.has(eventId);
 		for await (const authEventId of event?.getAuthEventIds() ?? []) {
