@@ -2399,6 +2399,15 @@ describe('StateService', async () => {
 			).rejects.toThrow('No create event found');
 		});
 
+		it('refuses a send_join state whose create event fails authorization', async () => {
+			const create = PersistentEventFactory.newCreateEvent(alice, '12', { additionalCreators: ['@bob:bad host' as room.UserID] });
+
+			await expect(stateService.processInitialState([create.event as room.Pdu], [], notifierStub)).rejects.toThrow(
+				room.StateResolverAuthorizationError,
+			);
+			expect(await eventCollection.countDocuments()).toBe(0);
+		});
+
 		it('reports the creator server as the origin of a v12 room it holds', async () => {
 			const { create, roomId, join, powerLevels, joinRules } = remoteV12Room();
 

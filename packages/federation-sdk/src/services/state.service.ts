@@ -384,6 +384,9 @@ export class StateService {
 			throw new UnsupportedRoomVersionError(`Cannot save state of a room at unsupported version ${version}`);
 		}
 
+		const createEvent = PersistentEventFactory.createFromRawEvent(create, version);
+		checkEventAuthWithoutState(createEvent, []);
+
 		// auth chain for whole state, if sorted by depth, should never have multiples with same branches
 		// this confirms correct sorting and being able to save with correct state for each
 
@@ -419,7 +422,6 @@ export class StateService {
 		const knownEventIds = new Set(existingEvents.map((e) => e.eventId));
 
 		// handle create separately
-		const createEvent = PersistentEventFactory.createFromRawEvent(create, version);
 		const stateId = await this.stateRepository.createDelta(createEvent, '' as StateID);
 		await this.addToRoomGraph(createEvent, stateId);
 		this.logger.info({ eventId: createEvent.eventId, roomId: createEvent.roomId, stateId }, 'create event saved');
@@ -554,6 +556,8 @@ export class StateService {
 	async handlePdu<P extends PersistentEventBase>(pdu: P): Promise<void> {
 		if (pdu.isCreateEvent()) {
 			this.logger.debug({ eventId: pdu.eventId }, 'handling create event');
+			checkEventAuthWithoutState(pdu, []);
+
 			const stateId = await this.stateRepository.createDelta(pdu, '' as StateID);
 
 			await this.addToRoomGraph(pdu, stateId);
