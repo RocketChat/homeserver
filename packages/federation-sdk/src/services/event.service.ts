@@ -8,6 +8,7 @@ import type {
 	EventStore,
 } from '@rocket.chat/federation-core';
 import { isPresenceEDU, isReceiptEDU, isTypingEDU, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
+import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import {
 	type EventID,
 	type Pdu,
@@ -30,6 +31,23 @@ import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { getEventSchemaForType } from '../utils/event-schemas';
+
+const MAX_PREV_EVENTS = 20;
+const MAX_AUTH_EVENTS = 10;
+const MAX_PDU_SIZE = 65536;
+const MAX_LOGGED_SCHEMA_ISSUES = 10;
+const MAX_LOGGED_FIELD_LENGTH = 255;
+
+// identifies a rejected PDU in the logs without copying contents of unbounded size into them
+function summarizeEventForLog(event: Pdu) {
+	const field = (value: unknown) => (typeof value === 'string' ? value.slice(0, MAX_LOGGED_FIELD_LENGTH) : typeof value);
+
+	return {
+		type: field(event.type),
+		room_id: field(event.room_id),
+		sender: field(event.sender),
+	};
+}
 
 export interface AuthEventParams {
 	roomId: string;
@@ -187,7 +205,7 @@ export class EventService {
 							this.logger.error({
 								msg: 'Event validation failed',
 								origin,
-								event,
+								event: summarizeEventForLog(event),
 								err,
 							});
 						}
@@ -219,6 +237,18 @@ export class EventService {
 	}
 
 	private async validateEvent(event: Pdu): Promise<void> {
+		// rejecting an oversized PDU must cost the same as rejecting a small one, so its bounds are
+		// checked before anything whose cost grows with its contents
+		const boundsErrors = this.validateEventBounds(event);
+		if (boundsErrors.length > 0) {
+			this.logger.error({
+				msg: 'Event exceeds federation limits',
+				errors: boundsErrors,
+			});
+
+			throw new Error('M_INVALID_EVENT');
+		}
+
 		const roomVersion = await this.stateService.getRoomVersion(event.room_id);
 
 		if (event.type === 'm.room.member' && event.content.membership === 'invite' && 'third_party_invite' in event.content) {
@@ -234,10 +264,15 @@ export class EventService {
 
 		const validationResult = eventSchema.safeParse(event);
 		if (!validationResult.success) {
-			const formattedErrors = JSON.stringify(validationResult.error.format());
+			const { issues } = validationResult.error;
 			this.logger.error({
 				msg: 'Event failed schema validation',
-				formattedErrors,
+				issueCount: issues.length,
+				issues: issues.slice(0, MAX_LOGGED_SCHEMA_ISSUES).map(({ code, path, message }) => ({
+					code,
+					path: path.map(String).join('.'),
+					message,
+				})),
 			});
 
 			throw new Error('M_SCHEMA_VALIDATION_FAILED');
@@ -402,22 +437,34 @@ export class EventService {
 		}
 	}
 
+	private validateEventBounds(event: Pdu): string[] {
+		const errors: string[] = [];
+
+		// an excessive number of prev_events or auth_events could cause a huge state resolution
+		// or cascade of event fetches; every room version caps both
+		// https://spec.matrix.org/v1.19/rooms/v1/#event-format
+		if (Array.isArray(event.prev_events) && event.prev_events.length > MAX_PREV_EVENTS) {
+			errors.push(`Event must not have more than ${MAX_PREV_EVENTS} prev_events`);
+		}
+		if (Array.isArray(event.auth_events) && event.auth_events.length > MAX_AUTH_EVENTS) {
+			errors.push(`Event must not have more than ${MAX_AUTH_EVENTS} auth_events`);
+		}
+
+		// the size is only worth measuring once the arrays are known to be small
+		// https://spec.matrix.org/v1.19/client-server-api/#size-limits
+		if (errors.length === 0 && Buffer.byteLength(encodeCanonicalJson(event)) > MAX_PDU_SIZE) {
+			errors.push(`Event must not be larger than ${MAX_PDU_SIZE} bytes`);
+		}
+
+		return errors;
+	}
+
 	private validateEventByType(event: Pdu): string[] {
 		const errors: string[] = [];
 
 		if (event.type !== 'm.room.create') {
 			if (!event.prev_events || !Array.isArray(event.prev_events) || event.prev_events.length === 0) {
 				errors.push('Event must reference previous events (prev_events)');
-			}
-
-			// checks it doesn't have an excessive number of prev_events or auth_events,
-			// which could cause a huge state resolution or cascade of event fetches
-			// https://github.com/element-hq/synapse/blob/19fe3f001ed0aff5a5f136e440ae53c04340be88/synapse/handlers/federation_event.py#L2359
-			if (event.prev_events.length > 20) {
-				errors.push('Event must not have more than 20 prev_events');
-			}
-			if (event.auth_events.length > 10) {
-				errors.push('Event must not have more than 10 auth_events');
 			}
 		} else {
 			if (event.prev_events && event.prev_events.length > 0) {

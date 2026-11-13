@@ -137,3 +137,82 @@ describe('processRedaction', () => {
 		expect(captured.event?.unsigned).toHaveProperty('redacted_because', redaction);
 	});
 });
+
+describe('processIncomingPDUs', () => {
+	function buildIncomingService() {
+		const calls = { roomLookups: 0, staged: 0 };
+
+		const stateService = {
+			async getRoomVersion() {
+				calls.roomLookups++;
+				return '11';
+			},
+		} as unknown as StateService;
+
+		const serverService = {
+			async getPublicKey() {
+				throw new Error('no keys in this test');
+			},
+		};
+
+		const service = new EventService(
+			null as never,
+			{ enqueue: () => undefined } as never,
+			stateService,
+			serverService as never,
+			{ emit: async () => undefined } as never,
+			{ findById: async () => null } as never,
+			{
+				async create() {
+					calls.staged++;
+				},
+			} as never,
+			null as never,
+		);
+
+		return { service, calls };
+	}
+
+	const messageEvent = (overrides: Record<string, unknown>) =>
+		({
+			type: 'm.room.message',
+			room_id: '!room:hs1',
+			sender: '@mallory:hs2',
+			origin_server_ts: 1732999153019,
+			depth: 10,
+			content: { msgtype: 'm.text', body: 'hi' },
+			auth_events: ['$auth1'],
+			prev_events: ['$prev1'],
+			hashes: { sha256: 'hash' },
+			signatures: { hs2: { 'ed25519:key': 'sig' } },
+			...overrides,
+		} as unknown as Pdu);
+
+	it.each([
+		['more than 20 prev_events', { prev_events: Array.from({ length: 21 }, (_, i) => `$prev${i}`) }],
+		['more than 10 auth_events', { auth_events: Array.from({ length: 11 }, (_, i) => `$auth${i}`) }],
+		['more than 64 KiB', { content: { msgtype: 'm.text', body: 'x'.repeat(65536) } }],
+		// every item fails the schema, which used to cost kilobytes of heap per item
+		['a huge prev_events array of invalid items', { prev_events: new Array(1_000_000).fill(0) }],
+	])('rejects a PDU with %s before validating it against the room', async (_, overrides) => {
+		const { service, calls } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [messageEvent(overrides)]);
+
+		expect(calls.roomLookups).toBe(0);
+		expect(calls.staged).toBe(0);
+	});
+
+	it('validates a PDU at the limits against the room', async () => {
+		const { service, calls } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [
+			messageEvent({
+				prev_events: Array.from({ length: 20 }, (_, i) => `$prev${i}`),
+				auth_events: Array.from({ length: 10 }, (_, i) => `$auth${i}`),
+			}),
+		]);
+
+		expect(calls.roomLookups).toBe(1);
+	});
+});
