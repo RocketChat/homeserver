@@ -1,12 +1,4 @@
-import type {
-	BaseEDU,
-	EventStagingStore,
-	PresenceEDU,
-	RoomPowerLevelsEvent,
-	ReceiptEDU,
-	TypingEDU,
-	EventStore,
-} from '@rocket.chat/federation-core';
+import type { BaseEDU, EventStagingStore, PresenceEDU, ReceiptEDU, TypingEDU, EventStore } from '@rocket.chat/federation-core';
 import { isPresenceEDU, isReceiptEDU, isTypingEDU, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import {
 	type EventID,
@@ -28,7 +20,7 @@ import { ServerService } from './server.service';
 import { StateService } from './state.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
-import { EventRepository, getStoredRoomId } from '../repositories/event.repository';
+import { EventRepository } from '../repositories/event.repository';
 import { getEventSchemaForType } from '../utils/event-schemas';
 
 export interface AuthEventParams {
@@ -568,32 +560,6 @@ export class EventService {
 		await this.eventRepository.redactEvent(eventIdToRedact, redactedEvent as typeof eventToRedact.event);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
-	}
-
-	async checkUserPermission(powerLevelsEventId: EventID, userId: string, actionType: PduType): Promise<boolean> {
-		const powerLevelsEvent = await this.eventRepository.findById(powerLevelsEventId);
-		if (!powerLevelsEvent) {
-			this.logger.warn(`Power levels event ${powerLevelsEventId} not found`);
-			return false;
-		}
-
-		const powerLevelsContent = powerLevelsEvent.event.content as RoomPowerLevelsEvent['content'];
-
-		// through the auth rules' accessor, so creator defaults (and v12's privileged creators) apply
-		const createEvent = await this.stateService.getCreateEvent(getStoredRoomId(powerLevelsEvent));
-		const userPowerLevel = PersistentEventFactory.createFromRawEvent<'m.room.power_levels'>(powerLevelsEvent.event, createEvent.version)
-			.toPowerLevelEvent()
-			.getPowerLevelForUser(userId, createEvent);
-
-		let requiredPowerLevel = powerLevelsContent.events?.[actionType];
-		if (requiredPowerLevel === undefined) {
-			requiredPowerLevel = powerLevelsContent.events_default ?? 0;
-		}
-
-		this.logger.debug(
-			`Permission check for ${userId} to send ${actionType}: UserLevel=${userPowerLevel}, RequiredLevel=${requiredPowerLevel}`,
-		);
-		return userPowerLevel >= requiredPowerLevel;
 	}
 
 	async processOldStagedEvents() {
