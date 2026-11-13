@@ -21,9 +21,32 @@ import { type PduType } from '../types/v3-11';
 
 const RECOGNISED_ROOM_VERSIONS: readonly string[] = ['1', '2', ...SUPPORTED_ROOM_VERSIONS];
 
-// the same shape check applied to a sender, used for v12's additional_creators
+const HOSTNAME_REGEX = /^[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*$/;
+const IPV6_LITERAL_REGEX = /^\[[0-9A-Fa-f:.]+\]$/;
+
+// hostname/IPv4 or [IPv6] literal with an optional numeric port, as Synapse's parse_and_validate_server_name
+function isValidServerName(serverName: string): boolean {
+	const match = /^(\[[^\]]*\]|[^:]*)(?::\d+)?$/.exec(serverName);
+	if (!match) {
+		return false;
+	}
+
+	const [, host] = match;
+	return host.startsWith('[') ? IPV6_LITERAL_REGEX.test(host) : HOSTNAME_REGEX.test(host);
+}
+
+// used for v12's additional_creators; the localpart is not checked so historical user IDs stay valid, as in Synapse
 function isValidUserId(userId: unknown): userId is string {
-	return typeof userId === 'string' && userId.length <= 255 && /^@[^:]+:.+$/.test(userId);
+	if (typeof userId !== 'string' || !userId.startsWith('@')) {
+		return false;
+	}
+
+	if (userId.length > 255 || new TextEncoder().encode(userId).length > 255) {
+		return false;
+	}
+
+	const colon = userId.indexOf(':');
+	return colon !== -1 && isValidServerName(userId.slice(colon + 1));
 }
 
 function extractDomain(identifier: string) {
