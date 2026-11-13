@@ -241,12 +241,7 @@ export class EventService {
 		// checked before anything whose cost grows with its contents
 		const boundsErrors = this.validateEventBounds(event);
 		if (boundsErrors.length > 0) {
-			this.logger.error({
-				msg: 'Event exceeds federation limits',
-				errors: boundsErrors,
-			});
-
-			throw new Error('M_INVALID_EVENT');
+			throw new Error(`M_INVALID_EVENT: ${boundsErrors.join('; ')}`);
 		}
 
 		const roomVersion = await this.stateService.getRoomVersion(event.room_id);

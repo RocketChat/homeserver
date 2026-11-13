@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 
+import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import type { EventID, Pdu, PduForType, RoomVersion } from '@rocket.chat/federation-room';
 
 import { EventService } from './event.service';
@@ -170,7 +171,12 @@ describe('processIncomingPDUs', () => {
 			null as never,
 		);
 
-		return { service, calls };
+		const { logger } = service as unknown as { logger: { error: (entry: unknown) => void } };
+		const logError = spyOn(logger, 'error').mockImplementation(() => undefined);
+		const errorLog = (msg: string) =>
+			logError.mock.calls.map(([entry]) => entry as unknown as Record<string, unknown>).find((entry) => entry.msg === msg);
+
+		return { service, calls, errorLog, errorLogCount: () => logError.mock.calls.length };
 	}
 
 	const messageEvent = (overrides: Record<string, unknown>) =>
@@ -214,5 +220,102 @@ describe('processIncomingPDUs', () => {
 		]);
 
 		expect(calls.roomLookups).toBe(1);
+	});
+
+	it.each([
+		['accepts', 65536, 1],
+		['rejects', 65537, 0],
+	])('%s a PDU of %i bytes', async (_, size, roomLookups) => {
+		const { service, calls } = buildIncomingService();
+
+		const unpadded = messageEvent({ content: { msgtype: 'm.text', body: '' } });
+		const padding = size - Buffer.byteLength(encodeCanonicalJson(unpadded));
+		const event = messageEvent({ content: { msgtype: 'm.text', body: 'x'.repeat(padding) } });
+		expect(Buffer.byteLength(encodeCanonicalJson(event))).toBe(size);
+
+		await service.processIncomingPDUs('hs2', [event]);
+
+		expect(calls.roomLookups).toBe(roomLookups);
+	});
+
+	it('does not measure the size of a PDU already over the count limits', async () => {
+		const withReadCounter = (event: Pdu) => {
+			const counter = { reads: 0 };
+			Object.defineProperty(event, 'content', {
+				enumerable: true,
+				get: () => {
+					counter.reads++;
+					return { msgtype: 'm.text', body: 'hi' };
+				},
+			});
+			return { event, counter };
+		};
+
+		const overLimit = withReadCounter(messageEvent({ prev_events: Array.from({ length: 21 }, (_, i) => `$prev${i}`) }));
+		const withinLimit = withReadCounter(messageEvent({}));
+
+		await buildIncomingService().service.processIncomingPDUs('hs2', [overLimit.event]);
+		await buildIncomingService().service.processIncomingPDUs('hs2', [withinLimit.event]);
+
+		expect(overLimit.counter.reads).toBe(0);
+		expect(withinLimit.counter.reads).toBeGreaterThan(0);
+	});
+
+	it.each([
+		['missing', undefined],
+		['not an array', '$prev1'],
+	])('leaves prev_events that are %s to the schema', async (_, prevEvents) => {
+		const { service, calls } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [messageEvent({ prev_events: prevEvents })]);
+
+		expect(calls.roomLookups).toBe(1);
+		expect(calls.staged).toBe(0);
+	});
+
+	it('logs at most 10 schema issues, with their total', async () => {
+		const { service, errorLog } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [messageEvent({ prev_events: new Array(20).fill(0), auth_events: new Array(10).fill(0) })]);
+
+		const log = errorLog('Event failed schema validation');
+		expect(log?.issueCount).toBe(30);
+		expect(log?.issues).toHaveLength(10);
+		for (const issue of log?.issues as unknown[]) {
+			expect(issue).toEqual({
+				code: expect.any(String),
+				path: expect.stringMatching(/^(prev|auth)_events\.\d+$/),
+				message: expect.any(String),
+			});
+		}
+	});
+
+	it('logs a PDU rejected for its bounds once, with the reason', async () => {
+		const { service, errorLog, errorLogCount } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [messageEvent({ prev_events: Array.from({ length: 21 }, (_, i) => `$prev${i}`) })]);
+
+		expect(errorLogCount()).toBe(1);
+		expect((errorLog('Event validation failed')?.err as Error).message).toBe(
+			'M_INVALID_EVENT: Event must not have more than 20 prev_events',
+		);
+	});
+
+	it('logs a rejected PDU by its type, room and sender only', async () => {
+		const { service, errorLog } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [messageEvent({ content: { msgtype: 'm.text', body: 'x'.repeat(65536) } })]);
+
+		expect(errorLog('Event validation failed')?.event).toEqual({ type: 'm.room.message', room_id: '!room:hs1', sender: '@mallory:hs2' });
+	});
+
+	it('cuts long fields and names non-string fields by their type when logging a rejected PDU', async () => {
+		const { service, errorLog } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [
+			messageEvent({ type: 't'.repeat(1000), room_id: 42, prev_events: Array.from({ length: 21 }, (_, i) => `$prev${i}`) }),
+		]);
+
+		expect(errorLog('Event validation failed')?.event).toEqual({ type: 't'.repeat(255), room_id: 'number', sender: '@mallory:hs2' });
 	});
 });
