@@ -1308,11 +1308,24 @@ describe('authorization rules: room v12', () => {
 			expect(() => checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: [bob, carol] }), [])).not.toThrow();
 		});
 
+		it('accepts additional_creators with a port, an IPv6 literal or an empty localpart (rule 1.4)', () => {
+			const additionalCreators = ['@alice:example.com:8448', '@bob:[::1]', '@bob:[::1]:8448', '@:example.com'];
+			expect(() =>
+				checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: additionalCreators }), []),
+			).not.toThrow();
+		});
+
 		for (const [label, additionalCreators] of [
 			['not an array', bob],
 			['a non string entry', [bob, 42]],
 			['an invalid user id', ['bob']],
 			['a user id without a server', ['@bob']],
+			['a server name with a space', ['@bob:bad host']],
+			['a server name with an underscore', ['@bob:exa_mple.com']],
+			['a non numeric port', ['@bob:example.com:abc']],
+			['an empty server name', ['@bob:']],
+			['a malformed IPv6 literal', ['@bob:[zz]']],
+			['more than 255 bytes', [`@${'é'.repeat(130)}:a.co`]],
 		] as const) {
 			it(`rejects additional_creators with ${label} (rule 1.4)`, () => {
 				expect(() => checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: additionalCreators }), [])).toThrow(
