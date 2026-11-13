@@ -182,6 +182,19 @@ export class InviteService {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
 
+		const invitedServer = extractDomainFromId(event.state_key);
+		if (!invitedServer) {
+			throw new Error(`invalid state_key ${event.state_key}, no server_name part`);
+		}
+		if (invitedServer !== this.configService.serverName) {
+			throw new Error(
+				`Cannot sign invite for user ${event.state_key}: user does not belong to this server (${this.configService.serverName})`,
+			);
+		}
+
+		// the invited server signs before either branch, so the stored and returned invite both carry it
+		await this.stateService.signEvent(inviteEvent);
+
 		const roomOriginServer = await this.stateService.getRoomOriginServer(inviteEvent.roomId);
 
 		if (roomOriginServer === this.configService.serverName) {
@@ -196,18 +209,6 @@ export class InviteService {
 
 			return inviteEvent;
 		}
-
-		const invitedServer = extractDomainFromId(event.state_key);
-		if (!invitedServer) {
-			throw new Error(`invalid state_key ${event.state_key}, no server_name part`);
-		}
-		if (invitedServer !== this.configService.serverName) {
-			throw new Error(
-				`Cannot sign invite for user ${event.state_key}: user does not belong to this server (${this.configService.serverName})`,
-			);
-		}
-
-		await this.stateService.signEvent(inviteEvent);
 
 		// we have no specific structure to store the invite_room_state received on the invite route,
 		// so we store it in the unsigned section of the invite event.

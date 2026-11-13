@@ -710,6 +710,51 @@ describe('InviteService', async () => {
 		});
 	});
 
+	describe('processInvite - room hosted locally', () => {
+		const localCreator = `@alice:${localServerName}` as room.UserID;
+
+		const buildInvite = async (roomId: room.RoomID, roomVersion: RoomVersion, invitee: room.UserID) =>
+			stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomId,
+					sender: localCreator,
+					state_key: invitee,
+					content: { membership: 'invite' },
+					...getDefaultFields(),
+				},
+				roomVersion,
+			);
+
+		it('signs an invite to a local user before persisting it', async () => {
+			const { roomCreateEvent, roomVersion } = await createRoom('public', localCreator);
+			const { roomId } = roomCreateEvent;
+
+			const invite = await buildInvite(roomId, roomVersion, `@bob:${localServerName}` as room.UserID);
+
+			const signEvent = spyOn(stateService, 'signEvent');
+			const handlePdu = spyOn(stateService, 'handlePdu');
+
+			await inviteService.processInvite(invite.event, invite.eventId, roomVersion, []);
+
+			expect(signEvent).toHaveBeenCalledTimes(1);
+			expect(signEvent.mock.invocationCallOrder[0]).toBeLessThan(handlePdu.mock.invocationCallOrder[0]);
+
+			signEvent.mockRestore();
+			handlePdu.mockRestore();
+		});
+
+		it('refuses an invite for a user of another server', async () => {
+			const { roomCreateEvent, roomVersion } = await createRoom('public', localCreator);
+			const { roomId } = roomCreateEvent;
+
+			const invite = await buildInvite(roomId, roomVersion, '@dave:elsewhere.com' as room.UserID);
+
+			await expect(inviteService.processInvite(invite.event, invite.eventId, roomVersion, [])).rejects.toThrow('Cannot sign invite');
+			expect(await eventRepository.findById(invite.eventId)).toBeNull();
+		});
+	});
+
 	describe('processInvite - room v12', () => {
 		it('stores an invite to a remote v12 room as an outlier findable by room id', async () => {
 			const remoteServer = 'remote.server.com';
