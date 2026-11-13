@@ -149,7 +149,8 @@ describe('state res v2.1', () => {
 			const resolved = await resolveStateV2Plus([stateOf(...base, topicA), stateOf(...base, topicB)], store, 'v2.1');
 
 			expect(resolved.get('m.room.create:')?.eventId).toBe(base[0].eventId);
-			expect([topicA.eventId, topicB.eventId]).toContain(resolved.get('m.room.topic:')?.eventId as EventID);
+			// the unconflicted power levels are not in the partial state, so mainline ties and the later ts wins
+			expect(resolved.get('m.room.topic:')?.eventId).toBe(topicB.eventId);
 		});
 
 		it('orders the creator before any power level, so a concurrent PL 100 change loses', async () => {
