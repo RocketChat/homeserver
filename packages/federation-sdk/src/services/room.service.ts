@@ -3,7 +3,6 @@ import {
 	EventStore,
 	RoomPowerLevelsEvent,
 	SignedEvent,
-	TombstoneAuthEvents,
 	createLogger,
 	ForbiddenError,
 	HttpException,
@@ -19,6 +18,7 @@ import {
 	PersistentEventFactory,
 	EventStore as RoomEventStore,
 	RoomID,
+	RoomState,
 	RoomVersion,
 	UserID,
 	extractDomainFromId,
@@ -66,13 +66,34 @@ export class RoomService {
 		private readonly eventNotifierService: EventNotifierService,
 	) {}
 
+	// the users of a new room's power levels. from v12 creators already outrank everyone and the
+	// auth rules reject power levels that list them, so they are left out
+	private powerLevelUsersForNewRoom(
+		createEvent: PersistentEventBase<RoomVersion, 'm.room.create'>,
+		users: Record<string, number>,
+	): Record<string, number> {
+		if (!createEvent.capabilities.privilegedCreators) {
+			return users;
+		}
+
+		const creators = createEvent.getCreators();
+
+		return Object.fromEntries(Object.entries(users).filter(([userId]) => !creators.has(userId as UserID)));
+	}
+
 	private validatePowerLevelChange(
+		roomState: RoomState,
 		currentPowerLevelsContent: PduForType<'m.room.power_levels'>['content'],
 		senderId: string,
 		targetUserId: string,
 		newPowerLevel: number,
 	): void {
-		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default;
+		// from v12 creators are never listed in power_levels, the auth rules would reject the event
+		if (roomState.privilegedCreators.has(targetUserId as UserID)) {
+			throw new HttpException("A room creator's power level cannot be changed.", HttpStatus.FORBIDDEN);
+		}
+
+		const senderPower = roomState.getUserPowerLevel(senderId);
 
 		// 1. Check if sender can modify m.room.power_levels event itself
 		const requiredLevelToModifyEvent =
@@ -87,7 +108,7 @@ export class RoomService {
 
 		// 2. Specific checks when changing another user's power level
 		if (senderId !== targetUserId) {
-			const targetUserCurrentPower = currentPowerLevelsContent.users?.[targetUserId] ?? currentPowerLevelsContent.users_default;
+			const targetUserCurrentPower = roomState.getUserPowerLevel(targetUserId);
 
 			// Rule: Cannot set another user's power level higher than one's own.
 			if (newPowerLevel > senderPower) {
@@ -110,9 +131,14 @@ export class RoomService {
 		}
 	}
 
-	private validateKickPermission(currentPowerLevelsContent: RoomPowerLevelsEvent['content'], senderId: string, kickedUserId: string): void {
-		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
-		const kickedUserPower = currentPowerLevelsContent.users?.[kickedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
+	private validateKickPermission(
+		roomState: RoomState,
+		currentPowerLevelsContent: RoomPowerLevelsEvent['content'],
+		senderId: string,
+		kickedUserId: string,
+	): void {
+		const senderPower = roomState.getUserPowerLevel(senderId);
+		const kickedUserPower = roomState.getUserPowerLevel(kickedUserId);
 		const kickLevel = currentPowerLevelsContent.kick ?? 50; // Default kick level if not specified
 
 		if (senderPower < kickLevel) {
@@ -128,9 +154,14 @@ export class RoomService {
 		}
 	}
 
-	private validateBanPermission(currentPowerLevelsContent: RoomPowerLevelsEvent['content'], senderId: string, bannedUserId: string): void {
-		const senderPower = currentPowerLevelsContent.users?.[senderId] ?? currentPowerLevelsContent.users_default ?? 0;
-		const bannedUserPower = currentPowerLevelsContent.users?.[bannedUserId] ?? currentPowerLevelsContent.users_default ?? 0;
+	private validateBanPermission(
+		roomState: RoomState,
+		currentPowerLevelsContent: RoomPowerLevelsEvent['content'],
+		senderId: string,
+		bannedUserId: string,
+	): void {
+		const senderPower = roomState.getUserPowerLevel(senderId);
+		const bannedUserPower = roomState.getUserPowerLevel(bannedUserId);
 		const banLevel = currentPowerLevelsContent.ban ?? 50; // Default ban level if not specified
 
 		if (senderPower < banLevel) {
@@ -251,10 +282,10 @@ export class RoomService {
 				{
 					type: 'm.room.power_levels',
 					content: {
-						users: {
+						users: this.powerLevelUsersForNewRoom(roomCreateEvent, {
 							...powers.users,
 							[username]: 100,
-						},
+						}),
 						users_default: 0,
 						events: {
 							...powers.events,
@@ -451,18 +482,18 @@ export class RoomService {
 			throw new HttpException('Room power levels not found, cannot update.', HttpStatus.NOT_FOUND);
 		}
 
-		this.validatePowerLevelChange(currentPowerLevelsEvent.event.content, senderId, userId, powerLevel);
+		const roomState = await this.stateService.getLatestRoomState2(roomId);
 
-		const createAuthResult = this.getEventByType(authEventIds, 'm.room.create');
+		this.validatePowerLevelChange(roomState, currentPowerLevelsEvent.event.content, senderId, userId, powerLevel);
 
 		const memberAuthResult = this.getEventByType(authEventIds, 'm.room.member', (e) => e.event.state_key === senderId);
 
-		// Ensure critical auth events were found
-		if (!createAuthResult || !powerLevelsAuthResult || !memberAuthResult) {
+		// Ensure critical auth events were found. the create event is not checked, from v12 it is never an auth event
+		if (!powerLevelsAuthResult || !memberAuthResult) {
 			logger.error(
-				`Critical auth events missing for power level update. Create: ${createAuthResult?._id ?? 'missing'}, PowerLevels: ${
-					powerLevelsAuthResult?._id ?? 'missing'
-				}, Member: ${memberAuthResult?._id ?? 'missing'}`,
+				`Critical auth events missing for power level update. PowerLevels: ${powerLevelsAuthResult?._id ?? 'missing'}, Member: ${
+					memberAuthResult?._id ?? 'missing'
+				}`,
 			);
 			throw new HttpException('Internal server error: Missing auth events for power level update.', HttpStatus.INTERNAL_SERVER_ERROR);
 		}
@@ -542,7 +573,7 @@ export class RoomService {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
 
-		const residentServer = extractDomainFromId(roomId);
+		const residentServer = await this.stateService.getRoomOriginServer(roomId);
 		if (residentServer !== this.configService.serverName) {
 			throw new Error(`Server ${residentServer} is not the resident server for room ${roomId}`);
 		}
@@ -599,7 +630,7 @@ export class RoomService {
 			throw new HttpException('Cannot verify permission to kick user.', HttpStatus.FORBIDDEN);
 		}
 
-		this.validateKickPermission(powerLevelsEvent.getContent(), senderId, kickedUserId);
+		this.validateKickPermission(new RoomState(state), powerLevelsEvent.getContent(), senderId, kickedUserId);
 
 		const kickEvent = await this.stateService.buildEvent<'m.room.member'>({
 			type: 'm.room.member',
@@ -639,7 +670,7 @@ export class RoomService {
 			throw new HttpException('Cannot verify permission to ban user.', HttpStatus.FORBIDDEN);
 		}
 
-		this.validateBanPermission(powerLevelsEvent.getContent(), senderId, bannedUserId);
+		this.validateBanPermission(new RoomState(state), powerLevelsEvent.getContent(), senderId, bannedUserId);
 
 		const banEvent = await this.stateService.buildEvent<'m.room.member'>({
 			type: 'm.room.member',
@@ -665,6 +696,23 @@ export class RoomService {
 		return banEvent.eventId;
 	}
 
+	// the server to join a room through. before v12 the room id names it; from v12 it is only known
+	// when we hold the room's create event, otherwise the user has to be invited and the inviting
+	// server is asked instead
+	private async resolveJoinServer(roomId: RoomID, userId: UserID): Promise<string> {
+		const roomOriginServer = await this.stateService.getRoomOriginServer(roomId);
+		if (roomOriginServer) {
+			return roomOriginServer;
+		}
+
+		const invite = await this.eventRepository.findInviteEventsByRoomIdAndUserId(roomId, userId);
+		if (invite) {
+			return extractDomainFromId(invite.event.sender);
+		}
+
+		throw new Error(`Cannot join room ${roomId}: its server is unknown and ${userId} has no invite to it`);
+	}
+
 	// if local room, add the user to the room if allowed.
 	// if remote room, run through the join process
 	async joinUser(roomId: RoomID, userId: UserID) {
@@ -673,7 +721,7 @@ export class RoomService {
 		const { federationService } = this;
 
 		// where the room is hosted at
-		const residentServer = extractDomainFromId(roomId);
+		const residentServer = await this.resolveJoinServer(roomId, userId);
 
 		// our own room, we can validate the join event by ourselves
 		// once done, emit the event to all participating servers
@@ -748,7 +796,12 @@ export class RoomService {
 		await stateService.signEvent(joinEvent);
 
 		// currently makeSignedRequest does the signing
-		const { state, auth_chain: authChain, event, servers_in_room: serversInRoom = [] } = await federationService.sendJoin(joinEvent);
+		const {
+			state,
+			auth_chain: authChain,
+			event,
+			servers_in_room: serversInRoom = [],
+		} = await federationService.sendJoin(joinEvent, residentServer);
 
 		// TODO: validate hash and sig (item 2)
 
@@ -849,8 +902,12 @@ export class RoomService {
 			event: joinEventFinal.event,
 		});
 
-		// try to persist the join event now, should succeed with state in place
-		void this.eventService.processIncomingPDUs(residentServer || joinEventFinal.origin, [...state, joinEventFinal.event]);
+		// try to persist the join event now, should succeed with state in place. a v12 create event has
+		// no room_id to be processed with, and processInitialState already stored it
+		void this.eventService.processIncomingPDUs(residentServer || joinEventFinal.origin, [
+			...state.filter((pdu) => pdu.room_id !== undefined),
+			joinEventFinal.event,
+		]);
 
 		return joinEventFinal.eventId;
 	}
@@ -898,7 +955,7 @@ export class RoomService {
 
 		await this.stateService.signEvent(leaveEvent);
 
-		await this.federationService.sendLeave(leaveEvent);
+		await this.federationService.sendLeave(leaveEvent, invitingServer);
 
 		await this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: leaveEvent.eventId,
@@ -1097,24 +1154,15 @@ export class RoomService {
 			throw new HttpException('Cannot delete room without power levels', HttpStatus.FORBIDDEN);
 		}
 
-		this.validatePowerLevelForTombstone(powerLevelsEvent.event, sender);
+		const roomState = await this.stateService.getLatestRoomState2(roomId);
 
-		const authEvents = await this.eventService.getAuthEventIds('m.room.message', {
-			roomId,
-			senderId: sender,
-		});
+		this.validatePowerLevelForTombstone(roomState, powerLevelsEvent.event, sender);
+
 		const latestEvent = await this.eventService.getLastEventForRoom(roomId);
 		const currentDepth = latestEvent?.event?.depth ?? 0;
 		const depth = currentDepth + 1;
 
-		const authEventsMap: TombstoneAuthEvents = {
-			'm.room.create': authEvents.find((event) => event.event.type === 'm.room.create')?._id,
-			'm.room.power_levels': authEvents.find((event) => event.event.type === 'm.room.power_levels')?._id,
-			'm.room.member': authEvents.find((event) => event.event.type === 'm.room.member')?._id,
-		};
 		const prevEvents = latestEvent ? [latestEvent._id] : [];
-
-		const authEventsArray = Object.values(authEventsMap).filter((event) => event !== undefined) as EventID[];
 
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
@@ -1126,7 +1174,8 @@ export class RoomService {
 					body: reason,
 					replacement_room: replacementRoomId,
 				},
-				auth_events: authEventsArray,
+				// left for buildEvent to select, it knows whether the room version lists the create event
+				auth_events: [],
 				prev_events: prevEvents,
 				depth,
 				origin_server_ts: Date.now(),
@@ -1175,8 +1224,8 @@ export class RoomService {
 		}
 	}
 
-	private validatePowerLevelForTombstone(powerLevels: PduForType<'m.room.power_levels'>, sender: UserID): void {
-		const userPowerLevel = powerLevels.content.users?.[sender] ?? powerLevels.content.users_default ?? 0;
+	private validatePowerLevelForTombstone(roomState: RoomState, powerLevels: PduForType<'m.room.power_levels'>, sender: UserID): void {
+		const userPowerLevel = roomState.getUserPowerLevel(sender);
 		const requiredPowerLevel = powerLevels.content.state_default ?? 50;
 
 		if (userPowerLevel < requiredPowerLevel) {
@@ -1192,6 +1241,10 @@ export class RoomService {
 		if (!existing) {
 			// TODO we should have one always for ours
 			throw new Error('Power levels event not found while setting power level for user');
+		}
+
+		if (state.privilegedCreators.has(userId)) {
+			throw new Error(`Cannot set the power level of room creator ${userId}, from room v12 creators are not listed in power levels`);
 		}
 
 		const clone = structuredClone(existing);
@@ -1265,10 +1318,10 @@ export class RoomService {
 				auth_events: [],
 				prev_events: [],
 				content: {
-					users: {
+					users: this.powerLevelUsersForNewRoom(roomCreateEvent, {
 						[creatorUserId]: 100,
 						...(members.length === 1 ? { [members[0]]: 100 } : {}), // 1:1 DM both get 100 power level
-					},
+					}),
 					users_default: 0,
 					events: {
 						'm.room.name': 50,
@@ -1451,10 +1504,10 @@ export class RoomService {
 			{
 				type: 'm.room.power_levels',
 				content: {
-					users: {
+					users: this.powerLevelUsersForNewRoom(roomCreateEvent, {
 						[creatorUserId]: 50,
 						[targetUserId]: 50,
-					},
+					}),
 					users_default: 0,
 					events: {},
 					events_default: 0,

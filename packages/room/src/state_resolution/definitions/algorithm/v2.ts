@@ -66,11 +66,13 @@ import {
 	type EventStore,
 	getAuthChain,
 	getAuthChainDifference,
+	getConflictedStateSubgraph,
 	getStateByMapKey,
 	isPowerEvent,
 	iterativeAuthChecks,
 	mainlineOrdering,
 	partitionState,
+	partitionStateSets,
 	reverseTopologicalPowerSort,
 } from '../definitions';
 
@@ -78,11 +80,17 @@ export const isTruthy = <T>(value: T | null | undefined | false | 0 | ''): value
 	return Boolean(value);
 };
 
+export type StateResolutionAlgorithm = 'v2' | 'v2.1';
+
 // https://spec.matrix.org/v1.12/rooms/v2/#algorithm
+// v2.1 (room v12): https://spec.matrix.org/v1.16/rooms/v12/#state-resolution
 export async function resolveStateV2Plus(
 	states: ReadonlyMap<StateMapKey, PersistentEventBase>[],
 	store: EventStore, // with cache
+	algorithm: StateResolutionAlgorithm = 'v2',
 ): Promise<State> {
+	const isV21 = algorithm === 'v2.1';
+
 	// memory o'memory
 	// const eventMap = new Map<string, PduV3>();
 
@@ -128,7 +136,7 @@ export async function resolveStateV2Plus(
 
 	// 1. Select the set X of all power events that appear in the full conflicted set.
 
-	const [unconflicted, conflicted] = partitionState(eventIdToEventMap.values());
+	const [unconflicted, conflicted] = isV21 ? partitionStateSets(states) : partitionState(eventIdToEventMap.values());
 
 	const unconflictedStateMap = unconflicted.entries().reduce((accum, [stateKey, eventId]) => {
 		const event = eventIdToEventMap.get(eventId);
@@ -148,11 +156,19 @@ export async function resolveStateV2Plus(
 		wrappedStore,
 	);
 
-	const fullConflictedSet = conflicted.values().reduce((accum, curr) => {
+	const conflictedStateSet = conflicted.values().reduce((accum, curr) => {
 		curr.forEach((c) => accum.add(c));
 
 		return accum;
-	}, authChainDifference);
+	}, new Set<EventID>());
+
+	// v2: conflicted state set ∪ auth difference. v2.1 adds the conflicted state subgraph
+	const fullConflictedSet = authChainDifference.union(conflictedStateSet);
+	if (isV21) {
+		for (const eventId of await getConflictedStateSubgraph(conflictedStateSet, wrappedStore)) {
+			fullConflictedSet.add(eventId);
+		}
+	}
 
 	// events that dictate authorization logic
 	// should a user be able to change the power level of another user?
@@ -213,9 +229,9 @@ export async function resolveStateV2Plus(
 		wrappedStore,
 	);
 
-	// 2. Apply the iterative auth checks algorithm, starting from the unconflicted state map, to the list of events from the previous step to get a partially resolved state.
+	// 2. Apply the iterative auth checks algorithm, starting from the unconflicted state map (v2.1: an empty state map), to the list of events from the previous step to get a partially resolved state.
 	const initialState = new Map<StateMapKey, PersistentEventBase>();
-	for (const [key, eventId] of unconflicted) {
+	for (const [key, eventId] of isV21 ? [] : unconflicted) {
 		// in layman's terms:
 		// FULL conflicted set = conflicted events + auth difference
 		// unconflicted already excludes conflicted events
@@ -278,7 +294,8 @@ export async function resolveStateV2Plus(
 
 	// 5. Update the result by replacing any event with the event with the same key from the unconflicted state map, if such an event exists, to get the final resolved state.
 	for await (const [key, value] of unconflicted) {
-		if (finalState.has(key)) {
+		// v2.1 started from nothing, so every unconflicted entry has to be put back, not just replaced
+		if (isV21 || finalState.has(key)) {
 			const [event] = await wrappedStore.getEvents([value]);
 			assert(event, 'event should not be null');
 			finalState.set(key, event);

@@ -13,20 +13,22 @@ import {
 	RoomID,
 	RoomState,
 	RoomVersion,
-	type RoomVersion3To11,
+	type SupportedRoomVersion,
 	State,
 	type StateID,
 	type StateMapKey,
 	StateResolverAuthorizationError,
 	checkEventAuthWithState,
+	checkEventAuthWithoutState,
 	extractDomainFromId,
 	resolveStateV2Plus,
+	roomServerName,
 } from '@rocket.chat/federation-room';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
 import type { EventNotifierService } from './event-notifier.service';
-import { EventRepository } from '../repositories/event.repository';
+import { EventRepository, getStoredRoomId } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 
 type StrippedEvent = {
@@ -92,7 +94,7 @@ export class StateService {
 		return { event: createEvent.event, roomVersion };
 	}
 
-	async getRoomVersion(roomId: RoomID): Promise<RoomVersion3To11> {
+	async getRoomVersion(roomId: RoomID): Promise<SupportedRoomVersion> {
 		const { roomVersion } = await this.findCreateEvent(roomId);
 
 		return roomVersion;
@@ -105,6 +107,19 @@ export class StateService {
 		const { event, roomVersion } = await this.findCreateEvent(roomId);
 
 		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(event, roomVersion);
+	}
+
+	// the server whose user created the room. before v12 the room id names it; from v12 on it is
+	// only known if we hold the create event, otherwise undefined
+	async getRoomOriginServer(roomId: RoomID): Promise<string | undefined> {
+		const fromRoomId = roomServerName(roomId);
+		if (fromRoomId) {
+			return fromRoomId;
+		}
+
+		const createEvent = await this.eventRepository.findByRoomIdAndType(roomId, 'm.room.create');
+
+		return createEvent ? extractDomainFromId(createEvent.event.sender) : undefined;
 	}
 
 	// helps with logging state
@@ -133,7 +148,7 @@ export class StateService {
 	// 1. persists the event if not already persisted
 	// 2. marks the event as forward extremity for the room
 	private async addToRoomGraph(event: PersistentEventBase, stateId: StateID) {
-		await this.eventRepository.insertOrUpdateEventWithStateId(event.eventId, event.event, stateId, event.isPartial());
+		await this.eventRepository.insertOrUpdateEventWithStateId(event.roomId, event.eventId, event.event, stateId, event.isPartial());
 
 		await this.updateNextEventReferencesWithEvent(event);
 	}
@@ -191,7 +206,7 @@ export class StateService {
 			return null;
 		}
 
-		const roomVersion = await this.getRoomVersion(event.event.room_id);
+		const roomVersion = await this.getRoomVersion(getStoredRoomId(event));
 
 		const pdu = PersistentEventFactory.createFromRawEvent(event.event, roomVersion, event.partial);
 
@@ -247,7 +262,10 @@ export class StateService {
 		event: PduWithHashesAndSignaturesOptional<PduForType<T>>,
 		roomVersion?: RoomVersion,
 	): Promise<PersistentEventBase<RoomVersion, T>> {
-		const version = roomVersion ?? (await this.getRoomVersion(event.room_id));
+		if (!roomVersion && !event.room_id) {
+			throw new Error(`Cannot build ${event.type} without a room_id or a room version`);
+		}
+		const version = roomVersion ?? (await this.getRoomVersion(event.room_id as RoomID));
 		const instance = PersistentEventFactory.createFromRawEvent<T>(event, version);
 		await Promise.all([
 			instance.event.auth_events.length === 0 && this.addAuthEvents(instance),
@@ -340,6 +358,7 @@ export class StateService {
 		}
 
 		await this.eventRepository.rejectEvent(
+			event.roomId,
 			event.eventId,
 			event.event,
 			stateId,
@@ -354,12 +373,19 @@ export class StateService {
 	// notifier is a parameter (not a constructor dependency) because EventNotifierService
 	// depends on this service for power-level diffs — injecting it would recreate the cycle
 	async processInitialState(pdus: Pdu[], authChain: Pdu[], notifier: EventNotifierService) {
-		const create = authChain.find((pdu) => pdu.type === 'm.room.create');
+		// from v12 no event lists the create event in auth_events, so it may only be part of the state
+		const create = authChain.find((pdu) => pdu.type === 'm.room.create') ?? pdus.find((pdu) => pdu.type === 'm.room.create');
 		if (create?.type !== 'm.room.create') {
-			throw new Error('No create event found in auth chain to save');
+			throw new Error('No create event found in auth chain or state to save');
 		}
 
 		const version = create.content.room_version;
+		if (!PersistentEventFactory.isSupportedRoomVersion(version)) {
+			throw new UnsupportedRoomVersionError(`Cannot save state of a room at unsupported version ${version}`);
+		}
+
+		const createEvent = PersistentEventFactory.createFromRawEvent(create, version);
+		checkEventAuthWithoutState(createEvent, []);
 
 		// auth chain for whole state, if sorted by depth, should never have multiples with same branches
 		// this confirms correct sorting and being able to save with correct state for each
@@ -396,7 +422,6 @@ export class StateService {
 		const knownEventIds = new Set(existingEvents.map((e) => e.eventId));
 
 		// handle create separately
-		const createEvent = PersistentEventFactory.createFromRawEvent(create, version);
 		const stateId = await this.stateRepository.createDelta(createEvent, '' as StateID);
 		await this.addToRoomGraph(createEvent, stateId);
 		this.logger.info({ eventId: createEvent.eventId, roomId: createEvent.roomId, stateId }, 'create event saved');
@@ -531,6 +556,8 @@ export class StateService {
 	async handlePdu<P extends PersistentEventBase>(pdu: P): Promise<void> {
 		if (pdu.isCreateEvent()) {
 			this.logger.debug({ eventId: pdu.eventId }, 'handling create event');
+			checkEventAuthWithoutState(pdu, []);
+
 			const stateId = await this.stateRepository.createDelta(pdu, '' as StateID);
 
 			await this.addToRoomGraph(pdu, stateId);
@@ -559,9 +586,19 @@ export class StateService {
 
 		const store = this._getStore(event.version);
 
-		const authEvents = await store.getEvents(event.getAuthEventIds());
+		const authEventIds = event.getAuthEventIds();
+		const authEvents = await store.getEvents(authEventIds);
+		// a plain error rather than a rejection, so the staging area retries once they are fetched
+		if (authEvents.length !== authEventIds.length) {
+			const found = new Set(authEvents.map((authEvent) => authEvent.eventId));
+			throw new Error(`Missing auth events for ${event.eventId}: ${authEventIds.filter((id) => !found.has(id)).join(', ')}`);
+		}
 
 		try {
+			// the auth_events themselves: duplicates, excess or rejected entries, entries from another room,
+			// and from v12 a listed m.room.create
+			checkEventAuthWithoutState(event, authEvents);
+
 			await checkEventAuthWithState(event, this.buildStateFromEvents(authEvents), this._getStore(event.version));
 		} catch (error) {
 			if (error instanceof StateResolverAuthorizationError) {
@@ -797,6 +834,7 @@ export class StateService {
 		const state = await resolveStateV2Plus(
 			states, // FIXME: use required
 			this._getStore(roomVersion),
+			PersistentEventFactory.getCapabilities(roomVersion).stateResolution,
 		);
 
 		return state;
@@ -1000,7 +1038,7 @@ export class StateService {
 		const result = [] as { name: string; room_id: RoomID }[];
 
 		for await (const create of createEvents) {
-			const roomId = create.event.room_id;
+			const roomId = getStoredRoomId(create);
 			// TODO: exclude memberships here
 			const state = await this.getLatestRoomState2(roomId);
 			if (!state.isPublic()) {
@@ -1019,7 +1057,7 @@ export class StateService {
 		const result = [] as RoomID[];
 
 		for await (const create of createEvents) {
-			result.push(create.event.room_id);
+			result.push(getStoredRoomId(create));
 		}
 
 		return result;

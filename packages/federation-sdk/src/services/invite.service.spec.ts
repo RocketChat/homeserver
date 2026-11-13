@@ -547,7 +547,7 @@ describe('InviteService', async () => {
 				roomVersion,
 			);
 			const outlierEventId = outlierWrapped.eventId;
-			await eventRepository.insertOutlierEvent(outlierEventId, outlierWrapped.event, remoteServer);
+			await eventRepository.insertOutlierEvent(outlierWrapped.roomId, outlierEventId, outlierWrapped.event, remoteServer);
 
 			// 3. Build re-invite referencing the outlier as prev_event
 			const latestEvents = await eventRepository.findLatestEvents(roomId);
@@ -707,6 +707,95 @@ describe('InviteService', async () => {
 			const storedEvent = await eventRepository.findById(reInviteEventInstance.eventId);
 			expect(storedEvent).not.toBeNull();
 			expect(storedEvent!.outlier).toBe(true);
+		});
+	});
+
+	describe('processInvite - room hosted locally', () => {
+		const localCreator = `@alice:${localServerName}` as room.UserID;
+
+		const buildInvite = async (roomId: room.RoomID, roomVersion: RoomVersion, invitee: room.UserID) =>
+			stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					room_id: roomId,
+					sender: localCreator,
+					state_key: invitee,
+					content: { membership: 'invite' },
+					...getDefaultFields(),
+				},
+				roomVersion,
+			);
+
+		it('signs an invite to a local user before persisting it', async () => {
+			const { roomCreateEvent, roomVersion } = await createRoom('public', localCreator);
+			const { roomId } = roomCreateEvent;
+
+			const invite = await buildInvite(roomId, roomVersion, `@bob:${localServerName}` as room.UserID);
+
+			const signEvent = spyOn(stateService, 'signEvent');
+			const handlePdu = spyOn(stateService, 'handlePdu');
+
+			await inviteService.processInvite(invite.event, invite.eventId, roomVersion, []);
+
+			expect(signEvent).toHaveBeenCalledTimes(1);
+			expect(signEvent.mock.invocationCallOrder[0]).toBeLessThan(handlePdu.mock.invocationCallOrder[0]);
+
+			signEvent.mockRestore();
+			handlePdu.mockRestore();
+		});
+
+		it('refuses an invite for a user of another server', async () => {
+			const { roomCreateEvent, roomVersion } = await createRoom('public', localCreator);
+			const { roomId } = roomCreateEvent;
+
+			const invite = await buildInvite(roomId, roomVersion, '@dave:elsewhere.com' as room.UserID);
+
+			await expect(inviteService.processInvite(invite.event, invite.eventId, roomVersion, [])).rejects.toThrow('Cannot sign invite');
+			expect(await eventRepository.findById(invite.eventId)).toBeNull();
+		});
+	});
+
+	describe('processInvite - room v12', () => {
+		it('stores an invite to a remote v12 room as an outlier findable by room id', async () => {
+			const remoteServer = 'remote.server.com';
+			const remoteCreator = `@alice:${remoteServer}` as room.UserID;
+			const localUser = `@johnny:${localServerName}` as room.UserID;
+
+			// a room we know nothing about: its id names no server, only the invite's sender does
+			const remoteCreate = PersistentEventFactory.newCreateEvent(remoteCreator, '12');
+			const { roomId } = remoteCreate;
+
+			const inviteEventInstance = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'invite' as const },
+					room_id: roomId,
+					state_key: localUser,
+					sender: remoteCreator,
+					auth_events: [],
+					prev_events: [remoteCreate.eventId],
+					depth: 5,
+					origin_server_ts: Date.now(),
+					unsigned: {},
+				},
+				'12',
+			);
+
+			const result = await inviteService.processInvite(inviteEventInstance.event, inviteEventInstance.eventId, '12', [
+				{ content: { join_rule: 'invite' }, sender: remoteCreator, state_key: '', type: 'm.room.join_rules' },
+			] as any);
+
+			expect(result.eventId).toBe(inviteEventInstance.eventId);
+
+			const storedEvent = await eventRepository.findById(inviteEventInstance.eventId);
+			expect(storedEvent?.outlier).toBe(true);
+			expect(storedEvent?.roomId).toBe(roomId);
+			// recorded as coming from the inviting server, the room id names none
+			expect(storedEvent?.origin).toBe(remoteServer);
+
+			// what joinUser relies on to find a server to join a v12 room through
+			const invite = await eventRepository.findInviteEventsByRoomIdAndUserId(roomId, localUser);
+			expect(invite?._id).toBe(inviteEventInstance.eventId);
 		});
 	});
 });

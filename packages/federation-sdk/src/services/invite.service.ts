@@ -182,10 +182,23 @@ export class InviteService {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
 
-		const { residentServer } = inviteEvent;
+		const invitedServer = extractDomainFromId(event.state_key);
+		if (!invitedServer) {
+			throw new Error(`invalid state_key ${event.state_key}, no server_name part`);
+		}
+		if (invitedServer !== this.configService.serverName) {
+			throw new Error(
+				`Cannot sign invite for user ${event.state_key}: user does not belong to this server (${this.configService.serverName})`,
+			);
+		}
 
-		if (residentServer === this.configService.serverName) {
-			await this.eventAuthorizationService.checkAclForInvite(event.room_id, residentServer);
+		// the invited server signs before either branch, so the stored and returned invite both carry it
+		await this.stateService.signEvent(inviteEvent);
+
+		const roomOriginServer = await this.stateService.getRoomOriginServer(inviteEvent.roomId);
+
+		if (roomOriginServer === this.configService.serverName) {
+			await this.eventAuthorizationService.checkAclForInvite(inviteEvent.roomId, roomOriginServer);
 
 			await this.stateService.handlePdu(inviteEvent);
 
@@ -197,25 +210,13 @@ export class InviteService {
 			return inviteEvent;
 		}
 
-		const invitedServer = extractDomainFromId(event.state_key);
-		if (!invitedServer) {
-			throw new Error(`invalid state_key ${event.state_key}, no server_name part`);
-		}
-		if (invitedServer !== this.configService.serverName) {
-			throw new Error(
-				`Cannot sign invite for user ${event.state_key}: user does not belong to this server (${this.configService.serverName})`,
-			);
-		}
-
-		await this.stateService.signEvent(inviteEvent);
-
 		// we have no specific structure to store the invite_room_state received on the invite route,
 		// so we store it in the unsigned section of the invite event.
 		inviteEvent.event.unsigned.invite_room_state = strippedStateEvents;
 
 		// check if we are already in the room, if so we can handlePdu because we have the state and should save
 		// the invite in the state as well
-		const createEvent = await this.eventRepository.findByRoomIdAndType(event.room_id, 'm.room.create');
+		const createEvent = await this.eventRepository.findByRoomIdAndType(inviteEvent.roomId, 'm.room.create');
 		if (createEvent && (await this.canResolveEventState(inviteEvent))) {
 			await this.stateService.handlePdu(inviteEvent);
 		} else {
@@ -223,7 +224,12 @@ export class InviteService {
 			// this also handles the case where we have the room create event but the invite's
 			// prev_events reference events we don't have (e.g. user was re-invited after leaving
 			// and missing events were sent while the user was not in the room)
-			await this.eventRepository.insertOutlierEvent(inviteEvent.eventId, inviteEvent.event, residentServer);
+			await this.eventRepository.insertOutlierEvent(
+				inviteEvent.roomId,
+				inviteEvent.eventId,
+				inviteEvent.event,
+				roomOriginServer ?? inviteEvent.origin,
+			);
 		}
 
 		await this.emitterService.emit('homeserver.matrix.membership', {

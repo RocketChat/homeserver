@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
+import { StateResolverAuthorizationError } from './errors';
 import { checkEventAuthWithState, checkEventAuthWithoutState } from './rules';
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PersistentEventFactory } from '../manager/factory';
@@ -56,6 +57,12 @@ class FakeEventCreatorBase {
 
 	withRoomId(roomId: string) {
 		this._event.room_id = roomId;
+		return this;
+	}
+
+	// a v12 create event has no room_id, the room id is derived from its hash
+	withoutRoomId() {
+		delete (this._event as Partial<Pdu>).room_id;
 		return this;
 	}
 
@@ -1205,5 +1212,309 @@ describe('authorization rules', () => {
 			.build('10');
 
 		expect(() => checkEventAuthWithoutState(create, [])).toThrow();
+	});
+});
+
+describe('authorization rules: room v12', () => {
+	afterEach(() => store.events.clear());
+
+	const bob = '@bob:example.com';
+	const carol = '@carol:example.com';
+	const dave = '@dave:example.com';
+
+	function createEvent(content: Record<string, unknown> = { room_version: '12' }) {
+		return new FakeStateEventCreator().asRoomCreate().withoutRoomId().withSender(creator).withContent(content).build('12');
+	}
+
+	// a v12 room: no event lists the create event, it is found through the room id instead
+	function v12Room({
+		additionalCreators,
+		powerLevels = { users: { [bob]: 100 }, users_default: 0, events: {} },
+	}: { additionalCreators?: string[]; powerLevels?: Record<string, unknown> } = {}) {
+		const create = createEvent({ room_version: '12', ...(additionalCreators && { additional_creators: additionalCreators }) });
+		store.events.set(create.eventId, create);
+
+		const v12RoomId = create.roomId;
+
+		const state = (type: 'm.room.member' | 'm.room.power_levels' | 'm.room.join_rules', content: unknown, stateKey = '') =>
+			new FakeStateEventCreator()
+				.withType(type)
+				.withRoomId(v12RoomId)
+				.withSender(creator)
+				.withStateKey(stateKey)
+				.withContent(content)
+				.build('12');
+
+		const members = [creator, bob, carol, dave].map((userId) => state('m.room.member', { membership: 'join' }, userId));
+		const powerLevel = state('m.room.power_levels', powerLevels);
+		const joinRules = state('m.room.join_rules', { join_rule: 'public' });
+
+		for (const event of [...members, powerLevel, joinRules]) {
+			store.events.set(event.eventId, event);
+		}
+
+		// deliberately without the create event, from v12 auth never takes it from the state map
+		const stateMap = getStateMap([...members, powerLevel, joinRules]);
+
+		return { create, roomId: v12RoomId, members, powerLevel, joinRules, stateMap };
+	}
+
+	function member(roomIdOfEvent: string, sender: string, target: string, membership: string) {
+		return new FakeStateEventCreator()
+			.asRoomMember()
+			.withRoomId(roomIdOfEvent)
+			.withSender(sender)
+			.withStateKey(target)
+			.withContent({ membership })
+			.build('12');
+	}
+
+	describe('m.room.create', () => {
+		it('derives the room id from the create event hash', () => {
+			const create = createEvent();
+
+			expect(create.event.room_id).toBeUndefined();
+			expect(create.roomId).toBe(`!${create.eventId.slice(1)}`);
+			expect(create.roomId).toMatch(/^![A-Za-z0-9_-]{43}$/);
+		});
+
+		it('accepts a create event without room_id (rule 1.2)', () => {
+			expect(() => checkEventAuthWithoutState(createEvent(), [])).not.toThrow();
+		});
+
+		it('rejects a create event with a room_id (rule 1.2)', () => {
+			const create = new FakeStateEventCreator()
+				.asRoomCreate()
+				.withRoomId(roomId)
+				.withSender(creator)
+				.withContent({ room_version: '12' })
+				.build('12');
+
+			expect(() => checkEventAuthWithoutState(create, [])).toThrow(StateResolverAuthorizationError);
+		});
+
+		it('still rejects a v11 create event without room_id', () => {
+			const create = new FakeStateEventCreator()
+				.asRoomCreate()
+				.withoutRoomId()
+				.withSender(creator)
+				.withContent({ room_version: '11' })
+				.build('11');
+
+			expect(() => checkEventAuthWithoutState(create, [])).toThrow(StateResolverAuthorizationError);
+		});
+
+		it('accepts valid additional_creators (rule 1.4)', () => {
+			expect(() => checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: [bob, carol] }), [])).not.toThrow();
+		});
+
+		it('accepts additional_creators with a port, an IPv6 literal or an empty localpart (rule 1.4)', () => {
+			const additionalCreators = ['@alice:example.com:8448', '@bob:[::1]', '@bob:[::1]:8448', '@:example.com'];
+			expect(() =>
+				checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: additionalCreators }), []),
+			).not.toThrow();
+		});
+
+		for (const [label, additionalCreators] of [
+			['not an array', bob],
+			['a non string entry', [bob, 42]],
+			['an invalid user id', ['bob']],
+			['a user id without a server', ['@bob']],
+			['a server name with a space', ['@bob:bad host']],
+			['a server name with an underscore', ['@bob:exa_mple.com']],
+			['a non numeric port', ['@bob:example.com:abc']],
+			['an empty server name', ['@bob:']],
+			['a malformed IPv6 literal', ['@bob:[zz]']],
+			['more than 255 bytes', [`@${'é'.repeat(130)}:a.co`]],
+		] as const) {
+			it(`rejects additional_creators with ${label} (rule 1.4)`, () => {
+				expect(() => checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: additionalCreators }), [])).toThrow(
+					StateResolverAuthorizationError,
+				);
+			});
+		}
+	});
+
+	describe('auth events', () => {
+		it('rejects an event listing m.room.create in auth_events (rule 3.2)', () => {
+			const { create, roomId: v12RoomId, members, powerLevel } = v12Room();
+			const message = new FakeMessageEventCreator()
+				.withRoomId(v12RoomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.authedBy(create)
+				.authedBy(powerLevel)
+				.authedBy(members[1])
+				.build('12');
+
+			expect(() => checkEventAuthWithoutState(message, [create, powerLevel, members[1]])).toThrow('m.room.create must not be listed');
+		});
+
+		it('does not require m.room.create among the auth_events', () => {
+			const { roomId: v12RoomId, members, powerLevel } = v12Room();
+			const message = new FakeMessageEventCreator()
+				.withRoomId(v12RoomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.authedBy(powerLevel)
+				.authedBy(members[1])
+				.build('12');
+
+			expect(() => checkEventAuthWithoutState(message, [powerLevel, members[1]])).not.toThrow();
+		});
+
+		it('rejects an auth event from another room (rule 3.4)', () => {
+			const { roomId: v12RoomId, powerLevel } = v12Room();
+			const foreignMember = new FakeStateEventCreator()
+				.asRoomMember()
+				.withRoomId(roomId)
+				.withSender(bob)
+				.withStateKey(bob)
+				.withContent({ membership: 'join' })
+				.build('12');
+
+			const message = new FakeMessageEventCreator()
+				.withRoomId(v12RoomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.authedBy(powerLevel)
+				.authedBy(foreignMember)
+				.build('12');
+
+			expect(() => checkEventAuthWithoutState(message, [powerLevel, foreignMember])).toThrow('different room');
+		});
+
+		it('rejects an event whose room id matches no known create event (rule 2)', async () => {
+			const { stateMap } = v12Room();
+			const unknownRoomId = `!${'A'.repeat(43)}`;
+			const message = new FakeMessageEventCreator()
+				.withRoomId(unknownRoomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.build('12');
+
+			await expect(checkEventAuthWithState(message, stateMap, store)).rejects.toThrow('does not correspond to a known m.room.create');
+		});
+
+		it('rejects an event whose create event was rejected (rule 2)', async () => {
+			const { create, roomId: v12RoomId, stateMap } = v12Room();
+			create.reject('auth_error', 'test');
+			const message = new FakeMessageEventCreator()
+				.withRoomId(v12RoomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.build('12');
+
+			await expect(checkEventAuthWithState(message, stateMap, store)).rejects.toThrow('was rejected');
+		});
+
+		it('authorizes against a state map without m.room.create', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room();
+			const message = new FakeMessageEventCreator()
+				.withRoomId(v12RoomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.build('12');
+
+			await expect(checkEventAuthWithState(message, stateMap, store)).resolves.toBeUndefined();
+		});
+
+		it('rejects with an authorization error, not a crash, when a v11 room has no create event', async () => {
+			const member11 = new FakeStateEventCreator()
+				.asRoomMember()
+				.withRoomId(roomId)
+				.withSender(bob)
+				.withStateKey(bob)
+				.withContent({ membership: 'join' })
+				.build('11');
+			const message = new FakeMessageEventCreator()
+				.withRoomId(roomId)
+				.withSender(bob)
+				.withContent({ msgtype: 'm.text', body: 'hi' })
+				.build('11');
+
+			await expect(checkEventAuthWithState(message, getStateMap([member11]), store)).rejects.toBeInstanceOf(
+				StateResolverAuthorizationError,
+			);
+		});
+	});
+
+	describe('power levels', () => {
+		function powerLevelsEvent(v12RoomId: string, users: Record<string, number>) {
+			return new FakeStateEventCreator()
+				.asPowerLevel()
+				.withRoomId(v12RoomId)
+				.withSender(creator)
+				.withContent({ users, users_default: 0, events: {} })
+				.build('12');
+		}
+
+		it('rejects power levels listing the create sender in users (rule 10.4)', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room();
+
+			await expect(checkEventAuthWithState(powerLevelsEvent(v12RoomId, { [creator]: 100 }), stateMap, store)).rejects.toThrow(
+				'must not be listed in power level users',
+			);
+		});
+
+		it('rejects power levels listing an additional creator in users (rule 10.4)', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room({ additionalCreators: [carol] });
+
+			await expect(checkEventAuthWithState(powerLevelsEvent(v12RoomId, { [carol]: 50 }), stateMap, store)).rejects.toThrow(
+				'must not be listed in power level users',
+			);
+		});
+
+		it('accepts power levels that do not list any creator', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room({ additionalCreators: [carol] });
+
+			await expect(
+				checkEventAuthWithState(powerLevelsEvent(v12RoomId, { [bob]: 100, [dave]: 50 }), stateMap, store),
+			).resolves.toBeUndefined();
+		});
+	});
+
+	describe('privileged creators', () => {
+		it('lets an additional creator send events of any required level without a users entry', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room({
+				additionalCreators: [carol],
+				powerLevels: { users: {}, users_default: 0, events: { 'm.room.name': 100 } },
+			});
+			const name = (sender: string) =>
+				new FakeStateEventCreator().withType('m.room.name').withRoomId(v12RoomId).withSender(sender).withContent({ name: 'x' }).build('12');
+
+			await expect(checkEventAuthWithState(name(carol), stateMap, store)).resolves.toBeUndefined();
+			await expect(checkEventAuthWithState(name(dave), stateMap, store)).rejects.toBeInstanceOf(StateResolverAuthorizationError);
+		});
+
+		it('does not let a PL 100 user kick or ban a creator', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room({ additionalCreators: [carol] });
+
+			await expect(checkEventAuthWithState(member(v12RoomId, bob, creator, 'leave'), stateMap, store)).rejects.toThrow('kick level');
+			await expect(checkEventAuthWithState(member(v12RoomId, bob, carol, 'ban'), stateMap, store)).rejects.toThrow('ban level');
+		});
+
+		it('lets a creator kick and ban a PL 100 user', async () => {
+			const { roomId: v12RoomId, stateMap } = v12Room({ additionalCreators: [carol] });
+
+			await expect(checkEventAuthWithState(member(v12RoomId, creator, bob, 'leave'), stateMap, store)).resolves.toBeUndefined();
+			await expect(checkEventAuthWithState(member(v12RoomId, carol, bob, 'ban'), stateMap, store)).resolves.toBeUndefined();
+		});
+
+		it("allows the room creator's first join", async () => {
+			const create = createEvent();
+			store.events.set(create.eventId, create);
+
+			const join = new FakeStateEventCreator()
+				.asRoomMember()
+				.withRoomId(create.roomId)
+				.withStateKey(creator)
+				.withSender(creator)
+				.withContent({ membership: 'join' })
+				.withLastEvent(create)
+				.build('12');
+
+			await expect(checkEventAuthWithState(join, new Map(), store)).resolves.toBeUndefined();
+		});
 	});
 });

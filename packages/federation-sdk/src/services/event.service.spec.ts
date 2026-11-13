@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'bun:test';
 
-import type { EventID, Pdu, PduForType, RoomVersion } from '@rocket.chat/federation-room';
+import { generateKeyPairs, signEvent } from '@rocket.chat/federation-core';
+import { PersistentEventFactory } from '@rocket.chat/federation-room';
+import type { EventID, Pdu, PduForType, PersistentEventBase, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 
 import { EventService } from './event.service';
+import type { ServerService } from './server.service';
 import type { StateService } from './state.service';
+import type { StagingAreaQueue } from '../queues/staging-area.queue';
+import type { EventStagingRepository } from '../repositories/event-staging.repository';
 import type { EventRepository } from '../repositories/event.repository';
 
 // a v10-shaped member event: pre-v11 redaction keeps origin/prev_state/membership at the top level,
@@ -135,5 +140,86 @@ describe('processRedaction', () => {
 		await service.processRedaction(redaction);
 
 		expect(captured.event?.unsigned).toHaveProperty('redacted_because', redaction);
+	});
+});
+
+describe('processIncomingPDUs', () => {
+	it('drops a PDU without room_id and still processes the rest of the transaction', async () => {
+		const origin = 'remote.com';
+		const key = await generateKeyPairs(new Uint8Array(32).fill(3));
+		const keyId = `${key.algorithm}:${key.version}`;
+
+		const sign = async (event: PersistentEventBase) => {
+			const signed = await signEvent(event.redactedEvent as Pdu, key, origin, false);
+			event.addSignature(origin, keyId, signed.signatures[origin][keyId]);
+			return event.event as Pdu;
+		};
+
+		const create = PersistentEventFactory.newCreateEvent('@alice:remote.com' as UserID, '12');
+		const message = PersistentEventFactory.createFromRawEvent(
+			{
+				type: 'm.room.message',
+				sender: '@alice:remote.com' as UserID,
+				room_id: create.roomId,
+				content: { msgtype: 'm.text', body: 'hello' },
+				origin_server_ts: 2,
+				depth: 2,
+				prev_events: [create.eventId],
+				auth_events: [] as EventID[],
+			},
+			'12',
+		);
+
+		const staged: EventID[] = [];
+		const enqueued: RoomID[] = [];
+
+		const service = new EventService(
+			null as never,
+			{ enqueue: (roomId: RoomID) => enqueued.push(roomId) } as unknown as StagingAreaQueue,
+			{ getRoomVersion: async () => '12' } as unknown as StateService,
+			{ getPublicKey: async () => Buffer.from(key.publicKey).toString('base64') } as unknown as ServerService,
+			null as never,
+			{ findById: async () => null } as unknown as EventRepository,
+			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
+			null as never,
+		);
+
+		await service.processIncomingPDUs(origin, [await sign(create), await sign(message)]);
+
+		expect(staged).toEqual([message.eventId]);
+		expect(enqueued).toEqual([create.roomId]);
+	});
+
+	it('drops a PDU listing the same auth event twice', async () => {
+		const create = PersistentEventFactory.newCreateEvent('@alice:remote.com' as UserID, '12');
+		const duplicated = {
+			type: 'm.room.message',
+			sender: '@alice:remote.com',
+			room_id: create.roomId,
+			content: { msgtype: 'm.text', body: 'hello' },
+			origin_server_ts: 2,
+			depth: 2,
+			prev_events: [create.eventId],
+			auth_events: ['$auth', '$auth'],
+			hashes: { sha256: 'irrelevant' },
+			signatures: {},
+		} as unknown as Pdu;
+
+		const staged: EventID[] = [];
+
+		const service = new EventService(
+			null as never,
+			{ enqueue: () => undefined } as unknown as StagingAreaQueue,
+			{ getRoomVersion: async () => '12' } as unknown as StateService,
+			null as never,
+			null as never,
+			{ findById: async () => null } as unknown as EventRepository,
+			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
+			null as never,
+		);
+
+		await service.processIncomingPDUs('remote.com', [duplicated]);
+
+		expect(staged).toEqual([]);
 	});
 });

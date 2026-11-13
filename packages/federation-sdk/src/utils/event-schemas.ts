@@ -38,6 +38,17 @@ const createEventSchemaV11 = createEventSchema.extend({
 	content: z.object({ room_version: z.string() }).and(anyContent),
 });
 
+// v12 dropped room_id from the create event, the room id is derived from its hash
+const createEventSchemaV12 = createEventSchemaV11.extend({
+	room_id: z.undefined({ error: 'm.room.create must not have a room_id from room version 12' }),
+	content: z
+		.object({
+			room_version: z.string(),
+			additional_creators: z.array(z.string()).optional(),
+		})
+		.and(anyContent),
+});
+
 const memberEventSchema = baseEventSchema.extend({
 	type: z.literal('m.room.member'),
 	state_key: userIdSchema,
@@ -133,10 +144,23 @@ const roomV11Schemas: Record<string, z.ZodSchema> = {
 	'm.room.redaction': redactionEventSchemaV11,
 };
 
-// v11 is the only version that changed the shape of an event we validate, and later
-// versions inherit its format, so an unrecognised version resolves to the v11 set
+const roomV12Schemas: Record<string, z.ZodSchema> = {
+	...roomV11Schemas,
+	'm.room.create': createEventSchemaV12,
+};
+
+// an unrecognised version below 11 resolves to the v10 set; anything else (missing, non-numeric, newer) to the v11 set
 function schemasForRoomVersion(roomVersion?: string): Record<string, z.ZodSchema> {
-	return Number(roomVersion) < 11 ? roomV10Schemas : roomV11Schemas;
+	if (!roomVersion || !PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+		return Number(roomVersion) < 11 ? roomV10Schemas : roomV11Schemas;
+	}
+
+	const capabilities = PersistentEventFactory.getCapabilities(roomVersion);
+	if (capabilities.roomIdFormat === 'create-event-hash') {
+		return roomV12Schemas;
+	}
+
+	return capabilities.redactsInContent ? roomV11Schemas : roomV10Schemas;
 }
 
 export const eventSchemas: Record<string, Record<string, z.ZodSchema>> = Object.fromEntries(
@@ -153,6 +177,6 @@ export function getEventSchemaForType(eventType: string, roomVersion?: string): 
 	return versionSchemas[eventType] ?? versionSchemas.default;
 }
 
-export { roomV10Schemas, roomV11Schemas };
+export { roomV10Schemas, roomV11Schemas, roomV12Schemas };
 
 export type BaseEventType = z.infer<typeof baseEventSchema>;

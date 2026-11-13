@@ -54,7 +54,7 @@ export class StagingAreaService {
 		private readonly lockRepository: LockRepository,
 	) {}
 
-	extractEventsFromIncomingPDU(pdu: EventBase) {
+	extractEventsFromIncomingPDU(pdu: Pick<EventBase, 'auth_events' | 'prev_events'>) {
 		const authEvents = pdu.auth_events || [];
 		const prevEvents = pdu.prev_events || [];
 		return [authEvents, prevEvents];
@@ -69,7 +69,7 @@ export class StagingAreaService {
 		};
 
 		const toEventBase = async (pdu: Pdu) => {
-			const version = await getRoomVersion(pdu.room_id);
+			const version = await getRoomVersion(roomId);
 			return PersistentEventFactory.createFromRawEvent(pdu, version);
 		};
 
@@ -156,21 +156,16 @@ export class StagingAreaService {
 		}
 		this.logger.debug(`Missing ${missing.length} events for ${eventId}: ${missing}`);
 
-		const latestEvent = await this.eventService.getLastEventForRoom(event.event.room_id);
+		const roomId = event.roomId as RoomID;
+
+		const latestEvent = await this.eventService.getLastEventForRoom(roomId);
 
 		let addedMissing = false;
 
 		if (latestEvent) {
-			this.logger.debug(`Fetching missing events between ${latestEvent._id} and ${eventId} for room ${event.event.room_id}`);
+			this.logger.debug(`Fetching missing events between ${latestEvent._id} and ${eventId} for room ${roomId}`);
 
-			const missingEvents = await this.federationService.getMissingEvents(
-				event.origin,
-				event.event.room_id,
-				[latestEvent._id],
-				[eventId],
-				10,
-				0,
-			);
+			const missingEvents = await this.federationService.getMissingEvents(event.origin, roomId, [latestEvent._id], [eventId], 10, 0);
 
 			this.logger.debug(`Persisting ${missingEvents.events.length} fetched missing events`);
 
@@ -184,7 +179,7 @@ export class StagingAreaService {
 
 					return this.missingEventsService.fetchMissingEvent({
 						eventId: missingId,
-						roomId: event.event.room_id,
+						roomId,
 						origin: event.origin,
 					});
 				}),

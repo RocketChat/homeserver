@@ -1,13 +1,18 @@
 import { REDACT_ALLOW_ALL_KEYS } from './event-wrapper';
 import type { RedactionEventFields } from './event-wrapper';
-import type { RoomVersion } from './type';
+import type { RoomVersion, RoomVersionCapabilities } from './type';
 import { PersistentEventV9 } from './v9';
 import type { EventID, UserID } from '../types/_common';
 import { type PduCreateEventContent, type PduRoomRedactionContent, type PduType } from '../types/v3-11';
 
 export class PersistentEventV11<Type extends PduType = PduType> extends PersistentEventV9<Type> {
+	static readonly capabilities: RoomVersionCapabilities = {
+		...PersistentEventV9.capabilities,
+		redactsInContent: true,
+	};
+
 	// v11 removed m.room.create's content.creator, the sender is the creator instead
-	static newCreateEventContent(_creator: UserID, roomVersion: RoomVersion): PduCreateEventContent {
+	static newCreateEventContent(_creator: UserID, roomVersion: RoomVersion, _additionalCreators?: UserID[]): PduCreateEventContent {
 		return { room_version: roomVersion };
 	}
 

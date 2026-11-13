@@ -20,7 +20,8 @@ export const EventBaseDto = t.Object({
 	type: t.String({ description: 'Event type' }),
 	content: t.Record(t.String(), t.Any(), { description: 'Event content' }),
 	sender: UsernameDto,
-	room_id: RoomIdDto,
+	// absent on m.room.create from room v12
+	room_id: t.Optional(RoomIdDto),
 	origin_server_ts: TimestampDto,
 	depth: DepthDto,
 	prev_events: t.Array(t.String(), {

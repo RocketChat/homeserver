@@ -2,15 +2,23 @@ import { toUnpaddedBase64 } from '@rocket.chat/federation-crypto';
 
 import { PersistentEventBase } from './event-wrapper';
 import type { REDACT_ALLOW_ALL_KEYS, RedactionEventFields } from './event-wrapper';
-import type { RoomVersion, RoomVersion3To11 } from './type';
+import type { RoomVersion, RoomVersionCapabilities, SupportedRoomVersion } from './type';
 import type { EventID, PduForType, UserID } from '../types/_common';
 import type { PduCreateEventContent, PduRoomRedactionContent, PduType } from '../types/v3-11';
 
 // v3 is where it changes first
-export class PersistentEventV3<Type extends PduType = PduType> extends PersistentEventBase<RoomVersion3To11, Type> {
+export class PersistentEventV3<Type extends PduType = PduType> extends PersistentEventBase<SupportedRoomVersion, Type> {
+	static readonly capabilities: RoomVersionCapabilities = {
+		roomIdFormat: 'random-with-domain',
+		createEventInAuthEvents: true,
+		privilegedCreators: false,
+		stateResolution: 'v2',
+		redactsInContent: false,
+	};
+
 	private _eventId?: EventID;
 
-	static newCreateEventContent(creator: UserID, roomVersion: RoomVersion): PduCreateEventContent {
+	static newCreateEventContent(creator: UserID, roomVersion: RoomVersion, _additionalCreators?: UserID[]): PduCreateEventContent {
 		return { room_version: roomVersion, creator };
 	}
 

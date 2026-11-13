@@ -1,12 +1,16 @@
 import 'reflect-metadata';
 import { afterAll, beforeAll, describe, expect, it, spyOn } from 'bun:test';
 
+import { type EventID, type Pdu, PersistentEventBase, PersistentEventFactory, type UserID } from '@rocket.chat/federation-room';
+
 import type { EventBase } from '../events/eventBase';
 import { EncryptionValidAlgorithm } from '../types';
 import type { HashedEvent } from './authentication';
 import * as authentication from './authentication';
 import { checkSignAndHashes } from './checkSignAndHashes';
 import { MatrixError } from './errors';
+import { generateKeyPairs } from './keys';
+import { signEvent } from './signEvent';
 import * as signJson from './signJson';
 import type { SignedJson } from './signJson';
 
@@ -159,5 +163,60 @@ describe('checkSignAndHashes', () => {
 		expect(error?.message).toBe('Signature not found');
 
 		getSignaturesSpy.mockRestore();
+	});
+});
+
+// real keys and no mocks: signs the way StateService.signEvent does and verifies the way an incoming PDU is verified
+describe('checkSignAndHashes: room v12', () => {
+	const origin = 'example.com';
+	const alice = '@alice:example.com' as UserID;
+
+	async function sign(event: PersistentEventBase) {
+		const key = await generateKeyPairs(new Uint8Array(32).fill(7));
+		const keyId = `${key.algorithm}:${key.version}`;
+
+		const signed = await signEvent(event.redactedEvent as Pdu, key, origin, false);
+		event.addSignature(origin, keyId, signed.signatures[origin][keyId]);
+
+		const getPublicKey = async () => Buffer.from(key.publicKey).toString('base64');
+
+		return { pdu: event.event as unknown as HashedEvent<SignedJson<Pdu>>, getPublicKey };
+	}
+
+	it('verifies a signed v12 create event, which has no room_id', async () => {
+		const create = PersistentEventFactory.newCreateEvent(alice, '12', { additionalCreators: ['@bob:example.com' as UserID] });
+		const { pdu, getPublicKey } = await sign(create);
+
+		expect(pdu.room_id).toBeUndefined();
+		await expect(checkSignAndHashes(pdu, origin, getPublicKey, '12')).resolves.toEqual(pdu);
+	});
+
+	it('verifies a signed v12 message', async () => {
+		const create = PersistentEventFactory.newCreateEvent(alice, '12');
+		const message = PersistentEventFactory.createFromRawEvent(
+			{
+				type: 'm.room.message',
+				sender: alice,
+				room_id: create.roomId,
+				content: { msgtype: 'm.text', body: 'hello' },
+				origin_server_ts: 2,
+				depth: 2,
+				prev_events: [create.eventId],
+				auth_events: [] as EventID[],
+			},
+			'12',
+		);
+		const { pdu, getPublicKey } = await sign(message);
+
+		await expect(checkSignAndHashes(pdu, origin, getPublicKey, '12')).resolves.toEqual(pdu);
+	});
+
+	it('rejects a v12 create event whose additional_creators were tampered with', async () => {
+		const create = PersistentEventFactory.newCreateEvent(alice, '12', { additionalCreators: ['@bob:example.com' as UserID] });
+		const { pdu, getPublicKey } = await sign(create);
+
+		const tampered = { ...pdu, content: { ...pdu.content, additional_creators: ['@eve:example.com'] } } as typeof pdu;
+
+		await expect(checkSignAndHashes(tampered, origin, getPublicKey, '12')).rejects.toThrow('Invalid signature');
 	});
 });

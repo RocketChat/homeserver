@@ -1,5 +1,6 @@
 import type { PersistentEventBase } from './event-wrapper';
 import type { RoomVersion } from './type';
+import type { UserID } from '../types/_common';
 import { type PduPowerLevelsEventContent, type PduType } from '../types/v3-11';
 
 // centralize all power level values here
@@ -64,8 +65,13 @@ class PowerLevelEvent<
 	}
 
 	getPowerLevelForUser(userId: string, createEvent?: PersistentEventBase<RoomVersion, 'm.room.create'>) {
+		// from v12 room creators outrank every power level and cannot be listed in users
+		if (createEvent?.capabilities.privilegedCreators && createEvent.getCreators().has(userId as UserID)) {
+			return Infinity;
+		}
+
 		if (!this._content) {
-			if (createEvent?.sender === userId) {
+			if (createEvent?.getCreator() === userId) {
 				return 100;
 			}
 
@@ -80,7 +86,8 @@ class PowerLevelEvent<
 			return this._content.users_default;
 		}
 
-		return createEvent?.sender === userId ? 100 : 0;
+		// the creator's implicit 100 only applies while no power levels event exists
+		return 0;
 	}
 
 	getRequiredPowerLevelForEvent(event: PersistentEventBase) {
@@ -169,6 +176,10 @@ class PowerLevelEvent<
 		}
 
 		return this._content.events?.[type];
+	}
+
+	getUserIds(): string[] {
+		return Object.keys(this._content?.users ?? {});
 	}
 
 	getPowerLevelUsersValue(userId: string) {

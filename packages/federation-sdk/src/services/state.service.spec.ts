@@ -2059,6 +2059,30 @@ describe('StateService', async () => {
 		expect(newPduIds).toStrictEqual(expectedAfterMessageSent.pdu_ids);
 	});
 
+	it('does not persist an event whose auth events are unknown', async () => {
+		const { roomCreateEvent } = await createRoom('public');
+		const { roomId } = roomCreateEvent;
+		const version = roomCreateEvent.getContent().room_version;
+
+		const built = await stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				sender: roomCreateEvent.sender,
+				content: { msgtype: 'm.text', body: 'hello world' },
+				room_id: roomId,
+				...getDefaultFields(),
+			},
+			version,
+		);
+		const message = PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			{ ...built.event, auth_events: [...built.event.auth_events, '$unknown' as room.EventID] },
+			version,
+		);
+
+		await expect(stateService.handlePdu(message)).rejects.toThrow('Missing auth events');
+		expect(await stateService.getEvent(message.eventId)).toBeNull();
+	});
+
 	it('should handle concurrent joins fairly and build correct final state', async () => {
 		const users = [];
 		for (let i = 0; i < 20; i++) {
@@ -2329,6 +2353,98 @@ describe('StateService', async () => {
 			expect(servers.has('server2.com')).toBe(true);
 			expect(servers.has('server3.com')).toBe(true);
 			expect(servers.size).toBe(4);
+		});
+	});
+
+	describe('room v12', () => {
+		const alice = '@alice:remote.com' as room.UserID;
+
+		// the room as a v12 resident server would describe it in a send_join response
+		function remoteV12Room() {
+			const create = PersistentEventFactory.newCreateEvent(alice, '12');
+			const { roomId } = create;
+
+			const event = <T extends room.PduType>(
+				type: T,
+				content: Record<string, unknown>,
+				depth: number,
+				prev: PersistentEventBase,
+				auth: PersistentEventBase[],
+				stateKey = '',
+			) =>
+				PersistentEventFactory.createFromRawEvent<T>(
+					{
+						type,
+						room_id: roomId,
+						sender: alice,
+						state_key: stateKey,
+						content,
+						origin_server_ts: depth,
+						depth,
+						prev_events: [prev.eventId],
+						auth_events: auth.map((e) => e.eventId),
+					} as never,
+					'12',
+				);
+
+			const join = event('m.room.member', { membership: 'join' }, 2, create, [], alice);
+			const powerLevels = event('m.room.power_levels', { users: {}, users_default: 0 }, 3, join, [join]);
+			const joinRules = event('m.room.join_rules', { join_rule: 'public' }, 4, powerLevels, [powerLevels, join]);
+
+			return { create, roomId, join, powerLevels, joinRules };
+		}
+
+		it('saves a send_join state whose auth chain never reaches the create event', async () => {
+			const { create, roomId, join, powerLevels, joinRules } = remoteV12Room();
+
+			const stateId = await stateService.processInitialState(
+				[create, join, powerLevels, joinRules].map((e) => e.event as room.Pdu),
+				[join, powerLevels].map((e) => e.event as room.Pdu),
+				notifierStub,
+			);
+
+			expect(stateId).toBeString();
+			expect(await stateService.getRoomVersion(roomId)).toBe('12');
+
+			const state = await stateService.getLatestRoomState(roomId);
+			expect(state.get('m.room.create:')?.eventId).toBe(create.eventId);
+			expect(state.get('m.room.join_rules:')?.eventId).toBe(joinRules.eventId);
+		});
+
+		it('refuses a send_join state without any create event', async () => {
+			const { join, powerLevels, joinRules } = remoteV12Room();
+
+			await expect(
+				stateService.processInitialState(
+					[join, powerLevels, joinRules].map((e) => e.event as room.Pdu),
+					[join, powerLevels].map((e) => e.event as room.Pdu),
+					notifierStub,
+				),
+			).rejects.toThrow('No create event found');
+		});
+
+		it('refuses a send_join state whose create event fails authorization', async () => {
+			const create = PersistentEventFactory.newCreateEvent(alice, '12', { additionalCreators: ['@bob:bad host' as room.UserID] });
+
+			await expect(stateService.processInitialState([create.event as room.Pdu], [], notifierStub)).rejects.toThrow(
+				room.StateResolverAuthorizationError,
+			);
+			expect(await eventCollection.countDocuments()).toBe(0);
+		});
+
+		it('reports the creator server as the origin of a v12 room it holds', async () => {
+			const { create, roomId, join, powerLevels, joinRules } = remoteV12Room();
+
+			expect(await stateService.getRoomOriginServer(roomId)).toBeUndefined();
+
+			await stateService.processInitialState(
+				[create, join, powerLevels, joinRules].map((e) => e.event as room.Pdu),
+				[join, powerLevels].map((e) => e.event as room.Pdu),
+				notifierStub,
+			);
+
+			expect(await stateService.getRoomOriginServer(roomId)).toBe('remote.com');
+			expect(await stateService.getRoomOriginServer('!abc:legacy.com' as RoomID)).toBe('legacy.com');
 		});
 	});
 });
