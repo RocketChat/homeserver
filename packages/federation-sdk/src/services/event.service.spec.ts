@@ -189,4 +189,37 @@ describe('processIncomingPDUs', () => {
 		expect(staged).toEqual([message.eventId]);
 		expect(enqueued).toEqual([create.roomId]);
 	});
+
+	it('drops a PDU listing the same auth event twice', async () => {
+		const create = PersistentEventFactory.newCreateEvent('@alice:remote.com' as UserID, '12');
+		const duplicated = {
+			type: 'm.room.message',
+			sender: '@alice:remote.com',
+			room_id: create.roomId,
+			content: { msgtype: 'm.text', body: 'hello' },
+			origin_server_ts: 2,
+			depth: 2,
+			prev_events: [create.eventId],
+			auth_events: ['$auth', '$auth'],
+			hashes: { sha256: 'irrelevant' },
+			signatures: {},
+		} as unknown as Pdu;
+
+		const staged: EventID[] = [];
+
+		const service = new EventService(
+			null as never,
+			{ enqueue: () => undefined } as unknown as StagingAreaQueue,
+			{ getRoomVersion: async () => '12' } as unknown as StateService,
+			null as never,
+			null as never,
+			{ findById: async () => null } as unknown as EventRepository,
+			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
+			null as never,
+		);
+
+		await service.processIncomingPDUs('remote.com', [duplicated]);
+
+		expect(staged).toEqual([]);
+	});
 });

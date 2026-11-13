@@ -586,7 +586,13 @@ export class StateService {
 
 		const store = this._getStore(event.version);
 
-		const authEvents = await store.getEvents(event.getAuthEventIds());
+		const authEventIds = event.getAuthEventIds();
+		const authEvents = await store.getEvents(authEventIds);
+		// a plain error rather than a rejection, so the staging area retries once they are fetched
+		if (authEvents.length !== authEventIds.length) {
+			const found = new Set(authEvents.map((authEvent) => authEvent.eventId));
+			throw new Error(`Missing auth events for ${event.eventId}: ${authEventIds.filter((id) => !found.has(id)).join(', ')}`);
+		}
 
 		try {
 			// the auth_events themselves: duplicates, excess or rejected entries, entries from another room,

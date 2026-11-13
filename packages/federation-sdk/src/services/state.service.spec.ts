@@ -2059,6 +2059,30 @@ describe('StateService', async () => {
 		expect(newPduIds).toStrictEqual(expectedAfterMessageSent.pdu_ids);
 	});
 
+	it('does not persist an event whose auth events are unknown', async () => {
+		const { roomCreateEvent } = await createRoom('public');
+		const { roomId } = roomCreateEvent;
+		const version = roomCreateEvent.getContent().room_version;
+
+		const built = await stateService.buildEvent<'m.room.message'>(
+			{
+				type: 'm.room.message',
+				sender: roomCreateEvent.sender,
+				content: { msgtype: 'm.text', body: 'hello world' },
+				room_id: roomId,
+				...getDefaultFields(),
+			},
+			version,
+		);
+		const message = PersistentEventFactory.createFromRawEvent<'m.room.message'>(
+			{ ...built.event, auth_events: [...built.event.auth_events, '$unknown' as room.EventID] },
+			version,
+		);
+
+		await expect(stateService.handlePdu(message)).rejects.toThrow('Missing auth events');
+		expect(await stateService.getEvent(message.eventId)).toBeNull();
+	});
+
 	it('should handle concurrent joins fairly and build correct final state', async () => {
 		const users = [];
 		for (let i = 0; i < 20; i++) {
