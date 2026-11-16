@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, spyOn } from 'bun:test';
+import { beforeAll, describe, expect, it, jest, spyOn } from 'bun:test';
 
 import type {
 	PduJoinRuleEventContent,
@@ -8,6 +8,7 @@ import type {
 	StateMapKey,
 	UserID,
 } from '@rocket.chat/federation-room';
+import type { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
 import { FederationValidationService, federationSDK, init } from '..';
@@ -16,7 +17,7 @@ import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
-import { LockRepository } from '../repositories/lock.repository';
+import { LOCK_KEEP_ALIVE_INTERVAL_MS, type Lock, LockRepository } from '../repositories/lock.repository';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
@@ -442,6 +443,40 @@ describe('RoomService', async () => {
 			}
 
 			expect(await stagingCanLock()).toBe(true);
+		});
+
+		it('keeps the room locked when storing the state outlasts the lock timeout', async () => {
+			const lockCollection = container.resolve<Collection<Lock>>('LockCollection');
+			const refreshSpy = spyOn(lockRepository, 'updateLockTimestamp');
+			let refreshed = false;
+			let stagingCouldLock: boolean | undefined;
+
+			const spies = [
+				...mockRemoteJoin(),
+				refreshSpy,
+				spyOn(stateService, 'processInitialState').mockImplementation(async () => {
+					// as if storing the state had been running for longer than the lock timeout
+					await lockCollection.updateOne({ roomId: remoteRoomId }, { $set: { lockedAt: new Date(Date.now() - 3 * 60 * 1000) } });
+					jest.advanceTimersByTime(LOCK_KEEP_ALIVE_INTERVAL_MS);
+					refreshed = refreshSpy.mock.calls.length > 0;
+					await refreshSpy.mock.results.at(-1)?.value;
+
+					stagingCouldLock = await stagingCanLock();
+					return '' as any;
+				}),
+				spyOn(eventService, 'processIncomingPDUs').mockResolvedValue(),
+			];
+
+			jest.useFakeTimers();
+			try {
+				await roomService.joinUser(remoteRoomId, bob);
+			} finally {
+				jest.useRealTimers();
+				spies.forEach((spy) => spy.mockRestore());
+			}
+
+			expect(refreshed).toBe(true);
+			expect(stagingCouldLock).toBe(false);
 		});
 
 		it('waits for the staging area to release the room before joining', async () => {

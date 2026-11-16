@@ -796,7 +796,7 @@ export class RoomService {
 
 		for (;;) {
 			// eslint-disable-next-line no-await-in-loop
-			const lock = await this.lockRepository.lock(roomId, this.configService.instanceId);
+			const lock = await this.lockRepository.lock(roomId, this.configService.instanceId, { keepAlive: true });
 			if (lock.success) {
 				return lock;
 			}
@@ -884,9 +884,6 @@ export class RoomService {
 
 				// if partial, join event will also be partial
 				await stateService._resolveStateAtEvent(event);
-
-				// a long history can outlast the lock's staleness window
-				await lock.update();
 			}
 
 			if (await stateService.isRoomStatePartial(roomId)) {
