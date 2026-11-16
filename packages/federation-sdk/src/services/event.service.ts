@@ -458,6 +458,10 @@ export class EventService {
 			if (!event.prev_events || !Array.isArray(event.prev_events) || event.prev_events.length === 0) {
 				errors.push('Event must reference previous events (prev_events)');
 			}
+			// the event id is hashed over a de-duplicated list, so such an event could never get its sender's id
+			if (new Set(event.auth_events).size !== event.auth_events.length) {
+				errors.push('Event must not list duplicate auth_events');
+			}
 		} else {
 			if (event.prev_events && event.prev_events.length > 0) {
 				errors.push('Create event must not have prev_events');
