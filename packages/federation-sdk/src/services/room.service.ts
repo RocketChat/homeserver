@@ -38,6 +38,7 @@ import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
 import { ProfilesService } from './profiles.service';
 import { StateService, UnknownRoomError } from './state.service';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { LOCK_TIMEOUT_MS, LockRepository } from '../repositories/lock.repository';
@@ -69,6 +70,7 @@ export class RoomService {
 		private readonly federationValidationService: FederationValidationService,
 		private readonly directoryService: DirectoryService,
 		private readonly eventNotifierService: EventNotifierService,
+		private readonly stagingAreaQueue: StagingAreaQueue,
 	) {}
 
 	private validatePowerLevelChange(
@@ -752,7 +754,11 @@ export class RoomService {
 
 		await stateService.signEvent(joinEvent);
 
-		const { state, event } = await this.sendJoinAndStoreState(roomId, joinEvent, residentServer);
+		const { state, event } = await this.sendJoinAndStoreState(roomId, joinEvent, residentServer).catch((error) => {
+			// the staging area skipped this room while the join held its lock, and the success path's re-staging won't run
+			this.stagingAreaQueue.enqueue(roomId);
+			throw error;
+		});
 
 		const joinEventFinal = PersistentEventFactory.createFromRawEvent(event, makeJoinResponse.room_version);
 

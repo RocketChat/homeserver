@@ -17,6 +17,7 @@ import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { LOCK_KEEP_ALIVE_INTERVAL_MS, LOCK_TIMEOUT_MS, type Lock, LockRepository } from '../repositories/lock.repository';
 
 describe('RoomService', async () => {
@@ -367,6 +368,7 @@ describe('RoomService', async () => {
 
 		const federationService = container.resolve(FederationService);
 		const eventService = container.resolve(EventService);
+		const stagingAreaQueue = container.resolve(StagingAreaQueue);
 
 		// resolved once init() in beforeAll has registered the lock collection
 		let lockRepository: LockRepository;
@@ -427,13 +429,19 @@ describe('RoomService', async () => {
 			expect(await stagingCouldLockWhenJoinIsStaged).toBe(true);
 		});
 
-		it('releases the room lock when storing the state fails', async () => {
+		it('releases the room lock and re-enqueues the room for the staging area when storing the state fails', async () => {
+			let stagingCouldLockWhenEnqueued: Promise<boolean> | undefined;
+
 			mockRemoteJoin();
 			spyOn(stateService, 'processInitialState').mockRejectedValue(new Error('bad state'));
+			const enqueueSpy = spyOn(stagingAreaQueue, 'enqueue').mockImplementation(() => {
+				stagingCouldLockWhenEnqueued = stagingCanLock();
+			});
 
 			await expect(roomService.joinUser(remoteRoomId, bob)).rejects.toThrow('bad state');
 
-			expect(await stagingCanLock()).toBe(true);
+			expect(enqueueSpy).toHaveBeenCalledWith(remoteRoomId);
+			expect(await stagingCouldLockWhenEnqueued).toBe(true);
 		});
 
 		it('keeps the room locked when storing the state outlasts the lock timeout', async () => {
