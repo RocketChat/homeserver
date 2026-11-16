@@ -146,6 +146,11 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		} as PduForType<Type>;
 	}
 
+	// `event` returns a fresh `unsigned` object when the raw event has none, so writes through it are lost
+	setUnsigned(key: string, value: unknown) {
+		this.rawEvent.unsigned = { ...this.rawEvent.unsigned, [key]: value };
+	}
+
 	private getEventWithoutHashes() {
 		const { hashes, signatures, ...event } = this.rawEvent;
 		return {
