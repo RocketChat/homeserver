@@ -40,11 +40,9 @@ import { ProfilesService } from './profiles.service';
 import { StateService, UnknownRoomError } from './state.service';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
-import { LockRepository } from '../repositories/lock.repository';
+import { LOCK_TIMEOUT_MS, LockRepository } from '../repositories/lock.repository';
 import { RoomRepository } from '../repositories/room.repository';
 
-// a lock idle this long is taken over as stale (LockRepository), so waiting longer is pointless
-const ROOM_LOCK_WAIT_MS = 2 * 60 * 1000;
 const ROOM_LOCK_RETRY_MS = 200;
 
 @singleton()
@@ -792,7 +790,8 @@ export class RoomService {
 	}
 
 	private async acquireRoomLock(roomId: RoomID) {
-		const deadline = Date.now() + ROOM_LOCK_WAIT_MS;
+		// by then a lock that isn't being refreshed is stale and gets taken over, so waiting longer is pointless
+		const deadline = Date.now() + LOCK_TIMEOUT_MS;
 
 		for (;;) {
 			// eslint-disable-next-line no-await-in-loop

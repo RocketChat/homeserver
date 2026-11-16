@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, jest, spyOn } from 'bun:test';
+import { afterEach, beforeAll, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 
 import type {
 	PduJoinRuleEventContent,
@@ -17,7 +17,7 @@ import { EventService } from './event.service';
 import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
-import { LOCK_KEEP_ALIVE_INTERVAL_MS, type Lock, LockRepository } from '../repositories/lock.repository';
+import { LOCK_KEEP_ALIVE_INTERVAL_MS, LOCK_TIMEOUT_MS, type Lock, LockRepository } from '../repositories/lock.repository';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
@@ -365,24 +365,26 @@ describe('RoomService', async () => {
 		const bob = '@bob:example.com' as UserID;
 		const stagingInstance = 'staging-instance';
 
-		// resolved once init() in beforeAll has registered the collections
+		const federationService = container.resolve(FederationService);
+		const eventService = container.resolve(EventService);
+
+		// resolved once init() in beforeAll has registered the lock collection
 		let lockRepository: LockRepository;
-		let federationService: FederationService;
-		let eventService: EventService;
 
 		beforeAll(() => {
 			lockRepository = container.resolve(LockRepository);
-			federationService = container.resolve(FederationService);
-			eventService = container.resolve(EventService);
+		});
+
+		afterEach(() => {
+			mock.restore();
+			jest.useRealTimers();
 		});
 
 		// what the staging area queue does before processing a room
 		const stagingCanLock = async () => {
-			const acquired = await lockRepository.getLock(remoteRoomId, stagingInstance);
-			if (acquired) {
-				await lockRepository.releaseLock(remoteRoomId, stagingInstance);
-			}
-			return acquired;
+			// eslint-disable-next-line prettier/prettier
+			await using lock = await lockRepository.lock(remoteRoomId, stagingInstance);
+			return lock.success;
 		};
 
 		const mockRemoteJoin = (onSendJoin?: () => void) => {
@@ -398,49 +400,38 @@ describe('RoomService', async () => {
 				origin_server_ts: Date.now(),
 			};
 
-			return [
-				spyOn(federationService, 'makeJoin').mockResolvedValue({ event: template, room_version: '10' } as any),
-				spyOn(federationService, 'sendJoin').mockImplementation(async (joinEvent) => {
-					onSendJoin?.();
-					return { state: [], auth_chain: [], event: joinEvent.event, servers_in_room: [] } as any;
-				}),
-			];
+			spyOn(federationService, 'makeJoin').mockResolvedValue({ event: template, room_version: '10' } as any);
+			spyOn(federationService, 'sendJoin').mockImplementation(async (joinEvent) => {
+				onSendJoin?.();
+				return { state: [], auth_chain: [], event: joinEvent.event, servers_in_room: [] } as any;
+			});
 		};
 
 		it('keeps the staging area out of the room until the send_join state is stored', async () => {
 			let stagingCouldLockDuringInitialState: boolean | undefined;
 			let stagingCouldLockWhenJoinIsStaged: Promise<boolean> | undefined;
 
-			const spies = [
-				...mockRemoteJoin(),
-				spyOn(stateService, 'processInitialState').mockImplementation(async () => {
-					stagingCouldLockDuringInitialState = await stagingCanLock();
-					return '' as any;
-				}),
-				spyOn(eventService, 'processIncomingPDUs').mockImplementation(() => {
-					stagingCouldLockWhenJoinIsStaged = stagingCanLock();
-					return Promise.resolve();
-				}),
-			];
+			mockRemoteJoin();
+			spyOn(stateService, 'processInitialState').mockImplementation(async () => {
+				stagingCouldLockDuringInitialState = await stagingCanLock();
+				return '' as any;
+			});
+			spyOn(eventService, 'processIncomingPDUs').mockImplementation(() => {
+				stagingCouldLockWhenJoinIsStaged = stagingCanLock();
+				return Promise.resolve();
+			});
 
-			try {
-				await roomService.joinUser(remoteRoomId, bob);
-			} finally {
-				spies.forEach((spy) => spy.mockRestore());
-			}
+			await roomService.joinUser(remoteRoomId, bob);
 
 			expect(stagingCouldLockDuringInitialState).toBe(false);
 			expect(await stagingCouldLockWhenJoinIsStaged).toBe(true);
 		});
 
 		it('releases the room lock when storing the state fails', async () => {
-			const spies = [...mockRemoteJoin(), spyOn(stateService, 'processInitialState').mockRejectedValue(new Error('bad state'))];
+			mockRemoteJoin();
+			spyOn(stateService, 'processInitialState').mockRejectedValue(new Error('bad state'));
 
-			try {
-				await expect(roomService.joinUser(remoteRoomId, bob)).rejects.toThrow('bad state');
-			} finally {
-				spies.forEach((spy) => spy.mockRestore());
-			}
+			await expect(roomService.joinUser(remoteRoomId, bob)).rejects.toThrow('bad state');
 
 			expect(await stagingCanLock()).toBe(true);
 		});
@@ -448,61 +439,49 @@ describe('RoomService', async () => {
 		it('keeps the room locked when storing the state outlasts the lock timeout', async () => {
 			const lockCollection = container.resolve<Collection<Lock>>('LockCollection');
 			const refreshSpy = spyOn(lockRepository, 'updateLockTimestamp');
-			let refreshed = false;
 			let stagingCouldLock: boolean | undefined;
 
-			const spies = [
-				...mockRemoteJoin(),
-				refreshSpy,
-				spyOn(stateService, 'processInitialState').mockImplementation(async () => {
-					// as if storing the state had been running for longer than the lock timeout
-					await lockCollection.updateOne({ roomId: remoteRoomId }, { $set: { lockedAt: new Date(Date.now() - 3 * 60 * 1000) } });
-					jest.advanceTimersByTime(LOCK_KEEP_ALIVE_INTERVAL_MS);
-					refreshed = refreshSpy.mock.calls.length > 0;
-					await refreshSpy.mock.results.at(-1)?.value;
+			mockRemoteJoin();
+			spyOn(stateService, 'processInitialState').mockImplementation(async () => {
+				// as if storing the state had been running for longer than the lock timeout
+				await lockCollection.updateOne(
+					{ roomId: remoteRoomId },
+					{ $set: { lockedAt: new Date(Date.now() - LOCK_TIMEOUT_MS - 60_000) } },
+				);
+				jest.advanceTimersByTime(LOCK_KEEP_ALIVE_INTERVAL_MS);
+				await refreshSpy.mock.results.at(-1)?.value;
 
-					stagingCouldLock = await stagingCanLock();
-					return '' as any;
-				}),
-				spyOn(eventService, 'processIncomingPDUs').mockResolvedValue(),
-			];
+				stagingCouldLock = await stagingCanLock();
+				return '' as any;
+			});
+			spyOn(eventService, 'processIncomingPDUs').mockResolvedValue();
 
 			jest.useFakeTimers();
-			try {
-				await roomService.joinUser(remoteRoomId, bob);
-			} finally {
-				jest.useRealTimers();
-				spies.forEach((spy) => spy.mockRestore());
-			}
+			await roomService.joinUser(remoteRoomId, bob);
 
-			expect(refreshed).toBe(true);
+			expect(refreshSpy).toHaveBeenCalled();
 			expect(stagingCouldLock).toBe(false);
 		});
 
 		it('waits for the staging area to release the room before joining', async () => {
 			expect(await lockRepository.getLock(remoteRoomId, stagingInstance)).toBe(true);
-			const stagingDone = new Promise<void>((resolve) => {
-				setTimeout(() => resolve(lockRepository.releaseLock(remoteRoomId, stagingInstance)), 300);
+			let stagingReleasing = false;
+			const stagingDone = Bun.sleep(300).then(() => {
+				stagingReleasing = true;
+				return lockRepository.releaseLock(remoteRoomId, stagingInstance);
 			});
 
-			let sendJoinCalledAt = 0;
-			const spies = [
-				...mockRemoteJoin(() => {
-					sendJoinCalledAt = Date.now();
-				}),
-				spyOn(stateService, 'processInitialState').mockResolvedValue('' as any),
-				spyOn(eventService, 'processIncomingPDUs').mockResolvedValue(),
-			];
+			let sentJoinWhileStagingHeldTheRoom: boolean | undefined;
+			mockRemoteJoin(() => {
+				sentJoinWhileStagingHeldTheRoom = !stagingReleasing;
+			});
+			spyOn(stateService, 'processInitialState').mockResolvedValue('' as any);
+			spyOn(eventService, 'processIncomingPDUs').mockResolvedValue();
 
-			const startedAt = Date.now();
-			try {
-				await roomService.joinUser(remoteRoomId, bob);
-			} finally {
-				spies.forEach((spy) => spy.mockRestore());
-			}
+			await roomService.joinUser(remoteRoomId, bob);
 			await stagingDone;
 
-			expect(sendJoinCalledAt - startedAt).toBeGreaterThanOrEqual(250);
+			expect(sentJoinWhileStagingHeldTheRoom).toBe(false);
 		});
 	});
 });

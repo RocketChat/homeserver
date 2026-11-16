@@ -2,7 +2,7 @@ import { createLogger } from '@rocket.chat/federation-core';
 import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
 
-const LOCK_TIMEOUT_MS = 2 * 60 * 1000;
+export const LOCK_TIMEOUT_MS = 2 * 60 * 1000;
 
 // well under LOCK_TIMEOUT_MS, so one slow refresh doesn't let the lock go stale
 export const LOCK_KEEP_ALIVE_INTERVAL_MS = 30 * 1000;
