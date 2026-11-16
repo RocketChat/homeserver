@@ -19,7 +19,7 @@ import { type WithId } from 'mongodb';
 import { type ConfigService } from './config.service';
 import { DatabaseConnectionService } from './database-connection.service';
 import type { EventNotifierService } from './event-notifier.service';
-import { StateService, UnknownRoomError } from './state.service';
+import { MissingAuthorizationEventsError, StateService, UnknownRoomError } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import type { StateGraphStore } from '../repositories/state-graph.repository';
@@ -1004,6 +1004,40 @@ describe('StateService', async () => {
 
 		const state = await stateService.getLatestRoomState2(roomCreateEvent.roomId);
 		expect(state.isUserInRoom(newUser)).toBe(true);
+	});
+
+	it('09b should postpone, not reject, a join whose auth events are not stored yet', async () => {
+		const { roomCreateEvent, joinRuleEvent } = await createRoom('invite');
+		const newUser = '@bob:example.com' as room.UserID;
+
+		await inviteUser(roomCreateEvent.roomId, newUser, roomCreateEvent.getCreator());
+
+		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				room_id: roomCreateEvent.roomId,
+				sender: newUser,
+				state_key: newUser,
+				content: { membership: 'join' },
+				...getDefaultFields(),
+			},
+			roomCreateEvent.version,
+		);
+		expect(membershipEvent.getAuthEventIds()).toContain(joinRuleEvent.eventId);
+
+		// the join rules are still being written by another flow, like send_join's initial state
+		const joinRuleRecord = await eventCollection.findOne({ _id: joinRuleEvent.eventId });
+		await eventCollection.deleteOne({ _id: joinRuleEvent.eventId });
+
+		await expect(stateService.handlePdu(membershipEvent)).rejects.toBeInstanceOf(MissingAuthorizationEventsError);
+		expect(membershipEvent.rejected).toBeFalse();
+		expect(await eventRepository.findById(membershipEvent.eventId)).toBeNull();
+
+		await eventCollection.insertOne(joinRuleRecord!);
+
+		await stateService.handlePdu(membershipEvent);
+
+		expect((await stateService.getLatestRoomState2(roomCreateEvent.roomId)).isUserInRoom(newUser)).toBeTrue();
 	});
 
 	it('10 should not allow joining if banned', async () => {
