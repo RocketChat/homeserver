@@ -56,6 +56,7 @@ packages/federation-sdk/src/services/event.service.spec.ts
   s_f58a7f295f16da::t_8a4d8cd56e0e49 3,5-6,9,11,146-147,327-370
   s_f58a7f295f16da::t_a750a19e83f008 12
   s_f58a7f295f16da::t_49f2a77397f6e3 371-372
+  s_f58a7f295f16da::t_e7b769328887bc 326
 packages/room/src/state_resolution/definitions/algorithm/v2.1.spec.ts
   s_f58a7f295f16da::t_b848c8d586ea5d 1-60,63-185
   s_f58a7f295f16da::t_a750a19e83f008 61-62
@@ -125,6 +126,7 @@ packages/federation-sdk/src/repositories/event-store-layout.ts
 packages/federation-sdk/src/services/invite.service.spec.ts
   s_f58a7f295f16da::t_506b0fa805ab58 712,757-799
   s_f58a7f295f16da::t_d717531407bd96 550
+  s_f58a7f295f16da::t_46de00c6257cb4 756
 packages/room/src/manager/type.ts
   s_f58a7f295f16da::t_33222351a48c3a 3-4,6-25
 packages/room/src/manager/event-wrapper.ts
