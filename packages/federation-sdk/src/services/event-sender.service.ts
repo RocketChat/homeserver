@@ -35,6 +35,13 @@ export class EventRejectedError extends Error {
 	}
 }
 
+export class StickyEventsDisabledError extends Error {
+	constructor() {
+		super('Sticky events (MSC4354) are not enabled on this server');
+		this.name = 'StickyEventsDisabledError';
+	}
+}
+
 @singleton()
 export class EventSenderService {
 	private readonly logger = createLogger('EventSenderService');
@@ -97,6 +104,7 @@ export class EventSenderService {
 	 * Send a message event on behalf of a local user that stays sticky (MSC4354)
 	 * for `durationMs` from now.
 	 *
+	 * @throws {StickyEventsDisabledError} when sticky events are not enabled
 	 * @throws {RangeError} when `durationMs` is not a whole number of milliseconds
 	 * from 1 to MAX_STICKY_DURATION_MS
 	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
@@ -108,6 +116,10 @@ export class EventSenderService {
 		senderUserId: UserID,
 		durationMs: number,
 	): Promise<{ eventId: EventID }> {
+		if (!this.stickyEventService.enabled) {
+			throw new StickyEventsDisabledError();
+		}
+
 		if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > MAX_STICKY_DURATION_MS) {
 			throw new RangeError(`A sticky event lasts from 1 to ${MAX_STICKY_DURATION_MS} ms, not ${durationMs}`);
 		}

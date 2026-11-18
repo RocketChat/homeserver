@@ -13,7 +13,7 @@ import {
 	type UserID,
 } from '@rocket.chat/federation-room';
 
-import { EventRejectedError, EventSenderService } from './event-sender.service';
+import { EventRejectedError, EventSenderService, StickyEventsDisabledError } from './event-sender.service';
 import type { FederationService } from './federation.service';
 import { PartialStateResolutionError, type StateService, UnknownRoomError } from './state.service';
 import type { StickyEventService } from './sticky-event.service';
@@ -233,7 +233,7 @@ describe('EventSenderService.sendStickyEvent', () => {
 		const stateService = { getRoomVersion: mock(async () => '10'), buildEvent, handlePdu } as unknown as StateService;
 		const federationService = { sendEventToAllServersInRoom } as unknown as FederationService;
 		const eventRouterService = { routePersistent } as unknown as EventRouterService;
-		const stickyEventService = { markSticky } as unknown as StickyEventService;
+		const stickyEventService = { enabled: true, markSticky } as unknown as StickyEventService;
 
 		service = new EventSenderService(stateService, federationService, eventRouterService, stickyEventService);
 	});
@@ -266,6 +266,20 @@ describe('EventSenderService.sendStickyEvent', () => {
 		expect(sendEventToAllServersInRoom).toHaveBeenCalledWith(builtEvent);
 		expect(routePersistent).toHaveBeenCalledWith(builtEvent);
 		expect(result).toEqual({ eventId: builtEvent.eventId });
+	});
+
+	test('refuses to send when sticky events are not enabled', async () => {
+		const disabled = new EventSenderService(
+			{ buildEvent } as unknown as StateService,
+			{ sendEventToAllServersInRoom } as unknown as FederationService,
+			{ routePersistent } as unknown as EventRouterService,
+			{ enabled: false, markSticky } as unknown as StickyEventService,
+		);
+
+		await expect(disabled.sendStickyEvent(ROOM_ID, RTC_MEMBER, CONTENT, SENDER, 110_000)).rejects.toBeInstanceOf(StickyEventsDisabledError);
+
+		expect(buildEvent).not.toHaveBeenCalled();
+		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
 	});
 
 	test.each([0, -1, 1.5, 3_600_001, Number.NaN])('refuses a duration of %p ms before building anything', async (durationMs) => {

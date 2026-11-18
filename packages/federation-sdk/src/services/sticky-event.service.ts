@@ -39,6 +39,11 @@ export class StickyEventService {
 		private readonly federationSenderService: FederationSenderService,
 	) {}
 
+	// when off, events are handled as if MSC4354 did not exist: none is recorded, pushed or listed as sticky
+	get enabled(): boolean {
+		return this.configService.stickyEventsEnabled;
+	}
+
 	/**
 	 * Record how long a persisted, accepted event stays sticky, counting from when this
 	 * server received it. Resolves to when its stickiness ends as stored, which is the
@@ -46,7 +51,7 @@ export class StickyEventService {
 	 * sticky.
 	 */
 	async markSticky(event: PersistentEventBase, receivedAt: number): Promise<number | undefined> {
-		if (event.rejected) {
+		if (!this.enabled || event.rejected) {
 			return undefined;
 		}
 
@@ -66,7 +71,7 @@ export class StickyEventService {
 	 * ends. Resolves to the redacted event, if any; failures are logged, never thrown.
 	 */
 	async endStickinessOfRedacted(event: PersistentEventBase): Promise<EventID | undefined> {
-		if (event.type !== 'm.room.redaction') {
+		if (!this.enabled || event.type !== 'm.room.redaction') {
 			return undefined;
 		}
 
@@ -87,6 +92,10 @@ export class StickyEventService {
 		roomId: RoomID,
 		{ type, now = Date.now() }: { type?: string; now?: number } = {},
 	): Promise<ActiveStickyEvent[]> {
+		if (!this.enabled) {
+			return [];
+		}
+
 		const stored = await this.eventRepository.findActiveStickyByRoomId(roomId, now, { type }).toArray();
 
 		return stored.flatMap(({ _id, event, sticky }) => (sticky ? [{ event_id: _id, event, expiresAt: sticky.expiresAt }] : []));
@@ -101,7 +110,7 @@ export class StickyEventService {
 	 * failures are logged, never thrown.
 	 */
 	async catchUpIfNewServer(event: PersistentEventBase, stateBefore?: State): Promise<string | undefined> {
-		if (!event.isMembershipEvent() || event.getMembership() !== 'join' || !event.stateKey) {
+		if (!this.enabled || !event.isMembershipEvent() || event.getMembership() !== 'join' || !event.stateKey) {
 			return undefined;
 		}
 
@@ -135,6 +144,10 @@ export class StickyEventService {
 	 * oldest first. Resolves to how many were queued; failures are logged, never thrown.
 	 */
 	async pushOwnStickyEvents(roomId: RoomID, destination: string): Promise<number> {
+		if (!this.enabled) {
+			return 0;
+		}
+
 		try {
 			const own = await this.eventRepository
 				.findActiveStickyByRoomId(roomId, Date.now(), { senderServer: this.configService.serverName })
@@ -161,6 +174,10 @@ export class StickyEventService {
 	 * Resolves to how many were queued; failures are logged, never thrown.
 	 */
 	async pushOwnStickyEventsToServers(destination?: string): Promise<number> {
+		if (!this.enabled) {
+			return 0;
+		}
+
 		try {
 			const { serverName } = this.configService;
 			const own = await this.eventRepository.findActiveStickyBySenderServer(serverName, Date.now()).toArray();

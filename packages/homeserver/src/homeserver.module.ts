@@ -87,6 +87,7 @@ export async function setup() {
 			processPresence: process.env.EDU_PROCESS_PRESENCE === 'true',
 			processReceipt: process.env.EDU_PROCESS_RECEIPT === 'true',
 		},
+		enableStickyEvents: process.env.ENABLE_STICKY_EVENTS === 'true',
 	});
 
 	const app = new Elysia();

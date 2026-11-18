@@ -68,7 +68,7 @@ describe('StickyEventService', () => {
 
 		service = new StickyEventService(
 			{ setSticky, clearSticky, findActiveStickyByRoomId, findActiveStickyBySenderServer } as unknown as EventRepository,
-			{ serverName: 'hs1' } as ConfigService,
+			{ serverName: 'hs1', stickyEventsEnabled: true } as ConfigService,
 			{ getServerSetInRoom, getStateBeforeEvent, getEvent } as unknown as StateService,
 			{ sendPDU } as unknown as FederationSenderService,
 		);
@@ -361,6 +361,52 @@ describe('StickyEventService', () => {
 
 			expect(await service.catchUpIfNewServer(membership('@dave:hs3', 'join'))).toBeUndefined();
 			expect(scheduled).toHaveLength(0);
+		});
+	});
+
+	describe('when sticky events are not enabled', () => {
+		const sticky = messageEvent({ msc4354_sticky: { duration_ms: 3_600_000 } });
+
+		beforeEach(() => {
+			findActiveStickyByRoomId = mock(() => ({ toArray: async () => [{ _id: sticky.eventId, event: sticky.event, sticky: {} }] }));
+			findActiveStickyBySenderServer = mock(() => ({ toArray: async () => [{ _id: sticky.eventId, event: sticky.event, sticky: {} }] }));
+
+			service = new StickyEventService(
+				{ setSticky, clearSticky, findActiveStickyByRoomId, findActiveStickyBySenderServer } as unknown as EventRepository,
+				{ serverName: 'hs1', stickyEventsEnabled: false } as ConfigService,
+				{ getServerSetInRoom, getStateBeforeEvent, getEvent } as unknown as StateService,
+				{ sendPDU } as unknown as FederationSenderService,
+			);
+		});
+
+		test('records no event as sticky', async () => {
+			expect(await service.markSticky(sticky, SENT_AT)).toBeUndefined();
+			expect(setSticky).not.toHaveBeenCalled();
+		});
+
+		test('leaves redactions alone', async () => {
+			const redaction = messageEvent({ type: 'm.room.redaction', redacts: sticky.eventId });
+
+			expect(await service.endStickinessOfRedacted(redaction)).toBeUndefined();
+			expect(clearSticky).not.toHaveBeenCalled();
+		});
+
+		test('lists no sticky events, even ones recorded while enabled', async () => {
+			expect(await service.getActiveStickyEvents(ROOM_ID)).toEqual([]);
+			expect(findActiveStickyByRoomId).not.toHaveBeenCalled();
+		});
+
+		test('catches up no newly joined server', async () => {
+			const join = messageEvent({ type: 'm.room.member', state_key: '@dave:hs3', sender: '@dave:hs3', content: { membership: 'join' } });
+
+			expect(await service.catchUpIfNewServer(join)).toBeUndefined();
+			expect(getServerSetInRoom).not.toHaveBeenCalled();
+		});
+
+		test('pushes no sticky events to other servers', async () => {
+			expect(await service.pushOwnStickyEvents(ROOM_ID, 'hs2')).toBe(0);
+			expect(await service.pushOwnStickyEventsToServers()).toBe(0);
+			expect(sendPDU).not.toHaveBeenCalled();
 		});
 	});
 });

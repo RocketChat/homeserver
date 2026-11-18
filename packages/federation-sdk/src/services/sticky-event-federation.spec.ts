@@ -57,7 +57,7 @@ describe('sticky events over federation', () => {
 			stateService,
 			{ sendEventToAllServersInRoom: async () => undefined } as unknown as FederationService,
 			{ routePersistent: async () => undefined } as unknown as EventRouterService,
-			{ markSticky: async () => undefined } as unknown as StickyEventService,
+			{ enabled: true, markSticky: async () => undefined } as unknown as StickyEventService,
 		);
 
 		const { eventId } = await sender.sendStickyEvent(
