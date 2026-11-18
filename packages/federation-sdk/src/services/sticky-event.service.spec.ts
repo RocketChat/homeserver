@@ -278,6 +278,22 @@ describe('StickyEventService', () => {
 			expect(getServerSetInRoom).toHaveBeenCalledTimes(1);
 		});
 
+		test('still queues the events of the other rooms when the servers of one cannot be looked up', async () => {
+			getServerSetInRoom.mockImplementation(async (roomId: RoomID) => {
+				if (roomId === OTHER_ROOM_ID) {
+					throw new Error('no state');
+				}
+				return new Set(['hs1', 'hs2', 'hs3']);
+			});
+
+			expect(await service.pushOwnStickyEventsToServers()).toBe(2);
+
+			expect(sendPDU.mock.calls).toEqual([
+				['hs2', own1.event],
+				['hs3', own1.event],
+			]);
+		});
+
 		test('never throws', async () => {
 			findActiveStickyBySenderServer.mockImplementation(() => {
 				throw new Error('db down');

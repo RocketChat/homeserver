@@ -190,8 +190,16 @@ export class StickyEventService {
 			const own = await this.eventRepository.findActiveStickyBySenderServer(serverName, Date.now()).toArray();
 
 			const roomIds = [...new Set(own.map(({ event }) => event.room_id))];
-			const serversByRoom = new Map(
-				await Promise.all(roomIds.map(async (roomId) => [roomId, await this.stateService.getServerSetInRoom(roomId)] as const)),
+			const serversByRoom = new Map<RoomID, Set<string>>();
+			// a room whose servers cannot be looked up must not keep the others from being pushed
+			await Promise.all(
+				roomIds.map(async (roomId) => {
+					try {
+						serversByRoom.set(roomId, await this.stateService.getServerSetInRoom(roomId));
+					} catch (err) {
+						this.logger.error({ msg: 'Failed to look up the servers of a room to push sticky events again', roomId, err });
+					}
+				}),
 			);
 
 			let count = 0;
