@@ -117,7 +117,7 @@ describe('SendJoinService', async () => {
 const ROOM_ID = '!room:hs1' as RoomID;
 
 describe('SendJoinService.sendJoin', () => {
-	test('lets the server of the joining user catch up, judged on the room state before the join', async () => {
+	const setup = () => {
 		const join = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
 			{
 				type: 'm.room.member',
@@ -135,10 +135,11 @@ describe('SendJoinService.sendJoin', () => {
 		const stateBefore = new Map() as State;
 		const catchUpIfNewServer = mock(async () => 'hs3');
 		const handlePdu = mock(async () => undefined);
+		const emit = mock(async (..._args: unknown[]) => undefined);
 
 		const service = new SendJoinService(
 			{ getEventsByIds: async () => [] } as unknown as EventService,
-			{ emit: async () => undefined } as unknown as EventEmitterService,
+			{ emit } as unknown as EventEmitterService,
 			{
 				getRoomVersion: async () => '10',
 				buildEvent: async () => join,
@@ -151,9 +152,24 @@ describe('SendJoinService.sendJoin', () => {
 			{ catchUpIfNewServer } as unknown as StickyEventService,
 		);
 
+		return { service, join, stateBefore, catchUpIfNewServer, handlePdu, emit };
+	};
+
+	test('lets the server of the joining user catch up, judged on the room state before the join', async () => {
+		const { service, join, stateBefore, catchUpIfNewServer, handlePdu } = setup();
+
 		await service.sendJoin(ROOM_ID, join.eventId, join.event);
 
 		expect(catchUpIfNewServer).toHaveBeenCalledWith(join, stateBefore);
 		expect(handlePdu.mock.invocationCallOrder[0]).toBeLessThan(catchUpIfNewServer.mock.invocationCallOrder[0]);
+	});
+
+	test('notifies the join through its membership notification first, then generically', async () => {
+		const { service, join, emit } = setup();
+
+		await service.sendJoin(ROOM_ID, join.eventId, join.event);
+
+		expect(emit.mock.calls.map(([name]) => name)).toEqual(['homeserver.matrix.membership', 'homeserver.matrix.event']);
+		expect(emit.mock.calls[1][1]).toEqual({ event_id: join.eventId, event: join.event });
 	});
 });
