@@ -51,6 +51,7 @@ describe('StickyEventService', () => {
 	let clearSticky: ReturnType<typeof mock>;
 	let getEvent: ReturnType<typeof mock>;
 	let findActiveStickyByRoomId: ReturnType<typeof mock>;
+	let findActiveSticky: ReturnType<typeof mock>;
 	let getServerSetInRoom: ReturnType<typeof mock>;
 	let getStateBeforeEvent: ReturnType<typeof mock>;
 	let sendPDU: ReturnType<typeof mock>;
@@ -60,12 +61,13 @@ describe('StickyEventService', () => {
 		clearSticky = mock(async () => undefined);
 		getEvent = mock(async () => null);
 		findActiveStickyByRoomId = mock(() => ({ toArray: async () => [] }));
+		findActiveSticky = mock(() => ({ toArray: async () => [] }));
 		getServerSetInRoom = mock(async () => new Set(['hs1', 'hs2']));
 		getStateBeforeEvent = mock(async () => new Map());
 		sendPDU = mock(() => undefined);
 
 		service = new StickyEventService(
-			{ setSticky, clearSticky, findActiveStickyByRoomId } as unknown as EventRepository,
+			{ setSticky, clearSticky, findActiveStickyByRoomId, findActiveSticky } as unknown as EventRepository,
 			{ serverName: 'hs1' } as ConfigService,
 			{ getServerSetInRoom, getStateBeforeEvent, getEvent } as unknown as StateService,
 			{ sendPDU } as unknown as FederationSenderService,
@@ -217,6 +219,60 @@ describe('StickyEventService', () => {
 			});
 
 			expect(await service.pushOwnStickyEvents(ROOM_ID, 'hs3')).toBe(0);
+		});
+	});
+
+	describe('pushOwnStickyEventsToServers', () => {
+		const OTHER_ROOM_ID = '!other:hs1' as RoomID;
+		const sticky = { msc4354_sticky: { duration_ms: 3_600_000 } };
+		const own1 = messageEvent({ sender: '@alice:hs1', origin_server_ts: SENT_AT, ...sticky });
+		const remote = messageEvent({ sender: '@bob:hs2', origin_server_ts: SENT_AT + 1, ...sticky });
+		const own2 = messageEvent({ sender: '@carol:hs1', room_id: OTHER_ROOM_ID, origin_server_ts: SENT_AT + 2, ...sticky });
+
+		beforeEach(() => {
+			findActiveSticky.mockImplementation(() => ({
+				toArray: async () => [own1, remote, own2].map((e) => ({ _id: e.eventId, event: e.event, sticky: { receivedAt: 0, expiresAt: 0 } })),
+			}));
+			getServerSetInRoom.mockImplementation(async (roomId: RoomID) =>
+				roomId === ROOM_ID ? new Set(['hs1', 'hs2', 'hs3']) : new Set(['hs1', 'hs3']),
+			);
+		});
+
+		test("queues this server's own unexpired sticky events to every other server in their rooms", async () => {
+			const before = Date.now();
+
+			expect(await service.pushOwnStickyEventsToServers()).toBe(3);
+
+			expect(findActiveSticky.mock.calls[0][0]).toBeGreaterThanOrEqual(before);
+			expect(sendPDU.mock.calls).toEqual([
+				['hs2', own1.event],
+				['hs3', own1.event],
+				['hs3', own2.event],
+			]);
+		});
+
+		test('queues them to one server alone when asked to, only for the rooms it is in', async () => {
+			expect(await service.pushOwnStickyEventsToServers('hs2')).toBe(1);
+
+			expect(sendPDU.mock.calls).toEqual([['hs2', own1.event]]);
+		});
+
+		test('looks up the servers of a room once', async () => {
+			findActiveSticky.mockImplementation(() => ({
+				toArray: async () => [own1, own1].map((e) => ({ _id: e.eventId, event: e.event, sticky: { receivedAt: 0, expiresAt: 0 } })),
+			}));
+
+			await service.pushOwnStickyEventsToServers();
+
+			expect(getServerSetInRoom).toHaveBeenCalledTimes(1);
+		});
+
+		test('never throws', async () => {
+			findActiveSticky.mockImplementation(() => {
+				throw new Error('db down');
+			});
+
+			expect(await service.pushOwnStickyEventsToServers()).toBe(0);
 		});
 	});
 

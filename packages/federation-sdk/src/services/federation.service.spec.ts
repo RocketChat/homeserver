@@ -7,6 +7,7 @@ import type { FederationRequestService } from './federation-request.service';
 import type { FederationSenderService } from './federation-sender.service';
 import { FederationService } from './federation.service';
 import type { StateService } from './state.service';
+import type { StickyEventService } from './sticky-event.service';
 
 const LOCAL_SERVER = 'local.example.com';
 const ROOM_ID = `!room:${LOCAL_SERVER}`;
@@ -43,7 +44,7 @@ describe('FederationService.sendEventToAllServersInRoom', () => {
 		} as unknown as StateService;
 		const federationSenderService = { sendPDUToMultiple } as unknown as FederationSenderService;
 
-		service = new FederationService(configService, {} as FederationRequestService, stateService, federationSenderService);
+		service = new FederationService(configService, {} as FederationRequestService, stateService, federationSenderService, null as never);
 	});
 
 	const destinations = () => sendPDUToMultiple.mock.calls[0][0] as string[];
@@ -78,5 +79,39 @@ describe('FederationService.sendEventToAllServersInRoom', () => {
 		await service.sendEventToAllServersInRoom(stateEvent('m.room.topic', '', { topic: 'hello' }));
 
 		expect(destinations()).toEqual(['joined.example.com']);
+	});
+});
+
+describe('FederationService.notifyRemoteServerUp', () => {
+	const setup = (droppedPdus: boolean) => {
+		const notifyRemoteServerUp = mock(() => droppedPdus);
+		const pushOwnStickyEventsToServers = mock(async () => 0);
+
+		const service = new FederationService(
+			{ serverName: LOCAL_SERVER } as unknown as ConfigService,
+			{} as FederationRequestService,
+			{} as StateService,
+			{ notifyRemoteServerUp } as unknown as FederationSenderService,
+			{ pushOwnStickyEventsToServers } as unknown as StickyEventService,
+		);
+
+		return { service, notifyRemoteServerUp, pushOwnStickyEventsToServers };
+	};
+
+	test('pushes own sticky events again to a server that lost events while it was unreachable', () => {
+		const { service, notifyRemoteServerUp, pushOwnStickyEventsToServers } = setup(true);
+
+		service.notifyRemoteServerUp('remote.example.com');
+
+		expect(notifyRemoteServerUp).toHaveBeenCalledWith('remote.example.com');
+		expect(pushOwnStickyEventsToServers).toHaveBeenCalledWith('remote.example.com');
+	});
+
+	test('pushes nothing again to a server that lost nothing', () => {
+		const { service, pushOwnStickyEventsToServers } = setup(false);
+
+		service.notifyRemoteServerUp('remote.example.com');
+
+		expect(pushOwnStickyEventsToServers).not.toHaveBeenCalled();
 	});
 });

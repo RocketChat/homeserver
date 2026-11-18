@@ -69,13 +69,16 @@ export class FederationSenderService {
 	 * Notify that a remote server is back online.
 	 * This clears backoff and triggers immediate retry for that destination.
 	 * Should be called when receiving an incoming request from the remote server.
+	 * Returns whether PDUs meant for it were dropped while it was unreachable.
 	 */
-	notifyRemoteServerUp(destination: string): void {
+	notifyRemoteServerUp(destination: string): boolean {
 		const queue = this.queues.get(destination);
-		if (queue) {
-			this.logger.info({ destination }, 'Notifying queue that remote server is up');
-			queue.notifyServerUp();
+		if (!queue) {
+			return false;
 		}
+
+		this.logger.info({ destination }, 'Notifying queue that remote server is up');
+		return queue.notifyServerUp();
 	}
 
 	/**

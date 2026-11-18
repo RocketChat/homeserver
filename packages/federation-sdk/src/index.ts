@@ -28,6 +28,7 @@ import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventService } from './services/event.service';
 import { StateService } from './services/state.service';
+import { StickyEventService } from './services/sticky-event.service';
 
 container.register<AppServiceConfigProvider>(APPSERVICE_CONFIG_PROVIDER, {
 	useValue: {
@@ -187,6 +188,9 @@ export async function init({
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {
 		const eventService = container.resolve(EventService);
+		// whatever was still queued in memory when this server last stopped is gone
+		void container.resolve(StickyEventService).pushOwnStickyEventsToServers();
+
 		await eventService.processOldStagedEvents();
 	}, 5000);
 }

@@ -71,6 +71,9 @@ export class PerDestinationQueue {
 
 	private retryTimerId: NodeJS.Timeout | null = null;
 
+	// PDUs were given up on since the remote server was last known to be up
+	private droppedPdus = false;
+
 	constructor(
 		private readonly destination: string,
 		private readonly origin: string,
@@ -118,8 +121,12 @@ export class PerDestinationQueue {
 	/**
 	 * Notify that the remote server is back online.
 	 * This clears the backoff and triggers immediate processing.
+	 * Returns whether PDUs meant for it were dropped while it was unreachable.
 	 */
-	notifyServerUp(): void {
+	notifyServerUp(): boolean {
+		const { droppedPdus } = this;
+		this.droppedPdus = false;
+
 		this.logger.info('Remote server is back online, clearing backoff');
 		this.clearRetryTimer();
 		this.retryCount = 0;
@@ -129,6 +136,8 @@ export class PerDestinationQueue {
 		if (!this.isEmpty()) {
 			void this.processQueue();
 		}
+
+		return droppedPdus;
 	}
 
 	/**
@@ -241,6 +250,7 @@ export class PerDestinationQueue {
 				'Max retries reached, dropping events',
 			);
 			// Clear the queue on max retries
+			this.droppedPdus = this.droppedPdus || this.pduQueue.length > 0;
 			this.pduQueue = [];
 			this.eduQueue = [];
 			this.retryCount = 0;
@@ -266,6 +276,7 @@ export class PerDestinationQueue {
 				},
 				'Backoff exceeded 1 hour. Emptying queue and stop retrying until server is up.',
 			);
+			this.droppedPdus = this.droppedPdus || this.pduQueue.length > 0;
 			this.pduQueue = [];
 			this.eduQueue = [];
 			this.retryCount = 0;

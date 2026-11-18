@@ -999,6 +999,33 @@ describe('RoomService', async () => {
 			expect(await federationSDK.getActiveStickyEvents(roomId)).toEqual([]);
 		});
 
+		it('should push again the sticky events of local members to the servers in their rooms', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 3_600_000 } }, Date.now());
+
+			// sending the event already relays it once, in the background
+			const sendPDUToMultiple = spyOn(container.resolve(FederationSenderService), 'sendPDUToMultiple').mockImplementation(() => undefined);
+			const sendPDU = spyOn(container.resolve(FederationSenderService), 'sendPDU').mockImplementation(() => undefined);
+			try {
+				const { eventId } = await federationSDK.sendStickyEvent(
+					roomId,
+					'org.matrix.msc4143.rtc.member',
+					{ msc4354_sticky_key: 'member-2' },
+					'@alice:example.com' as UserID,
+					110_000,
+				);
+
+				await container.resolve(StickyEventService).pushOwnStickyEventsToServers('remote.example.com');
+
+				const pushed = sendPDU.mock.calls.filter(([, pdu]) => pdu.room_id === roomId);
+				expect(pushed).toEqual([['remote.example.com', expect.objectContaining({ msc4354_sticky: { duration_ms: 110_000 } })]]);
+				expect((await container.resolve(EventRepository).findById(eventId))?.event).toEqual(pushed[0][1]);
+			} finally {
+				sendPDU.mockRestore();
+				sendPDUToMultiple.mockRestore();
+			}
+		});
+
 		it('should stop listing a sticky event once it is redacted', async () => {
 			const roomId = await createRoomWithRemoteMember();
 
@@ -1014,6 +1041,8 @@ describe('RoomService', async () => {
 
 		let catchUps: (() => void)[];
 		let queued: [string, Pdu][];
+		// other rooms may get pushes of their own meanwhile, as the one this server makes when it starts
+		const queuedFor = (roomId: RoomID) => queued.filter(([, pdu]) => pdu.room_id === roomId);
 		let spies: { mockRestore(): void }[];
 
 		beforeEach(() => {
@@ -1088,13 +1117,15 @@ describe('RoomService', async () => {
 			await settle(() => catchUps.length > 0);
 
 			expect(catchUps).toHaveLength(1);
-			expect(queued).toEqual([]);
+			expect(queuedFor(roomId)).toEqual([]);
 
 			catchUps[0]();
-			await settle(() => queued.length > 0);
+			await settle(() => queuedFor(roomId).length > 0);
 
-			expect(queued.map(([destination, pdu]) => [destination, pdu.type])).toEqual([['other.example.com', 'org.matrix.msc4143.rtc.member']]);
-			const [, pushed] = queued[0];
+			expect(queuedFor(roomId).map(([destination, pdu]) => [destination, pdu.type])).toEqual([
+				['other.example.com', 'org.matrix.msc4143.rtc.member'],
+			]);
+			const [, pushed] = queuedFor(roomId)[0];
 			expect(pushed).toHaveProperty('msc4354_sticky', { duration_ms: 3_600_000 });
 			expect(PersistentEventFactory.createFromRawEvent(pushed, '10').eventId).toBe(stickyEventId);
 		});
@@ -1107,9 +1138,9 @@ describe('RoomService', async () => {
 
 			expect(catchUps).toHaveLength(1);
 			catchUps[0]();
-			await settle(() => queued.length > 0);
+			await settle(() => queuedFor(roomId).length > 0);
 
-			expect(queued.map(([destination]) => destination)).toEqual(['remote.example.com']);
+			expect(queuedFor(roomId).map(([destination]) => destination)).toEqual(['remote.example.com']);
 		});
 
 		it('should not push again when another member of an already joined server joins', async () => {

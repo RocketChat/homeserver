@@ -132,6 +132,14 @@ export class EventRepository {
 			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
+	// every room at once: only the sticky events are looked at, through the index that holds nothing else
+	findActiveSticky(now: number): FindCursor<EventStore> {
+		return this.collection
+			.find({ 'sticky.expiresAt': { $gt: now }, 'rejectCode': { $exists: false } })
+			.hint({ 'event.room_id': 1, 'sticky.expiresAt': 1 })
+			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
+	}
+
 	public async findPowerLevelsEventByRoomId(roomId: string): Promise<EventStore<PduForType<'m.room.power_levels'>> | null> {
 		return this.collection.findOne({
 			...this.roomFilter(roomId),

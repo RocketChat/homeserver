@@ -7,6 +7,7 @@ import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 import { FederationSenderService } from './federation-sender.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 import { FederationEndpoints, type MakeJoinResponse, type SendJoinResponse, type Version } from '../specs/federation-api';
 import { isUserId } from '../utils/user-id';
 
@@ -19,6 +20,7 @@ export class FederationService {
 		private readonly requestService: FederationRequestService,
 		private readonly stateService: StateService,
 		private readonly federationSenderService: FederationSenderService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	/**
@@ -232,6 +234,11 @@ export class FederationService {
 	 * Should be called when receiving an incoming request from the remote server.
 	 */
 	notifyRemoteServerUp(serverName: string): void {
-		this.federationSenderService.notifyRemoteServerUp(serverName);
+		const droppedPdus = this.federationSenderService.notifyRemoteServerUp(serverName);
+
+		// the dropped PDUs are gone, but the sticky events among them still matter while they last
+		if (droppedPdus) {
+			void this.stickyEventService.pushOwnStickyEventsToServers(serverName);
+		}
 	}
 }

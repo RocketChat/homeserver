@@ -495,8 +495,8 @@ describe('PerDestinationQueue', () => {
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(false);
 
-			// Notify server is back up (should clear backoff)
-			queue.notifyServerUp();
+			// Notify server is back up (should clear backoff); nothing was dropped, $event1 is still queued
+			expect(queue.notifyServerUp()).toBe(false);
 
 			// Should immediately retry without waiting for backoff
 			await flushPromises();
@@ -534,7 +534,9 @@ describe('PerDestinationQueue', () => {
 			mockRequestService.put = workingMock;
 
 			// Notify that server is back up - should clear Infinity backoff and process queue
-			queue.notifyServerUp();
+			// and tell that $event1 was dropped meanwhile, only once
+			expect(queue.notifyServerUp()).toBe(true);
+			expect(queue.notifyServerUp()).toBe(false);
 
 			// Should process the queued event ($event2)
 			await flushPromises();

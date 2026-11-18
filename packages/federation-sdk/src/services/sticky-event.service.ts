@@ -155,4 +155,45 @@ export class StickyEventService {
 			return 0;
 		}
 	}
+
+	/**
+	 * Queue again this server's own unexpired sticky events, oldest first, to the servers
+	 * joined to their rooms: to `destination` alone, or to all of them when not given.
+	 * It makes up for pushes that were lost, as when this server restarts or gives up on
+	 * a server that is unreachable; a server that already has an event ignores it.
+	 * Resolves to how many were queued; failures are logged, never thrown.
+	 */
+	async pushOwnStickyEventsToServers(destination?: string): Promise<number> {
+		try {
+			const { serverName } = this.configService;
+			const active = await this.eventRepository.findActiveSticky(Date.now()).toArray();
+			const own = active.filter(({ event }) => extractDomainFromId(event.sender) === serverName);
+
+			const roomIds = [...new Set(own.map(({ event }) => event.room_id))];
+			const serversByRoom = new Map(
+				await Promise.all(roomIds.map(async (roomId) => [roomId, await this.stateService.getServerSetInRoom(roomId)] as const)),
+			);
+
+			let count = 0;
+
+			for (const { event } of own) {
+				for (const server of serversByRoom.get(event.room_id) ?? []) {
+					if (server === serverName || (destination && server !== destination)) {
+						continue;
+					}
+					this.federationSenderService.sendPDU(server, event);
+					count++;
+				}
+			}
+
+			if (count > 0) {
+				this.logger.info({ msg: 'Pushed own sticky events again', destination, count });
+			}
+
+			return count;
+		} catch (err) {
+			this.logger.error({ msg: 'Failed to push own sticky events again', destination, err });
+			return 0;
+		}
+	}
 }
