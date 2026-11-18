@@ -108,4 +108,26 @@ describe('EventNotifierService', () => {
 		expect(emitted.map(({ name }) => name)).toEqual([typedName, 'homeserver.matrix.event']);
 		expect(emitted[1].payload).toEqual(emitted[0].payload);
 	});
+
+	test.each([
+		[
+			'an edit of an event it does not know',
+			{
+				type: 'm.room.message',
+				content: {
+					'msgtype': 'm.text',
+					'body': '* hi',
+					'm.new_content': { msgtype: 'm.text', body: 'hi' },
+					'm.relates_to': { rel_type: 'm.replace', event_id: '$unknown:remote.example.com' },
+				},
+			},
+		],
+		['a redaction it cannot authorize', { type: 'm.room.redaction', redacts: '$unknown:remote.example.com', content: {} }],
+	])('notifies nobody, not even generically, of %s', async (_, fields) => {
+		notifier = new EventNotifierService(emitter, { getEvent: async () => null } as unknown as StateService);
+
+		await notifier.notify(receivedPdu(fields));
+
+		expect(emitted).toEqual([]);
+	});
 });

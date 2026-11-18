@@ -29,7 +29,7 @@ export class EventNotifierService {
 			case event.event.type === 'm.room.message':
 				if (!(await isNotifiableEdit(event, this.stateService))) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring invalid replacement event');
-					break;
+					return;
 				}
 				await this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
@@ -45,7 +45,7 @@ export class EventNotifierService {
 			case event.event.type === 'm.room.encrypted':
 				if (!(await isNotifiableEdit(event, this.stateService))) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring invalid replacement event');
-					break;
+					return;
 				}
 				await this.eventEmitterService.emit('homeserver.matrix.encrypted', {
 					event_id: eventId,
@@ -63,7 +63,7 @@ export class EventNotifierService {
 				const redacts = await findAllowedRedactionTarget(event, this.stateService);
 				if (!redacts) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring unauthorized redaction');
-					break;
+					return;
 				}
 
 				await this.eventEmitterService.emit('homeserver.matrix.redaction', {
@@ -223,6 +223,7 @@ export class EventNotifierService {
 				break;
 		}
 
+		// not reached for the invalid edits and unauthorized redactions dropped above
 		await this.eventEmitterService.emit('homeserver.matrix.event', {
 			event_id: eventId,
 			event: event.event,
