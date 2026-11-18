@@ -2466,6 +2466,19 @@ describe('StateService', async () => {
 			expect(await eventCollection.countDocuments()).toBe(0);
 		});
 
+		it('refuses a send_join state whose create event lists auth_events', async () => {
+			const { join } = remoteV12Room();
+			const create = PersistentEventFactory.createFromRawEvent(
+				{ ...PersistentEventFactory.newCreateEvent(alice, '12').event, auth_events: [join.eventId] },
+				'12',
+			);
+
+			await expect(stateService.processInitialState([create.event as room.Pdu], [], notifierStub)).rejects.toThrow(
+				room.StateResolverAuthorizationError,
+			);
+			expect(await eventCollection.countDocuments()).toBe(0);
+		});
+
 		it('reports the creator server as the origin of a v12 room it holds', async () => {
 			const { create, roomId, join, powerLevels, joinRules } = remoteV12Room();
 

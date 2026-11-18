@@ -699,7 +699,8 @@ export function validatePowerLevelEvent(
 
 export function checkEventAuthWithoutState(event: PersistentEventBase, authEvents: PersistentEventBase[]) {
 	if (event.isCreateEvent()) {
-		if (authEvents.length > 0) {
+		// callers pass no auth events for a create, so its own list must be checked too (stricter than Synapse)
+		if (authEvents.length > 0 || event.getAuthEventIds().length > 0) {
 			throw new StateResolverAuthorizationError(RejectCodes.AuthError, {
 				rejectedEvent: event,
 				reason: 'm.room.create event has auth_events',

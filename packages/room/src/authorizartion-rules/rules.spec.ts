@@ -226,6 +226,20 @@ describe('authorization rules', () => {
 		expect(() => checkEventAuthWithoutState(create2, [])).toThrow();
 	});
 
+	it('should reject a create event listing its own auth_events', async () => {
+		const { create } = getInitialEvents();
+
+		const create2 = new FakeStateEventCreator()
+			.asRoomCreate()
+			.withRoomId(roomId)
+			.withSender(creator)
+			.withContent({ creator })
+			.authedBy(create)
+			.build();
+
+		expect(() => checkEventAuthWithoutState(create2, [])).toThrow(StateResolverAuthorizationError);
+	});
+
 	it('03 should reject events with duplicate auth_events', async () => {
 		// creator creates room
 		const { create } = getInitialEvents();
@@ -1288,6 +1302,18 @@ describe('authorization rules: room v12', () => {
 				.withRoomId(roomId)
 				.withSender(creator)
 				.withContent({ room_version: '12' })
+				.build('12');
+
+			expect(() => checkEventAuthWithoutState(create, [])).toThrow(StateResolverAuthorizationError);
+		});
+
+		it('rejects a create event listing its own auth_events', () => {
+			const create = new FakeStateEventCreator()
+				.asRoomCreate()
+				.withoutRoomId()
+				.withSender(creator)
+				.withContent({ room_version: '12' })
+				.authedBy(createEvent())
 				.build('12');
 
 			expect(() => checkEventAuthWithoutState(create, [])).toThrow(StateResolverAuthorizationError);
