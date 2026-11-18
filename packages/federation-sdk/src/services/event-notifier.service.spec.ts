@@ -47,7 +47,7 @@ describe('EventNotifierService', () => {
 			state_key: `_${ALICE}_DEVICE_m.call`,
 			content: { application: 'm.call', call_id: '', device_id: 'DEVICE' },
 			unsigned: { age: 1234 },
-			sticky: { duration_ms: 3600000 },
+			msc4354_sticky: { duration_ms: 3600000 },
 		});
 
 		await notifier.notify(pdu);
@@ -63,7 +63,7 @@ describe('EventNotifierService', () => {
 			room_id: ROOM_ID,
 			origin_server_ts: 1700000000000,
 			unsigned: { age: 1234 },
-			sticky: { duration_ms: 3600000 },
+			msc4354_sticky: { duration_ms: 3600000 },
 		});
 		expect(emitted[0].payload).not.toHaveProperty('sticky');
 	});
