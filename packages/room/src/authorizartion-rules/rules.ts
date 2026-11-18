@@ -1,3 +1,5 @@
+import { isIPv6 } from 'node:net';
+
 import { RejectCodes, StateResolverAuthorizationError } from './errors';
 import type { PersistentEventBase } from '../manager/event-wrapper';
 import { PowerLevelEvent } from '../manager/power-level-event-wrapper';
@@ -22,17 +24,17 @@ import { type PduType } from '../types/v3-11';
 const RECOGNISED_ROOM_VERSIONS: readonly string[] = ['1', '2', ...SUPPORTED_ROOM_VERSIONS];
 
 const HOSTNAME_REGEX = /^[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*$/;
-const IPV6_LITERAL_REGEX = /^\[[0-9A-Fa-f:.]+\]$/;
 
-// hostname/IPv4 or [IPv6] literal with an optional numeric port, as Synapse's parse_and_validate_server_name
+// hostname/IPv4 or [IPv6] literal with an optional numeric port, as Synapse's parse_and_validate_server_name;
+// the IPv6 charset also keeps out zone ids, which isIPv6 accepts
 function isValidServerName(serverName: string): boolean {
-	const match = /^(\[[^\]]*\]|[^:]*)(?::\d+)?$/.exec(serverName);
+	const match = /^(?:\[([0-9A-Fa-f:.]+)\]|([^:]*))(?::\d+)?$/.exec(serverName);
 	if (!match) {
 		return false;
 	}
 
-	const [, host] = match;
-	return host.startsWith('[') ? IPV6_LITERAL_REGEX.test(host) : HOSTNAME_REGEX.test(host);
+	const [, ipv6, hostname] = match;
+	return ipv6 !== undefined ? isIPv6(ipv6) : HOSTNAME_REGEX.test(hostname);
 }
 
 // used for v12's additional_creators; the localpart is not checked so historical user IDs stay valid, as in Synapse

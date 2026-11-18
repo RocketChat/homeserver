@@ -1309,7 +1309,15 @@ describe('authorization rules: room v12', () => {
 		});
 
 		it('accepts additional_creators with a port, an IPv6 literal or an empty localpart (rule 1.4)', () => {
-			const additionalCreators = ['@alice:example.com:8448', '@bob:[::1]', '@bob:[::1]:8448', '@:example.com'];
+			const additionalCreators = [
+				'@alice:example.com:8448',
+				'@bob:[::1]',
+				'@bob:[::1]:8448',
+				'@bob:[::ffff:1.2.3.4]',
+				'@bob:[0abc:1def::1234]:8080',
+				'@bob:1.2.3.4:1',
+				'@:example.com',
+			];
 			expect(() =>
 				checkEventAuthWithoutState(createEvent({ room_version: '12', additional_creators: additionalCreators }), []),
 			).not.toThrow();
@@ -1325,6 +1333,15 @@ describe('authorization rules: room v12', () => {
 			['a non numeric port', ['@bob:example.com:abc']],
 			['an empty server name', ['@bob:']],
 			['a malformed IPv6 literal', ['@bob:[zz]']],
+			['an IPv4 address in brackets', ['@bob:[1.2.3.4]']],
+			['a bracketed literal that is not an IPv6 address', ['@bob:[ffff]']],
+			['a lone colon in brackets', ['@bob:[:]']],
+			['empty brackets', ['@bob:[]']],
+			['an IPv6 literal with two ::', ['@bob:[1::2::3]']],
+			['an IPv6 literal with a zone id', ['@bob:[fe80::1%eth0]']],
+			['a trailing dot in the server name', ['@bob:example.com.']],
+			['an empty label in the server name', ['@bob:.empty-label.com']],
+			['an unbracketed IPv6 address', ['@bob:1234:5678:80']],
 			['more than 255 bytes', [`@${'é'.repeat(130)}:a.co`]],
 		] as const) {
 			it(`rejects additional_creators with ${label} (rule 1.4)`, () => {
