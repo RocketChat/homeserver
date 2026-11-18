@@ -193,7 +193,7 @@ export class StagingAreaService {
 			}),
 		);
 
-		addedMissing = addedMissing || found.some((f) => f === true);
+		addedMissing ||= found.some(Boolean);
 
 		// fetched events are only staged, not persisted yet, so authorizing now would still miss them
 		if (missingAuthEvents.length > 0) {

@@ -1,4 +1,4 @@
-import { createLogger } from '@rocket.chat/federation-core';
+import { type EventStore, createLogger } from '@rocket.chat/federation-core';
 import {
 	type AnyPdu,
 	type EventID,
@@ -7,6 +7,7 @@ import {
 	type State,
 	extractDomainFromId,
 } from '@rocket.chat/federation-room';
+import type { FindCursor } from 'mongodb';
 import { delay, inject, singleton } from 'tsyringe';
 
 import { ConfigService } from './config.service';
@@ -140,8 +141,7 @@ export class StickyEventService {
 	 */
 	async pushOwnStickyEvents(roomId: RoomID, destination: string): Promise<number> {
 		try {
-			const active = await this.eventRepository.findActiveStickyByRoomId(roomId, Date.now()).toArray();
-			const own = active.filter(({ event }) => extractDomainFromId(event.sender) === this.configService.serverName);
+			const own = await this.ownOf(this.eventRepository.findActiveStickyByRoomId(roomId, Date.now()));
 
 			for (const { event } of own) {
 				this.federationSenderService.sendPDU(destination, event);
@@ -166,8 +166,7 @@ export class StickyEventService {
 	async pushOwnStickyEventsToServers(destination?: string): Promise<number> {
 		try {
 			const { serverName } = this.configService;
-			const active = await this.eventRepository.findActiveSticky(Date.now()).toArray();
-			const own = active.filter(({ event }) => extractDomainFromId(event.sender) === serverName);
+			const own = await this.ownOf(this.eventRepository.findActiveSticky(Date.now()));
 
 			const roomIds = [...new Set(own.map(({ event }) => event.room_id))];
 			const serversByRoom = new Map(
@@ -195,5 +194,11 @@ export class StickyEventService {
 			this.logger.error({ msg: 'Failed to push own sticky events again', destination, err });
 			return 0;
 		}
+	}
+
+	private async ownOf(active: FindCursor<EventStore>): Promise<EventStore[]> {
+		const { serverName } = this.configService;
+
+		return (await active.toArray()).filter(({ event }) => extractDomainFromId(event.sender) === serverName);
 	}
 }

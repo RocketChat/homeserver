@@ -237,6 +237,12 @@ export class PerDestinationQueue {
 	/**
 	 * Handle retry logic with exponential backoff
 	 */
+	private dropQueues(): void {
+		this.droppedPdus ||= this.pduQueue.length > 0;
+		this.pduQueue = [];
+		this.eduQueue = [];
+	}
+
 	private handleRetry(): void {
 		this.retryCount++;
 
@@ -249,10 +255,7 @@ export class PerDestinationQueue {
 				},
 				'Max retries reached, dropping events',
 			);
-			// Clear the queue on max retries
-			this.droppedPdus = this.droppedPdus || this.pduQueue.length > 0;
-			this.pduQueue = [];
-			this.eduQueue = [];
+			this.dropQueues();
 			this.retryCount = 0;
 			this.nextRetryAt = 0;
 			this.clearRetryTimer();
@@ -276,9 +279,7 @@ export class PerDestinationQueue {
 				},
 				'Backoff exceeded 1 hour. Emptying queue and stop retrying until server is up.',
 			);
-			this.droppedPdus = this.droppedPdus || this.pduQueue.length > 0;
-			this.pduQueue = [];
-			this.eduQueue = [];
+			this.dropQueues();
 			this.retryCount = 0;
 			this.nextRetryAt = Infinity;
 			this.clearRetryTimer();

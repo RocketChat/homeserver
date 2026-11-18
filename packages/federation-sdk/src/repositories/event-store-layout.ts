@@ -21,7 +21,7 @@ export class EventRoomIdLayout implements EventStoreLayout {
 		{ key: { 'event.room_id': 1, 'nextEventId': 1, 'event.depth': 1, 'createdAt': 1 } },
 		{ key: { 'event.room_id': 1, 'event.type': 1 } },
 		{
-			key: { 'event.room_id': 1, 'sticky.expiresAt': 1 },
+			key: { 'sticky.expiresAt': 1, 'event.room_id': 1 },
 			partialFilterExpression: { 'sticky.expiresAt': { $exists: true } },
 		},
 	];
@@ -47,7 +47,7 @@ export class TopLevelRoomIdLayout implements EventStoreLayout {
 			partialFilterExpression: { roomId: { $exists: true } },
 		},
 		{
-			key: { 'roomId': 1, 'sticky.expiresAt': 1 },
+			key: { 'sticky.expiresAt': 1, 'roomId': 1 },
 			partialFilterExpression: { 'roomId': { $exists: true }, 'sticky.expiresAt': { $exists: true } },
 		},
 	];

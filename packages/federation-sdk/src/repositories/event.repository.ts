@@ -132,11 +132,10 @@ export class EventRepository {
 			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
-	// every room at once: only the sticky events are looked at, through the index that holds nothing else
+	// every room at once
 	findActiveSticky(now: number): FindCursor<EventStore> {
 		return this.collection
 			.find({ 'sticky.expiresAt': { $gt: now }, 'rejectCode': { $exists: false } })
-			.hint({ 'event.room_id': 1, 'sticky.expiresAt': 1 })
 			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 

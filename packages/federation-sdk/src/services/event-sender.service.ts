@@ -8,7 +8,6 @@ import {
 	type PersistentEventBase,
 	type RejectCode,
 	RoomID,
-	type RoomVersion,
 	UserID,
 } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
@@ -114,22 +113,7 @@ export class EventSenderService {
 		content: Record<string, unknown>,
 		senderUserId: UserID,
 	): Promise<{ eventId: EventID }> {
-		const roomVersion = await this.stateService.getRoomVersion(roomId);
-
-		const event = await this.buildAndPersist(
-			{
-				type: eventType,
-				state_key: stateKey,
-				content,
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: Date.now(),
-				sender: senderUserId,
-			},
-			roomVersion,
-		);
+		const event = await this.buildAndPersist(roomId, senderUserId, { type: eventType, state_key: stateKey, content });
 
 		this.dispatch(event);
 
@@ -158,23 +142,14 @@ export class EventSenderService {
 			throw new RangeError(`A sticky event lasts from 1 to ${MAX_STICKY_DURATION_MS} ms, not ${durationMs}`);
 		}
 
-		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		const sentAt = Date.now();
 
-		const event = await this.buildAndPersist(
-			{
-				type: eventType,
-				content,
-				room_id: roomId,
-				auth_events: [],
-				depth: 0,
-				prev_events: [],
-				origin_server_ts: sentAt,
-				sender: senderUserId,
-				[STICKY_EVENT_FIELD]: { duration_ms: durationMs },
-			},
-			roomVersion,
-		);
+		const event = await this.buildAndPersist(roomId, senderUserId, {
+			type: eventType,
+			content,
+			origin_server_ts: sentAt,
+			[STICKY_EVENT_FIELD]: { duration_ms: durationMs },
+		});
 
 		await this.stickyEventService.markSticky(event, sentAt);
 
@@ -185,9 +160,22 @@ export class EventSenderService {
 
 	// an event of a local user, validated, signed, authorized and persisted
 	private async buildAndPersist(
-		rawEvent: { type: string } & Record<string, unknown>,
-		roomVersion: RoomVersion,
+		roomId: RoomID,
+		sender: UserID,
+		fields: { type: string; content: Record<string, unknown> } & Record<string, unknown>,
 	): Promise<PersistentEventBase> {
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
+
+		const rawEvent = {
+			room_id: roomId,
+			sender,
+			auth_events: [],
+			depth: 0,
+			prev_events: [],
+			origin_server_ts: Date.now(),
+			...fields,
+		};
+
 		const validation = getEventSchemaForType(rawEvent.type, roomVersion).safeParse(rawEvent);
 		if (!validation.success) {
 			throw new Error(`Event of type ${rawEvent.type} failed schema validation: ${JSON.stringify(validation.error.format())}`);
