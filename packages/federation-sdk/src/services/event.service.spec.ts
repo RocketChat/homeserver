@@ -2,8 +2,8 @@ import { describe, expect, it, spyOn } from 'bun:test';
 
 import { generateKeyPairs, signEvent } from '@rocket.chat/federation-core';
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
-import { PersistentEventFactory } from '@rocket.chat/federation-room';
-import type { EventID, Pdu, PduForType, PersistentEventBase, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
+import { PersistentEventBase, PersistentEventFactory } from '@rocket.chat/federation-room';
+import type { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 
 import { EventService } from './event.service';
 import type { ServerService } from './server.service';
@@ -370,20 +370,30 @@ describe('processIncomingPDUs', () => {
 		expect(enqueued).toEqual([create.roomId]);
 	});
 
-	it('drops a PDU listing the same auth event twice', async () => {
+	// hashed over the raw lists but signed over the de-duplicated form, so only the duplicate check can reject it
+	it.each([
+		['stages a PDU listing distinct prev and auth events', false, false, true],
+		['drops a PDU listing the same prev event twice', true, false, false],
+		['drops a PDU listing the same auth event twice', false, true, false],
+	])('%s', async (_, duplicatePrev, duplicateAuth, expectStaged) => {
+		const origin = 'remote.com';
+		const key = await generateKeyPairs(new Uint8Array(32).fill(3));
+
 		const create = PersistentEventFactory.newCreateEvent('@alice:remote.com' as UserID, '12');
-		const duplicated = {
+		const member = PersistentEventFactory.newCreateEvent('@bob:remote.com' as UserID, '12');
+		const raw = {
 			type: 'm.room.message',
 			sender: '@alice:remote.com',
 			room_id: create.roomId,
 			content: { msgtype: 'm.text', body: 'hello' },
 			origin_server_ts: 2,
 			depth: 2,
-			prev_events: [create.eventId],
-			auth_events: ['$auth', '$auth'],
-			hashes: { sha256: 'irrelevant' },
-			signatures: {},
+			prev_events: duplicatePrev ? [create.eventId, create.eventId] : [create.eventId],
+			auth_events: duplicateAuth ? [member.eventId, member.eventId] : [member.eventId],
 		} as unknown as Pdu;
+		const hashed = { ...raw, hashes: { sha256: PersistentEventBase.getContentHashString(raw) } } as Pdu;
+		const { redactedEvent } = PersistentEventFactory.createFromRawEvent(hashed, '12');
+		const { signatures } = await signEvent(redactedEvent as Pdu, key, origin, false);
 
 		const staged: EventID[] = [];
 
@@ -391,15 +401,15 @@ describe('processIncomingPDUs', () => {
 			null as never,
 			{ enqueue: () => undefined } as unknown as StagingAreaQueue,
 			{ getRoomVersion: async () => '12' } as unknown as StateService,
-			null as never,
+			{ getPublicKey: async () => Buffer.from(key.publicKey).toString('base64') } as unknown as ServerService,
 			null as never,
 			{ findById: async () => null } as unknown as EventRepository,
 			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
 			null as never,
 		);
 
-		await service.processIncomingPDUs('remote.com', [duplicated]);
+		await service.processIncomingPDUs(origin, [{ ...hashed, signatures } as Pdu]);
 
-		expect(staged).toEqual([]);
+		expect(staged).toHaveLength(expectStaged ? 1 : 0);
 	});
 });
