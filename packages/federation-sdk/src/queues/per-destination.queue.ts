@@ -234,15 +234,15 @@ export class PerDestinationQueue {
 		return this.requestService.put<SendTransactionResponse>(this.destination, uri, transaction);
 	}
 
-	/**
-	 * Handle retry logic with exponential backoff
-	 */
 	private dropQueues(): void {
 		this.droppedPdus ||= this.pduQueue.length > 0;
 		this.pduQueue = [];
 		this.eduQueue = [];
 	}
 
+	/**
+	 * Handle retry logic with exponential backoff
+	 */
 	private handleRetry(): void {
 		this.retryCount++;
 

@@ -258,6 +258,16 @@ describe('EventSenderService.sendStickyEvent', () => {
 		expect(result).toEqual({ eventId: builtEvent.eventId });
 	});
 
+	test('still relays the event when recording it as sticky fails', async () => {
+		markSticky.mockRejectedValueOnce(new Error('mongo is down'));
+
+		const result = await service.sendStickyEvent(ROOM_ID, RTC_MEMBER, CONTENT, SENDER, 110_000);
+
+		expect(sendEventToAllServersInRoom).toHaveBeenCalledWith(builtEvent);
+		expect(routePersistent).toHaveBeenCalledWith(builtEvent);
+		expect(result).toEqual({ eventId: builtEvent.eventId });
+	});
+
 	test.each([0, -1, 1.5, 3_600_001, Number.NaN])('refuses a duration of %p ms before building anything', async (durationMs) => {
 		await expect(service.sendStickyEvent(ROOM_ID, RTC_MEMBER, CONTENT, SENDER, durationMs)).rejects.toBeInstanceOf(RangeError);
 

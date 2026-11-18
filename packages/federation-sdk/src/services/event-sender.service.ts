@@ -55,6 +55,8 @@ export class EventSenderService {
 	 * Custom (vendor-namespaced) event types the homeserver does not know about
 	 * are allowed through, as the Matrix spec permits. Known event types are
 	 * validated against their schema, just like any other event.
+	 *
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
 	 */
 	async sendCustomEvent(
 		roomId: RoomID,
@@ -62,33 +64,7 @@ export class EventSenderService {
 		content: Record<string, unknown>,
 		senderUserId: UserID,
 	): Promise<PersistentEventBase> {
-		const roomVersion = await this.stateService.getRoomVersion(roomId);
-
-		const rawEvent = {
-			type: eventType,
-			content,
-			room_id: roomId,
-			auth_events: [],
-			depth: 0,
-			prev_events: [],
-			origin_server_ts: Date.now(),
-			sender: senderUserId,
-		};
-
-		const validation = getEventSchemaForType(eventType, roomVersion).safeParse(rawEvent);
-		if (!validation.success) {
-			throw new Error(`Custom event of type ${eventType} failed schema validation: ${JSON.stringify(validation.error.format())}`);
-		}
-
-		const event = await this.stateService.buildEvent(
-			rawEvent as unknown as PduWithHashesAndSignaturesOptional<PduForType<PduType>>,
-			roomVersion,
-		);
-
-		await this.stateService.handlePdu(event);
-		if (event.rejected) {
-			throw new Error(event.rejectReason);
-		}
+		const event = await this.buildAndPersist(roomId, senderUserId, { type: eventType, content });
 
 		this.dispatch(event);
 
@@ -151,7 +127,12 @@ export class EventSenderService {
 			[STICKY_EVENT_FIELD]: { duration_ms: durationMs },
 		});
 
-		await this.stickyEventService.markSticky(event, sentAt);
+		// the event is already in the room: failing here would leave it unsent and invite a duplicate
+		try {
+			await this.stickyEventService.markSticky(event, sentAt);
+		} catch (err) {
+			this.logger.error({ msg: 'Failed to record a sent event as sticky', eventId: event.eventId, err });
+		}
 
 		this.dispatch(event);
 
@@ -162,18 +143,24 @@ export class EventSenderService {
 	private async buildAndPersist(
 		roomId: RoomID,
 		sender: UserID,
-		fields: { type: string; content: Record<string, unknown> } & Record<string, unknown>,
+		fields: {
+			type: string;
+			content: Record<string, unknown>;
+			state_key?: string;
+			origin_server_ts?: number;
+			[STICKY_EVENT_FIELD]?: { duration_ms: number };
+		},
 	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const rawEvent = {
+			origin_server_ts: Date.now(),
+			...fields,
 			room_id: roomId,
 			sender,
 			auth_events: [],
 			depth: 0,
 			prev_events: [],
-			origin_server_ts: Date.now(),
-			...fields,
 		};
 
 		const validation = getEventSchemaForType(rawEvent.type, roomVersion).safeParse(rawEvent);

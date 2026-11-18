@@ -15,6 +15,11 @@ export function getStoredRoomId(stored: Pick<EventStore, 'roomId' | 'event'>): R
 	return roomId;
 }
 
+// matches the senders of a server; the server name is all that follows the first colon
+function sentFromServer(serverName: string): RegExp {
+	return new RegExp(`^[^:]*:${serverName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+}
+
 @singleton()
 export class EventRepository {
 	constructor(
@@ -30,6 +35,12 @@ export class EventRepository {
 				void this.collection.createIndex(key, options);
 			}
 		}
+
+		// not bound to a room nor to a layout: every stored event has a sender
+		void this.collection.createIndex(
+			{ 'sticky.expiresAt': 1, 'event.sender': 1 },
+			{ partialFilterExpression: { 'sticky.expiresAt': { $exists: true } } },
+		);
 	}
 
 	// the room id's shape is known before the room version is, so it is what picks the layout
@@ -121,21 +132,31 @@ export class EventRepository {
 		await this.collection.updateOne({ _id: eventId, sticky: { $exists: true } }, { $unset: { sticky: '' } });
 	}
 
-	findActiveStickyByRoomId(roomId: RoomID, now: number, eventType?: string): FindCursor<EventStore> {
+	findActiveStickyByRoomId(
+		roomId: RoomID,
+		now: number,
+		{ type, senderServer }: { type?: string; senderServer?: string } = {},
+	): FindCursor<EventStore> {
 		return this.collection
 			.find({
 				...this.roomFilter(roomId),
 				'sticky.expiresAt': { $gt: now },
 				'rejectCode': { $exists: false },
-				...(eventType && { 'event.type': eventType }),
+				...(type && { 'event.type': type }),
+				...(senderServer && { 'event.sender': sentFromServer(senderServer) }),
 			})
 			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
-	// every room at once
-	findActiveSticky(now: number): FindCursor<EventStore> {
+	// not bound to a room: only cheap because the partial { sticky.expiresAt, event.sender }
+	// index holds nothing but sticky events, and filters the sender before fetching
+	findActiveStickyBySenderServer(senderServer: string, now: number): FindCursor<EventStore> {
 		return this.collection
-			.find({ 'sticky.expiresAt': { $gt: now }, 'rejectCode': { $exists: false } })
+			.find({
+				'sticky.expiresAt': { $gt: now },
+				'event.sender': sentFromServer(senderServer),
+				'rejectCode': { $exists: false },
+			})
 			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
