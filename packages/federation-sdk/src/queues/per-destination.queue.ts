@@ -71,7 +71,7 @@ export class PerDestinationQueue {
 
 	private retryTimerId: NodeJS.Timeout | null = null;
 
-	// PDUs were given up on since the remote server was last known to be up
+	// PDUs were given up on since the destination was last known to be reachable
 	private droppedPdus = false;
 
 	constructor(
@@ -79,6 +79,8 @@ export class PerDestinationQueue {
 		private readonly origin: string,
 		private readonly requestService: FederationRequestService,
 		retryConfig?: Partial<RetryConfig>,
+		// called once the destination is reachable again after PDUs meant for it were dropped
+		private readonly onDroppedPdusRecovered?: () => void,
 	) {
 		// Load config from env vars, allow override for testing
 		const envConfig = getRetryConfigFromEnv();
@@ -122,21 +124,27 @@ export class PerDestinationQueue {
 	 * Notify that the remote server is back online.
 	 * This clears the backoff and triggers immediate processing.
 	 */
-	notifyServerUp(): boolean {
-		const { droppedPdus } = this;
-		this.droppedPdus = false;
-
+	notifyServerUp(): void {
 		this.logger.info('Remote server is back online, clearing backoff');
 		this.clearRetryTimer();
 		this.retryCount = 0;
 		this.nextRetryAt = 0;
 
+		this.reportRecovery();
+
 		// Trigger immediate processing if there are items in queue
 		if (!this.isEmpty()) {
 			void this.processQueue();
 		}
+	}
 
-		return droppedPdus;
+	private reportRecovery(): void {
+		if (!this.droppedPdus) {
+			return;
+		}
+
+		this.droppedPdus = false;
+		this.onDroppedPdusRecovered?.();
 	}
 
 	/**
@@ -197,6 +205,8 @@ export class PerDestinationQueue {
 			// Reset retry count on success
 			this.retryCount = 0;
 			this.nextRetryAt = 0;
+
+			this.reportRecovery();
 
 			this.logger.info('Successfully sent transaction');
 

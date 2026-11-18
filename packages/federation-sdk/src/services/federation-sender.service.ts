@@ -17,6 +17,8 @@ export class FederationSenderService {
 
 	private readonly queues = new Map<string, PerDestinationQueue>();
 
+	private droppedPdusRecoveredHandler?: (destination: string) => void;
+
 	constructor(private readonly configService: ConfigService, private readonly requestService: FederationRequestService) {}
 
 	/**
@@ -66,19 +68,25 @@ export class FederationSenderService {
 	}
 
 	/**
+	 * Set what runs when a destination is reachable again after PDUs meant for it
+	 * were dropped, whether its recovery is seen through an outgoing transaction
+	 * that succeeds or through notifyRemoteServerUp.
+	 */
+	setDroppedPdusRecoveredHandler(handler: (destination: string) => void): void {
+		this.droppedPdusRecoveredHandler = handler;
+	}
+
+	/**
 	 * Notify that a remote server is back online.
 	 * This clears backoff and triggers immediate retry for that destination.
 	 * Should be called when receiving an incoming request from the remote server.
-	 * Returns whether PDUs meant for it were dropped while it was unreachable.
 	 */
-	notifyRemoteServerUp(destination: string): boolean {
+	notifyRemoteServerUp(destination: string): void {
 		const queue = this.queues.get(destination);
-		if (!queue) {
-			return false;
+		if (queue) {
+			this.logger.info({ destination }, 'Notifying queue that remote server is up');
+			queue.notifyServerUp();
 		}
-
-		this.logger.info({ destination }, 'Notifying queue that remote server is up');
-		return queue.notifyServerUp();
 	}
 
 	/**
@@ -89,7 +97,9 @@ export class FederationSenderService {
 
 		if (!queue) {
 			this.logger.debug({ destination }, 'Creating new queue for destination');
-			queue = new PerDestinationQueue(destination, this.configService.serverName, this.requestService);
+			queue = new PerDestinationQueue(destination, this.configService.serverName, this.requestService, undefined, () =>
+				this.droppedPdusRecoveredHandler?.(destination),
+			);
 			this.queues.set(destination, queue);
 		}
 

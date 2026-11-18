@@ -27,6 +27,7 @@ import { FederationSDK } from './sdk';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventService } from './services/event.service';
+import { FederationSenderService } from './services/federation-sender.service';
 import { StateService } from './services/state.service';
 import { StickyEventService } from './services/sticky-event.service';
 
@@ -185,10 +186,16 @@ export async function init({
 		});
 	});
 
+	// sticky events pushed to a destination that was given up on are pushed again once it is reachable
+	const stickyEventService = container.resolve(StickyEventService);
+	container.resolve(FederationSenderService).setDroppedPdusRecoveredHandler((destination) => {
+		void stickyEventService.pushOwnStickyEventsToServers(destination);
+	});
+
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {
 		const eventService = container.resolve(EventService);
-		void container.resolve(StickyEventService).pushOwnStickyEventsToServers();
+		void stickyEventService.pushOwnStickyEventsToServers();
 
 		await eventService.processOldStagedEvents();
 	}, 5000);

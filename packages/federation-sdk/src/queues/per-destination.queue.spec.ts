@@ -482,11 +482,18 @@ describe('PerDestinationQueue', () => {
 				return Promise.resolve({ pdus: {} });
 			});
 
-			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
-				maxRetries: 5,
-				initialBackoffMs: 10000, // 10 seconds
-				backoffMultiplier: 2,
-			});
+			const onDroppedPdusRecovered = jest.fn();
+			queue = new PerDestinationQueue(
+				destination,
+				origin,
+				mockRequestService,
+				{
+					maxRetries: 5,
+					initialBackoffMs: 10000, // 10 seconds
+					backoffMultiplier: 2,
+				},
+				onDroppedPdusRecovered,
+			);
 
 			queue.enqueuePDU(createMockPdu('$event1'));
 
@@ -495,13 +502,15 @@ describe('PerDestinationQueue', () => {
 			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
 			expect(queue.isEmpty()).toBe(false);
 
-			// Notify server is back up (should clear backoff); nothing was dropped, $event1 is still queued
-			expect(queue.notifyServerUp()).toBe(false);
+			// Notify server is back up (should clear backoff)
+			queue.notifyServerUp();
 
 			// Should immediately retry without waiting for backoff
 			await flushPromises();
 			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
 			expect(queue.isEmpty()).toBe(true);
+			// nothing was dropped, $event1 was only delayed
+			expect(onDroppedPdusRecovered).not.toHaveBeenCalled();
 		});
 
 		it('should resume processing after 1-hour threshold when notifyServerUp is called', async () => {
@@ -510,11 +519,18 @@ describe('PerDestinationQueue', () => {
 			const failingMock = jest.fn().mockRejectedValue(new Error('Server down'));
 			mockRequestService.put = failingMock;
 
-			queue = new PerDestinationQueue(destination, origin, mockRequestService, {
-				maxRetries: 20,
-				initialBackoffMs: 4000000, // Exceeds 1 hour on first retry
-				backoffMultiplier: 1,
-			});
+			const onDroppedPdusRecovered = jest.fn();
+			queue = new PerDestinationQueue(
+				destination,
+				origin,
+				mockRequestService,
+				{
+					maxRetries: 20,
+					initialBackoffMs: 4000000, // Exceeds 1 hour on first retry
+					backoffMultiplier: 1,
+				},
+				onDroppedPdusRecovered,
+			);
 
 			queue.enqueuePDU(createMockPdu('$event1'));
 
@@ -534,14 +550,74 @@ describe('PerDestinationQueue', () => {
 			mockRequestService.put = workingMock;
 
 			// Notify that server is back up - should clear Infinity backoff and process queue
-			// and tell that $event1 was dropped meanwhile, only once
-			expect(queue.notifyServerUp()).toBe(true);
-			expect(queue.notifyServerUp()).toBe(false);
+			queue.notifyServerUp();
+			queue.notifyServerUp();
 
 			// Should process the queued event ($event2)
 			await flushPromises();
 			expect(workingMock).toHaveBeenCalledTimes(1); // New event processed
 			expect(queue.isEmpty()).toBe(true); // Queue cleared
+			// $event1 was dropped meanwhile, which is reported once
+			expect(onDroppedPdusRecovered).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('recovery after dropped PDUs', () => {
+		const dropAfterMaxRetries = async (enqueue: (queue: PerDestinationQueue) => void) => {
+			jestTimers.useFakeTimers();
+
+			mockRequestService.put = jest.fn().mockRejectedValue(new Error('Server down'));
+			const onDroppedPdusRecovered = jest.fn();
+			queue = new PerDestinationQueue(
+				destination,
+				origin,
+				mockRequestService,
+				{ maxRetries: 1, initialBackoffMs: 50, backoffMultiplier: 2 },
+				onDroppedPdusRecovered,
+			);
+
+			enqueue(queue);
+			await flushPromises();
+			jestTimers.advanceTimersByTime(50);
+			await flushPromises();
+			expect(queue.isEmpty()).toBe(true);
+
+			mockRequestService.put = jest.fn().mockResolvedValue({ pdus: {} });
+
+			return onDroppedPdusRecovered;
+		};
+
+		it('reports dropped PDUs once when a later transaction to the destination succeeds', async () => {
+			const onDroppedPdusRecovered = await dropAfterMaxRetries((q) => q.enqueuePDU(createMockPdu('$dropped')));
+			expect(onDroppedPdusRecovered).not.toHaveBeenCalled();
+
+			queue.enqueuePDU(createMockPdu('$next'));
+			await flushPromises();
+			expect(onDroppedPdusRecovered).toHaveBeenCalledTimes(1);
+
+			queue.enqueuePDU(createMockPdu('$after'));
+			await flushPromises();
+			expect(mockRequestService.put).toHaveBeenCalledTimes(2);
+			expect(onDroppedPdusRecovered).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports dropped PDUs when the server is notified up with nothing queued', async () => {
+			const onDroppedPdusRecovered = await dropAfterMaxRetries((q) => q.enqueuePDU(createMockPdu('$dropped')));
+
+			queue.notifyServerUp();
+
+			expect(onDroppedPdusRecovered).toHaveBeenCalledTimes(1);
+		});
+
+		it('reports nothing when only EDUs were dropped', async () => {
+			const onDroppedPdusRecovered = await dropAfterMaxRetries((q) => q.enqueueEDU(createMockEdu('m.typing')));
+
+			queue.enqueuePDU(createMockPdu('$next'));
+			await flushPromises();
+			queue.notifyServerUp();
+
+			expect(mockRequestService.put).toHaveBeenCalledTimes(1);
+			expect(onDroppedPdusRecovered).not.toHaveBeenCalled();
 		});
 	});
 

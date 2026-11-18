@@ -7,7 +7,6 @@ import { ConfigService } from './config.service';
 import { FederationRequestService } from './federation-request.service';
 import { FederationSenderService } from './federation-sender.service';
 import { StateService } from './state.service';
-import { StickyEventService } from './sticky-event.service';
 import { FederationEndpoints, type MakeJoinResponse, type SendJoinResponse, type Version } from '../specs/federation-api';
 
 @singleton()
@@ -19,7 +18,6 @@ export class FederationService {
 		private readonly requestService: FederationRequestService,
 		private readonly stateService: StateService,
 		private readonly federationSenderService: FederationSenderService,
-		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	/**
@@ -233,10 +231,6 @@ export class FederationService {
 	 * Should be called when receiving an incoming request from the remote server.
 	 */
 	notifyRemoteServerUp(serverName: string): void {
-		const droppedPdus = this.federationSenderService.notifyRemoteServerUp(serverName);
-
-		if (droppedPdus) {
-			void this.stickyEventService.pushOwnStickyEventsToServers(serverName);
-		}
+		this.federationSenderService.notifyRemoteServerUp(serverName);
 	}
 }
