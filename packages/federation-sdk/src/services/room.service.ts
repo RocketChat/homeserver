@@ -38,9 +38,13 @@ import { FederationService } from './federation.service';
 import { InviteService } from './invite.service';
 import { ProfilesService } from './profiles.service';
 import { StateService, UnknownRoomError } from './state.service';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
+import { LOCK_TIMEOUT_MS, LockRepository } from '../repositories/lock.repository';
 import { RoomRepository } from '../repositories/room.repository';
+
+const ROOM_LOCK_RETRY_MS = 200;
 
 @singleton()
 export class RoomService {
@@ -61,9 +65,12 @@ export class RoomService {
 		private readonly eventRepository: EventRepository,
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
+		@inject(delay(() => LockRepository))
+		private readonly lockRepository: LockRepository,
 		private readonly federationValidationService: FederationValidationService,
 		private readonly directoryService: DirectoryService,
 		private readonly eventNotifierService: EventNotifierService,
+		private readonly stagingAreaQueue: StagingAreaQueue,
 	) {}
 
 	private validatePowerLevelChange(
@@ -747,8 +754,78 @@ export class RoomService {
 
 		await stateService.signEvent(joinEvent);
 
+		const { state, event } = await this.sendJoinAndStoreState(roomId, joinEvent, residentServer).catch((error) => {
+			// the staging area skipped this room while the join held its lock, and the success path's re-staging won't run
+			this.stagingAreaQueue.enqueue(roomId);
+			throw error;
+		});
+
+		const joinEventFinal = PersistentEventFactory.createFromRawEvent(event, makeJoinResponse.room_version);
+
+		// FIXME: this should be here, but since using join event to walk and repopulate missing message, there is no gurantee the check will pass
+
+		// with the state we have, run auth check
+		// const room = await stateService.getLatestRoomState(roomId);
+
+		// try {
+		// 	await checkEventAuthWithState(
+		// 		joinEventFinal,
+		// 		room,
+		// 		stateService._getStore(roomVersion),
+		// 	);
+		// } catch (error) {
+		// 	this.logger.error(
+		// 		{ error, roomId, eventId: joinEventFinal.eventId },
+		// 		'failed to join room, join event did not pass auth check',
+		// 	);
+
+		// 	throw error;
+		// }
+
+		logger.info({
+			msg: 'Persisting join event',
+			eventId: joinEventFinal.eventId,
+			event: joinEventFinal.event,
+		});
+
+		// try to persist the join event now, should succeed with state in place.
+		// runs after the room lock is released, since staging this enqueues the room for processing
+		void this.eventService.processIncomingPDUs(residentServer || joinEventFinal.origin, [...state, joinEventFinal.event]);
+
+		return joinEventFinal.eventId;
+	}
+
+	private async acquireRoomLock(roomId: RoomID) {
+		// by then a lock that isn't being refreshed is stale and gets taken over, so waiting longer is pointless
+		const deadline = Date.now() + LOCK_TIMEOUT_MS;
+
+		for (;;) {
+			// eslint-disable-next-line no-await-in-loop
+			const lock = await this.lockRepository.lock(roomId, this.configService.instanceId, { keepAlive: true });
+			if (lock.success) {
+				return lock;
+			}
+
+			if (Date.now() >= deadline) {
+				throw new Error(`Timed out waiting for the processing lock of room ${roomId}`);
+			}
+
+			// eslint-disable-next-line no-await-in-loop
+			await new Promise((resolve) => setTimeout(resolve, ROOM_LOCK_RETRY_MS));
+		}
+	}
+
+	// holds the room lock the staging area processes under: the resident server sends our join back in a
+	// transaction, and processing it before the state is complete builds it on a partial state for good
+	private async sendJoinAndStoreState(roomId: RoomID, joinEvent: PersistentEventBase, residentServer: string) {
+		const { stateService, federationService } = this;
+
+		// eslint-disable-next-line prettier/prettier
+		await using lock = await this.acquireRoomLock(roomId);
+
 		// currently makeSignedRequest does the signing
-		const { state, auth_chain: authChain, event, servers_in_room: serversInRoom = [] } = await federationService.sendJoin(joinEvent);
+		const sendJoinResponse = await federationService.sendJoin(joinEvent);
+		const { state, auth_chain: authChain, servers_in_room: serversInRoom = [] } = sendJoinResponse;
 
 		// TODO: validate hash and sig (item 2)
 
@@ -821,38 +898,7 @@ export class RoomService {
 			this.logger.info({ roomId }, 'received complete graph of state from send_join, nothing to do');
 		}
 
-		const joinEventFinal = PersistentEventFactory.createFromRawEvent(event, makeJoinResponse.room_version);
-
-		// FIXME: this should be here, but since using join event to walk and repopulate missing message, there is no gurantee the check will pass
-
-		// with the state we have, run auth check
-		// const room = await stateService.getLatestRoomState(roomId);
-
-		// try {
-		// 	await checkEventAuthWithState(
-		// 		joinEventFinal,
-		// 		room,
-		// 		stateService._getStore(roomVersion),
-		// 	);
-		// } catch (error) {
-		// 	this.logger.error(
-		// 		{ error, roomId, eventId: joinEventFinal.eventId },
-		// 		'failed to join room, join event did not pass auth check',
-		// 	);
-
-		// 	throw error;
-		// }
-
-		logger.info({
-			msg: 'Persisting join event',
-			eventId: joinEventFinal.eventId,
-			event: joinEventFinal.event,
-		});
-
-		// try to persist the join event now, should succeed with state in place
-		void this.eventService.processIncomingPDUs(residentServer || joinEventFinal.origin, [...state, joinEventFinal.event]);
-
-		return joinEventFinal.eventId;
+		return sendJoinResponse;
 	}
 
 	async acceptInvite(roomId: RoomID, userId: UserID) {

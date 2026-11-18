@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'bun:test';
+import { afterEach, beforeAll, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 
 import type {
 	PduJoinRuleEventContent,
@@ -8,12 +8,17 @@ import type {
 	StateMapKey,
 	UserID,
 } from '@rocket.chat/federation-room';
+import type { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
 import { FederationValidationService, federationSDK, init } from '..';
 import { AppConfig, ConfigService } from './config.service';
+import { EventService } from './event.service';
+import { FederationService } from './federation.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { StagingAreaQueue } from '../queues/staging-area.queue';
+import { LOCK_KEEP_ALIVE_INTERVAL_MS, LOCK_TIMEOUT_MS, type Lock, LockRepository } from '../repositories/lock.repository';
 
 describe('RoomService', async () => {
 	if (!process.env.RUN_MONGO_TESTS) {
@@ -353,6 +358,138 @@ describe('RoomService', async () => {
 			expect([...stateAfterReject.keys()]).toEqual(
 				expect.arrayContaining(['m.room.create:', `m.room.member:${username}`, `m.room.member:${invitedUsername}`]),
 			);
+		});
+	});
+
+	describe('joinUser - remote room', () => {
+		const remoteRoomId = '!remote-room:remote.com' as RoomID;
+		const bob = '@bob:example.com' as UserID;
+		const stagingInstance = 'staging-instance';
+
+		const federationService = container.resolve(FederationService);
+		const eventService = container.resolve(EventService);
+		const stagingAreaQueue = container.resolve(StagingAreaQueue);
+
+		// resolved once init() in beforeAll has registered the lock collection
+		let lockRepository: LockRepository;
+
+		beforeAll(() => {
+			lockRepository = container.resolve(LockRepository);
+		});
+
+		afterEach(() => {
+			mock.restore();
+			jest.useRealTimers();
+		});
+
+		// what the staging area queue does before processing a room
+		const stagingCanLock = async () => {
+			// eslint-disable-next-line prettier/prettier
+			await using lock = await lockRepository.lock(remoteRoomId, stagingInstance);
+			return lock.success;
+		};
+
+		const mockRemoteJoin = (onSendJoin?: () => void) => {
+			const template = {
+				type: 'm.room.member',
+				content: { membership: 'join' },
+				room_id: remoteRoomId,
+				sender: bob,
+				state_key: bob,
+				auth_events: [],
+				prev_events: [],
+				depth: 1,
+				origin_server_ts: Date.now(),
+			};
+
+			spyOn(federationService, 'makeJoin').mockResolvedValue({ event: template, room_version: '10' } as any);
+			spyOn(federationService, 'sendJoin').mockImplementation(async (joinEvent) => {
+				onSendJoin?.();
+				return { state: [], auth_chain: [], event: joinEvent.event, servers_in_room: [] } as any;
+			});
+		};
+
+		it('keeps the staging area out of the room until the send_join state is stored', async () => {
+			let stagingCouldLockDuringInitialState: boolean | undefined;
+			let stagingCouldLockWhenJoinIsStaged: Promise<boolean> | undefined;
+
+			mockRemoteJoin();
+			spyOn(stateService, 'processInitialState').mockImplementation(async () => {
+				stagingCouldLockDuringInitialState = await stagingCanLock();
+				return '' as any;
+			});
+			spyOn(eventService, 'processIncomingPDUs').mockImplementation(() => {
+				stagingCouldLockWhenJoinIsStaged = stagingCanLock();
+				return Promise.resolve();
+			});
+
+			await roomService.joinUser(remoteRoomId, bob);
+
+			expect(stagingCouldLockDuringInitialState).toBe(false);
+			expect(await stagingCouldLockWhenJoinIsStaged).toBe(true);
+		});
+
+		it('releases the room lock and re-enqueues the room for the staging area when storing the state fails', async () => {
+			let stagingCouldLockWhenEnqueued: Promise<boolean> | undefined;
+
+			mockRemoteJoin();
+			spyOn(stateService, 'processInitialState').mockRejectedValue(new Error('bad state'));
+			const enqueueSpy = spyOn(stagingAreaQueue, 'enqueue').mockImplementation(() => {
+				stagingCouldLockWhenEnqueued = stagingCanLock();
+			});
+
+			await expect(roomService.joinUser(remoteRoomId, bob)).rejects.toThrow('bad state');
+
+			expect(enqueueSpy).toHaveBeenCalledWith(remoteRoomId);
+			expect(await stagingCouldLockWhenEnqueued).toBe(true);
+		});
+
+		it('keeps the room locked when storing the state outlasts the lock timeout', async () => {
+			const lockCollection = container.resolve<Collection<Lock>>('LockCollection');
+			const refreshSpy = spyOn(lockRepository, 'updateLockTimestamp');
+			let stagingCouldLock: boolean | undefined;
+
+			mockRemoteJoin();
+			spyOn(stateService, 'processInitialState').mockImplementation(async () => {
+				// as if storing the state had been running for longer than the lock timeout
+				await lockCollection.updateOne(
+					{ roomId: remoteRoomId },
+					{ $set: { lockedAt: new Date(Date.now() - LOCK_TIMEOUT_MS - 60_000) } },
+				);
+				jest.advanceTimersByTime(LOCK_KEEP_ALIVE_INTERVAL_MS);
+				await refreshSpy.mock.results.at(-1)?.value;
+
+				stagingCouldLock = await stagingCanLock();
+				return '' as any;
+			});
+			spyOn(eventService, 'processIncomingPDUs').mockResolvedValue();
+
+			jest.useFakeTimers();
+			await roomService.joinUser(remoteRoomId, bob);
+
+			expect(refreshSpy).toHaveBeenCalled();
+			expect(stagingCouldLock).toBe(false);
+		});
+
+		it('waits for the staging area to release the room before joining', async () => {
+			expect(await lockRepository.getLock(remoteRoomId, stagingInstance)).toBe(true);
+			let stagingReleasing = false;
+			const stagingDone = Bun.sleep(300).then(() => {
+				stagingReleasing = true;
+				return lockRepository.releaseLock(remoteRoomId, stagingInstance);
+			});
+
+			let sentJoinWhileStagingHeldTheRoom: boolean | undefined;
+			mockRemoteJoin(() => {
+				sentJoinWhileStagingHeldTheRoom = !stagingReleasing;
+			});
+			spyOn(stateService, 'processInitialState').mockResolvedValue('' as any);
+			spyOn(eventService, 'processIncomingPDUs').mockResolvedValue();
+
+			await roomService.joinUser(remoteRoomId, bob);
+			await stagingDone;
+
+			expect(sentJoinWhileStagingHeldTheRoom).toBe(false);
 		});
 	});
 });

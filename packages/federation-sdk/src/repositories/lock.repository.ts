@@ -1,5 +1,11 @@
+import { createLogger } from '@rocket.chat/federation-core';
 import type { Collection } from 'mongodb';
 import { inject, singleton } from 'tsyringe';
+
+export const LOCK_TIMEOUT_MS = 2 * 60 * 1000;
+
+// well under LOCK_TIMEOUT_MS, so one slow refresh doesn't let the lock go stale
+export const LOCK_KEEP_ALIVE_INTERVAL_MS = 30 * 1000;
 
 export type Lock = {
 	roomId: string;
@@ -9,20 +15,32 @@ export type Lock = {
 
 @singleton()
 export class LockRepository {
+	private readonly logger = createLogger('LockRepository');
+
 	constructor(@inject('LockCollection') private readonly collection: Collection<Lock>) {
 		// TODO define proper way of creating indexes in repositories
 		this.collection.createIndex({ roomId: 1 }, { unique: true });
 	}
 
+	// keepAlive refreshes the lock until it is disposed, for holders that can't call update() often enough
 	async lock(
 		roomId: string,
 		instanceId: string,
+		{ keepAlive = false }: { keepAlive?: boolean } = {},
 	): Promise<{
 		success: boolean;
 		update: () => Promise<void>;
 		[Symbol.asyncDispose]: () => Promise<void>;
 	}> {
 		const lock = await this.getLock(roomId, instanceId);
+
+		const keepAliveTimer =
+			lock && keepAlive
+				? setInterval(() => {
+						this.updateLockTimestamp(roomId, instanceId).catch((err) => this.logger.warn({ msg: 'Failed to refresh lock', roomId, err }));
+				  }, LOCK_KEEP_ALIVE_INTERVAL_MS)
+				: undefined;
+
 		return {
 			success: lock,
 			update: async () => {
@@ -32,6 +50,7 @@ export class LockRepository {
 				return this.updateLockTimestamp(roomId, instanceId);
 			},
 			[Symbol.asyncDispose]: async () => {
+				clearInterval(keepAliveTimer);
 				if (!lock) {
 					return;
 				}
@@ -41,8 +60,7 @@ export class LockRepository {
 	}
 
 	async getLock(roomId: string, instanceId: string): Promise<boolean> {
-		const timedout = new Date();
-		timedout.setTime(timedout.getTime() - 2 * 60 * 1000); // 2 minutes ago
+		const timedout = new Date(Date.now() - LOCK_TIMEOUT_MS);
 
 		try {
 			const lock = await this.collection.findOneAndUpdate(
