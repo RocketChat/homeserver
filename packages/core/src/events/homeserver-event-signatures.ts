@@ -8,7 +8,7 @@ export type HomeserverEventSignatures = {
 	'homeserver.matrix.event': {
 		event_id: EventID;
 		event: AnyPdu;
-		// present when the event is sticky (MSC4354): when its stickiness ends, as this server reckons it
+		// present when the event is sticky (MSC4354): when its stickiness ends (epoch ms), as this server reckons it
 		sticky?: {
 			expiresAt: number;
 		};
