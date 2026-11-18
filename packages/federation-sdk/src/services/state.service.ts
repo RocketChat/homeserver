@@ -786,7 +786,6 @@ export class StateService {
 		return servers;
 	}
 
-	// whether the user is joined per the room's current state; nobody is joined to a room we do not know
 	async isUserJoined(roomId: RoomID, userId: UserID): Promise<boolean> {
 		try {
 			const state = await this.getLatestRoomState2(roomId);
@@ -799,7 +798,6 @@ export class StateService {
 		}
 	}
 
-	// the servers with at least one user joined per the room's current state, this one included
 	async getJoinedServers(roomId: RoomID): Promise<string[]> {
 		try {
 			return Array.from(await this.getServerSetInRoom(roomId));

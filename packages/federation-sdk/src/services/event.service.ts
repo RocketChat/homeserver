@@ -25,8 +25,10 @@ import { EventStagingRepository } from '../repositories/event-staging.repository
 import { EventRepository } from '../repositories/event.repository';
 import { getEventSchemaForType } from '../utils/event-schemas';
 
+// every room version caps both: https://spec.matrix.org/v1.19/rooms/v1/#event-format
 const MAX_PREV_EVENTS = 20;
 const MAX_AUTH_EVENTS = 10;
+// https://spec.matrix.org/v1.19/client-server-api/#size-limits
 const MAX_PDU_SIZE = 65536;
 const MAX_LOGGED_SCHEMA_ISSUES = 10;
 const MAX_LOGGED_FIELD_LENGTH = 255;
@@ -435,8 +437,7 @@ export class EventService {
 		const errors: string[] = [];
 
 		// an excessive number of prev_events or auth_events could cause a huge state resolution
-		// or cascade of event fetches; every room version caps both
-		// https://spec.matrix.org/v1.19/rooms/v1/#event-format
+		// or cascade of event fetches
 		if (Array.isArray(event.prev_events) && event.prev_events.length > MAX_PREV_EVENTS) {
 			errors.push(`Event must not have more than ${MAX_PREV_EVENTS} prev_events`);
 		}
@@ -445,7 +446,6 @@ export class EventService {
 		}
 
 		// the size is only worth measuring once the arrays are known to be small
-		// https://spec.matrix.org/v1.19/client-server-api/#size-limits
 		if (errors.length === 0 && Buffer.byteLength(encodeCanonicalJson(event)) > MAX_PDU_SIZE) {
 			errors.push(`Event must not be larger than ${MAX_PDU_SIZE} bytes`);
 		}
@@ -807,8 +807,8 @@ export class EventService {
 	}
 
 	// single entry point for the staging-area hot path: authorize/persist the
-	// event through the state graph, then notify listeners. `receivedAt` is when
-	// this server received the event; without it the event is never sticky
+	// event through the state graph, then notify listeners. Without `receivedAt`
+	// the event is never sticky
 	async authorizeAndPersist(event: PersistentEventBase, receivedAt?: number): Promise<void> {
 		await this.stateService.handlePdu(event);
 		const stickyExpiresAt = receivedAt === undefined ? undefined : await this.stickyEventService.markSticky(event, receivedAt);

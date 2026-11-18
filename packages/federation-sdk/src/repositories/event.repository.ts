@@ -15,7 +15,7 @@ export function getStoredRoomId(stored: Pick<EventStore, 'roomId' | 'event'>): R
 	return roomId;
 }
 
-// matches the senders of a server; the server name is all that follows the first colon
+// a user ID's server name is everything after the first colon
 function sentFromServer(serverName: string): RegExp {
 	return new RegExp(`^[^:]*:${serverName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 }

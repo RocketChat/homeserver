@@ -63,8 +63,7 @@ export class StickyEventService {
 	/**
 	 * A redacted event is no longer sticky. Call it with every accepted event: when the
 	 * event is a redaction its sender is allowed to make, the stickiness of its target
-	 * ends. Resolves to the event that stopped being a candidate, if any; failures are
-	 * logged, never thrown.
+	 * ends. Resolves to the redacted event, if any; failures are logged, never thrown.
 	 */
 	async endStickinessOfRedacted(event: PersistentEventBase): Promise<EventID | undefined> {
 		if (event.type !== 'm.room.redaction') {
@@ -84,9 +83,6 @@ export class StickyEventService {
 		}
 	}
 
-	/**
-	 * The sticky events of a room that have not expired yet, from any sender, oldest first.
-	 */
 	async getActiveStickyEvents(
 		roomId: RoomID,
 		{ type, now = Date.now() }: { type?: string; now?: number } = {},

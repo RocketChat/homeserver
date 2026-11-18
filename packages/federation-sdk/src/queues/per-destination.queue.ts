@@ -121,7 +121,6 @@ export class PerDestinationQueue {
 	/**
 	 * Notify that the remote server is back online.
 	 * This clears the backoff and triggers immediate processing.
-	 * Returns whether PDUs meant for it were dropped while it was unreachable.
 	 */
 	notifyServerUp(): boolean {
 		const { droppedPdus } = this;

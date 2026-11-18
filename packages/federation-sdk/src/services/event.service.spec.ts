@@ -206,7 +206,7 @@ describe('processIncomingPDUs', () => {
 		['more than 20 prev_events', { prev_events: Array.from({ length: 21 }, (_, i) => `$prev${i}`) }],
 		['more than 10 auth_events', { auth_events: Array.from({ length: 11 }, (_, i) => `$auth${i}`) }],
 		['more than 64 KiB', { content: { msgtype: 'm.text', body: 'x'.repeat(65536) } }],
-		// every item fails the schema, which used to cost kilobytes of heap per item
+		// every item fails the schema, and building the schema errors would cost kilobytes of heap per item
 		['a huge prev_events array of invalid items', { prev_events: new Array(1_000_000).fill(0) }],
 	])('rejects a PDU with %s before validating it against the room', async (_, overrides) => {
 		const { service, calls } = buildIncomingService();

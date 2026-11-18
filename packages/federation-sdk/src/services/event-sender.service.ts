@@ -73,11 +73,8 @@ export class EventSenderService {
 
 	/**
 	 * Set a piece of room state on behalf of a local user, of any event type and
-	 * under any state key. The event is persisted, relayed to every federated
-	 * server in the room and routed to interested bridges.
-	 *
-	 * Empty content is valid: it is how some state is withdrawn, e.g. a MatrixRTC
-	 * call membership when its member leaves the call.
+	 * under any state key. Empty content is valid: it is how some state is
+	 * withdrawn, e.g. a MatrixRTC call membership when its member leaves the call.
 	 *
 	 * @throws {EventRejectedError} when the room's authorization rules refuse the
 	 * event, e.g. because the sender lacks the power level its type requires
@@ -97,14 +94,11 @@ export class EventSenderService {
 	}
 
 	/**
-	 * Send a sticky event (MSC4354) on behalf of a local user: a message event
-	 * that stays relevant to every member of the room for `durationMs` after it
-	 * is sent, whatever the history visibility, such as a MatrixRTC call
-	 * membership, ring or decline. The event is persisted, relayed to every
-	 * federated server in the room and routed to interested bridges.
+	 * Send a message event on behalf of a local user that stays sticky (MSC4354)
+	 * for `durationMs` from now.
 	 *
-	 * @throws {RangeError} when `durationMs` is not a whole number of
-	 * milliseconds between 1 and one hour
+	 * @throws {RangeError} when `durationMs` is not a whole number of milliseconds
+	 * from 1 to MAX_STICKY_DURATION_MS
 	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
 	 */
 	async sendStickyEvent(

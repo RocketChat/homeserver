@@ -296,8 +296,7 @@ export class FederationSDK {
 
 	/**
 	 * The sticky events (MSC4354) of a room that have not expired yet, from any
-	 * sender, oldest first; optionally only those of one event type. `now`
-	 * defaults to the current time.
+	 * sender, oldest first; optionally only those of one event type.
 	 */
 	getActiveStickyEvents(roomId: RoomID, options?: { type?: string; now?: number }) {
 		return this.stickyEventService.getActiveStickyEvents(roomId, options);

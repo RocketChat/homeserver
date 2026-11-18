@@ -9,7 +9,6 @@ type MaybeStickyPdu = {
 	[STICKY_EVENT_FIELD]?: unknown;
 };
 
-// how long the sender asked the event to stay sticky, or undefined when it is not a sticky event
 export function getStickyDurationMs(pdu: MaybeStickyPdu): number | undefined {
 	// only message events can be sticky
 	if ('state_key' in pdu) {
@@ -37,6 +36,7 @@ export function getStickyExpiresAt(pdu: MaybeStickyPdu, receivedAt: number): num
 		return undefined;
 	}
 
+	// starting at the earlier of the two keeps a sender from extending stickiness with a future origin_server_ts
 	const expiresAt = Math.min(receivedAt, pdu.origin_server_ts) + Math.min(durationMs, MAX_STICKY_DURATION_MS);
 
 	return expiresAt > receivedAt ? expiresAt : undefined;

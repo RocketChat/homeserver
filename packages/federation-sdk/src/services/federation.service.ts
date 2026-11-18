@@ -188,7 +188,7 @@ export class FederationService {
 		// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
-		// a membership change must also reach the server of the user it targets, who may not be in the room yet
+		// a state event keyed by a user must also reach that user's server, which may not be in the room yet
 		if (event.stateKey && isUserId(event.stateKey)) {
 			servers.add(extractDomainFromId(event.stateKey));
 		}
@@ -236,7 +236,6 @@ export class FederationService {
 	notifyRemoteServerUp(serverName: string): void {
 		const droppedPdus = this.federationSenderService.notifyRemoteServerUp(serverName);
 
-		// the dropped PDUs are gone, but the sticky events among them still matter while they last
 		if (droppedPdus) {
 			void this.stickyEventService.pushOwnStickyEventsToServers(serverName);
 		}

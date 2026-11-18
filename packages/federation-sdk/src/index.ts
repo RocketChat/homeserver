@@ -188,7 +188,6 @@ export async function init({
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {
 		const eventService = container.resolve(EventService);
-		// whatever was still queued in memory when this server last stopped is gone
 		void container.resolve(StickyEventService).pushOwnStickyEventsToServers();
 
 		await eventService.processOldStagedEvents();
