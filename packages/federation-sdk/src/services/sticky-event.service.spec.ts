@@ -199,6 +199,8 @@ describe('StickyEventService', () => {
 				toArray: async () => [own1, own2].map((e) => ({ _id: e.eventId, event: e.event, sticky: { receivedAt: 0, expiresAt: 0 } })),
 			}));
 
+			getServerSetInRoom.mockImplementationOnce(async () => new Set(['hs1', 'hs3']));
+
 			const before = Date.now();
 			const count = await service.pushOwnStickyEvents(ROOM_ID, 'hs3');
 
@@ -213,12 +215,20 @@ describe('StickyEventService', () => {
 			]);
 		});
 
+		test('queues nothing to a server that left the room before the catch-up', async () => {
+			expect(await service.pushOwnStickyEvents(ROOM_ID, 'hs3')).toBe(0);
+
+			expect(getServerSetInRoom).toHaveBeenCalledWith(ROOM_ID);
+			expect(findActiveStickyByRoomId).not.toHaveBeenCalled();
+			expect(sendPDU).not.toHaveBeenCalled();
+		});
+
 		test('never throws', async () => {
 			findActiveStickyByRoomId.mockImplementationOnce(() => {
 				throw new Error('db down');
 			});
 
-			expect(await service.pushOwnStickyEvents(ROOM_ID, 'hs3')).toBe(0);
+			expect(await service.pushOwnStickyEvents(ROOM_ID, 'hs2')).toBe(0);
 		});
 	});
 

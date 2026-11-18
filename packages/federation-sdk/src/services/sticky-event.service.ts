@@ -141,7 +141,8 @@ export class StickyEventService {
 
 	/**
 	 * Queue this server's own unexpired sticky events of a room to another server,
-	 * oldest first. Resolves to how many were queued; failures are logged, never thrown.
+	 * oldest first, if that server is still in the room. Resolves to how many were
+	 * queued; failures are logged, never thrown.
 	 */
 	async pushOwnStickyEvents(roomId: RoomID, destination: string): Promise<number> {
 		if (!this.enabled) {
@@ -149,6 +150,12 @@ export class StickyEventService {
 		}
 
 		try {
+			// the catch-up runs a while after the join, by when the server may have left again
+			if (!(await this.stateService.getServerSetInRoom(roomId)).has(destination)) {
+				this.logger.info({ msg: 'Skipped catching up a server that left the room', roomId, destination });
+				return 0;
+			}
+
 			const own = await this.eventRepository
 				.findActiveStickyByRoomId(roomId, Date.now(), { senderServer: this.configService.serverName })
 				.toArray();
