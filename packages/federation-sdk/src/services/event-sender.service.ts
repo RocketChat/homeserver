@@ -85,6 +85,7 @@ export class EventSenderService {
 	 *
 	 * @throws {EventRejectedError} when the room's authorization rules refuse the
 	 * event, e.g. because the sender lacks the power level its type requires
+	 * @throws {Error} for `m.room.create`, which only creating a room may send
 	 */
 	async sendStateEvent(
 		roomId: RoomID,
@@ -93,6 +94,11 @@ export class EventSenderService {
 		content: Record<string, unknown>,
 		senderUserId: UserID,
 	): Promise<{ eventId: EventID }> {
+		// a create built here would get the room's heads as prev_events, and handlePdu persists creates without authorizing them
+		if (eventType === 'm.room.create') {
+			throw new Error('m.room.create can only be sent by creating a room');
+		}
+
 		const event = await this.buildAndPersist(roomId, senderUserId, { type: eventType, state_key: stateKey, content });
 
 		this.dispatch(event);

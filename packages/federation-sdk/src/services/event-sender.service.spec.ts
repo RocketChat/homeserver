@@ -175,6 +175,16 @@ describe('EventSenderService.sendStateEvent', () => {
 		expect(handlePdu).not.toHaveBeenCalled();
 	});
 
+	test('refuses m.room.create before building or sending', async () => {
+		await expect(service.sendStateEvent(ROOM_ID, 'm.room.create', '', { room_version: '10' }, SENDER)).rejects.toThrow(
+			/only be sent by creating a room/,
+		);
+
+		expect(buildEvent).not.toHaveBeenCalled();
+		expect(handlePdu).not.toHaveBeenCalled();
+		expect(sendEventToAllServersInRoom).not.toHaveBeenCalled();
+	});
+
 	test('throws EventRejectedError and does not relay when authorization rejects the event', async () => {
 		handlePdu.mockImplementationOnce(async (event: PersistentEventBase) => {
 			event.reject(RejectCodes.AuthError, 'user power level 0 is less than event required power level 50');
