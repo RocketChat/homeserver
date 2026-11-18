@@ -525,6 +525,13 @@ export class StateService {
 
 		// isn't partial, check if already stored, then skip
 		if (record) {
+			// a stored rejection stands: skipping as handled would let callers act on the event as accepted
+			if (record.rejectCode) {
+				const reason = record.rejectDetail?.reason ?? 'previously rejected';
+				event.reject(record.rejectCode, reason, record.rejectDetail?.rejectedBy);
+				throw new StateResolverAuthorizationError(record.rejectCode, { rejectedEvent: event, reason });
+			}
+
 			return null;
 		}
 

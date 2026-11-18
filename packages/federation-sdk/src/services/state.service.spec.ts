@@ -992,6 +992,30 @@ describe('StateService', async () => {
 		expect(membershipEvent.rejectCode).toBe(RejectCodes.AuthError);
 	});
 
+	it('08b should keep rejecting a join stored as rejected when it is handled again', async () => {
+		const { roomCreateEvent } = await createRoom('invite');
+		const newUser = '@bob:example.com' as room.UserID;
+		const roomVersion = roomCreateEvent.getContent<PduCreateEventContent>().room_version;
+		const membershipEvent = await stateService.buildEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				room_id: roomCreateEvent.roomId,
+				sender: newUser,
+				state_key: newUser,
+				content: { membership: 'join' },
+				...getDefaultFields(),
+			},
+			roomVersion,
+		);
+		await expect(stateService.handlePdu(membershipEvent)).rejects.toThrow();
+
+		const again = PersistentEventFactory.createFromRawEvent(membershipEvent.event, roomVersion);
+
+		await expect(stateService.handlePdu(again)).rejects.toBeInstanceOf(room.StateResolverAuthorizationError);
+		expect(again.rejected).toBeTrue();
+		expect(again.rejectCode).toBe(RejectCodes.AuthError);
+	});
+
 	it('09 should allow joining if invited in invite only room', async () => {
 		const { roomCreateEvent } = await createRoom('invite');
 		const newUser = '@bob:example.com' as room.UserID;
