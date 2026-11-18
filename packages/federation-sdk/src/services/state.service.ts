@@ -31,6 +31,7 @@ import { ConfigService } from './config.service';
 import type { EventNotifierService } from './event-notifier.service';
 import { EventRepository, getStoredRoomId } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
+import { getStickyExpiresAt } from '../utils/sticky';
 
 type StrippedEvent = {
 	content: PduContent;
@@ -681,6 +682,10 @@ export class StateService {
 				// soft fail
 				// TODO: separate flag for soft fail?
 				this.logger.warn({ error }, 'event soft failed');
+				if (getStickyExpiresAt(event.event, Date.now()) !== undefined) {
+					// it stays hidden even if the room state later allows it while it would still be sticky
+					this.logger.warn({ eventId: event.eventId, roomId: event.roomId, sender: event.sender }, 'sticky event soft failed');
+				}
 				event.reject(error.code, error.reason, error.rejectedBy);
 				// event must have a state id by this point
 				const stateId = await this.getStateIdAtEvent(event);
