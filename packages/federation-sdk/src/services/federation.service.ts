@@ -9,7 +9,6 @@ import { FederationSenderService } from './federation-sender.service';
 import { StateService } from './state.service';
 import { StickyEventService } from './sticky-event.service';
 import { FederationEndpoints, type MakeJoinResponse, type SendJoinResponse, type Version } from '../specs/federation-api';
-import { isUserId } from '../utils/user-id';
 
 @singleton()
 export class FederationService {
@@ -188,8 +187,8 @@ export class FederationService {
 		// TODO we need a map of rooms and destinations to avoid having to get rooms state just to send an event to all servers in the room.
 		const servers = await this.stateService.getServerSetInRoom(event.roomId);
 
-		// a state event keyed by a user must also reach that user's server, which may not be in the room yet
-		if (event.stateKey && isUserId(event.stateKey)) {
+		// a membership change must also reach its target's server, which may not be in the room yet
+		if (event.isMembershipEvent() && event.stateKey) {
 			servers.add(extractDomainFromId(event.stateKey));
 		}
 

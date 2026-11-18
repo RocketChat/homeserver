@@ -63,8 +63,8 @@ describe('FederationService.sendEventToAllServersInRoom', () => {
 		expect(destinations()).toEqual(['joined.example.com']);
 	});
 
-	test('does not mistake a user id followed by a suffix for a server', async () => {
-		await service.sendEventToAllServersInRoom(stateEvent('org.matrix.msc3401.call.member', `${ALICE}_DEVICE`, {}));
+	test('sends a state event keyed by a user id that is not a membership only to the servers in the room', async () => {
+		await service.sendEventToAllServersInRoom(stateEvent('org.example.profile', '@bob:elsewhere.example.com', {}));
 
 		expect(destinations()).toEqual(['joined.example.com']);
 	});
