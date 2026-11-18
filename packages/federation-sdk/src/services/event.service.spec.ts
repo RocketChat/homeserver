@@ -266,16 +266,26 @@ describe('processIncomingPDUs', () => {
 		expect(withinLimit.counter.reads).toBeGreaterThan(0);
 	});
 
-	it.each([
-		['missing', undefined],
-		['not an array', '$prev1'],
-	])('leaves prev_events that are %s to the schema', async (_, prevEvents) => {
+	it('leaves prev_events that are not an array to the schema', async () => {
 		const { service, calls } = buildIncomingService();
 
-		await service.processIncomingPDUs('hs2', [messageEvent({ prev_events: prevEvents })]);
+		await service.processIncomingPDUs('hs2', [messageEvent({ prev_events: '$prev1' })]);
 
 		expect(calls.roomLookups).toBe(1);
 		expect(calls.staged).toBe(0);
+	});
+
+	it.each([
+		['prev_events', 'Event must reference previous events (prev_events)'],
+		['auth_events', 'Event must list its auth_events'],
+	])('rejects a PDU missing %s as an invalid event', async (field, error) => {
+		const { service, calls, errorLog } = buildIncomingService();
+
+		await service.processIncomingPDUs('hs2', [messageEvent({ [field]: undefined })]);
+
+		expect(calls.staged).toBe(0);
+		expect(errorLog('Create event validation failed')?.errors).toEqual([error]);
+		expect((errorLog('Event validation failed')?.err as Error).message).toBe('M_INVALID_EVENT');
 	});
 
 	it('logs at most 10 schema issues, with their total', async () => {

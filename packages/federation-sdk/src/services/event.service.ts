@@ -455,14 +455,16 @@ export class EventService {
 		const errors: string[] = [];
 
 		if (event.type !== 'm.room.create') {
-			if (!event.prev_events || !Array.isArray(event.prev_events) || event.prev_events.length === 0) {
+			if (!Array.isArray(event.prev_events) || event.prev_events.length === 0) {
 				errors.push('Event must reference previous events (prev_events)');
-			}
-			// the event id is hashed over de-duplicated lists, so such an event could never get its sender's id
-			if (new Set(event.prev_events).size !== event.prev_events.length) {
+			} else if (new Set(event.prev_events).size !== event.prev_events.length) {
+				// the event id is hashed over de-duplicated lists, so such an event could never get its sender's id
 				errors.push('Event must not list duplicate prev_events');
 			}
-			if (new Set(event.auth_events).size !== event.auth_events.length) {
+			// the schema leaves auth_events optional, but an empty list is valid (a v12 creator's first join)
+			if (!Array.isArray(event.auth_events)) {
+				errors.push('Event must list its auth_events');
+			} else if (new Set(event.auth_events).size !== event.auth_events.length) {
 				errors.push('Event must not list duplicate auth_events');
 			}
 		} else {
