@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest,
 
 import { ForbiddenError } from '@rocket.chat/federation-core';
 import {
+	type EventID,
 	type Pdu,
 	type PduJoinRuleEventContent,
 	type PduPowerLevelsEventContent,
@@ -12,7 +13,6 @@ import {
 	type StateMapKey,
 	type UserID,
 } from '@rocket.chat/federation-room';
-import { PersistentEventFactory } from '@rocket.chat/federation-room';
 import type { Collection } from 'mongodb';
 import { container } from 'tsyringe';
 
@@ -886,6 +886,117 @@ describe('RoomService', async () => {
 			const active = await federationSDK.getActiveStickyEvents(roomId, { type: 'org.matrix.msc4143.rtc.member' });
 
 			expect(active.map(({ event_id }) => event_id)).toEqual([member.eventId]);
+		});
+
+		const receiveRedaction = async (roomId: RoomID, target: EventID, sender: UserID) => {
+			const roomVersion = await stateService.getRoomVersion(roomId);
+			const redaction = await stateService.buildEvent<'m.room.redaction'>(
+				{
+					type: 'm.room.redaction',
+					...PersistentEventFactory.newRedactionEventFields(target, {}, roomVersion),
+					room_id: roomId,
+					sender,
+					auth_events: [],
+					prev_events: [],
+					depth: 0,
+					origin_server_ts: Date.now(),
+				},
+				roomVersion,
+			);
+
+			await container.resolve(EventService).authorizeAndPersist(redaction, Date.now());
+		};
+
+		it('should stop listing a sticky event once a redaction of it is received', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			const sticky = await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 3_600_000 } }, Date.now());
+
+			await receiveRedaction(roomId, sticky.eventId, remoteMember);
+
+			expect(await federationSDK.getActiveStickyEvents(roomId)).toEqual([]);
+		});
+
+		it('should keep listing a sticky event when who redacts it is not allowed to', async () => {
+			const { roomCreateEvent } = await createRoom('@alice:example.com' as UserID, 'public');
+			const { roomId } = roomCreateEvent;
+			const { eventId } = await federationSDK.sendStickyEvent(
+				roomId,
+				'org.matrix.msc4143.rtc.member',
+				{ msc4354_sticky_key: 'member-1' },
+				'@alice:example.com' as UserID,
+				110_000,
+			);
+			const join = await stateService.buildEvent<'m.room.member'>(
+				{
+					type: 'm.room.member',
+					content: { membership: 'join' },
+					room_id: roomId,
+					state_key: remoteMember,
+					sender: remoteMember,
+					auth_events: [],
+					prev_events: [],
+					depth: 0,
+					origin_server_ts: Date.now(),
+				},
+				roomCreateEvent.version,
+			);
+			await stateService.handlePdu(join);
+
+			await receiveRedaction(roomId, eventId, remoteMember);
+
+			expect((await federationSDK.getActiveStickyEvents(roomId)).map(({ event_id }) => event_id)).toEqual([eventId]);
+		});
+
+		it('should stop listing a sticky event once a local member redacts it', async () => {
+			const { roomCreateEvent } = await createRoom('@alice:example.com' as UserID, 'public');
+			const { roomId } = roomCreateEvent;
+			const { eventId } = await federationSDK.sendStickyEvent(
+				roomId,
+				'org.matrix.msc4143.rtc.member',
+				{ msc4354_sticky_key: 'member-1' },
+				'@alice:example.com' as UserID,
+				110_000,
+			);
+
+			await federationSDK.redactMessage(roomId, eventId);
+
+			expect(await federationSDK.getActiveStickyEvents(roomId)).toEqual([]);
+		});
+
+		it('should keep when the stickiness of an event ends when the event is seen again', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			const receivedAt = Date.now();
+			const sticky = await receiveFromRemoteMember(roomId, { msc4354_sticky: { duration_ms: 110_000 } }, receivedAt);
+
+			const expiresAt = await container.resolve(StickyEventService).markSticky(sticky, receivedAt - 60_000);
+
+			expect(expiresAt).toBe(receivedAt - 1_000 + 110_000);
+		});
+
+		it('should not take for sticky an event that is stored as rejected', async () => {
+			const roomId = await createRoomWithRemoteMember();
+			const receivedAt = Date.now();
+
+			let rejected: PersistentEventBase | undefined;
+			const buildEvent = spyOn(stateService, 'buildEvent');
+			try {
+				await receiveFromRemoteMember(
+					roomId,
+					{ sender: '@mallory:evil.example.com', msc4354_sticky: { duration_ms: 3_600_000 } },
+					receivedAt,
+				).catch(() => undefined);
+				rejected = (await buildEvent.mock.results[0]?.value) as PersistentEventBase;
+			} finally {
+				buildEvent.mockRestore();
+			}
+
+			const stored = await container.resolve(EventRepository).findById(rejected.eventId);
+			expect(stored?.rejectCode).toBeDefined();
+
+			// the same event as a later attempt would load it, with nothing telling it was rejected
+			const again = PersistentEventFactory.createFromRawEvent(rejected.event, rejected.version);
+			expect(await container.resolve(StickyEventService).markSticky(again, receivedAt)).toBeUndefined();
+			expect(await federationSDK.getActiveStickyEvents(roomId)).toEqual([]);
 		});
 
 		it('should stop listing a sticky event once it is redacted', async () => {

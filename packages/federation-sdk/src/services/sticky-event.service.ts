@@ -13,6 +13,7 @@ import { ConfigService } from './config.service';
 import { FederationSenderService } from './federation-sender.service';
 import { StateService } from './state.service';
 import { EventRepository } from '../repositories/event.repository';
+import { findAllowedRedactionTarget } from '../utils/event-relations';
 import { getStickyExpiresAt } from '../utils/sticky';
 
 // how long a newly joined server is given to store the room before it is sent events for it
@@ -40,8 +41,9 @@ export class StickyEventService {
 
 	/**
 	 * Record how long a persisted, accepted event stays sticky, counting from when this
-	 * server received it. Resolves to when its stickiness ends, or undefined when it is
-	 * not sticky.
+	 * server received it. Resolves to when its stickiness ends as stored, which is the
+	 * first time recorded for an event seen more than once, or undefined when it is not
+	 * sticky.
 	 */
 	async markSticky(event: PersistentEventBase, receivedAt: number): Promise<number | undefined> {
 		if (event.rejected) {
@@ -53,9 +55,33 @@ export class StickyEventService {
 			return undefined;
 		}
 
-		await this.eventRepository.setSticky(event.eventId, { receivedAt, expiresAt });
+		const stored = await this.eventRepository.setSticky(event.eventId, { receivedAt, expiresAt });
 
-		return expiresAt;
+		return stored?.expiresAt;
+	}
+
+	/**
+	 * A redacted event is no longer sticky. Call it with every accepted event: when the
+	 * event is a redaction its sender is allowed to make, the stickiness of its target
+	 * ends. Resolves to the event that stopped being a candidate, if any; failures are
+	 * logged, never thrown.
+	 */
+	async endStickinessOfRedacted(event: PersistentEventBase): Promise<EventID | undefined> {
+		if (event.type !== 'm.room.redaction') {
+			return undefined;
+		}
+
+		try {
+			const redacts = await findAllowedRedactionTarget(event, this.stateService);
+			if (redacts) {
+				await this.eventRepository.clearSticky(redacts);
+			}
+
+			return redacts;
+		} catch (err) {
+			this.logger.error({ msg: 'Failed to end the stickiness of a redacted event', eventId: event.eventId, err });
+			return undefined;
+		}
 	}
 
 	/**

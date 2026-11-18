@@ -28,25 +28,46 @@ function messageEvent(fields: Record<string, unknown> = {}) {
 	);
 }
 
+function createEvent(creator: string) {
+	return PersistentEventFactory.createFromRawEvent(
+		{
+			type: 'm.room.create',
+			state_key: '',
+			content: { creator, room_version: '10' },
+			room_id: ROOM_ID,
+			sender: creator,
+			origin_server_ts: SENT_AT - 1_000,
+			depth: 1,
+			auth_events: [],
+			prev_events: [],
+		} as unknown as Pdu,
+		'10',
+	);
+}
+
 describe('StickyEventService', () => {
 	let service: StickyEventService;
 	let setSticky: ReturnType<typeof mock>;
+	let clearSticky: ReturnType<typeof mock>;
+	let getEvent: ReturnType<typeof mock>;
 	let findActiveStickyByRoomId: ReturnType<typeof mock>;
 	let getServerSetInRoom: ReturnType<typeof mock>;
 	let getStateBeforeEvent: ReturnType<typeof mock>;
 	let sendPDU: ReturnType<typeof mock>;
 
 	beforeEach(() => {
-		setSticky = mock(async () => undefined);
+		setSticky = mock(async (_eventId: unknown, sticky: unknown) => sticky);
+		clearSticky = mock(async () => undefined);
+		getEvent = mock(async () => null);
 		findActiveStickyByRoomId = mock(() => ({ toArray: async () => [] }));
 		getServerSetInRoom = mock(async () => new Set(['hs1', 'hs2']));
 		getStateBeforeEvent = mock(async () => new Map());
 		sendPDU = mock(() => undefined);
 
 		service = new StickyEventService(
-			{ setSticky, findActiveStickyByRoomId } as unknown as EventRepository,
+			{ setSticky, clearSticky, findActiveStickyByRoomId } as unknown as EventRepository,
 			{ serverName: 'hs1' } as ConfigService,
-			{ getServerSetInRoom, getStateBeforeEvent } as unknown as StateService,
+			{ getServerSetInRoom, getStateBeforeEvent, getEvent } as unknown as StateService,
 			{ sendPDU } as unknown as FederationSenderService,
 		);
 	});
@@ -72,6 +93,75 @@ describe('StickyEventService', () => {
 
 			expect(await service.markSticky(event, SENT_AT)).toBeUndefined();
 			expect(setSticky).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('markSticky, against what is stored', () => {
+		test('keeps the first time recorded for an event seen again', async () => {
+			setSticky.mockImplementationOnce(async () => ({ receivedAt: SENT_AT, expiresAt: SENT_AT + 60_000 }));
+			const event = messageEvent({ msc4354_sticky: { duration_ms: 3_600_000 } });
+
+			expect(await service.markSticky(event, SENT_AT)).toBe(SENT_AT + 60_000);
+		});
+
+		test('reports as not sticky an event that is stored as rejected', async () => {
+			setSticky.mockImplementationOnce(async () => undefined);
+			const event = messageEvent({ msc4354_sticky: { duration_ms: 3_600_000 } });
+
+			expect(await service.markSticky(event, SENT_AT)).toBeUndefined();
+		});
+	});
+
+	describe('endStickinessOfRedacted', () => {
+		const target = messageEvent({ msc4354_sticky: { duration_ms: 3_600_000 } });
+
+		const redactionOf = (sender: string) =>
+			PersistentEventFactory.createFromRawEvent(
+				{
+					type: 'm.room.redaction',
+					content: {},
+					redacts: target.eventId,
+					room_id: ROOM_ID,
+					sender,
+					origin_server_ts: SENT_AT + 1_000,
+					depth: 4,
+					auth_events: [],
+					prev_events: [],
+				} as unknown as Pdu,
+				'10',
+			);
+
+		test('ends the stickiness of the event a redaction removes', async () => {
+			getEvent.mockImplementation(async () => target);
+
+			expect(await service.endStickinessOfRedacted(redactionOf('@alice:hs2'))).toBe(target.eventId);
+			expect(clearSticky).toHaveBeenCalledWith(target.eventId);
+		});
+
+		test('keeps the stickiness when the sender may not redact the event', async () => {
+			getEvent.mockImplementation(async () => target);
+			getStateBeforeEvent.mockImplementation(async () => new Map([['m.room.create:', createEvent('@alice:hs2')]]));
+
+			expect(await service.endStickinessOfRedacted(redactionOf('@mallory:hs3'))).toBeUndefined();
+			expect(clearSticky).not.toHaveBeenCalled();
+		});
+
+		test('does nothing when the redacted event is not known', async () => {
+			expect(await service.endStickinessOfRedacted(redactionOf('@alice:hs2'))).toBeUndefined();
+			expect(clearSticky).not.toHaveBeenCalled();
+		});
+
+		test('does nothing for an event that is not a redaction', async () => {
+			expect(await service.endStickinessOfRedacted(target)).toBeUndefined();
+			expect(getEvent).not.toHaveBeenCalled();
+		});
+
+		test('never throws', async () => {
+			getEvent.mockImplementation(async () => {
+				throw new Error('mongo is down');
+			});
+
+			expect(await service.endStickinessOfRedacted(redactionOf('@alice:hs2'))).toBeUndefined();
 		});
 	});
 

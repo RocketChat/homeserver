@@ -449,6 +449,7 @@ describe('authorizeAndPersist', () => {
 		const notify = mock(async () => undefined);
 		const markSticky = mock(async (): Promise<number | undefined> => undefined);
 		const catchUpIfNewServer = mock(async () => undefined);
+		const endStickinessOfRedacted = mock(async () => undefined);
 
 		const service = new EventService(
 			null as never,
@@ -459,10 +460,10 @@ describe('authorizeAndPersist', () => {
 			null as never,
 			null as never,
 			{ notify } as unknown as EventNotifierService,
-			{ markSticky, catchUpIfNewServer } as unknown as StickyEventService,
+			{ markSticky, catchUpIfNewServer, endStickinessOfRedacted } as unknown as StickyEventService,
 		);
 
-		return { service, notify, markSticky, catchUpIfNewServer };
+		return { service, notify, markSticky, catchUpIfNewServer, endStickinessOfRedacted };
 	}
 
 	it('notifies an event once it is persisted', async () => {
@@ -496,6 +497,14 @@ describe('authorizeAndPersist', () => {
 		await service.authorizeAndPersist(callMember);
 
 		expect(markSticky).not.toHaveBeenCalled();
+	});
+
+	it('lets a redaction end the stickiness of the event it removes', async () => {
+		const { service, endStickinessOfRedacted } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(endStickinessOfRedacted).toHaveBeenCalledWith(callMember);
 	});
 
 	it('lets a newly joined server catch up when the event brings one', async () => {

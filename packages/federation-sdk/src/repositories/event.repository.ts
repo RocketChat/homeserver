@@ -105,9 +105,20 @@ export class EventRepository {
 		);
 	}
 
-	// keeps the first window recorded, and never makes a rejected event sticky
-	async setSticky(eventId: EventID, sticky: NonNullable<EventStore['sticky']>): Promise<void> {
-		await this.collection.updateOne({ _id: eventId, rejectCode: { $exists: false }, sticky: { $exists: false } }, { $set: { sticky } });
+	// keeps the first window recorded, and never makes a rejected event sticky.
+	// resolves to the window the event ends up with, if any
+	async setSticky(eventId: EventID, sticky: NonNullable<EventStore['sticky']>): Promise<EventStore['sticky']> {
+		const stored = await this.collection.findOneAndUpdate(
+			{ _id: eventId, rejectCode: { $exists: false } },
+			[{ $set: { sticky: { $ifNull: ['$sticky', { $literal: sticky }] } } }],
+			{ returnDocument: 'after', projection: { sticky: 1 } },
+		);
+
+		return stored?.sticky;
+	}
+
+	async clearSticky(eventId: EventID): Promise<void> {
+		await this.collection.updateOne({ _id: eventId, sticky: { $exists: true } }, { $unset: { sticky: '' } });
 	}
 
 	findActiveStickyByRoomId(roomId: RoomID, now: number, eventType?: string): FindCursor<EventStore> {
