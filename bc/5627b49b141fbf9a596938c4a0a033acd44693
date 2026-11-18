@@ -1,0 +1,38 @@
+packages/federation-sdk/src/services/invite.service.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 196-199,237
+packages/federation-sdk/src/services/invite.service.spec.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 526-564
+packages/federation-sdk/src/services/event-notifier.service.spec.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 1-94
+packages/federation-sdk/src/index.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 47
+packages/federation-sdk/src/services/room.service.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 561-564
+packages/room/src/types/v3-11.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 632-642
+packages/core/src/events/homeserver-event-signatures.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 1,4-10
+packages/federation-sdk/src/services/send-join.service.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 64-67
+packages/federation-sdk/src/services/event-notifier.service.ts
+  s_0822f21356dd11::t_c28ed2a4c084dc 224,227-231
+packages/federation-sdk/src/services/event.service.spec.ts
+  s_0822f21356dd11::t_53cba3b95d1528 1,324
+  s_0822f21356dd11::t_c28ed2a4c084dc 5,7,325-374
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc5627b49b141fbf9a596938c4a0a033acd44693",
+  "prompts": {},
+  "sessions": {
+    "s_0822f21356dd11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "feb4bf26-aac5-47ac-9a2e-1ea101fa6c9b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
