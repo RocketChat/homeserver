@@ -2,6 +2,7 @@ import { describe, expect, it, mock } from 'bun:test';
 
 import type { EventStagingStore } from '@rocket.chat/federation-core';
 import type { EventID, Pdu, RoomID } from '@rocket.chat/federation-room';
+import { PersistentEventFactory, RejectCodes, StateResolverAuthorizationError } from '@rocket.chat/federation-room';
 
 import type { ConfigService } from './config.service';
 import type { EventAuthorizationService } from './event-authorization.service';
@@ -95,6 +96,38 @@ describe('StagingAreaService dependency stage', () => {
 		await drain(service);
 
 		expect(eventService.authorizeAndPersist).not.toHaveBeenCalled();
+		expect(eventService.markEventAsUnstaged).not.toHaveBeenCalled();
+	});
+});
+
+describe('StagingAreaService authorization stage', () => {
+	function setupWithDependencies() {
+		const { service, eventService } = setup({ fetchById: false });
+		eventService.checkIfEventsExists.mockImplementation(async (ids: EventID[]) => ({ missing: [], found: ids }));
+		return { service, eventService };
+	}
+
+	it('removes from staging an event the room rejects, instead of trying it again', async () => {
+		const { service, eventService } = setupWithDependencies();
+		eventService.authorizeAndPersist.mockRejectedValue(
+			new StateResolverAuthorizationError(RejectCodes.AuthError, {
+				rejectedEvent: PersistentEventFactory.createFromRawEvent(stagedJoin.event, '10'),
+				reason: 'insufficient power level',
+			}),
+		);
+
+		await drain(service);
+
+		expect(eventService.authorizeAndPersist).toHaveBeenCalledTimes(1);
+		expect(eventService.markEventAsUnstaged).toHaveBeenCalledWith(stagedJoin);
+	});
+
+	it('keeps staged an event that failed for any other reason', async () => {
+		const { service, eventService } = setupWithDependencies();
+		eventService.authorizeAndPersist.mockRejectedValue(new Error('mongo is down'));
+
+		await drain(service);
+
 		expect(eventService.markEventAsUnstaged).not.toHaveBeenCalled();
 	});
 });
