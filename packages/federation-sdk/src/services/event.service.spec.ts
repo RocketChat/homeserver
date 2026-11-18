@@ -499,7 +499,7 @@ describe('authorizeAndPersist', () => {
 		expect(markSticky).not.toHaveBeenCalled();
 	});
 
-	it('lets a redaction end the stickiness of the event it removes', async () => {
+	it('hands every persisted event to the sticky service to end the stickiness of what it redacts', async () => {
 		const { service, endStickinessOfRedacted } = buildPersistingService(async () => undefined);
 
 		await service.authorizeAndPersist(callMember, 1732999154000);
