@@ -192,7 +192,7 @@ describe('StickyEventService', () => {
 	});
 
 	describe('pushOwnStickyEvents', () => {
-		test("queues this server's own unexpired sticky events of the room to the destination, oldest first", async () => {
+		test("queues this server's own unexpired sticky events of the room to the destination, in the order they are stored", async () => {
 			const own1 = messageEvent({ sender: '@alice:hs1', origin_server_ts: SENT_AT, msc4354_sticky: { duration_ms: 3_600_000 } });
 			const own2 = messageEvent({ sender: '@carol:hs1', origin_server_ts: SENT_AT + 2, msc4354_sticky: { duration_ms: 110_000 } });
 			findActiveStickyByRoomId.mockImplementationOnce(() => ({
