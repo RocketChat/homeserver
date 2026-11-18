@@ -48,6 +48,7 @@ describe('RoomService', async () => {
 		federationSDK.setConfig({
 			signingKey: '',
 			serverName: 'example.com',
+			enableStickyEvents: true,
 		} as AppConfig);
 	});
 
