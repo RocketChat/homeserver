@@ -4,7 +4,7 @@ import * as core from '@rocket.chat/federation-core';
 import * as nacl from 'tweetnacl';
 
 import type { ConfigService } from './config.service';
-import { FederationRequestService } from './federation-request.service';
+import { FederationRequestError, FederationRequestService } from './federation-request.service';
 
 describe('FederationRequestService', async () => {
 	let service: FederationRequestService;
@@ -254,6 +254,37 @@ describe('FederationRequestService', async () => {
 					throw error;
 				}
 			}
+		});
+
+		it('keeps the Matrix error of a JSON error response', async () => {
+			// like @hs/core fetch: text() only yields text/* bodies, and Matrix errors are application/json
+			spyOn(core, 'fetch').mockResolvedValue({
+				ok: false,
+				status: 404,
+				text: async () => '',
+				buffer: async () => Buffer.from('{"errcode":"M_NOT_FOUND","error":"Not found"}'),
+			} as unknown as core.FetchResponse<unknown>);
+
+			const failure = await service
+				.makeSignedRequest({ method: 'GET', domain: 'target.example.com', uri: '/test/path' })
+				.catch((err: unknown) => err);
+
+			expect(failure).toBeInstanceOf(FederationRequestError);
+			expect((failure as FederationRequestError).errcode).toBe('M_NOT_FOUND');
+			expect((failure as FederationRequestError).message).toContain('M_NOT_FOUND');
+		});
+
+		it('fails with the read error when the error body cannot be read', async () => {
+			const readError = new Error('Response closed before it finished');
+			spyOn(core, 'fetch').mockResolvedValue({
+				ok: false,
+				status: 404,
+				buffer: async () => {
+					throw readError;
+				},
+			} as unknown as core.FetchResponse<unknown>);
+
+			await expect(service.makeSignedRequest({ method: 'GET', domain: 'target.example.com', uri: '/test/path' })).rejects.toBe(readError);
 		});
 
 		it('should handle network errors properly', async () => {
