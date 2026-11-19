@@ -1,0 +1,23 @@
+packages/federation-sdk/src/services/room.service.spec.ts
+  s_edf6f140984193::t_1387b0408f5e36 3,412,415,425,428-448
+packages/federation-sdk/src/services/room.service.ts
+  s_edf6f140984193::t_87ea16f8eff7dc 522,527-530
+  s_edf6f140984193::t_fc298eb52bd3cb 605
+  s_edf6f140984193::t_92090e5aa4a28b 553-562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b93667518d71836ed0b9989a3ca42d7f88009d59",
+  "prompts": {},
+  "sessions": {
+    "s_edf6f140984193": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3e2f6f2-393f-47e3-ad22-9abec935ad82",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
