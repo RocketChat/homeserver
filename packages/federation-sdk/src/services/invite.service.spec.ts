@@ -556,7 +556,7 @@ describe('InviteService', async () => {
 				] as any);
 
 				expect(emitSpy.mock.calls.map(([name]) => name)).toEqual(['homeserver.matrix.membership', 'homeserver.matrix.event']);
-				expect(emitSpy.mock.calls[1][1]).toEqual(emitSpy.mock.calls[0][1]);
+				expect(emitSpy.mock.calls[1][1]).toEqual({ ...emitSpy.mock.calls[0][1], room_id: '!unknown-room:remote.server.com' });
 			} finally {
 				emitSpy.mockRestore();
 			}

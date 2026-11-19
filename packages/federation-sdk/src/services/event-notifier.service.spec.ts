@@ -106,7 +106,7 @@ describe('EventNotifierService', () => {
 		await notifier.notify(pdu);
 
 		expect(emitted.map(({ name }) => name)).toEqual([typedName, 'homeserver.matrix.event']);
-		expect(emitted[1].payload).toEqual(emitted[0].payload);
+		expect(emitted[1].payload).toEqual({ ...emitted[0].payload, room_id: pdu.roomId });
 	});
 
 	test.each([

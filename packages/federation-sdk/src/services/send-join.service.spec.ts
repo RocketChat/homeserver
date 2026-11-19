@@ -170,6 +170,6 @@ describe('SendJoinService.sendJoin', () => {
 		await service.sendJoin(ROOM_ID, join.eventId, join.event);
 
 		expect(emit.mock.calls.map(([name]) => name)).toEqual(['homeserver.matrix.membership', 'homeserver.matrix.event']);
-		expect(emit.mock.calls[1][1]).toEqual({ event_id: join.eventId, event: join.event });
+		expect(emit.mock.calls[1][1]).toEqual({ event_id: join.eventId, room_id: ROOM_ID, event: join.event });
 	});
 });
