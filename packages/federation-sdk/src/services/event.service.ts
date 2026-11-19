@@ -1,12 +1,4 @@
-import type {
-	BaseEDU,
-	EventStagingStore,
-	PresenceEDU,
-	RoomPowerLevelsEvent,
-	ReceiptEDU,
-	TypingEDU,
-	EventStore,
-} from '@rocket.chat/federation-core';
+import type { BaseEDU, EventStagingStore, PresenceEDU, ReceiptEDU, TypingEDU, EventStore } from '@rocket.chat/federation-core';
 import { isPresenceEDU, isReceiptEDU, isTypingEDU, checkSignAndHashes, createLogger } from '@rocket.chat/federation-core';
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
 import {
@@ -162,6 +154,11 @@ export class EventService {
 		const eventsByRoomId = new Map<RoomID, Pdu[]>();
 		for (const event of pdus) {
 			const roomId = event.room_id;
+			// only a v12+ create event lacks a room_id, and a create never legitimately arrives in a transaction
+			if (!roomId) {
+				this.logger.warn({ origin, type: event.type }, 'Dropping received PDU without room_id');
+				continue;
+			}
 			if (!eventsByRoomId.has(roomId)) {
 				eventsByRoomId.set(roomId, []);
 			}
@@ -187,7 +184,7 @@ export class EventService {
 			Array.from(eventsByRoomId.entries()).map(async ([roomId, events]) => {
 				for await (const event of events) {
 					try {
-						await this.validateEvent(event);
+						await this.validateEvent(event, roomId);
 					} catch (err) {
 						// this is a very specific use case where a remove server invites and then bans/kicks a user,
 						// we need to emit something so the client can update the membership status to rejected instead of invite
@@ -212,7 +209,7 @@ export class EventService {
 						continue;
 					}
 
-					const roomVersion = await getRoomVersion(event.room_id);
+					const roomVersion = await getRoomVersion(roomId);
 
 					const pdu = PersistentEventFactory.createFromRawEvent(event, roomVersion);
 
@@ -236,7 +233,7 @@ export class EventService {
 		);
 	}
 
-	private async validateEvent(event: Pdu): Promise<void> {
+	private async validateEvent(event: Pdu, roomId: RoomID): Promise<void> {
 		// rejecting an oversized PDU must cost the same as rejecting a small one, so its bounds are
 		// checked before anything whose cost grows with its contents
 		const boundsErrors = this.validateEventBounds(event);
@@ -244,7 +241,7 @@ export class EventService {
 			throw new Error(`M_INVALID_EVENT: ${boundsErrors.join('; ')}`);
 		}
 
-		const roomVersion = await this.stateService.getRoomVersion(event.room_id);
+		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		if (event.type === 'm.room.member' && event.content.membership === 'invite' && 'third_party_invite' in event.content) {
 			throw new Error('Third party invites are not supported');
@@ -458,31 +455,45 @@ export class EventService {
 		const errors: string[] = [];
 
 		if (event.type !== 'm.room.create') {
-			if (!event.prev_events || !Array.isArray(event.prev_events) || event.prev_events.length === 0) {
+			if (!Array.isArray(event.prev_events) || event.prev_events.length === 0) {
 				errors.push('Event must reference previous events (prev_events)');
+			} else if (new Set(event.prev_events).size !== event.prev_events.length) {
+				// the event id is hashed over de-duplicated lists, so such an event could never get its sender's id
+				errors.push('Event must not list duplicate prev_events');
+			}
+			// the schema leaves auth_events optional, but an empty list is valid (a v12 creator's first join)
+			if (!Array.isArray(event.auth_events)) {
+				errors.push('Event must list its auth_events');
+			} else if (new Set(event.auth_events).size !== event.auth_events.length) {
+				errors.push('Event must not list duplicate auth_events');
 			}
 		} else {
 			if (event.prev_events && event.prev_events.length > 0) {
 				errors.push('Create event must not have prev_events');
 			}
 
-			if (event.room_id && event.sender) {
+			if (event.auth_events && event.auth_events.length > 0) {
+				errors.push('Create event must not have auth_events');
+			}
+
+			const roomVersion = event.content?.room_version;
+			if (!roomVersion) {
+				errors.push('Create event must specify a room_version');
+			} else if (!PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
+				errors.push(`Unsupported room version: ${roomVersion}`);
+			} else if (PersistentEventFactory.getCapabilities(roomVersion).roomIdFormat === 'create-event-hash') {
+				if (event.room_id !== undefined) {
+					errors.push(`Create event must not have a room_id in room version ${roomVersion}`);
+				}
+			} else if (!event.room_id) {
+				errors.push('Create event must have a room_id');
+			} else if (event.sender) {
 				const roomDomain = this.extractDomain(event.room_id);
 				const senderDomain = this.extractDomain(event.sender);
 
 				if (roomDomain !== senderDomain) {
 					errors.push(`Room ID domain (${roomDomain}) does not match sender domain (${senderDomain})`);
 				}
-			}
-
-			if (event.auth_events && event.auth_events.length > 0) {
-				errors.push('Create event must not have auth_events');
-			}
-
-			if (!event.content || !event.content.room_version) {
-				errors.push('Create event must specify a room_version');
-			} else if (!PersistentEventFactory.isSupportedRoomVersion(event.content.room_version)) {
-				errors.push(`Unsupported room version: ${event.content.room_version}`);
 			}
 		}
 
@@ -600,27 +611,6 @@ export class EventService {
 		await this.eventRepository.redactEvent(eventIdToRedact, redactedEvent as typeof eventToRedact.event);
 
 		this.logger.info(`Successfully redacted event ${eventIdToRedact}`);
-	}
-
-	async checkUserPermission(powerLevelsEventId: EventID, userId: string, actionType: PduType): Promise<boolean> {
-		const powerLevelsEvent = await this.eventRepository.findById(powerLevelsEventId);
-		if (!powerLevelsEvent) {
-			this.logger.warn(`Power levels event ${powerLevelsEventId} not found`);
-			return false;
-		}
-
-		const powerLevelsContent = powerLevelsEvent.event.content as RoomPowerLevelsEvent['content'];
-		const userPowerLevel = powerLevelsContent.users?.[userId] ?? powerLevelsContent.users_default ?? 0;
-
-		let requiredPowerLevel = powerLevelsContent.events?.[actionType];
-		if (requiredPowerLevel === undefined) {
-			requiredPowerLevel = powerLevelsContent.events_default ?? 0;
-		}
-
-		this.logger.debug(
-			`Permission check for ${userId} to send ${actionType}: UserLevel=${userPowerLevel}, RequiredLevel=${requiredPowerLevel}`,
-		);
-		return userPowerLevel >= requiredPowerLevel;
 	}
 
 	async processOldStagedEvents() {

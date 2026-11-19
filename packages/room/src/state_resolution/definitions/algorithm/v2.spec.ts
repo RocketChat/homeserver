@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 
-import { resolveStateV2Plus } from './v2';
+import { type StateResolutionAlgorithm, resolveStateV2Plus } from './v2';
 import type { PersistentEventBase } from '../../../manager/event-wrapper';
 import { PersistentEventFactory } from '../../../manager/factory';
 import { type EventID, type StateMapKey } from '../../../types/_common';
@@ -41,6 +41,9 @@ const MEMBERSHIP_CONTENT_JOIN = { membership: 'join' };
 const MEMBERSHIP_CONTENT_BAN = { membership: 'ban' };
 
 let ORIGIN_SERVER_TS = 0;
+
+// the synapse ported scenarios are run under both v2 and room v12's v2.1, which must agree on them
+let currentAlgorithm: StateResolutionAlgorithm = 'v2';
 
 class FakeEvent {
 	node_id: string;
@@ -105,7 +108,7 @@ const INITIAL_EVENTS = [
 	new FakeEvent('CREATE', ALICE, 'm.room.create', '', { creator: ALICE }),
 	new FakeEvent('IMA', ALICE, 'm.room.member', ALICE, MEMBERSHIP_CONTENT_JOIN),
 	new FakeEvent('IPOWER', ALICE, 'm.room.power_levels', '', {
-		users: { ALICE: 100 },
+		users: { [ALICE]: 100 },
 	}),
 	new FakeEvent('IJR', ALICE, 'm.room.join_rules', '', {
 		join_rule: 'public',
@@ -200,6 +203,7 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 					.map((nodeId) => stateAtEventId.get(fakeEventMap.get(nodeId)?.event_id)!)
 					.toArray(),
 				eventStore,
+				currentAlgorithm,
 			);
 		}
 
@@ -269,7 +273,11 @@ async function runTest(events: FakeEvent[], edges: string[][]) {
 	return stateAtEventIdCopy.get('END:example.com');
 }
 
-describe('Definitions', () => {
+describe.each(['v2', 'v2.1'] as const)('Definitions (state res %s)', (algorithm) => {
+	beforeEach(() => {
+		currentAlgorithm = algorithm;
+	});
+
 	afterEach(() => {
 		eventStore.events = [];
 	});
