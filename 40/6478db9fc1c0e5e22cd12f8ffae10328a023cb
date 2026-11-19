@@ -71,6 +71,7 @@ packages/federation-sdk/src/services/room.service.ts
   s_f58a7f295f16da::t_1b501488f1385c 583,706-722,731,999
   s_f58a7f295f16da::t_b521c7e5bf52f9 21,76-90,292,295,1198-1200,1218-1219,1268-1269,1287-1290,1362,1365,1548,1551
   s_f58a7f295f16da::t_6f8e47aae4f781 92,98-103,118,141-148,164-171,492,494,498-499,501-503,640,680
+  s_7f536aef102be9::t_6b555f784a180a 839-840,842-845,879
 packages/room/src/state_resolution/definitions/algorithm/v2.spec.ts
   s_f58a7f295f16da::t_6eda0ac67ec831 1,3,45-47,206,276-279
   s_f58a7f295f16da::t_4557b8c3d9c2df 280
@@ -81,6 +82,7 @@ packages/federation-sdk/src/services/staging-area.service.ts
   s_f58a7f295f16da::t_29cacd5b41fae7 50,65,152-154,159
   s_f58a7f295f16da::t_14148fa49db33a 161
   s_f58a7f295f16da::t_246cc6c9ab28f8 160
+  s_7f536aef102be9::t_93896230a147c6 180
 packages/core/src/events/homeserver-event-signatures.ts
   s_f58a7f295f16da::t_c8982f162f09bb 1,37-38
 packages/room/src/manager/power-level-event-wrapper.ts
@@ -117,6 +119,7 @@ packages/federation-sdk/src/services/room.service.spec.ts
   s_f58a7f295f16da::t_007a7b20b90933 541-542
   s_f58a7f295f16da::t_57ffc8da9dea56 7,364,497-540,543-578
   s_f58a7f295f16da::t_10874d1ba8539a 579
+  s_7f536aef102be9::t_24fe01c4489821 1,496
 packages/core/src/models/event.model.ts
   s_f58a7f295f16da::t_8d7d674005a927 1,23-25
 packages/federation-sdk/src/repositories/event-store-layout.ts
@@ -149,6 +152,14 @@ packages/federation-sdk/src/utils/validation-regex.ts
   "base_commit_sha": "406478db9fc1c0e5e22cd12f8ffae10328a023cb",
   "prompts": {},
   "sessions": {
+    "s_7f536aef102be9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c16d839f-241c-40bc-b04c-f96673588cfa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
     "s_f58a7f295f16da": {
       "agent_id": {
         "tool": "claude",
