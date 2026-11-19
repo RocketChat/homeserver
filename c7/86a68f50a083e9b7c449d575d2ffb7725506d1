@@ -12,6 +12,7 @@ packages/room/src/types/v3-11.ts
   s_0822f21356dd11::t_c28ed2a4c084dc 639-649
 packages/core/src/events/homeserver-event-signatures.ts
   s_0822f21356dd11::t_c28ed2a4c084dc 4-10
+  s_9efa0f3c66cc5c::t_0a4f306b0bf637 1
 packages/federation-sdk/src/services/send-join.service.ts
   s_0822f21356dd11::t_c28ed2a4c084dc 71-74
 packages/federation-sdk/src/services/event-notifier.service.ts
@@ -19,6 +20,7 @@ packages/federation-sdk/src/services/event-notifier.service.ts
 packages/federation-sdk/src/services/event.service.spec.ts
   s_0822f21356dd11::t_53cba3b95d1528 1,427
   s_0822f21356dd11::t_c28ed2a4c084dc 8,428-477
+  s_9efa0f3c66cc5c::t_6e11aa8ab0094c 5
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -30,6 +32,14 @@ packages/federation-sdk/src/services/event.service.spec.ts
       "agent_id": {
         "tool": "claude",
         "id": "feb4bf26-aac5-47ac-9a2e-1ea101fa6c9b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_9efa0f3c66cc5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ff63ac-fc5c-4274-aaff-d4dc3e4e5a65",
         "model": "claude-opus-5-5"
       },
       "human_author": "Diego Sampaio <chinello@gmail.com>"
