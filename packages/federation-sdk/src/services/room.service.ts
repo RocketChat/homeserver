@@ -580,9 +580,10 @@ export class RoomService {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
 
-		const residentServer = await this.stateService.getRoomOriginServer(roomId);
-		if (residentServer !== this.configService.serverName) {
-			throw new Error(`Server ${residentServer} is not the resident server for room ${roomId}`);
+		// any joined server can take a leave, not only the room's creator: invitees reject through the inviting server
+		const serversInRoom = await this.stateService.getServerSetInRoom(roomId);
+		if (!serversInRoom.has(this.configService.serverName)) {
+			throw new Error(`Server ${this.configService.serverName} is not resident in room ${roomId}`);
 		}
 
 		await this.stateService.handlePdu(leaveEvent);
