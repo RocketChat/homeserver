@@ -619,11 +619,11 @@ describe('RoomService', async () => {
 		const bob = '@bob:example.com' as UserID;
 
 		beforeAll(() => {
-			federationSDK.setConfig({ signingKey: '', serverName: 'example.com', defaultRoomVersion: '12' } as AppConfig);
+			federationSDK.setConfig({ signingKey: '', serverName: 'example.com', enableStickyEvents: true, defaultRoomVersion: '12' } as AppConfig);
 		});
 
 		afterAll(() => {
-			federationSDK.setConfig({ signingKey: '', serverName: 'example.com' } as AppConfig);
+			federationSDK.setConfig({ signingKey: '', serverName: 'example.com', enableStickyEvents: true } as AppConfig);
 		});
 
 		it('creates a room with a domainless id and leaves the creator out of power levels', async () => {
@@ -695,6 +695,22 @@ describe('RoomService', async () => {
 			await federationSDK.acceptInvite(roomId, bob);
 
 			expect((await stateService.getLatestRoomState2(roomId)).isUserInRoom(bob)).toBeTrue();
+		});
+
+		it('lists a sticky event sent in a v12 room', async () => {
+			const { roomCreateEvent } = await createRoom(alice, 'public');
+			const { roomId } = roomCreateEvent;
+
+			const { eventId } = await federationSDK.sendStickyEvent(
+				roomId,
+				'org.matrix.msc4075.rtc.notification',
+				{ slot_id: 'm.call#ROOM', msc4354_sticky_key: 'm.call#ROOM' },
+				alice,
+				110_000,
+			);
+
+			const active = await federationSDK.getActiveStickyEvents(roomId);
+			expect(active.map(({ event_id }) => event_id)).toEqual([eventId]);
 		});
 	});
 
