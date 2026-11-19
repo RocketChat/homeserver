@@ -640,7 +640,9 @@ const PduCommonFieldsSchema = z.object(PduNoContentTimelineEventSchema);
 
 // a pdu of any type, including the ones this package has no schema for (custom and
 // unstable types): only the fields every pdu carries are typed, any other is kept as is
-export type AnyPdu = z.infer<typeof PduCommonFieldsSchema> & {
+export type AnyPdu = Omit<z.infer<typeof PduCommonFieldsSchema>, 'room_id'> & {
+	// absent on a v12+ create event, whose room id is derived from its hash
+	room_id?: z.infer<typeof roomIdSchema>;
 	type: string;
 	content: Record<string, unknown>;
 	state_key?: string;

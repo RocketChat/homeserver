@@ -12,7 +12,7 @@ import { delay, inject, singleton } from 'tsyringe';
 import { ConfigService } from './config.service';
 import { FederationSenderService } from './federation-sender.service';
 import { StateService } from './state.service';
-import { EventRepository } from '../repositories/event.repository';
+import { EventRepository, getStoredRoomId } from '../repositories/event.repository';
 import { findAllowedRedactionTarget } from '../utils/event-relations';
 import { getStickyExpiresAt } from '../utils/sticky';
 
@@ -189,7 +189,7 @@ export class StickyEventService {
 			const { serverName } = this.configService;
 			const own = await this.eventRepository.findActiveStickyBySenderServer(serverName, Date.now()).toArray();
 
-			const roomIds = [...new Set(own.map(({ event }) => event.room_id))];
+			const roomIds = [...new Set(own.map(getStoredRoomId))];
 			const serversByRoom = new Map<RoomID, Set<string>>();
 			// a room whose servers cannot be looked up must not keep the others from being pushed
 			await Promise.all(
@@ -204,8 +204,9 @@ export class StickyEventService {
 
 			let count = 0;
 
-			for (const { event } of own) {
-				for (const server of serversByRoom.get(event.room_id) ?? []) {
+			for (const stored of own) {
+				const { event } = stored;
+				for (const server of serversByRoom.get(getStoredRoomId(stored)) ?? []) {
 					if (server === serverName || (destination && server !== destination)) {
 						continue;
 					}
