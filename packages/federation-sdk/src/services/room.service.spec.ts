@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, jest, mock, spyOn } from 'bun:test';
 
+import { ForbiddenError } from '@rocket.chat/federation-core';
 import {
 	type PduJoinRuleEventContent,
 	type PduPowerLevelsEventContent,
@@ -408,10 +409,10 @@ describe('RoomService', async () => {
 			const roomId = await createRoomWithRemoteInvite();
 			spyOn(stateService, 'getRoomOriginServer').mockResolvedValue('creator.com');
 
-			const { event, room_version } = await roomService.makeLeave(roomId, carol);
+			const { event, room_version } = await roomService.makeLeave(roomId, carol, 'remote.com');
 			const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(event, room_version);
 
-			await roomService.sendLeave(roomId, leaveEvent.eventId, leaveEvent.event);
+			await roomService.sendLeave(roomId, leaveEvent.eventId, leaveEvent.event, 'remote.com');
 
 			const state = await stateService.getLatestRoomState(roomId);
 			expect(state.get(`m.room.member:${carol}`)?.getContent().membership).toBe('leave');
@@ -421,10 +422,30 @@ describe('RoomService', async () => {
 			const roomId = await createRoomWithRemoteInvite();
 			await roomService.leaveRoom(roomId, alice);
 
-			const { event, room_version } = await roomService.makeLeave(roomId, carol);
+			const { event, room_version } = await roomService.makeLeave(roomId, carol, 'remote.com');
 			const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(event, room_version);
 
-			await expect(roomService.sendLeave(roomId, leaveEvent.eventId, leaveEvent.event)).rejects.toThrow('is not resident in room');
+			await expect(roomService.sendLeave(roomId, leaveEvent.eventId, leaveEvent.event, 'remote.com')).rejects.toThrow(
+				'is not resident in room',
+			);
+		});
+
+		it('refuses a leave whose sender does not belong to the requesting server', async () => {
+			const roomId = await createRoomWithRemoteInvite();
+
+			const { event, room_version } = await roomService.makeLeave(roomId, alice, 'example.com');
+			const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(event, room_version);
+
+			await expect(roomService.sendLeave(roomId, leaveEvent.eventId, leaveEvent.event, 'remote.com')).rejects.toThrow(ForbiddenError);
+
+			const state = await stateService.getLatestRoomState(roomId);
+			expect(state.get(`m.room.member:${alice}`)?.getContent().membership).toBe('join');
+		});
+
+		it('refuses to build a leave for a user of another server', async () => {
+			const roomId = await createRoomWithRemoteInvite();
+
+			await expect(roomService.makeLeave(roomId, alice, 'remote.com')).rejects.toThrow(ForbiddenError);
 		});
 	});
 

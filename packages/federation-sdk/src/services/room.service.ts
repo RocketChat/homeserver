@@ -519,10 +519,15 @@ export class RoomService {
 	async makeLeave(
 		roomId: RoomID,
 		senderId: UserID,
+		origin: string,
 	): Promise<{
 		event: PduForType<'m.room.member'>;
 		room_version: RoomVersion;
 	}> {
+		if (extractDomainFromId(senderId) !== origin) {
+			throw new ForbiddenError(`User ${senderId} does not belong to ${origin}`);
+		}
+
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 		const leaveEvent = await this.stateService.buildEvent<'m.room.member'>(
 			{
@@ -545,7 +550,16 @@ export class RoomService {
 		};
 	}
 
-	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>) {
+	async sendLeave(roomId: RoomID, eventId: EventID, event: PduForType<'m.room.member'>, origin: string) {
+		// auth rules can't tell which server relayed the leave, and make_leave signs it with our key, so origin is the only guard
+		if (extractDomainFromId(event.sender) !== origin) {
+			throw new ForbiddenError(`Leave sender ${event.sender} does not belong to ${origin}`);
+		}
+
+		if (event.state_key !== event.sender) {
+			throw new Error('Leave state_key must match its sender');
+		}
+
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const leaveEvent = PersistentEventFactory.createFromRawEvent<'m.room.member'>(event, roomVersion);
@@ -588,7 +602,7 @@ export class RoomService {
 			throw new HttpException("You don't have permission to leave this room.", HttpStatus.FORBIDDEN);
 		}
 
-		const makeLeaveResponse = await this.makeLeave(roomId, senderId);
+		const makeLeaveResponse = await this.makeLeave(roomId, senderId, this.configService.serverName);
 		const leaveEvent = PersistentEventFactory.createFromRawEvent(makeLeaveResponse.event, makeLeaveResponse.room_version);
 
 		await this.stateService.handlePdu(leaveEvent);
