@@ -1,6 +1,5 @@
 import {
 	EventBase,
-	EventStore,
 	RoomPowerLevelsEvent,
 	SignedEvent,
 	createLogger,
@@ -13,7 +12,6 @@ import {
 	type EventID,
 	PduForType,
 	PduJoinRuleEventContent,
-	PduType,
 	PersistentEventBase,
 	PersistentEventFactory,
 	EventStore as RoomEventStore,
@@ -465,45 +463,22 @@ export class RoomService {
 		return topicEvent;
 	}
 
-	private getEventByType<E extends PduType>(
-		authEventIds: EventStore[],
-		type: E,
-		extra?: (event: EventStore<PduForType<E>>) => boolean,
-	): EventStore<PduForType<E>> | undefined {
-		const event = authEventIds.find((e) => e.event.type === type && (!extra || extra(e as unknown as EventStore<PduForType<E>>)));
-		return event as unknown as EventStore<PduForType<E>> | undefined;
-	}
-
 	async updateUserPowerLevel(roomId: RoomID, userId: UserID, powerLevel: number, senderId: UserID): Promise<string> {
 		logger.info(`Updating power level for user ${userId} in room ${roomId} to ${powerLevel} by ${senderId}`);
 
-		const authEventIds = await this.eventService.getAuthEventIds('m.room.power_levels', { roomId, senderId });
+		const roomState = await this.stateService.getLatestRoomState2(roomId);
 
-		const powerLevelsAuthResult = this.getEventByType(authEventIds, 'm.room.power_levels');
-
-		const currentPowerLevelsEvent =
-			powerLevelsAuthResult?._id && (await this.eventService.getEventById(powerLevelsAuthResult._id, 'm.room.power_levels'));
-
-		if (!currentPowerLevelsEvent) {
+		const currentPowerLevels = roomState.powerLevels;
+		if (!currentPowerLevels) {
 			logger.error(`No m.room.power_levels event found for room ${roomId}`);
 			throw new HttpException('Room power levels not found, cannot update.', HttpStatus.NOT_FOUND);
 		}
 
-		const roomState = await this.stateService.getLatestRoomState2(roomId);
-
-		this.validatePowerLevelChange(roomState, currentPowerLevelsEvent.event.content, senderId, userId, powerLevel);
-
-		const memberAuthResult = this.getEventByType(authEventIds, 'm.room.member', (e) => e.event.state_key === senderId);
-
-		// Ensure critical auth events were found. the create event is not checked, from v12 it is never an auth event
-		if (!powerLevelsAuthResult || !memberAuthResult) {
-			logger.error(
-				`Critical auth events missing for power level update. PowerLevels: ${powerLevelsAuthResult?._id ?? 'missing'}, Member: ${
-					memberAuthResult?._id ?? 'missing'
-				}`,
-			);
-			throw new HttpException('Internal server error: Missing auth events for power level update.', HttpStatus.INTERNAL_SERVER_ERROR);
+		if (!roomState.isUserInRoom(senderId)) {
+			throw new HttpException('You are not a member of this room.', HttpStatus.FORBIDDEN);
 		}
+
+		this.validatePowerLevelChange(roomState, currentPowerLevels, senderId, userId, powerLevel);
 
 		const lastEventStore = await this.eventService.getLastEventForRoom(roomId);
 		if (!lastEventStore) {
@@ -511,15 +486,13 @@ export class RoomService {
 			throw new HttpException('Room has no history, cannot update power levels', HttpStatus.BAD_REQUEST);
 		}
 
-		const roomVersion = await this.stateService.getRoomVersion(roomId);
-
 		const event = await this.stateService.buildEvent<'m.room.power_levels'>(
 			{
 				type: 'm.room.power_levels',
 				content: {
-					...currentPowerLevelsEvent.event.content,
+					...currentPowerLevels,
 					users: {
-						...(currentPowerLevelsEvent.event.content.users || {}),
+						...currentPowerLevels.users,
 						[userId]: powerLevel,
 					},
 				},
@@ -531,7 +504,7 @@ export class RoomService {
 				origin_server_ts: Date.now(),
 				sender: senderId,
 			},
-			roomVersion,
+			roomState.version,
 		);
 
 		await this.stateService.handlePdu(event);

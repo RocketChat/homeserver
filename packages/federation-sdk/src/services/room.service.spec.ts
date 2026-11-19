@@ -302,6 +302,27 @@ describe('RoomService', async () => {
 				[secondaryUsername]: 50,
 			});
 		});
+
+		it('builds each update on the current power levels', async () => {
+			const alice = '@alice:example.com' as UserID;
+			const bob = '@bob:example.com' as UserID;
+			const carol = '@carol:example.com' as UserID;
+			const { roomCreateEvent } = await createRoom(alice, 'public');
+			const { roomId } = roomCreateEvent;
+
+			await roomService.joinUser(roomId, alice, bob);
+			await roomService.joinUser(roomId, alice, carol);
+
+			await federationSDK.updateUserPowerLevel(roomId, bob, 50, alice);
+			await federationSDK.updateUserPowerLevel(roomId, carol, 25, alice);
+
+			const state = await stateService.getLatestRoomState(roomId);
+			expect(state.get('m.room.power_levels:')!.getContent()).toHaveProperty('users', {
+				[alice]: 100,
+				[bob]: 50,
+				[carol]: 25,
+			});
+		});
 	});
 
 	describe('acceptInvite', () => {
