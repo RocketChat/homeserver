@@ -1,0 +1,30 @@
+packages/federation-sdk/src/services/event-notifier.service.spec.ts
+  s_0822f21356dd11::t_8a49145387b3b0 30,68-84
+packages/federation-sdk/src/services/event.service.spec.ts
+  s_0822f21356dd11::t_8a49145387b3b0 345,367-376
+packages/federation-sdk/src/services/event.service.ts
+  s_0822f21356dd11::t_8a49145387b3b0 824-825
+packages/core/src/events/homeserver-event-signatures.ts
+  s_0822f21356dd11::t_8a49145387b3b0 10-13
+packages/federation-sdk/src/services/event-notifier.service.ts
+  s_0822f21356dd11::t_1efaa0c82774e9 16
+  s_0822f21356dd11::t_8a49145387b3b0 231
+packages/federation-sdk/src/services/room.service.spec.ts
+  s_0822f21356dd11::t_8a49145387b3b0 659-679
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac607383b65c01630313b3cab71a88ee28b04225",
+  "prompts": {},
+  "sessions": {
+    "s_0822f21356dd11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "feb4bf26-aac5-47ac-9a2e-1ea101fa6c9b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

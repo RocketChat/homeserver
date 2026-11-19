@@ -1,0 +1,20 @@
+packages/federation-sdk/src/services/state.service.ts
+  s_04ba1b5b7893d7::t_7a1e6de596c79e 32
+  s_04ba1b5b7893d7::t_9d1bc17c0314f9 654-657
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82fc6e7d3567213b9e623ed8efcf5e6e9a04e315",
+  "prompts": {},
+  "sessions": {
+    "s_04ba1b5b7893d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56cab3b5-32b7-434f-b5f1-4ad6f8cde53d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
