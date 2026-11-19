@@ -1,0 +1,24 @@
+packages/room/src/authorizartion-rules/rules.spec.ts
+  s_ed8686e27ff89f::t_274eed5dbca8db 229-242,1310-1316
+  s_ed8686e27ff89f::t_45bb79a8f910bf 1317-1321
+packages/room/src/authorizartion-rules/rules.ts
+  s_ed8686e27ff89f::t_274eed5dbca8db 702-703
+packages/federation-sdk/src/services/state.service.spec.ts
+  s_ed8686e27ff89f::t_4239b54fbe9fe6 2469-2481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfe5649c3cc5adb2cc499e49a8fa7e31a232e4ed",
+  "prompts": {},
+  "sessions": {
+    "s_ed8686e27ff89f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91077f48-f848-4ac3-8ee3-7eda94564ede",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
