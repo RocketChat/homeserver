@@ -1,0 +1,22 @@
+packages/federation-sdk/src/services/sticky-event.service.ts
+  s_9efa0f3c66cc5c::t_b1f3e02cd18535 15,192,207-209
+packages/room/src/types/v3-11.ts
+  s_9efa0f3c66cc5c::t_2d98de2a1a1077 645
+  s_9efa0f3c66cc5c::t_3efea612144e2e 643-644
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02870ca76038b9b6403f6e0d4fe45f55f9d06c1f",
+  "prompts": {},
+  "sessions": {
+    "s_9efa0f3c66cc5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75ff63ac-fc5c-4274-aaff-d4dc3e4e5a65",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
