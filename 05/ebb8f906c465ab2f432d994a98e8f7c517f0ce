@@ -1,0 +1,28 @@
+packages/federation-sdk/src/services/event-sender.service.ts
+  s_9bd0937e708f5c::t_fc82f5b4d9d89c 116,147-152,163-165,167-178
+packages/federation-sdk/src/repositories/event.repository.ts
+  s_9bd0937e708f5c::t_0fa525c03a89b4 135
+packages/federation-sdk/src/queues/per-destination.queue.ts
+  s_9bd0937e708f5c::t_fc82f5b4d9d89c 240-245,258,282
+packages/federation-sdk/src/services/sticky-event.service.ts
+  s_9bd0937e708f5c::t_fc82f5b4d9d89c 1,10,144,169,198-202
+  s_9bd0937e708f5c::t_b0b17b1527c909 203
+packages/federation-sdk/src/services/staging-area.service.ts
+  s_9bd0937e708f5c::t_fc82f5b4d9d89c 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05ebb8f906c465ab2f432d994a98e8f7c517f0ce",
+  "prompts": {},
+  "sessions": {
+    "s_9bd0937e708f5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51b2bd03-26f1-4129-95db-05350c3792f9",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

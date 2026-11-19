@@ -1,0 +1,21 @@
+packages/federation-sdk/src/services/event-sender.service.ts
+  s_078a7396dd29ce::t_a934e5770d7f0c 88,97-101
+packages/federation-sdk/src/services/event-sender.service.spec.ts
+  s_078a7396dd29ce::t_a934e5770d7f0c 178-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f09f30275b1f90a8c8cf36ce6ca850b7e379ed6a",
+  "prompts": {},
+  "sessions": {
+    "s_078a7396dd29ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5d876168-ff69-427c-bc7b-ef8bc187b09c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+packages/federation-sdk/src/services/federation-sender.service.ts
+  s_04ba1b5b7893d7::t_2b2215c663096e 72,74,76-77,79-81
+packages/federation-sdk/src/services/room.service.spec.ts
+  s_04ba1b5b7893d7::t_1c0a67c0b63da8 1002-1005,1008-1009,1018-1024,1026-1028
+  s_04ba1b5b7893d7::t_636f5aa40075c1 1006-1007,1010-1017,1025,1044-1045,1120,1123,1125-1128,1141,1143
+packages/federation-sdk/src/queues/per-destination.queue.spec.ts
+  s_04ba1b5b7893d7::t_7782ea026dc7b8 498-499,537-539
+packages/federation-sdk/src/services/federation.service.ts
+  s_04ba1b5b7893d7::t_2b2215c663096e 23,237-242
+  s_04ba1b5b7893d7::t_ffcc23d255b0c3 10
+packages/federation-sdk/src/index.ts
+  s_04ba1b5b7893d7::t_ffcc23d255b0c3 191
+  s_04ba1b5b7893d7::t_0f8fc8332421c7 31
+  s_04ba1b5b7893d7::t_7782ea026dc7b8 192-193
+packages/federation-sdk/src/services/sticky-event.service.spec.ts
+  s_04ba1b5b7893d7::t_7782ea026dc7b8 54,64,70,225-276
+  s_04ba1b5b7893d7::t_eb49c6f7dfe6b9 277-278
+packages/federation-sdk/src/services/federation.service.spec.ts
+  s_04ba1b5b7893d7::t_1c0a67c0b63da8 10,47,84-116
+  s_04ba1b5b7893d7::t_bd629b7a9dbffd 117
+packages/federation-sdk/src/queues/per-destination.queue.ts
+  s_04ba1b5b7893d7::t_0f8fc8332421c7 127
+  s_04ba1b5b7893d7::t_2b2215c663096e 74-76,124,126,128-129,139-140,253,279
+packages/federation-sdk/src/repositories/event.repository.ts
+  s_04ba1b5b7893d7::t_2b2215c663096e 135-142
+packages/federation-sdk/src/services/sticky-event.service.ts
+  s_04ba1b5b7893d7::t_ffcc23d255b0c3 172-175,177,179-180
+  s_04ba1b5b7893d7::t_2b2215c663096e 158-171,176,178,181-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "08861b35bf78415d97f0b0ecc0a175b9774b6620",
+  "prompts": {},
+  "sessions": {
+    "s_04ba1b5b7893d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56cab3b5-32b7-434f-b5f1-4ad6f8cde53d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
