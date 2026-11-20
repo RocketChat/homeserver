@@ -71,11 +71,16 @@ export class PerDestinationQueue {
 
 	private retryTimerId: NodeJS.Timeout | null = null;
 
+	// PDUs were given up on since the destination was last known to be reachable
+	private droppedPdus = false;
+
 	constructor(
 		private readonly destination: string,
 		private readonly origin: string,
 		private readonly requestService: FederationRequestService,
 		retryConfig?: Partial<RetryConfig>,
+		// called once the destination is reachable again after PDUs meant for it were dropped
+		private readonly onDroppedPdusRecovered?: () => void,
 	) {
 		// Load config from env vars, allow override for testing
 		const envConfig = getRetryConfigFromEnv();
@@ -125,10 +130,21 @@ export class PerDestinationQueue {
 		this.retryCount = 0;
 		this.nextRetryAt = 0;
 
+		this.reportRecovery();
+
 		// Trigger immediate processing if there are items in queue
 		if (!this.isEmpty()) {
 			void this.processQueue();
 		}
+	}
+
+	private reportRecovery(): void {
+		if (!this.droppedPdus) {
+			return;
+		}
+
+		this.droppedPdus = false;
+		this.onDroppedPdusRecovered?.();
 	}
 
 	/**
@@ -190,6 +206,8 @@ export class PerDestinationQueue {
 			this.retryCount = 0;
 			this.nextRetryAt = 0;
 
+			this.reportRecovery();
+
 			this.logger.info('Successfully sent transaction');
 
 			// Mark that we should continue processing after finally block completes
@@ -225,6 +243,12 @@ export class PerDestinationQueue {
 		return this.requestService.put<SendTransactionResponse>(this.destination, uri, transaction);
 	}
 
+	private dropQueues(): void {
+		this.droppedPdus ||= this.pduQueue.length > 0;
+		this.pduQueue = [];
+		this.eduQueue = [];
+	}
+
 	/**
 	 * Handle retry logic with exponential backoff
 	 */
@@ -240,9 +264,7 @@ export class PerDestinationQueue {
 				},
 				'Max retries reached, dropping events',
 			);
-			// Clear the queue on max retries
-			this.pduQueue = [];
-			this.eduQueue = [];
+			this.dropQueues();
 			this.retryCount = 0;
 			this.nextRetryAt = 0;
 			this.clearRetryTimer();
@@ -266,8 +288,7 @@ export class PerDestinationQueue {
 				},
 				'Backoff exceeded 1 hour. Emptying queue and stop retrying until server is up.',
 			);
-			this.pduQueue = [];
-			this.eduQueue = [];
+			this.dropQueues();
 			this.retryCount = 0;
 			this.nextRetryAt = Infinity;
 			this.clearRetryTimer();

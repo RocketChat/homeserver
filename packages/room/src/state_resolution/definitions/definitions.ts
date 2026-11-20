@@ -39,9 +39,8 @@ export function isPowerEvent(event: PersistentEventBase): boolean {
 //  Unconflicted state map and conflicted state set.
 // State map S_i is {S_1, S_2, S_3, ...}
 // iout map takes care of the non-duplication of a set
-// NOTE: it sees the events of all states merged, so a key missing from some states (and holding one
-// value in the others) ends up unconflicted, which the spec calls conflicted. kept as is for v2 rooms
-// for now, state res v2.1 uses partitionStateSets instead
+// TODO: partitionState treats a key missing from some states as unconflicted, the spec calls it conflicted
+// it sees the events of all states merged; state res v2.1 already uses partitionStateSets instead
 export function partitionState(events: Readonly<Iterable<PersistentEventBase>>): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
 	const unconflictedState: StateEventIdMap = new Map();
 
@@ -86,8 +85,10 @@ export function partitionState(events: Readonly<Iterable<PersistentEventBase>>):
 	return [unconflictedState, conflictedStateEventsMap];
 }
 
-// If a given key K is present in every Si with the same value V in each state map, then the pair (K, V)
-// belongs to the unconflicted state map. Otherwise V belongs to the conflicted state set.
+/**
+ * If a given key K is present in every Si with the same value V in each state map, then the pair (K, V)
+ * belongs to the unconflicted state map. Otherwise V belongs to the conflicted state set.
+ */
 export function partitionStateSets(
 	states: readonly ReadonlyMap<StateMapKey, PersistentEventBase>[],
 ): [StateEventIdMap, Map<StateMapKey, EventID[]>] {
@@ -156,9 +157,11 @@ export async function getAuthChain(event: PersistentEventBase, store: EventStore
 	return _getAuthChain(event, new Set([]));
 }
 
-// state res v2.1 (room v12): the union of every auth_events path between two events of the conflicted
-// state set, endpoints included. an event is on such a path when it is reachable from a conflicted
-// event and itself reaches a conflicted event, so a single memoised walk down the auth graph finds them all
+/**
+ * state res v2.1 (room v12): the union of every auth_events path between two events of the conflicted
+ * state set, endpoints included. an event is on such a path when it is reachable from a conflicted
+ * event and itself reaches a conflicted event, so a single memoised walk down the auth graph finds them all
+ */
 export async function getConflictedStateSubgraph(conflictedEventIds: ReadonlySet<EventID>, store: EventStore): Promise<Set<EventID>> {
 	const reachesConflicted = new Map<EventID, boolean>();
 

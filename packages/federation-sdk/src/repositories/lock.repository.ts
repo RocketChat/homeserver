@@ -4,8 +4,8 @@ import { inject, singleton } from 'tsyringe';
 
 export const LOCK_TIMEOUT_MS = 2 * 60 * 1000;
 
-// well under LOCK_TIMEOUT_MS, so one slow refresh doesn't let the lock go stale
-export const LOCK_KEEP_ALIVE_INTERVAL_MS = 30 * 1000;
+// a few refreshes per timeout, so one slow refresh doesn't let the lock go stale
+export const LOCK_KEEP_ALIVE_INTERVAL_MS = LOCK_TIMEOUT_MS / 4;
 
 export type Lock = {
 	roomId: string;
@@ -22,7 +22,7 @@ export class LockRepository {
 		this.collection.createIndex({ roomId: 1 }, { unique: true });
 	}
 
-	// keepAlive refreshes the lock until it is disposed, for holders that can't call update() often enough
+	/** keepAlive refreshes the lock until it is disposed, for holders that can't call update() often enough */
 	async lock(
 		roomId: string,
 		instanceId: string,

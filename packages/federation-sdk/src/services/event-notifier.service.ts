@@ -13,7 +13,7 @@ export class EventNotifierService {
 
 	constructor(private readonly eventEmitterService: EventEmitterService, private readonly stateService: StateService) {}
 
-	async notify(event: PersistentEventBase) {
+	async notify(event: PersistentEventBase, { sticky }: { sticky?: { expiresAt: number } } = {}) {
 		const { eventId, roomId } = event;
 
 		this.logger.debug(`Notifying clients about event ${eventId}`);
@@ -29,7 +29,7 @@ export class EventNotifierService {
 			case event.event.type === 'm.room.message':
 				if (!(await isNotifiableEdit(event, this.stateService))) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring invalid replacement event');
-					break;
+					return;
 				}
 				await this.eventEmitterService.emit('homeserver.matrix.message', {
 					event_id: eventId,
@@ -45,7 +45,7 @@ export class EventNotifierService {
 			case event.event.type === 'm.room.encrypted':
 				if (!(await isNotifiableEdit(event, this.stateService))) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring invalid replacement event');
-					break;
+					return;
 				}
 				await this.eventEmitterService.emit('homeserver.matrix.encrypted', {
 					event_id: eventId,
@@ -63,7 +63,7 @@ export class EventNotifierService {
 				const redacts = await findAllowedRedactionTarget(event, this.stateService);
 				if (!redacts) {
 					this.logger.warn({ eventId, sender: event.event.sender }, 'ignoring unauthorized redaction');
-					break;
+					return;
 				}
 
 				await this.eventEmitterService.emit('homeserver.matrix.redaction', {
@@ -219,8 +219,15 @@ export class EventNotifierService {
 				break;
 			}
 			default:
-				this.logger.warn(`Unknown event type: ${event.event.type} for emitterService for now`);
+				this.logger.debug(`No typed notification for event type ${event.event.type}`);
 				break;
 		}
+
+		await this.eventEmitterService.emit('homeserver.matrix.event', {
+			event_id: eventId,
+			room_id: roomId,
+			event: event.event,
+			...(sticky && { sticky }),
+		});
 	}
 }

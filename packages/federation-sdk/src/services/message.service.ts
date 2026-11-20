@@ -6,6 +6,7 @@ import { EventSenderService } from './event-sender.service';
 import { EventService } from './event.service';
 import { RoomService } from './room.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 
 type Reply =
 	| {
@@ -52,6 +53,7 @@ export class MessageService {
 		private readonly roomService: RoomService,
 		private readonly stateService: StateService,
 		private readonly eventSenderService: EventSenderService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	private buildReplyContent(reply: Reply) {
@@ -352,6 +354,7 @@ export class MessageService {
 		);
 
 		await this.stateService.handlePdu(redactionEvent);
+		await this.stickyEventService.endStickinessOfRedacted(redactionEvent);
 
 		this.eventSenderService.dispatch(redactionEvent);
 

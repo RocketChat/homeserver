@@ -100,7 +100,6 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return this.rawEvent.type as Type;
 	}
 
-	// the rules of the room version this event belongs to, declared statically by each version class
 	get capabilities(): RoomVersionCapabilities {
 		return (this.constructor as unknown as { capabilities: RoomVersionCapabilities }).capabilities;
 	}
@@ -114,7 +113,7 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return roomId;
 	}
 
-	// undefined only for a malformed event, e.g. a pre-v12 create event without room_id
+	/** undefined only for a malformed event, e.g. a pre-v12 create event without room_id */
 	private findRoomId(): RoomID | undefined {
 		if (this.rawEvent.room_id) {
 			return this.rawEvent.room_id;
@@ -127,7 +126,7 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return undefined;
 	}
 
-	// when the room id is the create event's hash, the create event id can be derived from any event in the room
+	/** when the room id is the create event's hash, the create event id can be derived from any event in the room */
 	getCreateEventId(): EventID | undefined {
 		if (this.capabilities.roomIdFormat !== 'create-event-hash') {
 			return undefined;
@@ -150,7 +149,7 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		return domain;
 	}
 
-	// undefined from v12 on, room ids no longer name a server
+	/** undefined from v12 on, room ids no longer name a server */
 	get residentServer(): string | undefined {
 		return roomServerName(this.roomId);
 	}
@@ -176,7 +175,7 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 		} as PduForType<Type>;
 	}
 
-	// `event` returns a fresh `unsigned` object when the raw event has none, so writes through it are lost
+	/** `event` returns a fresh `unsigned` object when the raw event has none, so writes through it are lost */
 	setUnsigned(key: string, value: unknown) {
 		this.rawEvent.unsigned = { ...this.rawEvent.unsigned, [key]: value };
 	}
@@ -291,7 +290,7 @@ export abstract class PersistentEventBase<Version extends RoomVersion = RoomVers
 
 	protected abstract resolveCreator(): UserID | undefined;
 
-	// everyone holding creator authority. one user before v12, v12 adds content.additional_creators
+	/** everyone holding creator authority. one user before v12, v12 adds content.additional_creators */
 	getCreators(): Set<UserID> {
 		if (!this.isCreateEvent()) {
 			throw new Error('Event is not a create event');

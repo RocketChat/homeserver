@@ -1,13 +1,15 @@
-import { describe, expect, it, spyOn } from 'bun:test';
+import { describe, expect, it, mock, spyOn } from 'bun:test';
 
 import { generateKeyPairs, signEvent } from '@rocket.chat/federation-core';
 import { encodeCanonicalJson } from '@rocket.chat/federation-crypto';
-import { PersistentEventBase, PersistentEventFactory } from '@rocket.chat/federation-room';
+import { PersistentEventBase, PersistentEventFactory, RejectCodes, StateResolverAuthorizationError } from '@rocket.chat/federation-room';
 import type { EventID, Pdu, PduForType, RoomID, RoomVersion, UserID } from '@rocket.chat/federation-room';
 
+import type { EventNotifierService } from './event-notifier.service';
 import { EventService } from './event.service';
 import type { ServerService } from './server.service';
 import type { StateService } from './state.service';
+import type { StickyEventService } from './sticky-event.service';
 import type { StagingAreaQueue } from '../queues/staging-area.queue';
 import type { EventStagingRepository } from '../repositories/event-staging.repository';
 import type { EventRepository } from '../repositories/event.repository';
@@ -62,6 +64,7 @@ function buildService(roomVersion: RoomVersion, storedEvent: Pdu) {
 		null as never,
 		null as never,
 		eventRepository,
+		null as never,
 		null as never,
 		null as never,
 	);
@@ -203,7 +206,7 @@ describe('processIncomingPDUs', () => {
 		['more than 20 prev_events', { prev_events: Array.from({ length: 21 }, (_, i) => `$prev${i}`) }],
 		['more than 10 auth_events', { auth_events: Array.from({ length: 11 }, (_, i) => `$auth${i}`) }],
 		['more than 64 KiB', { content: { msgtype: 'm.text', body: 'x'.repeat(65536) } }],
-		// every item fails the schema, which used to cost kilobytes of heap per item
+		// every item fails the schema, and building the schema errors would cost kilobytes of heap per item
 		['a huge prev_events array of invalid items', { prev_events: new Array(1_000_000).fill(0) }],
 	])('rejects a PDU with %s before validating it against the room', async (_, overrides) => {
 		const { service, calls } = buildIncomingService();
@@ -372,6 +375,7 @@ describe('processIncomingPDUs', () => {
 			{ findById: async () => null } as unknown as EventRepository,
 			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
 			null as never,
+			null as never,
 		);
 
 		await service.processIncomingPDUs(origin, [await sign(create), await sign(message)]);
@@ -416,10 +420,110 @@ describe('processIncomingPDUs', () => {
 			{ findById: async () => null } as unknown as EventRepository,
 			{ create: async (eventId: EventID) => staged.push(eventId) } as unknown as EventStagingRepository,
 			null as never,
+			null as never,
 		);
 
 		await service.processIncomingPDUs(origin, [{ ...hashed, signatures } as Pdu]);
 
 		expect(staged).toHaveLength(expectStaged ? 1 : 0);
+	});
+});
+
+describe('authorizeAndPersist', () => {
+	const callMember = PersistentEventFactory.createFromRawEvent(
+		{
+			type: 'org.matrix.msc3401.call.member',
+			state_key: '_@alice:hs2_DEVICE_m.call',
+			content: {},
+			room_id: '!room:hs1',
+			sender: '@alice:hs2',
+			depth: 6,
+			auth_events: [],
+			prev_events: [],
+			origin_server_ts: 1732999153020,
+		} as unknown as Pdu,
+		'10',
+	);
+
+	function buildPersistingService(handlePdu: StateService['handlePdu']) {
+		const notify = mock(async () => undefined);
+		const markSticky = mock(async (): Promise<number | undefined> => undefined);
+		const catchUpIfNewServer = mock(async () => undefined);
+		const endStickinessOfRedacted = mock(async () => undefined);
+
+		const service = new EventService(
+			null as never,
+			null as never,
+			{ handlePdu } as unknown as StateService,
+			null as never,
+			null as never,
+			null as never,
+			null as never,
+			{ notify } as unknown as EventNotifierService,
+			{ markSticky, catchUpIfNewServer, endStickinessOfRedacted } as unknown as StickyEventService,
+		);
+
+		return { service, notify, markSticky, catchUpIfNewServer, endStickinessOfRedacted };
+	}
+
+	it('notifies an event once it is persisted', async () => {
+		const { service, notify } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember);
+
+		expect(notify).toHaveBeenCalledWith(callMember, {});
+	});
+
+	it('notifies a sticky event with when its stickiness ends', async () => {
+		const { service, notify, markSticky } = buildPersistingService(async () => undefined);
+		markSticky.mockImplementationOnce(async () => 1733002754000);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(notify).toHaveBeenCalledWith(callMember, { sticky: { expiresAt: 1733002754000 } });
+	});
+
+	it('records the stickiness of an event against when it was received', async () => {
+		const { service, markSticky } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(markSticky).toHaveBeenCalledWith(callMember, 1732999154000);
+	});
+
+	it('never makes sticky an event whose receive time is unknown', async () => {
+		const { service, markSticky } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember);
+
+		expect(markSticky).not.toHaveBeenCalled();
+	});
+
+	it('hands every persisted event to the sticky service to end the stickiness of what it redacts', async () => {
+		const { service, endStickinessOfRedacted } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(endStickinessOfRedacted).toHaveBeenCalledWith(callMember);
+	});
+
+	it('lets a newly joined server catch up when the event brings one', async () => {
+		const { service, catchUpIfNewServer } = buildPersistingService(async () => undefined);
+
+		await service.authorizeAndPersist(callMember, 1732999154000);
+
+		expect(catchUpIfNewServer).toHaveBeenCalledWith(callMember);
+	});
+
+	it('does not notify an event that was rejected', async () => {
+		const { service, notify, markSticky, catchUpIfNewServer } = buildPersistingService(async (event) => {
+			throw new StateResolverAuthorizationError(RejectCodes.AuthError, { rejectedEvent: event, reason: 'insufficient power level' });
+		});
+
+		await expect(service.authorizeAndPersist(callMember, 1732999154000)).rejects.toThrow(StateResolverAuthorizationError);
+
+		expect(notify).not.toHaveBeenCalled();
+		expect(markSticky).not.toHaveBeenCalled();
+		expect(catchUpIfNewServer).not.toHaveBeenCalled();
 	});
 });

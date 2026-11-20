@@ -1,8 +1,8 @@
-import { afterAll, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeEach, describe, expect, it, mock, test } from 'bun:test';
 
 import { type EventStore } from '@rocket.chat/federation-core';
 import { PersistentEventFactory } from '@rocket.chat/federation-room';
-import type { EventID, PduForType, RoomVersion, UserID } from '@rocket.chat/federation-room';
+import type { EventID, PduForType, RoomID, RoomVersion, State, UserID } from '@rocket.chat/federation-room';
 import { type WithId } from 'mongodb';
 
 import { type ConfigService } from './config.service';
@@ -12,6 +12,7 @@ import type { EventService } from './event.service';
 import type { FederationService } from './federation.service';
 import { SendJoinService } from './send-join.service';
 import { StateService } from './state.service';
+import type { StickyEventService } from './sticky-event.service';
 import { EventRepository } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
 import type { StateGraphStore } from '../repositories/state-graph.repository';
@@ -55,6 +56,7 @@ describe('SendJoinService', async () => {
 		stateService,
 		configService,
 		{ sendEventToAllServersInRoom: () => Promise.resolve() } as unknown as FederationService,
+		{ catchUpIfNewServer: () => Promise.resolve() } as unknown as StickyEventService,
 	);
 
 	const defaults = () => ({ auth_events: [], prev_events: [], origin_server_ts: Date.now(), depth: 0 });
@@ -109,5 +111,65 @@ describe('SendJoinService', async () => {
 		const authChainIds = response.auth_chain.map((pdu) => PersistentEventFactory.createFromRawEvent(pdu, '11').eventId);
 
 		expect(authChainIds).toContain(createEvent.eventId);
+	});
+});
+
+const ROOM_ID = '!room:hs1' as RoomID;
+
+describe('SendJoinService.sendJoin', () => {
+	const setup = () => {
+		const join = PersistentEventFactory.createFromRawEvent<'m.room.member'>(
+			{
+				type: 'm.room.member',
+				state_key: '@dave:hs3',
+				content: { membership: 'join' },
+				room_id: ROOM_ID,
+				sender: '@dave:hs3',
+				origin_server_ts: 1_700_000_000_000,
+				depth: 4,
+				auth_events: [],
+				prev_events: [],
+			} as unknown as PduForType<'m.room.member'>,
+			'10',
+		);
+		const stateBefore = new Map() as State;
+		const catchUpIfNewServer = mock(async () => 'hs3');
+		const handlePdu = mock(async () => undefined);
+		const emit = mock(async (..._args: unknown[]) => undefined);
+
+		const service = new SendJoinService(
+			{ getEventsByIds: async () => [] } as unknown as EventService,
+			{ emit } as unknown as EventEmitterService,
+			{
+				getRoomVersion: async () => '10',
+				buildEvent: async () => join,
+				getLatestRoomState: async () => stateBefore,
+				handlePdu,
+				signEvent: async (event: unknown) => event,
+			} as unknown as StateService,
+			{ serverName: 'hs1' } as ConfigService,
+			{ sendEventToAllServersInRoom: async () => undefined } as unknown as FederationService,
+			{ catchUpIfNewServer } as unknown as StickyEventService,
+		);
+
+		return { service, join, stateBefore, catchUpIfNewServer, handlePdu, emit };
+	};
+
+	test('lets the server of the joining user catch up, judged on the room state before the join', async () => {
+		const { service, join, stateBefore, catchUpIfNewServer, handlePdu } = setup();
+
+		await service.sendJoin(ROOM_ID, join.eventId, join.event);
+
+		expect(catchUpIfNewServer).toHaveBeenCalledWith(join, stateBefore);
+		expect(handlePdu.mock.invocationCallOrder[0]).toBeLessThan(catchUpIfNewServer.mock.invocationCallOrder[0]);
+	});
+
+	test('notifies the join through its membership notification first, then generically', async () => {
+		const { service, join, emit } = setup();
+
+		await service.sendJoin(ROOM_ID, join.eventId, join.event);
+
+		expect(emit.mock.calls.map(([name]) => name)).toEqual(['homeserver.matrix.membership', 'homeserver.matrix.event']);
+		expect(emit.mock.calls[1][1]).toEqual({ event_id: join.eventId, room_id: ROOM_ID, event: join.event });
 	});
 });

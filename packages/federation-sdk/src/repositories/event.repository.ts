@@ -6,13 +6,18 @@ import { inject, singleton } from 'tsyringe';
 
 import { EventRoomIdLayout, type EventStoreLayout, TopLevelRoomIdLayout } from './event-store-layout';
 
-// the room a stored event belongs to, whichever layout stored it
+/** the room a stored event belongs to, whichever layout stored it */
 export function getStoredRoomId(stored: Pick<EventStore, 'roomId' | 'event'>): RoomID {
 	const roomId = stored.roomId ?? stored.event.room_id;
 	if (!roomId) {
 		throw new Error(`Stored event ${stored.event.type} has no room id`);
 	}
 	return roomId;
+}
+
+/** a user ID's server name is everything after the first colon */
+function sentFromServer(serverName: string): RegExp {
+	return new RegExp(`^[^:]*:${serverName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 }
 
 @singleton()
@@ -30,9 +35,15 @@ export class EventRepository {
 				void this.collection.createIndex(key, options);
 			}
 		}
+
+		// not bound to a room nor to a layout: every stored event has a sender
+		void this.collection.createIndex(
+			{ 'sticky.expiresAt': 1, 'event.sender': 1 },
+			{ partialFilterExpression: { 'sticky.expiresAt': { $exists: true } } },
+		);
 	}
 
-	// the room id's shape is known before the room version is, so it is what picks the layout
+	/** the room id's shape is known before the room version is, so it is what picks the layout */
 	private layoutFor(roomId: string): EventStoreLayout {
 		return isDomainlessRoomId(roomId) ? this.topLevelRoomIdLayout : this.eventRoomIdLayout;
 	}
@@ -100,8 +111,57 @@ export class EventRepository {
 	async redactEvent(eventId: EventID, redactedEvent: Pdu): Promise<void> {
 		await this.collection.updateOne(
 			{ _id: eventId },
-			{ $set: { event: redactedEvent } }, // Purposefully replacing the entire event
+			// Purposefully replacing the entire event; a redacted event is no longer sticky
+			{ $set: { event: redactedEvent }, $unset: { sticky: '' } },
 		);
+	}
+
+	/**
+	 * keeps the first window recorded, and never makes a rejected event sticky.
+	 * resolves to the window the event ends up with, if any
+	 */
+	async setSticky(eventId: EventID, sticky: NonNullable<EventStore['sticky']>): Promise<EventStore['sticky']> {
+		const stored = await this.collection.findOneAndUpdate(
+			{ _id: eventId, rejectCode: { $exists: false } },
+			[{ $set: { sticky: { $ifNull: ['$sticky', { $literal: sticky }] } } }],
+			{ returnDocument: 'after', projection: { sticky: 1 } },
+		);
+
+		return stored?.sticky;
+	}
+
+	async clearSticky(eventId: EventID): Promise<void> {
+		await this.collection.updateOne({ _id: eventId, sticky: { $exists: true } }, { $unset: { sticky: '' } });
+	}
+
+	findActiveStickyByRoomId(
+		roomId: RoomID,
+		now: number,
+		{ type, senderServer }: { type?: string; senderServer?: string } = {},
+	): FindCursor<EventStore> {
+		return this.collection
+			.find({
+				...this.roomFilter(roomId),
+				'sticky.expiresAt': { $gt: now },
+				'rejectCode': { $exists: false },
+				...(type && { 'event.type': type }),
+				...(senderServer && { 'event.sender': sentFromServer(senderServer) }),
+			})
+			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
+	}
+
+	/**
+	 * not bound to a room: only cheap because the partial { sticky.expiresAt, event.sender }
+	 * index holds nothing but sticky events, and filters the sender before fetching
+	 */
+	findActiveStickyBySenderServer(senderServer: string, now: number): FindCursor<EventStore> {
+		return this.collection
+			.find({
+				'sticky.expiresAt': { $gt: now },
+				'event.sender': sentFromServer(senderServer),
+				'rejectCode': { $exists: false },
+			})
+			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
 	public async findPowerLevelsEventByRoomId(roomId: string): Promise<EventStore<PduForType<'m.room.power_levels'>> | null> {
@@ -323,7 +383,7 @@ export class EventRepository {
 	// new ones
 	// -------------------
 
-	// roomId is passed explicitly since a v12 create event has no room_id of its own
+	/** roomId is passed explicitly since a v12 create event has no room_id of its own */
 	insertOrUpdateEventWithStateId(roomId: RoomID, eventId: EventID, event: Pdu, stateId: StateID, partial = false): Promise<UpdateResult> {
 		return this.collection.updateOne(
 			{ _id: eventId },

@@ -37,6 +37,8 @@ export interface AppConfig {
 	networkCheckTimeoutMs?: number;
 	// version of rooms created locally; rooms joined over federation keep their own
 	defaultRoomVersion?: SupportedRoomVersion;
+	// MSC4354 is unstable, so sticky events are off unless enabled
+	enableStickyEvents?: boolean;
 }
 
 export const AppConfigSchema = z.object({
@@ -73,6 +75,7 @@ export const AppConfigSchema = z.object({
 		.string()
 		.refine((version) => PersistentEventFactory.isSupportedRoomVersion(version), 'Default room version is not supported')
 		.optional(),
+	enableStickyEvents: z.boolean().optional(),
 });
 
 @singleton()
@@ -116,6 +119,10 @@ export class ConfigService {
 
 	get defaultRoomVersion(): SupportedRoomVersion {
 		return this.config.defaultRoomVersion ?? DEFAULT_ROOM_VERSION;
+	}
+
+	get stickyEventsEnabled(): boolean {
+		return this.config.enableStickyEvents === true;
 	}
 
 	getConfig<K extends keyof AppConfig>(config: K): AppConfig[K] {

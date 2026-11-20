@@ -19,18 +19,21 @@ import { EventEmitterService } from './event-emitter.service';
 import { EventNotifierService } from './event-notifier.service';
 import { ServerService } from './server.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 import { StagingAreaQueue } from '../queues/staging-area.queue';
 import { EventStagingRepository } from '../repositories/event-staging.repository';
 import { EventRepository } from '../repositories/event.repository';
 import { getEventSchemaForType } from '../utils/event-schemas';
 
+// every room version caps both: https://spec.matrix.org/v1.19/rooms/v1/#event-format
 const MAX_PREV_EVENTS = 20;
 const MAX_AUTH_EVENTS = 10;
+// https://spec.matrix.org/v1.19/client-server-api/#size-limits
 const MAX_PDU_SIZE = 65536;
 const MAX_LOGGED_SCHEMA_ISSUES = 10;
 const MAX_LOGGED_FIELD_LENGTH = 255;
 
-// identifies a rejected PDU in the logs without copying contents of unbounded size into them
+/** identifies a rejected PDU in the logs without copying contents of unbounded size into them */
 function summarizeEventForLog(event: Pdu) {
 	const field = (value: unknown) => (typeof value === 'string' ? value.slice(0, MAX_LOGGED_FIELD_LENGTH) : typeof value);
 
@@ -63,6 +66,7 @@ export class EventService {
 		@inject(delay(() => EventStagingRepository))
 		private readonly eventStagingRepository: EventStagingRepository,
 		private readonly eventNotifierService: EventNotifierService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	async getEventById<T extends PduType, P extends EventStore<PduForType<T>>>(eventId: EventID, type?: T): Promise<P | null> {
@@ -433,8 +437,7 @@ export class EventService {
 		const errors: string[] = [];
 
 		// an excessive number of prev_events or auth_events could cause a huge state resolution
-		// or cascade of event fetches; every room version caps both
-		// https://spec.matrix.org/v1.19/rooms/v1/#event-format
+		// or cascade of event fetches
 		if (Array.isArray(event.prev_events) && event.prev_events.length > MAX_PREV_EVENTS) {
 			errors.push(`Event must not have more than ${MAX_PREV_EVENTS} prev_events`);
 		}
@@ -443,7 +446,6 @@ export class EventService {
 		}
 
 		// the size is only worth measuring once the arrays are known to be small
-		// https://spec.matrix.org/v1.19/client-server-api/#size-limits
 		if (errors.length === 0 && Buffer.byteLength(encodeCanonicalJson(event)) > MAX_PDU_SIZE) {
 			errors.push(`Event must not be larger than ${MAX_PDU_SIZE} bytes`);
 		}
@@ -805,9 +807,13 @@ export class EventService {
 	}
 
 	// single entry point for the staging-area hot path: authorize/persist the
-	// event through the state graph, then notify listeners
-	async authorizeAndPersist(event: PersistentEventBase): Promise<void> {
+	// event through the state graph, then notify listeners. Without `receivedAt`
+	// the event is never sticky
+	async authorizeAndPersist(event: PersistentEventBase, receivedAt?: number): Promise<void> {
 		await this.stateService.handlePdu(event);
-		await this.eventNotifierService.notify(event);
+		const stickyExpiresAt = receivedAt === undefined ? undefined : await this.stickyEventService.markSticky(event, receivedAt);
+		await this.stickyEventService.endStickinessOfRedacted(event);
+		await this.eventNotifierService.notify(event, stickyExpiresAt === undefined ? {} : { sticky: { expiresAt: stickyExpiresAt } });
+		void this.stickyEventService.catchUpIfNewServer(event);
 	}
 }

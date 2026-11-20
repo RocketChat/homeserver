@@ -18,6 +18,7 @@ import {
 	type StateID,
 	type StateMapKey,
 	StateResolverAuthorizationError,
+	type UserID,
 	checkEventAuthWithState,
 	checkEventAuthWithoutState,
 	extractDomainFromId,
@@ -30,6 +31,7 @@ import { ConfigService } from './config.service';
 import type { EventNotifierService } from './event-notifier.service';
 import { EventRepository, getStoredRoomId } from '../repositories/event.repository';
 import { StateGraphRepository } from '../repositories/state-graph.repository';
+import { getStickyExpiresAt } from '../utils/sticky';
 
 type StrippedEvent = {
 	content: PduContent;
@@ -116,8 +118,10 @@ export class StateService {
 		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(event, roomVersion);
 	}
 
-	// the server whose user created the room. before v12 the room id names it; from v12 on it is
-	// only known if we hold the create event, otherwise undefined
+	/**
+	 * the server whose user created the room. before v12 the room id names it; from v12 on it is
+	 * only known if we hold the create event, otherwise undefined
+	 */
 	async getRoomOriginServer(roomId: RoomID): Promise<string | undefined> {
 		const fromRoomId = roomServerName(roomId);
 		if (fromRoomId) {
@@ -523,6 +527,13 @@ export class StateService {
 
 		// isn't partial, check if already stored, then skip
 		if (record) {
+			// a stored rejection stands: skipping as handled would let callers act on the event as accepted
+			if (record.rejectCode) {
+				const reason = record.rejectDetail?.reason ?? 'previously rejected';
+				event.reject(record.rejectCode, reason, record.rejectDetail?.rejectedBy);
+				throw new StateResolverAuthorizationError(record.rejectCode, { rejectedEvent: event, reason });
+			}
+
 			return null;
 		}
 
@@ -680,6 +691,10 @@ export class StateService {
 				// soft fail
 				// TODO: separate flag for soft fail?
 				this.logger.warn({ error }, 'event soft failed');
+				if (getStickyExpiresAt(event.event, Date.now()) !== undefined) {
+					// it stays hidden even if the room state later allows it while it would still be sticky
+					this.logger.warn({ eventId: event.eventId, roomId: event.roomId, sender: event.sender }, 'sticky event soft failed');
+				}
 				event.reject(error.code, error.reason, error.rejectedBy);
 				// event must have a state id by this point
 				const stateId = await this.getStateIdAtEvent(event);
@@ -778,6 +793,29 @@ export class StateService {
 		}
 
 		return servers;
+	}
+
+	async isUserJoined(roomId: RoomID, userId: UserID): Promise<boolean> {
+		try {
+			const state = await this.getLatestRoomState2(roomId);
+			return state.isUserInRoom(userId);
+		} catch (error) {
+			if (error instanceof UnknownRoomError) {
+				return false;
+			}
+			throw error;
+		}
+	}
+
+	async getJoinedServers(roomId: RoomID): Promise<string[]> {
+		try {
+			return Array.from(await this.getServerSetInRoom(roomId));
+		} catch (error) {
+			if (error instanceof UnknownRoomError) {
+				return [];
+			}
+			throw error;
+		}
 	}
 
 	private async _isSameChain(stateIds: StateID[]) {

@@ -1,6 +1,11 @@
 import type { EventBase, EventStagingStore, Membership } from '@rocket.chat/federation-core';
 import { MessageType, createLogger, isRedactedEvent } from '@rocket.chat/federation-core';
-import { PduPowerLevelsEventContent, PersistentEventFactory, RoomState } from '@rocket.chat/federation-room';
+import {
+	PduPowerLevelsEventContent,
+	PersistentEventFactory,
+	RoomState,
+	StateResolverAuthorizationError,
+} from '@rocket.chat/federation-room';
 import type { Pdu, RoomID, RoomVersion } from '@rocket.chat/federation-room';
 import { singleton } from 'tsyringe';
 
@@ -95,7 +100,7 @@ export class StagingAreaService {
 				}
 
 				// eslint-disable-next-line no-await-in-loop
-				await this.eventService.authorizeAndPersist(await toEventBase(event.event));
+				await this.eventService.authorizeAndPersist(await toEventBase(event.event), event.createdAt?.getTime());
 				// eslint-disable-next-line no-await-in-loop
 				await this.eventService.markEventAsUnstaged(event);
 
@@ -113,6 +118,11 @@ export class StagingAreaService {
 						eventId: event._id,
 						err,
 					});
+				} else if (err instanceof StateResolverAuthorizationError) {
+					// the event is stored as rejected for good; trying it again would find it stored and take it for accepted
+					this.logger.info({ msg: 'Event rejected, removing from staging area', eventId: event._id, err });
+					// eslint-disable-next-line no-await-in-loop
+					await this.eventService.markEventAsUnstaged(event);
 				} else if (err instanceof MissingEventsError) {
 					this.logger.info({
 						msg: 'Added missing events, postponing event processing',
@@ -183,7 +193,7 @@ export class StagingAreaService {
 			}),
 		);
 
-		addedMissing = addedMissing || found.some((f) => f === true);
+		addedMissing ||= found.some(Boolean);
 
 		// fetched events are only staged, not persisted yet, so authorizing now would still miss them
 		if (missingAuthEvents.length > 0) {

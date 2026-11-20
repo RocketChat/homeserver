@@ -1,6 +1,20 @@
-import type { EventID, PduForType, RoomID } from '@rocket.chat/federation-room';
+import type { AnyPdu, EventID, PduForType, RoomID } from '@rocket.chat/federation-room';
 
 export type HomeserverEventSignatures = {
+	// every pdu accepted from federation and not rejected, whatever its type, so consumers can
+	// handle types the homeserver has no dedicated notification for, except the invalid edits and
+	// unauthorized redactions the typed notifications drop. Emitted after the typed notification
+	// of the same pdu, if there is one.
+	'homeserver.matrix.event': {
+		event_id: EventID;
+		event: AnyPdu;
+		// set even for a v12+ create event, which has no room_id of its own
+		room_id: RoomID;
+		// present when the event is sticky (MSC4354): when its stickiness ends (epoch ms), as this server reckons it
+		sticky?: {
+			expiresAt: number;
+		};
+	};
 	'homeserver.ping': {
 		message: string;
 	};
@@ -34,7 +48,7 @@ export type HomeserverEventSignatures = {
 	'homeserver.matrix.room.create': {
 		event: PduForType<'m.room.create'>;
 		event_id: EventID;
-		// from room v12 the create event carries no room_id, the room id is derived from its hash
+		// set even for a v12+ create event, which has no room_id of its own
 		room_id: RoomID;
 	};
 	'homeserver.matrix.message': {

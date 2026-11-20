@@ -25,8 +25,10 @@ const RECOGNISED_ROOM_VERSIONS: readonly string[] = ['1', '2', ...SUPPORTED_ROOM
 
 const HOSTNAME_REGEX = /^[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*$/;
 
-// hostname/IPv4 or [IPv6] literal with an optional numeric port, as Synapse's parse_and_validate_server_name;
-// the IPv6 charset also keeps out zone ids, which isIPv6 accepts
+/**
+ * hostname/IPv4 or [IPv6] literal with an optional numeric port, as Synapse's parse_and_validate_server_name;
+ * the IPv6 charset also keeps out zone ids, which isIPv6 accepts
+ */
 function isValidServerName(serverName: string): boolean {
 	const match = /^(?:\[([0-9A-Fa-f:.]+)\]|([^:]*))(?::\d+)?$/.exec(serverName);
 	if (!match) {
@@ -37,7 +39,7 @@ function isValidServerName(serverName: string): boolean {
 	return ipv6 !== undefined ? isIPv6(ipv6) : HOSTNAME_REGEX.test(hostname);
 }
 
-// used for v12's additional_creators; the localpart is not checked so historical user IDs stay valid, as in Synapse
+/** used for v12's additional_creators; the localpart is not checked so historical user IDs stay valid, as in Synapse */
 function isValidUserId(userId: unknown): userId is string {
 	if (typeof userId !== 'string' || !userId.startsWith('@')) {
 		return false;
@@ -112,8 +114,10 @@ function isCreateAllowed(createEvent: PersistentEventBase<RoomVersion, 'm.room.c
 	}
 }
 
-// the room's create event. up to v11 it is one of the event's auth events; from v12 it is implied
-// by the room id, and the event is rejected unless the room id names an accepted create event (rule 2)
+/**
+ * the room's create event. up to v11 it is one of the event's auth events; from v12 it is implied
+ * by the room id, and the event is rejected unless the room id names an accepted create event (rule 2)
+ */
 export async function resolveCreateEvent(
 	event: PersistentEventBase,
 	authEventStateMap: ReadonlyMap<StateMapKey, PersistentEventBase>,

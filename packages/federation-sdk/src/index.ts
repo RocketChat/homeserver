@@ -27,7 +27,9 @@ import { FederationSDK } from './sdk';
 import { ConfigService } from './services/config.service';
 import { DatabaseConnectionService } from './services/database-connection.service';
 import { EventService } from './services/event.service';
+import { FederationSenderService } from './services/federation-sender.service';
 import { StateService } from './services/state.service';
+import { StickyEventService } from './services/sticky-event.service';
 
 container.register<AppServiceConfigProvider>(APPSERVICE_CONFIG_PROVIDER, {
 	useValue: {
@@ -44,6 +46,7 @@ export type { CachedAppService, AppServiceRegistration, AppServiceState } from '
 export type { PingResult, PingError } from '@rocket.chat/appservice';
 
 export type {
+	AnyPdu,
 	Pdu,
 	PduForType,
 	PduMembershipEventContent,
@@ -73,6 +76,8 @@ export { USERNAME_REGEX, ROOM_ID_REGEX } from './utils/validation-regex';
 export { eventSchemas, roomV10Schemas, roomV11Schemas, roomV12Schemas, type BaseEventType } from './utils/event-schemas';
 export { errCodes } from './utils/response-codes';
 export { NotAllowedError } from './services/invite.service';
+export { EventRejectedError, StickyEventsDisabledError } from './services/event-sender.service';
+export type { ActiveStickyEvent } from './services/sticky-event.service';
 export { FederationValidationService, FederationValidationError } from './services/federation-validation.service';
 
 export type { HomeserverEventSignatures } from '@rocket.chat/federation-core';
@@ -181,9 +186,17 @@ export async function init({
 		});
 	});
 
+	// sticky events pushed to a destination that was given up on are pushed again once it is reachable
+	const stickyEventService = container.resolve(StickyEventService);
+	container.resolve(FederationSenderService).setDroppedPdusRecoveredHandler((destination) => {
+		void stickyEventService.pushOwnStickyEventsToServers(destination);
+	});
+
 	// once the db is initialized we look for old staged events and try to process them
 	setTimeout(async () => {
 		const eventService = container.resolve(EventService);
+		void stickyEventService.pushOwnStickyEventsToServers();
+
 		await eventService.processOldStagedEvents();
 	}, 5000);
 }

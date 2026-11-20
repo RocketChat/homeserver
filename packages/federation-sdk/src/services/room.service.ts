@@ -44,6 +44,12 @@ import { RoomRepository } from '../repositories/room.repository';
 
 const ROOM_LOCK_RETRY_MS = 200;
 
+// what rooms created here allow beyond the protocol defaults
+const DEFAULT_EVENT_POWER_LEVELS = {
+	// any member may publish their own MatrixRTC call membership, so anyone can join a call
+	'org.matrix.msc3401.call.member': 0,
+};
+
 @singleton()
 export class RoomService {
 	private readonly logger = createLogger('RoomService');
@@ -71,8 +77,7 @@ export class RoomService {
 		private readonly stagingAreaQueue: StagingAreaQueue,
 	) {}
 
-	// the users of a new room's power levels. from v12 creators already outrank everyone and the
-	// auth rules reject power levels that list them, so they are left out
+	/** privileged creators are left out, the auth rules reject power levels that list them */
 	private powerLevelUsersForNewRoom(
 		createEvent: PersistentEventBase<RoomVersion, 'm.room.create'>,
 		users: Record<string, number>,
@@ -93,7 +98,6 @@ export class RoomService {
 		targetUserId: string,
 		newPowerLevel: number,
 	): void {
-		// from v12 creators are never listed in power_levels, the auth rules would reject the event
 		if (roomState.privilegedCreators.has(targetUserId as UserID)) {
 			throw new HttpException("A room creator's power level cannot be changed.", HttpStatus.FORBIDDEN);
 		}
@@ -293,6 +297,7 @@ export class RoomService {
 						}),
 						users_default: 0,
 						events: {
+							...DEFAULT_EVENT_POWER_LEVELS,
 							...powers.events,
 						},
 						events_default: 0,
@@ -567,7 +572,7 @@ export class RoomService {
 			throw new Error(`Invalid eventId ${eventId}`);
 		}
 
-		// any joined server can take a leave, not only the room's creator: invitees reject through the inviting server
+		// any resident server can take a leave: invitees reject through the inviting server
 		const serversInRoom = await this.stateService.getServerSetInRoom(roomId);
 		if (!serversInRoom.has(this.configService.serverName)) {
 			throw new Error(`Server ${this.configService.serverName} is not resident in room ${roomId}`);
@@ -582,6 +587,11 @@ export class RoomService {
 
 		await this.eventEmitterService.emit('homeserver.matrix.membership', {
 			event_id: leaveEvent.eventId,
+			event: leaveEvent.event,
+		});
+		await this.eventEmitterService.emit('homeserver.matrix.event', {
+			event_id: leaveEvent.eventId,
+			room_id: leaveEvent.roomId,
 			event: leaveEvent.event,
 		});
 
@@ -691,9 +701,11 @@ export class RoomService {
 		return banEvent.eventId;
 	}
 
-	// the server to join a room through. before v12 the room id names it; from v12 it is only known
-	// when we hold the room's create event, otherwise the user has to be invited and the inviting
-	// server is asked instead
+	/**
+	 * the server to join a room through. before v12 the room id names it; from v12 it is only known
+	 * when we hold the room's create event, otherwise the user has to be invited and the inviting
+	 * server is asked instead
+	 */
 	private async resolveJoinServer(roomId: RoomID, userId: UserID): Promise<string> {
 		const roomOriginServer = await this.stateService.getRoomOriginServer(roomId);
 		if (roomOriginServer) {
@@ -824,8 +836,8 @@ export class RoomService {
 			event: joinEventFinal.event,
 		});
 
-		// try to persist the join event now, should succeed with state in place. a v12 create event has
-		// no room_id to be processed with, and processInitialState already stored it.
+		// try to persist the join event now, should succeed with state in place
+		// processInitialState already stored the create event, which from v12 has no room_id to be processed under.
 		// runs after the room lock is released, since staging this enqueues the room for processing
 		void this.eventService.processIncomingPDUs(residentServer || joinEventFinal.origin, [
 			...state.filter((pdu) => pdu.room_id !== undefined),
@@ -855,8 +867,10 @@ export class RoomService {
 		}
 	}
 
-	// holds the room lock the staging area processes under: the resident server sends our join back in a
-	// transaction, and processing it before the state is complete builds it on a partial state for good
+	/**
+	 * holds the room lock the staging area processes under: the resident server sends our join back in a
+	 * transaction, and processing it before the state is complete builds it on a partial state for good
+	 */
 	private async sendJoinAndStoreState(roomId: RoomID, joinEvent: PersistentEventBase, residentServer: string) {
 		const { stateService, federationService } = this;
 
@@ -1353,6 +1367,7 @@ export class RoomService {
 					}),
 					users_default: 0,
 					events: {
+						...DEFAULT_EVENT_POWER_LEVELS,
 						'm.room.name': 50,
 						'm.room.power_levels': 100,
 						'm.room.history_visibility': 100,
@@ -1538,7 +1553,7 @@ export class RoomService {
 						[targetUserId]: 50,
 					}),
 					users_default: 0,
-					events: {},
+					events: { ...DEFAULT_EVENT_POWER_LEVELS },
 					events_default: 0,
 					state_default: 50,
 					ban: 50,

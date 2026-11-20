@@ -1,10 +1,12 @@
 import { EventRouterService } from '@rocket.chat/appservice';
 import { createLogger } from '@rocket.chat/federation-core';
 import {
+	type EventID,
 	type PduForType,
 	type PduType,
 	type PduWithHashesAndSignaturesOptional,
 	type PersistentEventBase,
+	type RejectCode,
 	RoomID,
 	UserID,
 } from '@rocket.chat/federation-room';
@@ -12,7 +14,33 @@ import { singleton } from 'tsyringe';
 
 import { FederationService } from './federation.service';
 import { StateService } from './state.service';
+import { StickyEventService } from './sticky-event.service';
 import { getEventSchemaForType } from '../utils/event-schemas';
+import { MAX_STICKY_DURATION_MS, STICKY_EVENT_FIELD } from '../utils/sticky';
+
+/** the room's authorization rules refused an event built on behalf of a local user */
+export class EventRejectedError extends Error {
+	readonly eventId: EventID;
+
+	readonly code: RejectCode;
+
+	readonly reason: string;
+
+	constructor(event: PersistentEventBase, options?: ErrorOptions) {
+		super(`Event ${event.eventId} was rejected: ${event.rejectReason}`, options);
+		this.name = 'EventRejectedError';
+		this.eventId = event.eventId;
+		this.code = event.rejectCode as RejectCode;
+		this.reason = event.rejectReason;
+	}
+}
+
+export class StickyEventsDisabledError extends Error {
+	constructor() {
+		super('Sticky events (MSC4354) are not enabled on this server');
+		this.name = 'StickyEventsDisabledError';
+	}
+}
 
 @singleton()
 export class EventSenderService {
@@ -22,6 +50,7 @@ export class EventSenderService {
 		private readonly stateService: StateService,
 		private readonly federationService: FederationService,
 		private readonly eventRouterService: EventRouterService,
+		private readonly stickyEventService: StickyEventService,
 	) {}
 
 	/**
@@ -33,6 +62,8 @@ export class EventSenderService {
 	 * Custom (vendor-namespaced) event types the homeserver does not know about
 	 * are allowed through, as the Matrix spec permits. Known event types are
 	 * validated against their schema, just like any other event.
+	 *
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
 	 */
 	async sendCustomEvent(
 		roomId: RoomID,
@@ -40,22 +71,109 @@ export class EventSenderService {
 		content: Record<string, unknown>,
 		senderUserId: UserID,
 	): Promise<PersistentEventBase> {
+		const event = await this.buildAndPersist(roomId, senderUserId, { type: eventType, content });
+
+		this.dispatch(event);
+
+		return event;
+	}
+
+	/**
+	 * Set room state on behalf of a local user. Empty content withdraws state,
+	 * e.g. a MatrixRTC call membership when its member leaves the call.
+	 *
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
+	 * @throws {Error} for `m.room.create`, which only creating a room may send
+	 */
+	async sendStateEvent(
+		roomId: RoomID,
+		eventType: string,
+		stateKey: string,
+		content: Record<string, unknown>,
+		senderUserId: UserID,
+	): Promise<{ eventId: EventID }> {
+		// a create built here would get the room's heads as prev_events, and handlePdu persists creates without authorizing them
+		if (eventType === 'm.room.create') {
+			throw new Error('m.room.create can only be sent by creating a room');
+		}
+
+		const event = await this.buildAndPersist(roomId, senderUserId, { type: eventType, state_key: stateKey, content });
+
+		this.dispatch(event);
+
+		return { eventId: event.eventId };
+	}
+
+	/**
+	 * Send a message event on behalf of a local user, sticky (MSC4354) for `durationMs` from now.
+	 *
+	 * @throws {StickyEventsDisabledError} when sticky events are not enabled
+	 * @throws {RangeError} when `durationMs` is not an integer from 1 to MAX_STICKY_DURATION_MS
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
+	 */
+	async sendStickyEvent(
+		roomId: RoomID,
+		eventType: string,
+		content: Record<string, unknown>,
+		senderUserId: UserID,
+		durationMs: number,
+	): Promise<{ eventId: EventID }> {
+		if (!this.stickyEventService.enabled) {
+			throw new StickyEventsDisabledError();
+		}
+
+		if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > MAX_STICKY_DURATION_MS) {
+			throw new RangeError(`A sticky event lasts from 1 to ${MAX_STICKY_DURATION_MS} ms, not ${durationMs}`);
+		}
+
+		const sentAt = Date.now();
+
+		const event = await this.buildAndPersist(roomId, senderUserId, {
+			type: eventType,
+			content,
+			origin_server_ts: sentAt,
+			[STICKY_EVENT_FIELD]: { duration_ms: durationMs },
+		});
+
+		// the event is already in the room: failing here would leave it unsent and invite a duplicate
+		try {
+			await this.stickyEventService.markSticky(event, sentAt);
+		} catch (err) {
+			this.logger.error({ msg: 'Failed to record a sent event as sticky', eventId: event.eventId, err });
+		}
+
+		this.dispatch(event);
+
+		return { eventId: event.eventId };
+	}
+
+	/** an event of a local user, validated, signed, authorized and persisted */
+	private async buildAndPersist(
+		roomId: RoomID,
+		sender: UserID,
+		fields: {
+			type: string;
+			content: Record<string, unknown>;
+			state_key?: string;
+			origin_server_ts?: number;
+			[STICKY_EVENT_FIELD]?: { duration_ms: number };
+		},
+	): Promise<PersistentEventBase> {
 		const roomVersion = await this.stateService.getRoomVersion(roomId);
 
 		const rawEvent = {
-			type: eventType,
-			content,
+			origin_server_ts: Date.now(),
+			...fields,
 			room_id: roomId,
+			sender,
 			auth_events: [],
 			depth: 0,
 			prev_events: [],
-			origin_server_ts: Date.now(),
-			sender: senderUserId,
 		};
 
-		const validation = getEventSchemaForType(eventType, roomVersion).safeParse(rawEvent);
+		const validation = getEventSchemaForType(rawEvent.type, roomVersion).safeParse(rawEvent);
 		if (!validation.success) {
-			throw new Error(`Custom event of type ${eventType} failed schema validation: ${JSON.stringify(validation.error.format())}`);
+			throw new Error(`Event of type ${rawEvent.type} failed schema validation: ${JSON.stringify(validation.error.format())}`);
 		}
 
 		const event = await this.stateService.buildEvent(
@@ -63,12 +181,17 @@ export class EventSenderService {
 			roomVersion,
 		);
 
-		await this.stateService.handlePdu(event);
-		if (event.rejected) {
-			throw new Error(event.rejectReason);
+		try {
+			await this.stateService.handlePdu(event);
+		} catch (error) {
+			if (event.rejected) {
+				throw new EventRejectedError(event, { cause: error });
+			}
+			throw error;
 		}
-
-		this.dispatch(event);
+		if (event.rejected) {
+			throw new EventRejectedError(event);
+		}
 
 		return event;
 	}

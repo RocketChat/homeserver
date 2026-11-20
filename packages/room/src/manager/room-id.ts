@@ -1,7 +1,9 @@
 import type { EventID, RoomID } from '../types/_common';
 
-// room ids before v12 are !opaque:server, from v12 on they are the create event id with a ! sigil.
-// the shape is all there is to go on before the create event (and so the room version) is known
+/**
+ * room ids before v12 are !opaque:server, from v12 on they are the create event id with a ! sigil.
+ * the shape is all there is to go on before the create event (and so the room version) is known
+ */
 export function isDomainlessRoomId(roomId: string): boolean {
 	return !roomId.includes(':');
 }
