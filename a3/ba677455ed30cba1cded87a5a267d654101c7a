@@ -1,0 +1,31 @@
+packages/federation-sdk/src/services/staging-area.service.spec.ts
+  s_04ba1b5b7893d7::t_7485eeeccf95d5 102-113,116-130,132
+  s_04ba1b5b7893d7::t_77f9cb1343c11b 5,114-115,131,133
+packages/federation-sdk/src/services/staging-area.service.ts
+  s_04ba1b5b7893d7::t_cfec1813e4a38e 3-8
+  s_04ba1b5b7893d7::t_10a6c6160c80c7 121-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3ba677455ed30cba1cded87a5a267d654101c7a",
+  "prompts": {},
+  "sessions": {
+    "s_04ba1b5b7893d7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56cab3b5-32b7-434f-b5f1-4ad6f8cde53d",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    },
+    "s_0822f21356dd11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "feb4bf26-aac5-47ac-9a2e-1ea101fa6c9b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
