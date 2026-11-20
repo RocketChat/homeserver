@@ -38,7 +38,6 @@ const createEventSchemaV11 = createEventSchema.extend({
 	content: z.object({ room_version: z.string() }).and(anyContent),
 });
 
-// v12 dropped room_id from the create event, the room id is derived from its hash
 const createEventSchemaV12 = createEventSchemaV11.extend({
 	room_id: z.undefined({ error: 'm.room.create must not have a room_id from room version 12' }),
 	content: z
@@ -149,7 +148,7 @@ const roomV12Schemas: Record<string, z.ZodSchema> = {
 	'm.room.create': createEventSchemaV12,
 };
 
-// an unrecognised version below 11 resolves to the v10 set; anything else (missing, non-numeric, newer) to the v11 set
+/** an unrecognised version below 11 resolves to the v10 set; anything else (missing, non-numeric, newer) to the v11 set */
 function schemasForRoomVersion(roomVersion?: string): Record<string, z.ZodSchema> {
 	if (!roomVersion || !PersistentEventFactory.isSupportedRoomVersion(roomVersion)) {
 		return Number(roomVersion) < 11 ? roomV10Schemas : roomV11Schemas;

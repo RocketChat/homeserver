@@ -26,18 +26,18 @@ export class RoomState {
 		return this.createEvent.getCreator();
 	}
 
-	// everyone holding creator authority, v12 adds additional_creators to the sender
+	/** everyone holding creator authority, v12 adds additional_creators to the sender */
 	get creators(): Set<UserID> {
 		return this.createEvent.getCreators();
 	}
 
-	// creators who outrank every power level and cannot be listed in power_levels (v12+), empty before
+	/** creators who outrank every power level and cannot be listed in power_levels (v12+), empty before */
 	get privilegedCreators(): Set<UserID> {
 		const { createEvent } = this;
 		return createEvent.capabilities.privilegedCreators ? createEvent.getCreators() : new Set();
 	}
 
-	// the power level the auth rules would give the user, Infinity for privileged creators
+	/** the power level the auth rules would give the user, Infinity for privileged creators */
 	getUserPowerLevel(userId: string): number {
 		const powerLevelsEvent = getStateByMapKey(this.stateMap, {
 			type: 'm.room.power_levels',

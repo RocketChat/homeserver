@@ -223,7 +223,6 @@ export class EventNotifierService {
 				break;
 		}
 
-		// not reached for the invalid edits and unauthorized redactions dropped above
 		await this.eventEmitterService.emit('homeserver.matrix.event', {
 			event_id: eventId,
 			room_id: roomId,

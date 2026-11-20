@@ -65,7 +65,6 @@ class PowerLevelEvent<
 	}
 
 	getPowerLevelForUser(userId: string, createEvent?: PersistentEventBase<RoomVersion, 'm.room.create'>) {
-		// from v12 room creators outrank every power level and cannot be listed in users
 		if (createEvent?.capabilities.privilegedCreators && createEvent.getCreators().has(userId as UserID)) {
 			return Infinity;
 		}

@@ -28,8 +28,10 @@ export function getStickyDurationMs(pdu: MaybeStickyPdu): number | undefined {
 	return durationMs;
 }
 
-// until when the event stays sticky for this server, which received it at `receivedAt`;
-// undefined when it is not sticky, or already was not by the time it arrived
+/**
+ * until when the event stays sticky for this server, which received it at `receivedAt`;
+ * undefined when it is not sticky, or already was not by the time it arrived
+ */
 export function getStickyExpiresAt(pdu: MaybeStickyPdu, receivedAt: number): number | undefined {
 	const durationMs = getStickyDurationMs(pdu);
 	if (durationMs === undefined) {

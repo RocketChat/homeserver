@@ -33,7 +33,7 @@ const MAX_PDU_SIZE = 65536;
 const MAX_LOGGED_SCHEMA_ISSUES = 10;
 const MAX_LOGGED_FIELD_LENGTH = 255;
 
-// identifies a rejected PDU in the logs without copying contents of unbounded size into them
+/** identifies a rejected PDU in the logs without copying contents of unbounded size into them */
 function summarizeEventForLog(event: Pdu) {
 	const field = (value: unknown) => (typeof value === 'string' ? value.slice(0, MAX_LOGGED_FIELD_LENGTH) : typeof value);
 

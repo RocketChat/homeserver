@@ -39,7 +39,7 @@ export class StickyEventService {
 		private readonly federationSenderService: FederationSenderService,
 	) {}
 
-	// when off, events are handled as if MSC4354 did not exist: none is recorded, pushed or listed as sticky
+	/** when off, events are handled as if MSC4354 did not exist: none is recorded, pushed or listed as sticky */
 	get enabled(): boolean {
 		return this.configService.stickyEventsEnabled;
 	}
@@ -102,11 +102,10 @@ export class StickyEventService {
 	}
 
 	/**
-	 * MSC4354 asks a server to push its own unexpired sticky events to every server
-	 * that newly joins a room. Call it with every accepted event: when the event is
-	 * the join of the first member of another server, that server is caught up after
-	 * NEW_SERVER_CATCH_UP_DELAY_MS. `stateBefore` is the room state the event applies
-	 * to, looked up when not given. Resolves to the server being caught up, if any;
+	 * Call it with every accepted event: when it is the join of another server's first
+	 * member, this server's unexpired sticky events are pushed to it (MSC4354) after
+	 * NEW_SERVER_CATCH_UP_DELAY_MS. `stateBefore` is the state the event applies to,
+	 * looked up when not given. Resolves to the server being caught up, if any;
 	 * failures are logged, never thrown.
 	 */
 	async catchUpIfNewServer(event: PersistentEventBase, stateBefore?: State): Promise<string | undefined> {
@@ -176,8 +175,7 @@ export class StickyEventService {
 	/**
 	 * Queue again this server's own unexpired sticky events, oldest first, to the servers
 	 * joined to their rooms: to `destination` alone, or to all of them when not given.
-	 * It makes up for pushes that were lost, as when this server restarts or gives up on
-	 * a server that is unreachable; a server that already has an event ignores it.
+	 * Makes up for lost pushes; a server that already has an event ignores it.
 	 * Resolves to how many were queued; failures are logged, never thrown.
 	 */
 	async pushOwnStickyEventsToServers(destination?: string): Promise<number> {

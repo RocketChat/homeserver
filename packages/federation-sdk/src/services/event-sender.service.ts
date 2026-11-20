@@ -18,7 +18,7 @@ import { StickyEventService } from './sticky-event.service';
 import { getEventSchemaForType } from '../utils/event-schemas';
 import { MAX_STICKY_DURATION_MS, STICKY_EVENT_FIELD } from '../utils/sticky';
 
-// the room's authorization rules refused an event built on behalf of a local user
+/** the room's authorization rules refused an event built on behalf of a local user */
 export class EventRejectedError extends Error {
 	readonly eventId: EventID;
 
@@ -79,12 +79,10 @@ export class EventSenderService {
 	}
 
 	/**
-	 * Set a piece of room state on behalf of a local user, of any event type and
-	 * under any state key. Empty content is valid: it is how some state is
-	 * withdrawn, e.g. a MatrixRTC call membership when its member leaves the call.
+	 * Set room state on behalf of a local user. Empty content withdraws state,
+	 * e.g. a MatrixRTC call membership when its member leaves the call.
 	 *
-	 * @throws {EventRejectedError} when the room's authorization rules refuse the
-	 * event, e.g. because the sender lacks the power level its type requires
+	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
 	 * @throws {Error} for `m.room.create`, which only creating a room may send
 	 */
 	async sendStateEvent(
@@ -107,12 +105,10 @@ export class EventSenderService {
 	}
 
 	/**
-	 * Send a message event on behalf of a local user that stays sticky (MSC4354)
-	 * for `durationMs` from now.
+	 * Send a message event on behalf of a local user, sticky (MSC4354) for `durationMs` from now.
 	 *
 	 * @throws {StickyEventsDisabledError} when sticky events are not enabled
-	 * @throws {RangeError} when `durationMs` is not a whole number of milliseconds
-	 * from 1 to MAX_STICKY_DURATION_MS
+	 * @throws {RangeError} when `durationMs` is not an integer from 1 to MAX_STICKY_DURATION_MS
 	 * @throws {EventRejectedError} when the room's authorization rules refuse the event
 	 */
 	async sendStickyEvent(
@@ -151,7 +147,7 @@ export class EventSenderService {
 		return { eventId: event.eventId };
 	}
 
-	// an event of a local user, validated, signed, authorized and persisted
+	/** an event of a local user, validated, signed, authorized and persisted */
 	private async buildAndPersist(
 		roomId: RoomID,
 		sender: UserID,

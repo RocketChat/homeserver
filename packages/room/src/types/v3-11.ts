@@ -466,7 +466,7 @@ export const PduNoContentEmptyStateKeyStateEventSchema = {
 
 export const EventPduTypeRoomCreate = z.object({
 	...PduNoContentEmptyStateKeyStateEventSchema,
-	// from v12 on the create event has no room_id, the room id is derived from its hash
+	// absent on a v12+ create event
 	room_id: roomIdSchema.optional(),
 	type: z.literal('m.room.create'),
 	content: PduCreateEventContentSchema,
@@ -641,7 +641,7 @@ const PduCommonFieldsSchema = z.object(PduNoContentTimelineEventSchema);
 // a pdu of any type, including the ones this package has no schema for (custom and
 // unstable types): only the fields every pdu carries are typed, any other is kept as is
 export type AnyPdu = Omit<z.infer<typeof PduCommonFieldsSchema>, 'room_id'> & {
-	// absent on a v12+ create event, whose room id is derived from its hash
+	// absent on a v12+ create event
 	room_id?: z.infer<typeof roomIdSchema>;
 	type: string;
 	content: Record<string, unknown>;

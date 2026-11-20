@@ -118,8 +118,10 @@ export class StateService {
 		return PersistentEventFactory.createFromRawEvent<'m.room.create'>(event, roomVersion);
 	}
 
-	// the server whose user created the room. before v12 the room id names it; from v12 on it is
-	// only known if we hold the create event, otherwise undefined
+	/**
+	 * the server whose user created the room. before v12 the room id names it; from v12 on it is
+	 * only known if we hold the create event, otherwise undefined
+	 */
 	async getRoomOriginServer(roomId: RoomID): Promise<string | undefined> {
 		const fromRoomId = roomServerName(roomId);
 		if (fromRoomId) {

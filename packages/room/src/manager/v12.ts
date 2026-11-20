@@ -3,8 +3,10 @@ import { PersistentEventV11 } from './v11';
 import type { UserID } from '../types/_common';
 import type { PduCreateEventContent, PduType } from '../types/v3-11';
 
-// v12 keeps v11's event format and redaction rules, what changes is room identity and authority:
-// the room id is the create event's hash, and every room creator outranks any power level
+/**
+ * v12 keeps v11's event format and redaction rules, what changes is room identity and authority:
+ * the room id is the create event's hash, and every room creator outranks any power level
+ */
 export class PersistentEventV12<Type extends PduType = PduType> extends PersistentEventV11<Type> {
 	static readonly capabilities: RoomVersionCapabilities = {
 		...PersistentEventV11.capabilities,

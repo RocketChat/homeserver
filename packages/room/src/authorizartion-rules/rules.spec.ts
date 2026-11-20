@@ -60,7 +60,7 @@ class FakeEventCreatorBase {
 		return this;
 	}
 
-	// a v12 create event has no room_id, the room id is derived from its hash
+	// a v12 create event has no room_id
 	withoutRoomId() {
 		delete (this._event as Partial<Pdu>).room_id;
 		return this;

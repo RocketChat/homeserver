@@ -98,8 +98,10 @@ export class PersistentEventFactory {
 
 	// create individual events
 
-	// a m.room.create event. before v12 it carries a newly generated room id, from v12 on
-	// the room id is the hash of this event, readable through .roomId once it is built
+	/**
+	 * a m.room.create event. before v12 it carries a newly generated room id, from v12 on
+	 * the room id is the hash of this event, readable through .roomId once it is built
+	 */
 	static newCreateEvent(creator: UserID, roomVersion: RoomVersion, options: NewCreateEventOptions = {}) {
 		const EventClass = PersistentEventFactory.getEventClass(roomVersion);
 

@@ -6,7 +6,7 @@ import { inject, singleton } from 'tsyringe';
 
 import { EventRoomIdLayout, type EventStoreLayout, TopLevelRoomIdLayout } from './event-store-layout';
 
-// the room a stored event belongs to, whichever layout stored it
+/** the room a stored event belongs to, whichever layout stored it */
 export function getStoredRoomId(stored: Pick<EventStore, 'roomId' | 'event'>): RoomID {
 	const roomId = stored.roomId ?? stored.event.room_id;
 	if (!roomId) {
@@ -15,7 +15,7 @@ export function getStoredRoomId(stored: Pick<EventStore, 'roomId' | 'event'>): R
 	return roomId;
 }
 
-// a user ID's server name is everything after the first colon
+/** a user ID's server name is everything after the first colon */
 function sentFromServer(serverName: string): RegExp {
 	return new RegExp(`^[^:]*:${serverName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
 }
@@ -43,7 +43,7 @@ export class EventRepository {
 		);
 	}
 
-	// the room id's shape is known before the room version is, so it is what picks the layout
+	/** the room id's shape is known before the room version is, so it is what picks the layout */
 	private layoutFor(roomId: string): EventStoreLayout {
 		return isDomainlessRoomId(roomId) ? this.topLevelRoomIdLayout : this.eventRoomIdLayout;
 	}
@@ -116,8 +116,10 @@ export class EventRepository {
 		);
 	}
 
-	// keeps the first window recorded, and never makes a rejected event sticky.
-	// resolves to the window the event ends up with, if any
+	/**
+	 * keeps the first window recorded, and never makes a rejected event sticky.
+	 * resolves to the window the event ends up with, if any
+	 */
 	async setSticky(eventId: EventID, sticky: NonNullable<EventStore['sticky']>): Promise<EventStore['sticky']> {
 		const stored = await this.collection.findOneAndUpdate(
 			{ _id: eventId, rejectCode: { $exists: false } },
@@ -148,8 +150,10 @@ export class EventRepository {
 			.sort({ 'event.origin_server_ts': 1, '_id': 1 });
 	}
 
-	// not bound to a room: only cheap because the partial { sticky.expiresAt, event.sender }
-	// index holds nothing but sticky events, and filters the sender before fetching
+	/**
+	 * not bound to a room: only cheap because the partial { sticky.expiresAt, event.sender }
+	 * index holds nothing but sticky events, and filters the sender before fetching
+	 */
 	findActiveStickyBySenderServer(senderServer: string, now: number): FindCursor<EventStore> {
 		return this.collection
 			.find({
@@ -379,7 +383,7 @@ export class EventRepository {
 	// new ones
 	// -------------------
 
-	// roomId is passed explicitly since a v12 create event has no room_id of its own
+	/** roomId is passed explicitly since a v12 create event has no room_id of its own */
 	insertOrUpdateEventWithStateId(roomId: RoomID, eventId: EventID, event: Pdu, stateId: StateID, partial = false): Promise<UpdateResult> {
 		return this.collection.updateOne(
 			{ _id: eventId },

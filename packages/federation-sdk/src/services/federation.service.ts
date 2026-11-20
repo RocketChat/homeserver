@@ -42,14 +42,14 @@ export class FederationService {
 	}
 
 	/**
-	 * Send a join event to the server that answered make_join. room ids no longer name a server from v12 on
+	 * Send a join event to a remote server
 	 */
-	async sendJoin(joinEvent: PersistentEventBase, domain: string, omitMembers = false): Promise<SendJoinResponse> {
+	async sendJoin(joinEvent: PersistentEventBase, residentServer: string, omitMembers = false): Promise<SendJoinResponse> {
 		try {
 			const uri = FederationEndpoints.sendJoinV2(joinEvent.roomId, joinEvent.eventId);
 			const queryParams = omitMembers ? { omit_members: 'true' } : undefined;
 
-			return await this.requestService.put<SendJoinResponse>(domain, uri, undefined, queryParams, joinEvent.event);
+			return await this.requestService.put<SendJoinResponse>(residentServer, uri, undefined, queryParams, joinEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendJoin failed', err: error });
 			throw error;
@@ -69,12 +69,11 @@ export class FederationService {
 		}
 	}
 
-	// sent to the server that answered make_leave
-	async sendLeave(leaveEvent: PersistentEventBase, domain: string): Promise<void> {
+	async sendLeave(leaveEvent: PersistentEventBase, residentServer: string): Promise<void> {
 		try {
 			const uri = FederationEndpoints.sendLeave(leaveEvent.roomId, leaveEvent.eventId);
 
-			await this.requestService.put<void>(domain, uri, leaveEvent.event);
+			await this.requestService.put<void>(residentServer, uri, leaveEvent.event);
 		} catch (error: any) {
 			this.logger.error({ msg: 'sendLeave failed', err: error });
 			throw error;
