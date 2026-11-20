@@ -1,0 +1,19 @@
+packages/federation-sdk/package.json
+  s_ffa682f32dca86::t_82db44a540af9c 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f436acbb3b89ac4abbe26c16a0abf3d74f13e1e6",
+  "prompts": {},
+  "sessions": {
+    "s_ffa682f32dca86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e04c38f-521d-42a9-bca3-8e489b1149f2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Diego Sampaio <chinello@gmail.com>"
+    }
+  }
+}
